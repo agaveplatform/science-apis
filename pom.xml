@@ -11,39 +11,28 @@
 	<description>Super pom for all Agave services</description>
 	<packaging>pom</packaging>
 	<organization>
-		<name>TACC</name>
-		<url>http://tacc.utexas.edu</url>
+		<name>Agave Platform</name>
+		<url>http://agaveplatform.org</url>
 	</organization>
 	<developers>
 		<developer>
-			<id>sterry1</id>
-			<name>Steve Terry</name>
-			<email>sterry1@tacc.utexas.edu</email>
-			<url>https://agaveapi.org</url>
-			<organization>TACC</organization>
-			<organizationUrl>http://www.tacc.utexas.edu</organizationUrl>
+			<id>deardooley</id>
+			<name>Rion Dooleyy</name>
+			<email>deardooley@gmail.com</email>
+			<url>https://agaveplatform.org</url>
+			<organization>Chapman University</organization>
+			<organizationUrl>http://chapman.edu</organizationUrl>
 			<roles>
 				<role>developer</role>
 			</roles>
 		</developer>
 		<developer>
-			<id>jstubbs</id>
-			<name>Joe Stubbs</name>
-			<email>jstubbs@tacc.utexas.edu</email>
-			<url>http://agaveapi.org</url>
-			<organization>TACC</organization>
-			<organizationUrl>http://www.tacc.utexas.edu</organizationUrl>
-			<roles>
-				<role>developer</role>
-			</roles>
-		</developer>
-		<developer>
-			<id>rcardone</id>
-			<name>Richard Cardone</name>
-			<email>rcardone@tacc.utexas.edu</email>
-			<url>https://agaveapi.org</url>
-			<organization>TACC</organization>
-			<organizationUrl>http://www.tacc.utexas.edu</organizationUrl>
+			<id>ertanner</id>
+			<name>Eric Tanner</name>
+			<email>ertanner@gmail.com</email>
+			<url>https://agaveplatform.org</url>
+			<organization>Chapman University</organization>
+			<organizationUrl>http://chapman.edu</organizationUrl>
 			<roles>
 				<role>developer</role>
 			</roles>
@@ -51,31 +40,30 @@
 	</developers>
 
 	<scm>
-		<connection>scm:git:http://bitbucket.org/tacc-cic/agave-flat.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org:tacc-cic/agave-flat.git</developerConnection>
-		<url>https://bitbucket.org/tacc-cic/agave-flat</url>
+		<connection>scm:git:https://github.com/agaveplatform/science-apis.git</connection>
+		<developerConnection>scm:git:ssh://git@github.com:agaveplatform/science-apis.git</developerConnection>
+		<url>https://github.com/agaveplatform/science-apis</url>
 	</scm>
 
 	<repositories>
 		<repository>
-			<id>taccaci</id>
-			<name>TACC ACI Maven repository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/releases</url>
+			<id>agave-maven-releases</id>
+			<name>Agave Maven repository</name>
+			<url>https://nexus.agaveplatform.org/nexus/repository/maven-releases</url>
 		</repository>
 		<repository>
-			<id>taccaci-snapshot</id>
-			<name>TACC ACI Maven repository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/snapshots</url>
+			<id>agave-maven-snapshot</id>
+			<name>Agave Maven repository</name>
+			<url>https://nexus.agaveplatform.org/nexus/repository/maven-snapshots</url>
 		</repository>
 		<repository>
-			<id>taccaci-thirdparty</id>
-			<name>TACC ACI Maven repository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/thirdparty</url>
+			<id>agave-maven-thirdparty</id>
+			<name>Agave Maven repository</name>
+			<url>https://nexus.agaveplatform.org/nexus/repository/maven-thirdparty</url>
 		</repository>
 		<repository>
 			<id>maven-restlet</id>
 			<name>Public online Restlet repository</name>
-			<!-- <url>https://maven.tacc.utexas.edu/nexus/content/repositories/maven-restlet/</url> -->
 			<url>http://maven.restlet.com</url>
 		</repository>
 		<repository>
@@ -107,9 +95,9 @@
 
 	<pluginRepositories>
 		<pluginRepository>
-			<id>taccaciplugins</id>
-			<name>TACC ACI Mavenrepository</name>
-			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/releases</url>
+			<id>agave-maven-plugins</id>
+			<name>Agave Platform Maven Repository</name>
+			<url>https://nexus.agaveplatform.org/nexus/repository/maven-releases</url>
 			<releases>
 				<enabled>true</enabled>
 			</releases>

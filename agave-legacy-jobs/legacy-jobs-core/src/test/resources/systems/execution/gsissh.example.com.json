@@ -1,0 +1,53 @@
+{
+	"id": "gsissh.example.com",
+	"name": "GSISSH",
+	"status": "UP",
+	"type": "EXECUTION",
+	"description": "Sample gsissh execution system.",
+	"site": "tacc.xsede.org",
+	"executionType": "CLI",
+	"default": false,
+	"queues": [
+		{
+			"name": "normal",
+			"maxJobs": 100,
+			"maxMemory": "2048GB",
+			"customDirectives": "#$ -A TG-MCB110022",
+			"default": true
+		}
+	],
+	"login": {
+		"host": "docker.example.com",
+		"port": 2222,
+		"protocol": "GSISSH",
+		"auth": {
+			"username": "testuser",
+			"password": "testuser",
+			"credential": null,
+			"type": "X509",
+			"server": {
+				"id": "docker.example.com",
+				"name": "Agave Dev myproxy Docker container",
+				"endpoint": "docker.example.com",
+				"port": 7514,
+				"protocol": "MYPROXY"
+			}
+		}
+	},
+	"storage": {
+		"host": "docker.example.com",
+		"port": 2022,
+		"protocol": "SFTP",
+		"homeDir": "/home/testuser",
+		"rootDir": "/",
+		"auth": {
+			"username": "testuser",
+			"password": "testuser",
+			"credential": null,
+			"type": "PASSWORD"
+		}
+	},
+	"scheduler": "FORK",
+	"environment": "",
+	"startupScript": "./bashrc"
+}

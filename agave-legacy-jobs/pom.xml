@@ -1,0 +1,85 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>science-apis</artifactId>
+		<version>2.2.24</version>
+	</parent>
+
+	<artifactId>legacy-jobs</artifactId>
+	<name>Agave Platform Legacy Jobs Services Parent POM</name>
+	<description>Parent pom for core, api, and worker projects.</description>
+	<packaging>pom</packaging>
+
+	<build>
+
+		<sourceDirectory>src/main/java</sourceDirectory>
+
+		<resources>
+			<resource>
+				<directory>src/main/resources</directory>
+				<filtering>true</filtering>
+			</resource>
+		</resources>
+
+		<testResources>
+			<testResource>
+				<directory>src/test/resources</directory>
+				<filtering>true</filtering>
+			</testResource>
+		</testResources>
+
+		<plugins>
+
+			<!-- ************************************ -->
+			<!-- ***           DEPLOYMENT          ** -->
+			<!-- ************************************ -->
+
+			<!-- Install a jar with the source code into maven when installing the
+				primary artifact -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>install</id>
+						<phase>install</phase>
+						<goals>
+							<goal>sources</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- ************************************ -->
+			<!-- ***           TESTING             ** -->
+			<!-- ************************************ -->
+
+			<!-- Use TestNG as the test runner -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<suiteXmlFiles>
+						<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
+					</suiteXmlFiles>
+				</configuration>
+			</plugin>
+
+			<!-- ************************************ -->
+			<!-- ***         CODE COVERAGE         ** -->
+			<!-- ************************************ -->
+
+		</plugins>
+	</build>
+	<dependencies>
+
+
+	</dependencies>
+
+	<modules>
+		<module>legacy-jobs-core</module>
+		<module>legacy-jobs-api</module>
+	</modules>
+</project>

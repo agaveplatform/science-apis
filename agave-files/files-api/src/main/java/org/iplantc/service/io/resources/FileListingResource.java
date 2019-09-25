@@ -16,6 +16,7 @@ import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
+import org.iplantc.service.common.util.SimpleTimer;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.io.dao.LogicalFileDao;
@@ -82,12 +83,18 @@ public class FileListingResource extends AbstractFileResource {
             }
         } 
         catch (SystemException e) {
+            String msg = "Failed to determine remote system.";
+            log.error(msg, e);
         	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, e);
         } 
         catch (Throwable e) {
-            log.error("Failed to connect to remote system", e);
-            // is this needed?
-            try { remoteDataClient.disconnect(); } catch (Exception e1) {}
+            log.error("Failed to acquire remote system for user " + username + ".", e);
+            if (remoteDataClient != null)
+                try { remoteDataClient.disconnect(); } 
+                catch (Exception e1) {
+                    String msg = remoteDataClient.getClass().getSimpleName() +
+                                 " failed to disconnect from host " + remoteDataClient.getHost() + ".";
+                }
             
         }
         
@@ -104,15 +111,23 @@ public class FileListingResource extends AbstractFileResource {
 	@Get
 	public Representation represent() throws ResourceException 
 	{
+		SimpleTimer stoverall = null;
+		if (log.isDebugEnabled()) stoverall = SimpleTimer.start("FileListing");
+		
+		//variable for timer object used for profiling throughout the code.
+		SimpleTimer st = null;
+		
 		try
 		{
 			// make sure the resource they are looking for is available.
 			if (remoteSystem == null) 
 			{
 	        	if (StringUtils.isEmpty(systemId)) {
+	        		if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
 	        		throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, 
 	        				"No default storage system found. Please register a system and set it as your default. ");
 	        	} else {
+	        		if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
 	        		throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, 
 	        				"No resource found for user with system id '" + systemId + "'");
 	        	}
@@ -120,22 +135,31 @@ public class FileListingResource extends AbstractFileResource {
 			else if (!ServiceUtils.isAdmin(username) && remoteSystem.isPubliclyAvailable() && 
 	        		remoteSystem.getType().equals(RemoteSystemType.EXECUTION)) 
 			{
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
 				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, 
 						"User does not have access to view the requested resource. " + 
 						"File access is restricted to administrators on public execution systems.");
 			}
 			
 			try {
+				//Profiling the RemoteDataClient
+				if (log.isDebugEnabled()) st = SimpleTimer.start("GetRemoteDataClient");
 				this.remoteDataClient = remoteSystem.getRemoteDataClient(internalUsername);
+				if (st != null) log.debug(st.getShortStopMsg());	
 			} 
 			catch(RemoteDataException e)
 			{
+          		if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
 				throw new ResourceException(Status.CLIENT_ERROR_PRECONDITION_FAILED, e.getMessage(), e);
 			} 
 			catch (Exception e) {	
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
 				throw new ResourceException(Status.CLIENT_ERROR_PRECONDITION_FAILED, 
 						"Unable to establish a connection to the remote server. " + e.getMessage(), e);
 			}
+			
+			//Profile LogicalFileRead
+			if (log.isDebugEnabled()) st = SimpleTimer.start("LogicalFileRead");
 			
 			try {
 				String originalPath = getRequest().getOriginalRef().toUri().getPath();
@@ -145,23 +169,47 @@ public class FileListingResource extends AbstractFileResource {
 					owner = PathResolver.getOwner(originalPath);
 				}
 			} catch (Exception e) {
+				if (st != null) log.debug(st.getShortStopMsg());	
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid file path", e);
 			}
 	        
 			LogicalFile logicalFile = null;
             try {logicalFile=LogicalFileDao.findBySystemAndPath(remoteSystem, remoteDataClient.resolvePath(path));} catch(Exception e) {}
             
+            //End Profile LogicalFileRead
+            if (st != null) log.debug(st.getShortStopMsg());	
+            
+            //Profile PermissionRemoteData
+			if (log.isDebugEnabled()) st = SimpleTimer.start("PermissionRemoteData");
+            
+			SimpleTimer st2 = null;
+			if (log.isDebugEnabled()) st2 = SimpleTimer.start("PermissionsManagerInstantiate");
             PermissionManager pm = new PermissionManager(remoteSystem, remoteDataClient, logicalFile, username);
+            if (st2 != null) log.debug(st2.getShortStopMsg());
             
 			// check for the file on disk
 			boolean exists = false;
 			RemoteFileInfo remoteFileInfo = null;
 			
 			try {
+				
+				
+				
+				
+				//Profile RemoteDataAuthenticate
+				if (log.isDebugEnabled()) st2 = SimpleTimer.start("RemoteDataAuthenticate");
                 remoteDataClient.authenticate();
+                if (st2 != null) log.debug(st2.getShortStopMsg());
+                
+                if (log.isDebugEnabled()) st2 = SimpleTimer.start("PathExists");     
                 exists = remoteDataClient.doesExist(path);
- 
+                if (st2 != null) log.debug(st2.getShortStopMsg());
+
+                
                 if (!exists) {
+                	   if (st != null) log.debug(st.getShortStopMsg());
+                	   if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
                     throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
     						"File/folder does not exist");
                 } 
@@ -169,19 +217,29 @@ public class FileListingResource extends AbstractFileResource {
                     // file exists on the file system, so make sure we have
                     // a logical file for it if not, add one
                     try {
+                    	    if (log.isDebugEnabled()) st2 = SimpleTimer.start("PermissionsCanRead");
+                    	    
                         if (!pm.canRead(remoteDataClient.resolvePath(path))) {
+                        	if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
+                        	if (st != null) log.debug(st.getShortStopMsg());	
                         	throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
     								"User does not have access to view the requested resource");
                         }
+                        if (st2 != null) log.debug(st2.getShortStopMsg());
                     } catch (PermissionException e) {
+                    	if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
+                    	if (st != null) log.debug(st.getShortStopMsg());	
                     	throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, 
     							"Failed to retrieve permissions for '" + path + "', " + e.getMessage());
                     }
                     
+                    if (log.isDebugEnabled()) st2 = SimpleTimer.start("GetFileInfo");
                     remoteFileInfo = remoteDataClient.getFileInfo(path);
+                    if (st2 != null) log.debug(st2.getShortStopMsg());
                     
                     if (logicalFile == null) 
                     {
+                    	     if (log.isDebugEnabled()) st2 = SimpleTimer.start("LogicalFilePersist");
                         // if not a directory add the logical file
 //                        if (!remoteFileInfo.isDirectory()) {
                             logicalFile = new LogicalFile();
@@ -196,21 +254,37 @@ public class FileListingResource extends AbstractFileResource {
                             logicalFile.setInternalUsername(internalUsername);
                             LogicalFileDao.persist(logicalFile);
 //                        }
+                            
+                          if (st2 != null) log.debug(st2.getShortStopMsg());
                     }
                 }
 			} catch (FileNotFoundException e) {
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
+				if (st != null) log.debug(st.getShortStopMsg());	
 				throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
 						"File/folder does not exist");
 			} catch (ResourceException e) {
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
+				if (st != null) log.debug(st.getShortStopMsg());	
 				throw e;
 			} catch (RemoteDataException e) {
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
+				if (st != null) log.debug(st.getShortStopMsg());	
 				throw new ResourceException(Status.SERVER_ERROR_BAD_GATEWAY,
 						e.getMessage(), e);
             } catch (Exception e) {
+            	
+        		if (stoverall != null) log.debug(stoverall.getShortStopMsg());	
+            	if (st != null) log.debug(st.getShortStopMsg());	
             	throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 						"Failed to retrieve information for " + path, e);
             }
+			
+			//End Profile PermissionRemoteData
+            if (st != null) log.debug(st.getShortStopMsg());	
 
+            //Profile RemoteDirectoryListing
+            if (log.isDebugEnabled()) st = SimpleTimer.start("RemoteDirectoryListing");
             List<RemoteFileInfo> listing = new ArrayList<RemoteFileInfo>();
 			
             try 
@@ -289,6 +363,12 @@ public class FileListingResource extends AbstractFileResource {
                 
                 if (remoteFileInfo.isDirectory()) 
                 {
+                	
+                	    //variable for timer object used for profiling file listing in a directory.
+            		    SimpleTimer st1 = null;
+                    //Profile RemoteFileListing
+                    if (log.isDebugEnabled()) st1 = SimpleTimer.start("RemoteFileListing");
+                    
                 	absPath = StringUtils.equals(absPath, "/") ? absPath : absPath + "/";
                 	
 	                listing = remoteDataClient.ls(path);
@@ -344,15 +424,23 @@ public class FileListingResource extends AbstractFileResource {
 							.endObject();
 	                	}
 					}
-                }
 	                
-				return new AgaveSuccessRepresentation(writer.endArray().toString());
+	              //End Profile RemoteFileListing
+	              if (st1 != null) log.debug(st1.getShortStopMsg());	
+                }
+                
+              //End Profile RemoteDirectoryListing
+              if (st != null) log.debug(st.getShortStopMsg());	
+              if (stoverall != null) log.debug(stoverall.getShortStopMsg());
+			  return new AgaveSuccessRepresentation(writer.endArray().toString());
 			} 
             catch (ResourceException e) {
+            	if (stoverall != null) log.debug(stoverall.getShortStopMsg());
             	throw e;
             }
             catch (Exception e) 
             {
+            	if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 						"Failed to retrieve file listing for " + path, e);
 			}

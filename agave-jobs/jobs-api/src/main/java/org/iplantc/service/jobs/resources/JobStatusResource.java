@@ -71,7 +71,7 @@ public class JobStatusResource extends AbstractJobResource
 	 * &nbsp "status":"SUBMITTING",<br>
 	 * &nbsp "id":2,<br>
 	 * &nbsp "endTime":null,<br>
-	 * &nbsp "ownerDn":"uid=dooley,ou=People,dc=iplantcollaborative,dc=org",<br>
+	 * &nbsp "ownerDn":"uid=xxx,ou=People,dc=iplantcollaborative,dc=org",<br>
 	 * &nbsp "inputListing":null,<br>
 	 * &nbsp "running":true,<br>
 	 * &nbsp "lastUpdated":"2010-03-01 15:01:38.0",<br>
@@ -87,7 +87,7 @@ public class JobStatusResource extends AbstractJobResource
 	 * &nbsp "status":"FINISHED",<br>
 	 * &nbsp "id":1,<br>
 	 * &nbsp "endTime":2010-03-01 15:03:21.0,<br>
-	 * &nbsp "ownerDn":"uid=dooley,ou=People,dc=iplantcollaborative,dc=org",<br>
+	 * &nbsp "ownerDn":"uid=xxx,ou=People,dc=iplantcollaborative,dc=org",<br>
 	 * &nbsp "inputListing":null,<br>
 	 * &nbsp "running":false,<br>
 	 * &nbsp "lastUpdated":"2010-03-01 15:03:21.0",<br>

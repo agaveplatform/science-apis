@@ -3,11 +3,12 @@
  */
 package org.iplantc.service.apps.exceptions;
 
+import org.iplantc.service.common.exceptions.CommonResourceException;;
 /**
  * @author dooley
  * 
  */
-public class SoftwareResourceException extends RuntimeException {
+public class SoftwareResourceException extends CommonResourceException {
 
 	private static final long	serialVersionUID	= -7845904825208032472L;
 	
@@ -18,21 +19,13 @@ public class SoftwareResourceException extends RuntimeException {
 	
 	public static final int SUCCESS_OK = 200;
 	
-	private int status = 200;
 	
-	/**
-	 * 
-	 */
-	public SoftwareResourceException()
-	{}
-
 	/**
 	 * @param arg0
 	 */
 	public SoftwareResourceException(int status, String arg0)
 	{
-		super(arg0);
-		this.status = status;
+		super(status, arg0);
 	}
 
 	/**
@@ -40,8 +33,7 @@ public class SoftwareResourceException extends RuntimeException {
 	 */
 	public SoftwareResourceException(int status, Throwable arg0)
 	{
-		super(arg0);
-		this.status = status;
+		super(status, arg0);
 	}
 
 	/**
@@ -50,24 +42,7 @@ public class SoftwareResourceException extends RuntimeException {
 	 */
 	public SoftwareResourceException(int status, String arg0, Throwable arg1)
 	{
-		super(arg0, arg1);
-		this.status = status;
+		super(status, arg0, arg1);
 	}
 	
-	/**
-	 * @return the status
-	 */
-	public int getStatus()
-	{
-		return status;
-	}
-
-	/**
-	 * @param status the status to set
-	 */
-	public void setStatus(int status)
-	{
-		this.status = status;
-	}
-
 }

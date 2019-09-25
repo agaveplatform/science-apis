@@ -62,7 +62,7 @@ public class NotificationResourceImplTest extends AbstractNotificationTest {
 		
 		// create a notification so we have something to reference in the web service 
 		// interactions.
-		referenceNotification = new Notification("SENT", "dooley@tacc.utexas.edu");
+		referenceNotification = new Notification("SENT", "help@agaveplatform.org");
 		referenceNotification.setAssociatedUuid(referenceNotification.getUuid());
 		referenceNotification.setOwner(TEST_USER);
 		dao.persist(referenceNotification);

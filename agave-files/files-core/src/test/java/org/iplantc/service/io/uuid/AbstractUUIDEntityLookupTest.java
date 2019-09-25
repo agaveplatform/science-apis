@@ -68,7 +68,7 @@ public abstract class AbstractUUIDEntityLookupTest<T> implements AbstractUUIDTes
 		TenantDao tenantDao = new TenantDao();
 		Tenant tenant = tenantDao.findByTenantId("iplantc.org");
 		if (tenant == null) {
-			tenant = new Tenant("iplantc.org", "https://agave.iplantc.org", "dooley@tacc.utexas.edu", "Test Admin");
+			tenant = new Tenant("iplantc.org", "https://agave.iplantc.org", "xxx@tacc.utexas.edu", "Test Admin");
 			tenantDao.persist(tenant);
 		}
 	}

@@ -34,7 +34,7 @@ import org.testng.annotations.Test;
 public class AbstractNotificationTest {
 
 	protected static final String TEST_USER = "ipcservices";
-	protected static final String TEST_EMAIL = "dooley@tacc.utexas.edu";
+	protected static final String TEST_EMAIL = "help@agaveplatform.org";
 	protected static final String TEST_URL = "http://requestb.in/11pbi6m1?username=${USERNAME}&status=${STATUS}";
 	protected static final String TEST_URL_QUERY = "?username=${USERNAME}&status=${STATUS}";
 	protected static final String SPECIFIC_ASSOCIATED_UUID = "abc1234-abc1234-abc1234-abc1234-011";

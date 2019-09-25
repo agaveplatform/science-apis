@@ -14,13 +14,13 @@ public class AgaveWebhookClientTest {
 		return new Object[][] {
 				{ "https://vdj-agave-api.tacc.utexas.edu/jobs/v2",
 						"vdjserver.org",
-						"https://vdjserver-org.api.prod.agaveapi.co/jobs" },
+						"https://vdjserver-org.api.prod.agaveplatform.org/jobs" },
 				{ "https://vdj-agave-api.tacc.utexas.edu:443/jobs/v2",
 						"vdjserver.org",
-						"https://vdjserver-org.api.prod.agaveapi.co/jobs" },
-				{ "https://public.agaveapi.co/files/v2/media/systems/foobar-bat.com/path/to/file",
+						"https://vdjserver-org.api.prod.agaveplatform.org/jobs" },
+				{ "https://sandbox.agaveplatform.org/files/v2/media/systems/foobar-bat.com/path/to/file",
 					"agave.prod",
-					"https://agave-prod.api.prod.agaveapi.co/files/media/systems/foobar-bat.com/path/to/file" },};
+					"https://agave-prod.api.prod.agaveplatform.org/files/media/systems/foobar-bat.com/path/to/file" },};
 	}
 
 	@Test(dataProvider="getFilteredCallbackUrlProvider")

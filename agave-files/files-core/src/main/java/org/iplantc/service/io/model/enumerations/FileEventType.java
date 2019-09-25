@@ -22,12 +22,14 @@ public enum FileEventType {
 	STAGING("Staging file/folder"), 
 	STAGING_FAILED("Staging failed"), 
 	STAGING_COMPLETED("Staging completed successfully"), 
-	PREPROCESSING("Prepairing file for next processing step"),
-	
-	TRANSFORMING_QUEUED("File/folder queued for transform"), 
-	TRANSFORMING("Transforming file/folder"), 
-	TRANSFORMING_FAILED("Transform failed"), 
-	TRANSFORMING_COMPLETED("Transform completed successfully"), 
+
+    // ------ Deprecated values kept for legacy data compatibility. 
+    PREPROCESSING("Prepairing file for next processing step"),
+    TRANSFORMING_QUEUED("File/folder queued for transform"), 
+    TRANSFORMING("Transforming file/folder"), 
+    TRANSFORMING_FAILED("Transform failed"), 
+    TRANSFORMING_COMPLETED("Transform completed successfully"),
+    // ------ End deprecated values.
 	
 	INDEX_START("Indexing of file/folder has begun"),
 	INDEX_COMPLETE("Indexing of file/folder has completed"),
@@ -39,6 +41,7 @@ public enum FileEventType {
 	PERMISSION_REVOKE("Permission was removed"),
 	UNKNOWN("Unknown event status"),
 	DOWNLOAD("File was downloaded");
+	
 	
 	private String description;
 	
@@ -108,14 +111,6 @@ public enum FileEventType {
 		}
 	}
 	
-	public static FileEventType[] getFileTransformEvents() {
-		return new FileEventType[] { 
-				TRANSFORMING_QUEUED, 
-				TRANSFORMING, 
-				TRANSFORMING_FAILED, 
-				TRANSFORMING_COMPLETED, 
-			};
-	}
 	
 	public static FileEventType[] getFileStagingEvents() {
 		return new FileEventType[] { 

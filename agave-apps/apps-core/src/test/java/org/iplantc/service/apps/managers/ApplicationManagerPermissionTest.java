@@ -28,7 +28,7 @@ import org.testng.annotations.Test;
 public class ApplicationManagerPermissionTest extends AbstractDaoTest {
 	
 	
-	private static final String ADMIN_USER = "dooley";
+	private static final String ADMIN_USER = "xxx";
 	private static final String SYSTEM_OWNER = "sysowner";
 	private static final String SYSTEM_SHARE_USER = "shareduser";
 	private static final String SYSTEM_PUBLIC_USER = "publicuser";

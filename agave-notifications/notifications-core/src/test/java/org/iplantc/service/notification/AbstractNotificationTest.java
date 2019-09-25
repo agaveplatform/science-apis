@@ -49,7 +49,7 @@ import com.surftools.BeanstalkClientImpl.ClientImpl;
 public class AbstractNotificationTest {
 
 	protected static final String TEST_USER = "ipcservices";
-	protected static final String TEST_EMAIL = "dooley@tacc.utexas.edu";
+	protected static final String TEST_EMAIL = "help@agaveplatform.org";
 	protected static final String TEST_URL_QUERY = "?username=${USERNAME}&status=${STATUS}";
 	protected static final String SPECIFIC_ASSOCIATED_UUID = new AgaveUUID(UUIDType.PROFILE).toString();
 	protected static final String DECOY_ASSOCIATED_UUID = new AgaveUUID(UUIDType.PROFILE).toString();

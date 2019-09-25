@@ -135,10 +135,14 @@ public class CondorLauncher  extends AbstractJobLauncher {
             FileUtils.writeStringToFile(condorSubmitFile, condorSubmitFileContents);
         }
         catch (JobException e) {
+        	String msg = "Unable to create condor submit file.";
+        	log.error(msg, e);
         	throw e;
         } 
         catch (IOException | URISyntaxException e) {
-            throw new JobException("Failed to write condor submit file to local cache.", e);
+        	String msg = "Failed to write condor submit file to local cache.";
+        	log.error(msg, e);
+            throw new JobException(msg, e);
         }
     }
 
@@ -155,7 +159,9 @@ public class CondorLauncher  extends AbstractJobLauncher {
         int exitCode = cmdLineProcessHandler.executeCommand(command);
 
         if (exitCode != 0) {
-            throw new JobException("Job exited with error code " + exitCode + " please check your arguments and try again.");
+        	String msg = "Job exited with error code " + exitCode + " please check your arguments and try again.";
+        	log.error(msg);
+            throw new JobException(msg);
         }
         return cmdLineProcessHandler.getProcessOutput();
     }
@@ -214,14 +220,14 @@ public class CondorLauncher  extends AbstractJobLauncher {
 	        transferWriter.write(transferScript.toString());
 	        transferWriter.flush();
 	    } catch (IOException e) {
-	        e.printStackTrace();
-	        throw new JobException("Failure to write transfer script for Condor submission to " + tempAppDir);
+	        String msg = "Failure to write transfer script for Condor submission to " + tempAppDir + ".";
+	        log.error(msg, e);
+	        throw new JobException(msg, e);
 	    } finally {
 	        try {
 	            transferWriter.close();
 	        } catch (IOException e) {
-	            log.info("failed to close transferWriter outputStream");
-	            e.printStackTrace();
+	            log.warn("Failed to close transferWriter outputStream.", e);
 	        }
 	    }
 	
@@ -252,9 +258,11 @@ public class CondorLauncher  extends AbstractJobLauncher {
         // throw exception if file not found
         try {
             if (!appTemplateFile.exists()) {
-                throw new JobException("Unable to locate wrapper script for \"" +
-                        getSoftware().getUniqueName() + "\" at " +
-                        getSoftware().getDeploymentPath() + "/" + getSoftware().getExecutablePath());
+            	String msg = "Unable to locate wrapper script for \"" +
+                             getSoftware().getUniqueName() + "\" at " +
+                             getSoftware().getDeploymentPath() + "/" + getSoftware().getExecutablePath();
+            	log.error(msg);
+                throw new JobException(msg);
             }
             appTemplate = FileUtils.readFileToString(appTemplateFile);
 
@@ -341,18 +349,24 @@ public class CondorLauncher  extends AbstractJobLauncher {
             return appTemplateFile;
         } 
         catch (IOException e) {
-            throw new JobException("FileUtil operation failed", e);
+        	String msg = "FileUtil operation failed.";
+        	log.error(msg, e);
+            throw new JobException(msg, e);
         } 
         catch (JobException e) {
-            throw new JobException("Json failure from job inputs or parameters", e);
+        	String msg = "Json failure from job inputs or parameters.";
+        	log.error(msg);
+            throw new JobException(msg, e);
         }
 		catch (URISyntaxException e) {
-			throw new JobException("Failed to parse input URI", e);
+			String msg = "Failed to parse input URI.";
+			log.error(msg, e);
+			throw new JobException(msg, e);
 		} finally {
             try {
                 batchWriter.close();
             } catch (IOException e) {
-                log.debug("failed to close batchWriter on Exception");
+                log.warn("Failed to close batchWriter on Exception");
             }
         }
 
@@ -461,62 +475,14 @@ public class CondorLauncher  extends AbstractJobLauncher {
     	String response = remoteSubmissionClient.runCommand(createTransferPackageCmd);
     	response = StringUtils.lowerCase(response);
     	if (StringUtils.contains(response, "cannot") || StringUtils.contains(response, "command not found")) {
-    		throw new JobException("Failed to create transfer package for condor submission. \n" + response);
+    		String msg = "Failed to create transfer package for condor submission. \n" + response;
+    		log.error(msg);
+    		throw new JobException(msg);
     	}
     	
     	remoteSubmissionClient.close();
 
     }
-
-//    /**
-//     * Update the Job object status in the database
-//     *
-//     * @param status
-//     */
-//    private void updateJobStatus(JobStatusType status, String description) throws JobException {
-//        step = "Updating job status in data store for job " + job.getUuid();
-//        log.debug(step);
-//        Date date = new DateTime().toDate();
-//        job.setLastUpdated(date);
-//        job.setStatus(status, description);
-//
-//        JobDao.persist(job);
-//    }
-
-//    /**
-//     * Is Condor ready to take job submissions?
-//     */
-//    private boolean isCondorReady() throws JobException {
-//        // todo make this tacc condor server specific see if condor_q is up
-//        step = "Call to condor_q to see if Condor is active";
-//        log.debug(step);
-//        int exitCode = executeCommand("condor_q", "condor_q").getExitCode();
-//        boolean isCondorUp = exitCode == 0 ? true : false;
-//
-//        if (!isCondorUp) {
-//            // if the system is down, return it to the queue to wait for the system
-//            // to come back up by setting job status to "Staged"
-//            updateJobStatus(JobStatusType.STAGED, "Condor is not currently available. Returning job to queue.");
-//        }
-//        return isCondorUp;
-//    }
-
-//    /**
-//     * We got here because some step in the arduous process of staging and submitting a
-//     * Condor job failed.
-//     *
-//     * @return boolean false to be used to exit launch
-//     */
-//    private boolean registerJobFailure(String message) {
-//        step = "Register Job failure for job " + job.getUuid();
-//        log.debug(step);
-//        try {
-//            JobManager.updateStatus(job, JobStatusType.FAILED, message);
-//        } catch (JobException e) {
-//            e.printStackTrace();
-//        }
-//        return false;
-//    }
 
     /**
      * Currently for the OSG condor submit host, IRods files pushed to the execution system lose their executable setting so they
@@ -637,22 +603,24 @@ public class CondorLauncher  extends AbstractJobLauncher {
             
         }
         catch (ClosedByInterruptException e) {
+        	if (log.isDebugEnabled()) log.debug("Condor launch interrupted.", e);
             throw e;
         } 
         catch (JobException e) {
         	jobFailed = true;
         	log.error(step);
         	this.setJob(JobManager.updateStatus(this.getJob(), JobStatusType.FAILED, e.getMessage()));
+        	log.error(e.getMessage(), e);
         	throw e;
         } 
         catch (SystemUnavailableException e) {
         	jobFailed = true;
-        	log.error(step);
+        	log.error(step, e);
         	throw e;
         } 
         catch (Exception e) {
             jobFailed = true;
-            log.error(step);
+            log.error(step, e);
             this.setJob(JobManager.updateStatus(this.getJob(), JobStatusType.FAILED, e.getMessage()));
             throw new JobException("Failed to invoke app: \"" + getSoftware().getUniqueName() + "\n\"   with command:  " + condorSubmitCmdString + "\n" + e.getMessage(), e);
         } 
@@ -696,8 +664,11 @@ public class CondorLauncher  extends AbstractJobLauncher {
 						startupScriptCommand + " ; " + cdCommand + " ; " + submitCommand);
 				
 				// blank response means the job didn't go in...twice. Fail the attempt
-				if (StringUtils.isBlank(submissionResponse)) 
-					throw new JobException("Failed to submit condor job. " + submissionResponse);
+				if (StringUtils.isBlank(submissionResponse)) {
+					String msg = "Failed to submit condor job. " + submissionResponse;
+					log.error(msg);
+					throw new JobException(msg);
+				}
 			}
 			
 			// parse the response from the remote command invocation to get the localJobId
@@ -707,10 +678,13 @@ public class CondorLauncher  extends AbstractJobLauncher {
 	        return jobIdParser.getJobId(submissionResponse);
     	} 
     	catch (JobException e) {
+    		log.error(e.getMessage(), e);
     		throw e;
     	} 
     	catch (Exception e) {
-    		throw new JobException("Failed to submit job to condor queue", e);
+    		String msg = "Failed to submit job to condor queue.";
+    		log.error(msg, e);
+    		throw new JobException(msg, e);
     	}
     	finally {
     		try { submissionClient.close(); } catch (Exception e) {}

@@ -4,16 +4,9 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 
 import org.apache.log4j.Logger;
-import org.iplantc.service.common.persistence.JndiSetup;
 import org.iplantc.service.common.restlet.AgaveApplication;
-import org.iplantc.service.metadata.resources.MetadataCollection;
-import org.iplantc.service.metadata.resources.MetadataDocumentationResource;
-import org.iplantc.service.metadata.resources.MetadataResource;
-import org.iplantc.service.metadata.resources.MetadataSchemaCollection;
-import org.iplantc.service.metadata.resources.MetadataSchemaResource;
-import org.iplantc.service.metadata.resources.MetadataSchemaShareResource;
-import org.iplantc.service.metadata.resources.MetadataShareResource;
-import org.restlet.Component;
+import org.iplantc.service.metadata.persistence.MongoConnector;
+import org.iplantc.service.metadata.resources.*;
 import org.restlet.Restlet;
 import org.restlet.Router;
 import org.restlet.util.Template;
@@ -77,40 +70,13 @@ public class MetadataApplication extends AgaveApplication
 	protected String getStandalonePrefix() {
 		return !isStandaloneMode() ? "" : "/meta";
 	}
-    
-    public static void main(String[] args) throws Exception 
-	{	
-		JndiSetup.init();
-		
-		// Create a new Component.
-        Component component = new Component();
 
-        // Attach the AppsApplication
-        MetadataApplication application = new MetadataApplication();
-        application.setStandaloneMode(true);
-        component.getDefaultHost().attach(application);
-        
-        launchServer(component);
-    }
-    
-    public MongoClient getMongoClient() throws UnknownHostException
+    public MongoClient getMongoClient()
     {
-    	if (mongoClient == null ) 
-    	{
-	    	mongoClient = new MongoClient(new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT), Arrays.asList(getMongoCredential()));
-    	} 
-    	else if (!mongoClient.getConnector().isOpen()) 
-    	{
-    		try { mongoClient.close(); } catch (Exception e) { log.error("Failed to close mongo client.", e); }
-    		mongoClient = null;
-    		mongoClient = new MongoClient(new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT), Arrays.asList(getMongoCredential()));
-    	}
-    		
+        if (mongoClient == null )
+        {
+            this.mongoClient = MongoConnector.CONNECTION.getClient();
+        }
         return mongoClient;
-    }
-    
-    private MongoCredential getMongoCredential() {
-    	return MongoCredential.createMongoCRCredential(
-                Settings.METADATA_DB_USER, "api", Settings.METADATA_DB_PWD.toCharArray());
     }
 }

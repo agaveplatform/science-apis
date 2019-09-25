@@ -183,7 +183,7 @@ public class FileHistoryResource extends AbstractFileResource {
 	                    }
 	
 	                    if (logicalFile == null) {
-	                    	throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, 
+	                    	throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, 
 	    							"No history found on system " + remoteSystem.getSystemId() + " for " + (StringUtils.isEmpty(path)? "user home" : path));
 	                    }
 	                    else

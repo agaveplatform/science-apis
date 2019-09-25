@@ -3,17 +3,16 @@
  */
 package org.iplantc.service.jobs.resources;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.SearchableAgaveResource;
 import org.iplantc.service.common.search.AgaveResourceResultOrdering;
-import org.iplantc.service.common.search.AgaveResourceSearchFilter;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.dao.JobEventDao;
@@ -47,6 +46,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  */
 public class JobHistoryResource extends SearchableAgaveResource<JobEventSearchFilter>
 {
+    private static final Logger log = Logger.getLogger(JobHistoryResource.class);
+    
 	private String				sJobId;
 	private Job					job;
 
@@ -85,9 +86,15 @@ public class JobHistoryResource extends SearchableAgaveResource<JobEventSearchFi
 		try
 		{
 			job = JobDao.getByUuid(sJobId, true);
-			if (job == null || !job.isVisible()) {
-				throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, 
-						"No job found with job id " + sJobId);
+			if (job == null) {
+			    String msg = "No job found with job id " + sJobId + "."; 
+			    log.error(msg);
+				throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, msg);
+			}
+			else if (!job.isVisible()) {
+                String msg = "Job with uuid " + sJobId + " is not visible.";
+                log.error(msg);
+                throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, msg); 
 			}
 			else if (new JobPermissionManager(job, getAuthenticatedUsername()).canRead(getAuthenticatedUsername()))
 			{

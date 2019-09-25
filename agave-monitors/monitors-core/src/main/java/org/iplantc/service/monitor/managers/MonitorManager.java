@@ -109,7 +109,8 @@ public class MonitorManager
 			system = monitor.getSystem();
 			
 			monitoredSystemRemoteDataClient = system.getRemoteDataClient(monitor.getInternalUsername());
-			log.debug("[" + Thread.currentThread().getName() + "] Checking data connectivity to " + system.getSystemId() + 
+			if (log.isTraceEnabled())
+			    log.trace("[" + Thread.currentThread().getName() + "] Checking data connectivity to " + system.getSystemId() + 
 					"(" +  system.getStorageConfig().getProtocol() + ":" + monitoredSystemRemoteDataClient.getHost() + ")");
 			
 			monitoredSystemRemoteDataClient.authenticate();
@@ -117,8 +118,8 @@ public class MonitorManager
 			
 			currentCheck.setResult(MonitorStatusType.PASSED);
 			currentCheck.setCreated(new Date());
-//			monitor.setLastSuccess(currentCheck.getCreated());
-			log.debug("Data connectivity succeeded to " + system.getSystemId() + 
+			if (log.isTraceEnabled())
+			    log.trace("Data connectivity succeeded to " + system.getSystemId() + 
 					"(" +  system.getStorageConfig().getProtocol() + ":" + monitoredSystemRemoteDataClient.getHost() + ")");
 		}
 		catch (IOException e) 

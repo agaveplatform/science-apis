@@ -15,9 +15,9 @@ import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
+import org.apache.log4j.Logger;
 import org.iplantc.service.io.exceptions.LogicalFileException;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.io.model.enumerations.TransformTaskStatus;
 import org.iplantc.service.systems.util.ServiceUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -34,6 +34,8 @@ public class LogicalFileNotification {
 	private boolean stillPending = true;
 	private Date lastSent;
 	private Date created = new Date();
+	
+	private static final Logger log = Logger.getLogger(LogicalFileNotification.class);
 
 	public LogicalFileNotification() {}
 
@@ -177,43 +179,44 @@ public class LogicalFileNotification {
 				URI uri = new URI(jsonNotification.getString("url"));
 				notification.setUri(uri.toString());
 			} else {
+				log.debug("URL is not received in the notification.");
 				throw new LogicalFileException("Please specify a valid url " +
 						"value for the 'notification.url' field. This will be the url " +
 						"to which the API will POST a notification event.");
 			}
 
 			if (ServiceUtils.isNonEmptyString(jsonNotification, "status")) {
-				try {
 					StagingTaskStatus trigger = StagingTaskStatus.valueOf(jsonNotification.getString("status").toUpperCase());
 					notification.setStatus(trigger.name());
-				} catch (IllegalArgumentException e) {
-					TransformTaskStatus trigger = TransformTaskStatus.valueOf(jsonNotification.getString("status").toUpperCase());
-					notification.setStatus(trigger.name());
-				}
-
 			} else {
+				log.debug("File Activity Status is not received in the notification.");
 				throw new LogicalFileException("Please specify a valid file activity status " +
 						"value for the 'notification.status' field. A notification will " +
 						"be sent when the file activity reaches this status.");
 			}
 		}
 		catch (LogicalFileException e) {
+			log.debug("LogicalFileException: " + e);
 			throw e;
 		}
 		catch (IllegalArgumentException e) {
+			log.debug("IllegalArgumentException: " + e);
 			throw new LogicalFileException("Invalid file activity status. Please specify a valid file status " +
 					"value for the 'notification.status' field. A notification will " +
-					"be sent when the file activity reaches this status.");
+					"be sent when the file activity reaches this status.", e);
 		}
 		catch (URISyntaxException e) {
+			log.debug("URISyntaxException: " + e);
 			throw new LogicalFileException("Invalid url. Please specify a valid url " +
 						"value for the 'notification.url' field. This will be the url " +
 						"to which the API will POST a notification event.", e);
 		}
 		catch (JSONException e) {
+			log.debug("JSONException: " + e);
 			throw new LogicalFileException("Failed to parse 'notification' object", e);
 		}
 		catch (Exception e) {
+			log.debug("CatchAll Exception: " + e);
 			throw new LogicalFileException("Failed to parse 'notification' object: " + e.getMessage(), e);
 		}
 

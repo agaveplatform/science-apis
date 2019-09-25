@@ -2,7 +2,14 @@
 #  Development Stack of Dependent Services
 #############################################################
 
-version: '2'
+version: '3.7'
+
+volumes:
+  mysql_data:
+  mongo_data:
+
+networks:
+  services:
 
 services:
   ##############################################################
@@ -19,9 +26,11 @@ services:
       MODULE: ${MODULE}
       SUITE: ${SUITE}
       USER_HOME: ${USER_HOME}
+    networks:
+      - services
     volumes:
       - ../..:/sources
-      - ~/.m2:/home/apim/.m2
+      - ~/.m2:${USER_HOME}/.m2
       #- ~/.docker:/root/.docker:ro
       #- /var/run/docker.sock:/docker.sock
 
@@ -32,69 +41,80 @@ services:
     image: agaveapi/mysql:5.6-devtz
     ports:
       - '3306:3306'
-    restart: on-failure
-    hostname: mysql.example.com
-    labels:
-      agaveapi.test: "utest"
-    volumes_from:
-      - 'mysqlvol'
+    volumes:
+      - mysql_data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: changeit
       MYSQL_DATABASE: agavecore
       MYSQL_USER: agaveuser
       MYSQL_PASSWORD: password
       MYSQL_TEST_DATABASE: test
-
-  mysqlvol:
-    image: agaveapi/mysql:5.6-devtz
-    command: sleep 90
-    mem_limit: 64m
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - services
+    deploy:
+      labels:
+        agaveapi.test: "utest"
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
 
 ##############################################################
 # MongoDB
 ##############################################################
   mongodb:
-    image: agaveapi/mongodb:2.6
+    image: agaveplatform/mongodb:2.6
     hostname: mongodb
-    restart: on-failure
-    labels:
-      agaveapi.test: "utest"
     environment:
       - MONGODB_ADMIN_PASS=changeit
       - MONGODB_PASSWORD=password
       - MONGODB_USERNAME=agaveuser
       - MONGODB_DATABASE=api
-    volumes_from:
-      - mongodbvol
+    volumes:
+      - mongo_data:/data
     ports:
       - '27017:27017'
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - services
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
-  mongodbvol:
-    image: agaveapi/mongodb:2.6
-    command: sleep 120
-    mem_limit: 64m
 
 ##############################################################
 # Beanstalkd
 ##############################################################
   beanstalkd:
-    image: agaveapi/beanstalkd:latest
+    image: agaveplatform/beanstalkd:latest
     command: /usr/bin/beanstalkd -b /var/lib/beanstalkd/binlog
     hostname: beanstalkd
-    mem_limit: 512m
-    labels:
-      agaveapi.test: "utest"
-    restart: on-failure
-    volumes_from:
-      - beanstalkdvol
     ports:
       - '11300:11300'
-
-  beanstalkdvol:
-    image: agaveapi/beanstalkd:latest
-    command: sleep 60
-    mem_limit: 64m
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - services
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
 
   ##############################################################
   # Mail
@@ -118,6 +138,8 @@ services:
     #hostname: docker.example.com
     labels:
       agaveapi.test: "utest"
+    networks:
+      - services
     ports:
       - '22'
       - '7512'
@@ -126,77 +148,92 @@ services:
       - 'GLOBUS_GSSAPI_FORCE_TLS=1'
 
   sftp:
-    image: agaveapi/centos-base
-    #hostname: docker.example.com
+    image: agaveplatform/centos-base
     labels:
       agaveapi.test: "utest"
+    networks:
+      - services
     ports:
       - '22'
 
   sftptunnel:
-   image: agaveapi/centos-base
-   #hostname: tunnel.example.com
-   labels:
-     agaveapi.test: "utest"
-   privileged: true
-   #links:
-   #  - sftphidden
-   ports:
-     - '22'
+    image: agaveplatform/centos-base
+    #hostname: tunnel.example.com
+    labels:
+      agaveapi.test: "utest"
+    networks:
+      - services
+    privileged: true
+    #links:
+    #  - sftphidden
+    ports:
+      - '22'
 
   sftphidden:
-    image: agaveapi/centos-base
+    image: agaveplatform/centos-base
     #hostname: docker.example.com
     labels:
       agaveapi.test: "utest"
+    networks:
+      - services
     ports:
       - '22'
 
   irods:
-    image: agaveapi/irods:3.3.1
+    image: agaveplatform/irods:3.3.1
     #hostname: docker.example.com
     labels:
       agaveapi.test: "utest"
+    networks:
+      - services
     ports:
       - '22'
       - '1247'
 
   irodspam:
-   image: agaveapi/irods-pam:latest
-   #hostname: docker.example.com
-   labels:
-     agaveapi.test: "utest"
-   ports:
-     - '22'
-     - '1247'
-
-  irods4:
-   image: agaveapi/irods:4.0.3
-   command: changeit
-   #hostname: docker.example.com
-   labels:
-     agaveapi.test: "utest"
-   environment:
-     - 'DOCKER_HOSTNAME=docker.example.com'
-     - 'IRODS_ZONE=iplant'
-   ports:
-     - '1247'
-
-  http:
-    image: agaveapi/apache-dev
+    image: agaveplatform/irods-pam:latest
     #hostname: docker.example.com
     labels:
       agaveapi.test: "utest"
+    networks:
+      - services
+    ports:
+      - '22'
+      - '1247'
+
+  irods4:
+    image: agaveplatform/irods:4.0.3
+    command: changeit
+    #hostname: docker.example.com
+    labels:
+      agaveapi.test: "utest"
+    networks:
+      - services
+    environment:
+      - 'DOCKER_HOSTNAME=docker.example.com'
+      - 'IRODS_ZONE=iplant'
+    ports:
+      - '1247'
+
+  http:
+    image: agaveplatform/apache-dev
+    #hostname: docker.example.com
+    labels:
+      agaveapi.test: "utest"
+    networks:
+      - services
     ports:
       - '22'
       - '80'
       - '443'
 
   ftp:
-    image: agaveapi/pure-ftpd
+    image: agaveplatform/pure-ftpd
     #hostname: docker.example.com
     labels:
       agaveapi.test: "utest"
+    networks:
+      - services
     privileged: true
     ports:
       - '20'
@@ -205,10 +242,12 @@ services:
       - '30000-30009'
 
   gridftp:
-    image: agaveapi/gridftp:5
+    image: agaveplatform/gridftp:5
     #hostname: docker.example.com
     labels:
       agaveapi.test: "utest"
+    networks:
+      - services
     extra_hosts:
       - 'tests.example.com:192.168.99.1'
       - 'dooley-mac.local:192.168.99.1'
@@ -225,13 +264,20 @@ services:
 # Pushpin
 ##############################################################
   pushpin:
-    image: agaveapi/pushpin:1.6.0
+    image: agaveplatform/pushpin:1.6.0
     extra_hosts:
       - 'realtime.api.agave:192.168.99.100'
     hostname: realtime.docker.example.com
-    mem_limit: 512m
-    restart: on-failure
     ports:
       - '7999:7999'
       - '5561:5561'
-
+    networks:
+      - services
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M

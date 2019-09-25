@@ -4,12 +4,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>org.iplantc</groupId>
-		<artifactId>agave</artifactId>
-		<version>2.1.11</version>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>science-apis</artifactId>
+		<version>2.2.24</version>
 	</parent>
 
-	<groupId>org.iplantc.agave</groupId>
 	<artifactId>agave-migrations</artifactId>
 	<name>Agave Platform Science API Database Migrations</name>
 	<description>Migration definitions and controls for the Agave Platform</description>
@@ -73,184 +72,6 @@
 					<skip>${skip.migrations}</skip>
 				</configuration>
 			</plugin>
-			<!-- <plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-shade-plugin</artifactId>
-				<version>${maven-shade-plugin.version}</version>
-				<executions>
-					<execution>
-						<phase>package</phase>
-						<goals>
-							<goal>shade</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin> -->
-			<!-- Package the service up as a Docker image. -->
-			<plugin>
-				<groupId>com.spotify</groupId>
-				<artifactId>docker-maven-plugin</artifactId>
-				<configuration>
-					<!-- Standard build will build an image without the prefix so we don't 
-						force conventions on folks. -->
-					<imageName>${project.artifactId}</imageName>
-					<dockerDirectory>${basedir}/target/docker</dockerDirectory>
-					<serverId>${docker.registry.id}</serverId>
-					<registryUrl>${docker.registry.url}</registryUrl>
-				</configuration>
-				<executions>
-					<execution>
-						<id>build-container</id>
-						<!-- Generic docker build of API -->
-						<phase>package</phase>
-						<goals>
-							<goal>build</goal>
-						</goals>
-						<configuration>
-							<skipDockerBuild>${skip.docker.build}</skipDockerBuild>
-							<useGitCommitId>true</useGitCommitId>
-							<imageTags>
-								<tag>${project.version}</tag>
-								<tag>latest</tag>
-							</imageTags>
-							<tagInfoFile>target/image_info.json</tagInfoFile>
-							<forceTags>true</forceTags>
-							<resources>
-								<resource>
-									<targetPath>/</targetPath>
-									<directory>${basedir}/target/classes</directory>
-									<include>Dockerfile</include>
-								</resource>
-								<resource>
-									<targetPath>/conf</targetPath>
-									<directory>${basedir}/target/classes</directory>
-									<include>flyway.conf</include>
-								</resource>
-								<resource>
-									<targetPath>/</targetPath>
-									<directory>${basedir}/target/classes</directory>
-									<include>docker-entrypoint.sh</include>
-								</resource>
-								<resource>
-									<targetPath>/lib</targetPath>
-									<directory>${basedir}/target/</directory>
-									<include>${project.artifactId}-${project.version}.jar</include>
-								</resource>
-								<resource>
-									<targetPath>/lib</targetPath>
-									<directory>${basedir}/target/dependency</directory>
-									<include>**</include>
-									<exclude>mysql*.jar</exclude>
-									<exclude>flyway*.jar</exclude>
-								</resource>
-								<resource>
-									<targetPath>/drivers</targetPath>
-									<directory>${basedir}/target/dependency</directory>
-									<include>mysql*.jar</include>
-								</resource>
-								<resource>
-									<targetPath>/sql</targetPath>
-									<directory>${basedir}/target/classes/db/migration</directory>
-									<include>*.sql</include>
-								</resource>
-							</resources>
-						</configuration>
-					</execution>
-					<execution>
-						<id>tag-commit-hash</id>
-						<!-- Tag with the git commit hash. This tags a published image with 
-							the repo commit tag -->
-						<phase>deploy</phase>
-						<goals>
-							<goal>tag</goal>
-						</goals>
-						<configuration>
-							<skipDockerBuild>false</skipDockerBuild>
-							<image>${project.artifactId}</image>
-							<newName>${docker.registry.username}/${project.artifactId}</newName>
-							<forceTags>true</forceTags>
-							<useGitCommitId>true</useGitCommitId>
-							<pushImage>${force.docker.push}</pushImage>
-							<serverId>${docker.registry.id}</serverId>
-							<registryUrl>${docker.registry.url}</registryUrl>
-						</configuration>
-					</execution>
-					<execution>
-						<id>tag-version</id>
-						<!-- Tag with the api version number. This represents the latest of 
-							the api version -->
-						<phase>deploy</phase>
-						<goals>
-							<goal>tag</goal>
-						</goals>
-						<configuration>
-							<image>${project.artifactId}</image>
-							<newName>${docker.registry.username}/${project.artifactId}:${project.version}</newName>
-							<forceTags>true</forceTags>
-							<skipDockerTag>${skip.docker.tag}</skipDockerTag>
-							<pushImage>${force.docker.push}</pushImage>
-							<serverId>${docker.registry.id}</serverId>
-							<registryUrl>${docker.registry.url}</registryUrl>
-						</configuration>
-					</execution>
-					<!-- Tag as the "latest". This represents the latest of the api -->
-					<execution>
-						<id>tag-latest</id>
-						<phase>deploy</phase>
-						<goals>
-							<goal>tag</goal>
-						</goals>
-						<configuration>
-							<skipDockerBuild>false</skipDockerBuild>
-							<image>${project.artifactId}</image>
-							<newName>${docker.registry.username}/${project.artifactId}:latest</newName>
-							<forceTags>true</forceTags>
-							<skipDockerTag>${skip.docker.tag}</skipDockerTag>
-							<useGitCommitId>false</useGitCommitId>
-							<pushImage>false</pushImage>
-							<serverId>${docker.registry.id}</serverId>
-							<registryUrl>${docker.registry.url}</registryUrl>
-						</configuration>
-					</execution>
-					<execution>
-						<id>remove-version-tag</id>
-						<!-- Tag as the "latest". This represents the latest of the api -->
-						<phase>clean</phase>
-						<goals>
-							<goal>removeImage</goal>
-						</goals>
-						<configuration>
-							<skip>${skip.docker.clean}</skip>
-							<imageTags>
-								<tag>latest</tag>
-								<tag>${project.version}</tag>
-								<tag>${buildNumber}</tag>
-								<tag>${buildNumber}.DIRTY</tag>
-							</imageTags>
-							<imageName>${docker.registry.username}/${project.artifactId}</imageName>
-						</configuration>
-					</execution>
-					<execution>
-						<id>remove-image</id>
-						<!-- Tag as the "latest". This represents the latest of the api -->
-						<phase>clean</phase>
-						<goals>
-							<goal>removeImage</goal>
-						</goals>
-						<configuration>
-							<imageTags>
-								<tag>latest</tag>
-								<tag>${project.version}</tag>
-								<tag>${buildNumber}</tag>
-								<tag>${buildNumber}.DIRTY</tag>
-							</imageTags>
-							<skip>${skip.docker.clean}</skip>
-							<imageName>${project.artifactId}</imageName>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-
 		</plugins>
 		<pluginManagement>
 			<plugins>
@@ -301,13 +122,6 @@
 			<artifactId>mysql-connector-java</artifactId>
 			<version>${mysql-connector-java.version}</version>
 		</dependency>
-		
-		<!-- Java custom migration depedencies -->
-		<!-- <dependency>
-			<groupId>com.github.stephenc.eaio-uuid</groupId>
-			<artifactId>uuid</artifactId>
-			<version>${uuid.version}</version>
-		</dependency> -->
 		
 		<!-- logging depedencies -->
 		<dependency>

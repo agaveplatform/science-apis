@@ -13,6 +13,7 @@ import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.representation.AgaveRepresentation;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
+import org.iplantc.service.common.util.SimpleTimer;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
@@ -119,15 +120,21 @@ public class FileIndexingResource extends AbstractFileResource {
 	@Get
 	public Representation represent() throws ResourceException
 	{
+		SimpleTimer stoverall = null;
+		SimpleTimer st = null;
+	    if (log.isDebugEnabled()) stoverall = SimpleTimer.start("FileIndexing");
+	    
 		try
 		{
 			// make sure the resource they are looking for is available.
 			if (remoteSystem == null)
 			{
 	        	if (StringUtils.isEmpty(systemId)) {
+	        		if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 	        		throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
 	        				"No default storage system found. Please register a system and set it as your default. ");
 	        	} else {
+	        		if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 	        		throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
 	        				"No resource found for user with system id '" + systemId + "'");
 	        	}
@@ -135,6 +142,7 @@ public class FileIndexingResource extends AbstractFileResource {
 			else if (!ServiceUtils.isAdmin(username) && remoteSystem.isPubliclyAvailable() &&
 	        		remoteSystem.getType().equals(RemoteSystemType.EXECUTION))
 			{
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
 						"User does not have access to view the requested resource. " +
 						"File access is restricted to administrators on public execution systems.");
@@ -144,9 +152,11 @@ public class FileIndexingResource extends AbstractFileResource {
 				this.remoteDataClient = remoteSystem.getRemoteDataClient(internalUsername);
 			}
 			catch(RemoteDataException e) {
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 				throw new ResourceException(Status.CLIENT_ERROR_PRECONDITION_FAILED, e.getMessage(), e);
 			}
 			catch (Exception e) {
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 				throw new ResourceException(Status.CLIENT_ERROR_PRECONDITION_FAILED,
 						"Unable to establish a connection to the remote server. " + e.getMessage(), e);
 			}
@@ -158,6 +168,7 @@ public class FileIndexingResource extends AbstractFileResource {
 					owner = PathResolver.getOwner(originalPath);
 				}
 			} catch (Exception e) {
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid file path", e);
 			}
 
@@ -173,30 +184,44 @@ public class FileIndexingResource extends AbstractFileResource {
 			RemoteFileInfo remoteFileInfo = null;
 			long startTime = 0;
 			try {
+				
+				if (log.isDebugEnabled()) st = SimpleTimer.start("FileIndexing_RemoteDataClient_Exists");
+				
 		        remoteDataClient.authenticate();
 		        exists = remoteDataClient.doesExist(path);
+		        
+		        if (st != null) log.debug(st.getShortStopMsg());
 	
 		        if (!exists && logicalFile == null) {
+		        		if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 		            throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
 						"File/folder does not exist");
 		        } else {
 	
+		        	if (log.isDebugEnabled()) st = SimpleTimer.start("FileIndexing_Permissions");
 		        	startTime = System.currentTimeMillis();
 	
 		            // file exists on the file system, so make sure we have
 		            // a logical file for it if not, add one
 		            try {
 		                if (!pm.canRead(remoteDataClient.resolvePath(path))) {
+		                	if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 		                	throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
 								"User does not have access to view the requested resource");
 		                }
 		            } catch (PermissionException e) {
+		            		if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 		            		throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
 												"Failed to retrieve permissions for '" + path + "', " + e.getMessage());
 		            }
 	
+		            if (st != null) log.debug(st.getShortStopMsg());
+		            
+		        	if (log.isDebugEnabled()) st = SimpleTimer.start("FileIndexing_GetFileInfoLogicalFile");
 		            remoteFileInfo = remoteDataClient.getFileInfo(path);
-	
+		            
+		            
+		            
 		            if (logicalFile == null)
 		            {
 		                logicalFile = new LogicalFile();
@@ -211,14 +236,19 @@ public class FileIndexingResource extends AbstractFileResource {
 		                logicalFile.setInternalUsername(internalUsername);
 		                LogicalFileDao.persist(logicalFile);
 		            }
+		            
+		            if (st != null) log.debug(st.getShortStopMsg());
 		        }
 			} 
 			catch (ResourceException e) {
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 				throw e;
 			} catch (RemoteDataException e) {
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 				throw new ResourceException(Status.SERVER_ERROR_BAD_GATEWAY,
 						e.getMessage(), e);
 			} catch (Exception e) {
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 				throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 							"Failed to retrieve information for " + path, e);
 			}
@@ -227,6 +257,13 @@ public class FileIndexingResource extends AbstractFileResource {
 	
 			try
 			{
+				
+			 	if (log.isDebugEnabled()) st = SimpleTimer.start("FileIndexing_Response");
+			 	
+				SimpleTimer sttemp = null;
+			    if (log.isDebugEnabled()) sttemp = SimpleTimer.start("DirectoryLogic");
+			 	
+			 	
 				JSONWriter writer = new JSONStringer();
 	
 				String format = "raw";
@@ -253,7 +290,12 @@ public class FileIndexingResource extends AbstractFileResource {
 				if ((absPath != null) && !absPath.startsWith("/")) {  
 					absPath = "/" + absPath;
 				}
+				
+				if (sttemp != null) log.debug(sttemp.getShortStopMsg());
 	          
+				if (log.isDebugEnabled()) sttemp = SimpleTimer.start("ResponseStringCreation");
+				 
+				 
 				// adjust the offset and print the path element only if offset is zero
 				int theLimit = getLimit();
 				int theOffset = getOffset();
@@ -306,24 +348,41 @@ public class FileIndexingResource extends AbstractFileResource {
 				if (remoteFileInfo.isDirectory())
 				{
 					absPath = StringUtils.equals(absPath, "/") ? absPath : absPath + "/";
+					
+					SimpleTimer stinsider = null;
+				    if (log.isDebugEnabled()) stinsider = SimpleTimer.start("RemoteDataClientLSProcessing1");
 	        	
 					listing = remoteDataClient.ls(path);
+					
+					if (stinsider != null) log.debug(stinsider.getShortStopMsg());
+					
 	            
 					for (int i=theOffset; i< Math.min((theLimit + theOffset), listing.size()); i++)
 					{
+						if (log.isDebugEnabled()) stinsider = SimpleTimer.start("RemoteDataClientLSProcessing2");
+						
 						RemoteFileInfo childFileInfo = listing.get(i); 
-		                
+						if (stinsider != null) log.debug(stinsider.getShortStopMsg());
+						
 		            	if (childFileInfo.getName().equals("..") || childFileInfo.getName().equals(".")) {
 		            		continue;
 		            	}
 		            	else
 		            	{
+
+						SimpleTimer stinsider1 = null;
+						if (log.isDebugEnabled()) stinsider1 = SimpleTimer.start("Marker1");
+		            		
 		            		RemoteFilePermission childPem = null;
 		            		LogicalFile child = null;
 		              		try {
 		              			child=LogicalFileDao.findBySystemAndPath(remoteSystem, remoteDataClient.resolvePath(path + "/" + childFileInfo.getName()));
 		            		} catch(Exception e) {}
 	
+		              		
+		              		SimpleTimer stinsider3 = null;
+							if (log.isDebugEnabled()) stinsider3 = SimpleTimer.start("Marker3");
+							
 			              	String childFileName = FilenameUtils.getName(childFileInfo.getName());
 			                
 		                	if (child == null) {
@@ -338,6 +397,11 @@ public class FileIndexingResource extends AbstractFileResource {
 		                		child.setInternalUsername(internalUsername);
 		
 		                		childPem = childPm.getUserPermission(child.getPath());
+		                		
+		                		if (stinsider3 != null) log.debug(stinsider3.getShortStopMsg());
+		                		
+		                		if (log.isDebugEnabled()) stinsider3 = SimpleTimer.start("Marker4");
+		                		
 			                	if (childPem.getPermission() == PermissionType.ALL || childPem.getPermission() == PermissionType.OWNER) {
 			                        	child.setOwner(username);
 		                        } 
@@ -355,11 +419,19 @@ public class FileIndexingResource extends AbstractFileResource {
 		                        child.setSourceUri("agave://" + remoteSystem.getSystemId() + "/" + child.getAgaveRelativePathFromAbsolutePath());
 		
 		                        LogicalFileDao.persist(child);
+		                        
+		                        if (stinsider3 != null) log.debug(stinsider3.getShortStopMsg());
 		                	}
 		                	else {
 			              		PermissionManager childPm = new PermissionManager(remoteSystem, remoteDataClient, child, username);
 			                    childPem = childPm.getUserPermission(child.getPath());
+			                    
+			                    if (stinsider3 != null) log.debug(stinsider3.getShortStopMsg());
 			              	}
+		                	
+		                	if (stinsider1 != null) log.debug(stinsider1.getShortStopMsg());
+		                	
+		                	if (log.isDebugEnabled()) stinsider1 = SimpleTimer.start("Marker2");
 	
 		                	writer.object()
 								.key("name").value(child.getName())
@@ -392,10 +464,13 @@ public class FileIndexingResource extends AbstractFileResource {
 		                				.endObject()
 		                			.endObject()
 								.endObject();
+		                		
+		                		if (stinsider1 != null) log.debug(stinsider1.getShortStopMsg());
 		            	}              
 					}
 				}
 	          
+				
 				writer.endArray();
 	
 				if (logicalFile != null) {
@@ -403,7 +478,13 @@ public class FileIndexingResource extends AbstractFileResource {
 							"Indexing completed in " + (System.currentTimeMillis() - startTime) + "ms",
 							username));
 				}
+				
+				
+				if (st != null) log.debug(st.getShortStopMsg());
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 	
+				if (sttemp != null) log.debug(sttemp.getShortStopMsg());
+				
 				return new AgaveSuccessRepresentation(writer.toString());
 			}
 			catch (Throwable e) {
@@ -413,6 +494,7 @@ public class FileIndexingResource extends AbstractFileResource {
 	      				username));
 				}
 	
+				if (stoverall != null) log.debug(stoverall.getShortStopMsg());
 				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 							"Failed to perform index on " + path, e);
 			}
@@ -420,5 +502,6 @@ public class FileIndexingResource extends AbstractFileResource {
         finally {
     	    try { remoteDataClient.disconnect(); } catch (Exception e) {}
         }
+		
 	}
 }

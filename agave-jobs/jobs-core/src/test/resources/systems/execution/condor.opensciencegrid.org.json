@@ -16,7 +16,7 @@
   "maxSystemJobsPerUser": 10,
   "workDir": "/condor/scratch/",
   "scratchDir": "/condor/scratch/",
-  "owner": "dooley",
+  "owner": "xxx",
   "queues": [
     {
       "name": "condorqueue",

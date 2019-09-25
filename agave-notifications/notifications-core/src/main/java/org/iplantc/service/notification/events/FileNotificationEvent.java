@@ -71,16 +71,6 @@ public class FileNotificationEvent extends AbstractEventFilter {
 			body = "${TYPE} ${PATH} on ${SYSTEM} was downloaded by ${OWNER}.";
 		} else if (StringUtils.equalsIgnoreCase(event, "upload")) {
 			body = "A new file/folder was uploaded to ${PATH} on ${SYSTEM} by ${OWNER}.";
-		} else if (StringUtils.equalsIgnoreCase(event, "TRANSFORMING")) { 
-		    body = "A file/folder at ${PATH} on ${SYSTEM} has begun transformation to ${FORMAT}.";
-		} else if (StringUtils.equalsIgnoreCase(event, "TRANSFORMING_FAILED")) { 
-		    body = "Transformation of ${PATH} on ${SYSTEM} to ${FORMAT} format failed."; 
-		} else if (StringUtils.equalsIgnoreCase(event, "TRANSFORMING_COMPLETED")) { 
-		    body = "Transformation of ${PATH} on ${SYSTEM} to ${FORMAT} format completed successfully."; 
-		} else if (StringUtils.equalsIgnoreCase(event, "PREPROCESSING")) { 
-		    body = "Preprocessing has begun for ${PATH} on ${SYSTEM}";
-		} else if (StringUtils.equalsIgnoreCase(event, "TRANSFORMING_QUEUED")) {
-		    body = "${PATH} on ${SYSTEM} has been successfully queued for transformation to ${FORMAT} format.";
 		} else if (StringUtils.equalsIgnoreCase(event, "STAGING")) { 
             body = "A file/folder at ${PATH} on ${SYSTEM} has begun staging.";
         } else if (StringUtils.equalsIgnoreCase(event, "STAGING_FAILED")) { 

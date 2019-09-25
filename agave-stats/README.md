@@ -5,7 +5,7 @@ The Agave Stats API provides usage and analytics information about all aspects o
 
 ## What is the Agave Platform?
 
-The Agave Platform ([http://agaveapi.co](http://agaveapi.co)) is an open source, science-as-a-service API platform for powering your digital lab. Agave allows you to bring together your public, private, and shared high performance computing (HPC), high throughput computing (HTC), Cloud, and Big Data resources under a single, web-friendly REST API.
+The Agave Platform ([https://agaveplatform.org](https://agaveplatform.org)) is an open source, science-as-a-service API platform for powering your digital lab. Agave allows you to bring together your public, private, and shared high performance computing (HPC), high throughput computing (HTC), Cloud, and Big Data resources under a single, web-friendly REST API.
 
 * Run scientific codes
 
@@ -27,7 +27,7 @@ The Agave Platform ([http://agaveapi.co](http://agaveapi.co)) is an open source,
 
   *deep provenance, history, and reproducibility built in*
 
-For more information, visit the [Agave Developer’s Portal](http://agaveapi.co) at [http://agaveapi.co](http://agaveapi.co).
+For more information, visit the [Agave Developer’s Portal](https://agaveplatform.org) at [https://agaveplatform.org](https://agaveplatform.org).
 
 
 ## Using this image
@@ -75,9 +75,7 @@ From here you can interact with API at
 
 Several options are available to you to explore the Agave Developer APIs:
 
-* [Hypermedia](https://docker.example.com/stats): The Agave Stats API is a hypermedia api. You can discover the available routes by visiting the server root.
-
-* [Agave CLI](https://bitbucket.org/taccaci/foundation-cli/src/master/docker/?at=master): a command line interface to the Agave Platform.
+* [Agave CLI](https://github.com/agaveplatform.org/agave-cli/?at=develop): a command line interface to the Agave Platform.
 
   > docker run -i -t --rm -v `$HOME`/.agave:/root/.agave --name agave-cli agaveapi/agave-cli bash
 
@@ -85,6 +83,6 @@ Several options are available to you to explore the Agave Developer APIs:
 
   > docker run -d -t -p 9000:9000 --name agave-togo agaveapi/agave-togo
 
-* [Agave Live Docs](https://agaveapi.co/documentation/live-docs/): a interactive web application allowing you to exercise the APIs without writing any code.
+* [Agave Live Docs](https://docs.agaveplatform.org/live-docs/): a interactive web application allowing you to exercise the APIs without writing any code.
 
-* [Agave Developer Portal](https://agaveapi.co/documentation): the official developer portal for the Agave Platform.
+* [Agave Developer Portal](https://docs.agaveplatform.org/): the official developer portal for the Agave Platform.

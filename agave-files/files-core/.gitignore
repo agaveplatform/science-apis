@@ -37,3 +37,4 @@ fabfile.pyc
 # maven and eclipse malformed output test folders
 test-output
 /target
+/src/test/resources/logicalfiles/pathhash.t*

@@ -606,7 +606,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
                 {
                     LogicalFile logicalFile = new LogicalFile();
                     logicalFile.setStatus(StagingTaskStatus.STAGING_QUEUED);
-                    logicalFile.setOwner("dooley");
+                    logicalFile.setOwner("xxx");
                     logicalFile.setInternalUsername(null);
                     logicalFile.setSourceUri(srcUrl);
                     logicalFile.setNativeFormat("RAW");
@@ -625,7 +625,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
                     // add the logical file to the staging queue
                     QueueTaskDao.enqueueStagingTask(logicalFile, getPublishingUsername());
         
-                    LogicalFileDao.updateTransferStatus(logicalFile, StagingTaskStatus.STAGING_QUEUED, "dooley");
+                    LogicalFileDao.updateTransferStatus(logicalFile, StagingTaskStatus.STAGING_QUEUED, "xxx");
                 }
             }
             

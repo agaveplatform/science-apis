@@ -4,22 +4,16 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>org.iplantc</groupId>
-		<artifactId>agave</artifactId>
-		<version>2.1.11</version>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>science-apis</artifactId>
+		<version>2.2.24</version>
 	</parent>
-	<groupId>org.iplantc.agave</groupId>
+
 	<artifactId>common</artifactId>
-	<name>iPlant Agave API Common Services Parent</name>
+	<name>Agave Platform Common Services Parent</name>
 	<description>Parent pom for the Agave common services.</description>
 	<packaging>pom</packaging>
 
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-common.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-common.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-common</url>
-	</scm>
-	
 	<properties>
 		<force.check.update>false</force.check.update>
 	</properties>
@@ -59,7 +53,6 @@
 
 	<modules>
 		<module>common-core</module>
-		<module>auth-core</module>
 		<module>common-api</module>
 		<module>common-legacy-api</module>
 	</modules>

@@ -9,7 +9,6 @@ import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.io.model.enumerations.TransformTaskStatus;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
@@ -65,7 +64,7 @@ public class LogicalFileDaoTest extends BaseTestCase
 		
 		
 		parent = new LogicalFile(username, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
-		parent.setStatus(TransformTaskStatus.TRANSFORMING_COMPLETED);
+		parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
 		parent.setNativeFormat(LogicalFile.DIRECTORY);
 		parent.setUuid(parent.getPath());
 		
@@ -74,7 +73,7 @@ public class LogicalFileDaoTest extends BaseTestCase
 		sibling.setUuid(sibling.getPath());
 		
 		parentParent = new LogicalFile(username, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parent.getPath()));
-		parentParent.setStatus(TransformTaskStatus.TRANSFORMING_COMPLETED);
+		parentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
 		parentParent.setNativeFormat(LogicalFile.DIRECTORY);
 		parentParent.setUuid(parentParent.getPath());
 		
@@ -88,12 +87,12 @@ public class LogicalFileDaoTest extends BaseTestCase
 		cousin.setUuid(cousin.getPath());
 		
 		parentParentParent = new LogicalFile(username, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(parentParent.getPath()));
-		parentParentParent.setStatus(TransformTaskStatus.TRANSFORMING_COMPLETED);
+		parentParentParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
 		parentParentParent.setNativeFormat(LogicalFile.DIRECTORY);
 		parentParentParent.setUuid(parentParentParent.getPath());
 		
 		rootParent = new LogicalFile(username, system, httpUri, "/");
-		rootParent.setStatus(TransformTaskStatus.TRANSFORMING_COMPLETED);
+		rootParent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
 		rootParent.setNativeFormat(LogicalFile.DIRECTORY);
 		rootParent.setUuid(rootParent.getPath());
 		

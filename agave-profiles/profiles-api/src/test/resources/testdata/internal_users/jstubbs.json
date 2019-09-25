@@ -1,20 +1,20 @@
 {	
-	"username": "jstubbs",
-	"email": "jstubbs@tacc.utexas.edu",
-	"firstName": "Joe",
-	"lastName": "Stubbs",
-	"position": "Owner",
-	"institution": "University of Texas at Austin",
+	"username": "brobinson",
+	"email": "brobinson@hof.mlb.com",
+	"firstName": "Brooks",
+	"lastName": "Robinson",
+	"position": "Infiekd",
+	"institution": "Baltimore Orioles",
 	"phone": "512-555-5555",
 	"fax": "512-555-5556",
-	"researchArea": "Software Engineering",
+	"researchArea": "Bunt Coverage",
 	"department": "QA",
-	"city": "Anywhere",
-	"state": "TX",
+	"city": "Baltimore",
+	"state": "MD",
 	"country": "USA",
 	"fundingAgencies": [
-		"iplant",
-		"tacc"
+		"mlb",
+		"orioles"
 	],
 	"gender": "MALE"
 }

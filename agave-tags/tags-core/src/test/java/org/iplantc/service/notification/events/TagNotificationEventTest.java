@@ -69,7 +69,7 @@ public class TagNotificationEventTest extends AbstractTagTest
 		{
 			Tag tag = createTag();
 			dao.persist(tag);
-			Notification notification = new Notification(tag.getUuid(), tag.getOwner(), "RESULT_CHANGE", "dooley@tacc.utexas.edu", false);
+			Notification notification = new Notification(tag.getUuid(), tag.getOwner(), "RESULT_CHANGE", "help@agaveplatform.org", false);
 			MonitorNotificationEvent event = new MonitorNotificationEvent(new AgaveUUID(tag.getUuid()), notification, "RESULT_CHANGE", tag.getOwner());
 			event.setCustomNotificationMessageContextData(tag.toJSON().toString());
 			

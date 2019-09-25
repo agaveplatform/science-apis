@@ -4,7 +4,6 @@
 package org.iplantc.service.jobs.queue;
 
 import org.iplantc.service.common.queue.GenericSchedulingPlugin;
-import org.iplantc.service.jobs.Settings;
 
 /**
  * Class to initialize worker tasks to watch condor jobs until
@@ -41,7 +40,6 @@ public class JobMonitoringSchedulingPlugin extends GenericSchedulingPlugin
 	{
         try {
             getClass().getClassLoader().loadClass("org.iplantc.service.jobs.Settings");
-//            return Settings.MAX_MONITORING_TASKS;
             return 1;
         } catch (ClassNotFoundException e) {
             return 0;

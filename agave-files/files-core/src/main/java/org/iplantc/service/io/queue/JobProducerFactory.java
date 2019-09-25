@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.io.Settings;
-import org.iplantc.service.io.model.EncodingTask;
 import org.iplantc.service.io.model.StagingTask;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -32,7 +31,6 @@ public class JobProducerFactory implements JobFactory {
     private final Logger log = Logger.getLogger(getClass());
  
     private static final ConcurrentLinkedDeque<Long> stagingJobTaskQueue = new ConcurrentLinkedDeque<Long>();
-    private static final ConcurrentLinkedDeque<Long> encodingJobTaskQueue = new ConcurrentLinkedDeque<Long>();
     
     public JobProducerFactory() {}
 
@@ -50,24 +48,31 @@ public class JobProducerFactory implements JobFactory {
 
             if (queueTaskId != null)
             {
-                if (worker instanceof StagingJob  
-                        && !stagingJobTaskQueue.contains(queueTaskId) 
-                        && stagingJobTaskQueue.size() < Settings.MAX_STAGING_TASKS) 
+                // Initialize variables used to allow or disallow job scheduling.
+                boolean notContained = false;
+                boolean notFull      = false;
+                
+                if (worker instanceof StagingJob) 
                 {
-                    stagingJobTaskQueue.add(queueTaskId);
-                    produceWorker(jobClass, jobDetail.getKey().getGroup(), queueTaskId);
-                }
-                else if (worker instanceof EncodingJob  
-                        && !encodingJobTaskQueue.contains(queueTaskId) 
-                        && encodingJobTaskQueue.size() < Settings.MAX_TRANSFORM_TASKS) 
-                {
-                    encodingJobTaskQueue.add(queueTaskId);
-                    produceWorker(jobClass, jobDetail.getKey().getGroup(), queueTaskId);
+                    // Either spawn the quartz job or write a warning.
+                    notContained = !stagingJobTaskQueue.contains(queueTaskId); 
+                    notFull      = stagingJobTaskQueue.size() < Settings.MAX_STAGING_TASKS;
+                    if (notContained && notFull) {
+                        stagingJobTaskQueue.add(queueTaskId);
+                        produceWorker(jobClass, jobDetail.getKey().getGroup(), queueTaskId);
+                    } else {
+                        log.warn("Not scheduling Quartz job with key " + jobDetail.getKey() +
+                                 " for " + worker.getClass().getSimpleName() +
+                                 " with ID " + queueTaskId + ": Already in queue = " + (!notContained) +
+                                 ", Queue full = " + (!notFull) + ".");
+                    }
                 }
                 else
                 {
-                    log.debug("Unknown file processing task " + jobDetail.getKey() + 
-                            " attempting to process task " + queueTaskId + ". Ignoring...");
+                    // Who know what happens here...
+                    log.warn("Unknown file processing task " + jobDetail.getKey() +
+                             " of type " + worker.getClass().getName() +
+                             " with queue task ID " + queueTaskId + ".  Ignoring...");
                 }
             }
 
@@ -83,7 +88,10 @@ public class JobProducerFactory implements JobFactory {
                 HibernateUtil.flush();
                 HibernateUtil.disconnectSession();
             }
-            catch (Throwable e) {}
+            catch (Throwable e) {
+                String msg = "Hibernate session error: " + e.getMessage();
+                log.error(msg, e);
+            }
         }
     }
     
@@ -109,9 +117,9 @@ public class JobProducerFactory implements JobFactory {
                             .withIdentity(jobClass.getName() + "-" + queueTaskId, groupName + "Workers-"+queueTaskId)
                             .startNow()
                             .withSchedule(simpleSchedule()
-                                .withMisfireHandlingInstructionNextWithExistingCount()
-                                .withIntervalInSeconds(1)
-                                .withRepeatCount(0))
+                            .withMisfireHandlingInstructionNextWithExistingCount()
+                            .withIntervalInSeconds(1)
+                            .withRepeatCount(0))
                             .build();
 
          Scheduler sched = new StdSchedulerFactory().getScheduler("AgaveConsumerTransferScheduler");
@@ -119,7 +127,8 @@ public class JobProducerFactory implements JobFactory {
              sched.start();
          }
          
-         log.debug("Assigning " + jobClass.getSimpleName() + " " + queueTaskId + " for processing");
+         if (log.isDebugEnabled())
+             log.debug("Assigning " + jobClass.getSimpleName() + " " + queueTaskId + " for processing");
          
          sched.scheduleJob(jobDetail, trigger);
     }
@@ -136,15 +145,4 @@ public class JobProducerFactory implements JobFactory {
         }
     }
     
-    /**
-     * Releases the {@link EncodingTask}  from the {@link ConcurrentLinkedDeque} so it can be
-     * consumed by another thread.
-     * 
-     * @param id of encoding entity
-     */
-    public static void releaseEncodingJob(Long taskIdentifier) {
-        if (taskIdentifier != null) {
-            encodingJobTaskQueue.remove(taskIdentifier);
-        }
-    }
 }

@@ -29,8 +29,8 @@ public class AbstractDaoTest
 {	
 	protected ObjectMapper mapper = new ObjectMapper();
 	
-	public static final String ADMIN_USER = "dooley";
-	public static final String TENANT_ADMIN = "dooley";
+	public static final String ADMIN_USER = "xxx";
+	public static final String TENANT_ADMIN = "xxx";
 	public static final String SYSTEM_OWNER = "testuser";
 	public static final String SYSTEM_SHARE_USER = "testshare";
 	public static final String SYSTEM_PUBLIC_USER = "public";

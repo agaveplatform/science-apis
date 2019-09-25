@@ -160,7 +160,7 @@ public class CondorJobMonitor extends AbstractJobMonitor
 //                // here we fetch the remote log file
 //                this.transferTask = new TransferTask(
 //                        "agave://" + job.getSystem() + "/" +remoteLogFilePath,
-//                        "https://workers.prod.agaveapi.co/" + localRuntimeLogFile.getAbsolutePath(), 
+//                        "https://workers.prod.agaveplatform.org/" + localRuntimeLogFile.getAbsolutePath(),
 //                        job.getOwner(), null, null);
 //                
 //                this.transferTask.setTotalSize(this.remoteDataClient.length(remoteLogFilePath));

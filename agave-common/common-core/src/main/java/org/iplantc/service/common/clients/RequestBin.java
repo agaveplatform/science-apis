@@ -38,8 +38,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 public class RequestBin
 {
 	private static final Logger log = Logger.getLogger(RequestBin.class);
-	private static final String BASE_URL = "https://requestbin.agaveapi.co/api/v1/bins";
-	private static final String PUBLIC_URL = "https://requestbin.agaveapi.co";
+	private static final String BASE_URL = "https://requestbin.agaveplatform.org/api/v1/bins";
+	private static final String PUBLIC_URL = "https://requestbin.agaveplatform.org";
 	private ObjectMapper mapper = new ObjectMapper();
 	
 	private String binId;

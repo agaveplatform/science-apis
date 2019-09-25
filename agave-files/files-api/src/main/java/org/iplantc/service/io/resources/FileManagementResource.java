@@ -32,14 +32,11 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveErrorRepresentation;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.util.AgaveStringUtils;
-import org.iplantc.service.data.transform.FileTransform;
-import org.iplantc.service.data.transform.FileTransformProperties;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.dao.QueueTaskDao;
 import org.iplantc.service.io.exceptions.FileProcessingException;
 import org.iplantc.service.io.exceptions.TaskException;
-import org.iplantc.service.io.exceptions.TransformException;
 import org.iplantc.service.io.manager.FileEventProcessor;
 import org.iplantc.service.io.manager.LogicalFileManager;
 import org.iplantc.service.io.model.FileEvent;
@@ -101,11 +98,6 @@ import com.google.common.io.Files;
 public class FileManagementResource extends AbstractFileResource
 {
 	private static final Logger log = Logger.getLogger(FileManagementResource.class);
-
-//	private static final String RENAME = "rename";
-//	private static final String MKDIR = "mkdir";
-//	private static final String COPY = "copy";
-//	private static final String MOVE = "move";
 
 	private String owner;  		// username listed at the root of the url path
 	private String internalUsername;  		// username listed at the root of the url path
@@ -893,35 +885,15 @@ public class FileManagementResource extends AbstractFileResource
 	                	}
 	                }
 
-					// enable the user to specify the input formatting. Check against our internally
-					// supported formatting
-					// ignore user-defined formatting for now. Let the service auto-discover it
-					FileTransformProperties transformProperties = new FileTransformProperties();
-					FileTransform transform = null;
-					if (!ServiceUtils.isValid(format)) {
-						format = "raw";
-					} else {
-						// check against xml formats
-						format = format.toLowerCase();
-						try {
-							transform = transformProperties.getTransform(format);
-
-							if (transform == null) {
-								if (format.equalsIgnoreCase("raw"))
-									format = "raw";
-								else {
-									String msg = "Format " + format + " is not recognized";
-									log.error(msg);
-									throw new TransformException(msg);
-								}
-							} else {
-								format = transform.getId();
-							}
-						} catch (TransformException e) {
-							format = "raw";
-						}
-					}
-
+	                // File transformations are no longer supported.  All files are treated as raw,
+	                // but we log a warning to track incidents where the user has specified a type.
+	                if (!StringUtils.isBlank(format) && !LogicalFile.RAW.equals(format)) {
+                        String msg = "User " + username + " requested a transformation of format " +
+                                format + " on path " + path + ". Transformations have been deprecated. " +
+                                "All files are treated as raw.";
+	                    log.warn(msg);
+	                }
+					format = LogicalFile.RAW;
 
 					// If a URI has been specified in the request, there will be no file upload
 					if (StringUtils.isNotEmpty(sUri))
@@ -1010,13 +982,18 @@ public class FileManagementResource extends AbstractFileResource
 								notifications = LogicalFileManager.addUploadNotifications(logicalFile, username, sNotifications);
 							}
 							
+	                        // We perform adjustments to the logical file's path so that the proper links can be
+	                        // generated in the response.  We make the adjustment after already having persisted the
+	                        // logical file in an intermediate state.  The goal of this hack is to disrupt this method's 
+	                        // convoluted logic as little as possible.
+							adjustDestinationPath(logicalFile);
 							logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
 							LogicalFileDao.persist(logicalFile);
 
 							// add the logical file to the staging queue
 		                    QueueTaskDao.enqueueStagingTask(logicalFile, username);
 
-		                    setStatus(Status.SUCCESS_ACCEPTED);
+	                        setStatus(Status.SUCCESS_ACCEPTED);
 		                    return new AgaveSuccessRepresentation(logicalFile.toJsonWithNotifications(notifications));
 						} 
 						catch (ResourceException e) {
@@ -1171,7 +1148,7 @@ public class FileManagementResource extends AbstractFileResource
 
 		                    // Once handled, the metadata of the uploaded file is sent back to the client.
 		                    if (found) {
-		                    	setStatus(Status.SUCCESS_ACCEPTED);
+		                        setStatus(Status.SUCCESS_ACCEPTED);
 		                    	return new AgaveSuccessRepresentation(logicalFile.toJsonWithNotifications(notifications));
 		                    }
 		                    else
@@ -1197,42 +1174,22 @@ public class FileManagementResource extends AbstractFileResource
 	            	// parse the form to get the job specs
 	            	JsonNode inputJson = getPostedContentAsJsonNode(input);
 
-					// enable the user to specify the input formatting. Check against our internally
-					// supported formatting
-					// ignore user-defined formatting for now. Let the service auto-discover it
+					// See if the user try to specify a transformation.
 	            	String format = null;
 	            	if (inputJson.hasNonNull("fileType")) {
 	            		format = inputJson.get("fileType").asText();
 	            	}
 					
-					FileTransformProperties transformProperties = new FileTransformProperties();
-					FileTransform transform = null;
+                    // File transformations are no longer supported.  All files are treated as raw,
+                    // but we log a warning to track incidents where the user has specified a type.
+                    if (!StringUtils.isBlank(format) && !LogicalFile.RAW.equals(format)) {
+                        String msg = "User " + username + " requested a transformation of format " +
+                                     format + " on path " + path + ". Transformations have been deprecated. " +
+                                     "All files are treated as raw.";
+                        log.warn(msg);
+                    }
+                    format = LogicalFile.RAW;
 
-					if (StringUtils.isEmpty(format)) {
-						format = "raw";
-					} 
-					else {
-						// check against xml formats
-						format = format.toLowerCase();
-						try {
-							transform = transformProperties.getTransform(format);
-
-							if (transform == null) {
-								if (format.equalsIgnoreCase("raw"))
-									format = "raw";
-								else {
-									String msg = "Format " + format + " is not recognized";
-									log.error(msg);
-									throw new TransformException(msg);
-								}
-							} else {
-								format = transform.getId();
-							}
-						} catch (TransformException e) {
-							format = "raw";
-						}
-					}
-					
 					String sNotifications = null;
 	            	if (inputJson.hasNonNull("notifications")) {
 	            		if (inputJson.get("notifications").isValueNode()) {
@@ -1340,15 +1297,19 @@ public class FileManagementResource extends AbstractFileResource
 							notifications = LogicalFileManager.addUploadNotifications(logicalFile, username, sNotifications);
 						}
 						
+                        // We perform adjustments to the logical file's path so that the proper links can be
+                        // generated in the response.  We make the adjustment after already having persisted the
+                        // logical file in an intermediate state.  The goal of this hack is to disrupt this method's 
+						// convoluted logic as little as possible.
+                        adjustDestinationPath(logicalFile);
 						logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
 						LogicalFileDao.persist(logicalFile);
 
 						// add the logical file to the staging queue
 						QueueTaskDao.enqueueStagingTask(logicalFile, username);
 
-						setStatus(Status.SUCCESS_ACCEPTED);
-						
-						// append notifications to the hypermedia response 
+						// append notifications to the hypermedia response.
+                        setStatus(Status.SUCCESS_ACCEPTED);
 						return new AgaveSuccessRepresentation(logicalFile.toJsonWithNotifications(notifications));
 	                    
 					} 
@@ -2317,5 +2278,38 @@ public class FileManagementResource extends AbstractFileResource
 			}
 		}
 		return new AgaveSuccessRepresentation(message, copiedLogicalFile.toJSON());
+	}
+	
+	/** Adjust the path of a logical file in accordance with the way it will be when processed
+	 * asynchronously by StagingJob and, more specifically, UrlCopy.  The logical file is not 
+	 * persisted in this method--that's the caller's responsibility.  Changes to path management 
+	 * in the asynchronous copy code may need to be coordinated with the code here.
+	 * 
+	 * If this method experiences an exception, the logical file path remains unchanged. 
+	 * 
+	 * @param logicalFile the logical file that already has a path defined.
+	 */
+	private void adjustDestinationPath(LogicalFile logicalFile)
+	{
+        // We perform adjustments to the logical file's path so that the proper links can be generated
+        // in the REST response.  The strategy is that by moving the path adjustment code here and
+	    // out of StagingJob we move it from the asynchronous to the synchronous part of the file I/O 
+	    // task.  This shift allows us to accurately generate link URLs in the synchronous response.  
+	    // Previously, StagingJob would change the logical file's path after the synchronous response 
+	    // was already sent, which resulted in the generation of invalid links.
+        RemoteDataClient destClient = null;
+        try {
+            destClient = ServiceUtils.getDestinationRemoteDataClient(logicalFile);
+            String adjustedPath = ServiceUtils.getAdjustedDestinationPath(destClient, logicalFile, username);
+            logicalFile.setPath(adjustedPath); // Set but not persisted.
+        } catch (Exception e) {
+            // Just log the error.  Some of the links in the response may not be correct,
+            // but we let the task proceed anyway.
+            String msg = "Failed to adjust logical file path for link generation: " + logicalFile.getSourceUri();
+            log.error(msg, e);
+        } finally {
+            if (destClient != null) 
+                try {destClient.disconnect();} catch (Exception e) {}
+        }
 	}
 }

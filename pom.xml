@@ -4,9 +4,9 @@
 
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>org.iplantc</groupId>
-	<artifactId>agave</artifactId>
-	<version>2.1.11</version>
+	<groupId>org.agaveplatform</groupId>
+	<artifactId>science-apis</artifactId>
+	<version>2.2.24</version>
 	<name>Agave Core Science API Parent POM</name>
 	<description>Super pom for all Agave services</description>
 	<packaging>pom</packaging>
@@ -15,17 +15,6 @@
 		<url>http://tacc.utexas.edu</url>
 	</organization>
 	<developers>
-		<developer>
-			<id>deardooley</id>
-			<name>Rion Dooley</name>
-			<email>dooley@tacc.utexas.edu</email>
-			<url>https://agaveapi.org</url>
-			<organization>TACC</organization>
-			<organizationUrl>http://www.tacc.utexas.edu</organizationUrl>
-			<roles>
-				<role>developer</role>
-			</roles>
-		</developer>
 		<developer>
 			<id>sterry1</id>
 			<name>Steve Terry</name>
@@ -62,9 +51,9 @@
 	</developers>
 
 	<scm>
-		<connection>scm:git:http://bitbucket.org/agaveapi/agave.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave</url>
+		<connection>scm:git:http://bitbucket.org/tacc-cic/agave-flat.git</connection>
+		<developerConnection>scm:git:ssh://git@bitbucket.org:tacc-cic/agave-flat.git</developerConnection>
+		<url>https://bitbucket.org/tacc-cic/agave-flat</url>
 	</scm>
 
 	<repositories>
@@ -99,7 +88,22 @@
             <name>Public testng repository</name>
             <url>http://jcenter.bintray.com</url>
         </repository>
-	</repositories>
+        <repository>
+            <!-- irods jargon -->
+            <id>dice.repository</id>
+            <name>dice.repository</name>
+            <url>https://raw.github.com/DICE-UNC/DICE-Maven/master/releases</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+                <updatePolicy>always</updatePolicy>
+                <checksumPolicy>warn</checksumPolicy>
+            </snapshots>
+        </repository>	
+    </repositories>
 
 	<pluginRepositories>
 		<pluginRepository>
@@ -116,40 +120,46 @@
 	    <!-- This build's label -->
 	    <foundation.service.version>${project.version}-r${buildNumber}</foundation.service.version>
 
+        <!-- Java version -->
+        <java-source.version>9</java-source.version>
+        <java-target.version>9</java-target.version>
+        
 	    <!-- Below are the version numbers for all software on which we explicitly depend. -->
 	    <!-- If a library or plugin appears as a dependency in some pom file, then that    -->
-	    <!-- artifact's version number should in the lists below for easy managment and    -->
+	    <!-- artifact's version number should be in the lists below for easy managment and -->
 	    <!-- access.  Version numbers are organized into 2 lists, one for plugins and the  -->
 	    <!-- other for library dependencies.                                               -->
+	    <!--                                                                               -->
+	    <!-- Note that we specify the versions of the base maven plugins so that they      -->
+	    <!-- don't change from underneath us.  This approach requires us to manually       -->
+	    <!-- upgrade the plugins we use; a reasonable upgrade cycle would be every 6-12    -->
+	    <!-- months.  See http://maven.apache.org/plugins/index.html for latest plugin     -->
+	    <!-- listing.  Last upgrade occurred on 4/24/2017.                                 -->
 	    <!--                                                                               -->
 	    <!--                    PLEASE KEEP THESE LISTS ALPHABETIZED                       -->
 
 	    <!-- PLUGIN Versions (in alphabetical order) -->
 	    <buildnumber-maven-plugin.version>1.3</buildnumber-maven-plugin.version>
         <docker-maven-plugin.version>0.4.13</docker-maven-plugin.version>
+        <duplicate-finder-maven-plugin.version>1.2.1</duplicate-finder-maven-plugin.version>
 	    <exec-maven-plugin.versionRange>[1.3.2,)</exec-maven-plugin.versionRange>
 	    <flyway-maven-plugin.version>4.0</flyway-maven-plugin.version>
 	    <flyway-maven-plugin.versionRange>[4.0,)</flyway-maven-plugin.versionRange>
 	    <gmaven-plugin.versionRange>[1.5,)</gmaven-plugin.versionRange>
-	    <jetty-maven-plugin.version>8.1.9.v20130131</jetty-maven-plugin.version>
 	    <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
-	    <maven-antrun-plugin.versionRange>[1.7,)</maven-antrun-plugin.versionRange>
-	    <maven-assembly-plugin.version>2.2-beta-2</maven-assembly-plugin.version>
-	    <maven-compiler-plugin.version>3.1</maven-compiler-plugin.version>
-	    <maven-deploy-plugin.version>2.5</maven-deploy-plugin.version>
-	    <maven-install-plugin.version>2.5.1</maven-install-plugin.version>
-	    <maven-jar-plugin.version>2.5</maven-jar-plugin.version>
-	    <maven-jar-plugin.versionRange>[2.5,)</maven-jar-plugin.versionRange>
+        <maven-antrun-plugin.versionRange>[1.8,)</maven-antrun-plugin.versionRange>
+	    <maven-assembly-plugin.version>3.1.1</maven-assembly-plugin.version>
+	    <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
+	    <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
+	    <maven-install-plugin.version>2.5.2</maven-install-plugin.version>
+	    <maven-jar-plugin.version>3.1.2</maven-jar-plugin.version>
 	    <maven-php-plugin.version>2.0.2</maven-php-plugin.version>
-	    <maven-shade-plugin.version>2.4.3</maven-shade-plugin.version>
-	    <maven-site-plugin.version>3.3</maven-site-plugin.version>
-	    <maven-surefire-plugin.version>2.19.1</maven-surefire-plugin.version>
-	    <maven-war-plugin.version>2.4</maven-war-plugin.version>
+	    <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
+	    <maven-site-plugin.version>3.8.2</maven-site-plugin.version>
+	    <maven-surefire-plugin.version>3.0.0-M3</maven-surefire-plugin.version>
+	    <maven-war-plugin.version>3.2.3</maven-war-plugin.version>
 	    <org.eclipse.m2e.lifecycle-mapping.version>1.0.0</org.eclipse.m2e.lifecycle-mapping.version>
-
-	    <!-- PLUGIN Version special cases -->
-	    <maven-compiler-plugin.METADATA.version>2.3.2</maven-compiler-plugin.METADATA.version>
-	    <maven-surefire-plugin.METADATA.version>2.13</maven-surefire-plugin.METADATA.version>
+		<jacoco.version>0.8.1</jacoco.version>
 
 	    <!-- LIBRARY Versions (in alphabetical order) -->
 	    <amqp-client.version>3.1.4</amqp-client.version>
@@ -176,17 +186,12 @@
 	    <ironmq.version>3.0.2</ironmq.version>
 	    <jackson-antpathfilter.version>1.0.1</jackson-antpathfilter.version>
 	    <jackson.version>2.5.5</jackson.version>
-	    <jargon-core.version>4.0.2.4-RELEASE</jargon-core.version>
+	    <jargon-core.version>4.2.0.0-RELEASE</jargon-core.version>
 	    <jasypt.version>1.9.0</jasypt.version>
 	    <javax.el.version>2.2.4</javax.el.version>
 	    <javax.ws.rs-api.version>2.0-m10</javax.ws.rs-api.version>
 	    <jboss-logging.version>3.1.3.GA</jboss-logging.version>
 	    <jclouds.version>1.9.2</jclouds.version>
-	    <jetty.ajp.version>6.1</jetty.ajp.version>
-	    <jetty.core.version>6.1</jetty.core.version>
-	    <jetty.https.version>6.1</jetty.https.version>
-	    <jetty.util.version>6.1</jetty.util.version>
-	    <!-- <jglobus.version>2.1.0</jglobus.version> -->
 	    <jglobus.version>2.1.0</jglobus.version>
 	    <bcprov.jdk15on>1.5.0</bcprov.jdk15on>
 	    <joda-time.version>2.2</joda-time.version>
@@ -197,7 +202,7 @@
 	    <log4j.version>1.2.17</log4j.version>
 	    <mail.version>1.4.6</mail.version>
 	    <maverick.version>1.6.3</maverick.version>
-	    <mongo-java-driver.version>2.14.1</mongo-java-driver.version>
+	    <mongo-java-driver.version>3.6.3</mongo-java-driver.version>
 	    <mongojack.version>2.6.0</mongojack.version>
 	    <mysql-connector-java.version>5.1.38</mysql-connector-java.version>
 	    <nimbus-jose-jwt.version>2.20</nimbus-jose-jwt.version>
@@ -207,7 +212,7 @@
 	    <plexus-utils.version>3.0.15</plexus-utils.version>
 	    <powermock.version>1.6.4</powermock.version>
 	    <quartz.version>2.1.7</quartz.version>
-	    <reflections.version>0.9.9-RC1</reflections.version>
+	    <reflections.version>0.9.9</reflections.version>
 	    <restlet.version>2.3.4</restlet.version>
 	    <sendgrid-java.version>2.2.2</sendgrid-java.version>
 	    <servlet-api.version>2.4</servlet-api.version>
@@ -237,16 +242,25 @@
 
 	<build>
 		<plugins>
-			<!-- <plugin> <groupId>com.mycila</groupId> <artifactId>license-maven-plugin</artifactId>
-				<version>2.6</version> <configuration> <header>LICENSE</header> <properties>
-				<owner>Texas Advanced Computing Center</owner> <year>2014</year> <email>dooley@tacc.utexas.edu</email>
-				<url>https://bitbucket.org/taccaci/oa4mp-wso2</url> </properties> <excludes>
-				<exclude>target/**</exclude> <exclude>src/main/html/**</exclude> <exclude>**/README.md</exclude>
-				<exclude>**/*.conf</exclude> <exclude>**/*.config</exclude> <exclude>**/*.config</exclude>
-				<exclude>**/LICENSE</exclude> <exclude>**/.gitignore</exclude> <exclude>src/test/resources/**</exclude>
-				<exclude>src/main/resources/**</exclude> </excludes> </configuration> <executions>
-				<execution> <goals> <goal>check</goal> </goals> </execution> </executions>
-				</plugin> -->
+		    <!-- This plugin can be used find duplicate classes on the classpath of each -->
+		    <!-- subproject.  Adding the "check" goal below runs this plugin.  A better  -->
+		    <!-- approach is to run the following command from the top-level Agave       -->
+		    <!-- directory:  mvn duplicate-finder:check.  Run mvn duplicate-finder:help  -->
+		    <!-- for more information.                                                   -->
+		    <!--                                                                         -->  
+		    <!-- Also see https://github.com/basepom/duplicate-finder-maven-plugin/wiki  -->
+		    <plugin>
+                <groupId>org.basepom.maven</groupId>
+                <artifactId>duplicate-finder-maven-plugin</artifactId>
+                <version>${duplicate-finder-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>default</id>
+                        <phase>verify</phase>
+                        <goals></goals>
+                    </execution>
+                </executions>
+		    </plugin>
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>buildnumber-maven-plugin</artifactId>
@@ -316,18 +330,10 @@
 					<configuration>
 						<proc>none</proc>
 						<debug>true</debug>
-						<source>1.7</source>
-						<target>1.7</target>
+                        <source>${java-source.version}</source>
+                        <target>${java-target.version}</target>
 					</configuration>
 				</plugin>
-
-				<!-- <plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-resources-plugin</artifactId>
-					<version>2.7</version> <executions> <execution> <id>copy-resources</id> here
-					the phase you need <phase>process-sources</phase> <goals> <goal>copy-resources</goal>
-					</goals> <configuration> <outputDirectory>${basedir}/target/test-classes</outputDirectory>
-					<resources> <resource> <directory>src/test/resources</directory> <nonFilteredFileExtension>img</nonFilteredFileExtension>
-					<filtering>true</filtering> </resource> </resources> </configuration> </execution>
-					</executions> </plugin> -->
 
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
@@ -343,11 +349,6 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-assembly-plugin</artifactId>
 					<version>${maven-assembly-plugin.version}</version>
-				</plugin>
-				<plugin>
-					<groupId>com.spotify</groupId>
-					<artifactId>docker-maven-plugin</artifactId>
-					<version>${docker-maven-plugin.version}</version>
 				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
@@ -393,14 +394,27 @@
 						</lifecycleMappingMetadata>
 					</configuration>
 				</plugin>
-				<!-- <plugin> <groupId>external.atlassian.jgitflow</groupId> <artifactId>jgitflow-maven-plugin</artifactId>
-					<version>1.0-m5.1</version> <configuration> <allowSnapshots>false</allowSnapshots>
-					<allowUntracked>false</allowUntracked> <autoVersionSubmodules>true</autoVersionSubmodules>
-					<updateDependencies>true</updateDependencies> <flowInitContext> <masterBranchName>master</masterBranchName>
-					<developBranchName>devel</developBranchName> <featureBranchPrefix>feature-</featureBranchPrefix>
-					<releaseBranchPrefix>release-</releaseBranchPrefix> <hotfixBranchPrefix>hotfix-</hotfixBranchPrefix>
-					<versionTagPrefix>blither-</versionTagPrefix> </flowInitContext> </configuration>
-					</plugin> -->
+					<plugin>
+						<groupId>org.jacoco</groupId>
+						<artifactId>jacoco-maven-plugin</artifactId>
+						<version>${jacoco.version}</version>
+						<executions>
+							<execution>
+								<id>default-prepare-agent</id>
+								<goals>
+									<goal>prepare-agent</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>default-report</id>
+								<phase>test</phase>
+								<goals>
+									<goal>report</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+
 			</plugins>
 		</pluginManagement>
 	</build>
@@ -431,7 +445,6 @@
     </dependencies>
 
 	<modules>
-		<module>agave-auth</module>
 		<module>agave-common</module>
 		<module>agave-postits</module>
 		<module>agave-usage</module>
@@ -443,9 +456,9 @@
 		<module>agave-systems</module>
 		<module>agave-monitors</module>
 		<module>agave-files</module>
-		<module>agave-transforms</module>
 		<module>agave-apps</module>
 		<module>agave-jobs</module>
+		<module>agave-legacy-jobs</module>
 		<module>agave-tags</module>
 		<module>agave-realtime</module>
 		<module>agave-stats</module>

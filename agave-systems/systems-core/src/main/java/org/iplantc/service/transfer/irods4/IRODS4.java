@@ -34,16 +34,13 @@ import org.iplantc.service.transfer.Settings;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.irods.AgaveJargonProperties;
-import org.iplantc.service.transfer.irods.IRODS;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.iplantc.service.transfer.util.ServiceUtils;
-import org.irods.jargon.core.checksum.ChecksumValue;
 import org.irods.jargon.core.connection.AuthScheme;
 import org.irods.jargon.core.connection.GSIIRODSAccount;
 import org.irods.jargon.core.connection.IRODSAccount;
-import org.irods.jargon.core.connection.IRODSProtocolManager;
 import org.irods.jargon.core.connection.IRODSSession;
 import org.irods.jargon.core.connection.IRODSSimpleProtocolManager;
 import org.irods.jargon.core.exception.AuthenticationException;
@@ -101,8 +98,6 @@ public class IRODS4 implements RemoteDataClient
 		}
 	};
 
-	private IRODSProtocolManager		irodsConnectionManager;
-	private IRODSSession				irodsSession;
 	private IRODSAccount				irodsAccount;
 	private IRODSAccessObjectFactory	accessObjectFactory;
 
@@ -241,7 +236,7 @@ public class IRODS4 implements RemoteDataClient
 
 	}
 
-	public IRODSSession getThreadLocalSession(IRODSAccount account) throws JargonException {
+	private IRODSSession getThreadLocalSession(IRODSAccount account) throws JargonException {
 		IRODSSession session = threadLocalIRODSSession.get().get(account.toString());
 		if ( session == null) {
 			AgaveJargonProperties props = new AgaveJargonProperties();
@@ -264,9 +259,8 @@ public class IRODS4 implements RemoteDataClient
 		{
 			this.irodsAccount = getIRODSAccount();
 
-//			accessObjectFactory = IRODSAccessObjectFactoryImpl.instance(getThreadLocalSession(irodsAccount));
 			log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " open connection for thread");
-			stat("/");
+			stat("/", false); // Avoid an infinite loop.
 		}
 		catch (AuthenticationException e) {
 			disconnect();
@@ -1187,7 +1181,20 @@ public class IRODS4 implements RemoteDataClient
 		}
 	}
 
-	protected ObjStat stat(String remotepath)
+	/** Default stat command allows reauthentication.
+	 * 
+	 * @param remotepath the pathname to query
+	 * @return a stat object
+	 * @throws IOException
+	 * @throws RemoteDataException
+	 */
+	private ObjStat stat(String remotepath)
+	 throws IOException, RemoteDataException
+	{
+	    return stat(remotepath, true);
+	}
+	
+	private ObjStat stat(String remotepath, boolean canReauthenticate)
     throws IOException, RemoteDataException
     {
 		String resolvedPath = StringUtils.removeEnd(resolvePath(remotepath), "/");
@@ -1197,43 +1204,67 @@ public class IRODS4 implements RemoteDataClient
         		return getIRODSFileSystemAO().getObjStat(resolvedPath);
             }
             catch (JargonException e) {
+                String emsg = "IRODS4 stat failed for " + remotepath + ".";
+                log.error(emsg, e);
+                
             	// catch the wrapped socket exception from a dropped connection
             	// clean up the connection, and retry.
             	if (e.getCause() instanceof java.net.SocketException) {
-            		log.error("Connection timeout attempting to contact the remote server. Retrying one more time");
+            		log.error("Connection timeout attempting to contact the IRODS4 remote server, disconnecting.", e.getCause());
                     // connection should have been closed, but we clean up here
             		// just to be safe and ensure we don't have an open
             		// session lingering around anywhere in the underlying code.
             		disconnect();
+            		
+            		// Don't re-authenticate if not allowed to avoid infinite loop.
+            		if (!canReauthenticate) throw e;
 
             		// now re-authenticate to init the new session and
             		// get a valid connection to the server
+            		log.info("Reconnecting to IRODS4 server after exception " + e.getCause().getClass().getName() + ".");
                     authenticate();
 
                     // retry the stat with the fresh connection
                     return getIRODSFileSystemAO().getObjStat(resolvedPath);
             	} else {
+            	    String msg = "IRODS stat command failed, connection maintained.";
+            	    log.error(msg, e);
             		throw e;
             	}
             }
-            catch(Throwable e) {
-                log.error("Connection timeout attempting to contact the remote server. Retrying one more time");
+            catch (Throwable e) {
+                String emsg = "IRODS4 stat failed for " + remotepath + ", disconnecting from IROD4.";
+                log.error(emsg, e);
+                
                 disconnect();
+                
+                // Don't re-authenticate if not allowed to avoid infinite loop.
+                if (!canReauthenticate) throw e;                
+                
+                log.info("Reconnecting to IRODS4 server after exception "+ e.getClass().getName() + ".");
                 authenticate();
                 return getIRODSFileSystemAO().getObjStat(resolvedPath);
             }
         }
         catch (FileNotFoundException e) {
-            throw new java.io.FileNotFoundException("No such file or directory");
+            String msg = "No such file or directory: " + remotepath;
+            log.error(msg, e);
+            throw new java.io.FileNotFoundException(msg);
         }
-        catch(JargonException e) {
+        catch (JargonException e) {
+            String msg = "Failed to connect to IRODS4 server to stat " + remotepath;
             if (e.getMessage().toLowerCase().contains("unable to start ssl socket")) {
-                throw new RemoteDataException("Unable to validate SSL certificate on the IRODS server used for PAM authentication.", e);
+                msg = "Unable to validate SSL certificate on the IRODS4 server used for PAM authentication.";
             } else if (e.getMessage().toLowerCase().contains("connection refused")) {
-                throw new RemoteDataException("Connection refused: Unable to contact IRODS server at " + host + ":" + port);
-            } else {
-                throw new RemoteDataException("Failed to connect to remote server.", e);
+                msg = "Connection refused: Unable to contact IRODS4 server at " + host + ":" + port;
             }
+            log.error(msg, e);
+            throw new RemoteDataException(msg, e);
+        }
+        catch (Throwable e) {
+            String msg = "IRODS4 stat command failed for " + remotepath;
+            log.error(msg, e);
+            throw new RemoteDataException(msg, e);
         }
 	}
 
@@ -1553,25 +1584,11 @@ public class IRODS4 implements RemoteDataClient
 	@Override
 	public boolean doesExist(String path) throws IOException, RemoteDataException
 	{
-		String resolvedPath = StringUtils.removeEnd(resolvePath(path), "/");
-        
 		try
 		{
-//			IRODSFile f = getFile(path);
-//			return f == null ? false : f.exists();
-////			return getIRODSFileFactory().instanceIRODSFile(resolvedPath).exists();
 			stat(path);
 		    return true;
 		}
-//		catch (JargonException e) {
-//			if (e.getMessage().toLowerCase().contains("unable to start ssl socket")) {
-//                throw new RemoteDataException("Unable to validate SSL certificate on the IRODS server used for PAM authentication.", e);
-//            } else if (e.getMessage().toLowerCase().contains("connection refused")) {
-//                throw new RemoteDataException("Connection refused: Unable to contact IRODS server at " + host + ":" + port);
-//            } else {
-//                throw new RemoteDataException("Failed to connect to remote server.", e);
-//            }
-//		}
 		catch (java.io.FileNotFoundException e) {
 		    return false;
 		}
@@ -2480,176 +2497,5 @@ public class IRODS4 implements RemoteDataClient
 	{
 		return host;
 	}
-
-//	class AgaveJargonProperties extends SettableJargonProperties {
-//	    public AgaveJargonProperties() {
-//	        super();
-//	        mergeProperties();
-//	    }
-//
-//	    protected void mergeProperties() {
-//	        super.setReconnect(true);
-//	    }
-//
-//	    public void enableParallelism(int numberOfThreads) {
-//
-//	        // do use a thread pool for connections
-//	        super.setUseTransferThreadsPool(false);
-//
-//            // use parallel transfers whenever possible
-//            super.setUseParallelTransfer(true);
-//
-//            // max 16 parallel threads
-//            super.setMaxParallelThreads(16);
-//
-//            // max 4 thread transfer pool on directory copy
-//            super.setTransferThreadPoolMaxSimultaneousTransfers(numberOfThreads);
-//	    }
-//
-//	    public void disableParallelism() {
-//
-//            // do use a thread pool for connections
-//            super.setUseTransferThreadsPool(false);
-//
-//            // use parallel transfers whenever possible
-//            super.setUseParallelTransfer(false);
-//
-//            // disable parallel transfers
-//            super.setUseParallelTransfer(false);
-//
-//            super.setMaxParallelThreads(1);
-//
-//            super.setTransferThreadPoolMaxSimultaneousTransfers(1);
-//        }
-//
-//	    public void adjustInputBufferSize(int maxInputBufferSizeKB) {
-//
-//	        // primary tcp receive window size in KB
-//            super.setPrimaryTcpReceiveWindowSize(maxInputBufferSizeKB);
-//
-//            // parallel window size is in Bytes
-//            super.setParallelTcpReceiveWindowSize(MAX_BUFFER_SIZE);
-//
-//            // this controls the buffer size used to handle raw input stream
-//            // from irods. Should be smaller than window size
-//            super.setInternalInputStreamBufferSize(MAX_BUFFER_SIZE);
-//
-//            // buffer side when doing chunked read from irods. Best if this
-//            // lines up with remote irods server buffer size. If this is less
-//            // than the internal input stream buffer size, jargon will internally
-//            // start paginating reads from a memory buffer using array copies,
-//            // which will slow things down.
-//            super.setGetBufferSize(MAX_BUFFER_SIZE);
-//	    }
-//
-//	    public void adjustOutputBufferSize(int maxInputBufferSizeKB) {
-//	        // primary tcp send window size in KB
-//            super.setPrimaryTcpSendWindowSize(maxInputBufferSizeKB);
-//
-//            super.setParallelTcpSendWindowSize(MAX_BUFFER_SIZE);
-//
-//            // no buffer on output stream, just write afap
-//            super.setInternalOutputStreamBufferSize(-1);
-//
-//            // buffer side when doing chunked writes to irods. Best if this
-//            // lines up with remote irods server buffer size
-//            super.setPutBufferSize(MAX_BUFFER_SIZE);
-//	    }
-//	}
-//
-//	AgaveJargonProperties inputStreamSessionProperties = new AgaveJargonProperties() {
-//	    public void mergeProperties() {
-//
-//
-//            // primary tcp receive window size in KB
-//            super.setPrimaryTcpReceiveWindowSize(primaryTcpReceiveWindowSize);
-//
-//            // primary tcp send window size in KB
-//            super.setPrimaryTcpSendWindowSize(primaryTcpSendWindowSize);
-//
-//            // primary internal input stream buffer in KB
-//            super.setInternalInputStreamBufferSize(MAX_BUFFER_SIZE);
-//
-//            // primary internal input stream buffer in KB
-//            super.setInternalOutputStreamBufferSize(MAX_BUFFER_SIZE);
-//
-//            super.setInternalInputStreamBufferSize(MAX_BUFFER_SIZE);
-//
-//            super.setInternalOutputStreamBufferSize(MAX_BUFFER_SIZE);
-//
-//
-//            // max 4 thread transfer pool on directory copy
-//            jargonProperties.setTransferThreadPoolMaxSimultaneousTransfers(4);
-//
-//            // 15 second timeout
-//            jargonProperties.setTransferThreadPoolTimeoutMillis(15000);
-//	    }
-//	}
-//
-//	private JargonProperties outputStreamSessionProperties = new SettableJargonProperties() {
-//        public SettableJargonProperties() {
-//            // do use a thread pool for connections
-//            jargonProperties.setUseTransferThreadsPool(true);
-//
-//            // use parallel transfers whenever possible
-//            jargonProperties.setUseParallelTransfer(true);
-//
-//            jargonProperties.setMaxParallelThreads(0);
-//
-//            jargonProperties.setParallelTcpReceiveWindowSize(parallelTcpReceiveWindowSize);
-//
-//            jargonProperties.setUseParallelTransfer(true);
-//
-//            // max 4 thread transfer pool on directory copy
-//            jargonProperties.setTransferThreadPoolMaxSimultaneousTransfers(4);
-//
-//            // 15 second timeout
-//            jargonProperties.setTransferThreadPoolTimeoutMillis(15000);
-//        }
-//    };
-//
-//	private JargonProperties getOperationSessionProperties = new SettableJargonProperties() {
-//        public SettableJargonProperties() {
-//            // do use a thread pool for connections
-//            jargonProperties.setUseTransferThreadsPool(true);
-//
-//            // use parallel transfers whenever possible
-//            jargonProperties.setUseParallelTransfer(true);
-//
-//            jargonProperties.setMaxParallelThreads(0);
-//
-//            jargonProperties.setParallelTcpReceiveWindowSize(parallelTcpReceiveWindowSize);
-//
-//            jargonProperties.setUseParallelTransfer(true);
-//
-//            // max 4 thread transfer pool on directory copy
-//            jargonProperties.setTransferThreadPoolMaxSimultaneousTransfers(4);
-//
-//            // 15 second timeout
-//            jargonProperties.setTransferThreadPoolTimeoutMillis(15000);
-//        }
-//    };
-//
-//    private JargonProperties putOperationSessionProperties = new SettableJargonProperties() {
-//        public SettableJargonProperties() {
-//            // do use a thread pool for connections
-//            jargonProperties.setUseTransferThreadsPool(true);
-//
-//            // use parallel transfers whenever possible
-//            jargonProperties.setUseParallelTransfer(true);
-//
-//            jargonProperties.setMaxParallelThreads(0);
-//
-//            jargonProperties.setParallelTcpReceiveWindowSize(parallelTcpReceiveWindowSize);
-//
-//            jargonProperties.setUseParallelTransfer(true);
-//
-//            // max 4 thread transfer pool on directory copy
-//            jargonProperties.setTransferThreadPoolMaxSimultaneousTransfers(4);
-//
-//            // 15 second timeout
-//            jargonProperties.setTransferThreadPoolTimeoutMillis(15000);
-//        }
-//    };
 
 }

@@ -32,7 +32,6 @@ import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.io.model.enumerations.TransformTaskStatus;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
@@ -315,7 +314,6 @@ public class LogicalFileNotificationTest extends BaseTestCase
     {
         Set<FileEventType> statuses = new HashSet<FileEventType>();
         statuses.addAll(Arrays.asList(FileEventType.getFileStagingEvents()));
-        statuses.addAll(Arrays.asList(FileEventType.getFileTransformEvents()));
         
         for(FileEventType statusEventName: statuses) {
         	LogicalFileManager.addNotification(logicalFile, statusEventName, notificationUri, true, logicalFile.getOwner());
@@ -334,18 +332,10 @@ public class LogicalFileNotificationTest extends BaseTestCase
         ArrayList<Object[]> testCases = new ArrayList<Object[]>();
         Set<FileEventType> statuses = new HashSet<FileEventType>();
         statuses.addAll(Arrays.asList(FileEventType.getFileStagingEvents()));
-        statuses.addAll(Arrays.asList(FileEventType.getFileTransformEvents()));
        
         for(FileEventType eventType: statuses) { 
             testCases.add(new Object[] { eventType });
         }
-//        
-//        for(TransformTaskStatus status: TransformTaskStatus.values()) { 
-//            if (status != TransformTaskStatus.PREPROCESSING) {
-//                testCases.add(new Object[] { status.name() });
-//            }
-//        }
-        
         return testCases.toArray(new Object[][] {});
     }
     

@@ -2,6 +2,7 @@ package org.iplantc.service.common.restlet;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.common.exceptions.CommonResourceException;
 import org.iplantc.service.common.representation.AgaveErrorRepresentation;
 import org.iplantc.service.common.representation.AgaveRepresentation;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
@@ -49,6 +50,10 @@ public class AgaveStatusService extends StatusService
 				return currentRepresentation;
 			} else if (status.isSuccess()) {
 				return new AgaveSuccessRepresentation();
+			}else if (status.getThrowable() instanceof CommonResourceException) {
+			    return new AgaveErrorRepresentation(status.getThrowable().getMessage());
+			} else if (response.getStatus().getThrowable() instanceof CommonResourceException) {
+			    return new AgaveErrorRepresentation(response.getStatus().getThrowable().getMessage());
 			} else if (status.getThrowable() instanceof ResourceException) {
 			    return new AgaveErrorRepresentation(status.getThrowable().getMessage());
 			} else if (response.getStatus().getThrowable() instanceof ResourceException) {

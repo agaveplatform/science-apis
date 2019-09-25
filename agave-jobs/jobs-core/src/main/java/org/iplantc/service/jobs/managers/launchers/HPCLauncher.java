@@ -9,7 +9,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.channels.ClosedByInterruptException;
-import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
@@ -74,15 +73,32 @@ public class HPCLauncher extends AbstractJobLauncher
 		File tempAppDir = null;
 		try
 		{
-			if (getSoftware() == null || !getSoftware().isAvailable()) {
-				throw new SoftwareUnavailableException("Application " + getJob().getSoftwareName() + " is not longer available for execution");
+			if (getSoftware() == null) {
+				String msg = "Cannot launch a null application.";
+				log.error(msg);
+				throw new SoftwareUnavailableException(msg);
 			}
 			
-			// if the system is down, return it to the queue to wait for the system
-			// to come back up.
-			if (getExecutionSystem() == null || !getExecutionSystem().getStatus().equals(SystemStatusType.UP)) 
+			if (!getSoftware().isAvailable()) {
+				String msg = "Application " + getJob().getSoftwareName() + " is not longer available for execution.";
+				log.error(msg);
+				throw new SoftwareUnavailableException(msg);
+			}
+			
+			// if the system is down, return it to the queue to wait for the system to come back up.
+			if (getExecutionSystem() == null) 
 			{
-				throw new SystemUnavailableException();
+				String msg = "Null execution system assigned in application " + getSoftware().getName() + ".";
+				log.error(msg);
+				throw new SystemUnavailableException(msg);
+			} 
+			
+			// if the system is down, return it to the queue to wait for the system to come back up.
+			if (!getExecutionSystem().getStatus().equals(SystemStatusType.UP)) 
+			{
+				String msg = "Execution system " + getExecutionSystem().getName() + " is not up.";
+				log.error(msg);
+				throw new SystemUnavailableException(msg);
 			} 
 			
 			// sets up the application directory to execute this job launch; see comments in method
@@ -113,9 +129,7 @@ public class HPCLauncher extends AbstractJobLauncher
             
             String remoteJobId = submitJobToQueue();
             
-//            JobDao.refresh(job);
-            
-            getJob().setSubmitTime(new DateTime().toDate()); // Date job submitted to queue
+            getJob().setSubmitTime(new DateTime().toDate());   // Date job submitted to queue
             getJob().setLastUpdated(new DateTime().toDate());  // Date job started by queue
             getJob().setLocalJobId(remoteJobId);
             
@@ -128,7 +142,8 @@ public class HPCLauncher extends AbstractJobLauncher
 	            	message = "CLI job successfully forked as process id " + getJob().getLocalJobId();
 	            }
 	            
-	            log.debug(message.replaceFirst("job", "job " + getJob().getUuid()));
+	            if (log.isDebugEnabled()) 
+	            	log.debug(message.replaceFirst("job", "job " + getJob().getUuid()));
 	            
 	            getJob().setStatus(JobStatusType.QUEUED, message);
 	            
@@ -144,28 +159,31 @@ public class HPCLauncher extends AbstractJobLauncher
             }
             else
             {
-                log.debug("Callback already received for job " + getJob().getUuid() 
-                        + " skipping duplicate status update.");    
+            	if (log.isDebugEnabled())
+            		log.debug("Callback already received for job " + getJob().getUuid() +
+                              " skipping duplicate status update.");    
             }
             
             JobDao.persist(getJob());
 		}
 		catch (ClosedByInterruptException e) {
+			if (log.isDebugEnabled()) log.debug("Launch interrupted for job " + getJob().getUuid(), e);
             throw e;
         }
         catch (SchedulerException e) {
+        	log.error("Scheduler exception occurred during launch of job " + getJob().getUuid(), e);
 			throw e;
 		}
 		catch (Exception e)
 		{
-			throw new JobException(e);
+			String msg = "Launch exception for job " + getJob().getUuid() + ": " + e.getMessage();
+			log.error(msg, e);
+			throw new JobException(msg, e);
 		}
 		finally
 		{
 			try { HibernateUtil.closeSession(); } catch (Exception e) {}
 			try { FileUtils.deleteDirectory(tempAppDir); } catch (Exception e) {}
-//			try { remoteSoftwareDataClient.disconnect(); } catch (Exception e) {}
-//			try { remoteExecutionDataClient.disconnect(); } catch (Exception e) {}
 			try { submissionClient.close(); } catch (Exception e) {}
 		}
 	}
@@ -366,25 +384,30 @@ public class HPCLauncher extends AbstractJobLauncher
 			return ipcexeFile;
 		} 
         catch (IOException e) {
-            e.printStackTrace();
-            throw new JobException("FileUtil operation failed", e);
+        	String msg = "FileUtil operation failed.";
+            log.error(msg, e);
+            throw new JobException(msg, e);
         } 
         catch (JobException e) {
-            throw new JobException("Json failure from job inputs or parameters", e);
+        	String msg = "Json failure from job inputs or parameters.";
+        	log.error(msg, e);
+            throw new JobException(msg, e);
         }
 		catch (URISyntaxException e) {
-			e.printStackTrace();
-            throw new JobException("Failed to parse input URI", e);
+			String msg = "Failed to parse input URI.";
+			log.error(msg, e);
+            throw new JobException(msg, e);
 		} 
         catch (Exception e) {
-			e.printStackTrace();
-			throw new JobException("Failed to resolve remote execution system prior to staging app", e);
+			String msg = "Failed to resolve remote execution system prior to staging application.";
+			log.error(msg, e);
+			throw new JobException(msg, e);
 		} 
         finally {
             try {
                 batchWriter.close();
             } catch (IOException e) {
-                log.debug("Failed to close batchWriter on Exception");
+                log.warn("Failed to close batchWriter.", e);
             }
             try {remoteExecutionDataClient.disconnect();} catch (Exception e) {}
         }
@@ -427,14 +450,24 @@ public class HPCLauncher extends AbstractJobLauncher
 					
 			if (StringUtils.isBlank(submissionResponse)) 
 			{
+			    // Log response problem.
+			    log.warn("Empty response from remote submission command for job " + getJob().getUuid() + ".");
+			    
 				// retry the remote command once just in case it was a flicker
 				submissionResponse = submissionClient.runCommand(
 						startupScriptCommand + "; " + cdCommand + "; " + chmodCommand + "; " + submitCommand);
 				
 				// blank response means the job didn't go in...twice. Fail the attempt
-				if (StringUtils.isBlank(submissionResponse)) 
-					throw new JobException("Failed to submit hpc job. " + submissionResponse);
+				if (StringUtils.isBlank(submissionResponse)) {
+					String msg = "Failed to submit HPC job " + getJob().getUuid() + ".";
+					log.error(msg);
+					throw new JobException(msg);
+				}
 			}
+			
+			// Tracing.
+			if (log.isDebugEnabled())
+			    log.debug("Response from submission command for job " + getJob().getUuid() + ": " + submissionResponse);
 			
 			// parse the response from the remote command invocation to get the localJobId
 			// by which we'll reference the job during monitoring, etc.
@@ -444,17 +477,22 @@ public class HPCLauncher extends AbstractJobLauncher
 			return jobIdParser.getJobId(submissionResponse);
 		}
 		catch (RemoteJobIDParsingException | RemoteExecutionException e) {
+			log.error("Error submitting job " + getJob().getUuid() + ".", e);
 			throw new JobException(e.getMessage(), e);
 		}
 		catch (JobException e) {
+			log.error("Error submitting job " + getJob().getUuid() + ".", e);
 			throw e;
 		}
 		catch (SchedulerException e) {
+			log.error("Error submitting job " + getJob().getUuid() + ".", e);
 			throw e;
 		}
 		catch (Exception e)
 		{
-			throw new JobException("Failed to submit job to batch queue", e);
+			String msg = "Failed to submit HPC job " + getJob().getUuid() + ".";
+			log.error(msg, e);
+			throw new JobException(msg, e);
 		}
 		finally
 		{

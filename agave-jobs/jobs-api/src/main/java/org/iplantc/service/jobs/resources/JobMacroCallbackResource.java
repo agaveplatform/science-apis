@@ -101,8 +101,9 @@ public class JobMacroCallbackResource extends AbstractJobResource
 			Job job = JobDao.getByUuid(jobUuid);
 
 			if (job == null) {
-				throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, 
-						"No job found with job id " + jobUuid);
+	            String msg = "No job found with job id " + jobUuid + "."; 
+	            log.error(msg);
+				throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, msg);
 			}
 			else if (job.getUpdateToken().equals(token))
 			{

@@ -1,7 +1,7 @@
 {
   "name": "slurm-fork",
   "version": "1.0.0",
-  "helpURI": "http://support.agaveapi.co",
+  "helpURI": "http://support.agaveplatform.org",
   "label": "Remote command execution script",
   "defaultNodeCount": 1,
   "defaultRequestedTime": "00:10:00",

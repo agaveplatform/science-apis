@@ -36,8 +36,7 @@ public class SoftwareOutput implements SoftwareAttribute<SoftwareOutput>
 	private Long		id;
 	private String		key;					// Mandatory unique name of the
 												// parameter
-	private String		fileTypes;				// The fileTypes supported by
-												// /data/transforms/list.
+	private String		fileTypes;				// Not currently used; defaults to raw.
 	private String		label;					// Optional. If not specified,
 												// label defaults to string
 												// specified by 'id'

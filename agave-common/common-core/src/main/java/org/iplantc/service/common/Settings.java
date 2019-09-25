@@ -39,6 +39,8 @@ public class Settings
     private static final Logger log = Logger.getLogger(Settings.class);
     
     protected static final String PROPERTY_FILE = "service.properties";
+    
+    public static final String INVALID_QUEUE_TASK_TENANT_ID = "!!";
 
 	/* Debug settings */
     public static boolean       DEBUG;
@@ -49,8 +51,6 @@ public class Settings
     
     public static String        API_VERSION;
     public static String        SERVICE_VERSION;
-    public static int           JETTY_PORT;
-    public static int           JETTY_AJP_PORT;
     
     public static String        PUBLIC_USER_USERNAME;
     public static String        WORLD_USER_USERNAME;
@@ -81,7 +81,6 @@ public class Settings
     public static String        IPLANT_MONITOR_SERVICE;
     public static String        IPLANT_PROFILE_SERVICE;
     public static String        IPLANT_SYSTEM_SERVICE;
-    public static String        IPLANT_TRANSFORM_SERVICE;
     public static String        IPLANT_TRANSFER_SERVICE;
     public static String        IPLANT_NOTIFICATION_SERVICE;
     public static String        IPLANT_POSTIT_SERVICE;
@@ -140,13 +139,6 @@ public class Settings
     public static String                        TRANSFERS_STAGING_TOPIC;
     public static String                        TRANSFERS_STAGING_QUEUE;
     
-    public static String                        TRANSFORMS_ENCODING_QUEUE;
-    public static String                        TRANSFORMS_ENCODING_TOPIC;
-    public static String                        TRANSFORMS_DECODING_QUEUE;
-    public static String                        TRANSFORMS_DECODING_TOPIC;
-    public static String                        TRANSFORMS_STAGING_TOPIC;
-    public static String                        TRANSFORMS_STAGING_QUEUE;
-    
     public static String                        JOBS_STAGING_QUEUE;
     public static String                        JOBS_STAGING_TOPIC;
     public static String                        JOBS_SUBMISSION_QUEUE;
@@ -166,7 +158,7 @@ public class Settings
     public static String                        USAGETRIGGERS_CHECK_TOPIC;
     
     public static String                        PLATFORM_STORAGE_SYSTEM_ID;
-
+    
     private static String                       DEDICATED_TENANT_ID;
 
     private static String[]                     DEDICATED_USER_IDS;
@@ -259,31 +251,35 @@ public class Settings
         
         TACC_MYPROXY_SERVER = props.getProperty("iplant.myproxy.server");
         
-        TACC_MYPROXY_PORT = Integer.valueOf((String)props.getProperty("iplant.myproxy.port", "7512"));
+        try {TACC_MYPROXY_PORT = Integer.valueOf((String)props.getProperty("iplant.myproxy.port", "7512"));}
+            catch (Exception e) {
+                log.error("Failure loading setting iplant.myproxy.port - continuing using default value.", e);
+                TACC_MYPROXY_PORT = 7512;
+            }
         
-        IPLANT_APP_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.app.service", "https://public.agaveapi.co/apps/v2");        
-        IPLANT_AUTH_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.auth.service", "https://public.agaveapi.co/auth/v2");
-        IPLANT_CLIENTS_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.clients.service", "http://public.agaveapi.co/clients/v2");
-        IPLANT_SYSTEM_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.system.service", "https://public.agaveapi.co/systems/v2");
-        IPLANT_DOCS                 = Settings.getSantizedServiceUrl(props, "iplant.service.documentation", "https://public.agaveapi.co/docs/v2");
-        IPLANT_FILE_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.io.service", "https://public.agaveapi.co/files/v2");
-        IPLANT_GROUPS_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.groups.service", "https://public.agaveapi.co/groups/v2");
-        IPLANT_JOB_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.job.service", "https://public.agaveapi.co/jobs/v2");
-        IPLANT_LOG_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.log.service", "https://public.agaveapi.co/logging/v2");
-        IPLANT_METADATA_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.metadata.service", "https://public.agaveapi.co/meta/v2");
-        IPLANT_MONITOR_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.monitor.service", "https://public.agaveapi.co/monitors/v2");
-        IPLANT_NOTIFICATION_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.notification.service", "https://public.agaveapi.co/notifications/v2");
-        IPLANT_PERMISSIONS_SERVICE  = Settings.getSantizedServiceUrl(props, "iplant.permissions.service", "https://public.agaveapi.co/permissions/v2");
-        IPLANT_POSTIT_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.postit.service", "https://public.agaveapi.co/postits/v2");
-        IPLANT_PROFILE_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.profile.service", "https://public.agaveapi.co/profiles/v2");
-        IPLANT_REALTIME_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.realtime.service", "http://public.realtime.prod.agaveapi.co/channels/v2");
-        IPLANT_ROLES_SERVICE        = Settings.getSantizedServiceUrl(props, "iplant.roles.service", "https://public.agaveapi.co/roles/v2");
-        IPLANT_TAGS_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.tags.service", "https://public.agaveapi.co/tags/v2");
-        IPLANT_TENANTS_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.tenants.service", "http://agaveapi.co/tenants/");
-        IPLANT_TRANSFER_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.transfer.service", "https://public.agaveapi.co/transfers/v2");
-        IPLANT_REACTOR_SERVICE     	= Settings.getSantizedServiceUrl(props, "iplant.reactors.service", "https://public.agaveapi.co/reactors/v2");
-        IPLANT_REPOSITORY_SERVICE   = Settings.getSantizedServiceUrl(props, "iplant.repositories.service", "https://public.agaveapi.co/repositories/v2");
-        IPLANT_ABACO_SERVICE     	= Settings.getSantizedServiceUrl(props, "iplant.abaco.service", "https://public.agaveapi.co/abaco/v2");
+        IPLANT_APP_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.app.service", "https://sandbox.agaveplatform.org/apps/v2");
+        IPLANT_AUTH_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.auth.service", "https://sandbox.agaveplatform.org/auth/v2");
+        IPLANT_CLIENTS_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.clients.service", "http://sandbox.agaveplatform.org/clients/v2");
+        IPLANT_SYSTEM_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.system.service", "https://sandbox.agaveplatform.org/systems/v2");
+        IPLANT_DOCS                 = Settings.getSantizedServiceUrl(props, "iplant.service.documentation", "https://sandbox.agaveplatform.org/docs/v2");
+        IPLANT_FILE_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.io.service", "https://sandbox.agaveplatform.org/files/v2");
+        IPLANT_GROUPS_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.groups.service", "https://sandbox.agaveplatform.org/groups/v2");
+        IPLANT_JOB_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.job.service", "https://sandbox.agaveplatform.org/jobs/v2");
+        IPLANT_LOG_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.log.service", "https://sandbox.agaveplatform.org/logging/v2");
+        IPLANT_METADATA_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.metadata.service", "https://sandbox.agaveplatform.org/meta/v2");
+        IPLANT_MONITOR_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.monitor.service", "https://sandbox.agaveplatform.org/monitors/v2");
+        IPLANT_NOTIFICATION_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.notification.service", "https://sandbox.agaveplatform.org/notifications/v2");
+        IPLANT_PERMISSIONS_SERVICE  = Settings.getSantizedServiceUrl(props, "iplant.permissions.service", "https://sandbox.agaveplatform.org/permissions/v2");
+        IPLANT_POSTIT_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.postit.service", "https://sandbox.agaveplatform.org/postits/v2");
+        IPLANT_PROFILE_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.profile.service", "https://sandbox.agaveplatform.org/profiles/v2");
+        IPLANT_REALTIME_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.realtime.service", "http://public.realtime.sandbox.agaveplatform.org/channels/v2");
+        IPLANT_ROLES_SERVICE        = Settings.getSantizedServiceUrl(props, "iplant.roles.service", "https://sandbox.agaveplatform.org/roles/v2");
+        IPLANT_TAGS_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.tags.service", "https://sandbox.agaveplatform.org/tags/v2");
+        IPLANT_TENANTS_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.tenants.service", "https://agaveplatform.org/tenants/");
+        IPLANT_TRANSFER_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.transfer.service", "https://sandbox.agaveplatform.org/transfers/v2");
+        IPLANT_REACTOR_SERVICE     	= Settings.getSantizedServiceUrl(props, "iplant.reactors.service", "https://sandbox.agaveplatform.org/reactors/v2");
+        IPLANT_REPOSITORY_SERVICE   = Settings.getSantizedServiceUrl(props, "iplant.repositories.service", "https://sandbox.agaveplatform.org/repositories/v2");
+        IPLANT_ABACO_SERVICE     	= Settings.getSantizedServiceUrl(props, "iplant.abaco.service", "https://sandbox.agaveplatform.org/abaco/v2");
         
         NOTIFICATION_QUEUE = props.getProperty("iplant.notification.service.queue", "prod.notifications.queue");
 		NOTIFICATION_TOPIC = props.getProperty("iplant.notification.service.topic", "prod.notifications.queue");
@@ -297,7 +293,7 @@ public class Settings
         MESSAGING_SERVICE_HOST = props.getProperty("iplant.messaging.host");
         try {MESSAGING_SERVICE_PORT = Integer.valueOf((String)props.get("iplant.messaging.port"));}
         	catch (Exception e) {
-        		log.error("Failure loading setting iplant.messaging.port", e);
+        		log.error("Failure loading setting iplant.messaging.port - continuing.", e);
         	}
         
         FILES_ENCODING_QUEUE = props.getProperty("iplant.files.service.encoding.queue", "encoding.prod.files.queue");
@@ -311,13 +307,6 @@ public class Settings
         TRANSFERS_ENCODING_TOPIC = props.getProperty("iplant.transfers.service.encoding.topic", "encoding.prod.transfers.topic");
         TRANSFERS_STAGING_QUEUE = props.getProperty("iplant.transfers.service.staging.queue", "staging.prod.transfers.queue");
         TRANSFERS_STAGING_TOPIC = props.getProperty("iplant.transfers.service.staging.topic", "staging.prod.transfers.topic");
-        
-        TRANSFORMS_ENCODING_QUEUE = props.getProperty("iplant.transforms.service.encoding.queue", "encoding.prod.transforms.queue");
-        TRANSFORMS_ENCODING_TOPIC = props.getProperty("iplant.transforms.service.encoding.topic", "decoding.prod.transforms.topic");
-        TRANSFORMS_DECODING_QUEUE = props.getProperty("iplant.transforms.service.decoding.queue", "decoding.prod.transforms.queue");
-        TRANSFORMS_DECODING_TOPIC = props.getProperty("iplant.transforms.service.decoding.topic", "decoding.prod.transforms.topic");
-        TRANSFORMS_STAGING_QUEUE = props.getProperty("iplant.transforms.service.staging.queue", "staging.prod.transforms.queue");
-        TRANSFORMS_STAGING_TOPIC = props.getProperty("iplant.transforms.service.staging.topic", "staging.prod.transforms.topic");
         
         JOBS_STAGING_QUEUE = props.getProperty("iplant.jobs.service.staging.queue", "staging.prod.jobs.queue");
         JOBS_STAGING_TOPIC = props.getProperty("iplant.jobs.service.staging.topic", "staging.prod.jobs.topic");
@@ -793,5 +782,61 @@ public class Settings
                 "DEDICATED_SYSTEM_IDS",
                 "DEDICATED_USER_IDS",
                 "DEDICATED_USER_GROUPS");
+    }
+    
+    /** Retrieve and parse the queue task tenant ids if they were assigned.
+     * If unassigned, return an empty array. 
+     * 
+     * @return a non-null string array of tenant ids
+     */
+    public static String[] getQueueTaskTenantIds(Properties props)
+    {
+        // See if the queue task tenant ids property was assigned.
+        String inputIds = props.getProperty("iplant.queuetask.tenant.ids");
+        if (StringUtils.isBlank(inputIds)) {
+            if (log.isInfoEnabled()) {
+                String msg = "No tenant id specified for queue tasks, using all tenants.";
+                log.info(msg);
+            }
+            return new String[] {};
+        }
+        
+        // Parse the comma separated list of tenant ids.  During the 
+        // parsing we validate that the list only contains assertions
+        // or negations, but not both.
+        boolean hasAssertion = false;
+        boolean hasNegation  = false;
+        List<String> tenantIds = new ArrayList<String>();
+        for (String tenantId: StringUtils.split(inputIds, ",")) {
+            tenantId = StringUtils.trimToNull(tenantId);
+            if (tenantId != null) {
+                // Record assertion/negation type.
+                if (tenantId.startsWith("!")) hasNegation = true;
+                 else hasAssertion = true;
+                tenantIds.add(tenantId);
+            }
+        }
+        
+        // Validate that all members are either assertions or negations.
+        // If this condition does not hold, return an array with the
+        // distinguished invalid tenant id to disable task queue queries.
+        if (hasAssertion && hasNegation) {
+            String msg = "The iplant.queuetask.tenant.ids property cannot contain " +
+                         "both assertions and negations.  Please check the configuration " +
+                         "for this service.  The received tenant id values will be ignored: " + 
+                         inputIds;
+            log.error(msg);
+            return new String[] {INVALID_QUEUE_TASK_TENANT_ID};
+        }
+        
+        // Tracing.
+        if (log.isInfoEnabled()) {
+            String msg = "Using the following tenant id configuration for queue tasks: " + inputIds;
+            log.info(msg);
+        }
+        
+        // Return the tenant ids in an array.
+        String[] stringArray = new String[tenantIds.size()];
+        return tenantIds.toArray(stringArray);
     }
 }

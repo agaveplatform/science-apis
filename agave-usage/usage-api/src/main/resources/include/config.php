@@ -20,7 +20,6 @@ $config['service.version'] = envVar('IPLANT_SERVICE_VERSION','${foundation.servi
  ****************************************************************************************/
 
 $config['iplant.service.trusted.users'][] = 'ipcservices';
-$config['iplant.service.trusted.users'][] = 'dooley';
 $config['iplant.service.trusted.users'][] = 'vaughn';
 $config['iplant.service.trusted.users'][] = 'sterry1';
 $config['iplant.service.trusted.users'][] = 'jstubbs';

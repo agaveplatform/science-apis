@@ -480,6 +480,7 @@ public class StagingWatchTest extends AbstractJobSubmissionTest
     public void concurrentQueueTerminationTest(Software software, String[] inputs, String message) 
     throws Exception 
     {
+	    // NOTE: The properties file referenced here were deleted on 7/12/2017.
 	    clearJobs();
 	    StdSchedulerFactory factory = new StdSchedulerFactory();
         factory.initialize(this.getClass().getClassLoader().getResourceAsStream("quartz-producer.properties"));

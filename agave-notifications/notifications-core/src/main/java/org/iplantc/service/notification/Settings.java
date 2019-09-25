@@ -64,7 +64,6 @@ public class Settings
 	public static String 						IPLANT_JOB_SERVICE;
 	public static String 						IPLANT_APP_SERVICE;
 	public static String 						IPLANT_TRANSFER_SERVICE;
-	public static String 						IPLANT_TRANSFORM_SERVICE;
 	public static String 						IPLANT_NOTIFICATION_SERVICE;
 	public static String						IPLANT_POSTIT_SERVICE;
 	
@@ -200,7 +199,7 @@ public class Settings
 		}
 		
 		SMTP_FROM_NAME = (String) props.getProperty("mail.smtps.from.name", "Agave Notification Service");
-		SMTP_FROM_ADDRESS = (String) props.getProperty("mail.smtps.from.address", "no-reply@agaveapi.co");
+		SMTP_FROM_ADDRESS = (String) props.getProperty("mail.smtps.from.address", "noreply@agaveplatform.org");
 		
 //	    MAIL_SERVER = (String) props.getProperty("mail.smtps.host");
 //		
@@ -289,8 +288,16 @@ public class Settings
         REALTIME_REALM_ID = (String) props.getProperty("realtime.realm.id", "");
         REALTIME_REALM_KEY = (String) props.getProperty("realtime.realm.key", "");
         
-		MAX_NOTIFICATION_RETRIES = Integer.valueOf((String)props.getProperty("iplant.max.notification.retries", "5"));
-		MAX_NOTIFICATION_TASKS = Integer.valueOf((String)props.getProperty("iplant.max.notification.tasks", "1"));
+		try {MAX_NOTIFICATION_RETRIES = Integer.valueOf((String)props.getProperty("iplant.max.notification.retries", "5"));}
+		    catch (Exception e) {
+	            log.error("Failure loading setting iplant.max.notification.retries.", e);
+	            MAX_NOTIFICATION_RETRIES = 5;
+		    }
+		try {MAX_NOTIFICATION_TASKS = Integer.valueOf((String)props.getProperty("iplant.max.notification.tasks", "1"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.max.notification.task.", e);
+            MAX_NOTIFICATION_TASKS = 1;
+        }
 		
 		SLAVE_MODE = Boolean.valueOf((String)props.get("iplant.slave.mode"));
 		

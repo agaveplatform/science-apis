@@ -4,20 +4,14 @@
 	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc.agave</groupId>
+		<groupId>org.agaveplatform</groupId>
 		<artifactId>common</artifactId>
-		<version>2.1.11</version>
+		<version>2.2.24</version>
 	</parent>
 	<artifactId>common-core</artifactId>
-	<name>iPlant Agave API Common Services Core</name>
+	<name>Agave Platform Common Services Core</name>
 	<description>Common core library for all Agave services.</description>
 	<packaging>jar</packaging>
-
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-common.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-common.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-common</url>
-	</scm>
 
 	<properties>
 		<force.check.update>false</force.check.update>
@@ -115,17 +109,43 @@
 		</dependency>
 
 		<!-- Hibernate -->
+		<!-- The ancient version of hibernate (3.6.10) that we use brings in an equally ancient -->
+		<!-- version of javassist (3.12.0), which does not work well with Java 8 and clashes    -->
+		<!-- with a later version of javassist dragged in by reflections.  We need to exclude   -->
+		<!-- javassist from Hibernate entitymanager and Hibernate core and use only the one     --> 
+		<!-- from reflections.  Note the different group ids used for javassist.  Use lots of   -->
+		<!-- complex software, get lots of complex interactions.                                -->
+		<!--                                                                                    -->
 		<dependency>
 			<groupId>org.hibernate</groupId>
 			<artifactId>hibernate-entitymanager</artifactId>
 			<version>${hibernate-entitymanager.version}</version>
 			<exclusions>
 				<exclusion>
-					<artifactId>javassist</artifactId>
-					<groupId>org.javassist</groupId>
+					<artifactId>hibernate-core</artifactId>
+					<groupId>org.hibernate</groupId>
 				</exclusion>
+                <exclusion>
+                    <artifactId>javassist</artifactId>
+                    <groupId>org.javassist</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>javassist</artifactId>
+                    <groupId>javassist</groupId>
+                </exclusion>
 			</exclusions>
 		</dependency>
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>${hibernate-entitymanager.version}</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>javassist</artifactId>
+                    <groupId>org.javassist</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 		<dependency>
 			<groupId>mysql</groupId>
 			<artifactId>mysql-connector-java</artifactId>

@@ -18,25 +18,9 @@ $config['service.default.page.size'] = intval(envVar('IPLANT_DEFAULT_PAGE_SIZE',
  *						Trusted Users
  ****************************************************************************************/
 
-$config['iplant.service.trusted.users'][] = 'ipcservices';
 $config['iplant.service.trusted.users'][] = 'dooley';
-$config['iplant.service.trusted.users'][] = 'vaughn';
-$config['iplant.service.trusted.users'][] = 'lenards';
-$config['iplant.service.trusted.users'][] = 'denni';
-$config['iplant.service.trusted.users'][] = 'wregglej';
-$config['iplant.service.trusted.users'][] = 'healyk';
-$config['iplant.service.trusted.users'][] = 'psarando';
-$config['iplant.service.trusted.users'][] = 'hariolf';
-$config['iplant.service.trusted.users'][] = 'sriram';
 
-$config['iplant.service.trusted.domains'][] = 'agave.iplantc.org';
-$config['iplant.service.trusted.domains'][] = 'agave.iplantcollaborative.org';
-$config['iplant.service.trusted.domains'][] = 'agaveapi.org';
-$config['iplant.service.trusted.domains'][] = 'agaveapi.io';
-$config['iplant.service.trusted.domains'][] = 'iplant-dev.tacc.utexas.edu';
-$config['iplant.service.trusted.domains'][] = 'iplant-qa.tacc.utexas.edu';
-$config['iplant.service.trusted.domains'][] = 'iplantc.org';
-$config['iplant.service.trusted.domains'][] = 'iplantcollaborative.org';
+$config['iplant.service.trusted.domains'][] = 'agaveplatform.org';
 
 /****************************************************************************************
  *						Logging keys

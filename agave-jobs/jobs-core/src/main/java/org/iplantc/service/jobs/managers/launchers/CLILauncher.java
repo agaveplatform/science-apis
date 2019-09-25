@@ -93,15 +93,25 @@ public class CLILauncher extends HPCLauncher
 					
 			if (StringUtils.isBlank(submissionResponse)) 
 			{
+                // Log response problem.
+                log.warn("Empty response from remote submission command for job " + getJob().getUuid() + ".");
+                
 				// retry the remote command once just in case it was a flicker
 				submissionResponse = submissionClient.runCommand(
 						startupScriptCommand + " ; " + cdCommand + " &&  " + chmodCommand + " && " + submitCommand);
 				
 				// blank response means the job didn't go in...twice. Fail the attempt
-				if (StringUtils.isBlank(submissionResponse)) 
-					throw new JobException("Failed to submit cli job. " + submissionResponse);
+				if (StringUtils.isBlank(submissionResponse)) {
+					String msg = "Failed to submit CLI job " + getJob().getUuid() + ".";
+					log.error(msg);
+					throw new JobException(msg);
+				}
 			}
 			
+            // Tracing.
+            if (log.isDebugEnabled())
+                log.debug("Response from submission command for job " + getJob().getUuid() + ": " + submissionResponse);
+            
 			// parse the response from the remote command invocation to get the localJobId
 			// by which we'll reference the job during monitoring, etc.
 			RemoteJobIdParser jobIdParser = 
@@ -110,11 +120,14 @@ public class CLILauncher extends HPCLauncher
 			return jobIdParser.getJobId(submissionResponse);
 		}
 		catch (JobException e) {
+			log.error("Error submitting job " + getJob().getUuid() + ".", e);
 			throw e;
 		}
 		catch (Exception e)
 		{
-			throw new JobException("Failed to submit job to remote system", e);
+			String msg = "Failed to submit CLI job " + getJob().getUuid() + ".";
+			log.error(msg, e);
+			throw new JobException(msg, e);
 		}
 		finally
 		{

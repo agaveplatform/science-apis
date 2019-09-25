@@ -60,7 +60,6 @@ public class Settings
 	public static String 						IPLANT_APP_SERVICE;
 	public static String						IPLANT_SYSTEM_SERVICE;
 	public static String 						IPLANT_TRANSFER_SERVICE;
-	public static String 						IPLANT_TRANSFORM_SERVICE;
 	public static String 						IPLANT_NOTIFICATION_SERVICE;
 	public static String						IPLANT_POSTIT_SERVICE;
 	

@@ -13,7 +13,6 @@ import org.iplantc.service.common.representation.AgaveErrorRepresentation;
 import org.iplantc.service.common.representation.AgaveRepresentation;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.restlet.resource.QuartzUtilityResource;
-import org.iplantc.service.io.resources.EncodingCallbackResource;
 import org.iplantc.service.io.resources.FileHistoryResource;
 import org.iplantc.service.io.resources.FileIndexingResource;
 import org.iplantc.service.io.resources.FileListingResource;
@@ -27,14 +26,11 @@ import org.restlet.Component;
 import org.restlet.Request;
 import org.restlet.Response;
 import org.restlet.Restlet;
-import org.restlet.Server;
 import org.restlet.data.ChallengeScheme;
 import org.restlet.data.CharacterSet;
 import org.restlet.data.MediaType;
 import org.restlet.data.Protocol;
 import org.restlet.data.Status;
-import org.restlet.ext.jetty.HttpServerHelper;
-import org.restlet.ext.jetty.JettyServerHelper;
 import org.restlet.representation.Representation;
 import org.restlet.resource.Resource;
 import org.restlet.resource.ResourceException;
@@ -43,7 +39,6 @@ import org.restlet.routing.Router;
 import org.restlet.routing.Template;
 import org.restlet.security.ChallengeAuthenticator;
 import org.restlet.security.Verifier;
-import org.restlet.service.CorsService;
 import org.restlet.service.MetadataService;
 import org.restlet.service.StatusService;
 
@@ -188,11 +183,7 @@ public class FilesApplication extends Application
 	        secureEndpoint(router,"/pems/", FilePermissionResource.class); // DONE get(GET) to list upload files for user
         
         }   
-    
-	    // Define callback route for the transform scripts
-	    router.attach("/trigger/encoding/{callbackKey}/{status}", EncodingCallbackResource.class);
-	    router.attach("/system/{systemId}/trigger/encoding/{callbackKey}/{status}", EncodingCallbackResource.class);
-	    
+    	    
 	    return router;
     }
 
@@ -226,19 +217,4 @@ public class FilesApplication extends Application
 //       launchServer(component);
     }
 	
-	protected static void launchServer(Component component) throws Exception 
-	{	
-		 // create embedding jetty server
-        Server embedingJettyServer = new Server(
-	        component.getContext().createChildContext(),
-	        Protocol.HTTP,
-//	        org.iplantc.service.common.Settings.JETTY_PORT,
-	        8080,
-	        component
-        );
-        
-        //construct and start JettyServerHelper
-        JettyServerHelper jettyServerHelper = new HttpServerHelper(embedingJettyServer);
-        jettyServerHelper.start();
-	}
 }

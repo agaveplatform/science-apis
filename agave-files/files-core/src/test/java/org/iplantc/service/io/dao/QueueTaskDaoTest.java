@@ -1,7 +1,6 @@
 package org.iplantc.service.io.dao;
 
 import org.iplantc.service.io.BaseTestCase;
-import org.iplantc.service.io.model.EncodingTask;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.QueueTask;
@@ -109,61 +108,6 @@ public class QueueTaskDaoTest extends BaseTestCase {
 //		}
 //	}
 	
-	@Test
-	public void testPersistTransformJobTransformNull() {
-		try {
-			task = new EncodingTask(file, system, destPath, destPath, null, "traits.pl", file.getOwner());
-			QueueTaskDao.persist(task);
-			Assert.fail("Null handle in transform task should throw an exception");
-		} catch (Exception e) {
-			// Null transform in staging task should throw an exception
-		}
-	}
-	
-	@Test
-	public void testPersistTransformJobTransformEmpty() {
-		try {
-			task = new EncodingTask(file, system, destPath, destPath, null, "traits.pl", file.getOwner());
-			QueueTaskDao.persist(task);
-			Assert.fail("Empty handle in transform task should throw an exception");
-		} catch (Exception e) {
-			// Empty transform in transform task should throw an exception
-		}
-	}
-	
-	@Test
-	public void testPersistTransformJobFilterNull() {
-		try {
-			task = new EncodingTask(file, system, destPath, destPath, "contrast.traits", null, file.getOwner());
-			QueueTaskDao.persist(task);
-			Assert.fail("Null handle in transform task should throw an exception");
-		} catch (Exception e) {
-			// Null handle in staging task should throw an exception
-		}
-	}
-	
-	@Test
-	public void testPersistTransformJobFilterEmpty() {
-		try {
-			task = new EncodingTask(file, system, destPath, destPath, "contrast.traits", "", file.getOwner());
-			QueueTaskDao.persist(task);
-			Assert.fail("Empty handle in transform task should throw an exception");
-		} catch (Exception e) {
-			// Empty handle in transform task should throw an exception
-		}
-	}
-	
-	@Test
-	public void testPersistTransformJobFile() {
-		task = new EncodingTask(file, system, destPath, destPath, "contrast.traits", "traits.pl", file.getOwner());
-		try {
-			QueueTaskDao.persist(task);
-			AssertJUnit.assertNotNull("Transfer task should be persisted", ((EncodingTask)task).getId());
-		} catch (Exception e) {
-			e.printStackTrace();
-			Assert.fail("Transfer task should be persisted");
-		}
-	}
 	
 	@Test
 	public void testRemoveNull() {
@@ -195,7 +139,7 @@ public class QueueTaskDaoTest extends BaseTestCase {
 			task = new StagingTask(file, file.getOwner());
 			QueueTaskDao.persist(task);
 			
-			Long nextTask = QueueTaskDao.getNextStagingTask(file.getTenantId());
+			Long nextTask = QueueTaskDao.getNextStagingTask(new String[] {file.getTenantId()});
 			AssertJUnit.assertNotNull("Next staging task should not be null", nextTask);
 			
 		} catch (Exception e) {
@@ -209,7 +153,7 @@ public class QueueTaskDaoTest extends BaseTestCase {
 			task = new StagingTask(file, file.getOwner());
 			QueueTaskDao.persist(task);
 			
-			Long nextTask = QueueTaskDao.getNextStagingTask("asdfasdfasdfasd");
+			Long nextTask = QueueTaskDao.getNextStagingTask(new String[] {"asdfasdfasdfasd"});
 			AssertJUnit.assertNull("Next staging task should be null for tenant without any tasks", nextTask);
 			
 		} catch (Exception e) {
@@ -217,76 +161,4 @@ public class QueueTaskDaoTest extends BaseTestCase {
 		}
 	}
 
-	@Test
-	public void testGetNextTransformTask() {
-		try {
-			task = new EncodingTask(file, system, destPath, destPath, "contrast.traits", "traits.pl", file.getOwner());
-			QueueTaskDao.persist(task);
-			
-			Long nextTask = QueueTaskDao.getNextTransformTask(null);
-			AssertJUnit.assertNotNull("Next transform task should not be null", nextTask);
-		} catch (Exception e) {
-			Assert.fail("Retrieving next transform task should not throw an exception", e);
-		}
-	}
-	
-	@Test
-	public void testGetNextTransformTaskForTenantOfLogicalFile() {
-		try {
-			task = new EncodingTask(file, system, destPath, destPath, "contrast.traits", "traits.pl", file.getOwner());
-			QueueTaskDao.persist(task);
-			
-			Long nextTask = QueueTaskDao.getNextTransformTask(file.getTenantId());
-			AssertJUnit.assertNotNull("Next transform task should not be null", nextTask);
-		} catch (Exception e) {
-			Assert.fail("Retrieving next transform task should not throw an exception", e);
-		}
-	}
-	
-	@Test
-	public void testGetNextTransformTaskIsNullForTenantWithNoTask() {
-		try {
-			task = new EncodingTask(file, system, destPath, destPath, "contrast.traits", "traits.pl", file.getOwner());
-			QueueTaskDao.persist(task);
-			
-			Long nextTask = QueueTaskDao.getNextTransformTask("asdasdfasdfa");
-			AssertJUnit.assertNull("Next transform task should be null for tenant with no tasks", nextTask);
-		} catch (Exception e) {
-			Assert.fail("Retrieving next transform task should not throw an exception", e);
-		}
-	}
-
-	@Test
-	public void testGetTransformTaskByCallBackKeyNull() {
-		try {
-			QueueTaskDao.getTransformTaskByCallBackKey(null);
-			Assert.fail("null callback key should throw an exception");
-		} catch (Exception e) {
-			// null callback key should throw an exception
-		}
-	}
-	
-	@Test
-	public void testGetTransformTaskByCallBackKeyEmpty() {
-		try {
-			QueueTaskDao.getTransformTaskByCallBackKey("");
-			Assert.fail("null callback key should throw an exception");
-		} catch (Exception e) {
-			// null callback key should throw an exception
-		}
-	}
-	
-	@Test
-	public void testGetTransformTaskByCallBackKey() {
-		try {
-			task = new EncodingTask(file, system, destPath, destPath, "contrast.traits", "traits.pl", file.getOwner());
-			QueueTaskDao.persist(task);
-			
-			EncodingTask transform = QueueTaskDao.getTransformTaskByCallBackKey(((EncodingTask)task).getCallbackKey());
-			AssertJUnit.assertNotNull("Callback key should reference a persisted transform", transform);
-		} catch (Exception e) {
-			e.printStackTrace();
-			Assert.fail("Retrieving transform task by callback key should not throw an exception");
-		}
-	} 
 }

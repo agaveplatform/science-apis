@@ -4,20 +4,14 @@
 	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc.agave</groupId>
+		<groupId>org.agaveplatform</groupId>
 		<artifactId>tags</artifactId>
-		<version>2.1.11</version>
+		<version>2.2.24</version>
 	</parent>
 	<artifactId>tags-core</artifactId>
 	<name>Agave Core Science API Tags Service Core</name>
 	<description>Core classes for Agave Tags Service</description>
 	<packaging>jar</packaging>
-
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-tags.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-tags.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-tags</url>
-	</scm>
 
 	<properties>
 		<force.check.version>false</force.check.version>

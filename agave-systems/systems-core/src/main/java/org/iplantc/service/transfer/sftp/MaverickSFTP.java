@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -34,6 +33,7 @@ import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
+import com.sshtools.logging.LoggerFactory;
 import com.sshtools.publickey.SshPrivateKeyFile;
 import com.sshtools.publickey.SshPrivateKeyFileFactory;
 import com.sshtools.sftp.DirectoryOperation;
@@ -62,37 +62,32 @@ import com.sshtools.ssh2.Ssh2PublicKeyAuthentication;
  * @author dooley
  *
  */
-public class MaverickSFTP implements RemoteDataClient
+public final class MaverickSFTP implements RemoteDataClient
 {
+    // Logging.
 	private static final Logger log = Logger.getLogger(MaverickSFTP.class);
 	
-	static {
-		try {
-		
-		} 
-		catch (Throwable t) {
-			log.error(t);
-		}
-		
-	}
-	
+	// Set the logging level for the maverick library code.
+	// Comment out this static initializer to turn off 
+	// maverick library logging.
+	static {initializeMaverickSFTPLogger();}
 	
 	private SftpClient sftpClient = null;
 	private Ssh2Client ssh2 = null;
 	private SshClient forwardedConnection = null;
 	
-	protected String host;
-	protected int port;
-	protected String username;
-	protected String password;
-	protected String rootDir = "";
-	protected String homeDir = "";
-	protected String proxyHost;
-	protected int proxyPort;
-	protected String publicKey;
-	protected String privateKey;
-	protected SshConnector con;
-	protected SshAuthentication auth;
+	private String host;
+	private int    port;
+	private String username;
+	private String password;
+	private String rootDir = "";
+	private String homeDir = "";
+	private String proxyHost;
+	private int    proxyPort;
+	private String publicKey;
+	private String privateKey;
+	private SshConnector con;
+	private SshAuthentication auth;
 	private Map<String, SftpFileAttributes> fileInfoCache = new ConcurrentHashMap<String, SftpFileAttributes>();
 	
 	// Not clear what's going on here.  MAX_BUFFER_SIZE is commented out in all
@@ -149,8 +144,6 @@ public class MaverickSFTP implements RemoteDataClient
 		updateSystemRoots(rootDir, homeDir);
 	}
 	
-	
-	
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.transfer.RemoteDataClient#getHomeDir()
 	 */
@@ -196,176 +189,245 @@ public class MaverickSFTP implements RemoteDataClient
 
         this.homeDir = StringUtils.stripEnd(this.homeDir.replaceAll("/+", "/")," ");
         this.rootDir = StringUtils.stripEnd(this.rootDir.replaceAll("/+", "/")," ");
-        
     }
 	
 	@Override
-	public void authenticate() throws IOException, RemoteDataException 
+	public void authenticate() throws RemoteDataException 
 	{
 	    // clear cache here as we may have stale information in between authentications
 	    fileInfoCache.clear();
 	    
-		if (ssh2 != null && ssh2.isConnected() && ssh2.isAuthenticated()) {
-			return;
-		}
+	    // Maybe we're already authenticated.
+		if (ssh2 != null && ssh2.isConnected() && ssh2.isAuthenticated()) return;
 		
+		// Get a new authenticated session.
+		Socket sock = null;
 		try
 		{   
-			/**
-			 * Create an SshConnector instance
-			 */
-			con = SshConnector.createInstance();
+		    // Get a connector.
+			try {con = SshConnector.createInstance();}
+			    catch (Exception e) {
+			        String msg = getMsgPrefix() + "Unable to create SshConnector instance: " + e.getMessage();
+			        log.error(msg, e);
+			        throw e;
+			    }
 			
-			JCEComponentManager cm = (JCEComponentManager)ComponentManager.getInstance();
+			// Get a component manager.
+			JCEComponentManager cm;
+			try {cm = (JCEComponentManager)ComponentManager.getInstance();}
+			    catch (Exception e) {
+                    String msg = getMsgPrefix() + "Unable to create ComponentManager instance: " + e.getMessage();
+                    log.error(msg, e);
+                    throw e;
+			    }
+			
+			// Install some ciphers.
 			cm.installArcFourCiphers(cm.supportedSsh2CiphersCS());
 			cm.installArcFourCiphers(cm.supportedSsh2CiphersSC());
 			
-			((Ssh2Context)con.getContext()).setPreferredKeyExchange(Ssh2Context.KEX_DIFFIE_HELLMAN_GROUP14_SHA1);
+			// Set preferences.
+			try {
+			    ((Ssh2Context)con.getContext()).setPreferredKeyExchange(Ssh2Context.KEX_DIFFIE_HELLMAN_GROUP14_SHA1);
 			
-	        ((Ssh2Context)con.getContext()).setPreferredPublicKey(Ssh2Context.PUBLIC_KEY_SSHDSS);
-	        ((Ssh2Context)con.getContext()).setPublicKeyPreferredPosition(Ssh2Context.PUBLIC_KEY_ECDSA_521, 1);
+			    ((Ssh2Context)con.getContext()).setPreferredPublicKey(Ssh2Context.PUBLIC_KEY_SSHDSS);
+			    ((Ssh2Context)con.getContext()).setPublicKeyPreferredPosition(Ssh2Context.PUBLIC_KEY_ECDSA_521, 1);
 	        
-	        ((Ssh2Context)con.getContext()).setPreferredCipherCS(Ssh2Context.CIPHER_ARCFOUR_256);
-	        ((Ssh2Context)con.getContext()).setCipherPreferredPositionCS(Ssh2Context.CIPHER_ARCFOUR, 1);
-	        ((Ssh2Context)con.getContext()).setCipherPreferredPositionCS(Ssh2Context.CIPHER_AES128_CTR, 1);
+			    ((Ssh2Context)con.getContext()).setPreferredCipherCS(Ssh2Context.CIPHER_ARCFOUR_256);
+			    ((Ssh2Context)con.getContext()).setCipherPreferredPositionCS(Ssh2Context.CIPHER_ARCFOUR, 1);
+			    ((Ssh2Context)con.getContext()).setCipherPreferredPositionCS(Ssh2Context.CIPHER_AES128_CTR, 1);
 	        
-	        ((Ssh2Context)con.getContext()).setPreferredCipherSC(Ssh2Context.CIPHER_ARCFOUR_256);
-	        ((Ssh2Context)con.getContext()).setCipherPreferredPositionSC(Ssh2Context.CIPHER_ARCFOUR, 1);
-	        ((Ssh2Context)con.getContext()).setCipherPreferredPositionCS(Ssh2Context.CIPHER_AES128_CTR, 1);
+			    ((Ssh2Context)con.getContext()).setPreferredCipherSC(Ssh2Context.CIPHER_ARCFOUR_256);
+			    ((Ssh2Context)con.getContext()).setCipherPreferredPositionSC(Ssh2Context.CIPHER_ARCFOUR, 1);
+			    ((Ssh2Context)con.getContext()).setCipherPreferredPositionCS(Ssh2Context.CIPHER_AES128_CTR, 1);
 	        
-	        ((Ssh2Context)con.getContext()).setPreferredMacCS(Ssh2Context.HMAC_SHA256);
-	        ((Ssh2Context)con.getContext()).setMacPreferredPositionCS(Ssh2Context.HMAC_SHA1, 1);
-	        ((Ssh2Context)con.getContext()).setMacPreferredPositionCS(Ssh2Context.HMAC_MD5, 2);
+			    ((Ssh2Context)con.getContext()).setPreferredMacCS(Ssh2Context.HMAC_SHA256);
+			    ((Ssh2Context)con.getContext()).setMacPreferredPositionCS(Ssh2Context.HMAC_SHA1, 1);
+			    ((Ssh2Context)con.getContext()).setMacPreferredPositionCS(Ssh2Context.HMAC_MD5, 2);
 	        
-	        ((Ssh2Context)con.getContext()).setPreferredMacSC(Ssh2Context.HMAC_SHA256);
-	        ((Ssh2Context)con.getContext()).setMacPreferredPositionSC(Ssh2Context.HMAC_SHA1, 1);
-	        ((Ssh2Context)con.getContext()).setMacPreferredPositionSC(Ssh2Context.HMAC_MD5, 2);
+			    ((Ssh2Context)con.getContext()).setPreferredMacSC(Ssh2Context.HMAC_SHA256);
+			    ((Ssh2Context)con.getContext()).setMacPreferredPositionSC(Ssh2Context.HMAC_SHA1, 1);
+			    ((Ssh2Context)con.getContext()).setMacPreferredPositionSC(Ssh2Context.HMAC_MD5, 2);
+			}
+			catch (Exception e) {
+                String msg = getMsgPrefix() + "Failure setting a cipher preference: " + e.getMessage();
+                log.error(msg, e);
+                throw e;
+			}
 	        
-	        /**
-			 * Connect to the host
-			 */
-//	         SocketTransport t = null;
-//          if (StringUtils.isEmpty(proxyHost)) {
-//              t = new SocketTransport(host, port);
-//          } else {
-//              t = new SocketTransport(proxyHost, proxyPort);
-//          }
-	        
+			// Initialize socket.
 	        SocketAddress sockaddr = null; 
-	        Socket t = new Socket();
-
-			if (StringUtils.isEmpty(proxyHost)) {
-			    sockaddr = new InetSocketAddress(host, port);
-			} else {
-				sockaddr = new InetSocketAddress(proxyHost, proxyPort);
+	        sock = new Socket();
+			if (useTunnel()) sockaddr = new InetSocketAddress(proxyHost, proxyPort);
+			  else sockaddr = new InetSocketAddress(host, port);
+			     
+			
+			// Configure the socket.
+			//  - No delay means send each buffer without waiting to fill a packet.
+			//  - The performance preferences mean bandwidth, latency, connection time 
+			//    are given that priority.
+			//
+			// Note the original Agave code connected before setting these options,
+			// which at least in the case of the performance preferences caused them
+			// to be ignored.
+			try {
+			    sock.setTcpNoDelay(true);
+			    sock.setPerformancePreferences(0, 1, 2);
+			    sock.connect(sockaddr, 15000);
+			} catch (Exception e) {
+                String msg = getMsgPrefix() + "Socket connection failure: " + e.getMessage();
+                log.error(msg, e);
+                throw e; // sock is closed in final catch clause.
 			}
 			
-			t.connect(sockaddr, 15000);
+			// Use the connected socket to perform the ssh handshake.
+			try {ssh2 = (Ssh2Client) con.connect(new com.sshtools.net.SocketWrapper(sock), username);}
+			    catch (Exception e) {
+	                String msg = getMsgPrefix() + "Failure during ssh initialization: " + e.getMessage();
+	                log.error(msg, e);
+	                throw e;
+			    }
 			
-			t.setTcpNoDelay(true);
-			t.setPerformancePreferences(0, 1, 2);
-//			t.setSendBufferSize(MAX_BUFFER_SIZE);
-//	        t.setReceiveBufferSize(MAX_BUFFER_SIZE);
+			String[] authenticationMethods;
+			try {authenticationMethods = ssh2.getAuthenticationMethods(username);}
+			    catch (Exception e) {
+                    String msg = getMsgPrefix() + "Failure to get ssh2 authentication methods: " + e.getMessage();
+                    log.error(msg, e);
+                    throw e;
+			    }
 			
-			SshClient ssh = con.connect(new com.sshtools.net.SocketWrapper(t), username);
-			
-			/**
-			 * Determine the version
-			 */
-//			if (ssh instanceof Ssh1Client)
-//			{
-//				ssh.disconnect();
-//				
-//				throw new RemoteDataException(host
-//						+ " is an SSH1 server!! SFTP is not supported");
-//			}
-			
-			ssh2 = (Ssh2Client) ssh;
-			
-			String[] authenticationMethods = ssh2.getAuthenticationMethods(username);
 			int authStatus;
-			
 			if (!StringUtils.isEmpty(publicKey) && !StringUtils.isEmpty(privateKey))
 			{
-				/**
-				 * Authenticate the user using password authentication
-				 */
+				// Authenticate the user using pki authentication.
 				auth = new Ssh2PublicKeyAuthentication();
 				
 				do {
-					SshPrivateKeyFile pkfile = SshPrivateKeyFileFactory.parse(privateKey.getBytes());
+					SshPrivateKeyFile pkfile;
+					try {pkfile = SshPrivateKeyFileFactory.parse(privateKey.getBytes());}
+					    catch (Exception e) {
+		                    String msg = getMsgPrefix() + "Failure to parse private key: " + e.getMessage();
+		                    log.error(msg, e);
+		                    throw e;
+					    }
 					
+					// Create the key pair.
 					SshKeyPair pair;
-					if (pkfile.isPassphraseProtected()) {
-	                    pair = pkfile.toKeyPair(password);
-					} else {
-					    pair = pkfile.toKeyPair(null);
-					
+					try {
+					    if (pkfile.isPassphraseProtected()) pair = pkfile.toKeyPair(password);
+					      else pair = pkfile.toKeyPair(null);
+					} catch (Exception e) {
+                        String msg = getMsgPrefix() + "Failure to create key pair: " + e.getMessage();
+                        log.error(msg, e);
+                        throw e;
 					}
-
+					
+					// Assign keys to auth object.
 					((PublicKeyAuthentication)auth).setPrivateKey(pair.getPrivateKey());
 					((PublicKeyAuthentication)auth).setPublicKey(pair.getPublicKey());
-					authStatus = ssh2.authenticate(auth);
 					
+					// Authenticate.
+					try {authStatus = ssh2.authenticate(auth);}
+					    catch (Exception e) {
+	                        String msg = getMsgPrefix() + "Failure to authenticate using key pair: " + e.getMessage();
+	                        log.error(msg, e);
+	                        throw e;
+					    }
+					
+					// Try to handle interactive session.
 					if (authStatus == SshAuthentication.FURTHER_AUTHENTICATION_REQUIRED && 
-							Arrays.asList(authenticationMethods).contains("keyboard-interactive")) {
+							Arrays.asList(authenticationMethods).contains("keyboard-interactive")) 
+					{
+					    // Set up MFA request handler.
 						KBIAuthentication kbi = new KBIAuthentication();
 						kbi.setUsername(username);
 						kbi.setKBIRequestHandler(new MultiFactorKBIRequestHandler(password, null, username, host, port));
-						authStatus = ssh2.authenticate(kbi);
+						try {authStatus = ssh2.authenticate(kbi);}
+                            catch (Exception e) {
+                                String msg = getMsgPrefix() + "Failure to MFA authenticate using key pair: " + e.getMessage();
+                                log.error(msg, e);
+                                throw e;
+                            }
 					}
-				}
-				while (authStatus != SshAuthentication.COMPLETE 
-						&& authStatus != SshAuthentication.FAILED
-						&& authStatus != SshAuthentication.CANCELLED
-						&& ssh.isConnected());
+				} while (authStatus != SshAuthentication.COMPLETE  && 
+					     authStatus != SshAuthentication.FAILED    &&
+					     authStatus != SshAuthentication.CANCELLED &&
+					     ssh2.isConnected());
 			}
 			else
 			{
-				/**
-				 * Authenticate the user using password authentication
-				 */
-				auth = new com.sshtools.ssh.PasswordAuthentication();
+				//Authenticate the user using password authentication.
+				auth = new PasswordAuthentication();
 				do
 				{
 					((PasswordAuthentication)auth).setPassword(password);
 					
 					auth = checkForPasswordOverKBI(authenticationMethods);
 					
-					authStatus = ssh2.authenticate(auth);
-				}
-				while (authStatus != SshAuthentication.COMPLETE
-						&& authStatus != SshAuthentication.FAILED
-						&& authStatus != SshAuthentication.CANCELLED
-						&& ssh.isConnected());
+					try {authStatus = ssh2.authenticate(auth);}
+                        catch (Exception e) {
+                            String mfa = (auth instanceof PasswordAuthentication) ? "" : "MFA ";
+                            String msg = getMsgPrefix() + "Failure to " + mfa + "authenticate using a password: " + e.getMessage();
+                            log.error(msg, e);
+                            throw e;
+                    }
+				} while (authStatus != SshAuthentication.COMPLETE  && 
+                         authStatus != SshAuthentication.FAILED    &&
+                         authStatus != SshAuthentication.CANCELLED &&
+                         ssh2.isConnected());
 			}
 			
-			if (!ssh.isAuthenticated()) {
-				throw new RemoteDataException("Failed to authenticate to " + host);
+			// What happened?
+			if (!ssh2.isAuthenticated()) {
+                String msg = getMsgPrefix() + "Failed to authenticate.";
+                log.error(msg);
+				throw new RemoteDataException(msg);
 			}
-			else if (!StringUtils.isEmpty(proxyHost)) {
-				SshTunnel tunnel = ssh.openForwardingChannel(host, port,
-						"127.0.0.1", 22, "127.0.0.1", 22, null, null);
+			
+			// Do we need to continue authentication using a proxy?
+			if (useTunnel()) 
+			{
+				SshTunnel tunnel;
+				try {tunnel = ssh2.openForwardingChannel(host, port, "127.0.0.1", 22, "127.0.0.1", 22, null, null);}
+				    catch (Exception e) {
+                        String msg = getMsgPrefix() + "Failure open forwarding channel using proxy: " + e.getMessage();
+                        log.error(msg, e);
+                        throw e;
+				    }
 				
-				forwardedConnection = con.connect(tunnel, username);
-				forwardedConnection.authenticate(auth);
+				// Connect using the tunnel.
+				try {forwardedConnection = con.connect(tunnel, username);}
+				    catch (Exception e) {
+                        String msg = getMsgPrefix() + "Failure to connect using proxy: " + e.getMessage();
+                        log.error(msg, e);
+                        throw e;
+				    }
+				
+				try {forwardedConnection.authenticate(auth);}
+                    catch (Exception e) {
+                        String msg = getMsgPrefix() + "Failure to authenticate using proxy: " + e.getMessage();
+                        log.error(msg, e);
+                        throw e;
+                    }
 			} 
-			else {
-				// we're connected. carry on
-			}
-		}
-		catch (SshException e) {
-			throw new RemoteDataException("Failed to authenticate to " + host, e);
-		}
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (ConnectException e) {
-			throw new RemoteDataException("Connection refused: Unable to contact SFTP server at " + host + ":" + port, e);
 		}
 		catch (Exception e)
 		{
-			throw new RemoteDataException("Failed to authenticate to " + host, e);
+		    // All exceptions have previously been caught and logged.
+		    // We just have to make sure all resources are cleaned up
+		    // and that the declared exception type is thrown.
+		    if (ssh2 != null) try {ssh2.disconnect();} catch (Exception e1) {}
+		    if (forwardedConnection != null) try {forwardedConnection.disconnect();} catch (Exception e1) {}
+		    if (sock != null) try {sock.close();} catch (Exception e1){}
+		    
+		    // Null out fields.
+		    ssh2 = null;
+		    forwardedConnection = null;
+		    auth = null;
+		    con = null;
+		    
+		    // Throw the expected exception.
+		    if (e instanceof RemoteDataException) throw (RemoteDataException)e;
+		      else throw new RemoteDataException(e.getMessage(), e);
 		}
 	}
 	
@@ -378,15 +440,16 @@ public class MaverickSFTP implements RemoteDataClient
 	 * @param authenticationMethods
 	 * @return a {@link SshAuthentication} based on the ordering and existence of auth methods returned from the server.
 	 */
-	private SshAuthentication checkForPasswordOverKBI(String[] authenticationMethods) {
+	private SshAuthentication checkForPasswordOverKBI(String[] authenticationMethods) 
+	{
 		boolean kbiAuthenticationPossible = false;
 		for (int i = 0; i < authenticationMethods.length; i++) {
 			if (authenticationMethods[i].equals("password")) {
 				return auth;
 			}
 			if (authenticationMethods[i].equals("keyboard-interactive")) {
-
 				kbiAuthenticationPossible = true;
+				break;
 			}
 		}
 
@@ -405,7 +468,7 @@ public class MaverickSFTP implements RemoteDataClient
 	
 	private boolean useTunnel() 
 	{
-		return (!StringUtils.isEmpty(proxyHost));
+		return (!StringUtils.isBlank(proxyHost));
 	}
 
     @Override
@@ -417,51 +480,79 @@ public class MaverickSFTP implements RemoteDataClient
         return MAX_BUFFER_SIZE;  
     }
 
-    protected SftpClient getClient() throws IOException, RemoteDataException
+    protected SftpClient getClient() throws RemoteDataException
 	{
-		if (ssh2 == null || !ssh2.isConnected()) {
-			authenticate();
-		}
+        // Authenticate if necessary.
+		if (ssh2 == null || !ssh2.isConnected()) authenticate();
 		
 		try
 		{
-			if (sftpClient == null || sftpClient.isClosed()) {
-				if (useTunnel()) {
-					sftpClient = new SftpClient(forwardedConnection);
-				} else {
-					sftpClient = new SftpClient(ssh2);
-				}
-				// set only if the file size is larger than we're confortable 
+			if (sftpClient == null || sftpClient.isClosed()) 
+			{
+			    try {
+			        if (useTunnel()) sftpClient = new SftpClient(forwardedConnection);
+			          else sftpClient = new SftpClient(ssh2);
+			    } catch (Exception e) {
+                    String msg = getMsgPrefix() + "Failure to create sftpClient: " + e.getMessage();
+                    log.error(msg, e);
+                    throw e;
+			    }
+			    
+				// set only if the file size is larger than we're comfortable 
 				// putting in memory. by default this is -1, which means the 
 				// entire file is read into memory on a get/put
 				sftpClient.setMaxAsyncRequests(256);
 				sftpClient.setBufferSize(JUMBO_BUFFER_SIZE);
 				sftpClient.setTransferMode(SftpClient.MODE_BINARY);
-				
 			}
 			
 			return sftpClient;
 		}
 		catch (Exception e)
 		{
-			throw new RemoteDataException("Failed to establish a connection to " + host, e);
+			throw new RemoteDataException(e.getMessage(), e);
 		}
 	}
 	
 	@Override
 	public MaverickSFTPInputStream getInputStream(String path, boolean passive) throws IOException, RemoteDataException
 	{
-		path = resolvePath(path);
+		try {path = resolvePath(path);}   
+		    catch (Exception e){
+                String msg = getMsgPrefix() + "Failure to resolve input path: " + path + ": " + e.getMessage();
+                log.error(msg, e);
+                throw e;
+		    }
 		
-		return new MaverickSFTPInputStream(getClient(), path);
+		MaverickSFTPInputStream ins;
+		try {ins = new MaverickSFTPInputStream(getClient(), path);}
+            catch (Exception e){
+                String msg = getMsgPrefix() + "Failure to create inputstream for path: " + path + ": " + e.getMessage();
+                log.error(msg, e);
+                throw e;
+            }
+		
+		return ins;
 	}
 	
 	@Override
 	public MaverickSFTPOutputStream getOutputStream(String path, boolean passive, boolean append)
 	throws IOException, FileNotFoundException, RemoteDataException
 	{	
-		String resolvedPath = resolvePath(path);
-		SftpClient client = getClient();
+		String resolvedPath;
+		try {resolvedPath = resolvePath(path);}
+            catch (Exception e){
+                String msg = getMsgPrefix() + "Failure to resolve output path: " + path + ": " + e.getMessage();
+                log.error(msg, e);
+                throw e;
+            }
+		SftpClient client;
+		try {client = getClient();}
+            catch (Exception e){
+                String msg = getMsgPrefix() + "Failure to get output client. " + e.getMessage();
+                log.error(msg, e);
+                throw e;
+            }
 		
 		// workaround because maverick throws an exception if an output stream is opened to
 		// a file that does not exist.
@@ -475,35 +566,68 @@ public class MaverickSFTP implements RemoteDataClient
 			}
 			catch (SftpStatusException e) {
 				if (e.getMessage().toLowerCase().contains("no such file")) {
-					throw new FileNotFoundException("No such file or directory");
+	                String msg = getMsgPrefix() + "No such file or directory: " + path + ": " + e.getMessage();
+	                log.error(msg, e);
+					throw new FileNotFoundException(msg);
 				} else {
-					throw new RemoteDataException("Failed to establish output stream to " + path, e);
+                    String msg = getMsgPrefix() + "Failue to put file: " + path + ": " + e.getMessage();
+                    log.error(msg, e);
+					throw new RemoteDataException(msg, e);
 				}
 			}
 			catch (Exception e) {
-				throw new RemoteDataException("Failed to open an output stream to " + path, e);
+                String msg = getMsgPrefix() + "Failue to put file: " + path + ": " + e.getMessage();
+                log.error(msg, e);
+				throw new RemoteDataException(msg, e);
 			} 
 		}
 		
-		return new MaverickSFTPOutputStream(client, resolvedPath);
+		MaverickSFTPOutputStream outs;
+		try {outs = new MaverickSFTPOutputStream(client, resolvedPath);}
+            catch (Exception e){
+                String msg = getMsgPrefix() + "Failure to create outputstream for path: " + resolvedPath + ": "+ e.getMessage();
+                log.error(msg, e);
+                throw e;
+            }
+		    
+		return outs;
 	}
 
 	@Override
 	public List<RemoteFileInfo> ls(String remotedir)
 	throws IOException, FileNotFoundException, RemoteDataException
 	{
-		remotedir = resolvePath(remotedir);
+		try {remotedir = resolvePath(remotedir);}
+            catch (Exception e){
+                String msg = getMsgPrefix() + "Failure to resolve path: " + remotedir + ": " + e.getMessage();
+                log.error(msg, e);
+                throw e;
+            }
+
 		
 		List<RemoteFileInfo> fileList = new ArrayList<RemoteFileInfo>();
 		
 		try 
 		{
-			SftpFile[] files = getClient().ls(remotedir);
+			SftpFile[] files;
+			try {files = getClient().ls(remotedir);}
+                catch (Exception e){
+                    String msg = getMsgPrefix() + "Failure to list directory: " + remotedir + ": " + e.getMessage();
+                    log.error(msg, e);
+                    throw e;
+                }
 
+			// The exception handling here is confused and needs a redesign.
+			// For now, we log what's going on where an error occurs.
 			for (SftpFile file: files) 
 			{
 				if (file.getFilename().equals(".") || file.getFilename().equals("..")) continue;
-				fileList.add(new RemoteFileInfo(file));
+				try {fileList.add(new RemoteFileInfo(file));}
+				    catch (Exception e){
+		                String msg = getMsgPrefix() + "No such file or directory: " + file.getAbsolutePath() + ": " + e.getMessage();
+		                log.error(msg, e);
+				        throw e;
+				    }
 			}
 			Collections.sort(fileList);
 			return fileList;
@@ -528,68 +652,109 @@ public class MaverickSFTP implements RemoteDataClient
 	}
 
 	@Override
-	public void get(String remotedir, String localdir, RemoteTransferListener listener) 
+	public void get(String remoteSource, String localdir, RemoteTransferListener listener) 
 	throws IOException, FileNotFoundException, RemoteDataException
 	{
 		try 
 		{
-			if (isDirectory(remotedir)) 
+		    boolean isRemoteDir;
+		    try {isRemoteDir = isDirectory(remoteSource);}
+		        catch (Exception e){
+	                String msg = getMsgPrefix() + "Failure to access remote path " + remoteSource + ": " + e.getMessage();
+	                log.error(msg, e);
+	                throw e;
+		        }
+		    
+		    
+			if (isRemoteDir) 
 			{
-				File localDir = new File(localdir);
+				File localDirectory = new File(localdir);
 				
 				// if local directory is not there
-				if (!localDir.exists()) 
+				if (!localDirectory.exists()) 
 				{
 					// if parent is not there, throw exception
-					if (!localDir.getParentFile().exists()) {
+					if (!localDirectory.getParentFile().exists()) {
+	                    String msg = getMsgPrefix() + "Parent directory doesn't exist for local directory " + 
+					                 localDirectory.getAbsolutePath() + ".";
+	                    log.error(msg);
 						throw new FileNotFoundException("No such file or directory");
-					}
-					// otherwise we will download folder and give it a new name locally
-					else {
-						//localDir = new File(localDir, FilenameUtils.getName(remotedir));
 					}
 				} 
 				// can't download folder to an existing file
-				else if (!localDir.isDirectory()) 
+				else if (!localDirectory.isDirectory()) 
 				{
-					throw new RemoteDataException("Cannot download file to " + localdir + ". Local path is not a directory.");
+                    String msg = getMsgPrefix() + "Local target " + localDirectory.getAbsolutePath() + 
+                                 " is not a directory to receive content from remote directory " + remoteSource + ".";
+                    log.error(msg);
+					throw new RemoteDataException(msg);
 				}
 				else
 				{
 					// downloading to existing directory and keeping name
-					localDir = new File(localDir, FilenameUtils.getName(remotedir));
+					localDirectory = new File(localDirectory, FilenameUtils.getName(remoteSource));
 				}
-				DirectoryOperation operation = getClient().copyRemoteDirectory(resolvePath(remotedir), localDir.getAbsolutePath(), true, false, true, listener);
+				
+				DirectoryOperation operation;
+				try {
+				    operation = getClient().copyRemoteDirectory(resolvePath(remoteSource), localDirectory.getAbsolutePath(), 
+				                                                true, false, true, listener);
+				} catch (Exception e) {
+                    String msg = getMsgPrefix() + "Failed to copy remote directory " + remoteSource + 
+                                 " to local directory " + localDirectory.getAbsolutePath() + ": " + e.getMessage();
+                    log.error(msg, e);
+                    throw e;
+				}
+				
 				if (operation != null && !operation.getFailedTransfers().isEmpty()) {
-					throw new RemoteDataException("One or more files failed to be retrieved from " + remotedir);
+                    String msg = getMsgPrefix() + "Failed to copy at least one file from remote directory " + remoteSource + 
+                                 " to local directory " + localDirectory.getAbsolutePath() + ".";
+                    log.error(msg);
+					throw new RemoteDataException(msg);
 				}
-				if (!localDir.exists()) {
-					throw new RemoteDataException("Failed get directory from " + remotedir);
+				if (!localDirectory.exists()) {
+                    String msg = getMsgPrefix() + "Failed to copy remote directory " + remoteSource + 
+                                 " to local directory " + localDirectory.getAbsolutePath() + ".";
+                    log.error(msg);
+					throw new RemoteDataException(msg);
 				}
 			} 
 			else 
 			{
-				File localFile = new File(localdir);
+				File localTarget = new File(localdir);
 				
 				// verify local path and explicity resolve target path
-				if (!localFile.exists()) {
-					if (!localFile.getParentFile().exists()) {
-						throw new FileNotFoundException("No such file or directory");
+				if (!localTarget.exists()) {
+					if (!localTarget.getParentFile().exists()) {
+                        String msg = getMsgPrefix() + "Parent directory doesn't exist for local file " + 
+					                 localTarget.getAbsolutePath() + ".";
+                        log.error(msg);
+                        throw new FileNotFoundException("No such file or directory");
 					} 
 				} 
 				// if not a directory, overwrite local file
-				else if (!localFile.isDirectory()) {
+				else if (!localTarget.isDirectory()) {
 					
 				}
 				// if a directory, resolve full path
 				else {
-					localFile = new File(localFile,  FilenameUtils.getName(remotedir));
+					localTarget = new File(localTarget,  FilenameUtils.getName(remoteSource));
 				}
 				
-				getClient().get(resolvePath(remotedir), localFile.getAbsolutePath(), listener);
+				try {getClient().get(resolvePath(remoteSource), localTarget.getAbsolutePath(), listener);}
+				    catch (Exception e){
+	                    String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource + 
+                                     " to local target " + localTarget.getAbsolutePath() + ": " + e.getMessage();
+	                    log.error(msg, e);
+	                    throw e;
+				    }
+				
 				// make sure file transferred
-				if (!localFile.exists()) {
-					throw new RemoteDataException("Failed get file from " + remotedir);
+				if (!localTarget.exists()) {
+                    String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource + 
+                            " to local target " + localTarget.getAbsolutePath() + ".";
+                    log.error(msg);
+					throw new RemoteDataException(msg);
 				} 
 				// we could do a size check here...meah
 			}
@@ -598,17 +763,14 @@ public class MaverickSFTP implements RemoteDataClient
 			if (e.getMessage().toLowerCase().contains("no such file")) {
 				throw new FileNotFoundException("No such file or directory");
 			} else {
-				throw new RemoteDataException("Failed to get data from " + remotedir, e);
+				throw new RemoteDataException("Failed to get data from " + remoteSource, e);
 			}
 		}
-		catch (IOException e) {
+		catch (IOException | RemoteDataException e) {
 			throw e;
 		} 
-		catch (RemoteDataException e) {
-			throw e;
-		}
 		catch (Exception e) {
-			throw new RemoteDataException("Failed to get data from " + remotedir, e);
+			throw new RemoteDataException("Failed to get data from " + remoteSource, e);
 		}
 	}
 	
@@ -631,22 +793,41 @@ public class MaverickSFTP implements RemoteDataClient
     {
         File localFile = new File(localpath);
         if (!localFile.exists()) {
+            String msg = getMsgPrefix() + "Local path " + localFile.getAbsolutePath() + " does not exist.";
+            log.error(msg);
             throw new FileNotFoundException("No such file or directory");
         } 
         
         try 
         {
-            if (!doesExist(remotepath)) 
+            boolean remoteExists;
+            try {remoteExists = !doesExist(remotepath);}
+                catch (Exception e){
+                    String msg = getMsgPrefix() + "Remote path " + remotepath + " does not exist.";
+                    log.error(msg);
+                    throw e;
+                }
+            
+            
+            if (!remoteExists) 
             {
                 put(localpath, remotepath, listener);
             }
             else if (localFile.isDirectory()) 
             {   
-                throw new RemoteDataException("cannot append to a directory");
+                String msg = getMsgPrefix() + "Local path " + localFile.getAbsolutePath() + " cannot be a directory.";
+                log.error(msg);
+                throw new RemoteDataException(msg);
             }
             else 
             {
-                String resolvedPath = resolvePath(remotepath);
+                String resolvedPath;
+                try {resolvedPath = resolvePath(remotepath);}
+                    catch (Exception e){
+                        String msg = getMsgPrefix() + "Failure to resolve path: " + remotepath + ": " + e.getMessage();
+                        log.error(msg, e);
+                        throw e;
+                    }
                 
                 // bust cache since this file has now changed
                 fileInfoCache.remove(resolvedPath);
@@ -682,6 +863,8 @@ public class MaverickSFTP implements RemoteDataClient
 	{
 		File localFile = new File(localdir);
 		if (!localFile.exists()) {
+            String msg = getMsgPrefix() + "Local path " + localFile.getAbsolutePath() + " does not exist.";
+            log.error(msg);
 			throw new FileNotFoundException("No such file or directory");
 		} 
 		
@@ -689,12 +872,22 @@ public class MaverickSFTP implements RemoteDataClient
 		{
 		    if (localFile.isDirectory()) 
 			{	
+		        boolean remoteExists;
+		        try {remoteExists = doesExist(remotedir);}
+		            catch (Exception e){
+		                String msg = getMsgPrefix() + "Remote directory " + remotedir + " does not exist.";
+		                log.error(msg, e);
+		                throw e;
+		            }
+		        
 			    // can't upload folder to an existing file
-				if (doesExist(remotedir)) 
+				if (remoteExists) 
 				{
 					// can't put dir to file
 					if (!isDirectory(remotedir)) {
-						throw new RemoteDataException("cannot overwrite non-directory: " + remotedir + " with directory " + localFile.getName());
+                        String msg = getMsgPrefix() + "Cannot overwrite non-directory " + remotedir + " with directory " + localFile.getAbsolutePath();
+                        log.error(msg);
+						throw new RemoteDataException(msg);
 					} 
 					else 
 					{
@@ -707,30 +900,60 @@ public class MaverickSFTP implements RemoteDataClient
 				}
 				else
 				{
-					// upload and keep name.
+                    String msg = getMsgPrefix() + "Cannot write non-existent remote directory" + remotedir + ".";
+                    log.error(msg);
 					throw new FileNotFoundException("No such file or directory");
 				}
 				
 				// bust cache since this file has now changed
-				String resolvedPath = resolvePath(remotedir);
+				String resolvedPath;
+				try {resolvedPath = resolvePath(remotedir);}
+				    catch (Exception e) {
+		                String msg = getMsgPrefix() + "Failure to resolve remote path: " + remotedir + ": " + e.getMessage();
+		                log.error(msg, e);
+		                throw e;
+				    }
 				
 				fileInfoCache.remove(resolvedPath);
 				
-				DirectoryOperation operation = getClient().copyLocalDirectory(
-						localFile.getAbsolutePath(), resolvedPath, true, false, true, listener);
+				DirectoryOperation operation;
+				try {
+				    operation = getClient().copyLocalDirectory(localFile.getAbsolutePath(), resolvedPath, 
+				                                                true, false, true, listener);
+				} catch (Exception e) {
+                    String msg = getMsgPrefix() + "Failure to copy local directory " + localFile.getAbsolutePath() + 
+                                 " to " + resolvedPath + ": " + e.getMessage();
+                    log.error(msg, e);
+                    throw e;
+                }
 				
 				if (operation != null && !operation.getFailedTransfers().isEmpty()) {
-					throw new RemoteDataException("One or more files failed to be transferred to " + remotedir);
-				}
+                    String msg = getMsgPrefix() + "One or more files failed to copy from local directory " + 
+				                 localFile.getAbsolutePath() + " to " + resolvedPath + ".";
+                    log.error(msg);
+					throw new RemoteDataException(msg);
+				} 
 			} 
 			else 
 			{
-			    String resolvedPath = resolvePath(remotedir);
+			    String resolvedPath;
+			    try {resolvedPath = resolvePath(remotedir);}
+                    catch (Exception e) {
+                        String msg = getMsgPrefix() + "Failure to resolve remote path: " + remotedir + ": " + e.getMessage();
+                        log.error(msg, e);
+                        throw e;
+                    }
 			    
 			    // bust cache since this file has now changed
                 fileInfoCache.remove(resolvedPath);
                 
-                getClient().put(localFile.getAbsolutePath(), resolvedPath, listener);
+                try {getClient().put(localFile.getAbsolutePath(), resolvedPath, listener);}
+                    catch (Exception e){
+                        String msg = getMsgPrefix() + "Failure to write local file " + localFile.getAbsolutePath() +
+                                     " to " + resolvedPath + ": " + e.getMessage();
+                        log.error(msg, e);
+                        throw e;
+                    }
 			}
 		}
 		catch (SftpStatusException e) {
@@ -915,7 +1138,7 @@ public class MaverickSFTP implements RemoteDataClient
                 }
             }
             return atts;
-	    } catch (SftpStatusException | SshException | IOException | RemoteDataException e) {
+	    } catch (SftpStatusException | SshException | RemoteDataException e) {
 	        fileInfoCache.remove(resolvedPath);
 	        throw e;
 	    }
@@ -1089,23 +1312,6 @@ public class MaverickSFTP implements RemoteDataClient
 		{
 			if (ssh2.isAuthenticated()) 
 			{	
-//				if (useTunnel()) 
-//				{	
-//					SshTunnel tunnel = ssh2.openForwardingChannel(host, port,
-//							"127.0.0.1", 22, "127.0.0.1", 22, null, null);
-//	
-//					forwardedConnection = con.connect(tunnel, username);
-//					forwardedConnection.authenticate(auth);
-////					session = forwardedConnection.openSessionChannel();
-//					shell = new Shell(forwardedConnection);
-//				} else {
-//					// Some old SSH2 servers kill the connection after the first
-//					// session has closed and there are no other sessions started;
-//					// so to avoid this we create the first session and dont ever use it
-//					//session = ssh2.openSessionChannel();
-//					shell = new Shell(ssh2);
-//				}
-				
 				long remoteDestLength = length(remotesrc);
 				if (listener != null) {
 					listener.started(remoteDestLength, remotedest);
@@ -1116,18 +1322,6 @@ public class MaverickSFTP implements RemoteDataClient
 				if (isDirectory(remotesrc)) {
 				    resolvedSrc = StringUtils.stripEnd(resolvedSrc, "/") + "/.";
 				} 
-				
-//				String copyCommand = String.format("cp -rLf \"%s\" \"%s\"", resolvedSrc, resolvedDest);
-//				log.debug("Performing remote copy on " + host + ": " + copyCommand);
-//				ShellProcess process = shell.executeCommand(copyCommand);
-//				
-//				int r;
-//				StringBuilder builder = new StringBuilder();
-//				while((r = process.getInputStream().read()) > -1) {
-//				    builder.append((char)r);
-//				}
-//
-//				shell.exit();
 				
 				String copyCommand = String.format("cp -rLf \"%s\" \"%s\"", resolvedSrc, resolvedDest);
 				log.debug("Performing remote copy on " + host + ": " + copyCommand);
@@ -1345,9 +1539,9 @@ public class MaverickSFTP implements RemoteDataClient
 	@Override
 	public void disconnect()
 	{
-		try { sftpClient.quit(); } catch (Exception e) {}
-		try { forwardedConnection.disconnect(); } catch (Exception e) {}
-		try { ssh2.disconnect(); } catch (Exception e) {}
+		try {if (sftpClient != null) sftpClient.quit(); } catch (Exception e) {}
+		try {if (forwardedConnection != null) forwardedConnection.disconnect(); } catch (Exception e) {}
+		try {if (ssh2 != null) ssh2.disconnect(); } catch (Exception e) {}
 		ssh2 = null;
 		forwardedConnection = null;
 		sftpClient = null;
@@ -1377,7 +1571,14 @@ public class MaverickSFTP implements RemoteDataClient
 	@Override
 	public boolean doesExist(String path) throws IOException, RemoteDataException
 	{
-	    String resolvedPath = resolvePath(path);
+	    String resolvedPath;
+	    try {resolvedPath = resolvePath(path);}
+            catch (Exception e){
+                String msg = getMsgPrefix() + "Failure to resolve path: " + path + ": "+ e.getMessage();
+                log.error(msg, e);
+                throw e;
+            }
+        
 		try 
 		{
 			SftpFileAttributes atts = stat(resolvedPath);
@@ -1390,10 +1591,14 @@ public class MaverickSFTP implements RemoteDataClient
 			if (e.getMessage().toLowerCase().contains("no such file")) {
 			    return false;
 			} else {
-				throw new RemoteDataException("Failed to check existence of " + path , e);
+			    String msg = getMsgPrefix() + "stat command failure on path: " + resolvedPath + ": "+ e.getMessage();
+			    log.error(msg, e);
+				throw new RemoteDataException(msg, e);
 			}
 		}
 		catch (SshException e) {
+            String msg = getMsgPrefix() + "stat command exception on path: " + resolvedPath + ": "+ e.getMessage();
+            log.error(msg, e);
 			return false;
 		}
 	}
@@ -1505,15 +1710,6 @@ public class MaverickSFTP implements RemoteDataClient
             RemoteFileInfo fileInfo = getFileInfo(path);
             return fileInfo.userCanExecute();
             
-//            path = resolvePath(path);
-//            // Honors paths from the specified rootDir and checks permissions on the server
-//
-//            //if ((path.startsWith(rootDir) && ((attrs.permissions.intValue() & 00200) != 0)))  {
-//            if (path.startsWith(rootDir)) {
-//                return true;
-//            } else {
-//                return false;
-//            }
         } catch (Exception e) {
             return false;
         }
@@ -1729,6 +1925,39 @@ public class MaverickSFTP implements RemoteDataClient
 			return false;
 		return true;
 	}
+
+	/** Error message prefix generator that captures parameters to this
+	 * instance when an error occurs.
+	 * 
+	 * @return the prefix to a log message
+	 */
+	private String getMsgPrefix()
+	{
+	    String s = this.getClass().getSimpleName() + " [";
+	    s+= "host=" + host;
+	    s+= ", port=" + port;
+	    s+= ", usename=" + username;
+	    s+= ", password=" + (StringUtils.isBlank(password) ? "" : "***");
+	    s+= ", rootDir=" + rootDir;
+	    s+= ", homeDir=" + homeDir;
+	    s+= ", proxyHost=" + proxyHost;
+	    s+= ", proxyPort=" + proxyPort;
+	    s+= ", publicKey=" + (StringUtils.isBlank(publicKey) ? "" : "***");
+	    s+= ", privateKey=" + (StringUtils.isBlank(privateKey) ? "" : "***");
+	    s+= "]: ";
+	    return s;
+	}
 	
-	
+	/** This method initializes maverick library logging to use the agave
+	 * log as the ultimate target.  By default, the maverick library does
+	 * not log.  Setting the log level to any of the 3 supported levels
+	 * (ERROR, INFO, DEBUG) enables logging in the library.  
+	 */
+	private static void initializeMaverickSFTPLogger()
+	{
+	    // Create the object that bridges maverick logging to agave logging.
+	    // Assign a logger to the maverick logger factory has the side effect
+	    // of enabling maverick logging.
+	    LoggerFactory.setInstance(MaverickSFTPLogger.getInstance());
+	}
 }

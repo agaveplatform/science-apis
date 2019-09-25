@@ -61,10 +61,7 @@ public class SoftwareInput implements SoftwareAttribute<SoftwareInput>
 	private String		description;			// Optional. Supplemental text
 												// description
 	private String		argument;				// name as it appears when used on the command line
-	private String		fileTypes;				// Optional. Comma-separated
-												// list of valid fileTypes
-												// provided by
-												// /data/transforms/list
+	private String		fileTypes;				// Optional. Not currently used; defaults to raw
 	private String		ontology;				// Optional. Comma-separated
 												// list of fully qualified URLs
 												// pointing to ontology

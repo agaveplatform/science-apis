@@ -16,7 +16,6 @@ import org.iplantc.service.io.dao.QueueTaskDao;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.io.model.enumerations.TransformTaskStatus;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
@@ -136,7 +135,7 @@ public class StagingJobTest extends BaseTestCase {
 	private Object[][] testStageNextURIProvider(Method m) throws Exception
 	{
 		
-		URI httpUri = new URI("http://agaveapi.co/wp-content/themes/agave/images/favicon.ico");
+		URI httpUri = new URI("https://agaveplatform.org/wp-content/themes/agave/images/favicon.ico");
 		URI httpsUri = new URI("https://avatars0.githubusercontent.com/u/785202");
 		URI httpPortUri = new URI("http://docker.example.com:10080/public/test_upload.bin");
 		URI httpsPortUri = new URI("https://docker.example.com:10443/public/test_upload.bin");
@@ -267,7 +266,7 @@ public class StagingJobTest extends BaseTestCase {
 			
 			if (shouldSucceed) 
 			{
-				Assert.assertEquals(file.getStatus(), TransformTaskStatus.TRANSFORMING_COMPLETED.name(), message );
+				Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_COMPLETED.name(), message );
 				
 				Assert.assertTrue(destClient.doesExist(expectedPath), 
 						"Staged file is not present on the remote system.");
@@ -370,8 +369,8 @@ public class StagingJobTest extends BaseTestCase {
 			
 			file = LogicalFileDao.findById(file.getId());
 			
-			Assert.assertEquals(file.getStatus(), TransformTaskStatus.TRANSFORMING_COMPLETED.name(),
-					"Logical file status was not TRANSFORMING_COMPLETED" );
+			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_COMPLETED.name(),
+					"Logical file status was not STAGING_COMPLETED" );
 			
 			Assert.assertTrue(destClient.doesExist(expectedPath), 
 					"Staged file is not present on the remote system.");
@@ -561,8 +560,8 @@ public class StagingJobTest extends BaseTestCase {
 			
 			file = LogicalFileDao.findById(file.getId());
 			
-			Assert.assertEquals(file.getStatus(), TransformTaskStatus.TRANSFORMING_COMPLETED.name(),
-					"Logical file status was not TRANSFORMING_COMPLETED" );
+			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_COMPLETED.name(),
+					"Logical file status was not STAGING_COMPLETED" );
 			
 			Assert.assertTrue(destClient.doesExist(expectedPath), 
 					"Staged file is not present on the remote system.");

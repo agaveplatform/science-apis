@@ -98,7 +98,7 @@ public class RemoteHPCJobSubmissionTest extends AbstractJobSubmissionTest
 		job.setArchiveSystem(storageSystem);
 		job.setCreated(new Date());
 		job.setMemoryPerNode((double)512);
-		job.setOwner("dooley");
+		job.setOwner("xxx");
 		job.setProcessorsPerNode((long)1);
 		job.setMaxRunTime("1:00:00");
 		job.setSoftwareName(software.getUniqueName());

@@ -3,13 +3,13 @@
 
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc</groupId>
-		<artifactId>agave</artifactId>
-		<version>2.1.11</version>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>science-apis</artifactId>
+		<version>2.2.24</version>
 	</parent>
-	<groupId>org.iplantc.agave</groupId>
+
 	<artifactId>systems</artifactId>
-	<name>iPlant Agave API Systems Service Parent POM</name>
+	<name>Agave Platform Systems Service Parent POM</name>
 	<description>This is the parent project for the Agave Systems services.</description>
 	<packaging>pom</packaging>
 	
@@ -20,12 +20,6 @@
 			<url>https://maven.tacc.utexas.edu/nexus/content/repositories/renci.repository</url>
 		</repository>
 	</repositories>
-	
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-systems.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-systems.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-systems</url>
-	</scm>
 
 	<modules>
 		<module>systems-core</module>

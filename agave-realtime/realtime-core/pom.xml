@@ -4,20 +4,14 @@
 	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc.agave</groupId>
+		<groupId>org.agaveplatform</groupId>
 		<artifactId>realtime</artifactId>
-		<version>2.1.11</version>
+		<version>2.2.24</version>
 	</parent>
 	<artifactId>realtime-core</artifactId>
 	<name>Agave Platform Realtime Service Core</name>
 	<description>Core classes for Agave Realtime Service</description>
 	<packaging>jar</packaging>
-
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-realtime.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-realtime.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-tags</url>
-	</scm>
 
 	<properties>
 		<force.check.version>false</force.check.version>
@@ -39,11 +33,6 @@
 	</build>
 
 	<dependencies>
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>transforms-core</artifactId>
-			<version>${project.version}</version>
-		</dependency>
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>jobs-core</artifactId>

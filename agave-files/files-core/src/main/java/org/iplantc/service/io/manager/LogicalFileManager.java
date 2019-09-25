@@ -3,7 +3,6 @@ package org.iplantc.service.io.manager;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -15,22 +14,18 @@ import javax.validation.ValidatorFactory;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.validator.routines.UrlValidator;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.exceptions.LogicalFileException;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.io.model.enumerations.TransformTaskStatus;
-import org.iplantc.service.io.util.ServiceUtils;
+import org.iplantc.service.metadata.model.MetadataViews.Resource.Notifications;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -277,9 +272,7 @@ public class LogicalFileManager
 			FileEventType[] defaultUploadNotificationEvents = { 
 					FileEventType.STAGING_COMPLETED,
 					FileEventType.STAGING_FAILED,
-					FileEventType.UPLOAD,
-					FileEventType.TRANSFORMING_FAILED,
-					FileEventType.TRANSFORMING_COMPLETED };
+					FileEventType.UPLOAD };
 			List<String> validEvents = new ArrayList<String>();
 			
 			for (FileEventType eventType: defaultUploadNotificationEvents) {

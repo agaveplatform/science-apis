@@ -3,20 +3,14 @@
 
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc.agave</groupId>
+		<groupId>org.agaveplatform</groupId>
 		<artifactId>systems</artifactId>
-		<version>2.1.11</version>
+		<version>2.2.24</version>
 	</parent>
 	<artifactId>systems-core</artifactId>
-	<name>iPlant Agave API Systems Service Core</name>
+	<name>Agave Platform Systems Service Core</name>
 	<description>Core classes for Agave Systems service</description>
 	<packaging>jar</packaging>
-
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-systems.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-systems.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-systems</url>
-	</scm>
 
 	<properties>
 		<force.check.update>false</force.check.update>
@@ -38,24 +32,6 @@
 			</testResource>
 		</testResources>
 		<plugins>
-			<plugin>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>default-compile</id>
-						<phase>compile</phase>
-						<goals>
-							<goal>compile</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<proc>none</proc>
-					<debug>true</debug>
-					<source>1.7</source>
-					<target>1.7</target>
-				</configuration>
-			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
@@ -139,20 +115,6 @@
 			<artifactId>jclouds-slf4j</artifactId>
 			<version>${jclouds.version}</version>
 		</dependency>
-		<!-- <dependency> <groupId>org.apache.jclouds.provider</groupId> <artifactId>aws-s3</artifactId> 
-			<version>${jclouds.version}</version> </dependency> <dependency> <groupId>org.apache.jclouds.provider</groupId> 
-			<artifactId>azureblob</artifactId> <version>${jclouds.version}</version> 
-			</dependency> -->
-
-		<!-- <dependency> <groupId>org.apache.jclouds.api</groupId> <artifactId>openstack-nova</artifactId> 
-			<version>${jclouds.version}</version> </dependency> <dependency> <groupId>org.apache.jclouds.provider</groupId> 
-			<artifactId>cloudfiles-us</artifactId> <version>${jclouds.version}</version> 
-			</dependency> <dependency> <groupId>org.apache.jclouds.provider</groupId> 
-			<artifactId>cloudfiles-uk</artifactId> <version>${jclouds.version}</version> 
-			</dependency> <dependency> <groupId>org.apache.jclouds.provider</groupId> 
-			<artifactId>hpcloud-objectstorage</artifactId> <version>${jclouds.version}</version> 
-			</dependency> -->
-
 		<dependency>
 			<groupId>org.irods.jargon</groupId>
 			<artifactId>jargon-core</artifactId>

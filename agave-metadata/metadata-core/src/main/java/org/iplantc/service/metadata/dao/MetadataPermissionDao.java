@@ -142,15 +142,13 @@ public class MetadataPermissionDao {
             
             String sql = "select distinct uuid from metadata_permissions "
             		+ "where tenant_id = :tenantid "
-            		+ "		and (permission = :allpem or permission like '%READ%') "
-            		+ "		and username in (:owner, :world, :public) "
-            		+ "order by last_updated DESC";	
+            		+ "		and permission in ('ALL', 'READ', 'READ_WRITE', 'READ_EXECUTE') "
+            		+ "		and username in (:owner, :world, :public)";
             Query query = session.createSQLQuery(sql)
                 .setString("tenantid", TenancyHelper.getCurrentTenantId())
                 .setString("owner", username)
                 .setString("world", Settings.WORLD_USER_USERNAME)
-                .setString("public", Settings.PUBLIC_USER_USERNAME)
-            	.setString("allpem", PermissionType.ALL.name());
+                .setString("public", Settings.PUBLIC_USER_USERNAME);
             
             if (offset > 0) {
             	query.setFirstResult(offset);
@@ -161,16 +159,6 @@ public class MetadataPermissionDao {
             }
             
             List<String> metadataUUIDGrantedToUser = query.list();
-            
-//            String sql = "select uuid from MetadataPermission "
-//                    + "where username = :username and  "
-//                    + "      (permission like :readable or "
-//                    + "       permission like :ownership";
-//            List<String> metadataUUIDGrantedToUser = session.createSQLQuery(sql)
-//                    .setString("username", username)
-//                    .setString("readable", "%" + PermissionType.READ.name() + "%")
-//                    .setString("ownership", PermissionType.ALL.name())
-//                    .list();
             
             session.flush();
             

@@ -4,13 +4,10 @@
 package org.iplantc.service.jobs.managers;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.jobs.model.enumerations.JobMacroType;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.notification.exceptions.BadCallbackException;
 import org.iplantc.service.notification.exceptions.NotificationException;
@@ -18,7 +15,6 @@ import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**

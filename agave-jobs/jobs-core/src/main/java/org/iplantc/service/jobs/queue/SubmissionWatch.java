@@ -6,8 +6,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.UnresolvableObjectException;
-import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.Settings;
@@ -23,7 +21,6 @@ import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
@@ -65,9 +62,9 @@ public class SubmissionWatch extends AbstractJobWatch
 			{
 				try
 				{
-					log.debug("Remote execution of job " + job.getUuid() + " is current paused due to quota restrictions. " + e.getMessage());
+					log.debug("Remote execution of job " + job.getUuid() + " is currently paused due to quota restrictions. " + e.getMessage());
 					this.job = JobManager.updateStatus(job, JobStatusType.STAGED, 
-						"Remote execution of job " + job.getUuid() + " is current paused due to quota restrictions. " + 
+						"Remote execution of job " + job.getUuid() + " is currently paused due to quota restrictions. " + 
 						e.getMessage() + ". This job will resume staging once one or more current jobs complete.");
 				}
 				catch (Throwable e1) {
@@ -82,8 +79,8 @@ public class SubmissionWatch extends AbstractJobWatch
 				    log.debug("One or more dependent systems for job " + getJob().getUuid() 
 				            + " is currently unavailable. " + e.getMessage());
 				    this.job = JobManager.updateStatus(job, JobStatusType.STAGED, 
-						"Remote execution of job " + job.getUuid() + " is current paused waiting for " + job.getSystem() + 
-						"to become available. If the system becomes available again within 7 days, this job " + 
+						"Remote execution of job " + job.getUuid() + " is currently paused waiting for " + job.getSystem() + 
+						" to become available. If the system becomes available again within 7 days, this job " + 
 						"will resume staging. After 7 days it will be killed.");
 				}
 				catch (Throwable e1) {
@@ -161,7 +158,7 @@ public class SubmissionWatch extends AbstractJobWatch
 				try
 				{
 					this.job = JobManager.updateStatus(job, JobStatusType.STAGED,
-						"Submission is current paused waiting for the execution system " + executionSystem.getSystemId() +
+						"Submission is currently paused waiting for the execution system " + executionSystem.getSystemId() +
 						" to become available. If the system becomes available again within 7 days, this job " +
 						"will resume archiving. After 7 days it will be killed.");
 				}

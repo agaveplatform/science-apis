@@ -56,7 +56,7 @@ public class AgaveSftpConnect {
 
 		try {
 //			System.out.print("Hostname: ");
-			String hostname = "api.staging.agaveapi.co";
+			String hostname = "api.staging.agaveplatform.org";
 //			hostname = reader.readLine();
 //
 //			int idx = hostname.indexOf(':');

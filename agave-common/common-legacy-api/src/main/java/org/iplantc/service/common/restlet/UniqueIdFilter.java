@@ -1,21 +1,28 @@
 package org.iplantc.service.common.restlet;
 
 
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
-import org.slf4j.MDC;
+import java.io.IOException;
+import java.util.Base64;
+import java.util.concurrent.ThreadLocalRandom;
 
-import javax.servlet.*;
+import javax.servlet.Filter;
+import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
+import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 
-import java.io.IOException;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.MDC;
 
 /**
  * Created by wcs on 7/17/14.
  */
 public class UniqueIdFilter implements Filter {
-
+    
+    // 3 bytes of randomness fit into 2^24 - 1. 
+    private static final int CEILING = 0x1000000;
 
     public void destroy() {
     }
@@ -25,37 +32,45 @@ public class UniqueIdFilter implements Filter {
 
     }
 
-    public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain) throws IOException, ServletException {
+    public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain) 
+     throws IOException, ServletException {
         if (req instanceof HttpServletRequest) {
             final HttpServletRequest httpRequest = (HttpServletRequest)req;
             final String requestId = httpRequest.getHeader("UNIQUE_ID");
             if (StringUtils.isNotEmpty(requestId)) {
                 MDC.put("UNIQUE_ID", requestId);
             } else {
-                MDC.put("UNIQUE_ID", "none");
+                MDC.put("UNIQUE_ID", getRandomString());
             }
         } else {
             MDC.put("UNIQUE_ID", "none");
         }
         
-//        final String hostname = System.getenv("HOSTNAME");
-//        if (StringUtils.isNotEmpty(hostname)) {
-//        	MDC.put("HOSTNAME", hostname);
-//        } else {
-//        	MDC.put("HOSTNAME", "docker.example.com");
-//        }
-//        
-//        final String containerId = System.getenv("CONTAINER_ID");
-//        if (StringUtils.isNotEmpty(containerId)) {
-//        	MDC.put("CONTAINER_ID", containerId);
-//        } else {
-//        	// use the second token in the uuid. This is a unique identifier for a container per system.
-//        	AgaveUUID uuid = new AgaveUUID(UUIDType.APP);
-//        	MDC.put("CONTAINER_ID", StringUtils.split(uuid.toString())[1]);
-//        }
-        
         chain.doFilter(req, resp);
 
     }
 
+    /** Generate a pseudo-random base64url string that
+     * can be used to identify the request serviced by
+     * this thread.  
+     * 
+     * @return the randomized string
+     */
+    private static String getRandomString() 
+    {
+        // Get a pseudo-random int value that has its low-order 
+        // 24 bits randomized, which is enough to generate a 
+        // 4 character base64 string.
+        int n = ThreadLocalRandom.current().nextInt(CEILING);
+        byte[] b = new byte[3];
+        b[2] = (byte) (n);
+        n >>>= 8;
+        b[1] = (byte) (n);
+        n >>>= 8;
+        b[0] = (byte) (n);
+        
+        // Encode the 3 bytes into 4 characters 
+        // and avoid any padding.
+        return Base64.getUrlEncoder().encodeToString(b);
+    }
 }

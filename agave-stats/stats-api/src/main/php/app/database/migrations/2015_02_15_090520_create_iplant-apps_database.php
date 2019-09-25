@@ -83,48 +83,6 @@ class CreateIplant-AppsDatabase extends Migration {
 
 
 	    /**
-	     * Table: decoding_tasks
-	     */
-	    Schema::create('decoding_tasks', function($table) {
-                $table->increments('id');
-                $table->string('callback_key', 64);
-                $table->dateTime('created');
-                $table->string('current_filter', 64);
-                $table->string('dest_path', 255);
-                $table->string('dest_transform', 64);
-                $table->string('destination_uri', 255);
-                $table->string('source_path', 255);
-                $table->string('src_transform', 64);
-                $table->string('status', 8);
-                $table->bigInteger('logical_file_id')->nullable();
-                $table->bigInteger('system_id')->nullable();
-                $table->index('id');
-                $table->index('FKAE027D7A1DCDC7B0');
-                $table->index('FKAE027D7ABBBF083F');
-            });
-
-
-	    /**
-	     * Table: encoding_tasks
-	     */
-	    Schema::create('encoding_tasks', function($table) {
-                $table->increments('id');
-                $table->string('callback_key', 64);
-                $table->dateTime('created');
-                $table->string('dest_path', 255);
-                $table->string('source_path', 255);
-                $table->string('status', 32);
-                $table->string('transform_name', 32);
-                $table->string('transform_filter_name', 32);
-                $table->bigInteger('logical_file_id')->nullable();
-                $table->bigInteger('system_id')->nullable();
-                $table->index('id');
-                $table->index('FKF27B81A21DCDC7B0');
-                $table->index('FKF27B81A2BBBF083F');
-            });
-
-
-	    /**
 	     * Table: executionsystems
 	     */
 	    Schema::create('executionsystems', function($table) {
@@ -851,8 +809,6 @@ class CreateIplant-AppsDatabase extends Migration {
 	            Schema::drop('authconfigs');
 	            Schema::drop('batchqueues');
 	            Schema::drop('credentialservers');
-	            Schema::drop('decoding_tasks');
-	            Schema::drop('encoding_tasks');
 	            Schema::drop('executionsystems');
 	            Schema::drop('fileevents');
 	            Schema::drop('internalusers');

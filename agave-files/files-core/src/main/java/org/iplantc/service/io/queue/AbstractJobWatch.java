@@ -20,9 +20,7 @@ public abstract class AbstractJobWatch<T extends QueueTask> implements WorkerWat
     protected LogicalFile file = null;
     protected Long queueTaskId;
     
-//    private WorkerAction workerAction = null;
     private boolean allowFailure = false;
-    private JobProducerFactory jobProducerFactory;
     
     public AbstractJobWatch() {
         super();
@@ -50,31 +48,53 @@ public abstract class AbstractJobWatch<T extends QueueTask> implements WorkerWat
                 setQueueTaskId(context.getMergedJobDataMap().getLong("queueTaskId"));
             }
     		
-    		if (getQueueTask() != null 
-    		        && (getQueueTask().getStatusAsString().equalsIgnoreCase("STAGING_QUEUED") 
-    		            || getQueueTask().getStatusAsString().equalsIgnoreCase("TRANSFORMING_QUEUED"))) 
+    		// Set the queueTask field if it's currently null.
+    		getQueueTask();
+    		
+    		if (queueTask != null 
+    		        && (queueTask.getStatusAsString().equalsIgnoreCase("STAGING_QUEUED") 
+    		            || queueTask.getStatusAsString().equalsIgnoreCase("TRANSFORMING_QUEUED"))) 
             {
     		    // this is a new thread and thus has no tenant info loaded. we set it up
                 // here so things like app and system lookups will stay local to the 
                 // tenant
-                TenancyHelper.setCurrentTenantId(getQueueTask().getLogicalFile().getTenantId());
-                TenancyHelper.setCurrentEndUser(getQueueTask().getLogicalFile().getOwner());
+                TenancyHelper.setCurrentTenantId(queueTask.getLogicalFile().getTenantId());
+                TenancyHelper.setCurrentEndUser(queueTask.getLogicalFile().getOwner());
                 
-    			doExecute();
-                log.debug("Worker found " + getClass().getSimpleName() + " " + getQueueTask().getId() 
-                        + " for user " + getQueueTask().getLogicalFile().getOwner() + " to process");
+    			if (log.isDebugEnabled())
+    			    log.debug("Worker found " + getClass().getSimpleName() + " " + queueTask.getId() 
+                        + " for user " + queueTask.getLogicalFile().getOwner() + " to process");
+                doExecute();
                 
-            }
+            } else {
+                  // Log why we got here.
+                  if (log.isTraceEnabled()) {
+                      String msg;
+                      if (queueTask == null) 
+                          msg = getClass().getSimpleName() + " skipping execution of null task!";
+                        else {
+                          msg = getClass().getSimpleName() + " skipping execution of task " + queueTask.getId() 
+                                  + " because status equals " + queueTask.getStatusAsString() + "."; 
+                          if (queueTask.getLogicalFile() != null)
+                              msg += " The associated file is " + 
+                                      queueTask.getLogicalFile().getAgaveRelativePathFromAbsolutePath() +
+                                     " for user " + queueTask.getLogicalFile().getOwner() + ".";
+                        }
+                      log.trace(msg);
+                  }
+    		}
     	}
     	catch(JobExecutionException e) {
-//    	    log.error(e);
+    	    String msg = "Unable to execute quartz job: " + e.getMessage();
+    	    log.error(msg, e);
     	    if (allowFailure) throw e;
     	}
     	catch (Throwable e) 
     	{
-    		log.error("Unexpected error during job worker execution", e);
+    	    String msg = "Unexpected error during job worker execution: " + e.getMessage();
+    		log.error(msg, e);
     		if (allowFailure) 
-    		    throw new JobExecutionException("Unexpected error during job worker execution",e);
+    		    throw new JobExecutionException(msg, e);
     	}
     	finally {
 	        if (this.queueTaskId != null) {
@@ -119,8 +139,9 @@ public abstract class AbstractJobWatch<T extends QueueTask> implements WorkerWat
             }
             timeout++;
             if (timeout >= 30) {
-                throw new UnableToInterruptJobException("Unable to interrupt " + getClass().getName() + " task " 
-                        + getQueueTask().getId() + " after 30 seconds.");
+                String msg = "Unable to interrupt " + getClass().getName() + " task " 
+                             + getQueueTask().getId() + " after 30 seconds.";
+                throw new UnableToInterruptJobException(msg);
             }
         }
     }

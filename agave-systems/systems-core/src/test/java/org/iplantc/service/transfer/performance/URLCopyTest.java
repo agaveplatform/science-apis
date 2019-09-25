@@ -151,8 +151,8 @@ public class URLCopyTest extends BaseTransferTestCase
 	{
 		List<Object[]> testCases = new ArrayList<Object[]>();
 		for(StorageProtocolType destType: testDestTypes) {
-			testCases.add(new Object[] { URI.create("http://preview.agaveapi.co/wp-content/themes/agave/images/favicon.ico"), destType, "Public URL copy to " + destType.name() + " should succeed", false });
-			testCases.add(new Object[] { URI.create("http://agaveapi.co/wp-content/themes/agave/images/favicon.ico"), destType, "Public 301 redirected URL copy to " + destType.name() + " should succeed", false });
+			testCases.add(new Object[] { URI.create("http://preview.agaveplatform.org/wp-content/themes/agave/images/favicon.ico"), destType, "Public URL copy to " + destType.name() + " should succeed", false });
+			testCases.add(new Object[] { URI.create("https://agaveplatform.org/wp-content/themes/agave/images/favicon.ico"), destType, "Public 301 redirected URL copy to " + destType.name() + " should succeed", false });
 			testCases.add(new Object[] { URI.create("https://avatars0.githubusercontent.com/u/785202"), destType, "Public HTTPS URL copy to " + destType.name() + " should succeed", false });
 			testCases.add(new Object[] { URI.create("http://docker.example.com:10080/public/" + DEST_FILENAME), destType, "Public URL copy to " + destType.name() + " on alternative port should succeed", false });
 			testCases.add(new Object[] { URI.create("https://docker.example.com:10443/public/" + DEST_FILENAME), destType, "Public HTTPS URL copy to " + destType.name() + " on alternative port should succeed", false });

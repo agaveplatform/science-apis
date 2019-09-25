@@ -36,12 +36,8 @@ public class EventFilterFactory {
 			return new SystemNotificationEvent(uuid, notification,event, owner);
 		} else if (eventResourceType.equals(UUIDType.TAG)) {
 			return new TagNotificationEvent(uuid, notification,event, owner);
-		} else if (eventResourceType.equals(UUIDType.TOKEN)) {
-			return new TokenNotificationEvent(uuid, notification,event, owner);
 		} else if (eventResourceType.equals(UUIDType.TRANSFER)) {
 			return new TransferNotificationEvent(uuid, notification,event, owner);
-		} else if (eventResourceType.equals(UUIDType.TRANSFORM)) {
-			return new TransformNotificationEvent(uuid, notification,event, owner);
 		} else {
 			return null;
 		}

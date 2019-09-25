@@ -25,7 +25,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.BasicDBObjectBuilder;
-import com.mongodb.CommandFailureException;
 import com.mongodb.Cursor;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -77,13 +76,7 @@ public class FailedNotificationAttemptQueue {
     	{
 	    	mongoClient = new MongoClient(new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT), Arrays.asList(getMongoCredential()));
     	} 
-    	else if (!mongoClient.getConnector().isOpen()) 
-    	{
-    		try { mongoClient.close(); } catch (Exception e) { log.error("Failed to close mongo client.", e); }
-    		mongoClient = null;
-    		mongoClient = new MongoClient(new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT), Arrays.asList(getMongoCredential()));
-    	}
-    		
+
         return mongoClient;
     }
     
@@ -94,7 +87,7 @@ public class FailedNotificationAttemptQueue {
     private MongoCredential getMongoCredential() {
 //    	return MongoCredential.createMongoCRCredential(
 //                Settings.METADATA_DB_USER, "api", Settings.METADATA_DB_PWD.toCharArray());
-    	return MongoCredential.createCredential(
+		return MongoCredential.createScramSha1Credential(
                 Settings.FAILED_NOTIFICATION_DB_USER, "api", Settings.FAILED_NOTIFICATION_DB_PWD.toCharArray());
     }
     
@@ -126,7 +119,7 @@ public class FailedNotificationAttemptQueue {
                 		.get();
                 cappedCollection = db.createCollection(collectionName, options);
         	}
-        	catch (CommandFailureException e) {
+        	catch (Throwable e) {
         		cappedCollection = db.getCollection(collectionName);
         		if (!cappedCollection.isCapped()) {
         			try {
@@ -263,7 +256,6 @@ public class FailedNotificationAttemptQueue {
 	 * Removes all {@link NotificationAttempt} from a {@link Notification} attempt queue.
 	 * 
 	 * @param notificationId
-	 * @param attemptId
 	 * @return the {@link NotificationAttempt} at the top of the queue or null if the queue is empty.
 	 * @throws NotificationException
 	 */

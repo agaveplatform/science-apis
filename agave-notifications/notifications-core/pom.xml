@@ -4,20 +4,14 @@
 	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc.agave</groupId>
+		<groupId>org.agaveplatform</groupId>
 		<artifactId>notifications</artifactId>
-		<version>2.1.11</version>
+		<version>2.2.24</version>
 	</parent>
 	<artifactId>notifications-core</artifactId>
-	<name>iPlant Agave API Notification Service Core</name>
+	<name>Agave Platform Notification Service Core</name>
 	<description>Core classes for Agave Notifications Service</description>
 	<packaging>jar</packaging>
-
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-notifications.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-notifications.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-notifications</url>
-	</scm>
 
 	<properties>
 		<force.check.version>false</force.check.version>
@@ -36,12 +30,6 @@
 				<directory>src/test/resources</directory>
 			</testResource>
 		</testResources>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-			</plugin>
-		</plugins>
 	</build>
 
 	<dependencies>
@@ -50,8 +38,6 @@
 			<artifactId>common-core</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<!-- <dependency> <groupId>bad.robot</groupId> <artifactId>simple-http</artifactId> 
-			<version>1.0-jdk6</version> </dependency> -->
 		<dependency>
 			<groupId>javax.mail</groupId>
 			<artifactId>mail</artifactId>

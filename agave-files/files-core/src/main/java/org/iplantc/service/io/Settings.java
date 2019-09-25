@@ -17,12 +17,18 @@ import javax.net.ssl.SSLSession;
 import javax.net.ssl.X509TrustManager;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 
 /**
  * @author dooley
  *
  */
 public class Settings {
+    private static final Logger log = Logger.getLogger(Settings.class);
+    
+    public static final String INVALID_QUEUE_TASK_TENANT_ID = 
+            org.iplantc.service.common.Settings.INVALID_QUEUE_TASK_TENANT_ID;
+    
 	private static Properties props = new Properties();
 	
 	/* Debug settings */
@@ -75,15 +81,11 @@ public class Settings {
     public static String 						MAILPASSWORD;
 	
 	/* General policy settings */
-//	public static long 							INDIVIDUAL_DISK_QUOTA = 0;
-	public static String 						TRANSFORMS_FOLDER_PATH;
-	public static int 							MAX_TRANSFORM_TASKS;
 	public static int 							MAX_STAGING_TASKS;
+	public static int                           STAGING_TIMEOUT_SECS;
 	public static int 							MAX_STAGING_RETRIES;
 	public static int 							MAX_USER_CONCURRENT_TRANSFERS;
 	
-	public static String 						TRANSFORM_DEFINITION_FILE_PATH;
-	public static String 						TRANSFORM_CONVERSION_MAP_FILE_PATH;
 	public static boolean 						SLAVE_MODE;
 	public static boolean						ENABLE_ZOMBIE_CLEANUP;
 
@@ -91,6 +93,9 @@ public class Settings {
 
 	public static String	 					IPLANT_DOCS;
     public static Integer                       DEFAULT_PAGE_SIZE;
+
+    // The tenant ids on which this service instance will operate.
+    private static String[]                     QUEUETASK_TENANT_IDS;
 
 	static {
 		//System.setProperty("java.protocol.handler.pkgs", "org.iplantc.service.io.remote.url.gsiftp");
@@ -214,13 +219,19 @@ public class Settings {
 			IPLANT_DOCS = (String) props.get("iplant.service.documentation");
 			if (!IPLANT_DOCS.endsWith("/")) IPLANT_DOCS += "/";
 			
-			TRANSFORMS_FOLDER_PATH = (String)props.get("iplant.transforms.dir.path");
-			
-			MAX_TRANSFORM_TASKS = Integer.valueOf((String)props.get("iplant.max.transform.tasks"));
-			
 			MAX_STAGING_TASKS = Integer.valueOf((String)props.get("iplant.max.staging.tasks"));
 			
-			MAX_STAGING_RETRIES = Integer.valueOf((String)props.get("iplant.max.staging.retries"));
+            try {STAGING_TIMEOUT_SECS = Integer.valueOf(props.getProperty("iplant.staging.same.server.timeout.secs", "240"));}
+            catch (Exception e) {
+                log.error("Failure loading setting iplant.staging.same.server.timeout.secs.", e);
+                STAGING_TIMEOUT_SECS = 240;
+            }
+            
+            try {MAX_STAGING_RETRIES = Integer.valueOf((String)props.getProperty("iplant.max.staging.retries", "3"));}
+            catch (Exception e) {
+                log.error("Failure loading setting iplant.max.staging.retries.", e);
+                MAX_STAGING_RETRIES = 3;
+            }
 			
 			String maxUserTransfers = (String) props.get("iplant.max.user.concurrent.transfers");
 			try {
@@ -232,18 +243,24 @@ public class Settings {
 			ENABLE_ZOMBIE_CLEANUP = Boolean.valueOf((String) props
 					.getProperty("iplant.enable.zombie.cleanup", "false"));
 			
-			TRANSFORM_DEFINITION_FILE_PATH = (String)props.get("iplant.transforms.file.path");
-			
-			TRANSFORM_CONVERSION_MAP_FILE_PATH = (String)props.get("iplant.transforms.conversion.map.path");
-			
 			SLAVE_MODE = Boolean.valueOf((String)props.get("iplant.slave.mode"));
 			
 			SERVICE_URL = (String)props.get("iplant.io.service.url");
 			
 			DEFAULT_PAGE_SIZE = Integer.parseInt((String) props.getProperty("iplant.default.page.size", "250"));
+	        
+			// Never null.
+	        QUEUETASK_TENANT_IDS = org.iplantc.service.common.Settings.getQueueTaskTenantIds(props);
 		} 
 		catch (Throwable e) {
 			e.printStackTrace();
 		}
+	}
+	
+	// Return a clone so that the original values cannot be modified.
+	public static String[] getQueuetaskTenantIds()
+	{
+        if (QUEUETASK_TENANT_IDS == null) return null;
+         else return QUEUETASK_TENANT_IDS.clone();
 	}
 }

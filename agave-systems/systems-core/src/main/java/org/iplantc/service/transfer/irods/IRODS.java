@@ -15,11 +15,9 @@ import java.net.ConnectException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.io.FilenameUtils;
@@ -40,14 +38,10 @@ import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.iplantc.service.transfer.util.ServiceUtils;
 import org.irods.jargon.core.connection.AuthScheme;
-import org.irods.jargon.core.connection.DefaultPropertiesJargonConfig;
 import org.irods.jargon.core.connection.GSIIRODSAccount;
 import org.irods.jargon.core.connection.IRODSAccount;
-import org.irods.jargon.core.connection.IRODSProtocolManager;
 import org.irods.jargon.core.connection.IRODSSession;
 import org.irods.jargon.core.connection.IRODSSimpleProtocolManager;
-import org.irods.jargon.core.connection.JargonProperties;
-import org.irods.jargon.core.connection.SettableJargonProperties;
 import org.irods.jargon.core.exception.AuthenticationException;
 import org.irods.jargon.core.exception.CatNoAccessException;
 import org.irods.jargon.core.exception.DataNotFoundException;
@@ -256,7 +250,7 @@ public class IRODS implements RemoteDataClient
 
 			accessObjectFactory = IRODSAccessObjectFactoryImpl.instance(getThreadLocalSession(irodsAccount));
 			log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " open connection for thread");
-			doesExist("/");
+			stat("/", false); // Avoid an infinite loop.
 		}
 		catch (AuthenticationException e) {
 			disconnect();
@@ -1166,8 +1160,21 @@ public class IRODS implements RemoteDataClient
 			throw new RemoteDataException("Failed to copy file to irods.", e);
 		}
 	}
+	
+    /** Default stat command allows reauthentication.
+     * 
+     * @param remotepath the pathname to query
+     * @return a stat object
+     * @throws IOException
+     * @throws RemoteDataException
+     */
+    private ObjStat stat(String remotepath)
+     throws IOException, RemoteDataException
+    {
+        return stat(remotepath, true);
+    }
 
-	protected ObjStat stat(String remotepath)
+	private ObjStat stat(String remotepath, boolean canReauthenticate)
     throws IOException, RemoteDataException
     {
 	    String resolvedPath = StringUtils.removeEnd(resolvePath(remotepath), "/");
@@ -1178,17 +1185,24 @@ public class IRODS implements RemoteDataClient
                 return getIRODSFileSystemAO().getObjStat(resolvedPath);
             }
             catch (JargonException e) {
+                String emsg = "IRODS stat failed for " + remotepath + ".";
+                log.error(emsg, e);
+                
             	// catch the wrapped socket exception from a dropped connection
             	// clean up the connection, and retry.
             	if (e.getCause() instanceof java.net.SocketException) {
-            		log.error("Connection timeout attempting to contact the remote server. Retrying one more time");
+            		log.error("Connection timeout attempting to contact the IRODS remote server, disconnecting.", e.getCause());
                     // connection should have been closed, but we clean up here
             		// just to be safe and ensure we don't have an open
             		// session lingering around anywhere in the underlying code.
             		disconnect();
 
+                    // Don't re-authenticate if not allowed to avoid infinite loop.
+                    if (!canReauthenticate) throw e;
+
             		// now re-authenticate to init the new session and
             		// get a valid connection to the server
+                    log.info("Reconnecting to IRODS server after exception " + e.getCause().getClass().getName() + ".");
                     authenticate();
 
                     // retry the stat with the fresh connection
@@ -1198,23 +1212,38 @@ public class IRODS implements RemoteDataClient
             	}
             }
             catch(Throwable e) {
-                log.error("Connection timeout attempting to contact the remote server. Retrying one more time");
+                String emsg = "IRODS stat failed for " + remotepath + ", disconnecting from IROD.";
+                log.error(emsg, e);
+
                 disconnect();
+                
+                // Don't re-authenticate if not allowed to avoid infinite loop.
+                if (!canReauthenticate) throw e;                
+                
+                log.info("Reconnecting to IRODS server after exception "+ e.getClass().getName() + ".");
                 authenticate();
                 return getIRODSFileSystemAO().getObjStat(resolvedPath);
             }
         }
         catch (FileNotFoundException e) {
-            throw new java.io.FileNotFoundException("No such file or directory");
+            String msg = "No such file or directory: " + remotepath;
+            log.error(msg, e);
+            throw new java.io.FileNotFoundException(msg);
         }
         catch(JargonException e) {
+            String msg = "Failed to connect to IRODS server to stat " + remotepath;
             if (e.getMessage().toLowerCase().contains("unable to start ssl socket")) {
-                throw new RemoteDataException("Unable to validate SSL certificate on the IRODS server used for PAM authentication.", e);
+                msg = "Unable to validate SSL certificate on the IRODS server used for PAM authentication.";
             } else if (e.getMessage().toLowerCase().contains("connection refused")) {
-                throw new RemoteDataException("Connection refused: Unable to contact IRODS server at " + host + ":" + port);
-            } else {
-                throw new RemoteDataException("Failed to connect to remote server.", e);
+                msg = "Connection refused: Unable to contact IRODS server at " + host + ":" + port;
             }
+            log.error(msg, e);
+            throw new RemoteDataException(msg, e);
+        }
+        catch (Throwable e) {
+            String msg = "IRODS stat command failed for " + remotepath;
+            log.error(msg, e);
+            throw new RemoteDataException(msg, e);
         }
 	}
 

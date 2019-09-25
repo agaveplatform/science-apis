@@ -216,7 +216,7 @@ public class NotificationEventTest extends AbstractNotificationTest {
 //		Notification notification = new Notification();
 //		notification.setAssociatedUuid("2453452449026871781-242ac113-0001-007");
 ////		notification.setCallbackUrl("https://vdj-dev.tacc.utexas.edu/api/v1/notifications/jobs/2453452449026871781-242ac113-0001-007?status=PENDING&event=PENDING&error=Job%20accepted%20and%20queued%20for%20submission.&projectUuid=8032710074285756901-242ac11d-0001-012&jobName=notification_test_job");
-////		notification.setCallbackUrl("https://agaveapi.co/?status=PENDING&event=PENDING&error=Job%20accepted%20and%20queued%20for%20submission.&projectUuid=8032710074285756901-242ac11d-0001-012&jobName=notification_test_job");
+////		notification.setCallbackUrl("https://sandbox.agaveplatform.org?status=PENDING&event=PENDING&error=Job%20accepted%20and%20queued%20for%20submission.&projectUuid=8032710074285756901-242ac11d-0001-012&jobName=notification_test_job");
 //		notification.setOwner(TEST_USER);
 //		notification.setPersistent(true);
 //		

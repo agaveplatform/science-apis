@@ -3,21 +3,15 @@
 
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc</groupId>
-		<artifactId>agave</artifactId>
-		<version>2.1.11</version>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>science-apis</artifactId>
+		<version>2.2.24</version>
 	</parent>
-	<groupId>org.iplantc.agave</groupId>
+
 	<artifactId>profiles</artifactId>
-	<name>iPlant Agave API Profile Service Parent POM</name>
+	<name>Agave Platform Profile Service Parent POM</name>
 	<description>Parent pom for the Agave Profiles Services.</description>
 	<packaging>pom</packaging>
-
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-profiles.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-profiles.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-profiles</url>
-	</scm>
 
 	<build>
 		<pluginManagement>
@@ -35,27 +29,8 @@
 					</executions>
 				</plugin>
 				<plugin>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<version>${maven-compiler-plugin.METADATA.version}</version>
-					<executions>
-						<execution>
-							<id>default-compile</id>
-							<phase>compile</phase>
-							<goals>
-								<goal>compile</goal>
-							</goals>
-						</execution>
-					</executions>
-					<configuration>
-						<proc>none</proc>
-						<debug>true</debug>
-						<source>1.7</source>
-						<target>1.7</target>
-					</configuration>
-				</plugin>
-				<plugin>
 					<artifactId>maven-surefire-plugin</artifactId>
-					<version>${maven-surefire-plugin.METADATA.version}</version>
+					<version>${maven-surefire-plugin.version}</version>
 					<configuration>
 						<suiteXmlFiles>
 							<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
@@ -67,7 +42,11 @@
 	</build>
 
 	<dependencies>
-
+		<dependency>
+			<groupId>javax.xml.bind</groupId>
+			<artifactId>jaxb-api</artifactId>
+			<version>2.3.1</version>
+		</dependency>
 	</dependencies>
 
 	<modules>

@@ -3,16 +3,14 @@
  */
 package org.iplantc.service.notification.providers.email.clients;
 
-import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Map.Entry;
+import java.util.Properties;
 
 import javax.mail.Authenticator;
 import javax.mail.BodyPart;
 import javax.mail.Message;
-import javax.mail.MessagingException;
 import javax.mail.Multipart;
 import javax.mail.NoSuchProviderException;
 import javax.mail.PasswordAuthentication;
@@ -24,12 +22,9 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
 import org.codehaus.plexus.util.StringUtils;
-import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.Settings;
+import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.providers.email.EmailClient;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * @author dooley

@@ -49,7 +49,7 @@ public class HTTPClientTest extends BaseTransferTestCase
     {
     	super.beforeClass();
     	httpUri = new URI("http://httpbin.org/stream-bytes/32768");
-    	httpsUri = new URI("https://httpbin.agaveapi.co/stream-bytes/32768");
+    	httpsUri = new URI("https://httpbin.agaveplatform.org/stream-bytes/32768");
     	httpPortUri = new URI("http://docker.example.com:10080/public/test_upload.bin");
     	httpsPortUri = new URI("https://docker.example.com:10443/public/test_upload.bin");
     	httpsQueryUri = new URI("https://docker.example.com:10443/public/test_upload.bin?t=now");

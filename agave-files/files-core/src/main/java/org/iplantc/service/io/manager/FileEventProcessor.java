@@ -112,10 +112,11 @@ public class FileEventProcessor {
 	    	json.set("file", mapper.readTree(logicalFile.toJSON()));
 		    json.set("permission", mapper.readTree(permission.toJSON(logicalFile.getAgaveRelativePathFromAbsolutePath(), logicalFile.getSystem().getSystemId())));
 		} catch (Throwable e) {
-		    log.error(String.format("Failed to serialize logical file "
-		            + "%s to json for %s event notification", 
-		            logicalFile.getUuid(), event.getStatus()), e);
-		    json = null;
+		    String msg = String.format("Failed to serialize logical file "
+                                       + "%s to json for %s event notification", 
+                                       logicalFile.getUuid(), event.getStatus());
+		    log.error(msg, e);
+		    throw new FileEventProcessingException(msg, e);
 		}
 		
 		NotificationManager.process(logicalFile.getUuid(), event.getStatus(), event.getCreatedBy(), json.toString());

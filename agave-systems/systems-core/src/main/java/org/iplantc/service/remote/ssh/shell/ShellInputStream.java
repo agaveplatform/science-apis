@@ -46,6 +46,10 @@ extends InputStream {
         return this.exitCode == 0;
     }
 
+    boolean isActive() {
+        return this.active;
+    }
+
     public String getCommandOutput() {
         return this.commandOutput.toString().trim();
     }
@@ -81,22 +85,22 @@ extends InputStream {
         int ch;
         if (this.expectingEcho) {
             String tmp;
-            if (log.isDebugEnabled()) {
-                log.debug(this.cmd + ": Expecting begin marker");
+            if (log.isTraceEnabled()) {
+                log.trace(this.cmd + ": Expecting begin marker");
             }
             while ((tmp = this.readLine()) != null && !tmp.endsWith(this.beginCommandMarker)) {
             }
             if (tmp == null) {
-                if (log.isDebugEnabled()) {
-                    log.debug(this.cmd + ": Failed to read from shell whilst waiting for begin marker");
+                if (log.isTraceEnabled()) {
+                    log.trace(this.cmd + ": Failed to read from shell whilst waiting for begin marker");
                 }
                 this.shell.internalClose();
                 return -1;
             }
             this.currentLine = new StringBuffer();
             this.expectingEcho = false;
-            if (log.isDebugEnabled()) {
-                log.debug(this.cmd + ": Found begin marker");
+            if (log.isTraceEnabled()) {
+                log.trace(this.cmd + ": Found begin marker");
             }
         }
         int readLength = Math.max(this.endCommandMarker.length, this.promptMarker.length);
@@ -132,8 +136,8 @@ extends InputStream {
             tmp.append((char)ch);
         } while (this.markerPos++ < readLength - 1 && (endMarkerMatched || promptMarkerMatched));
         if (selectedMarker != null && this.markerPos == selectedMarker.length) {
-            if (log.isDebugEnabled()) {
-                log.debug(this.cmd + ": " + tmp.toString());
+            if (log.isTraceEnabled()) {
+                log.trace(this.cmd + ": " + tmp.toString());
             }
             this.cleanup(collectExitCode, collectExitCode ? "end" : "prompt");
             return -1;
@@ -150,30 +154,26 @@ extends InputStream {
         if (ch == 10) {
             this.currentLine = new StringBuffer();
         }
-        if (verboseDebug && log.isDebugEnabled()) {
-            log.debug(this.cmd + ": Current Line [" + this.currentLine.toString() + "]");
+        if (verboseDebug && log.isTraceEnabled()) {
+            log.trace(this.cmd + ": Current Line [" + this.currentLine.toString() + "]");
         }
         this.sessionIn.mark(-1);
         return ch;
     }
 
-    void cleanup(boolean collectExitCode, String markerType) throws IOException {
-        if (log.isDebugEnabled()) {
-            log.debug(this.cmd + ": Found " + markerType + " marker");
+    private void cleanup(boolean collectExitCode, String markerType) throws IOException {
+        if (log.isTraceEnabled()) {
+            log.trace(this.cmd + ": Found " + markerType + " marker");
         }
         this.exitCode = collectExitCode ? this.collectExitCode() : -2147483647;
         this.shell.state = 1;
         this.active = false;
     }
 
-    boolean isActive() {
-        return this.active;
-    }
-
-    int collectExitCode() throws IOException {
+    private int collectExitCode() throws IOException {
         char ch;
-        if (log.isDebugEnabled()) {
-            log.debug(this.cmd + ": Looking for exit code");
+        if (log.isTraceEnabled()) {
+            log.trace(this.cmd + ": Looking for exit code");
         }
         StringBuffer tmp = new StringBuffer();
         int exitCode = -1;

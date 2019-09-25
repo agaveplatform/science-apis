@@ -23,8 +23,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.globus.ftp.GridFTPSession;
 import org.hibernate.HibernateException;
-import org.iplantc.service.systems.exceptions.RemoteCredentialException;
-import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RangeValidationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -497,7 +495,7 @@ public class URLCopy
     			{
     			    srcChildTransferTask = new TransferTask(
     			            aggregateTransferTask.getSource(),
-    			            "https://workers.prod.agaveapi.co/" + tmpFile.getAbsolutePath(),
+    			            "https://workers.prod.agaveplatform.org/" + tmpFile.getAbsolutePath(),
     			            aggregateTransferTask.getOwner(),
     			            aggregateTransferTask,
     			            aggregateTransferTask);
@@ -545,7 +543,7 @@ public class URLCopy
                             aggregateTransferTask.getSource(),
                             "file://" + tmpFile.getAbsolutePath(), 
                             getProtocolForClass(sourceClient.getClass()),
-                            "local"));
+                            "local"), e);
     				throw e;
     			}
     			catch (Throwable e)
@@ -567,7 +565,7 @@ public class URLCopy
                             aggregateTransferTask.getSource(),
                             "file://" + tmpFile.getAbsolutePath(), 
                             getProtocolForClass(sourceClient.getClass()),
-                            "local"));
+                            "local"), e);
     				// stuff happens, what are you going to do.
     				throw new RemoteDataException("Transfer failed from " + sourceClient.getUriForPath(srcPath), e);
     			}
@@ -586,7 +584,7 @@ public class URLCopy
 	                        getProtocolForClass(destClient.getClass())));
 			        
 			        destChildTransferTask = new TransferTask(
-    				        "https://workers.prod.agaveapi.co/" + tmpFile.getAbsolutePath(),
+    				        "https://workers.prod.agaveplatform.org/" + tmpFile.getAbsolutePath(),
                             aggregateTransferTask.getDest(),
                             aggregateTransferTask.getOwner(),
                             aggregateTransferTask,
@@ -632,7 +630,7 @@ public class URLCopy
                             "file://" + tmpFile.getAbsolutePath(), 
                             aggregateTransferTask.getDest(),
                             "local",
-                            getProtocolForClass(destClient.getClass())));
+                            getProtocolForClass(destClient.getClass())), e);
     				throw e;
     			}
     			catch (Throwable e)
@@ -670,7 +668,7 @@ public class URLCopy
                         getProtocolForClass(destClient.getClass())));
 			    
 			    destChildTransferTask = new TransferTask(
-				        "https://workers.prod.agaveapi.co/" + tmpFile.getAbsolutePath(),
+				        "https://workers.prod.agaveplatform.org/" + tmpFile.getAbsolutePath(),
                         aggregateTransferTask.getDest(),
                         aggregateTransferTask.getOwner(),
                         aggregateTransferTask,
@@ -707,7 +705,7 @@ public class URLCopy
                     aggregateTransferTask.getSource(), 
                     aggregateTransferTask.getDest(),
                     getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(destClient.getClass())), e);
 		    Thread.currentThread().interrupt();
             throw e;
 		}
@@ -719,7 +717,7 @@ public class URLCopy
                 TransferTaskDao.persist(aggregateTransferTask);
             } catch (TransferException e1) {
                 log.error("Failed to update parent transfer task " 
-                        + aggregateTransferTask.getUuid() + " status to FAILED");
+                        + aggregateTransferTask.getUuid() + " status to FAILED", e1);
             }
 		    
 //			checkCancelled(remoteTransferListener);
@@ -734,7 +732,7 @@ public class URLCopy
                 TransferTaskDao.persist(aggregateTransferTask);
             } catch (TransferException e1) {
                 log.error("Failed to update parent transfer task " 
-                        + aggregateTransferTask.getUuid() + " status to FAILED");
+                        + aggregateTransferTask.getUuid() + " status to FAILED", e1);
             }
 			
 //			checkCancelled(remoteTransferListener);
@@ -747,7 +745,7 @@ public class URLCopy
 		{
 			if (aggregateTransferTask != null) {
 				log.info(String.format(
-				        "Total of %d bytes transferred in task %s . Protocol %s => %s",
+				        "Total of %s bytes transferred in task %s . Protocol %s => %s",
 				        aggregateTransferTask.getBytesTransferred(),
 				        aggregateTransferTask.getUuid(),
 				        getProtocolForClass(sourceClient.getClass()),
@@ -832,14 +830,24 @@ public class URLCopy
 			long totalSize = sourceClient.length(srcPath);
 			
 			// Buffer the input stream only if it's not already buffered. 
-			in = getInputStream(sourceClient, srcPath);
+			try {in = getInputStream(sourceClient, srcPath);}
+			    catch (Exception e) {
+			        log.error("Unable to get input stream for " + sourceClient.getUsername() + 
+			                  " on host " + sourceClient.getHost() + " for path " + srcPath + ".");
+			        throw e;
+			    }
 			if (in.isBuffered()) bis = in;
 			 else bis = new BufferedInputStream(in);
 			
 			checkCancelled(listener);
 			
 			// Buffer the output stream only if it's not already buffered. 
-			out = getOutputStream(destClient, destPath);
+			try {out = getOutputStream(destClient, destPath);}
+                catch (Exception e) {
+                    log.error("Unable to get output stream for " + destClient.getUsername() + 
+                              " on host " + destClient.getHost() + " for path " + destPath + ".");
+                 throw e;
+                }
 			if (out.isBuffered()) bos = out;
 			 else bos = new BufferedOutputStream(out);
 			
@@ -897,7 +905,7 @@ public class URLCopy
                     listener.getTransferTask().getSource(), 
                     listener.getTransferTask().getDest(),
                     getProtocolForClass(destClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(destClient.getClass())), e);
 		    
 			log.info("Transfer task " + listener.getTransferTask().getUuid() + " killed by worker shutdown.");
 			setKilled(true);
@@ -917,7 +925,7 @@ public class URLCopy
                     listener.getTransferTask().getSource(), 
                     listener.getTransferTask().getDest(),
                     getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(destClient.getClass())), e);
 		    
 			// transfer failed due to connectivity issue
 			listener.failed();
@@ -932,7 +940,7 @@ public class URLCopy
                     listener.getTransferTask().getSource(), 
                     listener.getTransferTask().getDest(),
                     getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(destClient.getClass())), e);
 		    
 			// stuff happens, what are you going to do.
 			listener.failed();
@@ -943,17 +951,17 @@ public class URLCopy
 		{
 			if (listener != null && listener.getTransferTask() != null) {
 			    log.info(String.format(
-                        "Total of %d bytes transferred in task %s . Protocol %s => %s",
+                        "Total of %s bytes transferred in task %s . Protocol %s => %s",
                         listener.getTransferTask().getBytesTransferred(),
                         listener.getTransferTask().getUuid(),
                         getProtocolForClass(sourceClient.getClass()),
                         getProtocolForClass(destClient.getClass())));
 			}
 			
-			try { bis.close(); } catch(Throwable e) {}
-			try { bos.close(); } catch(Throwable e) {}
-			try { in.close(); } catch(Throwable e) {}
-			try { out.close(); } catch(Throwable e) {}
+			try { if (bis != null) bis.close(); } catch(Throwable e) {}
+			try { if (bos != null) bos.close(); } catch(Throwable e) {}
+			try { if (in != null)  in.close(); }  catch(Throwable e) {}
+			try { if (out != null) out.close(); } catch(Throwable e) {}
 		}
 	}
 	
@@ -1115,19 +1123,35 @@ public class URLCopy
             }
             
 			// Buffer the input stream only if it's not already buffered. 
-            in = getInputStream(sourceClient, srcPath);
+            try {in = getInputStream(sourceClient, srcPath);}
+            catch (Exception e) {
+                log.error("Unable to get input stream for " + sourceClient.getUsername() + 
+                          " on host " + sourceClient.getHost() + " for path " + srcPath + ".");
+                throw e;
+            }
             in.skip(srcRangeOffset);
             if (in.isBuffered()) bis = in;
               else bis = new BufferedInputStream(in);
             
             // Buffer the original input stream only if it's not already buffered.
-            originalIn = getInputStream(destClient, destPath);
+            try {originalIn = getInputStream(destClient, destPath);}
+            catch (Exception e) {
+                log.error("Unable to get input stream for " + destClient.getUsername() + 
+                          " on host " + destClient.getHost() + " for path " + destPath + ".");
+                throw e;
+            }
             if (originalIn.isBuffered()) originalBis = originalIn;
               else originalBis = new BufferedInputStream(originalIn);
             
             // Buffer the output stream only if it's not already buffered.
             String tmpFilename = destPath + ".tmp-" + System.currentTimeMillis();
-            out = getOutputStream(destClient, tmpFilename);
+            try {out = getOutputStream(destClient, tmpFilename);}
+            catch (Exception e) {
+                log.error("Unable to get output stream for " + destClient.getUsername() + 
+                          " on host " + destClient.getHost() + " for path " + tmpFilename + ".");
+             throw e;
+            }
+
             if (out.isBuffered()) bos = out;
               else bos = new BufferedOutputStream(out);
             
@@ -1279,7 +1303,7 @@ public class URLCopy
                     listener.getTransferTask().getSource(), 
                     listener.getTransferTask().getDest(),
                     getProtocolForClass(destClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(destClient.getClass())), e);
             
             log.info("Transfer task " + listener.getTransferTask().getUuid() + " killed by worker shutdown.");
             setKilled(true);
@@ -1297,7 +1321,7 @@ public class URLCopy
                     listener.getTransferTask().getSource(), 
                     listener.getTransferTask().getDest(),
                     getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(destClient.getClass())), e);
             
             // transfer failed due to connectivity issue
             listener.failed();
@@ -1312,7 +1336,7 @@ public class URLCopy
                     listener.getTransferTask().getSource(), 
                     listener.getTransferTask().getDest(),
                     getProtocolForClass(sourceClient.getClass()),
-                    getProtocolForClass(destClient.getClass())));
+                    getProtocolForClass(destClient.getClass())), e);
             
             // stuff happens, what are you going to do.
             listener.failed();
@@ -1324,17 +1348,17 @@ public class URLCopy
         {
             if (listener != null && listener.getTransferTask() != null) {
                 log.info(String.format(
-                        "Total of %d bytes transferred in task %s . Protocol %s => %s",
+                        "Total of %s bytes transferred in task %s . Protocol %s => %s",
                         listener.getTransferTask().getBytesTransferred(),
                         listener.getTransferTask().getUuid(),
                         getProtocolForClass(sourceClient.getClass()),
                         getProtocolForClass(destClient.getClass())));
             }
             
-            try { bis.close(); } catch(Throwable e) {}
-            try { bos.close(); } catch(Throwable e) {}
-            try { in.close(); } catch(Throwable e) {}
-            try { out.close(); } catch(Throwable e) {}
+            try {if (bis != null) bis.close(); } catch(Throwable e) {}
+            try {if (bos != null) bos.close(); } catch(Throwable e) {}
+            try {if (in  != null) in.close(); }  catch(Throwable e) {}
+            try {if (out != null) out.close(); } catch(Throwable e) {}
         }
     }
 	
@@ -1522,7 +1546,7 @@ public class URLCopy
 	    finally {
 	    	if (listener != null && listener.getTransferTask() != null) {
 	    	    log.info(String.format(
-                        "Total of %d bytes transferred in task %s . Protocol %s => %s",
+                        "Total of %s bytes transferred in task %s . Protocol %s => %s",
                         listener.getTransferTask().getBytesTransferred(),
                         listener.getTransferTask().getUuid(),
                         getProtocolForClass(sourceClient.getClass()),

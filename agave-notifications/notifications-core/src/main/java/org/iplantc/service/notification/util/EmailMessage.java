@@ -34,6 +34,7 @@ public class EmailMessage {
     public static void send(String recipientName, String recipientAddress, String subject, String body, String htmlBody, Map<String, String> customHeaders) 
     throws NotificationException 
     {
+        log.debug("Sending email to " + recipientAddress + ": " + body);
         EmailClient client = EmailClientFactory.getInstance(Settings.EMAIL_PROVIDER);
         client.send(recipientName, recipientAddress, subject, body, htmlBody);
     }
@@ -51,6 +52,7 @@ public class EmailMessage {
     public static void send(String recipientName, String recipientAddress, String subject, String body, String htmlBody) 
     throws NotificationException 
     {
+        log.debug("Sending email to " + recipientAddress + ": " + body);
         EmailClient client = EmailClientFactory.getInstance(Settings.EMAIL_PROVIDER);
         client.send(recipientName, recipientAddress, subject, body, htmlBody);
     }

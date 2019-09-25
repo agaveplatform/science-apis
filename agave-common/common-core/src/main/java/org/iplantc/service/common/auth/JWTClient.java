@@ -402,7 +402,27 @@ public class JWTClient
 			return false;
 		}
 	}
-	
+
+	public static boolean isWorldAdmin() {
+		try {
+			JSONObject claims = getCurrentJWSObject();
+
+			String roles = (String)claims.get("http://wso2.org/claims/role");
+			if (!StringUtils.isEmpty(roles)) {
+				for(String role: Arrays.asList(StringUtils.split(roles, ","))) {
+					if (StringUtils.endsWith(role, "world_admin") ) {
+						return true;
+					}
+				}
+				return false;
+			} else {
+				return false;
+			}
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
 	public static boolean isSuperAdmin() {
 		try {
 			JSONObject claims = getCurrentJWSObject();

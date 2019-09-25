@@ -15,12 +15,14 @@ import java.util.TreeMap;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.FileUtils;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uri.AgaveUriRegex;
 import org.iplantc.service.common.uri.AgaveUriUtil;
+import org.iplantc.service.common.util.SimpleTimer;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.dao.FileEventDao;
 import org.iplantc.service.io.dao.LogicalFileDao;
@@ -259,8 +261,15 @@ public class PermissionManager {
 	 * @return RemoteFilePermission
 	 * @throws PermissionException
 	 */
+	
+	private static final Logger log = Logger.getLogger(PermissionManager.class);
+	
 	public RemoteFilePermission getUserPermission(String systemAbsolutePath) throws PermissionException
 	{
+		//variable for timer object used for profiling throughout the code.
+		SimpleTimer st = null;
+		
+		
 		//God users even have read permissions on files that don't exist.
 		String internalUsername = logicalFile == null ? null : logicalFile.getInternalUsername();
 		Long logicalFileId = logicalFile == null ? null : logicalFile.getId();
@@ -268,23 +277,33 @@ public class PermissionManager {
         
         if (StringUtils.isEmpty(apiUsername))// || userRole.getRole().equals(RoleType.NONE)) 
 		{
-        	return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, true);
+        		if (log.isDebugEnabled()) st = SimpleTimer.start("Marker1");
+        		RemoteFilePermission perm = new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, true);
+        		if (st != null) log.debug(st.getShortStopMsg());
+        		return perm;
 		}
 		// admins have total control
 		else if (userRole.canAdmin())
 		{
-			return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.ALL, true);
+			if (log.isDebugEnabled()) st = SimpleTimer.start("Marker2");
+			RemoteFilePermission perm = new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.ALL, true);
+			if (st != null) log.debug(st.getShortStopMsg());
+			return perm;
 		}
         // if outside of system rootDir. We need this due to the recursive calls to this method
         // when searching for a known parent
 		else if (!isUnderSystemRootDir(systemAbsolutePath)) 
 		{
-			return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, true);
+			if (log.isDebugEnabled()) st = SimpleTimer.start("Marker3");
+			RemoteFilePermission perm =  new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, true);
+			if (st != null) log.debug(st.getShortStopMsg());
+			return perm;
 		}
         // if we are inspecting a public system, we need to check against the forced
         // user home directories in system.storageConfig.homeDir + "/" + apiUsername
 		else if (remoteSystem.isPubliclyAvailable())
         {
+			
 			// mirroring is turned on, so we should delegate to the system
         	// in this situation, the user home directories we virutalize will
         	// actually be present on the remote system and it will have 
@@ -294,6 +313,7 @@ public class PermissionManager {
 			// RemoteFilePermissions trump the system permissions.
 			if (remoteDataClient != null)
         	{
+				if (log.isDebugEnabled()) st = SimpleTimer.start("Marker4");
 				// no logical file, check for public or world pems, or readonly system
 				if (logicalFile == null) 
 				{
@@ -314,12 +334,14 @@ public class PermissionManager {
 							// otherwise defer to the system.
 							if (!parentPem.getPermission().equals(PermissionType.NONE) && parentPem.isRecursive())
 							{
+								if (st != null) log.debug(st.getShortStopMsg());
 								return parentPem;
 							}
 						}
 						// file has no pems, and the parent is outside the current system root
     					else
     					{
+    						if (st != null) log.debug(st.getShortStopMsg());
     						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
     					}
 					}
@@ -350,12 +372,14 @@ public class PermissionManager {
 								// otherwise defer to the system.
 								if (!parentPem.getPermission().equals(PermissionType.NONE) && parentPem.isRecursive())
 								{
+									if (st != null) log.debug(st.getShortStopMsg());
 									return parentPem;
 								}
 							}
 							// file has no pems, and the parent is outside the current system root
 	    					else
 	    					{
+	    						if (st != null) log.debug(st.getShortStopMsg());
 	    						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
 	    					}
 						}
@@ -363,9 +387,12 @@ public class PermissionManager {
 					// public or world user had pems. extend these to the user
 					else
 					{
+						if (st != null) log.debug(st.getShortStopMsg());
 						return userPem;
 					}
 				}
+				
+				
 				
 				try 
 				{
@@ -380,8 +407,10 @@ public class PermissionManager {
 					}
         			PermissionType permissionType = remoteDataClient.getPermissionForUser(remoteUsername, agavePath);
         			if (permissionType.equals(PermissionType.NONE) && userRole.isGuest()) {
+        				    if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.READ, true);
 					} else {
+						if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, permissionType, true);
 					}
 				} 
@@ -393,6 +422,7 @@ public class PermissionManager {
 			// no permission mirroring on this public system
         	else 
         	{
+        		if (log.isDebugEnabled()) st = SimpleTimer.start("Marker5");
     			// user should have access to all files and folders in their 
         		// public system home directory tree unless explicitly denied
         		if (isUserHomeDirOnPublicSystem(systemAbsolutePath) || isUnderUserHomeDirOnPublicSystem(systemAbsolutePath)) 
@@ -401,7 +431,11 @@ public class PermissionManager {
         			// check to see if there is a permission for this file or directory
         			if (logicalFile != null) 
         			{
+        				SimpleTimer st1 = null;
+                		if (log.isDebugEnabled()) st1 = SimpleTimer.start("Marker51");
         				userPem = getGrantedUserPermissionForLogicalFile(logicalFile, apiUsername);
+        				if (st1 != null) log.debug(st1.getShortStopMsg());
+
         			} 
         			// no entry for the path, look up the parent
         			else 
@@ -410,6 +444,9 @@ public class PermissionManager {
         				if (parent != null && isUnderSystemRootDir(parent.getPath() + "/") && 
         						(isUserHomeDirOnPublicSystem(parent.getPath()) || isUnderUserHomeDirOnPublicSystem(parent.getPath())))
         				{
+            				SimpleTimer st1 = null;
+                    		if (log.isDebugEnabled()) st1 = SimpleTimer.start("Marker52");
+
         					// get the user permissions on the parent. this will resolve user,
 							// public, and world permissions along with readonly system status.
 							RemoteFilePermission parentPem = getGrantedUserPermissionForLogicalFile(parent, apiUsername);
@@ -417,15 +454,20 @@ public class PermissionManager {
 							if (parentPem.isRecursive()) {
 								userPem = parentPem;
 							}
+							
+	        				if (st1 != null) log.debug(st1.getShortStopMsg());
+
         				}
         			}
         			
         			// if not, then we assign the guest scope as appropriate
         			if (userRole.isGuest()) {
+        				if (st != null) log.debug(st.getShortStopMsg());
         				return RemoteFilePermission.merge(userPem, new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.READ, true));
         			} 
         			// otherwise, this is the user's home directory on a public system, so they have ALL permissions
         			else {
+        				if (st != null) log.debug(st.getShortStopMsg());
         				return RemoteFilePermission.merge(userPem, new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.ALL, true));
         			}
         		}
@@ -433,10 +475,12 @@ public class PermissionManager {
         		// the closest parent to check for recursive permissions
         		else if (logicalFile != null)
 	        	{	
+        			
         			RemoteFilePermission userPem = getGrantedUserPermissionForLogicalFile(logicalFile, apiUsername);
         			// if the user has a pem for this file, use it.
         			if (!userPem.getPermission().equals(PermissionType.NONE)) 
         			{
+        				if (st != null) log.debug(st.getShortStopMsg());
         				return userPem;
         			}
         			// otherwise check for the next known parent permission and check for recursive permissions
@@ -447,11 +491,13 @@ public class PermissionManager {
     						// no parent found and no pems for the file. we just need to check for 
     						// guest role at this point
     						if (userRole.isGuest()) {
+    							if (st != null) log.debug(st.getShortStopMsg());
     							return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.READ, true);
     						}
     						// no parent found, return NON pems from original file 
     						else
     						{
+    							if (st != null) log.debug(st.getShortStopMsg());
     							return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, true);
     						}
     					}
@@ -464,17 +510,20 @@ public class PermissionManager {
 							// if permissions are found and they are recursive, apply here
 							if (!parentPem.getPermission().equals(PermissionType.NONE) && parentPem.isRecursive())
 							{
+								if (st != null) log.debug(st.getShortStopMsg());
 								return parentPem;
 							}
 							// parent permissions did not grant access or were not recursive
 							else
 							{
+								if (st != null) log.debug(st.getShortStopMsg());
 								return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
 							}
 						}
         				// file has no pems, and the parent is outside the current system root
     					else
     					{
+    						if (st != null) log.debug(st.getShortStopMsg());
     						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
     					}
         			}
@@ -492,11 +541,13 @@ public class PermissionManager {
 						// guest role at this point
 						if (userRole.isGuest()) 
 						{
+							if (st != null) log.debug(st.getShortStopMsg());
 							return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.READ, true);
 						} 
 						// no known parent and the path is outside of their home directory, so deny permission
 						else 
 						{
+							if (st != null) log.debug(st.getShortStopMsg());
 							return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
 						}
 					}
@@ -512,8 +563,10 @@ public class PermissionManager {
 						// if permissions are found and they are recursive, apply here
 						// otherwise defer to the system.
 						if (parentPem.isRecursive()) {
+							if (st != null) log.debug(st.getShortStopMsg());
 							return parentPem;
 						} else {
+							if (st != null) log.debug(st.getShortStopMsg());
 							return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
 						}
 						
@@ -521,6 +574,7 @@ public class PermissionManager {
 					// file has no pems, and the parent is outside the current system root
 					else
 					{
+						if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
 					}
         			
@@ -539,6 +593,7 @@ public class PermissionManager {
         }
         else // not publicly available system
         {
+        	if (log.isDebugEnabled()) st = SimpleTimer.start("Marker6");
         	// mirroring is turned on, so we should delegate to the system
         	// in this situation. The exception being if the path or one of its parent folders
 			// was given public or world permissions. In this case, the 
@@ -566,12 +621,14 @@ public class PermissionManager {
 							// otherwise defer to the system.
 							if (!parentPem.getPermission().equals(PermissionType.NONE) && parentPem.isRecursive())
 							{
+								if (st != null) log.debug(st.getShortStopMsg());
 								return parentPem;
 							}
 						}
 						// file has no pems, and the parent is outside the current system root
     					else
     					{
+    						if (st != null) log.debug(st.getShortStopMsg());
     						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
     					}
 					}
@@ -604,17 +661,20 @@ public class PermissionManager {
 								// otherwise defer to the system.
 								if (!parentPem.getPermission().equals(PermissionType.NONE) && parentPem.isRecursive())
 								{
+									if (st != null) log.debug(st.getShortStopMsg());
 									return parentPem;
 								}
 							}
 							// file has no pems, and the parent is outside the current system root
 	    					else
 	    					{
+	    						if (st != null) log.debug(st.getShortStopMsg());
 	    						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
 	    					}
 						}
 					}
 				}
+				
         		
 				try 
 				{
@@ -629,8 +689,10 @@ public class PermissionManager {
 					}
         			PermissionType permissionType = remoteDataClient.getPermissionForUser(remoteUsername, agavePath);
         			if (!permissionType.equals(PermissionType.NONE) && userRole.isGuest()) {
+        				    if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.READ, true);
 					} else {
+						if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, permissionType, true);
 					}
 				} 
@@ -643,6 +705,7 @@ public class PermissionManager {
     		// the closest parent to check for recursive permissions
     		else if (logicalFile != null)
         	{	
+    			if (log.isDebugEnabled()) st = SimpleTimer.start("Marker7");
     			// because this is a private system, the user will always have at least
     			// read permission on any system path. If they did not have access to this
     			// system, they would not have gotten this far.
@@ -650,6 +713,7 @@ public class PermissionManager {
     			LogicalFile parent = LogicalFileDao.findClosestParent(remoteSystem, systemAbsolutePath);
 				if (parent == null) 
 				{
+					if (st != null) log.debug(st.getShortStopMsg());
 					return userPem;
 				} 
 				// parent was found. make sure parent is still within the system root directory tree
@@ -662,26 +726,31 @@ public class PermissionManager {
 					if (parentPem.isRecursive())
 					{
 						if (userPem.getPermission().getUnixValue() >= parentPem.getPermission().getUnixValue()) {
+							if (st != null) log.debug(st.getShortStopMsg());
 							return userPem;
 						} else {
+							if (st != null) log.debug(st.getShortStopMsg());
 							return parentPem;
 						}
 					}
 					// parent permissions were not recursive. use child pems instead
 					else
 					{
+						if (st != null) log.debug(st.getShortStopMsg());
 						return userPem;
 					}
 				}
 				// file has no pems, and the parent is outside the current system root
 				else
 				{
+					if (st != null) log.debug(st.getShortStopMsg());
 					return userPem;
 				}
         	}
     		// no logical file found
     		else 
     		{
+    			   if (log.isDebugEnabled()) st = SimpleTimer.start("Marker8");
     			// find the closest known parent and check for recursive permisisons
 				LogicalFile parent = LogicalFileDao.findClosestParent(remoteSystem, systemAbsolutePath);
 				if (parent == null)
@@ -690,11 +759,13 @@ public class PermissionManager {
 					// guest role at this point
 					if (userRole.isGuest()) 
 					{
+						if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.READ, true);
 					} 
 					// no known parent or path. user has at least user access to the system. grant all pems on the path
 					else 
 					{
+						if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.ALL, false);
 					}
 				}
@@ -708,28 +779,33 @@ public class PermissionManager {
 					// otherwise defer to the system.
 					if (parentPem.isRecursive()) 
 					{
+						if (st != null) log.debug(st.getShortStopMsg());
 						return parentPem;
 					} 
 					// parent should have recursive guest pems, but if for whatever reason they 
 					// do not, we give read access if the user has the guest role
 					else if (userRole.isGuest()) 
 					{
+						if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.READ, true);
 					} 
 					// parent pems don't inherit. user has at least user access to the system. grant all pems on the path
 					else 
 					{
+						if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.ALL, false);
 					}
 				}
 				// we give read access if the user has the guest role
 				else if (userRole.isGuest()) 
 				{
+					if (st != null) log.debug(st.getShortStopMsg());
 					return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.READ, true);
 				} 
 				// parent pems don't inherit. user has at least user access to the system. grant all pems on the path
 				else 
 				{
+					if (st != null) log.debug(st.getShortStopMsg());
 					return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.ALL, false);
 				}
     		}
@@ -748,6 +824,9 @@ public class PermissionManager {
 	 */
 	public boolean isUserHomeDirOnPublicSystem(String path)
 	{
+		SimpleTimer st = null;
+		if (log.isDebugEnabled()) st = SimpleTimer.start("isUserHomeDirOnPublicSystem");
+		
 		if (remoteSystem.isPubliclyAvailable())
 		{
 			String homeDir = remoteSystem.getStorageConfig().getHomeDir();
@@ -758,6 +837,7 @@ public class PermissionManager {
 					homeDir = remoteDataClient.resolvePath("");
 				}
 			} catch (Exception e) {
+				if (st != null) log.debug(st.getShortStopMsg());
 				return false;
 			}
 			
@@ -765,12 +845,16 @@ public class PermissionManager {
 	        
 			homeDir = homeDir.replaceAll("/+", "/");
 	        
+			if (st != null) log.debug(st.getShortStopMsg());
 			return StringUtils.equalsIgnoreCase(cleanPath(path) , homeDir);
 		}
 		else
 		{
+			if (st != null) log.debug(st.getShortStopMsg());
 			return false;
 		}
+		
+		
 	}
 	
 	/**
@@ -809,6 +893,9 @@ public class PermissionManager {
 	 */
 	public boolean isUnderUserHomeDirOnPublicSystem(String systemAbsolutePath)
 	{
+		SimpleTimer st = null;
+		if (log.isDebugEnabled()) st = SimpleTimer.start("isUnderUserHomeDirOnPublicSystem");
+		
 		if (remoteSystem.isPubliclyAvailable())
 		{
 			String homeDir = remoteSystem.getStorageConfig().getHomeDir();
@@ -820,16 +907,19 @@ public class PermissionManager {
 					homeDir = remoteDataClient.resolvePath("");
 				}
 			} catch (Exception e) {
+				if (st != null) log.debug(st.getShortStopMsg());
 				return false;
 			}
 			
 			homeDir += "/" + apiUsername;
 	        
 			homeDir = homeDir.replaceAll("/+", "/");
+			if (st != null) log.debug(st.getShortStopMsg());
 			return StringUtils.startsWithIgnoreCase(cleanPath(systemAbsolutePath) , homeDir);
 		}
 		else
 		{
+			if (st != null) log.debug(st.getShortStopMsg());
 			return false;
 		}
 	}
@@ -891,18 +981,32 @@ public class PermissionManager {
 	{
 		SystemRole userRole = logicalFile.getSystem().getUserRole(username);
 		
+		SimpleTimer st1 = null;
+		
 		// default to no permissions for empty users and other tenants
 		if (StringUtils.isEmpty(username) || !StringUtils.equals(logicalFile.getTenantId(), TenancyHelper.getCurrentTenantId())) 
 		{
-			return new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.NONE, true);
+			if (log.isDebugEnabled()) st1 = SimpleTimer.start("DifferentTenant");
+			RemoteFilePermission perms =  new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.NONE, true);
+			if (st1 != null) log.debug(st1.getShortStopMsg());
+			return perms;
+
 		}
 		// admins have total control
 		else if (userRole.canAdmin())
 		{
-			return new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
+			if (log.isDebugEnabled()) st1 = SimpleTimer.start("AdminAccess");
+			RemoteFilePermission perms =  new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
+			if (st1 != null) log.debug(st1.getShortStopMsg());
+			return perms;
 		}
 		else
 		{
+			if (log.isDebugEnabled()) st1 = SimpleTimer.start("NonAdminAccessSameTenant");
+			
+			SimpleTimer st2 = null;
+			if (log.isDebugEnabled()) st2 = SimpleTimer.start("getByUsernameAndlogicalFileId");
+			
 			RemoteFilePermission userPem = RemoteFilePermissionDao.getByUsernameAndlogicalFileId(username, logicalFile.getId());
 			RemoteFilePermission publicPem = StringUtils.equals(username, Settings.PUBLIC_USER_USERNAME) ? 
 					userPem : RemoteFilePermissionDao.getByUsernameAndlogicalFileId(Settings.PUBLIC_USER_USERNAME, logicalFile.getId());
@@ -914,6 +1018,9 @@ public class PermissionManager {
 			RemoteFilePermission aggregatePermission = RemoteFilePermission.merge(userPem, publicPem);
 			aggregatePermission = RemoteFilePermission.merge(aggregatePermission, worldPem);
 			
+			
+			if (st2 != null) log.debug(st2.getShortStopMsg());
+
 			// they must have permission on the system in order to leverage
 			// any RemoteFilePermission set for them
 			if (userRole.canRead())
@@ -921,6 +1028,7 @@ public class PermissionManager {
 				// if they own the file, they have full permission
 				if (StringUtils.equals(logicalFile.getOwner(), username))
 				{
+					if (st1 != null) log.debug(st1.getShortStopMsg());
 					return new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
 				}
 				// if they have a RemoteFilePermission set, return that
@@ -930,10 +1038,13 @@ public class PermissionManager {
 					if (userRole.isGuest()) 
 					{
 						RemoteFilePermission guestPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.READ, true);
-						return RemoteFilePermission.merge(aggregatePermission, guestPem);
+						RemoteFilePermission perms = RemoteFilePermission.merge(aggregatePermission, guestPem);
+						if (st1 != null) log.debug(st1.getShortStopMsg());
+						return perms;
 					} 
 					else 
 					{
+						if (st1 != null) log.debug(st1.getShortStopMsg());
 						return userPem;
 					}
 				}
@@ -944,11 +1055,15 @@ public class PermissionManager {
 					if (userRole.isGuest()) 
 					{
 						RemoteFilePermission guestPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.READ, true);
-						return RemoteFilePermission.merge(aggregatePermission, guestPem);
+						
+						RemoteFilePermission perms = RemoteFilePermission.merge(aggregatePermission, guestPem);
+						if (st1 != null) log.debug(st1.getShortStopMsg());
+						return perms;
 					}
 					// return the aggregatePermission if it is not null
 					else if (aggregatePermission != null) 
 					{
+						if (st1 != null) log.debug(st1.getShortStopMsg());
 						return aggregatePermission;
 					}
 					// otherwise assign role based permissions
@@ -956,11 +1071,14 @@ public class PermissionManager {
 					{
 						if (logicalFile.getSystem().isPubliclyAvailable()) {
 							if (isUnderUserHomeDirOnPublicSystem(logicalFile.getPath()) || isUserHomeDirOnPublicSystem(logicalFile.getPath())) {
+								if (st1 != null) log.debug(st1.getShortStopMsg());
 								return userPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
 							} else {
+								if (st1 != null) log.debug(st1.getShortStopMsg());
 								return userPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.NONE, true);
 							}
 						} else {
+							if (st1 != null) log.debug(st1.getShortStopMsg());
 							return userPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
 						}
 					}
@@ -969,11 +1087,13 @@ public class PermissionManager {
 			// if they don't have permission on the system return the aggregate permission including public and world permissions
 			else if (aggregatePermission != null) 
 			{
+				if (st1 != null) log.debug(st1.getShortStopMsg());
 				return aggregatePermission;
 			} 
 			// if they don't have permission on the system and there are no 
 			else 
 			{
+				if (st1 != null) log.debug(st1.getShortStopMsg());
 				return new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.NONE, true); 
 			}
 		}

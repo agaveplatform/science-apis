@@ -1,15 +1,12 @@
 package org.iplantc.service.jobs.queue;
 
 import java.nio.channels.ClosedByInterruptException;
-import java.util.Date;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.UnresolvableObjectException;
-import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.Settings;
@@ -22,7 +19,6 @@ import org.iplantc.service.jobs.queue.actions.MonitoringAction;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.joda.time.DateTime;
-import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionException;
 
 /**

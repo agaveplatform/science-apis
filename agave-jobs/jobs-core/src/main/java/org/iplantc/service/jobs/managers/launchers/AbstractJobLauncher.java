@@ -6,8 +6,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.channels.ClosedByInterruptException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
@@ -141,6 +139,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
     @Override
     public void checkStopped() throws ClosedByInterruptException {
         if (isStopped()) {
+        	if (log.isDebugEnabled()) log.debug("Interrupt detected by checkStopped.");
             throw new ClosedByInterruptException();
         }
     }
@@ -276,33 +275,6 @@ public abstract class AbstractJobLauncher implements JobLauncher
 		return startupScriptCommand;
 	}
 	
-//	/**
-//	 * Returns the name of the 
-//	 * @param apiUsername
-//	 * @param internalUsername
-//	 * @param inputValue
-//	 * @return
-//	 * @throws Exception
-//	 */
-//	protected String getInputFileName(String apiUsername, String internalUsername, String inputValue) 
-//	throws Exception {
-//		try
-//		{
-//			if (StringUtils.isEmpty(inputValue)) {
-//				return "";
-//			} else {
-//				URI uri = new URI(inputValue);
-//				RemoteDataClientFactory factory = new RemoteDataClientFactory();
-//				RemoteDataClient rdc = factory.getInstance(apiUsername, internalUsername, uri);
-//				return rdc.resolvePath(uri.getPath());
-//			}
-//		}
-//		catch (URISyntaxException e)
-//		{
-//			return FilenameUtils.getName(inputValue);
-//		}
-//	}
-//	
 	/**
      * sets up the application dir for job launch
      * @throws JobException 
@@ -365,14 +337,18 @@ public abstract class AbstractJobLauncher implements JobLauncher
 		{
         	if (getSoftware().getStorageSystem() == null) 
         	{
-        		throw new JobException("Unable to submit job. Storage system with app assets is " + 
-        				" no longer a registered system.");
+        		String msg = "Unable to submit job. Storage system with app assets is " + 
+        				     " no longer a registered system.";
+        		log.error(msg);
+        		throw new JobException(msg);
         	} 
         	else if(!getSoftware().getStorageSystem().isAvailable() || 
         			!getSoftware().getStorageSystem().getStatus().equals(SystemStatusType.UP)) 
         	{
-        		throw new SystemUnavailableException("Unable to fetch app assets. Storage system " + 
-        				getSoftware().getStorageSystem().getSystemId() + " is not currently available for use.");
+        		String msg = "Unable to fetch app assets. Storage system " + 
+        				     getSoftware().getStorageSystem().getSystemId() + " is not currently available for use.";
+        		log.error(msg);
+        		throw new SystemUnavailableException(msg);
         	} 
         	else 
         	{
@@ -387,15 +363,8 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	        		// first copy the remote data here
 	        		transferTask = new TransferTask(
 	    					"agave://" + getSoftware().getStorageSystem().getSystemId() + "/" + getSoftware().getDeploymentPath(), 
-	    					"https://workers.prod.agaveapi.co/" + tempAppDir.getAbsolutePath(), 
+	    					"https://workers.prod.agaveplatform.org/" + tempAppDir.getAbsolutePath(),
 	    					getJob().getOwner(), null, null);
-	    			
-//	    			transferTask.setTotalSize(-1);
-//	    			transferTask.setBytesTransferred(0);
-//	    			transferTask.setAttempts(1);
-//	    			transferTask.setStatus(TransferStatusType.TRANSFERRING);
-//	    			transferTask.setStartTime(new DateTime().toDate());
-//	    			TransferTaskDao.persist(transferTask);
 	    			
 	        		TransferTaskDao.persist(transferTask);
 	    			
@@ -408,7 +377,6 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	    			
 	        		JobDao.persist(getJob());
 	        			        		
-//	        		urlCopy.copy(software.getDeploymentPath(), tempAppDir.getAbsolutePath(), transferTask);
 	        		remoteSoftwareDataClient.get(getSoftware().getDeploymentPath(), tempAppDir.getAbsolutePath(), new RemoteTransferListener(transferTask));
 	        		
 	    			checkStopped();
@@ -436,12 +404,11 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	    					if (tempAppDir.list().length > 1) {
 	    						zippedFile.delete();
 	    					} else {
-	    						throw new SoftwareException("Failed to unpack the application bundle.");
+	    						String msg = "Failed to unpack the application bundle.";
+	    						log.error(msg);
+	    						throw new SoftwareException(msg);
 	    					}
 	    				} else {
-//	    					software.setAvailable(false);
-//	    					software.setLastUpdated(new DateTime().toDate());
-//	    					SoftwareDao.persist(software);
 	    					Tenant tenant = new TenantDao().findByTenantId(TenancyHelper.getCurrentTenantId());
 	    					String message ="While submitting a job, the Job Service noticed that the checksum " +
                                     "of the public app " + getSoftware().getUniqueName() + " had changed. This " +
@@ -462,8 +429,10 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	    						log.error("Failed to notify admin that " + message, e);
 	    					}
 	    					
-	    					throw new SoftwareException("Public app bundle for " + getSoftware().getUniqueName() + 
-	    					        " has changed. Please verify this app and try again.");
+	    					String msg = "Public app bundle for " + getSoftware().getUniqueName() + 
+	    					             " has changed. Please verify this app and try again.";
+	    					log.error(msg);
+	    					throw new SoftwareException(msg);
 	    				}
 	    				
 	    				File standardLocation = new File(tempAppDir, new File(getSoftware().getDeploymentPath()).getName());
@@ -499,20 +468,25 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	    				}
 	    			}
 	        	} else {
-	        		throw new JobException("Unable to obtain a remote data client for " +
-	        				"the storage system.");
+	        		String msg = "Unable to obtain a remote data client for the storage system.";
+	        		log.error(msg);
+	        		throw new JobException(msg);
 	        	}
         	}
         
 		}
 		catch (ClosedByInterruptException e) {
-            log.debug("Submission task for job " + getJob().getUuid() + " aborted due to interrupt by worker process.");
+			if (log.isDebugEnabled())
+               log.debug("Submission task for job " + getJob().getUuid() + " aborted due to interrupt by worker process.");
         } 
 		catch (JobException e) {
+			log.error(e.getMessage(), e);
         	throw e;
         } 
 		catch (Exception e) {
-            throw new JobException("Remote data connection to " + getSoftware().getExecutionSystem().getSystemId() + " threw exception and stopped job execution", e);
+			String msg = "Remote data connection to " + getSoftware().getExecutionSystem().getSystemId() + " threw exception and stopped job execution";
+			log.error(msg, e);
+            throw new JobException(msg, e);
         } 
 		finally {
         	 try { remoteSoftwareDataClient.disconnect(); } catch (Exception e) {}
@@ -543,7 +517,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 			checkStopped();
 			
 			transferTask = new TransferTask(
-					"https://workers.prod.agaveapi.co/" + tempAppDir.getAbsolutePath(), 
+					"https://workers.prod.agaveplatform.org/" + tempAppDir.getAbsolutePath(),
 					"agave://" + getJob().getSystem() + "/" + getJob().getWorkPath(), 
 					getJob().getOwner(), null, null);
 			
@@ -579,7 +553,9 @@ public abstract class AbstractJobLauncher implements JobLauncher
 			}
 		} 
 		catch (Exception e) { 
-			throw new JobException("Failed to stage application dependencies to execution system", e);
+			String msg = "Failed to stage application dependencies to execution system";
+			log.error(msg, e);
+			throw new JobException(msg, e);
 		} 
     	finally {
 			try { remoteExecutionDataClient.disconnect();} catch (Exception e) {} 
@@ -608,7 +584,9 @@ public abstract class AbstractJobLauncher implements JobLauncher
         {
             step = "Creating an archive manifest file for job " + getJob().getUuid();
             log.debug(step);
-            throw new JobException("Failed to create manifest file for job " + getJob().getUuid(), e);
+            String msg = "Failed to create manifest file for job " + getJob().getUuid();
+            log.error(msg, e);
+            throw new JobException(msg, e);
         }
 		finally {
             try { logWriter.close(); } catch (Exception e) {}
@@ -663,7 +641,9 @@ public abstract class AbstractJobLauncher implements JobLauncher
         {
             step = "Creating the .agaverc " + getJob().getUuid();
             log.debug(step);
-            throw new JobException("Failed to create runcom file for job " + getJob().getUuid(), e);
+            String msg = "Failed to create runcom file for job " + getJob().getUuid();
+            log.error(msg, e);
+            throw new JobException(msg, e);
         }
         finally {
             try { writer.close(); } catch (Exception e) {}

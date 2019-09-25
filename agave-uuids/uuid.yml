@@ -3,7 +3,7 @@ info:
   title: Agave UUID API
   description: This is a basic UUID creation and lookup api.
   version: 0.1.0
-host: public.agaveapi.co
+host: sandbox.agaveplatform.org
 schemes:
   - https
 basePath: /
@@ -103,19 +103,19 @@ paths:
 securityDefinitions:
   agaveImplicit:
     type: oauth2
-    authorizationUrl: 'https://public.agaveapi.co/authorization'
+    authorizationUrl: 'https://sandbox.agaveplatform.org/authorization'
     flow: implicit
     scopes:
       PRODUCTION: catchall scope for all core apis
   agaveApplication:
     type: oauth2
-    tokenUrl: 'https://public.agaveapi.co/token'
+    tokenUrl: 'https://sandbox.agaveplatform.org/token'
     flow: application
     scopes:
       PRODUCTION: catchall scope for all core apis
   agavePassword:
     type: oauth2
-    tokenUrl: 'https://public.agaveapi.co/token'
+    tokenUrl: 'https://sandbox.agaveplatform.org/token'
     flow: password
     scopes:
       PRODUCTION: catchall scope for all core apis

@@ -76,7 +76,8 @@ public class SubmissionAction extends AbstractWorkerAction {
                 
                 attempts++;
                 
-                log.debug("Attempt " + attempts + " to submit job " + job.getUuid());
+                log.debug("Attempt " + attempts + " to submit job " + job.getUuid() +
+                          " (max retries = " + Settings.MAX_SUBMISSION_RETRIES + ").");
                 
                 this.job = JobManager.updateStatus(this.job, JobStatusType.SUBMITTING, "Attempt " + attempts + " to submit job");
                 
@@ -91,6 +92,7 @@ public class SubmissionAction extends AbstractWorkerAction {
                     log.info("Successfully submitted job " + getJob().getUuid() + " to " + getJob().getSystem());
                 }
                 catch (ClosedByInterruptException e) {
+                    log.debug("Interrupted: " + getJob().getUuid() + e.getMessage());
                     throw e;
                 } 
                 catch (ConnectException e) 
@@ -102,38 +104,24 @@ public class SubmissionAction extends AbstractWorkerAction {
                         this.job = JobManager.updateStatus(getJob(), getJob().getStatus(), e.getMessage() + 
                             " The service was unable to connect to the target execution system " +
                             "for this application, " + getJob().getSystem() + ". This job will " +
-                            "remain in queue until the system becomes available. ");
+                            "remain in queue until the system becomes available. Original error message: " + e.getMessage());
                     }
                     catch (Exception e1) {
-                        log.error("Failed to update job " + getJob().getUuid() + " status to " + job.getStatus());
+                        log.error("Failed to update job " + getJob().getUuid() + " status to " + job.getStatus(), e1);
                     }
                 }
-//                catch (QuotaViolationException e) 
-//                {
-//                    try
-//                    {
-//                        log.debug("Remote execution of job " + getJob().getUuid() + " is current paused due to quota restrictions. " + e.getMessage());
-//                        JobManager.updateStatus(getJob(), JobStatusType.STAGED, 
-//                            "Remote execution of job " + job.getUuid() + " is current paused due to quota restrictions. " + 
-//                            e.getMessage() + ". This job will resume staging once one or more current jobs complete.");
-//                    }
-//                    catch (Exception e1) {
-//                        log.error("Failed to update job " + job.getUuid() + " status to STAGED");
-//                    }   
-//                    break;
-//                }
                 catch (SystemUnavailableException e) 
                 {
                     try
                     {
                         log.debug("One or more dependent systems for job " + getJob().getUuid() + " is currently unavailable. " + e.getMessage());
                         this.job = JobManager.updateStatus(getJob(), JobStatusType.STAGED, 
-                            "Remote execution of  job " + getJob().getUuid() + " is current paused waiting for " + getJob().getSystem() + 
+                            "Remote execution of  job " + getJob().getUuid() + " is currently paused waiting for " + getJob().getSystem() + 
                             "to become available. If the system becomes available again within 7 days, this job " + 
-                            "will resume staging. After 7 days it will be killed.");
+                            "will resume staging. After 7 days it will be killed. Original error message: " + e.getMessage());
                     }
                     catch (Exception e1) {
-                        log.error("Failed to update job " + getJob().getUuid() + " status to STAGED");
+                        log.error("Failed to update job " + getJob().getUuid() + " status to STAGED", e1);
                     }   
                     break;
                 }
@@ -143,12 +131,12 @@ public class SubmissionAction extends AbstractWorkerAction {
                     {
                         log.debug("Software for job " + getJob().getUuid() + " is currently unavailable. " + e.getMessage());
                         this.job = JobManager.updateStatus(getJob(), JobStatusType.STAGED, 
-                            "Remote execution of  job " + getJob().getUuid() + " is current paused waiting for " + job.getSoftwareName() + 
+                            "Remote execution of  job " + getJob().getUuid() + " is currently paused waiting for " + job.getSoftwareName() + 
                             "to become available. If the app becomes available again within 7 days, this job " + 
-                            "will resume staging. After 7 days it will be killed.");
+                            "will resume staging. After 7 days it will be killed. Original error message: " + e.getMessage());
                     }
                     catch (Exception e1) {
-                        log.error("Failed to update job " + getJob().getUuid() + " status to STAGED");
+                        log.error("Failed to update job " + getJob().getUuid() + " status to STAGED", e1);
                     }   
                     break;
                 }
@@ -157,12 +145,12 @@ public class SubmissionAction extends AbstractWorkerAction {
                     try
                     {
                         log.error("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() + 
-                                " due to scheduler exception");
+                                " due to scheduler exception.", e);
                         this.job = JobManager.updateStatus(getJob(), getJob().getStatus(), "Attempt " 
                             + attempts + " failed to submit job due to scheduler exception. " + e.getMessage());
                     }
                     catch (Exception e1) {
-                        log.error("Failed to update job " + getJob().getUuid() + " status to " + getJob().getStatus());
+                        log.error("Failed to update job " + getJob().getUuid() + " status to " + getJob().getStatus(), e1);
                     }
                 } 
                 catch (Exception e) 
@@ -170,8 +158,7 @@ public class SubmissionAction extends AbstractWorkerAction {
                     if (e.getCause() instanceof UnresolvableObjectException || 
                             e.getCause() instanceof ObjectNotFoundException) {
                         log.error("Race condition was just avoided for job " + job.getUuid(), e);
-                        setJobLauncher(null);
-                        attempts++;
+                        break;
                     }
                     else if (attempts >= Settings.MAX_SUBMISSION_RETRIES ) 
                     {
@@ -183,7 +170,7 @@ public class SubmissionAction extends AbstractWorkerAction {
                                     + attempts + " failed to submit job. " + e.getCause().getMessage());
                         }
                         catch (Exception e1) {
-                            log.error("Failed to update job " + job.getUuid() + " status to " + job.getStatus());
+                            log.error("Failed to update job " + job.getUuid() + " status to " + job.getStatus(), e1);
                         }
                     
                         try 
@@ -201,7 +188,7 @@ public class SubmissionAction extends AbstractWorkerAction {
                                     "Failed to remove remote work directory.");
                             }
                             catch (Exception e2) {
-                                log.error("Failed to update job " + job.getUuid() + " status to " + job.getStatus());
+                                log.error("Failed to update job " + job.getUuid() + " status to " + job.getStatus(), e2);
                             }
                         }
                         
@@ -213,7 +200,7 @@ public class SubmissionAction extends AbstractWorkerAction {
                                     "Unable to submit job after " + attempts + " attempts. Job cancelled.");
                         }
                         catch (Exception e1) {
-                            log.error("Failed to update job " + job.getUuid() + " status to FAILED");
+                            log.error("Failed to update job " + job.getUuid() + " status to FAILED", e1);
                         }
                         
                         break;
@@ -222,11 +209,12 @@ public class SubmissionAction extends AbstractWorkerAction {
                     {
                         try 
                         {
-                            this.job = JobManager.updateStatus(job, job.getStatus(), "Attempt " 
-                                + attempts + " failed to submit job. " + e.getCause().getMessage());
+                            String msg = "Attempt " + attempts + " failed to submit job. " + e.getCause().getMessage();
+                            log.info(msg, e);
+                            this.job = JobManager.updateStatus(job, job.getStatus(), msg);
                         }
                         catch (Exception e1) {
-                            log.error("Failed to update job " + job.getUuid() + " status to " + job.getStatus());
+                            log.error("Failed to update job " + job.getUuid() + " status to " + job.getStatus(), e1);
                         }
                     }
                 }
@@ -253,7 +241,7 @@ public class SubmissionAction extends AbstractWorkerAction {
      * Returns the current job refernce. Since the launcher will update the
      * job status as it goes and invalidate the current referenced entity,
      * this method will use that value if present, otherwise it will use its
-     * own.
+     * own.  (This, of course, is ridiculous.)
      * 
      * @return current valid job reference
      */

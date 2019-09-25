@@ -313,7 +313,7 @@ services:
     environment:
       - 'PINGDOM_USERNAME=USERNAME'
       - 'PINGDOM_PASSWORD=PASSWORD'
-      - 'MYSQL_HOST=db.staging.agaveapi.co'
+      - 'MYSQL_HOST=db.staging.agaveplatform.org'
       - 'PINGDOM_TOKEN='
       - 'STATUSIO_ID='
       - 'FREEGEOIP_URL=http://freegeoip:8001'

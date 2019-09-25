@@ -251,7 +251,6 @@ public class MonitorCheckDao extends AbstractDao
             }
 			
 			List<MonitorCheck> checks = (List<MonitorCheck>)query
-//					.setResultTransformer(Transformers.aliasToBean(MonitorCheck.class))
 					.setCacheable(false)
 					.setCacheMode(CacheMode.IGNORE)
 					.setFirstResult(offset)

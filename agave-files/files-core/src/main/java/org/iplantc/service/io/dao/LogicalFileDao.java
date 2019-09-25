@@ -1,6 +1,7 @@
 package org.iplantc.service.io.dao;
 
 import java.math.BigInteger;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -11,14 +12,12 @@ import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.hibernate.ObjectNotFoundException;
 import org.hibernate.Session;
-import org.hibernate.criterion.Restrictions;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.io.model.enumerations.TransformTaskStatus;
 import org.iplantc.service.io.util.ServiceUtils;
 import org.iplantc.service.systems.model.RemoteSystem;
 
@@ -199,7 +198,7 @@ public class LogicalFileDao {
 		}
 		catch (HibernateException ex)
 		{
-			log.error("Failed to persist logical file", ex);
+			log.error("Failed to persist logical file " + file.getName() + ".", ex);
 			
 			try
 			{
@@ -358,10 +357,6 @@ public class LogicalFileDao {
 		updateTransferStatus(file,status.name(), null, createdBy);
 	}
 	
-	public static void updateTransferStatus(LogicalFile file, TransformTaskStatus status, String createdBy) 
-	{	
-		updateTransferStatus(file,status.name(), null, createdBy);
-	}
 	
 	public static void updateTransferStatus(RemoteSystem system, String path, String status) {
 		
@@ -966,10 +961,11 @@ public class LogicalFileDao {
 			Session session = getSession();
 			
 			
-			LogicalFile file = (LogicalFile)session.createSQLQuery("select * from logical_files where BINARY path = :path and system_id = :systemId")
+			LogicalFile file = (LogicalFile)session.createSQLQuery("select * from logical_files where BINARY path = :path and system_id = :systemId and path_hash = :pathHash")
 				.addEntity(LogicalFile.class)
 				.setString("path", path)
 				.setLong("systemId", system.getId())
+				.setLong("pathHash", ServiceUtils.getMD5LongHash(path))
 				.setMaxResults(1)
 				.uniqueResult();
 		
@@ -990,6 +986,9 @@ public class LogicalFileDao {
 			catch (Exception e) {}
 			
 			throw ex;
+		} catch (NoSuchAlgorithmException ex) {
+			// TODO Auto-generated catch block
+			throw new RuntimeException("MD5 Algorithm is not available while hashing field path", ex);
 		}
 		finally
 		{

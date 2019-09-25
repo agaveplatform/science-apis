@@ -19,7 +19,7 @@ import org.testng.annotations.Test;
 
 @Test(groups={"integration"})
 public class LoadPublicSystemsTest extends SystemsModelTestCommon {
-	private static String SYSTEM_OWNER = "dooley";
+	private static String SYSTEM_OWNER = "sterry1";
 	
 	private SystemDao dao = new SystemDao();
 	private SystemManager systemManager = new SystemManager();

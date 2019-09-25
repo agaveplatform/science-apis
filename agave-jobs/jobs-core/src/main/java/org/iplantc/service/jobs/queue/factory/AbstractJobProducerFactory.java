@@ -50,6 +50,7 @@ public abstract class AbstractJobProducerFactory implements JobFactory {
     
     public AbstractJobProducerFactory() {}
 
+    @Override
     public Job newJob(TriggerFiredBundle bundle, Scheduler scheduler) throws SchedulerException {
 
     	// Synchronize on the class object of this class.  This uses the same monitor
@@ -58,12 +59,14 @@ public abstract class AbstractJobProducerFactory implements JobFactory {
     	// synchronized.  
     	synchronized (AbstractJobProducerFactory.class) { 
     		JobDetail jobDetail = bundle.getJobDetail();
+    		if (log.isTraceEnabled()) log.trace(getClass().getSimpleName() + ": " + jobDetail.toString());
         
     		WorkerWatch worker = null;
         
     		try 
     		{
     			worker = getJobInstance();
+    			if (log.isTraceEnabled()) log.trace("Job instance class: " + worker.getClass().getSimpleName());
             
     			String jobUuid = worker.selectNextAvailableJob();
 

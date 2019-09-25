@@ -941,7 +941,7 @@ public class AgaveMyProxyLogon {
 			X509Certificate[] CAcerts;
 			X509CRL[] CRLs;
 			
-			m.setUsername("dooley");
+			m.setUsername("xxx");
 			System.out.println("Warning: terminal will echo passphrase as you type.");
 			System.out.print("MyProxy Passphrase: ");
 			passphrase = readLine(System.in);

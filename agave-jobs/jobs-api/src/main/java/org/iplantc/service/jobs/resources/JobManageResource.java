@@ -11,7 +11,6 @@ import org.apache.log4j.Logger;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.jobs.dao.JobDao;
@@ -89,9 +88,10 @@ public class JobManageResource extends AbstractJobResource {
 			job = JobDao.getByUuid(sJobId);
 			if (job == null) 
 			{
+	            String msg = "No job found with job id " + sJobId + "."; 
+	            log.error(msg);
 				getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-				getResponse().setEntity(new IplantErrorRepresentation(
-						"No job found with job id " + sJobId));
+				getResponse().setEntity(new IplantErrorRepresentation(msg));
 				return;
 			}
 			
@@ -153,9 +153,10 @@ public class JobManageResource extends AbstractJobResource {
 				}
 				else if (!job.isVisible()) 
 				{
+	                String msg = "Job with uuid " + sJobId + " is not visible.";
+	                log.error(msg);
 					getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-					getResponse().setEntity(new IplantErrorRepresentation(
-							"No job found with job id " + sJobId));
+					getResponse().setEntity(new IplantErrorRepresentation(msg));
 					return;
 				}
 				else if (pTable.get("action").equalsIgnoreCase("resubmit"))
@@ -351,10 +352,18 @@ public class JobManageResource extends AbstractJobResource {
 		try
 		{
 			job = JobDao.getByUuid(sJobId);
-			if (job == null || !job.isVisible()) 
+			if (job == null) 
 			{
+	            String msg = "No job found with job id " + sJobId + "."; 
+	            log.error(msg);
 				getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-				return new IplantErrorRepresentation("No job found with job id " + sJobId);
+				return new IplantErrorRepresentation(msg);
+			}
+			else if (!job.isVisible()) {
+                String msg = "Job with uuid " + sJobId + " is not visible.";
+                log.error(msg);
+                getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+                return new IplantErrorRepresentation(msg);
 			}
 			else if (new JobPermissionManager(job, username).canRead(username))
 			{
@@ -409,10 +418,17 @@ public class JobManageResource extends AbstractJobResource {
 		{
 			job = JobDao.getByUuid(sJobId);
 			
-			if (job == null || !job.isVisible()) {
+			if (job == null) {
+                String msg = "No job found with job id " + sJobId + "."; 
+                log.error(msg);
 				getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-				getResponse().setEntity(new IplantErrorRepresentation(
-						"No job found with job id " + sJobId));
+				getResponse().setEntity(new IplantErrorRepresentation(msg));
+			}
+			else if (!job.isVisible()) {
+                String msg = "Job with uuid " + sJobId + " is not visible.";
+                log.error(msg);
+                getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+                getResponse().setEntity(new IplantErrorRepresentation(msg));
 			}
 			else if (new JobPermissionManager(job, username).canWrite(username))
 			{

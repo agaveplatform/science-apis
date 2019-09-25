@@ -6,9 +6,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.UnresolvableObjectException;
-import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.exceptions.UnknownSoftwareException;
-import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.Settings;
@@ -25,7 +23,6 @@ import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
@@ -82,9 +79,9 @@ public class StagingWatch extends AbstractJobWatch
 			{
 				try
 				{
-					log.debug("Input staging for job " + this.job.getUuid() + " is current paused due to quota restrictions. " + e.getMessage());
+					log.debug("Input staging for job " + this.job.getUuid() + " is currently paused due to quota restrictions. " + e.getMessage());
 					this.job = JobManager.updateStatus(this.job, JobStatusType.PENDING, 
-						"Input staging for job is current paused due to quota restrictions. " + 
+						"Input staging for job is currently paused due to quota restrictions. " + 
 						e.getMessage() + ". This job will resume staging once one or more current jobs complete.");
 				}
 				catch (Throwable e1) {
@@ -98,7 +95,7 @@ public class StagingWatch extends AbstractJobWatch
 				{
 					log.debug("System for job " + this.job.getUuid() + " is currently unavailable. " + e.getMessage());
 					this.job = JobManager.updateStatus(this.job, JobStatusType.PENDING, 
-						"Input staging is current paused waiting for a system containing " + 
+						"Input staging is currently paused waiting for a system containing " + 
 						"input data to become available. If the system becomes available " +
 						"again within 7 days, this job " + 
 						"will resume staging. After 7 days it will be killed.");
@@ -156,7 +153,7 @@ public class StagingWatch extends AbstractJobWatch
 				{
 					log.debug("System for job " + this.job.getUuid() + " is currently unavailable. " + e.getMessage());
 					this.job = JobManager.updateStatus(this.job, JobStatusType.PENDING, 
-						"Input staging is current paused waiting for a system containing " + 
+						"Input staging is currently paused waiting for a system containing " + 
 						"input data to become available. If the system becomes available " +
 						"again within 7 days, this job " + 
 						"will resume staging. After 7 days it will be killed.");
@@ -263,7 +260,7 @@ public class StagingWatch extends AbstractJobWatch
 							{
 								log.debug("System for job " + this.job.getUuid() + " is currently unavailable. " + e.getMessage());
 								this.job = JobManager.updateStatus(this.job, JobStatusType.PENDING, 
-									"Input staging is current paused waiting for a system containing " + 
+									"Input staging is currently paused waiting for a system containing " + 
 									"input data to become available. If the system becomes available " +
 									"again within 7 days, this job " + 
 									"will resume staging. After 7 days it will be killed.");

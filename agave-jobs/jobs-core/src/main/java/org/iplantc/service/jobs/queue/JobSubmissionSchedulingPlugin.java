@@ -6,7 +6,6 @@ package org.iplantc.service.jobs.queue;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.messaging.MessageQueueListener;
 import org.iplantc.service.common.queue.GenericSchedulingPlugin;
-import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.queue.factory.AbstractJobProducerFactory;
@@ -53,7 +52,6 @@ public class JobSubmissionSchedulingPlugin extends GenericSchedulingPlugin
 	{
         try {
             getClass().getClassLoader().loadClass("org.iplantc.service.jobs.Settings");
-//            return Settings.MAX_SUBMISSION_TASKS;
             return 1;
         } catch (ClassNotFoundException e) {
             return 0;
@@ -86,10 +84,11 @@ public class JobSubmissionSchedulingPlugin extends GenericSchedulingPlugin
 		catch (NullPointerException e) {
 		    // happens when the scheduler wasn't initialized properly. Ususally due to us
 		    // disabling it completely.
+		    log.error("Failed to shut down " + getPluginGroup() + "queue properly.", e);
 		}
 		catch (SchedulerException e)
 		{
-			log.error("Failed to shut down queue properly.", e);
+		    log.error("Failed to shut down " + getPluginGroup() + "queue properly.", e);
 		}
 		finally {
 			for (String uuid: AbstractJobProducerFactory.getSubmissionjobtaskqueue()) {

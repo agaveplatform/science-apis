@@ -7,6 +7,7 @@ import java.util.Date;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.ietf.jgss.GSSCredential;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -34,6 +35,8 @@ import org.iplantc.service.transfer.sftp.MaverickSFTP;
 import org.irods.jargon.core.connection.AuthScheme;
 
 public class RemoteDataClientFactory {
+    
+    private static final Logger log = Logger.getLogger(RemoteDataClientFactory.class);
 
 	/**
 	 * Creates a pre-configured {@link RemoteDataClient} for the given {@link RemoteSystem} 
@@ -290,7 +293,9 @@ public class RemoteDataClientFactory {
 	    // next check that the schema is supported
 	    else if (!RemoteDataClientFactory.isSchemeSupported(uri))
 	    {
-	        throw new NotImplementedException();
+	        String msg = "Schema not supported: " + uri.toString();
+	        log.error(msg);
+	        throw new NotImplementedException(msg);
 	    }
 	    else 
 	    {
@@ -326,69 +331,12 @@ public class RemoteDataClientFactory {
     		}
     		else {
     		    // should not ever happen;
-    		    throw new NotImplementedException();
+                String msg = "Invalid URI: " + uri.toString();
+                log.error(msg);
+    		    throw new NotImplementedException(msg);
     		}
 	    }
 	    
-//		else if (StringUtils.equalsIgnoreCase(scheme,"gsiftp")) {
-////				RemoteSystem defaultStorageSystem = manager.getUserDefaultStorageSystem(apiUsername);
-////				AuthConfig userAuthConfig = defaultStorageSystem.getStorageConfig()
-////													.getAuthConfigForInternalUsername(internalUsername);
-////				String salt = defaultStorageSystem.getSystemId() + 
-////							defaultStorageSystem.getStorageConfig().getHost() + 
-////							userAuthConfig.getUsername();
-////				GSSCredential credential = (GSSCredential)userAuthConfig.retrieveCredential(salt);
-////				try {
-////					return new GridFTP(host, port, username, credential, null, null);
-////				} catch (UnknownHostException e) {
-////					throw new RemoteDataException("Connection refused: Unknown host " + host);
-////				} catch (Throwable e) {
-////					throw new RemoteDataException("Unable to connect to the GRIDFTP server at " + host + ":" + port, e);
-////				}
-//			throw new NotImplementedException();
-//		} 
-//		else if (StringUtils.equalsIgnoreCase(scheme,"s3")) {
-//			throw new NotImplementedException();
-//		} 
-//		else if (StringUtils.equalsIgnoreCase(scheme,"azure")) {
-//			throw new NotImplementedException();
-//		} 
-//		else if (StringUtils.equalsIgnoreCase(scheme,"irods")) {
-//			throw new NotImplementedException();
-//		}
-//		else 
-//		{
-//		    
-//		        
-//		    if (StringUtils.equalsIgnoreCase(scheme,"agave")) {
-//		}
-//			// this is an api url. the host is the systemid
-//			if (StringUtils.isEmpty(host)) 
-//			{
-//				// try using the default storage system
-//				return manager.getUserDefaultStorageSystem(apiUsername)
-//						.getRemoteDataClient(internalUsername);
-//			} 
-//			else 
-//			{
-//				SystemDao dao = new SystemDao();
-//				RemoteSystem system = dao.findBySystemId(host);
-//				if (system == null) {
-//					throw new SystemException("No system with system id " + host + " found");
-//				} else {
-//					if (system.getUserRole(apiUsername).canUse()) {
-//						return system.getRemoteDataClient(internalUsername);
-//					} else {
-//						throw new PermissionException("User does not have permission to use this system");
-//					}
-//				}
-//			}
-//		}
-//		else {
-//			// return a client to the user's default storage system
-//			return manager.getUserDefaultStorageSystem(apiUsername)
-//							.getRemoteDataClient(internalUsername);
-//		}		
 	}
 	
 	/**

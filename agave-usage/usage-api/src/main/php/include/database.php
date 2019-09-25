@@ -30,7 +30,7 @@ class DatabaseUtil
 		
 		// force timezone for this connection to line up with PHP timezone
 		// this will carry for all database interactions on this connection.
-		$this->db->query("SET time_zone = 'CDT'")
+		$this->db->query("SET time_zone = 'CDT'");
 	}
 	
 	function close()

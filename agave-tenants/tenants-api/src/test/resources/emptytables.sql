@@ -117,30 +117,6 @@ CREATE TABLE `authconfigs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `authentication_tokens`
---
-
-DROP TABLE IF EXISTS `authentication_tokens`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `authentication_tokens` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `created_at` datetime NOT NULL,
-  `creator` varchar(32) NOT NULL,
-  `expires_at` datetime NOT NULL,
-  `internal_username` varchar(32) NOT NULL,
-  `ip_address` varchar(15) NOT NULL,
-  `renewed_at` datetime NOT NULL,
-  `remaining_uses` int(11) NOT NULL,
-  `token` varchar(64) NOT NULL,
-  `username` varchar(32) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `id` (`id`),
-  UNIQUE KEY `token` (`token`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Table structure for table `batchqueues`
 --
 
@@ -186,62 +162,6 @@ CREATE TABLE `credentialservers` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `decoding_tasks`
---
-
-DROP TABLE IF EXISTS `decoding_tasks`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `decoding_tasks` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `callback_key` varchar(64) NOT NULL,
-  `created` datetime NOT NULL,
-  `current_filter` varchar(64) NOT NULL,
-  `dest_path` varchar(255) NOT NULL,
-  `dest_transform` varchar(64) NOT NULL,
-  `destination_uri` varchar(255) NOT NULL,
-  `source_path` varchar(255) NOT NULL,
-  `src_transform` varchar(64) NOT NULL,
-  `status` varchar(8) NOT NULL,
-  `logical_file_id` bigint(20) DEFAULT NULL,
-  `system_id` bigint(20) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `id` (`id`),
-  KEY `FKAE027D7A1DCDC7B0` (`logical_file_id`),
-  KEY `FKAE027D7ABBBF083F` (`system_id`),
-  CONSTRAINT `FKAE027D7A1DCDC7B0` FOREIGN KEY (`logical_file_id`) REFERENCES `logical_files` (`id`),
-  CONSTRAINT `FKAE027D7ABBBF083F` FOREIGN KEY (`system_id`) REFERENCES `systems` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `encoding_tasks`
---
-
-DROP TABLE IF EXISTS `encoding_tasks`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `encoding_tasks` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `callback_key` varchar(64) NOT NULL,
-  `created` datetime NOT NULL,
-  `dest_path` varchar(255) NOT NULL,
-  `source_path` varchar(255) NOT NULL,
-  `status` varchar(32) NOT NULL,
-  `transform_name` varchar(32) NOT NULL,
-  `transform_filter_name` varchar(32) NOT NULL,
-  `logical_file_id` bigint(20) DEFAULT NULL,
-  `system_id` bigint(20) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `id` (`id`),
-  KEY `FKF27B81A21DCDC7B0` (`logical_file_id`),
-  KEY `FKF27B81A2BBBF083F` (`system_id`),
-  CONSTRAINT `FKF27B81A21DCDC7B0` FOREIGN KEY (`logical_file_id`) REFERENCES `logical_files` (`id`),
-  CONSTRAINT `FKF27B81A2BBBF083F` FOREIGN KEY (`system_id`) REFERENCES `systems` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=682 DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -450,6 +370,7 @@ CREATE TABLE `logical_files` (
   `uuid` varchar(255) NOT NULL,
   `system_id` bigint(20) DEFAULT NULL,
   `tenant_id` varchar(128) NOT NULL,
+  `path_hash` bigint(20) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`),
   UNIQUE KEY `uuid` (`uuid`),

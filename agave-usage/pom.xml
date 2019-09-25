@@ -3,22 +3,16 @@
 
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>org.iplantc</groupId>
-		<artifactId>agave</artifactId>
-		<version>2.1.11</version>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>science-apis</artifactId>
+		<version>2.2.24</version>
 	</parent>
 
-	<groupId>org.iplantc.agave</groupId>
+
 	<artifactId>usage</artifactId>
-	<name>iPlant Agave API Usage Service Parent POM</name>
+	<name>Agave Platform Usage Service Parent POM</name>
 	<description>Parent pom for the Usage service</description>
 	<packaging>pom</packaging>
-
-	<scm>
-		<connection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-usage.git</connection>
-		<developerConnection>scm:git:ssh://git@bitbucket.org/agaveapi/agave-usage.git</developerConnection>
-		<url>https://bitbucket.org/agaveapi/agave-usage</url>
-	</scm>
 
 	<modules>
 		<module>usage-api</module>

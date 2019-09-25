@@ -5,7 +5,6 @@ package org.iplantc.service.jobs.managers;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -14,6 +13,7 @@ import java.util.Map;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.managers.ApplicationManager;
@@ -62,6 +62,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  *
  */
 public class JobRequestProcessor {
+    
+    private static final Logger log = Logger.getLogger(JobRequestProcessor.class);
 
 	protected String username;
 	protected String internalUsername;
@@ -98,143 +100,166 @@ public class JobRequestProcessor {
 
 		try
 		{
-			Iterator<String> fields = json.fieldNames();
-   			while(fields.hasNext()) {
-				String key = fields.next();
+		    try {
+		            Iterator<String> fields = json.fieldNames();
+		            while(fields.hasNext()) {
+		            String key = fields.next();
 
-				if (StringUtils.isEmpty(key)) continue;
+				    if (StringUtils.isEmpty(key)) continue;
 
-				currentKey = key;
+				    currentKey = key;
 
-				if (key.equals("notifications")) {
-					continue;
-				}
+				    if (key.equals("notifications")) {
+					    continue;
+				    }
 				
-				if (key.equals("callbackUrl")) {
-					continue;
-				}
+				    if (key.equals("callbackUrl")) {
+					    continue;
+				    }
 
-				if (key.equals("dependencies"))
-				{
-					throw new JobProcessingException(400,
-							"Job dependencies are not yet supported.");
-				}
+				    if (key.equals("dependencies"))
+				    {
+				        String msg = "Job dependencies are not yet supported.";
+				        log.error(msg);
+					    throw new JobProcessingException(400, msg);
+				    }
 
-				JsonNode child = json.get(key);
+				    JsonNode child = json.get(key);
 
-				if (child.isNull()) {
-				    jobRequestMap.put(key, null);
-				}
-				else if (child.isNumber())
-				{
-				    jobRequestMap.put(key, child.asText());
-				}
-				else if (child.isObject())
-				{
-					Iterator<String> childFields = child.fieldNames();
-					while(childFields.hasNext())
-					{
-						String childKey = childFields.next();
-						JsonNode childchild = child.path(childKey);
-						if (StringUtils.isEmpty(childKey) || childchild.isNull() || childchild.isMissingNode()) {
-							continue;
-						}
-						else if (childchild.isDouble()) {
-						    jobRequestMap.put(childKey, childchild.decimalValue().toPlainString());
-						}
-						else if (childchild.isNumber())
-						{
-						    jobRequestMap.put(childKey, new Long(childchild.longValue()).toString());
-						}
-						else if (childchild.isArray()) {
-						    List<String> arrayValues = new ArrayList<String>();
-							for (Iterator<JsonNode> argIterator = childchild.iterator(); argIterator.hasNext();)
-							{
-								JsonNode argValue = argIterator.next();
-								if (argValue.isNull() || argValue.isMissingNode()) {
-									continue;
-								} else {
-								    arrayValues.add(argValue.asText());
-								}
-							}
-							jobRequestMap.put(childKey, StringUtils.join(arrayValues, ";"));
-						}
-						else if (childchild.isTextual()) {
-						    jobRequestMap.put(childKey, childchild.textValue());
-						}
-						else if (childchild.isBoolean()) {
-						    jobRequestMap.put(childKey, childchild.asBoolean() ? "true" : "false");
-						}
-					}
-				}
-				else
-				{
-				    jobRequestMap.put(key, json.get(key).asText());
-				}
-			}
+				    if (child.isNull()) {
+				        jobRequestMap.put(key, null);
+				    }
+				    else if (child.isNumber())
+				    {
+				        jobRequestMap.put(key, child.asText());
+				    }
+				    else if (child.isObject())
+				    {
+					    Iterator<String> childFields = child.fieldNames();
+					    while(childFields.hasNext())
+					    {
+						    String childKey = childFields.next();
+						    JsonNode childchild = child.path(childKey);
+						    if (StringUtils.isEmpty(childKey) || childchild.isNull() || childchild.isMissingNode()) {
+							    continue;
+						    }
+						    else if (childchild.isDouble()) {
+						        jobRequestMap.put(childKey, childchild.decimalValue().toPlainString());
+						    }
+						    else if (childchild.isNumber())
+						    {
+						        jobRequestMap.put(childKey, new Long(childchild.longValue()).toString());
+						    }
+						    else if (childchild.isArray()) {
+						        List<String> arrayValues = new ArrayList<String>();
+							    for (Iterator<JsonNode> argIterator = childchild.iterator(); argIterator.hasNext();)
+							    {
+								    JsonNode argValue = argIterator.next();
+								    if (argValue.isNull() || argValue.isMissingNode()) {
+									    continue;
+								    } else {
+								        arrayValues.add(argValue.asText());
+								    }
+							    }
+							    jobRequestMap.put(childKey, StringUtils.join(arrayValues, ";"));
+						    }
+						    else if (childchild.isTextual()) {
+						        jobRequestMap.put(childKey, childchild.textValue());
+						    }
+						    else if (childchild.isBoolean()) {
+						        jobRequestMap.put(childKey, childchild.asBoolean() ? "true" : "false");
+						    }
+					    }
+				    }
+				    else
+				    {
+				        jobRequestMap.put(key, json.get(key).asText());
+				    }
+		        }
+		    }
+		    catch (Exception e) {
+                String msg = "Assignment for json key " + currentKey + " failed: " +
+                             e.getMessage();
+                log.error(msg, e);
+                throw e;
+		    }
 
-//   			List<Notification> notifications = new ArrayList<Notification>();
-
-//   			if (json.has("dependencies"))
-//			{
-//   				if (!json.get("dependencies").isArray())
-//				{
-//					throw new NotificationException("Invalid " + currentKey + " value given. "
-//							+ "dependencies must be an array of dependency objects one or more "
-//							+ "valid dependency constraints.");
-//				}
-//				else
-//				{
-//					currentKey = "dependencies";
-//
-//					ArrayNode jsonDependencies = (ArrayNode)json.get("dependencies");
-//					for (int i=0; i<jsonDependencies.size(); i++)
-//					{
-//						currentKey = "dependencies["+i+"]";
-//						JsonNode jsonDependency = jsonDependencies.get(i);
-//						JobDependency dependency = JobDependency.fromJson(dependency);
-//
-//					}
-//				}
-//			}
-   			
-   			Job job = processJob(jobRequestMap);
+   			Job job = null;
+   			try {job = processJob(jobRequestMap);}
+   			    catch (Exception e) {
+   			        String msg = "Job processing failed: " + e.getMessage();
+   			        log.error(msg, e);
+   			        throw e;
+   			    }
    			
    			this.notificationProcessor = new JobRequestNotificationProcessor(this.username, job);
    			
 			if (json.has("notifications")) {
-				this.notificationProcessor.process(json.get("notifications"));
+				try {this.notificationProcessor.process(json.get("notifications"));}
+				    catch (Exception e) {
+                        String input = "";
+                        try {input = json.get("notifications").toString();} catch (Exception e1) {}
+	                    String msg = "General notification processing failed with input [" + 
+                                     input + "]\n" + e.getMessage();
+	                    log.error(msg, e);
+	                    throw e;
+				    }
 			}
 			else if (json.has("callbackUrl")) {
-				this.notificationProcessor.process(json.get("callbackUrl"));
+				try {this.notificationProcessor.process(json.get("callbackUrl"));}
+                    catch (Exception e) {
+                        String input = "";
+                        try {input = json.get("callbackUrl").toString();} catch (Exception e1) {}
+                        String msg = "Callback notification processing failed with input [" + 
+                                     input + "]\n" + e.getMessage();
+                        log.error(msg, e);
+                        throw e;
+                    }
 			}
 			
 			for (Notification notification: this.notificationProcessor.getNotifications()) {
-				job.addNotification(notification);
+				try {job.addNotification(notification);}
+                    catch (Exception e) {
+                        String msg = "Add notification to job failure: " + e.getMessage();
+                        log.error(msg, e);
+                        throw e;
+                    }
 			}
 
 			// If the job request had notification configured for job creation
 			// they could not have fired yet. Here we explicitly add them.
 			for (JobEvent jobEvent: job.getEvents()) {
-			    JobEventProcessor eventProcessor = new JobEventProcessor(jobEvent);
-			    eventProcessor.process();
+			    try {
+			        JobEventProcessor eventProcessor = new JobEventProcessor(jobEvent);
+			        eventProcessor.process();
+			    }
+                    catch (Exception e) {
+                        String msg = "Failure to process job event " + jobEvent.getUuid() +
+                                     " for tenant " + jobEvent.getTenantId() + ": " + e.getMessage();
+                        log.error(msg, e);
+                        throw e;
+                    }
 			}
 
 			return job;
 		}
 		catch (NotificationException e) {
+		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
 			throw new JobProcessingException(500, e.getMessage());
 		}
 		catch (JobProcessingException e) {
+		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
 			throw e;
 		}
 		catch (SoftwareException e) {
+		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
 			throw new JobProcessingException(400, e.getMessage());
 		}
 		catch (Throwable e) {
+		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
 			throw new JobProcessingException(400,
-					"Failed to parse json job description. Invalid value for " +
-							currentKey + ". " + e.getMessage(), e);
+					"Job processing failed with exception type " +
+					e.getClass().getSimpleName() + ": " + e.getMessage());
 		}
 	}
 	
@@ -248,127 +273,7 @@ public class JobRequestProcessor {
 	public Job processResubmissionJob(JsonNode json)
 	throws JobProcessingException
 	{
-	    HashMap<String, Object> jobRequestMap = new HashMap<String, Object>();
-
-		String currentKey = null;
-
-		try
-		{
-			Iterator<String> fields = json.fieldNames();
-   			while(fields.hasNext()) {
-				String key = fields.next();
-
-				if (StringUtils.isEmpty(key)) continue;
-
-				currentKey = key;
-
-				if (key.equals("notifications")) {
-					continue;
-				}
-				
-				if (key.equals("callbackUrl")) {
-					continue;
-				}
-
-				if (key.equals("dependencies"))
-				{
-					throw new JobProcessingException(400,
-							"Job dependencies are not yet supported.");
-				}
-
-				JsonNode child = json.get(key);
-
-				if (child.isNull()) {
-				    jobRequestMap.put(key, null);
-				}
-				else if (child.isNumber())
-				{
-				    jobRequestMap.put(key, child.asText());
-				}
-				else if (child.isObject())
-				{
-					Iterator<String> childFields = child.fieldNames();
-					while(childFields.hasNext())
-					{
-						String childKey = childFields.next();
-						JsonNode childchild = child.path(childKey);
-						if (StringUtils.isEmpty(childKey) || childchild.isNull() || childchild.isMissingNode()) {
-							continue;
-						}
-						else if (childchild.isDouble()) {
-						    jobRequestMap.put(childKey, childchild.decimalValue().toPlainString());
-						}
-						else if (childchild.isNumber())
-						{
-						    jobRequestMap.put(childKey, new Long(childchild.longValue()).toString());
-						}
-						else if (childchild.isArray()) {
-						    List<String> arrayValues = new ArrayList<String>();
-							for (Iterator<JsonNode> argIterator = childchild.iterator(); argIterator.hasNext();)
-							{
-								JsonNode argValue = argIterator.next();
-								if (argValue.isNull() || argValue.isMissingNode()) {
-									continue;
-								} else {
-								    arrayValues.add(argValue.asText());
-								}
-							}
-							jobRequestMap.put(childKey, StringUtils.join(arrayValues, ";"));
-						}
-						else if (childchild.isTextual()) {
-						    jobRequestMap.put(childKey, childchild.textValue());
-						}
-						else if (childchild.isBoolean()) {
-						    jobRequestMap.put(childKey, childchild.asBoolean() ? "true" : "false");
-						}
-					}
-				}
-				else
-				{
-				    jobRequestMap.put(key, json.get(key).asText());
-				}
-			}
-   			
-   			Job job = processJob(jobRequestMap);
-   			
-   			this.notificationProcessor = new JobRequestNotificationProcessor(this.username, job);
-   			
-			if (json.has("notifications")) {
-				this.notificationProcessor.process(json.get("notifications"));
-			}
-			else if (json.has("callbackUrl")) {
-				this.notificationProcessor.process(json.get("callbackUrl"));
-			}
-
-			
-			
-			for (Notification notification: this.notificationProcessor.getNotifications()) {
-				job.addNotification(notification);
-			}
-
-			// If the job request had notification configured for job creation
-			// they could not have fired yet. Here we explicitly add them.
-			for (JobEvent jobEvent: job.getEvents()) {
-			    JobEventProcessor eventProcessor = new JobEventProcessor(jobEvent);
-			    eventProcessor.process();
-			}
-
-			return job;
-		}
-		catch (NotificationException e) {
-			throw new JobProcessingException(500, e.getMessage());
-		}
-		catch (JobProcessingException e) {
-			throw e;
-		}
-		catch (SoftwareException e) {
-			throw new JobProcessingException(400, e.getMessage());
-		}
-		catch (Throwable e) {
-			throw new JobProcessingException(400,
-					"Failed to parse json job description. Invalid value for " +
-							currentKey + ". " + e.getMessage(), e);
-		}
+	    return processJob(json);
 	}
 
 	/**
@@ -931,29 +836,44 @@ public class JobRequestProcessor {
 	public boolean checkExecutionSystemLogin(ExecutionSystem executionSystem)
 	throws JobProcessingException {
 		AuthConfig authConfig = executionSystem.getLoginConfig().getAuthConfigForInternalUsername(this.internalUsername);
+		
+		//When a system is cloned, a authConfig is not associated with it by default. It needs to be separately set.  
+		if(authConfig == null ) {
+		    String msg1 = "Null authConfig encountered.";
+		    String msg2 = " There are no credentials configured for the system: " + executionSystem.getSystemId() + "." +
+                         " Please update (POST) the system to configure credentials using the URL systems/v2/"+ executionSystem.getSystemId() 
+                         + "/credentials.";
+		    log.error(msg1 + msg2);
+			throw new JobProcessingException(412, msg2);			
+		}
+		
 		String salt = executionSystem.getEncryptionKeyForAuthConfig(authConfig);
 		if (authConfig.isCredentialExpired(salt))
 		{
-			throw new JobProcessingException(412,
-					(authConfig.isSystemDefault() ? "Default " : "Internal user " + this.internalUsername) +
-					" credential for " + executionSystem.getSystemId() + " is not active." +
-					" Please add a valid " + executionSystem.getLoginConfig().getType() +
-					" execution credential for the execution system and resubmit the job.");
+		    String msg = " Credentials of the " + (authConfig.isSystemDefault() ? "Default user" : "Internal user " + this.internalUsername) 
+                    + " for the system " + executionSystem.getSystemId() + " have expired."
+                    + " Please update the system with a valid " + executionSystem.getLoginConfig().getType()
+                    + " of execution credentials for the execution system and resubmit the job.";
+		    log.error(msg);
+			throw new JobProcessingException(412, msg);
 		}
 
 		try
 		{
 			if (!executionSystem.getRemoteSubmissionClient(internalUsername).canAuthentication()) {
-				throw new RemoteExecutionException("Unable to authenticate to " + executionSystem.getSystemId());
+			    String msg = "Unable to authenticate to " + executionSystem.getSystemId();
+			    log.error(msg);
+				throw new RemoteExecutionException(msg);
 			}
 		}
 		catch (Throwable e)
 		{
-			throw new JobProcessingException(412,
-					"Unable to authenticate to " + executionSystem.getSystemId() + " with the " +
-					(authConfig.isSystemDefault() ? "default " : "internal user " + this.internalUsername) +
-					"credential. Please check the " + executionSystem.getLoginConfig().getType() +
-					" execution credential for the execution system and resubmit the job.");
+		    String msg = "Unable to authenticate to " + executionSystem.getSystemId() + " with the " +
+                    (authConfig.isSystemDefault() ? "default " : "internal user " + this.internalUsername) +
+                    "credential. Please check the " + executionSystem.getLoginConfig().getType() +
+                    " execution credential for the execution system and resubmit the job.";
+		    log.error(msg, e);
+			throw new JobProcessingException(412, msg);
 		}
 		
 		return true;
@@ -971,10 +891,11 @@ public class JobRequestProcessor {
 		String salt = executionSystem.getEncryptionKeyForAuthConfig(authConfig);
 		if (authConfig.isCredentialExpired(salt))
 		{
-			throw new JobProcessingException(412,
-					"Credential for " + executionSystem.getSystemId() + " is not active." +
-					" Please add a valid " + executionSystem.getStorageConfig().getType() +
-					" storage credential for the execution system and resubmit the job.");
+		    String msg = "Credential for " + executionSystem.getSystemId() + " is not active." +
+                    " Please add a valid " + executionSystem.getStorageConfig().getType() +
+                    " storage credential for the execution system and resubmit the job.";
+		    log.error(msg);
+			throw new JobProcessingException(412, msg);
 		}
 		
 		RemoteDataClient remoteExecutionDataClient = null;
@@ -982,11 +903,12 @@ public class JobRequestProcessor {
 			remoteExecutionDataClient = executionSystem.getRemoteDataClient(this.internalUsername);
 			remoteExecutionDataClient.authenticate();
 		} catch (Throwable e) {
-			throw new JobProcessingException(412,
-					"Unable to authenticate to " + executionSystem.getSystemId() + " with the " +
-					(authConfig.isSystemDefault() ? "default " : "internal user " + this.internalUsername) +
-					"credential. Please check the " + executionSystem.getLoginConfig().getType() +
-					" execution credential for the execution system and resubmit the job.");
+		    String msg = "Unable to authenticate to " + executionSystem.getSystemId() + " with the " +
+                    (authConfig.isSystemDefault() ? "default " : "internal user " + this.internalUsername) +
+                    "credential. Please check the " + executionSystem.getLoginConfig().getType() +
+                    " execution credential for the execution system and resubmit the job.";
+		    log.error(msg, e);
+			throw new JobProcessingException(412, msg);
 		} finally {
 			try { remoteExecutionDataClient.disconnect(); } catch (Exception e) {}
 		}

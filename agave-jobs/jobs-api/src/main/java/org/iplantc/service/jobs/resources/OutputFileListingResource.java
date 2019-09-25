@@ -69,14 +69,14 @@ public class OutputFileListingResource extends AbstractJobResource
 	 * &nbsp "directory":false,<br>
 	 * &nbsp "readable":true,<br>
 	 * &nbsp "writable":true,<br>
-	 * &nbsp "owner":"dooley",<br>
+	 * &nbsp "owner":"xxx",<br>
 	 * &nbsp "length":688,<br>
 	 * &nbsp "lastModified":"Mon Mar 01 15:20:40 CST 2010",<br>
-	 * &nbsp "path":"/dooley/1/geospiza.traits.fel",<br>
-	 * &nbsp "url":"https://foundation.iplantc.org/io-v1/dooley/archive/job-1928719834asdf/geospiza.traits.fel"
+	 * &nbsp "path":"/xxx/1/geospiza.traits.fel",<br>
+	 * &nbsp "url":"https://foundation.iplantc.org/io-v1/xxx/archive/job-1928719834asdf/geospiza.traits.fel"
 	 * ,<br>
 	 * &nbsp "name":"geospiza.traits.fel",<br>
-	 * &nbsp "parent":"file:/home/0004/iplant/contrast/dooley/1/"<br>
+	 * &nbsp "parent":"file:/home/0004/iplant/contrast/xxx/1/"<br>
 	 * } }]<br>
 	 */
 	@Override

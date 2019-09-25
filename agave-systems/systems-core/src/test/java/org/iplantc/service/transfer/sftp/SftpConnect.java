@@ -87,7 +87,7 @@ public class SftpConnect {
 
 		try {
 			System.out.print("Hostname: ");
-			String hostname = "dtn01.prod.agaveapi.co";
+			String hostname = "dtn01.prod.agaveplatform.org";
 //			hostname = reader.readLine();
 
 //			int idx = hostname.indexOf(':');

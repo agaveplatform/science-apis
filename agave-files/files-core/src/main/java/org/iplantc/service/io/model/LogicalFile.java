@@ -43,7 +43,7 @@ import org.iplantc.service.io.exceptions.FileEventProcessingException;
 import org.iplantc.service.io.manager.FileEventProcessor;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.io.model.enumerations.TransformTaskStatus;
+import org.iplantc.service.io.util.ServiceUtils;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
@@ -81,7 +81,8 @@ public class LogicalFile {
 	private Date lastUpdated;
 	private String sourceUri;
 	private String path;
-	private String status = TransformTaskStatus.TRANSFORMING_COMPLETED.name();
+	private long pathHash;
+	private String status = StagingTaskStatus.STAGING_COMPLETED.name();
 	private RemoteSystem system;
 	private String nativeFormat = RAW;
 	private String tenantId;		// current api tenant
@@ -276,6 +277,12 @@ public class LogicalFile {
 		return path;
 	}
 	
+	
+	@Column(name = "path_hash", nullable = false)
+	public long getPathHash() {
+		return pathHash;
+	}
+	
 	/**
 	 * Paths are stored internally as absolute paths. Agave URLs abstract
 	 * these by resolving them relative to the system.storageConfig.homeDir and 
@@ -338,6 +345,7 @@ public class LogicalFile {
 	 */
 	public void setPath(String path) 
 	{
+		
 		if (StringUtils.isEmpty(path) || StringUtils.equals(path, "/")) {
 			this.path = "/";
 		} else if (StringUtils.endsWith(path, "/")) {
@@ -347,6 +355,20 @@ public class LogicalFile {
 		}
 		
 		this.path = StringUtils.replace(this.path, "//", "/");
+		
+		try {
+			this.setPathHash(ServiceUtils.getMD5LongHash(this.path));
+		} catch (Exception e) {
+			throw new RuntimeException("MD5 algorithm is not available in the environment while hashing path column", e);
+		}
+	}
+	
+	/**
+	 * @param pathHash the pathHash to set
+	 */
+	public void setPathHash(long pathHash) 
+	{
+		this.pathHash = pathHash;
 	}
 
 	/**
@@ -355,12 +377,7 @@ public class LogicalFile {
 	public void setStatus(String status) {
 		this.status = status;
 	}
-	
-	@Transient
-	public void setStatus(TransformTaskStatus status) {
-		this.status = status.name();
-	}
-	
+		
 	@Transient
 	public void setStatus(StagingTaskStatus status) {
 		this.status = status.name();

@@ -3,7 +3,6 @@
  */
 package org.iplantc.service.transfer;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -11,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.apache.log4j.Logger;
 import org.ietf.jgss.GSSCredential;
 
 /**
@@ -19,6 +19,8 @@ import org.ietf.jgss.GSSCredential;
  */
 public class Settings {
 
+    private static final Logger log = Logger.getLogger(Settings.class);
+    
 	private static Properties					props			= new Properties();
 
 	private static Map<String, GSSCredential>	userProxies		= Collections
@@ -68,6 +70,7 @@ public class Settings {
 	
 //	public static int							REFRESH_RATE	= 0;
     public static int                           MAX_STAGING_TASKS;
+    public static int                           STAGING_TIMEOUT_SECS;
     public static int                           MAX_STAGING_RETRIES;
 	public static int							MAX_ARCHIVE_TASKS;
 	public static int 							MAX_USER_JOBS_PER_SYSTEM;
@@ -86,6 +89,11 @@ public class Settings {
 
 	public static boolean						ALLOW_RELAY_TRANSFERS;
 	public static int 							MAX_RELAY_TRANSFER_SIZE;
+	
+	// Set the logging level for the Maverick SSH library.
+	// The acceptable values are ERROR, INFO, DEBUG.
+	// See MaverickSFTPLogger for details.
+	public static String                        MAVERICK_LOG_LEVEL = "ERROR";
 	
 	static
 	{
@@ -112,16 +120,15 @@ public class Settings {
 		
 		IPLANT_MYPROXY_SERVER = (String) props.get("iplant.myproxy.server");
 
-		IPLANT_MYPROXY_PORT = Integer.valueOf((String) props
-				.get("iplant.myproxy.port"));
+		try {IPLANT_MYPROXY_PORT = Integer.valueOf(props.getProperty("iplant.myproxy.port"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.myproxy.port.", e);
+            IPLANT_MYPROXY_PORT = 0;
+        }
 
 		IPLANT_LDAP_URL = (String) props.get("iplant.ldap.url");
 
 		IPLANT_LDAP_BASE_DN = (String) props.get("iplant.ldap.base.dn");
-//
-//		ARCHIVE_DIRECTORY = (String) props.get("iplant.archive.path");
-//
-//		WORK_DIRECTORY = (String) props.get("iplant.work.path");
 
 		TEMP_DIRECTORY = (String) props.get("iplant.server.temp.dir");
 		
@@ -149,13 +156,14 @@ public class Settings {
 		IPLANT_NOTIFICATION_SERVICE = (String) props.get("iplant.notification.service");
         if (!IPLANT_NOTIFICATION_SERVICE.endsWith("/")) IPLANT_NOTIFICATION_SERVICE += "/";
 		
-		DEBUG = Boolean.valueOf((String) props.get("iplant.debug.mode"));
+		try {DEBUG = Boolean.valueOf(props.getProperty("iplant.debug.mode", "true"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.debug.mode.", e);
+            DEBUG = true;
+        }
 
 		DEBUG_USERNAME = (String) props.get("iplant.debug.username");
 
-		//BLACKLIST_REPLACEMENT_TEXT = (String) props
-		//		.get("iplant.blacklist.replacement.text");
-		
 		KEYSTORE_PATH = (String) props.get("system.keystore.path");
 
 		TRUSTSTORE_PATH = (String) props.get("system.truststore.path");
@@ -170,27 +178,53 @@ public class Settings {
 		
 		MAILPASSWORD = (String) props.getProperty("mail.smtps.passwd");
 
-		SLAVE_MODE = Boolean.valueOf((String) props.get("iplant.slave.mode"));
+		try {SLAVE_MODE = Boolean.valueOf(props.getProperty("iplant.slave.mode", "false"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.slave.mode.", e);
+            SLAVE_MODE = false; 
+        }
 		
-		CONDOR_GATEWAY = Boolean.valueOf((String) props.get("iplant.condor.gateway.node"));
+		try {CONDOR_GATEWAY = Boolean.valueOf(props.getProperty("iplant.condor.gateway.node", "false"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.slave.mode.", e);
+            CONDOR_GATEWAY = false; 
+        }
 		
-//		MAX_SUBMISSION_TASKS = Integer.valueOf((String) props
-//				.get("iplant.max.job.tasks"));
+		try {MAX_STAGING_TASKS = Integer.valueOf(props.getProperty("iplant.max.staging.tasks", "1"));}
+		catch (Exception e) {
+		    log.error("Failure loading setting iplant.max.staging.tasks.", e);
+		    MAX_STAGING_TASKS = 1;
+		}
 
-		MAX_STAGING_TASKS = Integer.valueOf((String) props
-				.get("iplant.max.staging.tasks"));
-
-		MAX_STAGING_RETRIES = Integer.valueOf((String)props.get("iplant.max.staging.retries"));
+        try {STAGING_TIMEOUT_SECS = Integer.valueOf(props.getProperty("iplant.staging.same.server.timeout.secs", "240"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.staging.same.server.timeout.secs.", e);
+            STAGING_TIMEOUT_SECS = 240;
+        }
         
-        MAX_ARCHIVE_TASKS = Integer.valueOf((String) props
-				.get("iplant.max.archive.tasks"));
+        try {MAX_STAGING_RETRIES = Integer.valueOf(props.getProperty("iplant.max.staging.retries", "3"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.max.staging.retries.", e);
+            MAX_STAGING_RETRIES = 3;
+        }
+        
+        try {MAX_ARCHIVE_TASKS = Integer.valueOf(props.getProperty("iplant.max.archive.tasks", "1"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.max.archive.tasks.", e);
+            MAX_ARCHIVE_TASKS = 1;
+        }
 		
-		MAX_RELAY_TRANSFER_SIZE = Integer.valueOf((String) props.getProperty("iplant.max.relay.transfer.size", "2"));
+		try {MAX_RELAY_TRANSFER_SIZE = Integer.valueOf(props.getProperty("iplant.max.relay.transfer.size", "2"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.max.relay.transfer.size.", e);
+            MAX_RELAY_TRANSFER_SIZE = 2;
+        }
 		
-		ALLOW_RELAY_TRANSFERS = Boolean.valueOf((String) props.getProperty("iplant.allow.relay.transfers", "false"));
-		
-//		MAX_SUBMISSION_RETRIES = Integer.valueOf((String) props
-//				.get("iplant.max.submission.retries"));
+		try {ALLOW_RELAY_TRANSFERS = Boolean.valueOf(props.getProperty("iplant.allow.relay.transfers", "false"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.allow.relay.transfers.", e);
+            ALLOW_RELAY_TRANSFERS = false;
+        }
 		
 		String maxUserJobs = (String) props.get("iplant.max.user.jobs.per.system");
 		try {
@@ -206,35 +240,25 @@ public class Settings {
 			MAX_USER_CONCURRENT_TRANSFERS = Integer.MAX_VALUE;
 		}
 		
-//		REFRESH_RATE = Integer.valueOf((String) props
-//				.get("iplant.refresh.interval"));
-
-//		IRODS_USERNAME = (String) props.get("iplant.irods.username");
-//
-//		IRODS_PASSWORD = (String) props.get("iplant.irods.password");
-//
-//		IRODS_HOST = (String) props.get("iplant.irods.host");
-//
-//		IRODS_PORT = Integer.valueOf((String) props.get("iplant.irods.port"));
-//
-//		IRODS_ZONE = (String) props.get("iplant.irods.zone");
-//
-//		IRODS_STAGING_DIRECTORY = (String) props
-//				.get("iplant.irods.staging.directory");
-//
-//		IRODS_DEFAULT_RESOURCE = (String) props
-//				.get("iplant.irods.default.resource");
-//
-//		IRODS_REFRESH_RATE = Integer.valueOf((String) props
-//				.get("iplant.irods.refresh.interval"));
-
 		PUBLIC_USER_USERNAME = (String) props.get("iplant.public.user");
 
 		WORLD_USER_USERNAME = (String) props.get("iplant.world.user");
 
-//		IRODS_HEARTBEAT = (String) props.get("irods.heartbeat");
+		try {DEFAULT_PAGE_SIZE = Integer.parseInt(props.getProperty("iplant.default.page.size", "25"));}
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.default.page.size.", e);
+            DEFAULT_PAGE_SIZE = 25;
+        }
 		
-		DEFAULT_PAGE_SIZE = Integer.parseInt((String) props.getProperty("iplant.default.page.size", "25"));
+		// The default value is set above so we just swallow any exceptions.
+		// The acceptable values are: ERROR, INFO, DEBUG
+		try {
+		    String s = (String) props.get("iplant.maverick.log.level");
+		    if ("ERROR".equals(s) || "INFO".equals(s) || "DEBUG".equals(s))
+		        MAVERICK_LOG_LEVEL = s;
+		} 
+		catch (Exception e){}
+		
 	}
 
 	public static GSSCredential getProxyForUser(String username)

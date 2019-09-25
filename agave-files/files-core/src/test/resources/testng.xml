@@ -15,7 +15,6 @@
 			<package name="org.iplantc.service.io.notifications" />
 			<package name="org.iplantc.service.io.permissions" />
 			<package name="org.iplantc.service.io.queue" />
-			<package name="org.iplantc.service.io.transform" />
 			<package name="org.iplantc.service.io.util" />
 			<package name="org.iplantc.service.io.uuid" />
 		</packages>

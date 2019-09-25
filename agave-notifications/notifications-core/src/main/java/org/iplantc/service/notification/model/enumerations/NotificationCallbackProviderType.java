@@ -59,7 +59,7 @@ public enum NotificationCallbackProviderType {
 		// checand forward accordingly.
 		} else {
 			try {
-				URI callbackURI = URI.create(callbackUrl.replaceAll("\\$", "%24").replaceAll("\\{", "%7B").replaceAll("\\}", "%7B"));
+				URI callbackURI = URI.create(callbackUrl.replaceAll("\\$", "%24").replaceAll("\\{", "%7B").replaceAll("\\}", "%7D"));
 				// avoid loopback attacks by filtering out reserve hostnames
 				if (StringUtils.endsWith(callbackURI.getHost(),".localhost") ||
 						StringUtils.endsWith(callbackURI.getHost(),".local") || 

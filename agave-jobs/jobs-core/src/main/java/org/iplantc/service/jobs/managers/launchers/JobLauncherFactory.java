@@ -11,7 +11,6 @@ import org.iplantc.service.jobs.exceptions.MissingSoftwareDependencyException;
 import org.iplantc.service.jobs.exceptions.SoftwareUnavailableException;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
@@ -44,39 +43,47 @@ public class JobLauncherFactory
 		
 		// if the system is unavailable or missing...
 		if (!executionSystem.isAvailable()) {
-		    throw new SystemUnavailableException("Job execution system " 
-                    + executionSystem.getSystemId() + " is not currently available");
+			String msg = "Job execution system " + executionSystem.getSystemId() + " is not currently available.";
+			log.warn(msg);
+		    throw new SystemUnavailableException(msg);
         } 
 		// if the system is in down time or otherwise unavailable...
         else if (executionSystem.getStatus() != SystemStatusType.UP)
         {
-            throw new SystemUnavailableException("Job execution system " 
-                    + executionSystem.getSystemId() + " is currently " 
-                    + executionSystem.getStatus());
+        	String msg = "Job execution system " + executionSystem.getSystemId() + 
+        			     " is currently " + executionSystem.getStatus() + ".";
+        	log.warn(msg);
+            throw new SystemUnavailableException(msg);
         }
 		// if the software app is missing...
         else if (software == null) 
 		{ 
-			throw new JobException(job.getSoftwareName()
-				+ " is not a recognized application."); 
+        	String msg = job.getSoftwareName() + " is not a recognized application.";
+        	log.error(msg);
+			throw new JobException(msg); 
 		}
 		// if the software app is unavailable...
 		else if (!software.isAvailable())
 		{
-			throw new SoftwareUnavailableException("Application is not available for execution"); 
+			String msg = "Application " + job.getSoftwareName() + " is not available for execution.";
+			log.warn(msg);
+			throw new SoftwareUnavailableException(msg); 
 		}
 		// if the software deployment system is unavailable...
         else if (software.getStorageSystem() == null || !software.getStorageSystem().isAvailable()) 
 		{
-		    throw new SystemUnavailableException("Software deployment system " 
-		            + software.getStorageSystem().getSystemId() + " is not currently available");
+        	String msg = "Software deployment system " + software.getStorageSystem().getSystemId() + 
+        			     " is not currently available.";
+        	log.warn(msg);
+		    throw new SystemUnavailableException(msg);
 		} 
 		// if the software deployment system is unavailable...
 		else if (software.getStorageSystem().getStatus() != SystemStatusType.UP)
 		{
-		    throw new SystemUnavailableException("Software deployment system " 
-                    + software.getStorageSystem().getSystemId() + " is currently " 
-		            + software.getStorageSystem().getStatus());
+			String msg = "Software deployment system " + software.getStorageSystem().getSystemId() + 
+					     " is currently " + software.getStorageSystem().getStatus() + ".";
+			log.warn(msg);
+		    throw new SystemUnavailableException(msg);
 		}
 		// if the software assets are missing...
         else 
@@ -109,26 +116,30 @@ public class JobLauncherFactory
 ////    								"Time: " + job.getCreated().toString() + "\n\n");
 ////					    }
 //						throw new MissingSoftwareDependencyException("Application executable is missing. Software is not available.");
-					    throw new MissingSoftwareDependencyException();
+					    String msg = "Missing software on host " + remoteDataClient.getHost() + " at path " +
+					    		     software.getDeploymentPath() + ".";
+					    log.error(msg);
+						throw new MissingSoftwareDependencyException(msg);
 					} 
 				}
 			    else if (!remoteDataClient.doesExist(software.getDeploymentPath() + '/' + software.getExecutablePath())) 
 				{
-//					software.setAvailable(false);
-//					SoftwareDao.persist(software);
-					throw new MissingSoftwareDependencyException();
+				    String msg = "Missing software on host " + remoteDataClient.getHost() + " at path " +
+			    		         software.getDeploymentPath() + '/' + software.getExecutablePath() + ".";
+				    log.error(msg);
+					throw new MissingSoftwareDependencyException(msg);
 				}
-//			} catch (NotificationException e) {
-//				log.error("Public app bundle for " + software.getUniqueName() + " is missing.");
-			
 			} catch (MissingSoftwareDependencyException e) {
-			    throw new SoftwareUnavailableException(
-			            "Unable to locate the application wrapper template at agave://" 
+				String msg = "Unable to locate the application wrapper template at agave://" 
                         + software.getStorageSystem().getSystemId() + "/" 
                         + software.getDeploymentPath() + '/' + software.getExecutablePath() 
-                        + ". Job cannot run until the template is restored.");
+                        + ". Job cannot run until the template is restored.";
+				log.error(msg, e);
+			    throw new SoftwareUnavailableException(msg);
 			} catch (Throwable e) {
-				throw new JobException("Unable to verify the availability of the application executable. Software is not available.", e);
+				String msg = "Unable to verify the availability of the application executable. Software is not available.";
+				log.error(msg, e);
+				throw new JobException(msg, e);
 			} 
 			finally {
 				try { remoteDataClient.disconnect(); } catch(Exception e) {}

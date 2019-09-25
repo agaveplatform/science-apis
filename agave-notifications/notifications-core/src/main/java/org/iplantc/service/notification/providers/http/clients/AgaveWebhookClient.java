@@ -302,7 +302,7 @@ public class AgaveWebhookClient extends AbstractWebhookClient {
 	{
 		// use the tenant id to create the internal url we can can call with a jwt
 		String tenantId = TenancyHelper.getCurrentTenantId();
-		String internalUrl = "https://" + StringUtils.replace(tenantId, ".", "-") + ".api.prod.agaveapi.co/"; 
+		String internalUrl = "https://" + StringUtils.replace(tenantId, ".", "-") + ".api.prod.agaveplatform.org/";
 		
 		// strip the version number as the backend does not refernece them.
 		String filteredcallbackUrl = StringUtils.replace(callbackUrl, "/v2", "");

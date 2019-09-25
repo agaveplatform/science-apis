@@ -5,7 +5,7 @@
 	"executionSystem": "slurm.example.com", 
 	"executionType": "HPC", 
 	"helpURI": "http://www.gnu.org/software/coreutils/manual/html_node/head-invocation.html#head-invocation", 
-	"icon":"https://agaveapi.co/wp-content/uploads/2016/02/Agave-white-retina.png",
+	"icon":"https://agaveplatform.org/wp-content/uploads/2016/02/Agave-white-retina.png",
 	"inputs": [
 		{
 			"details": {

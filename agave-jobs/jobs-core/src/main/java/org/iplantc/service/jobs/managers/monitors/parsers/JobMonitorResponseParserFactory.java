@@ -24,16 +24,18 @@ import org.iplantc.service.jobs.model.Job;
  * @author dooley
  *
  */
-public class JobMonitorResponseParserFactory {
+public final class JobMonitorResponseParserFactory {
 
 	public static JobMonitorResponseParser getInstance(Job job) throws SystemUnknownException, SystemUnavailableException {
 		Software software = JobManager.getJobSoftwarem(job);
 		ExecutionSystem system = (ExecutionSystem)new SystemDao().findUserSystemBySystemId(job.getOwner(), job.getSystem(), RemoteSystemType.EXECUTION);
 		
 		if (system == null) {
-			throw new SystemUnknownException("Unable to determine execution system for job.");
+			throw new SystemUnknownException("Unable to determine execution system for job " + job.getUuid() + ".");
 		}
-		else if (software == null) {
+		
+		// How can the job get this far and still have a null application?
+		if (software == null) {
 			return _getInstance(system.getExecutionType(), system.getScheduler());
 		}
 		else {
@@ -41,7 +43,7 @@ public class JobMonitorResponseParserFactory {
 		}
 	}
 	
-	protected static JobMonitorResponseParser _getInstance(ExecutionType executionType, SchedulerType schedulerType) {
+	private static JobMonitorResponseParser _getInstance(ExecutionType executionType, SchedulerType schedulerType) {
 		
 		JobMonitorResponseParser parser = null;
 		switch (executionType) {

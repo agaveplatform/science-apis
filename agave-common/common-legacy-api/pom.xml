@@ -36,7 +36,6 @@
 			<groupId>org.restlet.jee</groupId>
 			<artifactId>org.restlet</artifactId>
 			<version>1.2-M2</version>
-			<classifier>M2</classifier>
 		</dependency>
 		<dependency>
 			<groupId>org.json</groupId>

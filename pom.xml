@@ -49,17 +49,17 @@
 		<repository>
 			<id>agave-maven-releases</id>
 			<name>Agave Maven repository</name>
-			<url>https://nexus.agaveplatform.org/nexus/repository/maven-releases</url>
+			<url>https://nexus.agaveplatform.org/repository/maven-releases</url>
 		</repository>
 		<repository>
 			<id>agave-maven-snapshot</id>
 			<name>Agave Maven repository</name>
-			<url>https://nexus.agaveplatform.org/nexus/repository/maven-snapshots</url>
+			<url>https://nexus.agaveplatform.org/repository/maven-snapshots</url>
 		</repository>
 		<repository>
 			<id>agave-maven-thirdparty</id>
 			<name>Agave Maven repository</name>
-			<url>https://nexus.agaveplatform.org/nexus/repository/maven-thirdparty</url>
+			<url>https://nexus.agaveplatform.org/repository/maven-thirdparty</url>
 		</repository>
 		<repository>
 			<id>maven-restlet</id>

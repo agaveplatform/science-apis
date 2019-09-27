@@ -28,7 +28,7 @@ import org.json.JSONWriter;
  * Class to represent individual shared permissions for systems. This has
  * been deprecated in favor of support for user roles.
  * 
- * @see org.iplantc.service.systems.manager.SystemRole
+ * @see org.iplantc.service.systems.model.SystemRole
  * @author dooley
  * @deprecated
  * 

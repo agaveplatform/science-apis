@@ -94,13 +94,14 @@
 						<iplant.community.password>testuser</iplant.community.password>
 						<iplant.community.myproxy.server>docker.example.com</iplant.community.myproxy.server>
 						<iplant.community.myproxy.port>7512</iplant.community.myproxy.port>
+
 						<foundation.db.url>jdbc:mysql://localhost:3306/agavecore?zeroDateTimeBehavior=convertToNull&amp;sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false</foundation.db.url>
 						<foundation.db.bootstrap>
 								jdbc:mysql://localhost:3306/mavenbootstrap?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false
 						</foundation.db.bootstrap>
 						<foundation.db.test.url>jdbc:mysql://localhost:3306/test?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false</foundation.db.test.url>
 						<foundation.db.test.bootstrap>
-								jdbc:mysql://localhost:3306/mavenbootstrap?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false
+									jdbc:mysql://localhost:3306/mavenbootstrap?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false
 						</foundation.db.test.bootstrap>
 						<foundation.db.test.database>agave</foundation.db.test.database>
 				</properties>
@@ -447,7 +448,7 @@
 
 				<foundation.service.tags>${foundation.base.url}/tags/v2</foundation.service.tags>
 				
-				<!-- ************************ Transforms service ********************* -->
+				<!-- ************* c*********** Transforms service ********************* -->
 
 				<foundation.service.transforms>${foundation.base.url}/transforms/v2</foundation.service.transforms>
 				<foundation.service.transforms.max.tasks>2</foundation.service.transforms.max.tasks>
@@ -463,7 +464,8 @@
                 <foundation.service.transfers.same.server.timeout.secs>240</foundation.service.transfers.same.server.timeout.secs>
 				<foundation.service.transfers.max.retries>3</foundation.service.transfers.max.retries>
 				<foundation.service.transfers.max.relay.size>2</foundation.service.transfers.max.relay.size>
-				
+				<foundation.service.transfers.iplant.staging.same.server.timeout.secs>240</foundation.service.transfers.iplant.staging.same.server.timeout.secs>
+
 				<!-- ************************ UUIDs service ********************** -->
 
 				<foundation.service.uuids>${foundation.base.url}/uuids/v2</foundation.service.uuids>

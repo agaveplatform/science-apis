@@ -1,5 +1,5 @@
 build:
-  image: agaveapi/java:7-maven
+  image: agaveplatform/maven:3.6
   command: mvn -s config/maven/settings.xml -T 1.0C -P agave,plain clean package
   privileged: true
   environment:
@@ -33,13 +33,13 @@ myproxy:
     - 'GLOBUS_GSSAPI_FORCE_TLS=1'
 
 sftp:
-  image: agaveapi/centos-base
+  image: agaveplatform/centos-base
   hostname: docker.example.com
   ports:
     - '10022:22'
 
 sftptunnel:
- image: agaveapi/centos-base
+ image: agaveplatform/centos-base
  hostname: tunnel.example.com
  privileged: true
  links:
@@ -48,7 +48,7 @@ sftptunnel:
    - '10033:22'
 
 sftphidden:
-  image: agaveapi/centos-base
+  image: agaveplatform/centos-base
   hostname: docker.example.com
   ports:
     - '10044:22'
@@ -86,7 +86,7 @@ http:
     - '10443:443'
 
 ftp:
-  image: agaveapi/pure-ftpd
+  image: agaveplatform/pure-ftpd
   hostname: docker.example.com
   privileged: true
   ports:

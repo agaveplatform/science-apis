@@ -9,7 +9,7 @@
     </groups>
 	<test name="files-core">
 		<packages>
-		  <package name="org.iplantc.service.common.uuid" />
+		  	<package name="org.iplantc.service.common.uuid" />
 			<package name="org.iplantc.service.io.dao" />
 			<package name="org.iplantc.service.io.model" />
 			<package name="org.iplantc.service.io.notifications" />

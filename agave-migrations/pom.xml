@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>agave-migrations</artifactId>
-	<name>Agave Platform Science API Database Migrations</name>
+	<name>Agave Platform Database Migrations</name>
 	<description>Migration definitions and controls for the Agave Platform</description>
 	<packaging>jar</packaging>
 

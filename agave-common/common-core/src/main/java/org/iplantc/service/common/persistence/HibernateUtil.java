@@ -1,11 +1,13 @@
 package org.iplantc.service.common.persistence;
 
+import java.lang.annotation.Annotation;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javax.persistence.Entity;
 import javax.persistence.PersistenceException;
+import javax.validation.constraints.Null;
 
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
@@ -328,7 +330,15 @@ public class HibernateUtil {
 	    if (filters.isEmpty()) {
 	        Set<Class<?>> filterEntities = reflections.getTypesAnnotatedWith(FilterDef.class);
     	    for (Class<?> clazz: filterEntities) {
-                filters.add(clazz.getAnnotation(FilterDef.class).name());
+				FilterDef filterAnnotation = clazz.getAnnotation(FilterDef.class);
+                try {
+                	if (filterAnnotation != null) {
+						filters.add(filterAnnotation.name());
+					}
+				}
+                catch (Throwable e) {
+                	log.debug("Unable to remove filter for " + clazz.getCanonicalName());
+				}
             }
 	    }
 	    

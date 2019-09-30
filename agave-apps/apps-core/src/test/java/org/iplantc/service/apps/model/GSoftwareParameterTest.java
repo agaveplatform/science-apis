@@ -734,11 +734,10 @@ public class GSoftwareParameterTest extends GModelTestCommon {
             jsonTree.getJSONObject("semantics").put("minCardinality", Integer.valueOf(minCardinality));
             jsonTree.getJSONObject("value").put("default", defaultValue);
             Assert.assertNotNull(SoftwareParameter.fromJSON(jsonTree), message);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Assert.assertTrue(shouldThrowException, message);
         } catch (Throwable e) {
-            e.printStackTrace();
+            Assert.assertTrue(shouldThrowException, message);
+//        } catch (Throwable e) {
+//            Assert.assertTrue(shouldThrowException, message);
         }
     }
 

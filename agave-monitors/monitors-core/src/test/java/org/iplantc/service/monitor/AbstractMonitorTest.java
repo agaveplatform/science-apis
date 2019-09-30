@@ -198,11 +198,13 @@ public class AbstractMonitorTest {
 		}
 		catch (HibernateException ex)
 		{
+			ex.printStackTrace();
 			throw new MonitorException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); }
+			catch (Exception e) {}
 		}
 	}
 	
@@ -274,7 +276,6 @@ public class AbstractMonitorTest {
 	
 	/**
 	 * Flushes the messaging tube of any and all existing jobs.
-	 * @param queueName
 	 */
 	protected void clearQueues() {
 		ClientImpl client = null;

@@ -14,9 +14,12 @@ import org.testng.annotations.Test;
  * This test verifies that the hashes for the path generated using sql in databse match with the one generated from java
  * Also the test compares the paths which are hashed to same value are identical. Ideally different path values can have the same hash value.
  * But since we have 8 bytes worth of longs which hash around 2 million paths, the likelihood of collision is one in a billion.
+ *
+ * Skipping for general runs as this is a one-time validation prior to migration and does not need to be included
+ * by default on unit tests.
  */
 
-@Test(groups = { "unit" })
+@Test(groups = { "unit", "notReady" })
 public class PathHashTest {
 
 	@Test

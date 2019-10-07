@@ -17,19 +17,25 @@
 #
 #############################################################
 
-FROM sickp/alpine-sshd:latest
+FROM sickp/alpine-sshd:7.9
 
 MAINTAINER Agave Platform <help@agaveplatform.org>
 
-ADD keys/id_rsa.pub /home/testuser/.ssh/authorized_keys
-ADD keys/id_rsa.pub /home/testshareuser/.ssh/authorized_keys
-ADD keys/id_rsa.pub /home/testotheruser/.ssh/authorized_keys
+COPY keys/id_rsa.pub /home/testuser/.ssh/authorized_keys
+COPY keys/id_rsa.pub /home/testshareuser/.ssh/authorized_keys
+COPY keys/id_rsa.pub /home/testotheruser/.ssh/authorized_keys
 
 RUN \
-  apk add -U --no-cache bash && \
-  passwd -d root && \
+  apk --no-cache add bash && \
+
+  # enable kbi login
   sed -i s/#PermitRootLogin.*/PermitRootLogin\ no/ /etc/ssh/sshd_config && \
   sed -i s/#ChallengeResponseAuthentication.*/ChallengeResponseAuthentication\ yes/ /etc/ssh/sshd_config && \
+
+  # unset root password
+  passwd -d root && \
+
+  # add test users
   adduser -D -s /bin/ash testuser && \
   echo "testuser:testuser" | chpasswd && \
   chown -R testuser:testuser /home/testuser && \
@@ -38,4 +44,7 @@ RUN \
   chown -R testshareuser:testshareuser /home/testshareuser && \
   adduser -D -s /bin/ash testotheruser && \
   echo "testotheruser:testotheruser" | chpasswd && \
-  chown -R testotheruser:testotheruser /home/testotheruser
+  chown -R testotheruser:testotheruser /home/testotheruser && \
+
+  # clean up apk cache
+  rm -rf /var/cache/apk/*

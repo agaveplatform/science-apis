@@ -1,6 +1,6 @@
-FROM agaveapi/php-api-base:alpine
+FROM agaveplatform/php-api-base:alpine
 
-MAINTAINER CIC Support <help@agaveplatform.org>
+MAINTAINER Agave Platform <help@agaveplatform.org>
 
 COPY html /var/www/html/docs
 

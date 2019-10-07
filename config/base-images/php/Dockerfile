@@ -20,9 +20,7 @@ MAINTAINER Agave Platform <help@agaveplatform.org>
 
 RUN \
     echo "Installing php and dependencies..." && \
-    apk update && \
-    apk apk upgrade && \
-    apk add bash \
+    apk --no-cache add bash \
     	tzdata \
         curl \
         ca-certificates \
@@ -40,10 +38,10 @@ RUN \
         openntpd && \
 
 	# Add composer
-    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
+	curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
 
 	# Add php extensions for common functionality. We can probably prune this list quite a bit.
-	apk add php7-apcu \
+	apk --no-cache add php7-apcu \
         php7-bcmath \
         php7-bz2 \
         php7-ctype \
@@ -84,23 +82,22 @@ RUN \
         php7-zlib && \
 
 	# Caused issues when bundled with the above extensions
-    apk add php7-simplexml && \
-
-	# Clean up image cache and temp files
-    rm -f /var/cache/apk/* && \
+    apk --no-cache add php7-simplexml && \
 
 	# Update Apache2 config to enable php
-    sed -i "s/#LoadModule\ rewrite_module/LoadModule\ rewrite_module/" /etc/apache2/httpd.conf \
-	&& sed -i "s/#LoadModule\ session_module/LoadModule\ session_module/" /etc/apache2/httpd.conf \
-	&& sed -i "s/#LoadModule\ session_cookie_module/LoadModule\ session_cookie_module/" /etc/apache2/httpd.conf \
-	&& sed -i "s/#LoadModule\ session_crypto_module/LoadModule\ session_crypto_module/" /etc/apache2/httpd.conf \
-	&& sed -i "s/#LoadModule\ deflate_module/LoadModule\ deflate_module/" /etc/apache2/httpd.conf \
-	&& sed -i "s#^DocumentRoot \".*#DocumentRoot \"/app/public\"#g" /etc/apache2/httpd.conf \
-	&& sed -i "s#/var/www/localhost/htdocs#/app/public#" /etc/apache2/httpd.conf \
-	&& printf "\n<Directory \"/app/public\">\n\tAllowOverride All\n</Directory>\n" >> /etc/apache2/httpd.conf \
-	&& sed -i'' -e 's/SSLCipherSuite .*/SSLCipherSuite HIGH:MEDIUM:!MD5:!RC4:!3DES:!ADH/' /etc/apache2/conf.d/ssl.conf \
-    && sed -i'' -e 's/SSLProxyCipherSuite .*/SSLProxyCipherSuite HIGH:MEDIUM:!MD5:!RC4:!3DES:!ADH/' etc/apache2/conf.d/ssl.conf \
-    && sed -i 's#Timeout 60#Timeout 43200#' etc/apache2/conf.d/default.conf && \
+    sed -i "s/#LoadModule\ rewrite_module/LoadModule\ rewrite_module/" /etc/apache2/httpd.conf && \
+	sed -i "s/#LoadModule\ session_module/LoadModule\ session_module/" /etc/apache2/httpd.conf && \
+	sed -i "s/#LoadModule\ session_cookie_module/LoadModule\ session_cookie_module/" /etc/apache2/httpd.conf && \
+	sed -i "s/#LoadModule\ session_crypto_module/LoadModule\ session_crypto_module/" /etc/apache2/httpd.conf && \
+	sed -i "s/#LoadModule\ deflate_module/LoadModule\ deflate_module/" /etc/apache2/httpd.conf && \
+	sed -i "s#^DocumentRoot \".*#DocumentRoot \"/app/public\"#g" /etc/apache2/httpd.conf && \
+	sed -i "s#/var/www/localhost/htdocs#/app/public#" /etc/apache2/httpd.conf && \
+	printf "\n<Directory \"/app/public\">\n\tAllowOverride All\n</Directory>\n" >> /etc/apache2/httpd.conf && \
+	# Update apache2 ssl conf to disable unsafe ciphers
+	sed -i -e 's/SSLCipherSuite .*/SSLCipherSuite HIGH:MEDIUM:!MD5:!RC4:!3DES:!ADH/' /etc/apache2/conf.d/ssl.conf && \
+    sed -i -e 's/SSLProxyCipherSuite .*/SSLProxyCipherSuite HIGH:MEDIUM:!MD5:!RC4:!3DES:!ADH/' etc/apache2/conf.d/ssl.conf && \
+    # Update apache2 default config to set timeout to 12 hours
+    sed -i 's#Timeout 60#Timeout 43200#' etc/apache2/conf.d/default.conf && \
 
 	# Create app directory and add phpinfo page
 	mkdir -p /app/public && \
@@ -122,10 +119,13 @@ RUN \
     sed -i 's#^max_file_uploads =.*#max_file_uploads = 512M#' /etc/php7/php.ini && \
     sed -i 's#^upload_max_filesize =.*#upload_max_filesize = 1G#' /etc/php7/php.ini && \
     sed -i 's#^max_execution_time =.*#max_execution_time = 43200#' /etc/php7/php.ini && \
-    sed -i 's#^memory_limit =.*#memory_limit = 512M#' /etc/php7/php.ini
+    sed -i 's#^memory_limit =.*#memory_limit = 512M#' /etc/php7/php.ini && \
+
+	# Clean up apk cache and temp files
+    rm -f /var/cache/apk/*
 
 
-ADD docker_entrypoint.sh /docker_entrypoint.sh
+COPY docker_entrypoint.sh /docker_entrypoint.sh
 
 WORKDIR /var/www/html
 

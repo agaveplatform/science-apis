@@ -14,10 +14,10 @@
 FROM httpd:2.4-alpine
 MAINTAINER Agave Platform <help@agaveplatform.org>
 
-ADD tcp/limits.conf /etc/security/limits.conf
-ADD tcp/sysctl.conf /etc/sysctl.conf
+COPY tcp/limits.conf /etc/security/limits.conf
+COPY tcp/sysctl.conf /etc/sysctl.conf
 
-RUN apk add --upgrade --no-cache openssl gzip bash curl && \
+RUN apk --no-cache add openssl gzip bash curl && \
 
 	# enable ssl and default config file
 	sed -i'' -e 's/^#\(Include .*httpd-default.conf\)/\1/' /usr/local/apache2/conf/httpd.conf && \
@@ -30,12 +30,16 @@ RUN apk add --upgrade --no-cache openssl gzip bash curl && \
 	sed -i'' -e 's/SSLProxyCipherSuite .*/SSLProxyCipherSuite HIGH:MEDIUM:!MD5:!RC4:!3DES:!ADH/' /usr/local/apache2/conf/extra/httpd-ssl.conf && \
 
 	# bump default timeout to 12 hours
-    sed -i 's#Timeout 60#Timeout 43200#' /usr/local/apache2/conf/extra/httpd-default.conf
+    sed -i 's#Timeout 60#Timeout 43200#' /usr/local/apache2/conf/extra/httpd-default.conf && \
+
+	# clean up apk cache
+    rm -rf /var/cache/apk/*
+
 
 
 #ADD apache/httpd.conf /etc/apache2/httpd.conf
 #ADD apache/conf.d/* /etc/apache2/conf.d/
-ADD docker_entrypoint.sh /docker_entrypoint.sh
+COPY docker_entrypoint.sh /docker_entrypoint.sh
 
 WORKDIR /usr/local/apache2/htdocs
 

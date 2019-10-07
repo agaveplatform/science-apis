@@ -20,10 +20,10 @@
 
 FROM adoptopenjdk/openjdk9:alpine
 
-MAINTAINER Agave Platform <help@agaveplatform.org>
+LABEL maintainer="Agave Platform<help@agaveplatform.org>"
 
-ADD tcp/limits.conf /etc/security/limits.conf
-ADD tcp/sysctl.conf /etc/sysctl.conf
+COPY tcp/limits.conf /etc/security/limits.conf
+COPY tcp/sysctl.conf /etc/sysctl.conf
 
 ENV CATALINA_HOME /opt/tomcat
 ENV ANT_VERSION 1.9.7
@@ -31,7 +31,7 @@ ENV TOMCAT_VERSION 8.5.46
 
 RUN addgroup -g 50 -S tomcat && \
     adduser -u 1000 -g tomcat -G tomcat -S tomcat  && \
-    apk --update add bash apr openssl apr-dev openssl-dev build-base curl pwgen && \
+    apk --no-cache add bash apr openssl apr-dev openssl-dev build-base curl pwgen && \
 
 	# download tomcat
 	cd /opt && \
@@ -70,7 +70,7 @@ RUN addgroup -g 50 -S tomcat && \
     mkdir -p $CATALINA_HOME/logs && \
 
 	# cleanup after build to reduce final image size
-    apk del apr-dev openssl-dev build-base && \
+    apk del --no-cache apr-dev openssl-dev build-base && \
 	rm -rf /apache-ant-$ANT_VERSION* && \
 	rm -rf $CATALINA_HOME/bin/tomcat-native-*-src && \
 	rm -rf $CATALINA_HOME/webapps/ROOT $CATALINA_HOME/webapps/docs && \
@@ -79,10 +79,10 @@ RUN addgroup -g 50 -S tomcat && \
 
 
 # Install Tomcat config files for JNDI and better file upload/throughput
-ADD tomcat/conf/* /opt/tomcat/conf/
-ADD tomcat/lib/log4j.properties /opt/tomcat/lib/log4j.properties
-ADD lib/* /opt/tomcat/lib/
-ADD docker_entrypoint.sh /docker_entrypoint.sh
+COPY tomcat/conf/* /opt/tomcat/conf/
+COPY tomcat/lib/log4j.properties /opt/tomcat/lib/log4j.properties
+COPY lib/* /opt/tomcat/lib/
+COPY docker_entrypoint.sh /docker_entrypoint.sh
 
 ENV X509_CERT_DIR $CATALINA_HOME/.globus
 ENV CATALINA_OPTS "-Duser.timezone=UTC -Djsse.enableCBCProtection=false -Djava.awt.headless=true -Dfile.encoding=UTF-8 -server -Xms1024m -Xmx1024m -XX:+DisableExplicitGC -Djava.security.egd=file:/dev/urandom"

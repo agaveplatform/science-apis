@@ -25,7 +25,7 @@ LABEL maven_version=3.6.2
 
 ENV MAVEN_VERSION 3.6.2
 
-RUN apk --update add bash zip bzip2 git curl ca-certificates && \
+RUN apk --no-cache add bash zip bzip2 git curl ca-certificates && \
 	cd /usr/share && \
 	wget http://apache.osuosl.org/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.zip && \
     unzip apache-maven-$MAVEN_VERSION-bin.zip && \
@@ -38,4 +38,4 @@ WORKDIR /sources
 
 VOLUME /sources
 
-CMD mvn clean package
+CMD ["mvn","clean","package"]

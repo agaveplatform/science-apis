@@ -40,16 +40,16 @@ services:
         reservations:
           memory: 256M
 
-  migrate:
-    image: agaveplatform/agave-migrations:2.2.6
-    depends_on:
-     - mysql
-    environment:
-      - 'MYSQL_HOST=mysql'
-      - 'MYSQL_USER=agaveuser'
-      - 'MYSQL_PASSWORD=password'
-      - 'MYSQL_DATABASE=agavecore'
-    command: "./flyway migrate"
+#  migrate:
+#    image: agaveplatform/agave-migrations:2.2.6
+#    depends_on:
+#     - mysql
+#    environment:
+#      - 'MYSQL_HOST=mysql'
+#      - 'MYSQL_USER=agaveuser'
+#      - 'MYSQL_PASSWORD=password'
+#      - 'MYSQL_DATABASE=agavecore'
+#    command: "./flyway migrate"
 
   ##############################################################
   # MongoDB 2.6
@@ -149,6 +149,7 @@ services:
             memory: 512M
           reservations:
             memory: 128M
+
   ##############################################################
   # Pushpin
   ##############################################################

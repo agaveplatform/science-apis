@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.ietf.jgss.GSSCredential;
 
 /**
@@ -19,6 +20,8 @@ import org.ietf.jgss.GSSCredential;
  * 
  */
 public class Settings {
+
+	private static final Logger log = Logger.getLogger(Settings.class);
 
 	private static Properties					props			= new Properties();
 
@@ -113,11 +116,20 @@ public class Settings {
 		SERVICE_VERSION = (String)props.getProperty("iplant.service.version");
 		
 		IPLANT_AUTH_SERVICE = (String)props.get("iplant.auth.service");
-		
-		IPLANT_MYPROXY_SERVER = (String) props.get("iplant.myproxy.server");
 
-		IPLANT_MYPROXY_PORT = Integer.valueOf((String) props
-				.get("iplant.myproxy.port"));
+		try {
+		    IPLANT_MYPROXY_SERVER = (String) props.get("iplant.myproxy.server");
+		} catch (Exception e) {
+			log.error("Failure loading setting iplant.myproxy.server", e);
+			IPLANT_MYPROXY_SERVER = "myproxy.xsede.org";
+		}
+
+		try {
+			IPLANT_MYPROXY_PORT = Integer.valueOf((String) props.get("iplant.myproxy.port"));
+		} catch (Exception e) {
+			log.error("Failure loading setting iplant.myproxy.port", e);
+			IPLANT_MYPROXY_PORT = 7512;
+		}
 
 		IPLANT_LDAP_URL = (String) props.get("iplant.ldap.url");
 
@@ -178,7 +190,12 @@ public class Settings {
 
 		IRODS_HOST = (String) props.get("iplant.irods.host");
 
-		IRODS_PORT = Integer.valueOf((String) props.get("iplant.irods.port"));
+		try {
+            IRODS_PORT = Integer.valueOf((String) props.get("iplant.irods.port"));
+        } catch (Exception e){
+			log.error("Failure loading setting iplant.myproxy.server", e);
+			IRODS_PORT = 1247;
+        }
 
 		IRODS_ZONE = (String) props.get("iplant.irods.zone");
 
@@ -194,9 +211,19 @@ public class Settings {
 
 		WORLD_USER_USERNAME = (String) props.get("iplant.world.user");
 
-		DEFAULT_PAGE_SIZE = Integer.parseInt((String) props.getProperty("iplant.default.page.size", "25"));
-		
-		MAX_REMOTE_OPERATION_TIME = Integer.parseInt((String) props.getProperty("iplant.max.remote.connection.time", "90"));
+		try {
+			DEFAULT_PAGE_SIZE = Integer.parseInt((String) props.getProperty("iplant.default.page.size", "25"));
+		} catch (Exception e){
+			log.error("Failure loading setting iplant.default.page.size", e);
+			DEFAULT_PAGE_SIZE = 25;
+		}
+
+		try {
+			MAX_REMOTE_OPERATION_TIME = Integer.parseInt((String) props.getProperty("iplant.max.remote.connection.time", "90"));
+		} catch (Exception e){
+			log.error("Failure loading setting iplant.max.remote.connection.time", e);
+			MAX_REMOTE_OPERATION_TIME = 90;
+		}
 	}
 
 }

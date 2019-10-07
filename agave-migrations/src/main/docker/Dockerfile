@@ -1,6 +1,6 @@
 FROM agaveapi/java:8-maven
 
-MAINTAINER CIC Support <help@agaveplatform.org>
+MAINTAINER Agave Platform <help@agaveplatform.org>
 
 ENV FLYWAY_VERSION 4.1.1
 ENV FLYWAY_HOME /source/flyway-$FLYWAY_VERSION

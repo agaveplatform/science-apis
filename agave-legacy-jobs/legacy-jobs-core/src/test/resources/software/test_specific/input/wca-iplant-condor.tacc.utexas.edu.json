@@ -7,7 +7,7 @@
     "label":"wc condor",
     "shortDescription":"Count words in a file",
     "longDescription":"",
-    "author":"sterry1",
+    "author":"testuser",
     "datePublished":"",
     "tags":[
         "textutils",
@@ -19,7 +19,7 @@
     "executionHost":"condor.opensciencegrid.org",
     "executionType":"CONDOR",
     "deploymentSystem":"data.iplantcollaborative.org",
-    "deploymentPath":"/sterry1/applications/wca-1.00",
+    "deploymentPath":"/testuser/applications/wca-1.00",
     "templatePath":"wrapper.sh",
     "testPath":"test.sh",
     "checkpointable": false,

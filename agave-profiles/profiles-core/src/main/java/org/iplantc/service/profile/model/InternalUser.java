@@ -321,7 +321,7 @@ public class InternalUser extends Profile
 	}
 
 	/**
-	 * @param company the institution to set
+	 * @param institution the institution to set
 	 * @throws ProfileArgumentException
 	 */
 	public void setInstitution(String institution) throws ProfileArgumentException {

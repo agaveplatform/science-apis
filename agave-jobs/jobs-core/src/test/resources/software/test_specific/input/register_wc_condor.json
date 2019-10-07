@@ -12,7 +12,7 @@
     "ontolog": ["http://sswapmeet.sswap.info/algorithms/wc"],
     "executionType": "CONDOR",
     "deploymentSystem":"data.iplantcollaborative.org",
-    "deploymentPath": "/sterry1/applications/wc-1.00",
+    "deploymentPath": "/testuser/applications/wc-1.00",
     "templatePath": "/wrapper.sh",
     "testPath": "/test.sh",
     "checkpointable": true,

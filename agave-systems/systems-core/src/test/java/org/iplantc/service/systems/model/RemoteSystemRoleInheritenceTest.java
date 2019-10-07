@@ -12,7 +12,7 @@ import org.testng.annotations.Test;
 @Test(groups={"broken", "unit"})
 public class RemoteSystemRoleInheritenceTest
 {
-	private final String GOD_USER = "sterry1";
+	private final String GOD_USER = "dooley";
 	private final String SYSTEM_OWNER = "testuser";
 	private final String SYSTEM_SHARE_GUEST_USER = "shareguest";
 	private final String SYSTEM_SHARE_USER_USER = "shareuser";

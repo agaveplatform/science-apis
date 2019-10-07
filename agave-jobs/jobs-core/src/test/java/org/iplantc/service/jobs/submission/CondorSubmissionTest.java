@@ -330,11 +330,11 @@ Assert.assertTrue("not implemented yet",false)
 			dao.remove(s);
 		}
 
-		for(Software software: SoftwareDao.getUserApps("sterry1", true)) {
+		for(Software software: SoftwareDao.getUserApps("testuser", true)) {
 			SoftwareDao.delete(software);
 		}
 
-		for(Job job: JobDao.getJobs("sterry1")) {
+		for(Job job: JobDao.getJobs("testuser")) {
 			JobDao.delete(job);
 		}
 
@@ -346,7 +346,7 @@ Assert.assertTrue("not implemented yet",false)
 		// load up a storage system
 		String irodsString = FileUtils.readFileToString(new File("src/test/resources/systems/storage/data.iplantcollaborative.org.json"));
 		JSONObject irodsJson = new JSONObject(irodsString);
-		RemoteSystem irods = sysManager.parseSystem(irodsJson, "sterry1");
+		RemoteSystem irods = sysManager.parseSystem(irodsJson, "testuser");
 		irods.setAvailable(true);
 		irods.setGlobalDefault(true);
 		irods.setPubliclyAvailable(true);
@@ -355,7 +355,7 @@ Assert.assertTrue("not implemented yet",false)
 		// load up a compute system
 		String condorString = FileUtils.readFileToString(new File("src/test/resources/systems/execution/condor.opensciencegrid.org.json"));
 		JSONObject condorJson = new JSONObject(condorString);
-		RemoteSystem condor = sysManager.parseSystem(condorJson, "sterry1");
+		RemoteSystem condor = sysManager.parseSystem(condorJson, "testuser");
 		condor.setAvailable(true);
 		condor.setGlobalDefault(true);
 		condor.setPubliclyAvailable(true);
@@ -364,22 +364,22 @@ Assert.assertTrue("not implemented yet",false)
 		String wcString = FileUtils.readFileToString(new File("src/test/resources/software/wc-iplant-condor.tacc.utexas.edu.json"));
 		JSONObject wcJson = new JSONObject(wcString);
 		Software software = Software.fromJSON(wcJson);
-		software.setOwner("sterry1");
+		software.setOwner("testuser");
 		SoftwareDao.persist(software);
 
 		Job job = new Job();
 		job.setName("SteveTest");
-		job.setOwner("sterry1");
+		job.setOwner("testuser");
 		job.setSystem(software.getSystem().getSystemId());
 		job.setSoftwareName(software.getUniqueName());
 		job.setProcessorCount(1);
 		job.setMemoryRequest(1);
 		job.setArchiveOutput(true);
-		job.setArchivePath("/sterry1/jobs/condor");
+		job.setArchivePath("/testuser/jobs/condor");
 		job.setStatus(JobStatusType.PENDING);
 		job.setUpdateToken("7d7e5472e5159d726d905b4c06009c2f");
         JSONObject jsonobj = new JSONObject();
-        jsonobj.put("query1","sterry1/applications/wc-1.00/read1.fq");
+        jsonobj.put("query1","testuser/applications/wc-1.00/read1.fq");
 		job.setInputs(jsonobj.toString());
         jsonobj = new JSONObject();
         jsonobj.put("printLongestLine","1");

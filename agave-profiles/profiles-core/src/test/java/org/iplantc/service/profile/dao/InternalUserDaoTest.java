@@ -1,6 +1,3 @@
-/**
- *
- */
 package org.iplantc.service.profile.dao;
 
 import java.util.List;
@@ -34,10 +31,11 @@ public class InternalUserDaoTest {
 
 	private InternalUserDao dao;
 	private TestDataHelper dataHelper;
+
 	/**
 	 * Initalizes the test db and adds the test app
 	 */
-	@BeforeClass
+	@BeforeClass(groups = {"integration"})
 	public void initDb()
 	{
 		try
@@ -124,7 +122,7 @@ public class InternalUserDaoTest {
             if (actuallyThrewException != shouldThrowException) e.printStackTrace();
 		}
 
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+        //System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
 		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
 	}
 
@@ -170,7 +168,7 @@ public class InternalUserDaoTest {
             if (actuallyThrewException != shouldThrowException) e.printStackTrace();
 		}
 
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+        //System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
 		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
 	}
 
@@ -215,7 +213,7 @@ public class InternalUserDaoTest {
             if (actuallyThrewException != shouldThrowException) e.printStackTrace();
 		}
 
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+        //System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
 		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
 	}
 
@@ -374,7 +372,7 @@ public class InternalUserDaoTest {
             e.printStackTrace();
 		}
 
-        System.out.println(" exception thrown?  expected false actual " + actuallyThrewException);
+        //System.out.println(" exception thrown?  expected false actual " + actuallyThrewException);
 		Assert.assertFalse(actuallyThrewException, exceptionMsg);
 	}
 
@@ -426,7 +424,7 @@ public class InternalUserDaoTest {
             e.printStackTrace();
 		}
 
-        System.out.println(" exception thrown?  expected false actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected false actual " + actuallyThrewException);
 		Assert.assertFalse(actuallyThrewException, exceptionMsg);
 	}
 
@@ -465,7 +463,7 @@ public class InternalUserDaoTest {
             if (actuallyThrewException != shouldThrowException) e.printStackTrace();
 		}
 
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
 		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
 	}
 
@@ -499,7 +497,7 @@ public class InternalUserDaoTest {
             e.printStackTrace();
 		}
 
-        System.out.println(" exception thrown?  expected false actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected false actual " + actuallyThrewException);
 		Assert.assertFalse(actuallyThrewException, exceptionMsg);
 	}
 }

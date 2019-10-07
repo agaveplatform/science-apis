@@ -1,11 +1,17 @@
 #############################################################
-#  Build image for java 9 target runtime
-#  tag: agaveplatform/maven:3.6
 #
-#  The image can be built by issuing this command from the 
-#  directory containing this file:
+# Maven 3.6 base image
+# Tag: agaveplatform/maven:3.6
+#
+# Build image for java 9 target runtime.
+#
+# The image can be built by issuing this command from the
+# directory containing this file:
 #
 #   docker build -t agaveplatform/maven:3.6 .
+#
+# https://github.com/agaveplatform/docker-maven
+# https://agaveplatform.org
 #
 #############################################################
 

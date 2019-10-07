@@ -40,7 +40,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(singleThreaded=true, groups= {"transfer", "irods.filesystem.init","broken", "integration"})
+@Test(singleThreaded=true, groups= {"transfer", "irods.filesystem.init", "integration", "sftp"})
 public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase 
 {
     protected File tmpFile = null;
@@ -189,7 +189,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
      * shouldExist allows you to separate permission exceptions from
      * file not found exceptions.
      * 
-     * @param shouldExist. Whether the path should exist. 
+     * @param shouldExist Whether the path should exist.
      * @return 
      * @throws RemoteDataException 
      */

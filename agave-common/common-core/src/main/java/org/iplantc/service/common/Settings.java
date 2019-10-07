@@ -252,10 +252,10 @@ public class Settings
         TACC_MYPROXY_SERVER = props.getProperty("iplant.myproxy.server");
         
         try {TACC_MYPROXY_PORT = Integer.valueOf((String)props.getProperty("iplant.myproxy.port", "7512"));}
-            catch (Exception e) {
-                log.error("Failure loading setting iplant.myproxy.port - continuing using default value.", e);
-                TACC_MYPROXY_PORT = 7512;
-            }
+        catch (Exception e) {
+            log.error("Failure loading setting iplant.myproxy.port - continuing using default value.", e);
+            TACC_MYPROXY_PORT = 7512;
+        }
         
         IPLANT_APP_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.app.service", "https://sandbox.agaveplatform.org/apps/v2");
         IPLANT_AUTH_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.auth.service", "https://sandbox.agaveplatform.org/auth/v2");

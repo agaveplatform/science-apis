@@ -21,7 +21,7 @@ import org.testng.annotations.Test;
 @Test(groups={"integration"})
 public class SystemsModelTestCommon 
 {
-    public static final String TENANT_ADMIN = "sterry1";
+    public static final String TENANT_ADMIN = "testadmin";
 	public static final String SYSTEM_OWNER = "testuser";
 	public static final String SYSTEM_SHARE_USER = "bob";
 	public static final String SYSTEM_PUBLIC_USER = "public";

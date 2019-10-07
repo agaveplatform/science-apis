@@ -1,10 +1,10 @@
 {
-    "name": "stevewc-demo-stampede",
-    "appId": "stevewc-2.0-stampede",
+    "name": "testuserwc-demo-stampede",
+    "appId": "testuserwc-2.0-stampede",
     "memoryPerNode": 1,
     "notifications": [
     	{ 
-    		"url" : "sterry1@tacc.utexas.edu",
+    		"url" : "testuser@example.com",
     		"event": "*",
             "persistent": true
     	}

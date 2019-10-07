@@ -5,7 +5,7 @@
  "label":"muscle-ranger",
  "shortDescription":"MUSCLE: Multiple sequence comparison by log-expectation",
  "longDescription":"",
- "author":"Steve Terry",
+ "author":"Test User",
  "datePublished":"",
  "tags":["aligner","phylogenetics","nucleotides","proteins"],
  "ontology":["http://sswapmeet.sswap.info/sequenceServices/MultipleSequenceAlignment"],

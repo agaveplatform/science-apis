@@ -44,14 +44,12 @@ public class IPAddressValidatorTest {
 	@Test(dataProvider = "ValidIPAddressProvider")
 	public void ValidIPAddressTest(String ip) {
 		boolean valid = ipAddressValidator.validate(ip);
-		System.out.println("IPAddress is valid : " + ip + " , " + valid);
 		Assert.assertEquals(true, valid);
 	}
 
 	@Test(dataProvider = "InvalidIPAddressProvider", dependsOnMethods = "ValidIPAddressTest")
 	public void InValidIPAddressTest(String ip) {
 		boolean valid = ipAddressValidator.validate(ip);
-		System.out.println("IPAddress is valid : " + ip + " , " + valid);
 		Assert.assertEquals(false, valid);
 	}
 }

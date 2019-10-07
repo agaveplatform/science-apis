@@ -33,16 +33,41 @@
 		</testResources>
 		<plugins>
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<configuration>
-					<suiteXmlFiles>
-						<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
-					</suiteXmlFiles>
-					<systemPropertyVariables>
-	                    <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties</log4j.configuration>
-	                </systemPropertyVariables>
-				</configuration>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+				<version>2.5.1</version>
+				<executions>
+					<execution>
+						<id>systemsup</id>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>up</goal>
+						</goals>
+						<configuration>
+							<composeFiles>
+								<composeFile>${project.basedir}/compose/third-party/docker-compose.yml</composeFile>
+								<composeFile>${project.basedir}/config/testbed/data.yml</composeFile>
+								<!--<composeFile>${project.basedir}/config/testbed/compute.yml</composeFile>-->
+							</composeFiles>
+							<ignorePullFailures>true</ignorePullFailures>
+						</configuration>
+					</execution>
+					<execution>
+						<id>systemsdown</id>
+						<phase>post-integration-test</phase>
+						<goals>
+							<goal>down</goal>
+						</goals>
+						<configuration>
+							<composeFiles>
+								<composeFile>${project.basedir}/compose/third-party/docker-compose.yml</composeFile>
+								<composeFile>${project.basedir}/config/testbed/data.yml</composeFile>
+								<!--<composeFile>${project.basedir}/config/testbed/compute.yml</composeFile>-->
+							</composeFiles>
+							<ignorePullFailures>true</ignorePullFailures>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

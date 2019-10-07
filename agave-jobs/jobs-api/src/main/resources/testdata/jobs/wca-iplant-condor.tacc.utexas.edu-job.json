@@ -6,7 +6,7 @@
     "memoryRequest": 1,
     "callbackUrl": "http://example.com/callback",
     "archiveOutput": true,
-    "archivePath": "/sterry1/archive/test-job-999",
-    "inputs": "{\"query1\":\"/sterry1/data/wc-1.00/read1.fq\"}",
+    "archivePath": "/testuser/archive/test-job-999",
+    "inputs": "{\"query1\":\"/testuser/data/wc-1.00/read1.fq\"}",
     "parameters": "{}"
 }

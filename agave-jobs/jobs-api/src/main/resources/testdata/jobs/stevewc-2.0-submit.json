@@ -1,10 +1,10 @@
 {
-    "name": "stevewc-demo",
-    "appId": "stevewc-2.0",
+    "name": "testuserwc-demo",
+    "appId": "testuserwc-2.0",
     "memoryPerNode": 1,
     "notifications": [
     	{ 
-    		"url" : "sterry1@tacc.utexas.edu",
+    		"url" : "testuser@example.com",
     		"event": "*",
             "persistent": true
     	}

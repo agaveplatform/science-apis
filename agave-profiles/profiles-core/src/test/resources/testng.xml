@@ -1,19 +1,18 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
-  
-<suite name="Agave profiles-core" verbose="5" parallel="none">
-  <groups>
-    <run>
-        <exclude name="broken"/>
-        <exclude name="notReady"/>
-    </run>
-  </groups>
-  <test name="profiles-core" >
-        <packages>
-            <package name="org.iplantc.service.profile" />
-            <package name="org.iplantc.service.profile.dao" />
-            <package name="org.iplantc.service.profile.manager" />
-            <package name="org.iplantc.service.profile.model" />
-        </packages>
-  </test>
 
+<suite name="Agave profiles-core" verbose="1" thread-count="1" parallel="none">
+    <groups>
+        <run>
+            <exclude name="broken"/>
+            <exclude name="notReady"/>
+        </run>
+    </groups>
+    <test name="profiles-core">
+        <packages>
+            <package name="org.iplantc.service.profile"/>
+            <package name="org.iplantc.service.profile.dao"/>
+            <package name="org.iplantc.service.profile.manager"/>
+            <package name="org.iplantc.service.profile.model"/>
+        </packages>
+    </test>
 </suite>

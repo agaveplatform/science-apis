@@ -10,9 +10,11 @@
 	<artifactId>profiles-core</artifactId>
 	<name>Agave Platform Profile ServiceCore</name>
 	<description>Core classes for the Agave Profile Services</description>
+	<packaging>jar</packaging>
 
 	<properties>
 		<force.check.update>false</force.check.update>
+		<suite.testng>testng.xml</suite.testng>
 	</properties>
 
 	<build>
@@ -28,6 +30,7 @@
 				<directory>src/test/resources</directory>
 			</testResource>
 		</testResources>
+
 	</build>
 
 	<dependencies>

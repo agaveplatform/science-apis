@@ -1,0 +1,20 @@
+{	
+	"username": "testinternaluser",
+	"email": "testinternaluser@example.com",
+	"firstName": "Test Internal",
+	"lastName": "User",
+	"position": null,
+	"institution": "Agave DevOps",
+	"phone": "512-555-5555",
+	"fax": "512-555-5556",
+	"researchArea": "Software Engineering",
+	"department": "Testing",
+	"city": "Anywhere",
+	"state": "TX",
+	"country": "USA",
+	"fundingAgencies": [
+		"Dad", 
+		"Mom"
+	],
+	"gender": "FEMALE"
+}

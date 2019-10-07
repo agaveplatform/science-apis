@@ -100,7 +100,7 @@ public class ProfileTest extends ModelTestCommon{
     			{ decoyTenant },
     	};
     }
-    @Test (groups={"model","profile"}, dataProvider="testUuidCreationProvider")
+    @Test (dataProvider="testUuidCreationProvider")
     public void testUuidCreation(Tenant tenant)
     throws Exception
     {

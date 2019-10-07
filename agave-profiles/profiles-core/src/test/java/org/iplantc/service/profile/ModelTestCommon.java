@@ -41,7 +41,7 @@ public class ModelTestCommon
 				se.printStackTrace();
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
+//		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
 		Assert.assertTrue(exceptionFlag == exceptionThrown, exceptionMsg);
 	}

@@ -509,10 +509,10 @@ public class DomainSetup extends AbstractDaoTest
         // kick off the test for CondorLauncher.
 
         testJob.setName("testname");
-        testJob.setOwner("sterry1");
-        testJob.setInternalUsername("sterry1");
+        testJob.setOwner("testuser");
+        testJob.setInternalUsername("testinternaluser");
         testJob.setOutputPath("");
-        testJob.setArchivePath("/iplant/home/sterry1/archive/test-job-999");
+        testJob.setArchivePath("/iplant/home/testuser/archive/test-job-999");
         testJob.setWorkPath("/dev/null");
         testJob.setUpdateToken("232a28d8930d43fbc4c58069eaae8bba");
         testJob.setLocalJobId("");

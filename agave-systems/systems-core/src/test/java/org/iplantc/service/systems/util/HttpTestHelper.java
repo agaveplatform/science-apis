@@ -143,16 +143,6 @@ public class HttpTestHelper{
     public CmdLineProcessOutput curlSimple(){
         return curl();
     }
-
-    public static void main(String[] args){
-        HttpTestHelper helper = new HttpTestHelper("POST","http://localhost:8080/","apps-v1/apps/list","sterry1","anna1200");
-        //helper.loadSoftwareFileList();
-        //helper.curlPostFile(helper.fileList.get("wca-iplant-condor"));
-        //helper.curlFileUpload("tmp/file.json");
-        helper.curlFormPost("var1=steve&var2=left is; better");
-
-    }
-
 }
 
 

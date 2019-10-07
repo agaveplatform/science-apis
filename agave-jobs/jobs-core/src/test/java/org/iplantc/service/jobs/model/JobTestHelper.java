@@ -17,7 +17,7 @@ public class JobTestHelper {
 	{
 		StorageSystem storageSystem = new StorageSystem();
 		storageSystem.setType(RemoteSystemType.STORAGE);
-        storageSystem.setOwner("sterry1");
+        storageSystem.setOwner("testuser");
         storageSystem.setAvailable(true);
         storageSystem.setCreated(new Date());
         storageSystem.setDescription("test description");

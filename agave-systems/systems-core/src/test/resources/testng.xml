@@ -2,7 +2,7 @@
 
 <suite name="Agave systems-core" verbose="1" thread-count="1" parallel="none">
     <groups>
-        <run>
+		<run>
             <exclude name="broken"/>
             <exclude name="notReady"/>
         </run>
@@ -24,16 +24,16 @@
 			<package name="org.iplantc.service.systems.search" />
 			<package name="org.iplantc.service.systems.util" />
 			
-			<package name="org.iplantc.service.transfer.azure" />
-			<package name="org.iplantc.service.transfer.ftp" />
-			<package name="org.iplantc.service.transfer.gridftp" />
-			<package name="org.iplantc.service.transfer.http" />
-			<package name="org.iplantc.service.transfer.irods" />
-			<package name="org.iplantc.service.transfer.irods4" />
-			<package name="org.iplantc.service.transfer.local" />
-			<package name="org.iplantc.service.transfer.operations" />
-			<package name="org.iplantc.service.transfer.performance" />
-			<package name="org.iplantc.service.transfer.s3" />
+			<!--<package name="org.iplantc.service.transfer.azure" />-->
+			<!--<package name="org.iplantc.service.transfer.ftp" />-->
+			<!--<package name="org.iplantc.service.transfer.gridftp" />-->
+			<!--<package name="org.iplantc.service.transfer.http" />-->
+			<!--<package name="org.iplantc.service.transfer.irods" />-->
+			<!--<package name="org.iplantc.service.transfer.irods4" />-->
+			<!--<package name="org.iplantc.service.transfer.local" />-->
+			<!--<package name="org.iplantc.service.transfer.operations" />-->
+			<!--<package name="org.iplantc.service.transfer.performance" />-->
+			<!--<package name="org.iplantc.service.transfer.s3" />-->
 			<package name="org.iplantc.service.transfer.sftp" />
 		</packages>
 	</test>

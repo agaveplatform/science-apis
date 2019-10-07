@@ -23,7 +23,7 @@
 		"scratchDir": "scratch",
 		"workDir": "workdir",
 		"auth": {
-			"username": "sterry1",
+			"username": "testuser",
 			"password": "{$default.password}",
 			"credential": "",
 			"type": "PASSWORD"
@@ -33,9 +33,9 @@
 		"host": "iplant-ssh.tacc.utexas.edu",
 		"port": 22,
 		"protocol": "SFTP",
-		"rootDir": "/home/sterry1",
+		"rootDir": "/home/testuser",
 		"auth": {
-			"username": "sterry1",
+			"username": "testuser",
 			"password": "{$default.password}",
 			"type": "PASSWORD"
 		}

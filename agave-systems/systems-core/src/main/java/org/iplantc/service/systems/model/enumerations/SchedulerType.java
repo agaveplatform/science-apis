@@ -100,7 +100,7 @@ public enum SchedulerType
 			case MOAB:
 			case SGE:
 			case CUSTOM_GRIDENGINE:
-				return "qstat -w | grep ";
+				return "qstat -a | grep ";
 			case CUSTOM_CONDOR:
 			case CONDOR:
 				return "condor_q -format '%d'  JobStatus";

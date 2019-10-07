@@ -1,20 +1,20 @@
 {	
-	"username": "sterry1",
-	"email": "sterry1@tacc.utexas.edu",
-	"firstName": "Steve",
-	"lastName": "Terry",
-	"position": "RESA IV",
-	"institution": "University of Texas",
-	"phone": "512-232-1234",
-	"fax": "512-475-9445",
-	"researchArea": "WCS",
-	"department": "TACC",
+	"username": "testinternaluser",
+	"email": "testinternaluser@example.com",
+	"firstName": "Test",
+	"lastName": "Internal User",
+	"position": null,
+	"institution": "Agave DevOps",
+	"phone": "512-444-4444",
+	"fax": "512-444-4443",
+	"researchArea": null,
+	"department": "Testing",
 	"city": "Austin",
 	"state": "TX",
 	"country": "USA",
 	"fundingAgencies": [
-		"iuser1", 
-		"iuser2"
+		"foo",
+		"bar"
 	],
-	"gender": "MALE"
+	"gender": "FEMALE"
 }

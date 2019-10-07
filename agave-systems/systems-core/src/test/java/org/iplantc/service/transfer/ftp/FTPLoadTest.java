@@ -25,7 +25,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-@Test(groups= {"gridftp","performance","broken", "integration"})
+@Test(enabled = false, groups= {"gridftp","performance","broken", "integration"})
 public class FTPLoadTest extends BaseTransferTestCase 
 {
 	private static final Logger log = Logger.getLogger(FTPLoadTest.class);

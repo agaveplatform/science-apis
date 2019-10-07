@@ -43,7 +43,7 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
         try {
             jsonTree = jtd.getTestDataObject(testDataPath);
             ExecutionSystem executionSystem = ExecutionSystem.fromJSON(jsonTree);
-            executionSystem.setOwner("sterry1");
+            executionSystem.setOwner("testuser");
             //System.out.println(jsonTree.get("name").toString());
             systemDao.persist(executionSystem);
         } catch (JSONException e) {
@@ -59,7 +59,7 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
         try {
             jsonTree = jtd.getTestDataObject(testDataPath);
             StorageSystem system = StorageSystem.fromJSON(jsonTree);
-            system.setOwner("sterry1");
+            system.setOwner("testuser");
             // System.out.println(testDataPath);
             systemDao.persist(system);
         } catch (JSONException e) {
@@ -75,8 +75,8 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
     public void insertSoftware(String testDataPath){
         try {
             jsonTree = jtd.getTestDataObject(testDataPath);
-            Software software = Software.fromJSON(jsonTree, "sterry1");
-            software.setOwner("sterry1");
+            Software software = Software.fromJSON(jsonTree, "testuser");
+            software.setOwner("testuser");
             SoftwareDao.persist(software);
         } catch (JSONException e) {
             e.printStackTrace();  

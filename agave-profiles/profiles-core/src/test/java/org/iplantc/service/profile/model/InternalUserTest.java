@@ -16,8 +16,8 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups={"unit"})
-public class InternalUserTest extends ModelTestCommon{
+@Test(groups={"unit","model","internaluser"})
+public class InternalUserTest extends ModelTestCommon {
 
     @BeforeClass
     public void setUp() throws Exception {
@@ -29,7 +29,7 @@ public class InternalUserTest extends ModelTestCommon{
 		jsonTree = dataHelper.getTestDataObject(TestDataHelper.TEST_INTERNAL_USER_FILE);
 	}
 
-    @DataProvider(name = "usernameProvider")
+    @DataProvider
     public Object[][] usernameProvider() 
     {
     	return new Object[][] {
@@ -77,14 +77,14 @@ public class InternalUserTest extends ModelTestCommon{
     	};
     }
 
-    @Test (groups={"model","internaluser"}, dataProvider="usernameProvider")
+    @Test (dataProvider="usernameProvider")
     public void storageSystemIdValidationTest(String name, Object changeValue, String message, boolean exceptionThrown) 
     throws Exception 
     {
         super.commonInternalUserFromJSON(name,changeValue,message,exceptionThrown);
     }
     
-    @DataProvider(name = "internalUserAttributes")
+    @DataProvider
     public Object[][] internalUserAttributes() 
     {
     	return new Object[][] {
@@ -196,7 +196,7 @@ public class InternalUserTest extends ModelTestCommon{
     	};
     }
 
-    @Test (groups={"model","internaluser"}, dataProvider="internalUserAttributes")
+    @Test (dataProvider="internalUserAttributes")
     public void storageSystemNameValidationTest(String name, Object changeValue, String message, boolean exceptionThrown)
     throws Exception 
     {

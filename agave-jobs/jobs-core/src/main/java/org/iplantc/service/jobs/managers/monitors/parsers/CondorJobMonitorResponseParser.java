@@ -157,7 +157,7 @@ public class CondorJobMonitorResponseParser implements JobMonitorResponseParser 
     }
 
     public static void main(String[] args) throws IOException {
-        File log = new File("src/test/resources/condor_jobs/sterry1-1-1369597889740/runtime.log");
+        File log = new File("src/test/resources/condor_jobs/testuser-1-1369597889740/runtime.log");
         CondorJobMonitorResponseParser pcjl = new CondorJobMonitorResponseParser(log);
         System.out.println("is failed "+pcjl.isJobFailed());
         System.out.println("is submitted "+pcjl.isJobSubmitted());

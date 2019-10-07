@@ -1,10 +1,10 @@
 {	
-	"username": "jstubbs",
-	"email": "jstubbs@tacc.utexas.edu",
-	"firstName": "Joe",
-	"lastName": "Stubbs",
+	"username": "testuser",
+	"email": "testuser@example.com",
+	"firstName": "Test",
+	"lastName": "User",
 	"position": "Owner",
-	"institution": "University of Texas at Austin",
+	"institution": "Example University",
 	"phone": "512-555-5555",
 	"fax": "512-555-5556",
 	"researchArea": "Software Engineering",
@@ -13,8 +13,8 @@
 	"state": "TX",
 	"country": "USA",
 	"fundingAgencies": [
-		"iplant",
-		"tacc"
+		"Dad", 
+		"Mom"
 	],
 	"gender": "MALE"
 }

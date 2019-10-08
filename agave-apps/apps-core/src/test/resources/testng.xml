@@ -10,7 +10,7 @@
 	<test name="apps-core">
 		<packages>
 			<package name="org.iplantc.service.apps.model" />
-			<package name="org.iplantc.service.apps.dao" />
+            <package name="org.iplantc.service.apps.dao" />
 			<package name="org.iplantc.service.apps.managers" />
             <package name="org.iplantc.service.apps.queue" />
             <package name="org.iplantc.service.apps.search" />

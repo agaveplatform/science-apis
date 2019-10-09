@@ -51,6 +51,14 @@
 			<name>Agave Maven repository</name>
 			<url>https://nexus.agaveplatform.org/repository/maven-releases</url>
 		</repository>
+
+<!--		grpc repository-->
+		<repository>
+			<id>apache-maven-releases</id>
+			<name>Agave Maven repository</name>
+			<url>https://repo1.maven.org/maven2/</url>
+		</repository>
+
 		<repository>
 			<id>agave-maven-snapshot</id>
 			<name>Agave Maven repository</name>
@@ -90,7 +98,7 @@
                 <updatePolicy>always</updatePolicy>
                 <checksumPolicy>warn</checksumPolicy>
             </snapshots>
-        </repository>	
+        </repository>
     </repositories>
 
 	<pluginRepositories>
@@ -230,7 +238,35 @@
 	</properties>
 
 	<build>
+		<extensions>
+			<extension>
+				<groupId>kr.motd.maven</groupId>
+				<artifactId>os-maven-plugin</artifactId>
+				<version>1.6.2</version>
+			</extension>
+		</extensions>
+
 		<plugins>
+
+<!--			<plugin>-->
+<!--				<groupId>org.xolstice.maven.plugins</groupId>-->
+<!--				<artifactId>protobuf-maven-plugin</artifactId>-->
+<!--				<version>0.6.1</version>-->
+<!--				<configuration>-->
+<!--					<protocArtifact>com.google.protobuf:protoc:3.9.0:exe:${os.detected.classifier}</protocArtifact>-->
+<!--					<pluginId>grpc-java</pluginId>-->
+<!--					<pluginArtifact>io.grpc:protoc-gen-grpc-java:1.24.0:exe:${os.detected.classifier}</pluginArtifact>-->
+<!--				</configuration>-->
+<!--				<executions>-->
+<!--					<execution>-->
+<!--						<goals>-->
+<!--							<goal>compile</goal>-->
+<!--							<goal>compile-custom</goal>-->
+<!--						</goals>-->
+<!--					</execution>-->
+<!--				</executions>-->
+<!--			</plugin>-->
+
 		    <!-- This plugin can be used find duplicate classes on the classpath of each -->
 		    <!-- subproject.  Adding the "check" goal below runs this plugin.  A better  -->
 		    <!-- approach is to run the following command from the top-level Agave       -->
@@ -431,6 +467,23 @@
             <artifactId>testng</artifactId>
             <version>${testng.version}</version>
         </dependency>
+		<!-- https://mvnrepository.com/artifact/io.grpc/grpc-stub -->
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-netty-shaded</artifactId>
+			<version>1.24.0</version>
+		</dependency>
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-protobuf</artifactId>
+			<version>1.24.0</version>
+		</dependency>
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-stub</artifactId>
+			<version>1.24.0</version>
+		</dependency>
+
     </dependencies>
 
 	<modules>

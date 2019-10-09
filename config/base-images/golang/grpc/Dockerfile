@@ -1,3 +1,20 @@
+#############################################################
+#
+# golang grpc base image
+# Tag: agaveplatform/grpc-go:1.11
+#
+# Build image for grpc applications written in golang.
+#
+# The image can be built by issuing this command from the
+# directory containing this file:
+#
+#   docker build -t agaveplatform/grpc-go:1.11 .
+#
+# https://github.com/agaveplatform/docker-golang
+# https://agaveplatform.org
+#
+#############################################################
+
 FROM agaveplatform/golang:1.11
 
 ENV GRPC_VERSION 1.15.0

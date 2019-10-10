@@ -12,7 +12,7 @@ import org.iplantc.service.systems.model.JSONTestDataUtil;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.SystemRole;
-import org.iplantc.service.systems.model.SystemsModelTestCommon;
+import org.iplantc.service.systems.model.PersistedSystemsModelTestCommon;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -23,7 +23,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 @Test(groups={"integration"})
-public class SystemManagerEnableSystemTest extends SystemsModelTestCommon 
+public class SystemManagerEnableSystemTest extends PersistedSystemsModelTestCommon
 {	
 	private SystemManager manager = new SystemManager();
 	private SystemDao dao = new SystemDao();

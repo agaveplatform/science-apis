@@ -45,19 +45,7 @@ public class MonitoringActionTest extends AbstractJobSubmissionTest {
         
         super.afterClass();
     }
-    @Test
-    protected void garbage() {
-        System.out.println(URI.create("/Users/dooley").toString());
-        System.out.println(URI.create("//Users/dooley").toString());
-        System.out.println(URI.create("/Users//dooley/").toString());
-        System.out.println(URI.create("/Users/dooley//").toString());
-        System.out.println(URI.create("Users/dooley").toString());
-        System.out.println(URI.create("Users/dooley/").toString());
-        System.out.println(URI.create("Users//dooley/").toString());
-        System.out.println(URI.create("Users/dooley//").toString());
-        
-    }
-    
+
     /**
      * Generic submission test used by all the methods testing job submission is some
      * form or fashion.

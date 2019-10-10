@@ -12,7 +12,7 @@ import java.util.zip.CheckedInputStream;
 import org.apache.commons.io.FileUtils;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemsModelTestCommon;
+import org.iplantc.service.systems.model.PersistedSystemsModelTestCommon;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.json.JSONObject;
@@ -29,7 +29,7 @@ import com.google.common.io.Files;
  *
  */
 @Test(groups={"integration"})
-public abstract class AbstractPerformanceTest extends SystemsModelTestCommon {
+public abstract class AbstractPerformanceTest extends PersistedSystemsModelTestCommon {
 
 	private SystemDao dao;
 	private File sourceFile;
@@ -127,7 +127,7 @@ public abstract class AbstractPerformanceTest extends SystemsModelTestCommon {
 	 * Creates test system from test system definitions and instantiates a 
 	 * {@link RemoteDataClient} for use in subsequent tests.
 	 * @param protocol
-	 * @return
+	 * @return RemoteDataClient
 	 * @throws Exception
 	 */
 	protected RemoteDataClient createStorageSystem(StorageProtocolType protocol) throws Exception {
@@ -179,12 +179,18 @@ public abstract class AbstractPerformanceTest extends SystemsModelTestCommon {
 		}
 		finally {
 			t2 = System.currentTimeMillis();
-			try { 
-				client.delete("performance-test"); 
+			try {
+				if (client != null) {
+					client.delete("performance-test");
+				}
 			} 
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			finally {
-				try {client.disconnect();} catch (Exception e) {}
+				try {
+					if (client != null) {
+						client.disconnect();
+					}
+				} catch (Exception ignored) {}
 			}
 		}
 		

@@ -8,7 +8,7 @@ import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.JSONTestDataUtil;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemsModelTestCommon;
+import org.iplantc.service.systems.model.PersistedSystemsModelTestCommon;
 import org.iplantc.service.systems.model.enumerations.SystemEventType;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -17,7 +17,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 @Test(groups={"integration"})
-public class SystemHistoryDaoTest extends SystemsModelTestCommon { 
+public class SystemHistoryDaoTest extends PersistedSystemsModelTestCommon {
 	
 	private SystemHistoryEventDao systemHistoryEventDao;
 	

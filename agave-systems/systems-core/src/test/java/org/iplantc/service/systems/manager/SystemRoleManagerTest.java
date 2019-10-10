@@ -14,7 +14,7 @@ import org.iplantc.service.systems.model.JSONTestDataUtil;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.SystemRole;
-import org.iplantc.service.systems.model.SystemsModelTestCommon;
+import org.iplantc.service.systems.model.PersistedSystemsModelTestCommon;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.json.JSONException;
 import org.testng.Assert;
@@ -25,7 +25,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 @Test(groups={"integration"})
-public class SystemRoleManagerTest extends SystemsModelTestCommon {
+public class SystemRoleManagerTest extends PersistedSystemsModelTestCommon {
     private SystemDao dao = new SystemDao();
     
     @Override

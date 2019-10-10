@@ -1,6 +1,7 @@
 package org.iplantc.service.systems.model;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -28,7 +29,7 @@ public class BatchQueueTest extends SystemsModelTestCommon{
     			{ "name", null, "name cannot be null", true },
     			{ "name", "", "name cannot be empty", true },
     			{ "name", new Object(), "name cannot be object", true },
-    			{ "name", Arrays.asList("Harry"), "name cannot be array", true },
+    			{ "name", Collections.singletonList("Harry"), "name cannot be array", true },
     			{ "name", "test name", "name cannot contain spaces", true },
     			{ "name", "test~name", "name cannot contain ~ characters", true },
     			{ "name", "test`name", "name cannot contain ` characters", true },
@@ -69,7 +70,7 @@ public class BatchQueueTest extends SystemsModelTestCommon{
     			{ "mappedName", null, "mappedName can be null", false },
     			{ "mappedName", "", "mappedName can be empty", false },
     			{ "mappedName", new Object(), "mappedName cannot be object", true },
-    			{ "mappedName", Arrays.asList("Harry"), "mappedName cannot be array", true },
+    			{ "mappedName", Collections.singletonList("Harry"), "mappedName cannot be array", true },
     			{ "mappedName", "test mappedName", "mappedName cannot contain spaces", true },
     			{ "mappedName", "test~mappedName", "mappedName cannot contain ~ characters", true },
     			{ "mappedName", "test`mappedName", "mappedName cannot contain ` characters", true },
@@ -110,36 +111,36 @@ public class BatchQueueTest extends SystemsModelTestCommon{
     			{ "description", null, "description can be null", false },
     			{ "description", "", "description can be empty", false },
     			{ "description", new Object(), "description cannot be object", true },
-    			{ "description", Arrays.asList("Harry"), "description cannot be array", true },
+    			{ "description", Collections.singletonList("Harry"), "description cannot be array", true },
     			{ "description", "aasdfas12e23445", "description can be alpha", false },
     			{ "description", "@$#*%!&^@$(^)(&_*)_Q#R[];'\\/\"><", "description can contain non alpha characters", false },
 
     			{ "maxJobs", "", "maxJobs cannot be empty string", true },
     			{ "maxJobs", "Harry", "maxJobs cannot be string", true },
     			{ "maxJobs", new Object(), "maxJobs cannot be object", true },
-    			{ "maxJobs", Arrays.asList("Harry"), "maxJobs cannot be array", true },
-    			{ "maxJobs", new Float(22.0), "maxJobs is rounded when a floating point number", false },
+    			{ "maxJobs", Collections.singletonList("Harry"), "maxJobs cannot be array", true },
+    			{ "maxJobs", 22.0f, "maxJobs is rounded when a floating point number", false },
     			{ "maxJobs", null, "maxJobs can be null", false },
-    			{ "maxJobs", new Integer(-1), "maxJobs can be -1", false },
-    			{ "maxJobs", new Integer(0), "maxJobs cannot be zero", true },
-    			{ "maxJobs", new Integer(-2), "maxJobs can be negative other than -1", true },
-    			{ "maxJobs", new Integer(22), "maxJobs can be an integer", false },
+    			{ "maxJobs", -1, "maxJobs can be -1", false },
+    			{ "maxJobs", 0, "maxJobs cannot be zero", true },
+    			{ "maxJobs", -2, "maxJobs can be negative other than -1", true },
+    			{ "maxJobs", 22, "maxJobs can be an integer", false },
     			
     			{ "maxUserJobs", "", "maxUserJobs cannot be empty string", true },
     			{ "maxUserJobs", "Harry", "maxUserJobs cannot be string", true },
     			{ "maxUserJobs", new Object(), "maxUserJobs cannot be object", true },
-    			{ "maxUserJobs", Arrays.asList("Harry"), "maxUserJobs cannot be array", true },
-    			{ "maxUserJobs", new Float(22.0), "maxUserJobs is rounded when a floating point number", false },
+    			{ "maxUserJobs", Collections.singletonList("Harry"), "maxUserJobs cannot be array", true },
+    			{ "maxUserJobs", 22.0f, "maxUserJobs is rounded when a floating point number", false },
     			{ "maxUserJobs", null, "maxUserJobs can be null", false },
-    			{ "maxUserJobs", new Integer(-1), "maxUserJobs can be -1", false },
-    			{ "maxUserJobs", new Integer(0), "maxUserJobs cannot be zero", true },
-    			{ "maxUserJobs", new Integer(-2), "maxUserJobs can be negative other than -1", true },
-    			{ "maxUserJobs", new Integer(22), "maxUserJobs can be an integer", false },
+    			{ "maxUserJobs", -1, "maxUserJobs can be -1", false },
+    			{ "maxUserJobs", 0, "maxUserJobs cannot be zero", true },
+    			{ "maxUserJobs", -2, "maxUserJobs can be negative other than -1", true },
+    			{ "maxUserJobs", 22, "maxUserJobs can be an integer", false },
     			
     			{ "maxMemoryPerNode", null, "maxMemoryPerNode can be null", false },
     			{ "maxMemoryPerNode", "", "maxMemoryPerNode cannot be empty string", true },
     			{ "maxMemoryPerNode", new Object(), "maxMemoryPerNode cannot be object", true },
-    			{ "maxMemoryPerNode", Arrays.asList("Harry"), "maxMemoryPerNode cannot be array", true },
+    			{ "maxMemoryPerNode", Collections.singletonList("Harry"), "maxMemoryPerNode cannot be array", true },
     			{ "maxMemoryPerNode", "2KB", "maxMemoryPerNode cannot specify KB", true },
     			{ "maxMemoryPerNode", "2MB", "maxMemoryPerNode cannot specify MB", true },
     			{ "maxMemoryPerNode", "2GB", "maxMemoryPerNode can specify GB", false },
@@ -150,30 +151,30 @@ public class BatchQueueTest extends SystemsModelTestCommon{
     			{ "maxMemoryPerNode", "2PB", "maxMemoryPerNode can specify PB", false },
     			{ "maxMemoryPerNode", "2pb", "maxMemoryPerNode can specify pb", false },
     			{ "maxMemoryPerNode", "2 GB", "maxMemoryPerNode ignores spaces", false },
-    			{ "maxMemoryPerNode", new Long(1024), "maxMemoryPerNode can be an integer", false },
-    			{ "maxMemoryPerNode", new Float(22.1), "maxMemoryPerNode can be a decimal", false },
+    			{ "maxMemoryPerNode", 1024L, "maxMemoryPerNode can be an integer", false },
+    			{ "maxMemoryPerNode", 22.1f, "maxMemoryPerNode can be a decimal", false },
     			
     			{ "maxNodes", "", "maxNodes cannot be empty string", true },
     			{ "maxNodes", "Harry", "maxNodes cannot be string", true },
     			{ "maxNodes", new Object(), "maxNodes cannot be object", true },
-    			{ "maxNodes", Arrays.asList("Harry"), "maxNodes cannot be array", true },
-    			{ "maxNodes", new Float(22.0), "maxNodes is rounded when a floating point number", false },
+    			{ "maxNodes", Collections.singletonList("Harry"), "maxNodes cannot be array", true },
+    			{ "maxNodes", 22.0f, "maxNodes is rounded when a floating point number", false },
     			{ "maxNodes", null, "maxNodes can be null", false },
-    			{ "maxNodes", new Integer(0), "maxNodes cannot be zero", true },
-    			{ "maxNodes", new Integer(-1), "maxNodes can be negative", false },
-    			{ "maxNodes", new Integer(-2), "maxNodes can be negative other than -1", true },
-    			{ "maxNodes", new Integer(22), "maxNodes can be an integer", false },
+    			{ "maxNodes", 0, "maxNodes cannot be zero", true },
+    			{ "maxNodes", -1, "maxNodes can be negative", false },
+    			{ "maxNodes", -2, "maxNodes can be negative other than -1", true },
+    			{ "maxNodes", 22, "maxNodes can be an integer", false },
     			
     			{ "maxProcessorsPerNode", "", "maxProcessorsPerNode cannot be empty string", true },
     			{ "maxProcessorsPerNode", "Harry", "maxProcessorsPerNode cannot be string", true },
     			{ "maxProcessorsPerNode", new Object(), "maxProcessorsPerNode cannot be object", true },
-    			{ "maxProcessorsPerNode", Arrays.asList("Harry"), "maxProcessorsPerNode cannot be array", true },
-    			{ "maxProcessorsPerNode", new Float(22.0), "maxProcessorsPerNode is rounded when a floating point number", false },
+    			{ "maxProcessorsPerNode", Collections.singletonList("Harry"), "maxProcessorsPerNode cannot be array", true },
+    			{ "maxProcessorsPerNode", 22.0f, "maxProcessorsPerNode is rounded when a floating point number", false },
     			{ "maxProcessorsPerNode", null, "maxProcessorsPerNode can be null", false },
-    			{ "maxProcessorsPerNode", new Integer(0), "maxProcessorsPerNode cannot be zero", true },
-    			{ "maxProcessorsPerNode", new Integer(-1), "maxProcessorsPerNode can be -1", false },
-    			{ "maxProcessorsPerNode", new Integer(-2), "maxProcessorsPerNode can be negative other than -1", true },
-    			{ "maxProcessorsPerNode", new Integer(22), "maxProcessorsPerNode can be an integer", false },
+    			{ "maxProcessorsPerNode", 0, "maxProcessorsPerNode cannot be zero", true },
+    			{ "maxProcessorsPerNode", -1, "maxProcessorsPerNode can be -1", false },
+    			{ "maxProcessorsPerNode", -2, "maxProcessorsPerNode can be negative other than -1", true },
+    			{ "maxProcessorsPerNode", 22, "maxProcessorsPerNode can be an integer", false },
     			
     			{ "maxRequestedTime", "", "maxRequestedTime cannot be empty string", true },
     			{ "maxRequestedTime", "00:00:00", "maxRequestedTime seconds can be a 6 character zero string", false },
@@ -243,16 +244,16 @@ public class BatchQueueTest extends SystemsModelTestCommon{
     			{ "maxRequestedTime", "00:00", "maxRequestedTime cannot be 2 sets of values", true },
     			{ "maxRequestedTime", "00", "maxRequestedTime cannot be 1 set of values", true },
     			{ "maxRequestedTime", new Object(), "maxRequestedTime cannot be object", true },
-    			{ "maxRequestedTime", Arrays.asList("00:00:00"), "maxRequestedTime cannot be array", true },
-    			{ "maxRequestedTime", new Float(22.0), "maxRequestedTime cannot be a floating point number", true },
+    			{ "maxRequestedTime", Collections.singletonList("00:00:00"), "maxRequestedTime cannot be array", true },
+    			{ "maxRequestedTime", 22.0f, "maxRequestedTime cannot be a floating point number", true },
     			{ "maxRequestedTime", null, "maxRequestedTime can be null", false },
-    			{ "maxRequestedTime", new Integer(-1), "maxRequestedTime cannot be negative", true },
-    			{ "maxRequestedTime", new Integer(22), "maxRequestedTime cannot be an integer", true },
+    			{ "maxRequestedTime", -1, "maxRequestedTime cannot be negative", true },
+    			{ "maxRequestedTime", 22, "maxRequestedTime cannot be an integer", true },
     			
     			{ "default", "", "default cannot be empty string", true },
     			{ "default", "Harry", "default cannot be string", true },
     			{ "default", new Object(), "default cannot be object", true },
-    			{ "default", Arrays.asList("Harry"), "default cannot be array", true },
+    			{ "default", Collections.singletonList("Harry"), "default cannot be array", true },
     			{ "default", null, "default can be null", false },
     	};
     }
@@ -294,7 +295,7 @@ public class BatchQueueTest extends SystemsModelTestCommon{
     	try 
 		{
     		bq.setMaxMemoryPerNode(value);
-			Assert.assertEquals(bq.getMaxMemoryPerNode().doubleValue(), expectedValue, message);
+			Assert.assertEquals(bq.getMaxMemoryPerNode(), expectedValue, message);
 		}
 		catch(Exception se){
 			exceptionFlag = true;
@@ -305,7 +306,7 @@ public class BatchQueueTest extends SystemsModelTestCommon{
 
 		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
-		Assert.assertTrue(exceptionFlag == exceptionThrown, exceptionMsg);
+		Assert.assertEquals(exceptionThrown, exceptionFlag, exceptionMsg);
     }
     
     @DataProvider(name = "batchQueueDefault")
@@ -345,19 +346,19 @@ public class BatchQueueTest extends SystemsModelTestCommon{
 		{
 			BatchQueue queue = BatchQueue.fromJSON(jsonTree);
 			BatchQueue testQueue = BatchQueue.fromJSON(jsonTree);
-			
-			Assert.assertTrue(testQueue.equals(queue), "Identical values with different uuid should be equal");
+
+			Assert.assertEquals(queue, testQueue, "Identical values with different uuid should be equal");
 			
 			testQueue.setName(queue.getName() + "-copy");
-			Assert.assertFalse(testQueue.equals(queue), "Different names with identical mappedNames should not be equal");
+			Assert.assertNotEquals(queue, testQueue, "Different names with identical mappedNames should not be equal");
 			
 			testQueue.setName(queue.getName());
 			testQueue.setMappedName(queue.getName() + "-copy");
-			Assert.assertFalse(testQueue.equals(queue), "Identical names with different mappedNames should not be equal");
+			Assert.assertNotEquals(queue, testQueue, "Identical names with different mappedNames should not be equal");
 			
 			testQueue.setMappedName(queue.getMappedName());
 			testQueue.setDescription(queue.getDescription() + "-copy");
-			Assert.assertTrue(testQueue.equals(queue), "Identical names with different mappedNames should be equal");
+			Assert.assertEquals(queue, testQueue, "Identical names with different mappedNames should be equal");
 		}
 		catch(Exception se){
 			se.printStackTrace();
@@ -376,17 +377,17 @@ public class BatchQueueTest extends SystemsModelTestCommon{
     	
     	BatchQueue clone = original.clone();
 
-    	Assert.assertFalse(original.equals(clone), "Cloned queue should not pass the equality test");
-    	
-    	Assert.assertTrue(original.getName().equals(clone.getName()), "Queue name was not copied over on clone. ");
-    	Assert.assertTrue(original.getMappedName().equals(clone.getMappedName()), "Queue mappedName was not copied over on clone. ");
-    	Assert.assertTrue(original.getDescription().equals(clone.getDescription()), "Queue description was not copied over on clone. ");
-    	Assert.assertTrue(original.getMaxJobs().equals(clone.getMaxJobs()), "Queue maxJobs was not copied over on clone. ");
-    	Assert.assertTrue(original.getMaxUserJobs().equals(clone.getMaxUserJobs()), "Queue maxUserJobs was not copied over on clone. ");
-    	Assert.assertTrue(original.getMaxNodes().equals(clone.getMaxNodes()), "Queue maxNodes was not copied over on clone. ");
-    	Assert.assertTrue(original.getMaxProcessorsPerNode().equals(clone.getMaxProcessorsPerNode()), "Queue maxProcessorsPerNode was not copied over on clone. ");
-    	Assert.assertTrue(original.getMaxMemoryPerNode().equals(clone.getMaxMemoryPerNode()), "Queue maxMemoryPerNode was not copied over on clone. ");
-    	Assert.assertTrue(original.getCustomDirectives().equals(clone.getCustomDirectives()), "Queue customDirectives was not copied over on clone. ");
+		Assert.assertNotEquals(clone, original, "Cloned queue should not pass the equality test");
+
+		Assert.assertEquals(clone.getName(), original.getName(), "Queue name was not copied over on clone. ");
+		Assert.assertEquals(clone.getMappedName(), original.getMappedName(), "Queue mappedName was not copied over on clone. ");
+		Assert.assertEquals(clone.getDescription(), original.getDescription(), "Queue description was not copied over on clone. ");
+		Assert.assertEquals(clone.getMaxJobs(), original.getMaxJobs(), "Queue maxJobs was not copied over on clone. ");
+		Assert.assertEquals(clone.getMaxUserJobs(), original.getMaxUserJobs(), "Queue maxUserJobs was not copied over on clone. ");
+		Assert.assertEquals(clone.getMaxNodes(), original.getMaxNodes(), "Queue maxNodes was not copied over on clone. ");
+		Assert.assertEquals(clone.getMaxProcessorsPerNode(), original.getMaxProcessorsPerNode(), "Queue maxProcessorsPerNode was not copied over on clone. ");
+		Assert.assertEquals(clone.getMaxMemoryPerNode(), original.getMaxMemoryPerNode(), "Queue maxMemoryPerNode was not copied over on clone. ");
+		Assert.assertEquals(clone.getCustomDirectives(), original.getCustomDirectives(), "Queue customDirectives was not copied over on clone. ");
     	Assert.assertEquals(original.isSystemDefault(), clone.isSystemDefault(), "Queue systemDefault was not copied over on clone. ");
     	Assert.assertNull(clone.getExecutionSystem(), "Queue executionSystem should not be copied on a cone operation.");
     	Assert.assertNotEquals(original.getId(), clone.getId(), "Queue id should not be copied id a cone operation.");

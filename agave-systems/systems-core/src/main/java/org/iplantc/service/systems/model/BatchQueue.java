@@ -49,8 +49,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @Table(name = "batchqueues")
 public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 
-	public static final Long DEFAULT_MAX_JOBS = new Long(10);
-	public static final Long DEFAULT_MAX_MEMORY = new Long(64);
+	public static final Long DEFAULT_MAX_JOBS = 10L;
+	public static final Long DEFAULT_MAX_MEMORY = 64L;
 	public static final String DEFAULT_MAX_RUN_TIME = "9999:23:59";
 	public static final String DEFAULT_MIN_RUN_TIME = "00:00:01";
 
@@ -58,11 +58,11 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 	private String 			name;
 	private String 			mappedName;
 	private String 			description;
-	private Long			maxJobs = new Long(-1);
-	private Long			maxUserJobs = new Long(-1);
-	private Long			maxNodes = new Long(-1);
-	private Double			maxMemoryPerNode = new Double(-1);
-	private Long			maxProcessorsPerNode = new Long(-1);
+	private Long			maxJobs = (long) -1;
+	private Long			maxUserJobs = (long) -1;
+	private Long			maxNodes = (long) -1;
+	private Double			maxMemoryPerNode = (double) -1;
+	private Long			maxProcessorsPerNode = (long) -1;
 	private String			maxRequestedTime = "999:59:59";
 	private String 			customDirectives;
 	private ExecutionSystem executionSystem;
@@ -306,7 +306,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 	}
 
 	/**
-	 * @param maxProcessors
+	 * @param maxProcessorsPerNode
 	 */
 	public void setMaxProcessorsPerNode(Long maxProcessorsPerNode)
 	{
@@ -319,7 +319,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 
 	/**
 	 * Maximum run time of any job in this queue in (h)hh:mm:ss format
-	 * @return
+	 * @return String
 	 */
 	public String getMaxRequestedTime() {
 		return maxRequestedTime;
@@ -579,7 +579,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 				}
 			}
 			else {
-				batchQueue.setMaxJobs(new Long(-1));
+				batchQueue.setMaxJobs((long) -1);
 			}
 
 			if (jsonBatchQueue.has("maxUserJobs") && !jsonBatchQueue.isNull("maxUserJobs"))
@@ -612,7 +612,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 				}
 			}
 			else {
-				batchQueue.setMaxUserJobs(new Long(-1));
+				batchQueue.setMaxUserJobs((long) -1);
 			}
 
 			if (jsonBatchQueue.has("maxNodes") && !jsonBatchQueue.isNull("maxNodes"))
@@ -630,7 +630,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 							"maxNodes should be a positive integer value or -1 for no limit.");
 				}
 			} else {
-				batchQueue.setMaxNodes(new Long(-1));
+				batchQueue.setMaxNodes((long) -1);
 			}
 
 			if (jsonBatchQueue.has("maxProcessorsPerNode") && !jsonBatchQueue.isNull("maxProcessorsPerNode"))
@@ -648,7 +648,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 							"maxProcessorsPerNode should be a positive integer value or -1 for no limit.");
 				}
 			} else {
-				batchQueue.setMaxProcessorsPerNode(new Long(-1));
+				batchQueue.setMaxProcessorsPerNode((long) -1);
 			}
 
 			if (jsonBatchQueue.has("maxRequestedTime") && !jsonBatchQueue.isNull("maxRequestedTime"))
@@ -709,7 +709,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 			throw new NumberFormatException("Memory limit cannot be null or empty.");
 		}
 
-		Double returnValue = new Double(-1);
+		Double returnValue = (double) -1;
 
 		// default numeric values to GB
 		if (NumberUtils.isNumber(memoryLimit)) {

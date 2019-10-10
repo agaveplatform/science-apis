@@ -22,16 +22,16 @@ public class PBSJobIdParser implements RemoteJobIdParser {
 	{
 		String jobID = null;
 		Pattern pattern = Pattern.compile("([0-9]+\\.[^\\s]*)");
-		
-		String lines[] = output.replaceAll("\r", "\\n").split("\n");
-		for (int idx=0; idx<lines.length; idx++) {
-			Matcher matcher = pattern.matcher(lines[idx]);
-			if (matcher.matches()) {
+
+		String[] lines = output.replaceAll("\r", "\\n").split("\n");
+		for (String line : lines) {
+			Matcher matcher = pattern.matcher(line);
+			if (matcher.find()) {
 				jobID = matcher.group(1);
 				break;
 			}
 		}
-		
+
 		if (StringUtils.isEmpty(jobID)) {
 			if (output.contains("qsub") || output.contains("submit error")) {
 				throw new SchedulerException(output); 

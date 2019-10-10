@@ -12,7 +12,7 @@ import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.JSONTestDataUtil;
-import org.iplantc.service.systems.model.SystemsModelTestCommon;
+import org.iplantc.service.systems.model.PersistedSystemsModelTestCommon;
 import org.joda.time.DateTime;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -22,7 +22,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 @Test(groups={"integration"})
-public class BatchQueueSearchTest  extends SystemsModelTestCommon {
+public class BatchQueueSearchTest  extends PersistedSystemsModelTestCommon {
 
     private BatchQueueDao batchQueueDao = new BatchQueueDao();
     private SystemDao systemDao = new SystemDao();

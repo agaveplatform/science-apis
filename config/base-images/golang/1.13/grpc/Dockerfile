@@ -19,7 +19,7 @@ FROM agaveplatform/golang:1.13
 
 ENV GRPC_VERSION 1.24.0
 ENV PROTOBUF_VERSION 3.10.0
-ENV PROTOC_VERSION 1.1.0
+ENV PROTOC_VERSION 1.3.2
 
 LABEL maintainer="Agave Platform<help@agaveplatform.org>"
 LABEL language="golang:${GO_VERSION}"

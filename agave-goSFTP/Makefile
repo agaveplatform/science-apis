@@ -38,29 +38,31 @@ help: ## Print help for targets with comments.
 	"make image" "Build Docker images for the $(PROJECT_NAME)" \
 	"make clean" "Clear protobuf libraries, build artifacts, and application binary"
 
+
 $(PROJECT_GEN_PB):
-	
 	mkdir -p $(PROJECT_PROTO_DIR)
+	#protoc -I ./proto ./proto/sftp.proto --go_out=plugins=grpc:proto/go
+	mkdir -p $(PROJECT_PROTO_DIR)
+	protoc \
+	-I./proto \
+	-I./vendor/$(PROJECT_PROTO_REPO)/proto \
+	--go_out=plugins=grpc:$(PROJECT_PROTO_DIR) \
+	$(PROJECT_PROTOS)
+	mv $(PROJECT_PROTO_DIR)/$(PROJECT_PROTO_PKG)/*.pb.go $(dir $@)
 
-	protoc -I ./proto ./proto/sftp.proto --go_out=plugins=grpc:proto/go
+.PHONY: all
+all: genproto test build image
 
-#	protoc \
-#	-I ./proto \
-#	--go_out=./$(PROJECT_PROTO_DIR)/go \
-#	$(PROJECT_PROTOS)
-
-#	mv $(PROJECT_PROTO_DIR)/$(PROJECT_PROTO_PKG)/*.pb.go $(dir $@)
 
 .PHONY: default
-default: build test
+default: genproto test build
 
 	PROJECT_PROTOS := $(wildcard proto/*.proto)
 	
-	@echo $(PROJECT_PROTOS)
+	echo $(PROJECT_PROTOS)
 
 	PROJECT_GEN_PB := $(addprefix pkg/sftp/,$(notdir $(patsubst %.proto,%.pb.go,$(PROJECT_PROTOS))))
-	@echo $(PROJECT_GEN_PB)
-
+	echo $(PROJECT_GEN_PB)
 
 .PHONY: test
 test:
@@ -73,26 +75,28 @@ install:
 	cp release/$(PROJECT_NAME)-$(PLATFORM)-$(ARCH) $(firstGOPATH)/bin/$(PROJECT_NAME)
 
 
-.PHONY: image
 # Build the application into a Docker image
+.PHONY: image
 image:
-	cd $(PROJECT_DIR)/Docker
-	@echo $(shell pwd)
-	docker build --rm=true -t $(PROJECT_NAME):latest .
+	echo Starting Image process
+	cd $(PROJECT_DIR); docker build --rm=true -t $(PROJECT_NAME):latest .
+	echo Done with image
+	
 
-# Build protobuf stubs
+# Build protobuf
 .PHONY: genproto
 genproto: 
 	
 	mkdir -p $(PROJECT_PROTO_DIR)
 	protoc -I ./proto ./proto/sftp.proto --go_out=plugins=grpc:proto/go
-	protoc -I ./proto --java_out=./proto/java/ ./proto/sftp.proto	
+	protoc -I ./proto --java_out=./proto/java/ ./proto/sftp.proto
+	mkdir -p $(PROJECT_DIR)/cmd/proto
+	cp $(PROJECT_DIR)/proto/go/*.go $(PROJECT_DIR)/cmd/proto/
 
 
-.PHONY: build
+.PHONY: build 
 build:
-	genproto
-	#./scripts/go_build.sh
+	./scripts/go_build.sh
 	
 
 .PHONY: clean
@@ -101,6 +105,7 @@ clean:
 	rm -rf release/*
 	rm -rf proto/go/*
 	rm -rf proto/java/*
+	rm -rf cmd/proto/*.go
 
 # disallow any parallelism (-j) for Make. This is necessary since some
 # commands during the build process create temporary files that collide

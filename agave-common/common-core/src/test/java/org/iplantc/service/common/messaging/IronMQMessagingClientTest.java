@@ -50,7 +50,7 @@ public class IronMQMessagingClientTest {
 	public void pop(String message, boolean shouldThrowException, String errorMessage)
 	{
 		IronMQClient ironmq = new IronMQClient();
-		Queue ironQueue = null;
+		Queue ironQueue;
 		try
 		{
 			// push a message onto the exchange
@@ -85,8 +85,8 @@ public class IronMQMessagingClientTest {
 	public void push(String message, boolean shouldThrowException, String errorMessage)
 	{
 		IronMQClient ironmq = new IronMQClient();
-		Queue ironQueue = null;
-		io.iron.ironmq.Message msg = null;
+		Queue ironQueue;
+		io.iron.ironmq.Message msg;
 		try
 		{
 			// push a message onto the exchange
@@ -94,9 +94,9 @@ public class IronMQMessagingClientTest {
 			
 			ironQueue = client.queue(TEST_EXCHANGE_TOPIC_QUEUE);
 			
-			msg = ironQueue.get();
-			//System.out.println(msg.getId());
-			String poppedMessage = new String(msg.getBody());
+			msg = ironQueue.reserve();
+
+			String poppedMessage = msg.getBody();
 			
 			Assert.assertEquals(poppedMessage, message, errorMessage);
 			

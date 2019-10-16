@@ -199,7 +199,7 @@
 	    <plexus-archiver.version>3.0.1</plexus-archiver.version>
 	    <plexus-log4j-logging.version>1.0</plexus-log4j-logging.version>
 	    <plexus-utils.version>3.0.15</plexus-utils.version>
-	    <powermock.version>1.6.4</powermock.version>
+	    <powermock.version>1.7.4</powermock.version>
 	    <quartz.version>2.1.7</quartz.version>
 	    <reflections.version>0.9.9</reflections.version>
 	    <restlet.version>2.3.4</restlet.version>

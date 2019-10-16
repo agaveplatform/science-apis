@@ -45,12 +45,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
 
 /**
- * Created by silviu
- * Date: 13/02/14 / 22:14279
- * <p>
- * handles all quartz job change requests.
- * </p>
- * <br/>
+ * Utility class to manage quarts tasks and jobs
  *
  * @author Silviu Ilie
  */
@@ -174,7 +169,6 @@ public class QuartzUtility {
     /**
      * if authorized, lists all changes performed.
      *
-     * @param session {@link HttpSession}.
      * @return {@code ArrayList<QuartzConfigResetResponse>}
      */
     public String listChanges() {
@@ -189,8 +183,7 @@ public class QuartzUtility {
      * if authorized, interrupts job identified by {@code jobName}.
      *
      * @param jobName job name.
-     * @param session session to authorize.
-     * @return
+     * @return json message stating interrupted job name
      */
     public synchronized String interruptJob(String jobName) {
 
@@ -219,8 +212,7 @@ public class QuartzUtility {
      * if authorized, resumes job identified by {@code jobName}.
      *
      * @param jobName job name.
-     * @param session session to authorize.
-     * @return
+     * @return  json message stating resumed job name
      */
     public synchronized String resumeJob(String jobName) {
         if (isAuthorized()) {
@@ -248,8 +240,7 @@ public class QuartzUtility {
      * if authorized, pauses job identified by {@code jobName}.
      *
      * @param jobName job name.
-     * @param session session to authorize.
-     * @return
+     * @return json message stating all jobs resumed
      */
     public synchronized String pauseJob(String jobName) {
         if (isAuthorized()) {
@@ -277,8 +268,7 @@ public class QuartzUtility {
      *
      * @param triggerName  trigger name.
      * @param triggerGroup trigger group.
-     * @param session      session to authorize.
-     * @return
+     * @return json message stating trigger paused
      */
     public synchronized String pauseTrigger(String triggerName, String triggerGroup) {
         if (isAuthorized()) {
@@ -339,8 +329,7 @@ public class QuartzUtility {
     /**
      * if authorized, resumes all jobs.
      *
-     * @param session session to authorize.
-     * @return
+     * @return json message stating all jobs resumed
      */
     public synchronized String resumeAll() {
         if (isAuthorized()) {
@@ -370,8 +359,7 @@ public class QuartzUtility {
     /**
      * if authorized, pause all scheduled jobs.
      *
-     * @param session session to authorize.
-     * @return
+     * @return json message saying all jobs paused
      */
     public synchronized String pauseAll() {
         if (isAuthorized()) {
@@ -428,7 +416,6 @@ public class QuartzUtility {
     /**
      * authorization check.
      *
-     * @param session http session.
      * @return true if authorized
      */
     public boolean isAuthorized() {
@@ -440,7 +427,7 @@ public class QuartzUtility {
      * if authorized, resets priority for class to original value.
      *
      * @param triggerKey trigger to reset.
-     * @return {@link QuartzConfigResetResponse}
+     * @return json message with new cron expression
      */
     public synchronized final String resetCronExpression(final String triggerKey) {
 
@@ -477,7 +464,7 @@ public class QuartzUtility {
      * @param jobName       job name.
      * @param oldExpression new chron expression.
      * @param newExpression new chron expression.
-     * @return {@link QuartzConfigResetResponse}.
+     * @return json message with updated cron expression
      */
     private synchronized QuartzConfigResetResponse changeJobCronExpression(String jobName, String triggerKey, String newExpression, String oldExpression) {
 
@@ -537,7 +524,6 @@ public class QuartzUtility {
     /**
      * provides all scheduled jobs/triggers and scheduler data.
      *
-     * @param session http session.
      * @return all scheduled jobs/triggers and scheduler data represented as JSON.
      */
     public String schedulerDetails() {
@@ -547,14 +533,14 @@ public class QuartzUtility {
             try {
             	ObjectMapper mapper = new ObjectMapper();
                 ObjectNode json = mapper.createObjectNode();
-                json.put("jobs", mapper.valueToTree(listJobs()));
-                json.put("details", mapper.createObjectNode()
+                json.set("jobs", mapper.valueToTree(listJobs()));
+                json.set("details", mapper.createObjectNode()
                         .put("version", scheduler().getMetaData().getVersion())
                         .put("jobsExecuted", scheduler().getMetaData().getNumberOfJobsExecuted())
                         .put("runningSince", scheduler().getMetaData().getRunningSince().toString())
                         .put("summary", scheduler().getMetaData().getSummary().replaceAll("\n", "<br/>")));
-                json.put("pausedJobs", mapper.valueToTree(pausedJobs));
-                json.put("pausedTriggers", mapper.valueToTree(scheduler().getPausedTriggerGroups()));
+                json.set("pausedJobs", mapper.valueToTree(pausedJobs));
+                json.set("pausedTriggers", mapper.valueToTree(scheduler().getPausedTriggerGroups()));
             } catch (Throwable e) {
                 log.error("failed to get quartz details : " + e.getMessage(),e);
                 return toJSON(
@@ -571,9 +557,9 @@ public class QuartzUtility {
     /**
      * lists scheduled jobs.s
      *
-     * @return
+     * @return list of current job descriptions
      */
-    protected List<JobDescription> listJobs() {
+    private List<JobDescription> listJobs() {
 
         final List<JobDescription> descriptions = new ArrayList<JobDescription>();
 
@@ -639,7 +625,7 @@ public class QuartzUtility {
     /**
      * handles null value.
      *
-     * @param value
+     * @param value the value to null check
      * @return handled value.
      */
     private String nvl(String value) {
@@ -664,7 +650,7 @@ public class QuartzUtility {
     /**
      * gets the scheduler.
      *
-     * @return {@code Scheduler}.
+     * @return current scheduler
      */
 
     private Scheduler scheduler() {

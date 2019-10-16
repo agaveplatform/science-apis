@@ -1,64 +1,40 @@
 package org.iplantc.service.metadata.resources;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaCreate;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaDelete;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaEdit;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaGetById;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaList;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaSearch;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
-
-import java.io.FileNotFoundException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.iplantc.service.common.clients.AgaveLogServiceClient;
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.representation.IplantErrorRepresentation;
-import org.iplantc.service.common.representation.IplantSuccessRepresentation;
-import org.iplantc.service.common.resource.AgaveResource;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.metadata.MetadataApplication;
-import org.iplantc.service.metadata.Settings;
-import org.iplantc.service.metadata.dao.MetadataSchemaPermissionDao;
-import org.iplantc.service.metadata.exceptions.MetadataException;
-import org.iplantc.service.metadata.exceptions.MetadataSchemaValidationException;
-import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
-import org.iplantc.service.metadata.util.ServiceUtils;
-import org.iplantc.service.notification.managers.NotificationManager;
-import org.joda.time.DateTime;
-import org.restlet.Context;
-import org.restlet.data.Form;
-import org.restlet.data.MediaType;
-import org.restlet.data.Request;
-import org.restlet.data.Response;
-import org.restlet.data.Status;
-import org.restlet.resource.Representation;
-import org.restlet.resource.ResourceException;
-import org.restlet.resource.Variant;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonschema.main.JsonSchemaFactory;
 import com.github.fge.jsonschema.processors.syntax.SyntaxValidator;
 import com.github.fge.jsonschema.report.ProcessingMessage;
 import com.github.fge.jsonschema.report.ProcessingReport;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.util.JSON;
-import com.mongodb.util.JSONParseException;
+import com.mongodb.*;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.common.representation.IplantErrorRepresentation;
+import org.iplantc.service.common.representation.IplantSuccessRepresentation;
+import org.iplantc.service.common.resource.AgaveResource;
+import org.iplantc.service.metadata.MetadataApplication;
+import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.dao.MetadataSchemaPermissionDao;
+import org.iplantc.service.metadata.exceptions.MetadataSchemaValidationException;
+import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
+import org.iplantc.service.metadata.model.MetadataSchemaItem;
+import org.iplantc.service.metadata.util.ServiceUtils;
+import org.iplantc.service.notification.managers.NotificationManager;
+import org.joda.time.DateTime;
+import org.restlet.Context;
+import org.restlet.data.*;
+import org.restlet.resource.Representation;
+import org.restlet.resource.ResourceException;
+import org.restlet.resource.Variant;
+
+import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
 
 
 /**
@@ -77,15 +53,16 @@ public class MetadataSchemaResource extends AgaveResource
     private String uuid;
     private String userQuery;
 
+
     private MongoClient mongoClient;
     private DB db;
     private DBCollection collection;
 
     
     /**
-     * @param context
-     * @param request
-     * @param response
+     * @param context the request context
+	 * @param request the request object
+	 * @param response the response object
      */
     public MetadataSchemaResource(Context context, Request request, Response response)
     {
@@ -97,7 +74,7 @@ public class MetadataSchemaResource extends AgaveResource
         
         Form form = request.getOriginalRef().getQueryAsForm();
 		if (form != null) {
-			userQuery = (String)form.getFirstValue("q");
+			userQuery = form.getFirstValue("q");
 		
 	        if (!StringUtils.isEmpty(userQuery)) {
 	            try {
@@ -141,7 +118,7 @@ public class MetadataSchemaResource extends AgaveResource
     public Representation represent(Variant variant) throws ResourceException
     {
         DBCursor cursor = null;
-        MetadataSchemaPermissionManager pm = null;
+        MetadataSchemaPermissionManager pm;
 
         try 
         {
@@ -151,7 +128,7 @@ public class MetadataSchemaResource extends AgaveResource
                 		+ "please contact the system administrators.");
             }
         	
-	        BasicDBObject query = null;
+	        BasicDBObject query;
 	        
 	        // Include user defined query clauses given within the URL as q=<clauses>
             if (StringUtils.isEmpty(uuid))
@@ -173,13 +150,14 @@ public class MetadataSchemaResource extends AgaveResource
 	        cursor = collection.find(query, new BasicDBObject("_id", false));
 	        
             if (cursor.hasNext())  {
-            	DBObject firstResult = cursor.next();
-            	
-        		pm = new MetadataSchemaPermissionManager((String)firstResult.get("uuid"), (String)firstResult.get("owner"));
+            	DBObject firstResult, formattedResult;
+
+            	firstResult = cursor.next();
+				pm = new MetadataSchemaPermissionManager((String)firstResult.get("uuid"), (String)firstResult.get("owner"));
                 
         		if (pm.canRead(username)) {
-                	firstResult = formatMetadataSchemaObject(firstResult);
-	        	    return new IplantSuccessRepresentation(ServiceUtils.unescapeSchemaRefFieldNames(firstResult.toString()));
+                	formattedResult = formatMetadataSchemaObject(firstResult);
+	        	    return new IplantSuccessRepresentation(ServiceUtils.unescapeSchemaRefFieldNames(formattedResult.toString()));
                 }
                 else {
                 	throw new ResourceException(Status.CLIENT_ERROR_UNAUTHORIZED,
@@ -202,13 +180,16 @@ public class MetadataSchemaResource extends AgaveResource
         			"Failed to retrieve metadata schema information.", e);
         }
 	    finally {
-	    	try { cursor.close(); } catch (Exception e1) {}
+	    	try {
+				assert cursor != null;
+				cursor.close();
+	    	} catch (Exception ignore) {}
 	    }
     }
 
     /**
      * HTTP POST for Updating {@link MetadataSchemaItem}
-     * @param entity
+     * @param entity the json metadata schema object to save
      */
     @Override
     public void acceptRepresentation(Representation entity)
@@ -232,7 +213,7 @@ public class MetadataSchemaResource extends AgaveResource
             } 
         	
 	        ObjectMapper mapper = new ObjectMapper();
-	        JsonNode jsonSchema = null;
+	        JsonNode jsonSchema;
         	try {
         		jsonSchema = super.getPostedEntityAsObjectNode(false);
         	
@@ -253,10 +234,9 @@ public class MetadataSchemaResource extends AgaveResource
 	            if (!validator.schemaIsValid(jsonSchema)) {
 	            	ProcessingReport report = validator.validateSchema(jsonSchema);
 	            	StringBuilder errorMessages = new StringBuilder();
-	            	for (Iterator<ProcessingMessage> iter = report.iterator(); iter.hasNext(); ) {
-	            		ProcessingMessage message = iter.next();
-	            		errorMessages.append(message.getMessage() + "\n");
-	            	}
+					for (ProcessingMessage message : report) {
+						errorMessages.append(message.getMessage()).append("\n");
+					}
 	                throw new MetadataSchemaValidationException("The supplied JSON Schema definition is invalid. " +
 	                		"For more information on JSON Schema, please visit http://json-schema.org/.\n" + 
 	                		errorMessages.toString());
@@ -280,7 +260,7 @@ public class MetadataSchemaResource extends AgaveResource
 	            doc = new BasicDBObject("uuid", uuid)
 	                    .append("internalUsername", internalUsername)
 	                    .append("lastUpdated", timestamp)
-	                    .append("schema", JSON.parse(ServiceUtils.escapeSchemaRefFieldNames(mapper.writeValueAsString(jsonSchema))));
+	                    .append("schema", BasicDBObject.parse(ServiceUtils.escapeSchemaRefFieldNames(mapper.writeValueAsString(jsonSchema))));
 	        } 
 	        catch (Exception e) {
 	            // If schema is not valid JSON, throw exception
@@ -289,12 +269,12 @@ public class MetadataSchemaResource extends AgaveResource
 	        }
 	
 	        // Insert or Update
-	        MetadataSchemaPermissionManager pm = null;
+	        MetadataSchemaPermissionManager pm;
 
         	BasicDBObject query = new BasicDBObject("uuid", uuid);
     		query.append("tenantId", TenancyHelper.getCurrentTenantId());
     		cursor = collection.find(query);
-    		String sdoc = null;
+    		String sdoc;
     		if (cursor.hasNext()) {
     			
     			BasicDBObject currentMetadata = (BasicDBObject)cursor.next();
@@ -338,7 +318,10 @@ public class MetadataSchemaResource extends AgaveResource
                     "If this problem persists, please contact the system administrators."));
         } 
         finally {
-            try { cursor.close(); } catch (Exception e) {}
+            try {
+				assert cursor != null;
+				cursor.close();
+            } catch (Exception ignore) {}
         }
 
     }
@@ -414,12 +397,14 @@ public class MetadataSchemaResource extends AgaveResource
                     "If this problem persists, please contact the system administrators."));
         }
         finally {
-            try { cursor.close(); } catch (Exception e) {}
-//            try { mongoClient.close(); } catch (Exception e) {}
+            try {
+				assert cursor != null;
+				cursor.close();
+            } catch (Exception ignore) {}
         }
     }
     
-    private DBObject formatMetadataSchemaObject(DBObject metadataSchemaObject) throws UUIDException 
+    private DBObject formatMetadataSchemaObject(DBObject metadataSchemaObject)
     {
     	metadataSchemaObject.removeField("_id");
     	metadataSchemaObject.removeField("tenantId");

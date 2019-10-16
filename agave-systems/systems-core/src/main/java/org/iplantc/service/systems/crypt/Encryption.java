@@ -19,7 +19,7 @@ public class Encryption {
             encryptor = null;
         } else {
             encryptor = new BasicTextEncryptor();
-            encryptor.setPassword(new String(password));
+            encryptor.setPasswordCharArray(password);
         	
         }
     }

@@ -170,7 +170,7 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 			
 			submissionAction.run();
 		
-			PowerMockito.verifyStatic();
+			PowerMockito.verifyStatic(JobManager.class);
 			JobManager.updateStatus(job, JobStatusType.STAGED);
 			
 			job = JobDao.getById(job.getId());

@@ -1,23 +1,22 @@
 package org.iplantc.service.metadata.search;
 
-import java.io.IOException;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
+import com.mongodb.util.JSON;
+import com.mongodb.util.JSONParseException;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.math.NumberUtils;
-import org.iplantc.service.common.exceptions.SearchSyntaxException;
 import org.iplantc.service.common.search.AgaveResourceSearchFilter;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.common.util.StringToTime;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.DBObject;
-import com.mongodb.util.JSON;
-import com.mongodb.util.JSONParseException;
+import java.io.IOException;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class is the basis for search support across the API.
@@ -125,6 +124,7 @@ public class MetadataSearchFilter extends AgaveResourceSearchFilter
 	 * @see org.iplantc.service.common.search.AgaveResourceSearchFilter#strongTypeSearchValue(java.lang.Class, java.lang.String, java.lang.String)
 	 */
 	@Override
+    @SuppressWarnings("deprecation")
 	public Object strongTypeSearchValue(Class searchTermType, String searchField, String searchValue)
     throws IllegalArgumentException 
 	{
@@ -171,7 +171,7 @@ public class MetadataSearchFilter extends AgaveResourceSearchFilter
             return BooleanUtils.toBoolean(searchValue);
         } else if (searchTermType == DBObject.class) {
             try {
-                return (DBObject)JSON.parse(searchValue);
+                return JSON.parse(searchValue);
             } catch (JSONParseException e) {
                 throw new IllegalArgumentException("Malformed search value. "
                         + "Please specify a valid json object representing your "

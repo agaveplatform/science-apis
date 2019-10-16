@@ -67,6 +67,7 @@ import com.mongodb.util.JSONParseException;
  * @author dooley
  *
  */
+@SuppressWarnings("deprecation")
 public class MetadataResource extends AgaveResource
 {
 	private static final Logger log = Logger.getLogger(MetadataResource.class);

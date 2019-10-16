@@ -164,7 +164,7 @@ public class StorageSystem extends RemoteSystem implements SerializableSystem {
 		        		.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_SYSTEM_SERVICE) + getSystemId() + "/credentials")
 		        	.endObject()
 		        	.key("metadata").object()
-		    			.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + "data/?q=" + URLEncoder.encode("{\"associationIds\":\"" + getUuid() + "\"}"))
+		    			.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + "data/?q=" + URLEncoder.encode("{\"associationIds\":\"" + getUuid() + "\"}", "utf-8"))
 		    		.endObject();
 					if (!isPubliclyAvailable()) {
 						js.key("owner").object()

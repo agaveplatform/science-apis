@@ -123,8 +123,7 @@ public class SystemRole implements LastUpdatable, Comparable<SystemRole> {
 	}
 
 	/**
-	 * @param permission
-	 *            the permission to set
+	 * @param role the permission to set
 	 */
 	public void setRole(RoleType role)
 	{
@@ -298,19 +297,11 @@ public class SystemRole implements LastUpdatable, Comparable<SystemRole> {
 					return 0;
 				}
 			}
+			else if (o.role == null) {
+				return 1;
+			}
 			else {
-				if (this.role == null) {
-					if (o.role != null)
-						return -1;
-					else
-						return 0;
-				}
-				else if (o.role == null) {
-					return 1;
-				}
-				else {
-					return new Integer(role.intVal()).compareTo(new Integer(o.role.intVal()));
-				}
+				return Integer.compare(role.intVal(), o.role.intVal());
 			}
 		}
 	}

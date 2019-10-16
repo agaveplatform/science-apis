@@ -9,10 +9,12 @@ public interface CopyFromRemoteRequestOrBuilder extends
 
   /**
    * <code>.sftp.Sftp sftp = 1;</code>
+   * @return Whether the sftp field is set.
    */
   boolean hasSftp();
   /**
    * <code>.sftp.Sftp sftp = 1;</code>
+   * @return The sftp.
    */
   com.proto.go.sftp.Sftp getSftp();
   /**

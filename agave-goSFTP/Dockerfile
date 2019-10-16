@@ -19,9 +19,8 @@ COPY --from=0 /go/src/github.com/agaveplatform/go-SFTP/release/fileServer /usr/l
 RUN \
     chmod +x /usr/local/bin/agave-sftp && \
     mkdir /home/agaveops && \
-    adduser -S -D -H agaveops
-
-RUN chown -R agaveops:agaveops /home/agaveops
+    adduser -S -D -H agaveops && \
+    chown -R agaveops:agaveops /home/agaveops
 
 USER agaveops
 

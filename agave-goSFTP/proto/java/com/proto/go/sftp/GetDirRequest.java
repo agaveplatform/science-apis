@@ -97,12 +97,14 @@ private static final long serialVersionUID = 0L;
   private com.proto.go.sftp.List list_;
   /**
    * <code>.sftp.List list = 1;</code>
+   * @return Whether the list field is set.
    */
   public boolean hasList() {
     return list_ != null;
   }
   /**
    * <code>.sftp.List list = 1;</code>
+   * @return The list.
    */
   public com.proto.go.sftp.List getList() {
     return list_ == null ? com.proto.go.sftp.List.getDefaultInstance() : list_;
@@ -434,12 +436,14 @@ private static final long serialVersionUID = 0L;
         com.proto.go.sftp.List, com.proto.go.sftp.List.Builder, com.proto.go.sftp.ListOrBuilder> listBuilder_;
     /**
      * <code>.sftp.List list = 1;</code>
+     * @return Whether the list field is set.
      */
     public boolean hasList() {
       return listBuilder_ != null || list_ != null;
     }
     /**
      * <code>.sftp.List list = 1;</code>
+     * @return The list.
      */
     public com.proto.go.sftp.List getList() {
       if (listBuilder_ == null) {

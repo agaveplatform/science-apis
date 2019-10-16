@@ -147,6 +147,7 @@ private static final long serialVersionUID = 0L;
   private volatile java.lang.Object fileName_;
   /**
    * <code>string fileName = 1;</code>
+   * @return The fileName.
    */
   public java.lang.String getFileName() {
     java.lang.Object ref = fileName_;
@@ -162,6 +163,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <code>string fileName = 1;</code>
+   * @return The bytes for fileName.
    */
   public com.google.protobuf.ByteString
       getFileNameBytes() {
@@ -181,6 +183,7 @@ private static final long serialVersionUID = 0L;
   private volatile java.lang.Object fileDir_;
   /**
    * <code>string fileDir = 2;</code>
+   * @return The fileDir.
    */
   public java.lang.String getFileDir() {
     java.lang.Object ref = fileDir_;
@@ -196,6 +199,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <code>string fileDir = 2;</code>
+   * @return The bytes for fileDir.
    */
   public com.google.protobuf.ByteString
       getFileDirBytes() {
@@ -215,6 +219,7 @@ private static final long serialVersionUID = 0L;
   private volatile java.lang.Object fileSize_;
   /**
    * <code>string fileSize = 3;</code>
+   * @return The fileSize.
    */
   public java.lang.String getFileSize() {
     java.lang.Object ref = fileSize_;
@@ -230,6 +235,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <code>string fileSize = 3;</code>
+   * @return The bytes for fileSize.
    */
   public com.google.protobuf.ByteString
       getFileSizeBytes() {
@@ -249,6 +255,7 @@ private static final long serialVersionUID = 0L;
   private volatile java.lang.Object isDir_;
   /**
    * <code>string isDir = 4;</code>
+   * @return The isDir.
    */
   public java.lang.String getIsDir() {
     java.lang.Object ref = isDir_;
@@ -264,6 +271,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <code>string isDir = 4;</code>
+   * @return The bytes for isDir.
    */
   public com.google.protobuf.ByteString
       getIsDirBytes() {
@@ -283,6 +291,7 @@ private static final long serialVersionUID = 0L;
   private volatile java.lang.Object startDir_;
   /**
    * <code>string startDir = 5;</code>
+   * @return The startDir.
    */
   public java.lang.String getStartDir() {
     java.lang.Object ref = startDir_;
@@ -298,6 +307,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <code>string startDir = 5;</code>
+   * @return The bytes for startDir.
    */
   public com.google.protobuf.ByteString
       getStartDirBytes() {
@@ -317,6 +327,7 @@ private static final long serialVersionUID = 0L;
   private volatile java.lang.Object userName_;
   /**
    * <code>string userName = 6;</code>
+   * @return The userName.
    */
   public java.lang.String getUserName() {
     java.lang.Object ref = userName_;
@@ -332,6 +343,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <code>string userName = 6;</code>
+   * @return The bytes for userName.
    */
   public com.google.protobuf.ByteString
       getUserNameBytes() {
@@ -351,6 +363,7 @@ private static final long serialVersionUID = 0L;
   private volatile java.lang.Object passWord_;
   /**
    * <code>string passWord = 7;</code>
+   * @return The passWord.
    */
   public java.lang.String getPassWord() {
     java.lang.Object ref = passWord_;
@@ -366,6 +379,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <code>string passWord = 7;</code>
+   * @return The bytes for passWord.
    */
   public com.google.protobuf.ByteString
       getPassWordBytes() {
@@ -385,6 +399,7 @@ private static final long serialVersionUID = 0L;
   private volatile java.lang.Object systemId_;
   /**
    * <code>string systemId = 8;</code>
+   * @return The systemId.
    */
   public java.lang.String getSystemId() {
     java.lang.Object ref = systemId_;
@@ -400,6 +415,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <code>string systemId = 8;</code>
+   * @return The bytes for systemId.
    */
   public com.google.protobuf.ByteString
       getSystemIdBytes() {
@@ -419,6 +435,7 @@ private static final long serialVersionUID = 0L;
   private volatile java.lang.Object hostPort_;
   /**
    * <code>string hostPort = 9;</code>
+   * @return The hostPort.
    */
   public java.lang.String getHostPort() {
     java.lang.Object ref = hostPort_;
@@ -434,6 +451,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <code>string hostPort = 9;</code>
+   * @return The bytes for hostPort.
    */
   public com.google.protobuf.ByteString
       getHostPortBytes() {
@@ -890,6 +908,7 @@ private static final long serialVersionUID = 0L;
     private java.lang.Object fileName_ = "";
     /**
      * <code>string fileName = 1;</code>
+     * @return The fileName.
      */
     public java.lang.String getFileName() {
       java.lang.Object ref = fileName_;
@@ -905,6 +924,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileName = 1;</code>
+     * @return The bytes for fileName.
      */
     public com.google.protobuf.ByteString
         getFileNameBytes() {
@@ -921,6 +941,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileName = 1;</code>
+     * @param value The fileName to set.
+     * @return This builder for chaining.
      */
     public Builder setFileName(
         java.lang.String value) {
@@ -934,6 +956,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileName = 1;</code>
+     * @return This builder for chaining.
      */
     public Builder clearFileName() {
       
@@ -943,6 +966,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileName = 1;</code>
+     * @param value The bytes for fileName to set.
+     * @return This builder for chaining.
      */
     public Builder setFileNameBytes(
         com.google.protobuf.ByteString value) {
@@ -959,6 +984,7 @@ private static final long serialVersionUID = 0L;
     private java.lang.Object fileDir_ = "";
     /**
      * <code>string fileDir = 2;</code>
+     * @return The fileDir.
      */
     public java.lang.String getFileDir() {
       java.lang.Object ref = fileDir_;
@@ -974,6 +1000,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileDir = 2;</code>
+     * @return The bytes for fileDir.
      */
     public com.google.protobuf.ByteString
         getFileDirBytes() {
@@ -990,6 +1017,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileDir = 2;</code>
+     * @param value The fileDir to set.
+     * @return This builder for chaining.
      */
     public Builder setFileDir(
         java.lang.String value) {
@@ -1003,6 +1032,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileDir = 2;</code>
+     * @return This builder for chaining.
      */
     public Builder clearFileDir() {
       
@@ -1012,6 +1042,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileDir = 2;</code>
+     * @param value The bytes for fileDir to set.
+     * @return This builder for chaining.
      */
     public Builder setFileDirBytes(
         com.google.protobuf.ByteString value) {
@@ -1028,6 +1060,7 @@ private static final long serialVersionUID = 0L;
     private java.lang.Object fileSize_ = "";
     /**
      * <code>string fileSize = 3;</code>
+     * @return The fileSize.
      */
     public java.lang.String getFileSize() {
       java.lang.Object ref = fileSize_;
@@ -1043,6 +1076,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileSize = 3;</code>
+     * @return The bytes for fileSize.
      */
     public com.google.protobuf.ByteString
         getFileSizeBytes() {
@@ -1059,6 +1093,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileSize = 3;</code>
+     * @param value The fileSize to set.
+     * @return This builder for chaining.
      */
     public Builder setFileSize(
         java.lang.String value) {
@@ -1072,6 +1108,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileSize = 3;</code>
+     * @return This builder for chaining.
      */
     public Builder clearFileSize() {
       
@@ -1081,6 +1118,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string fileSize = 3;</code>
+     * @param value The bytes for fileSize to set.
+     * @return This builder for chaining.
      */
     public Builder setFileSizeBytes(
         com.google.protobuf.ByteString value) {
@@ -1097,6 +1136,7 @@ private static final long serialVersionUID = 0L;
     private java.lang.Object isDir_ = "";
     /**
      * <code>string isDir = 4;</code>
+     * @return The isDir.
      */
     public java.lang.String getIsDir() {
       java.lang.Object ref = isDir_;
@@ -1112,6 +1152,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string isDir = 4;</code>
+     * @return The bytes for isDir.
      */
     public com.google.protobuf.ByteString
         getIsDirBytes() {
@@ -1128,6 +1169,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string isDir = 4;</code>
+     * @param value The isDir to set.
+     * @return This builder for chaining.
      */
     public Builder setIsDir(
         java.lang.String value) {
@@ -1141,6 +1184,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string isDir = 4;</code>
+     * @return This builder for chaining.
      */
     public Builder clearIsDir() {
       
@@ -1150,6 +1194,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string isDir = 4;</code>
+     * @param value The bytes for isDir to set.
+     * @return This builder for chaining.
      */
     public Builder setIsDirBytes(
         com.google.protobuf.ByteString value) {
@@ -1166,6 +1212,7 @@ private static final long serialVersionUID = 0L;
     private java.lang.Object startDir_ = "";
     /**
      * <code>string startDir = 5;</code>
+     * @return The startDir.
      */
     public java.lang.String getStartDir() {
       java.lang.Object ref = startDir_;
@@ -1181,6 +1228,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string startDir = 5;</code>
+     * @return The bytes for startDir.
      */
     public com.google.protobuf.ByteString
         getStartDirBytes() {
@@ -1197,6 +1245,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string startDir = 5;</code>
+     * @param value The startDir to set.
+     * @return This builder for chaining.
      */
     public Builder setStartDir(
         java.lang.String value) {
@@ -1210,6 +1260,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string startDir = 5;</code>
+     * @return This builder for chaining.
      */
     public Builder clearStartDir() {
       
@@ -1219,6 +1270,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string startDir = 5;</code>
+     * @param value The bytes for startDir to set.
+     * @return This builder for chaining.
      */
     public Builder setStartDirBytes(
         com.google.protobuf.ByteString value) {
@@ -1235,6 +1288,7 @@ private static final long serialVersionUID = 0L;
     private java.lang.Object userName_ = "";
     /**
      * <code>string userName = 6;</code>
+     * @return The userName.
      */
     public java.lang.String getUserName() {
       java.lang.Object ref = userName_;
@@ -1250,6 +1304,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string userName = 6;</code>
+     * @return The bytes for userName.
      */
     public com.google.protobuf.ByteString
         getUserNameBytes() {
@@ -1266,6 +1321,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string userName = 6;</code>
+     * @param value The userName to set.
+     * @return This builder for chaining.
      */
     public Builder setUserName(
         java.lang.String value) {
@@ -1279,6 +1336,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string userName = 6;</code>
+     * @return This builder for chaining.
      */
     public Builder clearUserName() {
       
@@ -1288,6 +1346,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string userName = 6;</code>
+     * @param value The bytes for userName to set.
+     * @return This builder for chaining.
      */
     public Builder setUserNameBytes(
         com.google.protobuf.ByteString value) {
@@ -1304,6 +1364,7 @@ private static final long serialVersionUID = 0L;
     private java.lang.Object passWord_ = "";
     /**
      * <code>string passWord = 7;</code>
+     * @return The passWord.
      */
     public java.lang.String getPassWord() {
       java.lang.Object ref = passWord_;
@@ -1319,6 +1380,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string passWord = 7;</code>
+     * @return The bytes for passWord.
      */
     public com.google.protobuf.ByteString
         getPassWordBytes() {
@@ -1335,6 +1397,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string passWord = 7;</code>
+     * @param value The passWord to set.
+     * @return This builder for chaining.
      */
     public Builder setPassWord(
         java.lang.String value) {
@@ -1348,6 +1412,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string passWord = 7;</code>
+     * @return This builder for chaining.
      */
     public Builder clearPassWord() {
       
@@ -1357,6 +1422,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string passWord = 7;</code>
+     * @param value The bytes for passWord to set.
+     * @return This builder for chaining.
      */
     public Builder setPassWordBytes(
         com.google.protobuf.ByteString value) {
@@ -1373,6 +1440,7 @@ private static final long serialVersionUID = 0L;
     private java.lang.Object systemId_ = "";
     /**
      * <code>string systemId = 8;</code>
+     * @return The systemId.
      */
     public java.lang.String getSystemId() {
       java.lang.Object ref = systemId_;
@@ -1388,6 +1456,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string systemId = 8;</code>
+     * @return The bytes for systemId.
      */
     public com.google.protobuf.ByteString
         getSystemIdBytes() {
@@ -1404,6 +1473,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string systemId = 8;</code>
+     * @param value The systemId to set.
+     * @return This builder for chaining.
      */
     public Builder setSystemId(
         java.lang.String value) {
@@ -1417,6 +1488,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string systemId = 8;</code>
+     * @return This builder for chaining.
      */
     public Builder clearSystemId() {
       
@@ -1426,6 +1498,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string systemId = 8;</code>
+     * @param value The bytes for systemId to set.
+     * @return This builder for chaining.
      */
     public Builder setSystemIdBytes(
         com.google.protobuf.ByteString value) {
@@ -1442,6 +1516,7 @@ private static final long serialVersionUID = 0L;
     private java.lang.Object hostPort_ = "";
     /**
      * <code>string hostPort = 9;</code>
+     * @return The hostPort.
      */
     public java.lang.String getHostPort() {
       java.lang.Object ref = hostPort_;
@@ -1457,6 +1532,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string hostPort = 9;</code>
+     * @return The bytes for hostPort.
      */
     public com.google.protobuf.ByteString
         getHostPortBytes() {
@@ -1473,6 +1549,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string hostPort = 9;</code>
+     * @param value The hostPort to set.
+     * @return This builder for chaining.
      */
     public Builder setHostPort(
         java.lang.String value) {
@@ -1486,6 +1564,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string hostPort = 9;</code>
+     * @return This builder for chaining.
      */
     public Builder clearHostPort() {
       
@@ -1495,6 +1574,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string hostPort = 9;</code>
+     * @param value The bytes for hostPort to set.
+     * @return This builder for chaining.
      */
     public Builder setHostPortBytes(
         com.google.protobuf.ByteString value) {

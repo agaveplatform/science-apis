@@ -9,90 +9,108 @@ public interface ListOrBuilder extends
 
   /**
    * <code>string fileName = 1;</code>
+   * @return The fileName.
    */
   java.lang.String getFileName();
   /**
    * <code>string fileName = 1;</code>
+   * @return The bytes for fileName.
    */
   com.google.protobuf.ByteString
       getFileNameBytes();
 
   /**
    * <code>string fileDir = 2;</code>
+   * @return The fileDir.
    */
   java.lang.String getFileDir();
   /**
    * <code>string fileDir = 2;</code>
+   * @return The bytes for fileDir.
    */
   com.google.protobuf.ByteString
       getFileDirBytes();
 
   /**
    * <code>string fileSize = 3;</code>
+   * @return The fileSize.
    */
   java.lang.String getFileSize();
   /**
    * <code>string fileSize = 3;</code>
+   * @return The bytes for fileSize.
    */
   com.google.protobuf.ByteString
       getFileSizeBytes();
 
   /**
    * <code>string isDir = 4;</code>
+   * @return The isDir.
    */
   java.lang.String getIsDir();
   /**
    * <code>string isDir = 4;</code>
+   * @return The bytes for isDir.
    */
   com.google.protobuf.ByteString
       getIsDirBytes();
 
   /**
    * <code>string startDir = 5;</code>
+   * @return The startDir.
    */
   java.lang.String getStartDir();
   /**
    * <code>string startDir = 5;</code>
+   * @return The bytes for startDir.
    */
   com.google.protobuf.ByteString
       getStartDirBytes();
 
   /**
    * <code>string userName = 6;</code>
+   * @return The userName.
    */
   java.lang.String getUserName();
   /**
    * <code>string userName = 6;</code>
+   * @return The bytes for userName.
    */
   com.google.protobuf.ByteString
       getUserNameBytes();
 
   /**
    * <code>string passWord = 7;</code>
+   * @return The passWord.
    */
   java.lang.String getPassWord();
   /**
    * <code>string passWord = 7;</code>
+   * @return The bytes for passWord.
    */
   com.google.protobuf.ByteString
       getPassWordBytes();
 
   /**
    * <code>string systemId = 8;</code>
+   * @return The systemId.
    */
   java.lang.String getSystemId();
   /**
    * <code>string systemId = 8;</code>
+   * @return The bytes for systemId.
    */
   com.google.protobuf.ByteString
       getSystemIdBytes();
 
   /**
    * <code>string hostPort = 9;</code>
+   * @return The hostPort.
    */
   java.lang.String getHostPort();
   /**
    * <code>string hostPort = 9;</code>
+   * @return The bytes for hostPort.
    */
   com.google.protobuf.ByteString
       getHostPortBytes();

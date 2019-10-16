@@ -97,12 +97,14 @@ private static final long serialVersionUID = 0L;
   private com.proto.go.sftp.Sftp sftp_;
   /**
    * <code>.sftp.Sftp sftp = 1;</code>
+   * @return Whether the sftp field is set.
    */
   public boolean hasSftp() {
     return sftp_ != null;
   }
   /**
    * <code>.sftp.Sftp sftp = 1;</code>
+   * @return The sftp.
    */
   public com.proto.go.sftp.Sftp getSftp() {
     return sftp_ == null ? com.proto.go.sftp.Sftp.getDefaultInstance() : sftp_;
@@ -434,12 +436,14 @@ private static final long serialVersionUID = 0L;
         com.proto.go.sftp.Sftp, com.proto.go.sftp.Sftp.Builder, com.proto.go.sftp.SftpOrBuilder> sftpBuilder_;
     /**
      * <code>.sftp.Sftp sftp = 1;</code>
+     * @return Whether the sftp field is set.
      */
     public boolean hasSftp() {
       return sftpBuilder_ != null || sftp_ != null;
     }
     /**
      * <code>.sftp.Sftp sftp = 1;</code>
+     * @return The sftp.
      */
     public com.proto.go.sftp.Sftp getSftp() {
       if (sftpBuilder_ == null) {

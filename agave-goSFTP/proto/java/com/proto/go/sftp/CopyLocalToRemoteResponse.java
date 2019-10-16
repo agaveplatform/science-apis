@@ -91,6 +91,7 @@ private static final long serialVersionUID = 0L;
   private volatile java.lang.Object result_;
   /**
    * <code>string result = 1;</code>
+   * @return The result.
    */
   public java.lang.String getResult() {
     java.lang.Object ref = result_;
@@ -106,6 +107,7 @@ private static final long serialVersionUID = 0L;
   }
   /**
    * <code>string result = 1;</code>
+   * @return The bytes for result.
    */
   public com.google.protobuf.ByteString
       getResultBytes() {
@@ -426,6 +428,7 @@ private static final long serialVersionUID = 0L;
     private java.lang.Object result_ = "";
     /**
      * <code>string result = 1;</code>
+     * @return The result.
      */
     public java.lang.String getResult() {
       java.lang.Object ref = result_;
@@ -441,6 +444,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string result = 1;</code>
+     * @return The bytes for result.
      */
     public com.google.protobuf.ByteString
         getResultBytes() {
@@ -457,6 +461,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string result = 1;</code>
+     * @param value The result to set.
+     * @return This builder for chaining.
      */
     public Builder setResult(
         java.lang.String value) {
@@ -470,6 +476,7 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string result = 1;</code>
+     * @return This builder for chaining.
      */
     public Builder clearResult() {
       
@@ -479,6 +486,8 @@ private static final long serialVersionUID = 0L;
     }
     /**
      * <code>string result = 1;</code>
+     * @param value The bytes for result to set.
+     * @return This builder for chaining.
      */
     public Builder setResultBytes(
         com.google.protobuf.ByteString value) {

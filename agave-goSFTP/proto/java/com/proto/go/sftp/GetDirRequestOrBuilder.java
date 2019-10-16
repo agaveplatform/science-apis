@@ -9,10 +9,12 @@ public interface GetDirRequestOrBuilder extends
 
   /**
    * <code>.sftp.List list = 1;</code>
+   * @return Whether the list field is set.
    */
   boolean hasList();
   /**
    * <code>.sftp.List list = 1;</code>
+   * @return The list.
    */
   com.proto.go.sftp.List getList();
   /**

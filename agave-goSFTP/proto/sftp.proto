@@ -1,7 +1,7 @@
 syntax="proto3";
 
 package sftp;
-option go_package="sftppb";
+option go_package="sftp";
 option java_package = "com.proto.go.sftp";
 option java_multiple_files = true;
 

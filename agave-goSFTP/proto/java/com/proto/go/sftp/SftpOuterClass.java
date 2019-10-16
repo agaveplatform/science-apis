@@ -83,8 +83,8 @@ public final class SftpOuterClass {
       "se\022[\n\030CopyLocalToRemoteService\022\036.sftp.Co" +
       "pyLocalToRemoteRequest\032\037.sftp.CopyLocalT" +
       "oRemoteResponse\022<\n\rGetDirListing\022\023.sftp." +
-      "GetDirRequest\032\024.sftp.GetDirResponse0\001B\035\n" +
-      "\021com.proto.go.sftpP\001Z\006sftppbb\006proto3"
+      "GetDirRequest\032\024.sftp.GetDirResponse0\001B\033\n" +
+      "\021com.proto.go.sftpP\001Z\004sftpb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

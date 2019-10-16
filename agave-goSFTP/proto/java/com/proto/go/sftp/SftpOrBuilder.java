@@ -9,70 +9,84 @@ public interface SftpOrBuilder extends
 
   /**
    * <code>string username = 1;</code>
+   * @return The username.
    */
   java.lang.String getUsername();
   /**
    * <code>string username = 1;</code>
+   * @return The bytes for username.
    */
   com.google.protobuf.ByteString
       getUsernameBytes();
 
   /**
    * <code>string passWord = 2;</code>
+   * @return The passWord.
    */
   java.lang.String getPassWord();
   /**
    * <code>string passWord = 2;</code>
+   * @return The bytes for passWord.
    */
   com.google.protobuf.ByteString
       getPassWordBytes();
 
   /**
    * <code>string systemId = 3;</code>
+   * @return The systemId.
    */
   java.lang.String getSystemId();
   /**
    * <code>string systemId = 3;</code>
+   * @return The bytes for systemId.
    */
   com.google.protobuf.ByteString
       getSystemIdBytes();
 
   /**
    * <code>string hostKey = 4;</code>
+   * @return The hostKey.
    */
   java.lang.String getHostKey();
   /**
    * <code>string hostKey = 4;</code>
+   * @return The bytes for hostKey.
    */
   com.google.protobuf.ByteString
       getHostKeyBytes();
 
   /**
    * <code>string fileName = 5;</code>
+   * @return The fileName.
    */
   java.lang.String getFileName();
   /**
    * <code>string fileName = 5;</code>
+   * @return The bytes for fileName.
    */
   com.google.protobuf.ByteString
       getFileNameBytes();
 
   /**
    * <code>string hostPort = 6;</code>
+   * @return The hostPort.
    */
   java.lang.String getHostPort();
   /**
    * <code>string hostPort = 6;</code>
+   * @return The bytes for hostPort.
    */
   com.google.protobuf.ByteString
       getHostPortBytes();
 
   /**
    * <code>string clientKey = 7;</code>
+   * @return The clientKey.
    */
   java.lang.String getClientKey();
   /**
    * <code>string clientKey = 7;</code>
+   * @return The bytes for clientKey.
    */
   com.google.protobuf.ByteString
       getClientKeyBytes();

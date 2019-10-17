@@ -6,7 +6,6 @@
 		<artifactId>science-apis</artifactId>
 		<version>2.2.24</version>
 	</parent>
-	<groupId>org.agaveplatform</groupId>
 	<artifactId>jobs</artifactId>
 	<name>Agave Platform Jobs Services Parent POM</name>
 	<description>Parent pom for core, api, and worker projects.</description>

@@ -1,5 +1,0 @@
-time="2019-10-15T14:38:50-07:00" level=info msg="Server was initialized"
-time="2019-10-15T14:38:50-07:00" level=fatal msg="Failed to listen: listen tcp 0.0.0.0:50051: bind: address already in use"
-time="2019-10-15T14:39:12-07:00" level=info msg="Server was initialized"
-time="2019-10-15T14:39:12-07:00" level=fatal msg="Failed to listen: listen tcp 0.0.0.0:50051: bind: address already in use"
-time="2019-10-15T14:39:34-07:00" level=info msg="Server was initialized"

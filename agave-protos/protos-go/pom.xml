@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.agaveplatform</groupId>
+		<artifactId>protos</artifactId>
+		<version>2.2.24</version>
+	</parent>
+	<artifactId>protos-go</artifactId>
+	<name>Agave Core Go Proto</name>
+	<description>Proto file generation for all Go protobuf stubs</description>
+	<packaging>jar</packaging>
+
+	<properties>
+		<force.check.version>false</force.check.version>
+	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>1.6.0</version>
+				<configuration>
+					<executable>protoc</executable>
+					<workingDirectory>${basedir}</workingDirectory>
+					<arguments>
+						<argument>--go_out=plugins=grpc:target/pkg/client</argument>
+						<argument>proto/sftp.proto</argument>
+					</arguments>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-install-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

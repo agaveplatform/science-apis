@@ -1,0 +1,58 @@
+syntax="proto3";
+
+package sftp;
+option go_package="sftppb";
+option java_package = "org.agaveplatform.transfer.service.sftp";
+option java_multiple_files = true;
+
+message Sftp {
+	string username = 1;
+	string passWord = 2;
+	string systemId = 3;
+	string hostKey  = 4;
+	string fileName = 5;
+	string hostPort = 6;
+	string clientKey = 7;
+}
+
+message CopyLocalToRemoteRequest{
+	Sftp sftp = 1;
+}
+message CopyLocalToRemoteResponse{
+	string result = 1;
+}
+
+message CopyFromRemoteRequest{
+	Sftp sftp = 1;
+}
+message CopyFromRemoteResponse{
+	string result = 1;
+}
+
+
+message List {
+	string fileName = 1;
+	string fileDir	= 2;
+	string fileSize = 3;
+	string isDir = 4;
+	string startDir = 5;
+	string userName = 6;
+	string passWord = 7;
+	string systemId = 8;
+	string hostPort = 9;
+}
+
+message GetDirRequest{
+	List list = 1;
+}
+
+message GetDirResponse{
+	string result = 1;
+}
+
+service SFTP{
+	rpc CopyFromRemoteService(CopyFromRemoteRequest) returns (CopyFromRemoteResponse);
+	rpc CopyLocalToRemoteService(CopyLocalToRemoteRequest) returns (CopyLocalToRemoteResponse);
+	rpc GetDirListing(GetDirRequest)returns(stream GetDirResponse);
+}
+

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.agaveplatform</groupId>
+        <artifactId>science-apis</artifactId>
+        <version>2.2.24</version>
+    </parent>
+
+    <artifactId>protos</artifactId>
+    <version>2.2.24</version>
+    <name>Agave Core Proto POM</name>
+    <description>Proto file generation for all Agave grpc services</description>
+    <packaging>pom</packaging>
+    <organization>
+        <name>Agave Platform</name>
+        <url>http://agaveplatform.org</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <id>deardooley</id>
+            <name>Rion Dooleyy</name>
+            <email>deardooley@gmail.com</email>
+            <url>https://agaveplatform.org</url>
+            <organization>Chapman University</organization>
+            <organizationUrl>http://chapman.edu</organizationUrl>
+            <roles>
+                <role>developer</role>
+            </roles>
+        </developer>
+        <developer>
+            <id>ertanner</id>
+            <name>Eric Tanner</name>
+            <email>ertanner@gmail.com</email>
+            <url>https://agaveplatform.org</url>
+            <organization>Chapman University</organization>
+            <organizationUrl>http://chapman.edu</organizationUrl>
+            <roles>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <properties>
+        <grpc.version>1.23.0</grpc.version><!-- CURRENT_GRPC_VERSION -->
+        <protobuf.version>3.9.1</protobuf.version>
+        <protoc.version>3.9.1</protoc.version>
+        <protobuf-maven-plugin.version>0.5.1</protobuf-maven-plugin.version>
+        <!-- required for jdk9 -->
+        <maven.compiler.source>1.9</maven.compiler.source>
+        <maven.compiler.target>1.9</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/com.google.protobuf/protoc -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protoc</artifactId>
+            <version>${protoc.version}</version>
+            <type>pom</type>
+        </dependency>
+
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>${protoc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+            <version>${protoc.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.6.2</version>
+            </extension>
+        </extensions>
+    </build>
+    <modules>
+        <module>protos-go</module>
+        <module>protos-java</module>
+    </modules>
+</project>

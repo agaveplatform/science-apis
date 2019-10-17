@@ -32,7 +32,7 @@ GO_BUILD_LDFLAGS="-s -w -X main.commitHash=${COMMIT_HASH} -X main.buildDate=${DA
 
 mkdir -p "${PROJECT_ROOT}/release"
 
-pushd "${MEDIFOR_WORKER_ROOT}/cmd/${BASE_CMD_NAME}" > /dev/null
+pushd "${PROJECT_ROOT}/cmd/${BASE_CMD_NAME}" > /dev/null
 for OS in ${BUILD_PLATFORMS[@]}; do
   for ARCH in ${BUILD_ARCHS[@]}; do
     NAME="${BASE_CMD_NAME}-${OS}-${ARCH}"

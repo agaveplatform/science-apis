@@ -1,0 +1,15 @@
+time="2019-10-17T12:44:33-07:00" level=info msg="Set up loggin for server"
+2019/10/17 12:44:33 Server was initialized
+2019/10/17 12:44:33 Initializing grpc server
+2019/10/17 12:44:33 Server has been initialized.  Now listening on port 50051
+time="2019-10-17T13:09:22-07:00" level=info msg="CopyLocalToRemoteService function was invoked with %v\nsftp:<username:\"foo\" passWord:\"123\" systemId:\"127.0.0.1\" fileName:\"test2.txt\" hostPort:\":2225\" > "
+time="2019-10-17T13:09:23-07:00" level=info msg="Error opening source file: %fopen test2.txt: no such file or directory"
+time="2019-10-17T13:09:23-07:00" level=info msg="invalid argument"
+time="2019-10-17T13:09:23-07:00" level=info msg="%d bytes copied\n0"
+time="2019-10-17T13:09:23-07:00" level=info msg="%d bytes copied\n0"
+time="2019-10-17T13:09:23-07:00" level=info msg="open test2.txt: no such file or directory"
+time="2019-10-17T13:09:23-07:00" level=info msg="result:\"0\" "
+time="2019-10-17T13:09:23-07:00" level=info msg="CopyFromRemoteService function was invoked with %v\nsftp:<username:\"foo\" passWord:\"123\" systemId:\"127.0.0.1\" fileName:\"test2.txt\" hostPort:\":2225\" > "
+time="2019-10-17T13:09:24-07:00" level=info msg="%d bytes copied\n0"
+time="2019-10-17T13:09:24-07:00" level=info
+time="2019-10-17T13:09:24-07:00" level=info msg="result:\"0\" "

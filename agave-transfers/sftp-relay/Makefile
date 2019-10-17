@@ -87,8 +87,8 @@ build:
 
 .PHONY: clean
 clean:
-	go clean -i -cache
-	rm -rf release/*
+	#go clean -i -cache
+	#rm -rf release/*
 	rm -rf proto/go/*
 	rm -rf proto/java/*
 	rm -rf pkg/sftpproto/*

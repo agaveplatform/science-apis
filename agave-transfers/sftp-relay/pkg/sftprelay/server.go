@@ -17,6 +17,8 @@ import (
 
 var log = logrus.New()
 
+type Server struct{}
+
 func init() {
 	// log to console and file
 	f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -26,12 +28,11 @@ func init() {
 	wrt := io.MultiWriter(os.Stdout, f)
 
 	log.SetOutput(wrt)
+	log.Info("Set up loggin for server")
 }
 
-type Server struct{}
-
 func (*Server) CopyLocalToRemoteService(ctx context.Context, req *sftppb.CopyLocalToRemoteRequest) (*sftppb.CopyLocalToRemoteResponse, error) {
-	log.Printf("CopyLocalToRemoteService function was invoked with %v\n", req)
+	log.Info("CopyLocalToRemoteService function was invoked with %v\n", req)
 	fileName := req.Sftp.FileName
 	passWord := req.Sftp.PassWord
 	systemId := req.Sftp.SystemId
@@ -60,7 +61,7 @@ func (*Server) CopyLocalToRemoteService(ctx context.Context, req *sftppb.CopyLoc
 	// connect
 	conn, err := ssh.Dial("tcp", systemId+hostPort, &config)
 	if err != nil {
-		log.Printf("Error Dialing the server: %f", err)
+		log.Info("Error Dialing the server: %f", err)
 		log.Error(err)
 		result = err.Error()
 	}
@@ -69,7 +70,7 @@ func (*Server) CopyLocalToRemoteService(ctx context.Context, req *sftppb.CopyLoc
 	// create new SFTP client
 	client, err := sftp.NewClient(conn)
 	if err != nil {
-		log.Printf("Error creating new client: %f", err)
+		log.Info("Error creating new client: %f", err)
 		result = err.Error()
 	}
 	defer client.Close()
@@ -77,7 +78,7 @@ func (*Server) CopyLocalToRemoteService(ctx context.Context, req *sftppb.CopyLoc
 	// create destination file
 	dstFile, err := client.Create(fileName)
 	if err != nil {
-		log.Printf("Error creating destFile: %f", err)
+		log.Info("Error creating destFile: %f", err)
 		result = err.Error()
 	}
 	defer dstFile.Close()
@@ -85,7 +86,7 @@ func (*Server) CopyLocalToRemoteService(ctx context.Context, req *sftppb.CopyLoc
 	// open source file
 	srcFile, err := os.Open(fileName)
 	if err != nil {
-		log.Printf("Error opening source file: %f", err)
+		log.Info("Error opening source file: %f", err)
 		result = err.Error()
 	}
 
@@ -94,7 +95,7 @@ func (*Server) CopyLocalToRemoteService(ctx context.Context, req *sftppb.CopyLoc
 	if err != nil {
 		log.Println(err)
 	}
-	log.Printf("%d bytes copied\n", bytesWritten)
+	log.Info("%d bytes copied\n", bytesWritten)
 
 	// copy source file to destination file
 	//bytes, err := io.Copy(dstFile, srcFile)
@@ -103,17 +104,17 @@ func (*Server) CopyLocalToRemoteService(ctx context.Context, req *sftppb.CopyLoc
 	//	result = err.Error()
 	//}
 
-	log.Printf("%d bytes copied\n", bytesWritten)
-	log.Println(result)
+	log.Info("%d bytes copied\n", bytesWritten)
+	log.Info(result)
 	res := &sftppb.CopyLocalToRemoteResponse{
 		Result: strconv.FormatInt(bytesWritten, 10),
 	}
-	log.Println(res.String())
+	log.Info(res.String())
 	return res, nil
 }
 
 func (*Server) CopyFromRemoteService(ctx context.Context, req *sftppb.CopyFromRemoteRequest) (*sftppb.CopyFromRemoteResponse, error) {
-	log.Printf("CopyFromRemoteService function was invoked with %v\n", req)
+	log.Info("CopyFromRemoteService function was invoked with %v\n", req)
 	fileName := req.Sftp.FileName
 	passWord := req.Sftp.PassWord
 	systemId := req.Sftp.SystemId
@@ -143,7 +144,7 @@ func (*Server) CopyFromRemoteService(ctx context.Context, req *sftppb.CopyFromRe
 	// connect
 	conn, err := ssh.Dial("tcp", systemId+hostPort, &config)
 	if err != nil {
-		log.Printf("Error dialing system: ", err)
+		log.Info("Error dialing system: ", err)
 		result = err.Error()
 	}
 	defer conn.Close()
@@ -151,7 +152,7 @@ func (*Server) CopyFromRemoteService(ctx context.Context, req *sftppb.CopyFromRe
 	// create new SFTP client
 	client, err := sftp.NewClient(conn)
 	if err != nil {
-		log.Printf("Error creating new client", err)
+		log.Info("Error creating new client", err)
 		result = err.Error()
 	}
 	defer client.Close()
@@ -159,7 +160,7 @@ func (*Server) CopyFromRemoteService(ctx context.Context, req *sftppb.CopyFromRe
 	// create destination file
 	dstFile, err := os.Create(fileName)
 	if err != nil {
-		log.Printf("Error creating dest file", err)
+		log.Info("Error creating dest file", err)
 		result = err.Error()
 	}
 	defer dstFile.Close()
@@ -167,14 +168,14 @@ func (*Server) CopyFromRemoteService(ctx context.Context, req *sftppb.CopyFromRe
 	// open source file
 	srcFile, err := client.Open(fileName)
 	if err != nil {
-		log.Printf("Opening source file: ", err)
+		log.Info("Opening source file: ", err)
 		result = err.Error()
 	}
 
 	// copy with the WriteTo function
 	bytesWritten, err := srcFile.WriteTo(dstFile)
 	if err != nil {
-		log.Printf("Error writing to file: ", err)
+		log.Info("Error writing to file: ", err)
 	}
 	// copy source file to destination file
 	//bytes, err := io.Copy(dstFile, srcFile)
@@ -182,8 +183,8 @@ func (*Server) CopyFromRemoteService(ctx context.Context, req *sftppb.CopyFromRe
 	//	log.Println(err)
 	//	result = err.Error()
 	//}
-	log.Printf("%d bytes copied\n", bytesWritten)
-	log.Println(result)
+	log.Info("%d bytes copied\n", bytesWritten)
+	log.Info(result)
 	res := &sftppb.CopyFromRemoteResponse{
 		Result: strconv.FormatInt(bytesWritten, 10),
 	}

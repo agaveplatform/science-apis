@@ -35,7 +35,7 @@
 					<version>${maven-surefire-plugin.version}</version>
 					<configuration>
 						<groups>unit</groups>
-						<excludedGroups>broken,notReady</excludedGroups>
+						<excludedGroups>broken,notReady,integration</excludedGroups>
 						<systemPropertyVariables>
 							<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
 							</log4j.configuration>

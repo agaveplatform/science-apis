@@ -13,7 +13,7 @@ import java.util.zip.CheckedInputStream;
 import org.apache.commons.io.FileUtils;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemsModelTestCommon;
+import org.iplantc.service.systems.model.PersistedSystemsModelTestCommon;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.json.JSONObject;
 import org.testng.Assert;
@@ -27,7 +27,7 @@ import org.testng.annotations.Test;
  *
  */
 @Test(groups= {"performance","integration"})
-public class PerformanceTest extends SystemsModelTestCommon {
+public class PerformanceTest extends PersistedSystemsModelTestCommon {
 
 	private SystemDao dao;
 	static File sourceFile;

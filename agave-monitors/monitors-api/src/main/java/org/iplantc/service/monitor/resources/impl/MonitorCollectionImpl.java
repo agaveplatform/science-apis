@@ -1,25 +1,9 @@
-/**
- * 
- */
 package org.iplantc.service.monitor.resources.impl;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorAdd;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorsList;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.MONITORS02;
-
-import java.util.Arrays;
-import java.util.List;
-
-import javax.ws.rs.Consumes;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.lang.StringUtils;
@@ -50,10 +34,15 @@ import org.restlet.ext.fileupload.RestletFileUpload;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorAdd;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorsList;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.MONITORS02;
 
 /**
  * @author dooley
@@ -64,7 +53,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 public class MonitorCollectionImpl extends AbstractAgaveResource implements MonitorCollection
 {
 	protected MonitorDao dao = new MonitorDao();
-	protected MonitorPermissionManager pm = null;
+//	protected MonitorPermissionManager pm = null;
 	protected MonitorEventProcessor eventProcessor = new MonitorEventProcessor();
 	
 	
@@ -82,7 +71,7 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 		
 		try
 		{
-			List<Monitor> monitors = null;
+			List<Monitor> monitors;
 			boolean includeActive = false;
 			boolean includeInactive = false;
 			if (!StringUtils.isEmpty(active)) {
@@ -109,13 +98,13 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 					.put("lastUpdated", new DateTime(monitor.getLastUpdated()).toString());
 					
 					ObjectNode linksObject = mapper.createObjectNode();
-					linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+					linksObject.set("self", mapper.createObjectNode()
 			    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + monitor.getUuid()));
-					linksObject.put("history", (ObjectNode)mapper.createObjectNode()
+					linksObject.set("history", mapper.createObjectNode()
 				    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + monitor.getUuid() + "/history"));
-					linksObject.put("checks", (ObjectNode)mapper.createObjectNode()
+					linksObject.set("checks", mapper.createObjectNode()
 				    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + monitor.getUuid() + "/checks"));
-					linksObject.put("target", (ObjectNode)mapper.createObjectNode()
+					linksObject.set("target", mapper.createObjectNode()
 				    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_SYSTEM_SERVICE) + monitor.getSystem().getSystemId()));
 					
 					json.set("_links", linksObject);
@@ -124,22 +113,15 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			}
 			
 			return Response.ok(new AgaveSuccessRepresentation(arrayNode.toString())).build();
-		}
-		catch (MonitorException e)
-		{
-			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-					"Failed to retrieve monitors.", e);
-		}
-		catch (ResourceException e) {
+		} catch (ResourceException e) {
 			throw e;
-		}
-		catch (Throwable e)
+		} catch (Throwable e)
 		{
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to retrieve monitors.", e);
 		}
-		
-		
+
+
 	}
 
 	/* (non-Javadoc)
@@ -169,57 +151,40 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 						"Permission denied. You do not have permission to view this system");
 			}
 		}
-		
-		try
-		{	
+
+		try {
 			ObjectMapper mapper = new ObjectMapper();
 			ObjectNode jsonMonitor = mapper.createObjectNode()
 					.put("target", systemId)
 					.put("frequency", Integer.parseInt(frequency))
-					.put("updateSystemStatus", StringUtils.equalsIgnoreCase(updateSystemStatus, "true") || 
-											   StringUtils.equalsIgnoreCase(updateSystemStatus, "1"))
+					.put("updateSystemStatus", StringUtils.equalsIgnoreCase(updateSystemStatus, "true") ||
+							StringUtils.equalsIgnoreCase(updateSystemStatus, "1"))
 					.put("internalUsername", internalUsername)
-					.put("active", StringUtils.equalsIgnoreCase(active, "true") || 
-                                   StringUtils.equalsIgnoreCase(active, "1"));
-			
-    		Monitor monitor = Monitor.fromJSON(jsonMonitor, null, getAuthenticatedUsername());
-    		monitor.setOwner(getAuthenticatedUsername());
-			
+					.put("active", StringUtils.equalsIgnoreCase(active, "true") ||
+							StringUtils.equalsIgnoreCase(active, "1"));
+
+			Monitor monitor = Monitor.fromJSON(jsonMonitor, null, getAuthenticatedUsername());
+			monitor.setOwner(getAuthenticatedUsername());
+
 			dao.persist(monitor);
-			
-			if (jsonMonitor.has("notifications")) 
-			{	
+
+			if (jsonMonitor.has("notifications")) {
 				processNotifications(jsonMonitor, monitor);
 			}
-			
+
 			eventProcessor.processContentEvent(monitor, MonitorEventType.CREATED, getAuthenticatedUsername());
 			// NotificationManager.process(monitor.getUuid(), MonitorEventType.CREATED.name(), monitor.getOwner());
-			
-			return Response.status(javax.ws.rs.core.Response.Status.CREATED)
+
+			return Response.status(Response.Status.CREATED)
 					.entity(new AgaveSuccessRepresentation(monitor.toJSON()))
 					.build();
-    	} 
-		catch (MonitorException e) {
+		} catch (MonitorException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 					e.getLocalizedMessage(), e);
-		}
-		catch (IllegalArgumentException e) {
+		} catch (NumberFormatException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 					"Unable to save monitor: " + e.getMessage(), e);
-	    } 
-		catch (HibernateException e) {
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					"Unable to save monitor: " + e.getMessage(), e);
-	    }
-//		catch (JsonException e)
-//		{
-//			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-//					"Unable to process the monitor json description.", e);
-//		}
-		catch (ResourceException e) {
-			throw e;
-		} 
-		catch (Exception e) {
+		} catch (NotificationException e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to save monitor: " + e.getMessage(), e);
 		}
@@ -390,8 +355,6 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 		}
 		else
 		{
-			currentKey = "notifications";
-			
 			ArrayNode jsonNotifications = (ArrayNode)json.get("notifications");
 			for (int i=0; i<jsonNotifications.size(); i++) 
 			{
@@ -459,7 +422,7 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 					}
 					
 					notificationDao.persist(notification);
-					try { Thread.sleep(5); } catch (Exception e){}
+					try { Thread.sleep(5); } catch (Exception ignored){}
 				}
 			}
 		}

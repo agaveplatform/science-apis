@@ -10,7 +10,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 @Test(groups={"integration"})
-public class StorageSystemsTest extends SystemsModelTestCommon{
+public class StorageSystemsTest extends SystemsModelTestCommon {
 
     @BeforeClass
     public void beforeClass() throws Exception {

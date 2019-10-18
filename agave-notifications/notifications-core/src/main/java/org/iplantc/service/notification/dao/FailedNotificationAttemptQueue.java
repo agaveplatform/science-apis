@@ -1,17 +1,10 @@
-/**
- * 
- */
 package org.iplantc.service.notification.dao;
 
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
+import com.mongodb.*;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.notification.Settings;
@@ -22,17 +15,6 @@ import org.iplantc.service.notification.model.NotificationAttempt;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.BasicDBObjectBuilder;
-import com.mongodb.Cursor;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoCredential;
-import com.mongodb.MongoException;
-import com.mongodb.ServerAddress;
 import com.mongodb.util.JSON;
 
 /**
@@ -42,6 +24,7 @@ import com.mongodb.util.JSON;
  * @author dooley
  *
  */
+@SuppressWarnings("deprecation")
 public class FailedNotificationAttemptQueue {
 
 	private static final Logger	log	= Logger.getLogger(FailedNotificationAttemptQueue.class);
@@ -74,7 +57,10 @@ public class FailedNotificationAttemptQueue {
 		
 		if (mongoClient == null ) 
     	{
-	    	mongoClient = new MongoClient(new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT), Arrays.asList(getMongoCredential()));
+    		mongoClient = new MongoClient(
+	    			new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT),
+					Collections.singletonList(getMongoCredential()),
+					MongoClientOptions.builder().build());
     	} 
 
         return mongoClient;
@@ -198,9 +184,7 @@ public class FailedNotificationAttemptQueue {
 	{
 		try {
 			DBCollection cappedCollection = getOrCreateCappedCollection(notificationId);
-			
-			ObjectMapper mapper = new ObjectMapper();
-			
+
 			DBObject query = BasicDBObjectBuilder.start().add("id", attemptId).get();
 			
 			cappedCollection.remove(query);

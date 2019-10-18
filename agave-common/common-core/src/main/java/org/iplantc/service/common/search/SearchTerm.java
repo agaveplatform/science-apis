@@ -46,7 +46,7 @@ public class SearchTerm implements Comparable<SearchTerm>
 		
 		private String template;
 		
-		private Operator(String template) {
+		Operator(String template) {
 			this.setTemplate(template);
 		}
 
@@ -70,7 +70,7 @@ public class SearchTerm implements Comparable<SearchTerm>
 		/**
 		 * Returns true if this operator can be only be  
 		 * applied to a single value. This method delegates to 
-		 * {@link #isSetOperation}
+		 * {@link #isSetOperator()}
 		 * @return true if unary operator, false otherwise
 		 */
 		public boolean isUnaryOperator() {
@@ -91,8 +91,8 @@ public class SearchTerm implements Comparable<SearchTerm>
 		 * either 0's or 1's so we guarantee we are accurate to the second
 		 * regardless of the column precision in MySQL.
 		 *   
-		 * @param searchValue
-		 * @return
+		 * @param searchValue the search value
+		 * @return the escaped, filtered search value with wildcards replaced.
 		 */
 		public Object applyWildcards(Object searchValue) {
 			if (searchValue == null) {
@@ -145,7 +145,7 @@ public class SearchTerm implements Comparable<SearchTerm>
          * Returns true of the operator checks for equality or
          * inequality only
          * 
-         * @return
+         * @return true if the current operator is an equality check
          */
         public boolean isEqualityOperator() {
             return this == EQ || this == NEQ;
@@ -340,7 +340,8 @@ public class SearchTerm implements Comparable<SearchTerm>
 	}
 
 	/**
-	 * @return
+	 * Returns prefix for the current search term.
+	 * @return gets the prefix of this operator.
 	 */
 	public String getPrefix() {
 		return prefix == null ? "" : prefix;
@@ -414,8 +415,8 @@ public class SearchTerm implements Comparable<SearchTerm>
 	 * Compares the search field in this object to another string.
 	 * This is used for quick existence checking for search terms
 	 * that have already been defined.
-	 * @param anotherString
-	 * @return
+	 * @param anotherString the string to compare
+	 * @return result of comparison
 	 */
 	public int compareTo(String anotherString)
 	{

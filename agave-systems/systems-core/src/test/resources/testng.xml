@@ -3,26 +3,29 @@
 <suite name="Agave systems-core" verbose="1" thread-count="1" parallel="none">
     <groups>
 		<run>
+			<include name="unit"/>
+			<exclude name="integration"/>
+			<exclude name="performance"/>
             <exclude name="broken"/>
             <exclude name="notReady"/>
         </run>
     </groups>
 	<test name="systems-core">
 		<packages>
-		    <package name="org.iplantc.service.remote" />
-		    <package name="org.iplantc.service.remote.gsissh" />
-		    <package name="org.iplantc.service.remote.ssh" />
-		    
-		    <package name="org.iplantc.service.systems" />
-		    <package name="org.iplantc.service.systems.crypt" />
-		    <package name="org.iplantc.service.systems.dao" />
+		    <!--<package name="org.iplantc.service.remote" />-->
+		    <!--<package name="org.iplantc.service.remote.gsissh" />-->
+		    <!--<package name="org.iplantc.service.remote.ssh" />-->
+
+		    <!--<package name="org.iplantc.service.systems" />-->
+		    <!--<package name="org.iplantc.service.systems.crypt" />-->
+		    <!--<package name="org.iplantc.service.systems.dao" />-->
 			<package name="org.iplantc.service.systems.model" />
-			<package name="org.iplantc.service.systems.events" />
-			<package name="org.iplantc.service.systems.manager" />
-			<package name="org.iplantc.service.systems.migrations" />
-			<package name="org.iplantc.service.systems.model" />
-			<package name="org.iplantc.service.systems.search" />
-			<package name="org.iplantc.service.systems.util" />
+			<!--<package name="org.iplantc.service.systems.events" />-->
+			<!--<package name="org.iplantc.service.systems.manager" />-->
+			<!--<package name="org.iplantc.service.systems.migrations" />-->
+			<!--<package name="org.iplantc.service.systems.model" />-->
+			<!--<package name="org.iplantc.service.systems.search" />-->
+			<!--<package name="org.iplantc.service.systems.util" />-->
 			
 			<!--<package name="org.iplantc.service.transfer.azure" />-->
 			<!--<package name="org.iplantc.service.transfer.ftp" />-->
@@ -34,7 +37,7 @@
 			<!--<package name="org.iplantc.service.transfer.operations" />-->
 			<!--<package name="org.iplantc.service.transfer.performance" />-->
 			<!--<package name="org.iplantc.service.transfer.s3" />-->
-			<package name="org.iplantc.service.transfer.sftp" />
+			<!--<package name="org.iplantc.service.transfer.sftp" />-->
 		</packages>
 	</test>
 </suite>

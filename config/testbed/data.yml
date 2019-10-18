@@ -88,18 +88,18 @@ services:
       - '10088:22'
       - '30000-30099:30000-30099'
 
-  gridftp:
-    image: agaveapi/gridftp:5
-    hostname: docker.example.com
-    extra_hosts:
-      - 'tests.example.com:192.168.99.1'
-    privileged: true
-    ports:
-      - '10099:22'
-      - '2811:2811'
-      - '7514:7512'
-      - '50000-50100:50000-50100'
-    environment:
-      - 'GLOBUS_TCP_PORT_RANGE=50000,50100'
-    volumes:
-      - ./gridftp-supervisord.conf:/etc/supervisord.conf
+#  gridftp:
+#    image: agaveapi/gridftp:5
+#    hostname: docker.example.com
+#    extra_hosts:
+#      - 'tests.example.com:192.168.99.1'
+#    privileged: true
+#    ports:
+#      - '10099:22'
+#      - '2811:2811'
+#      - '7514:7512'
+#      - '50000-50100:50000-50100'
+#    environment:
+#      - 'GLOBUS_TCP_PORT_RANGE=50000,50100'
+#    volumes:
+#      - ./gridftp-supervisord.conf:/etc/supervisord.conf

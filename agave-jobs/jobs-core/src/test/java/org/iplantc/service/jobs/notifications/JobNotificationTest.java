@@ -173,7 +173,6 @@ public class JobNotificationTest extends AbstractDaoTest
 
 	/**
 	 * Flushes the messaging tube of any and all existing jobs.
-	 * @param queueName
 	 */
 	@AfterMethod
 	public void drainQueue() 

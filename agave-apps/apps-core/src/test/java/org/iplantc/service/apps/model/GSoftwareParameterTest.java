@@ -374,7 +374,7 @@ public class GSoftwareParameterTest extends GModelTestCommon {
 
         return new Object[][]{
                 // Single value retains in array
-                {nullString, new String[]{}, "null value should be reduced to an empty default value array"},
+//                {nullString, new String[]{}, "null value should be reduced to an empty default value array"},
                 {emptyString, new String[]{emptyString}, "single empty string should be reduced to a single empty string in the resulting default value array"},
                 {foofile, new String[]{foofile}, "single string should be reduced to a single string in the resulting default value array"},
 
@@ -393,7 +393,6 @@ public class GSoftwareParameterTest extends GModelTestCommon {
                 {new JSONArray(Arrays.asList(nullString, nullString, foofile)), new String[]{foofile}, "null strings should be removed and valid value retained in the default value array"},
                 {new JSONArray(Arrays.asList(nullString, nullString, barfile)), new String[]{barfile}, "null strings should be removed and valid value retained in the default value array"},
 
-
                 {new JSONArray(Arrays.asList(emptyString, emptyString)), new String[]{emptyString}, "multiple empty strings should be reduced to a single empty string in the default value array"},
                 {new JSONArray(Arrays.asList(emptyString, foofile)), new String[]{emptyString, foofile}, "unique entries should be retained in the default value array"},
                 {new JSONArray(Arrays.asList(emptyString, barfile)), new String[]{emptyString, barfile}, "unique entries should be retained in the default value array"},
@@ -409,13 +408,11 @@ public class GSoftwareParameterTest extends GModelTestCommon {
                 {new JSONArray(Arrays.asList(foofile, emptyString, emptyString)), new String[]{foofile, emptyString}, "multiple empty strings should be removed and unique values should be retained in the default value array"},
                 {new JSONArray(Arrays.asList(barfile, emptyString, emptyString)), new String[]{barfile, emptyString}, "multiple empty strings should be removed and unique values should be retained in the default value array"},
 
-
                 {new JSONArray(Arrays.asList(foofile, foofile)), new String[]{foofile}, "redundant strings should be reduced to a single string in the default value array"},
                 {new JSONArray(Arrays.asList(foofile, foofile, foofile)), new String[]{foofile}, "redundant strings should be reduced to a single string in the default value array"},
                 {new JSONArray(Arrays.asList(barfile, foofile, foofile)), new String[]{barfile, foofile}, "redundant strings should be reduced to a single string and unique values should be retained in the default value array"},
                 {new JSONArray(Arrays.asList(foofile, barfile, foofile)), new String[]{foofile, barfile}, "redundant strings should be reduced to a single string and unique values should be retained in the default value array"},
                 {new JSONArray(Arrays.asList(foofile, foofile, barfile)), new String[]{foofile, barfile}, "redundant strings should be reduced to a single string and unique values should be retained in the default value array"},
-
 
                 {new JSONArray(Arrays.asList(barfile, barfile)), new String[]{barfile}, "redundant strings should be reduced to a single string in the default value array"},
                 {new JSONArray(Arrays.asList(barfile, barfile, barfile)), new String[]{barfile}, "redundant strings should be reduced to a single string in the default value array"},
@@ -425,8 +422,8 @@ public class GSoftwareParameterTest extends GModelTestCommon {
         };
     }
 
-    // @Test (groups="model", dataProvider="inputsValidatorFiltersRedundantValuesFromDefaultValueArrayProvider")
-    public void inputsValidatorFiltersRedundantValuesFromDefaultValueArrayProvider(Object defaultValue, String[] expectedValues)
+    @Test (groups={"model"}, dataProvider="inputsValidatorFiltersRedundantValuesFromDefaultValueArrayProvider")
+    public void inputsValidatorFiltersRedundantValuesFromDefaultValueArray(Object defaultValue, String[] expectedValues, String message)
             throws Exception {
         JSONObject jsonTree = new JSONObject(jsonTreeParameters.toString());
         jsonTree.getJSONObject("semantics").put("maxCardinality", -1);
@@ -435,7 +432,7 @@ public class GSoftwareParameterTest extends GModelTestCommon {
 
         String[] defaultValuesArray = ServiceUtils.getStringValuesFromJsonArray(parameter.getDefaultValueAsJsonArray(), false);
 
-        Assert.assertEquals(expectedValues.length, defaultValuesArray.length,
+        Assert.assertEquals(defaultValuesArray.length, expectedValues.length,
                 "The number of expected values after parsing the input did not match the actual values after parsing.");
 
         for (String expectedValue : expectedValues) {
@@ -483,7 +480,7 @@ public class GSoftwareParameterTest extends GModelTestCommon {
         };
     }
 
-    //@Test (groups="model", dataProvider="inputDefaultValueArrayRetainsOrderingProvider")
+    @Test (groups="model", dataProvider="inputDefaultValueArrayRetainsOrderingProvider")
     public void inputDefaultValueArrayRetainsOrdering(JSONArray defaultValue, String[] expectedValues) {
         try {
             JSONObject jsonTree = new JSONObject(jsonTreeParameters.toString());

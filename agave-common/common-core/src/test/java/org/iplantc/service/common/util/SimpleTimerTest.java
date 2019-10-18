@@ -25,9 +25,9 @@ public class SimpleTimerTest
     {   
         // 10 ms sleep.
         SimpleTimer st = SimpleTimer.start("firstPeriod");
-        System.out.println(st.getStartMsg());
+//        System.out.println(st.getStartMsg());
         Thread.sleep(10);
-        System.out.println(st.getStopMsg());
+//        System.out.println(st.getStopMsg());
         Assert.assertTrue(st.getElapsedSeconds() >= .01d,
                           "Unexpected elapsed time for " + st.getLabel());
         
@@ -40,7 +40,7 @@ public class SimpleTimerTest
         // 1/2 second sleep
         st = SimpleTimer.start("thirdPeriod");
         Thread.sleep(500);
-        System.out.println(st.getShortStopMsg());
+//        System.out.println(st.getShortStopMsg());
         Assert.assertTrue(st.getElapsedSeconds() >= .5d, 
                           "Unexpected elapsed time for " + st.getLabel());
     }

@@ -6,12 +6,7 @@ import static org.quartz.TriggerBuilder.newTrigger;
 import static org.quartz.impl.matchers.KeyMatcher.keyEquals;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.servlet.http.HttpSession;
 
@@ -142,7 +137,7 @@ public class QuartzUtility {
     /**
      * default constructor.
      */
-    protected QuartzUtility() {
+    private QuartzUtility() {
         mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
     }
 
@@ -165,7 +160,7 @@ public class QuartzUtility {
 //    }
 
     /**
-     * @param quartzScheduler
+     * @param quartzScheduler the scheduler of note in the request
      */
     public void setQuartzScheduler(Scheduler quartzScheduler) {
         this.quartzScheduler = quartzScheduler;
@@ -174,7 +169,6 @@ public class QuartzUtility {
     /**
      * if authorized, lists all changes performed.
      *
-     * @param session {@link HttpSession}.
      * @return {@code ArrayList<QuartzConfigResetResponse>}
      */
     public String listChanges() {
@@ -189,8 +183,7 @@ public class QuartzUtility {
      * if authorized, interrupts job identified by {@code jobName}.
      *
      * @param jobName job name.
-     * @param session session to authorize.
-     * @return
+     * @return json response that job was interrupted
      */
     public synchronized String interruptJob(String jobName) {
 
@@ -219,14 +212,13 @@ public class QuartzUtility {
      * if authorized, resumes job identified by {@code jobName}.
      *
      * @param jobName job name.
-     * @param session session to authorize.
-     * @return
+     * @return json response with name of job resumed
      */
     public synchronized String resumeJob(String jobName) {
         if (isAuthorized()) {
             JobDetail jobDetail = quartzFindJob(jobName);
             try {
-                scheduler().resumeJob(jobDetail.getKey());
+                scheduler().resumeJob(Objects.requireNonNull(jobDetail).getKey());
                 pausedJobs.remove(jobDetail.getKey().getName());
             } catch (SchedulerException e) {
                 log.error("unable to resume " + jobName + ". failed with :" + e.getMessage(), e);
@@ -248,8 +240,7 @@ public class QuartzUtility {
      * if authorized, pauses job identified by {@code jobName}.
      *
      * @param jobName job name.
-     * @param session session to authorize.
-     * @return
+     * @return json response of job that was paused
      */
     public synchronized String pauseJob(String jobName) {
         if (isAuthorized()) {
@@ -277,8 +268,7 @@ public class QuartzUtility {
      *
      * @param triggerName  trigger name.
      * @param triggerGroup trigger group.
-     * @param session      session to authorize.
-     * @return
+     * @return json response of trigger that was paused
      */
     public synchronized String pauseTrigger(String triggerName, String triggerGroup) {
         if (isAuthorized()) {
@@ -309,8 +299,7 @@ public class QuartzUtility {
      *
      * @param triggerName  trigger name.
      * @param triggerGroup trigger group.
-     * @param session      session to authorize.
-     * @return
+     * @return json response that trigger was resumed
      */
     public synchronized String resumeTrigger(String triggerName, String triggerGroup) {
         if (isAuthorized()) {
@@ -339,8 +328,7 @@ public class QuartzUtility {
     /**
      * if authorized, resumes all jobs.
      *
-     * @param session session to authorize.
-     * @return
+     * @return json response
      */
     public synchronized String resumeAll() {
         if (isAuthorized()) {
@@ -370,8 +358,7 @@ public class QuartzUtility {
     /**
      * if authorized, pause all scheduled jobs.
      *
-     * @param session session to authorize.
-     * @return
+     * @return json response that all jobs were paused
      */
     public synchronized String pauseAll() {
         if (isAuthorized()) {
@@ -402,7 +389,7 @@ public class QuartzUtility {
      * @param triggerKey    trigger name
      * @param oldExpression old cron expression.
      * @param newExpression new cron expression.
-     * @return QuartzConfigResetResponse
+     * @return json response that new trigger was added
      */
     public synchronized String setNewTrigger(final String jobName, final String triggerKey,
                                              final String oldExpression, final String newExpression) {
@@ -428,7 +415,6 @@ public class QuartzUtility {
     /**
      * authorization check.
      *
-     * @param session http session.
      * @return true if authorized
      */
     public boolean isAuthorized() {
@@ -440,7 +426,7 @@ public class QuartzUtility {
      * if authorized, resets priority for class to original value.
      *
      * @param triggerKey trigger to reset.
-     * @return {@link QuartzConfigResetResponse}
+     * @return json response that cron was reset
      */
     public synchronized final String resetCronExpression(final String triggerKey) {
 
@@ -468,7 +454,7 @@ public class QuartzUtility {
     /**
      * Reflections mapper
      */
-    final ObjectMapper mapper = new ObjectMapper();
+    final private ObjectMapper mapper = new ObjectMapper();
 
 
     /**
@@ -491,7 +477,7 @@ public class QuartzUtility {
 
         Trigger newTrigger = newTrigger()
                 .withIdentity(triggerKey)
-                .forJob(jobDetail)
+                .forJob(Objects.requireNonNull(jobDetail))
                 .withSchedule(CronScheduleBuilder.cronSchedule(newExpression))
                 .build();
         try {
@@ -517,7 +503,7 @@ public class QuartzUtility {
      * @param name name of the job.
      * @return {@link JobDetail}.
      */
-    public JobDetail quartzFindJob(String name) {
+    private JobDetail quartzFindJob(String name) {
         try {
             for (String jobGroup : scheduler().getJobGroupNames()) {
                 for (JobKey jobKey : scheduler().getJobKeys(GroupMatcher.jobGroupEquals(jobGroup))) {
@@ -537,7 +523,6 @@ public class QuartzUtility {
     /**
      * provides all scheduled jobs/triggers and scheduler data.
      *
-     * @param session http session.
      * @return all scheduled jobs/triggers and scheduler data represented as JSON.
      */
     public String schedulerDetails() {
@@ -570,11 +555,11 @@ public class QuartzUtility {
     }
 
     /**
-     * lists scheduled jobs.s
+     * lists scheduled jobs.
      *
-     * @return
+     * @return list of all job descriptions
      */
-    protected List<JobDescription> listJobs() {
+    private List<JobDescription> listJobs() {
 
         final List<JobDescription> descriptions = new ArrayList<JobDescription>();
 
@@ -640,7 +625,7 @@ public class QuartzUtility {
     /**
      * handles null value.
      *
-     * @param value
+     * @param value value to nullcheck
      * @return handled value.
      */
     private String nvl(String value) {

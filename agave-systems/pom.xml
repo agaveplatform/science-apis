@@ -22,7 +22,7 @@
                     <version>${maven-surefire-plugin.version}</version>
                     <configuration>
                         <groups>unit</groups>
-                        <excludedGroups>broken,notReady</excludedGroups>
+                        <excludedGroups>broken,notReady,integration,performance</excludedGroups>
                         <systemPropertyVariables>
                             <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
                             </log4j.configuration>
@@ -35,7 +35,7 @@
                     <version>${maven-failsafe-plugin.version}</version>
                     <configuration>
                         <groups>integration</groups>
-                        <excludedGroups>broken,notReady,unit</excludedGroups>
+                        <excludedGroups>broken,notReady,unit,azure,s3,gridftp</excludedGroups>
                         <systemPropertyVariables>
                             <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
                             </log4j.configuration>

@@ -102,7 +102,7 @@ public class Monitor
 	}
 
 	/**
-	 * @param nonce the uuid to set
+	 * @param uuid the uuid to set
 	 */
 	public void setUuid(String uuid) throws MonitorException
 	{
@@ -255,7 +255,7 @@ public class Monitor
 	}
 
 	/**
-	 * @param nextCheckTime
+	 * @param nextUpdateTime the next time the monitor will be run
 	 */
 	public void setNextUpdateTime(Date nextUpdateTime) {
 		this.nextUpdateTime = nextUpdateTime;
@@ -307,6 +307,15 @@ public class Monitor
 		this.created = created;
 	}
 
+	public static RemoteSystem getMonitorSystem(String systemId) {
+		try {
+			return new SystemDao().findBySystemId(systemId);
+		}
+		catch (Throwable e) {
+			return null;
+		}
+	}
+
 	public static Monitor fromJSON(JsonNode json, Monitor monitor, String username)
 	throws MonitorException
 	{
@@ -323,7 +332,7 @@ public class Monitor
 			}
 			else
 			{
-				RemoteSystem system = new SystemDao().findBySystemId(json.get("target").asText());
+				RemoteSystem system = getMonitorSystem(json.get("target").asText());
 
 				if (system == null) {
 					throw new MonitorException("Invalid 'target' value. "
@@ -490,25 +499,25 @@ public class Monitor
 						.put("created", new DateTime(lastCheck.getCreated()).toString());
 				}
 
-				json.put("lastCheck", lastCheckObject);
+				json.set("lastCheck", lastCheckObject);
 
 				ObjectNode linksObject = mapper.createObjectNode();
-				linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+				linksObject.set("self", (ObjectNode)mapper.createObjectNode()
 		    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + getUuid()));
-				linksObject.put("checks", (ObjectNode)mapper.createObjectNode()
+				linksObject.set("checks", (ObjectNode)mapper.createObjectNode()
 			    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_MONITOR_SERVICE) + getUuid() + "/checks"));
 				if (!StringUtils.isEmpty(internalUsername)) {
-		    		linksObject.put("internalUser", mapper.createObjectNode()
+		    		linksObject.set("internalUser", mapper.createObjectNode()
 		    			.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + getOwner() + "/users/" + getInternalUsername()));
 		    	}
-				linksObject.put("notifications", mapper.createObjectNode()
+				linksObject.set("notifications", mapper.createObjectNode()
 						.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + "?associatedUuid=" + getUuid()));
-				linksObject.put("owner", mapper.createObjectNode()
+				linksObject.set("owner", mapper.createObjectNode()
 						.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + getOwner()));
-				linksObject.put("system", (ObjectNode)mapper.createObjectNode()
+				linksObject.set("system", (ObjectNode)mapper.createObjectNode()
 			    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_SYSTEM_SERVICE) + getSystem().getSystemId()));
 
-				json.put("_links", linksObject);
+				json.set("_links", linksObject);
 		}
 		catch (Exception e)
 		{

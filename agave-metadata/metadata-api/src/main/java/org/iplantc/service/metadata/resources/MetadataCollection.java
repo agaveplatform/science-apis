@@ -79,6 +79,7 @@ import org.iplantc.service.common.util.SimpleTimer;
  *
  * @author dooley
  */
+@SuppressWarnings("deprecation")
 public class MetadataCollection extends AgaveResource {
     private static final Logger log = Logger.getLogger(MetadataCollection.class);
 

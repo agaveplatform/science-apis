@@ -599,13 +599,9 @@ public abstract class RemoteSystem implements LastUpdatable, Comparable<RemoteSy
 			return false;
 		RemoteSystem other = (RemoteSystem) obj;
 		if (systemId == null)
-		{
-			if (other.systemId != null)
-				return false;
-		}
-		else if (!systemId.equals(other.systemId))
-			return false;
-		return true;
+			return other.systemId == null;
+		else
+			return systemId.equals(other.systemId);
 	}
 
 	public String toString()

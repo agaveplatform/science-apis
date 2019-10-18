@@ -67,7 +67,7 @@ import org.iplantc.service.common.exceptions.StringToTimeException;
  * 
  * @author Aaron Collegeman acollegeman@clutch-inc.com
  * @since JRE 1.5.0
- * @see http://us3.php.net/manual/en/function.strtotime.php
+ * @see "http://us3.php.net/manual/en/function.strtotime.php"
  */
 public class StringToTime extends Date {
 
@@ -234,7 +234,7 @@ public class StringToTime extends Date {
 	}
 	
 	public StringToTime(Object dateTimeString, Integer now) {
-		this(dateTimeString, new Date(new Long(now)), defaultSimpleDateFormat);
+		this(dateTimeString, new Date(Long.valueOf(now)), defaultSimpleDateFormat);
 	}
 	
 	public StringToTime(Object dateTimeString, Date now, String simpleDateFormat) {
@@ -291,11 +291,11 @@ public class StringToTime extends Date {
 	
 	
 	/**
-	 * A single parameter version of {@link #time(String, Date)}, passing a new instance of {@link java.util.Date} as the
+	 * A single parameter version of {@link #time(Object, Date)}, passing a new instance of {@link java.util.Date} as the
 	 * second parameter.
 	 * @param dateTimeString
 	 * @return A {@link java.lang.Long} timestamp representative of <code>dateTimeString</code>, or {@link java.lang.Boolean} <code>false</code>.
-	 * @see #time(String, Date)
+	 * @see #time(Object, Date)
 	 */
 	public static Object time(Object dateTimeString) {
 		return time(dateTimeString, new Date());
@@ -383,7 +383,7 @@ public class StringToTime extends Date {
 		public Pattern p;
 		public Format f;
 		
-		public PatternAndFormat(Pattern p, Format f) {
+		PatternAndFormat(Pattern p, Format f) {
 			this.p = p;
 			this.f = f;
 		}
@@ -401,7 +401,7 @@ public class StringToTime extends Date {
 		public FormatType type;
 		public Long timestamp;
 		
-		public ParserResult(Long timestamp, FormatType type) {
+		ParserResult(Long timestamp, FormatType type) {
 			this.timestamp = timestamp;
 			this.type = type;
 		}
@@ -463,8 +463,7 @@ public class StringToTime extends Date {
 					
 					// word expressions, e.g., "now" and "today" and "tonight"
 					if (type == FormatType.WORD) {
-						if ("now".equals(dateTimeString))
-							return (now != null ? now : new Date());
+						if ("now".equals(dateTimeString)) return now;
 						
 						else if ("today".equals(dateTimeString)) {
 							cal.set(Calendar.HOUR_OF_DAY, 0);
@@ -591,16 +590,16 @@ public class StringToTime extends Date {
 						
 						if (hour != null) {
 							if (amOrPm != null)
-								cal.set(Calendar.HOUR, new Integer(hour));
+								cal.set(Calendar.HOUR, Integer.valueOf(hour));
 							else
-								cal.set(Calendar.HOUR_OF_DAY, new Integer(hour));
+								cal.set(Calendar.HOUR_OF_DAY, Integer.valueOf(hour));
 						}
 						else
 							cal.set(Calendar.HOUR, 0);
 						
-						cal.set(Calendar.MINUTE, (min != null ? new Integer(min) : 0));
-						cal.set(Calendar.SECOND, (sec != null ? new Integer(sec) : 0));
-						cal.set(Calendar.MILLISECOND, (ms != null ? new Integer(ms) : 0));
+						cal.set(Calendar.MINUTE, (min != null ? Integer.valueOf(min) : 0));
+						cal.set(Calendar.SECOND, (sec != null ? Integer.valueOf(sec) : 0));
+						cal.set(Calendar.MILLISECOND, (ms != null ? Integer.valueOf(ms) : 0));
 						
 						if (amOrPm != null)
 							cal.set(Calendar.AM_PM, (amOrPm.equals("a") || amOrPm.equals("am") ? Calendar.AM : Calendar.PM));
@@ -613,7 +612,7 @@ public class StringToTime extends Date {
 					else if (type == FormatType.INCREMENT || type == FormatType.DECREMENT) {
 						Matcher units = unit.matcher(dateTimeString);
 						while (units.find()) {
-							Integer val = new Integer(units.group(1)) * (type == FormatType.DECREMENT ? -1 : 1);
+							Integer val = Integer.valueOf(units.group(1)) * (type == FormatType.DECREMENT ? -1 : 1);
 							String u = units.group(2);
 							
 							// second
@@ -750,18 +749,14 @@ public class StringToTime extends Date {
 					
 					// year
 					else if (type == FormatType.YEAR) {
-						cal.set(Calendar.YEAR, new Integer(m.group(0)));
+						cal.set(Calendar.YEAR, Integer.valueOf(m.group(0)));
 						return new Date(cal.getTimeInMillis());
 					}
 					
 					// unimplemented format type
 					else
 						throw new IllegalStateException(String.format("Unimplemented FormatType: %s", type));
-				} catch (ParseException e) {
-					throw e;
-				} catch (IllegalStateException e) {
-					throw e;
-				} catch (IllegalArgumentException e) {
+				} catch (ParseException | IllegalStateException | IllegalArgumentException e) {
 					throw e;
 				} catch (Exception e) {
 					throw new RuntimeException(String.format("Unknown failure in string-to-time conversion: %s", e.getMessage()), e);

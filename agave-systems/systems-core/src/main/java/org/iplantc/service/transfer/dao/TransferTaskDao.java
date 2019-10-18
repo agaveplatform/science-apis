@@ -77,12 +77,12 @@ public class TransferTaskDao
                     HibernateUtil.rollbackTransaction();
                 }
             }
-            catch (Exception e) {}
+            catch (Exception ignore) {}
             
             throw new TransferException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignore) {}
         }
     }
     
@@ -115,7 +115,7 @@ public class TransferTaskDao
         }
         finally
         {
-            try { HibernateUtil.commitTransaction(); } catch (Throwable e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Throwable ignore) {}
         }
     }
     
@@ -125,7 +125,7 @@ public class TransferTaskDao
      * @param uuid
      * @return
      */
-    public static TransferTask findChildTasksByUuid(String uuid)
+    public static TransferTask findChildTasksByUuid(String uuid) throws HibernateException
     {
         try
         {
@@ -141,13 +141,9 @@ public class TransferTaskDao
             
             return system;
         }
-        catch (HibernateException ex)
-        {
-            throw ex;
-        }
         finally
         {
-            try { HibernateUtil.commitTransaction(); } catch (Throwable e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Throwable ignore) {}
         }
     }
 
@@ -191,12 +187,12 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignore) {}
 			
 			throw new TransferException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignore) {}
 		}
 	}
 
@@ -240,12 +236,12 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TransferException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -280,12 +276,12 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TransferException("Failed to save transfer task", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -294,7 +290,8 @@ public class TransferTaskDao
 	 * If there is no persistent instance currently associated with the session, it will be loaded. 
 	 * Return the persistent instance. If the given instance is unsaved, save a copy of and return 
 	 * it as a newly persistent instance. The given instance does not become associated with the 
-	 * session. This operation cascades to associated instances if the association is mapped with cascade="merge".
+	 * session. This operation cascades to associated instances if the association is mapped with
+	 * cascade="merge".
      *
 	 * @param task
 	 * @return
@@ -325,12 +322,12 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TransferException("Failed to save transfer task", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -363,30 +360,29 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TransferException("Failed to delete transfer task", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
 	
 	/**
-     * Selects a job at random from the population of jobs of the given {@code status}. This method
-     * calls out to {@link #getRandomUserForNextQueuedJobOfStatus(JobStatusType, String, String[], String[])} 
-     * first to select a user in a fair manner, then selects one of the user's jobs which honors
-     * all system quotas and capacity filtering parameters which enable restriction of job 
+     * Selects a task at random from the population of jobs of the given {@code status}. This method
+     * calls out to first to select a user in a fair manner, then selects one of the user's jobs
+     * which honors all system quotas and capacity filtering parameters which enable restriction of job
      * selection by tenant, owner, system, and batch queue.
      * 
      * @param status by which to filter the list of pending {@link TransferTask}s.
-     * @param tenantid tenant to include or exclude from selection.
-     * @param owners array of owners to include or exclude from the selection process 
-     * @param systemIds array of systems and queues to include or exclude from the selectino process. 
+     * @param tenantId tenant to include or exclude from selection.
+	 * @param systemIds array of systems and queues to include or exclude from the selectino process.
+	 * @param owners array of owners to include or exclude from the selection process
      * @return username of user with pending job
-     * @see {@link #getRandomUserForNextQueuedJobOfStatus(JobStatusType, String, String[], String[])}
-     * @throws JobException
+     *
+     * @throws TransferException
      */
     public static String getNextQueuedTask(TransferStatusType status, String tenantId, String[] systemIds, String[] owners)
 	throws TransferException
@@ -421,51 +417,44 @@ public class TransferTaskDao
             
 			session.disableFilter("transferTaskTenantFilter");
             
-			String sql =  "select distinct t.owner, t.tenant_id, tt.active_transfer_count \n"
-			            + "from transfertasks t \n"
-			            + "      left join ( \n"
-			            + "           select tc.owner, count(tc.id) as active_transfer_count \n" 
-						+ "           from transfertasks tc \n"  
-						+ "           where tc.status in ('" + ServiceUtils.explode("','", TransferStatusType.getActiveStatusValues())  + "') \n"
-						+ "               and tc.tenant_id :excludetenant like :tenantid \n"
-						+ "               and tc.root_task is null \n";
+			StringBuilder sql = new StringBuilder("select distinct t.owner, t.tenant_id, tt.active_transfer_count \n"
+					+ "from transfertasks t \n"
+					+ "      left join ( \n"
+					+ "           select tc.owner, count(tc.id) as active_transfer_count \n"
+					+ "           from transfertasks tc \n"
+					+ "           where tc.status in ('" + ServiceUtils.explode("','", TransferStatusType.getActiveStatusValues()) + "') \n"
+					+ "               and tc.tenant_id :excludetenant like :tenantid \n"
+					+ "               and tc.root_task is null \n");
 			
 			if (!ArrayUtils.isEmpty(systemIds)) 
             {   
-				sql	+=    "               and :excludesystems (";
+				sql.append("               and :excludesystems (");
 			
     			for (int i=0;i<systemIds.length;i++) {
-    			    sql += "                 tc.dest like 'agave://:systemid" + i + "%' ";
+    			    sql.append("                 tc.dest like 'agave://:systemid").append(i).append("%' ");
     			    
     			    if (systemIds.length > (i+1)) {
-                        sql += " or \n ";
+                        sql.append(" or \n ");
                     }
                 }
     			
-    			sql +=    "\n                 ) \n";
+    			sql.append("\n                 ) \n");
             }
 			
 			if (!ArrayUtils.isEmpty(owners)) {
-                sql +=    "               and tc.owner :excludeowners in :owners \n";
+                sql.append("               and tc.owner :excludeowners in :owners \n");
             }
             
-			sql		+=    "           group by tc.owner \n"
-						+ "      ) as tt on t.owner = tt.owner \n" 
-						+ "where j.status = :taskstatus \n"
-						+ "   and ( \n"
-						+ "       tt.active_transfer_count is NULL \n"
-						+ "       or tt.active_transfer_count < :maxUserConcurrentTransfers \n" 
-						+ "   ) \n"  
-						+ "order rand()";
+			sql.append("           group by tc.owner \n" + "      ) as tt on t.owner = tt.owner \n" + "where j.status = :taskstatus \n" + "   and ( \n" + "       tt.active_transfer_count is NULL \n" + "       or tt.active_transfer_count < :maxUserConcurrentTransfers \n" + "   ) \n" + "order rand()");
 			
-			sql = sql.replaceAll(":excludeowners", excludeOwners ? "not" : "")
-                    .replaceAll(":excludetenant", excludeTenant ? "not" : "")
-                    .replaceAll(":excludesystems", excludeSystems ? "not" : "");
+			sql = new StringBuilder(sql.toString().replaceAll(":excludeowners", excludeOwners ? "not" : "")
+					.replaceAll(":excludetenant", excludeTenant ? "not" : "")
+					.replaceAll(":excludesystems", excludeSystems ? "not" : ""));
            
-			String q = sql.replaceAll(":excludesystems", excludeSystems ? "not" : "")
+			String q = sql.toString().replaceAll(":excludesystems", excludeSystems ? "not" : "")
                     .replaceAll(":tenantid", String.format("'%s'", tenantId));
 			
-			Query query = session.createSQLQuery(sql)
+			Query query = session.createSQLQuery(sql.toString())
                     .addScalar("owner", StandardBasicTypes.STRING)
                     .addScalar("active_transfer_count", StandardBasicTypes.INTEGER)
                     .addScalar("tenant_id", StandardBasicTypes.STRING)
@@ -514,20 +503,20 @@ public class TransferTaskDao
                         + "   and t.owner = :owner \n";
                 if (!ArrayUtils.isEmpty(systemIds)) 
                 {   
-                    sql +=    "   and :excludesystems (";
+                    sql.append("   and :excludesystems (");
                 
                     for (int i=0;i<systemIds.length;i++) {
-                        sql += "        tc.dest like 'agave://:systemid" + i + "%' ";
+                        sql.append("        tc.dest like 'agave://:systemid").append(i).append("%' ");
                         
                         if (systemIds.length > (i+1)) {
-                            sql += " or \n ";
+                            sql.append(" or \n ");
                         }
                     }
                     
-                    sql += "\n       ) \n";
+                    sql.append("\n       ) \n");
                 }
                 
-                sql     += "order by t.last_updated desc";
+                sql.append("order by t.last_updated desc");
                 
                 taskSql = taskSql.replaceAll(":excludesystems", excludeSystems ? "not" : "");
                
@@ -578,12 +567,12 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TransferException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -660,19 +649,19 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TransferException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
 	/**
 	 * Sets a TransferTask and all its sub tasks to a status of TransferStatusType.CANCELLED
 	 * 
-	 * @param rootTask
+	 * @param transferTask
 	 * @throws TransferException
 	 */
 	public static void cancelAllRelatedTransfers(Long transferTask) throws TransferException 
@@ -706,12 +695,12 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TransferException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -747,12 +736,12 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TransferException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -796,12 +785,12 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TransferException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -814,7 +803,7 @@ public class TransferTaskDao
      * @param offset
      * @param limit
      * @return
-     * @throws JobException
+     * @throws TransferException
      */
     @SuppressWarnings("unchecked")
     public static List<TransferTask> findMatching(String username, Map<SearchTerm, Object> searchCriteria, int limit, int offset) 
@@ -824,42 +813,36 @@ public class TransferTaskDao
         {
             Session session = getSession();
             session.clear();
-            String sql = " SELECT j FROM TransferTask as t \n";
+            StringBuilder sql = new StringBuilder(" SELECT j FROM TransferTask as t \n");
                     
             if (!ServiceUtils.isAdmin(username)) {
                 
-                sql += " WHERE ( \n" +
-                    "       t.owner = :owner OR \n" +
-                    "       t.id in ( \n" + 
-                    "               SELECT pm.transferTaskId FROM TransferTaskPermission as pm \n" +
-                    "               WHERE pm.username = :owner AND pm.permission <> :none \n" +
-                    "              ) \n" +
-                    "      ) AND \n";
+                sql.append(" WHERE ( \n" + "       t.owner = :owner OR \n" + "       t.id in ( \n" + "               SELECT pm.transferTaskId FROM TransferTaskPermission as pm \n" + "               WHERE pm.username = :owner AND pm.permission <> :none \n" + "              ) \n" + "      ) AND \n");
             } else {
-                sql += " WHERE ";
+                sql.append(" WHERE ");
             }
             
-            sql +=  "        j.tenantId = :tenantid "; 
+            sql.append("        j.tenantId = :tenantid ");
             
             for (SearchTerm searchTerm: searchCriteria.keySet()) 
             {
-                sql += "\n       AND       " + searchTerm.getExpression();
+                sql.append("\n       AND       ").append(searchTerm.getExpression());
             }
             
-            if (!sql.contains("j.visible")) {
-                sql +=  "\n       AND j.visible = :visiblebydefault \n";
+            if (!sql.toString().contains("j.visible")) {
+                sql.append("\n       AND j.visible = :visiblebydefault \n");
             }
             
-            sql +=  " ORDER BY j.lastUpdated DESC\n";
+            sql.append(" ORDER BY j.lastUpdated DESC\n");
             
-            String q = sql;
+            String q = sql.toString();
             
-            Query query = session.createQuery(sql)
+            Query query = session.createQuery(sql.toString())
                                  .setString("tenantid", TenancyHelper.getCurrentTenantId());
             
             q = q.replaceAll(":tenantid", "'" + TenancyHelper.getCurrentTenantId() + "'");
             
-            if (sql.contains(":visiblebydefault") ) {
+            if (sql.toString().contains(":visiblebydefault") ) {
                 query.setBoolean("visiblebydefault", Boolean.TRUE);
                 
                 q = q.replaceAll(":visiblebydefault", "1");
@@ -912,7 +895,7 @@ public class TransferTaskDao
             throw new TransferException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+            try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
         }
     }
 
@@ -963,12 +946,12 @@ public class TransferTaskDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TransferException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}	
 }

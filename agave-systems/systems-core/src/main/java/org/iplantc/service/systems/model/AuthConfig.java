@@ -271,7 +271,7 @@ public class AuthConfig
 			}
 			catch (Exception e)
 			{
-				throw new EncryptionException("Unable to decrypt the password");
+				throw new EncryptionException("Unable to decrypt the password", e);
 			}
 		}
 	}
@@ -299,7 +299,7 @@ public class AuthConfig
 			}
 			catch (Exception e)
 			{
-				throw new EncryptionException("Unable to encrypt the password");
+				throw new EncryptionException("Unable to encrypt the password", e);
 			}
 		}
 	}

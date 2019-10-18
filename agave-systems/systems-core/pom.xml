@@ -39,14 +39,16 @@
 				<executions>
 					<execution>
 						<id>systemsup</id>
-						<phase>integration-test</phase>
+						<phase>pre-integration-test</phase>
 						<goals>
 							<goal>up</goal>
 						</goals>
 						<configuration>
+							<detachedMode>true</detachedMode>
+							<projectName>${project.artifactId}</projectName>
 							<composeFiles>
-								<composeFile>${project.basedir}/compose/third-party/docker-compose.yml</composeFile>
-								<composeFile>${project.basedir}/config/testbed/data.yml</composeFile>
+								<composeFile>${project.basedir}/../../compose/third-party/docker-compose.yml</composeFile>
+								<composeFile>${project.basedir}/../../config/testbed/data.yml</composeFile>
 								<!--<composeFile>${project.basedir}/config/testbed/compute.yml</composeFile>-->
 							</composeFiles>
 							<ignorePullFailures>true</ignorePullFailures>
@@ -59,6 +61,21 @@
 							<goal>down</goal>
 						</goals>
 						<configuration>
+							<projectName>${project.artifactId}</projectName>
+							<composeFiles>
+								<composeFile>${project.basedir}/src/main/resources/docker-compose.integration.yml</composeFile>
+							</composeFiles>
+							<ignorePullFailures>true</ignorePullFailures>
+						</configuration>
+					</execution>
+					<execution>
+						<id>systemsdown</id>
+						<phase>post-integration-test</phase>
+						<goals>
+							<goal>down</goal>
+						</goals>
+						<configuration>
+							<projectName>${project.artifactId}</projectName>
 							<composeFiles>
 								<composeFile>${project.basedir}/compose/third-party/docker-compose.yml</composeFile>
 								<composeFile>${project.basedir}/config/testbed/data.yml</composeFile>
@@ -68,6 +85,19 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<version>${maven-failsafe-plugin.version}</version>
+				<configuration>
+					<groups>integration</groups>
+					<excludedGroups>broken,notReady,unit,azure,s3,gridftp</excludedGroups>
+					<systemPropertyVariables>
+						<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+						</log4j.configuration>
+					</systemPropertyVariables>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

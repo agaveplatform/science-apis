@@ -19,7 +19,7 @@ import java.util.List;
  *
  */
 @Test(groups={"integration"})
-public class SystemsDaoTest extends SystemsModelTestCommon {
+public class SystemsDaoTest extends PersistedSystemsModelTestCommon {
 
 	private SystemDao dao = new SystemDao();
 	private static final String SYSTEM_USER = "testuser";

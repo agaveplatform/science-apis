@@ -4,7 +4,7 @@ import static org.iplantc.service.systems.model.enumerations.StartupScriptSystem
 
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.JSONTestDataUtil;
-import org.iplantc.service.systems.model.SystemsModelTestCommon;
+import org.iplantc.service.systems.model.PersistedSystemsModelTestCommon;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -12,7 +12,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 @Test(groups={"integration"})
-public class StartupScriptSystemVariableTypeTest extends SystemsModelTestCommon {
+public class StartupScriptSystemVariableTypeTest extends PersistedSystemsModelTestCommon {
 	
 	protected ExecutionSystem executionSystem = null;
 	

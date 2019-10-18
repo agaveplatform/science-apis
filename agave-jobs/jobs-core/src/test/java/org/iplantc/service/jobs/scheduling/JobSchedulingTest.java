@@ -69,24 +69,32 @@ public class JobSchedulingTest extends AbstractJobSchedulingTest
 		NormalDistribution nd = new NormalDistribution(mean, sd);
 		
 		ObjectMapper mapper = new ObjectMapper();
-		System.out.println("Job assignment and distribution:");
-		System.out.println("\tstandard deviation: " + sd);
-		System.out.println("\tmean: " + mean);
+//		System.out.println("Job assignment and distribution:");
+//		System.out.println("\tstandard deviation: " + sd);
+//		System.out.println("\tmean: " + mean);
 		for(String username: jobSelection.keySet()) {
 			JsonNode json = mapper.createObjectNode()
 				.put("username", username)
 				.put("created", jobDistribution.get(username).size())
 				.put("assigned", jobSelection.get(username))
 				.put("probability", nd.cumulativeProbability((double)jobSelection.get(username)));
-			System.out.println(json.toString());
+//			System.out.println(json.toString());
 		}
 			
 		for(String username: jobSelection.keySet()) {
 			int assigned = jobSelection.get(username);
 			int created = jobDistribution.get(username).size();
-			Assert.assertFalse((assigned <= (mean - sd)) || (assigned >= (mean + sd)), 
+			Assert.assertTrue(assigned > (mean - sd),
+					"Job distribution for " + username + " was less than 1 standard deviation "
+						+ "off of the expected value. Actual: " + created +
+							", Expected: " + assigned + " > " + (mean - sd));
+			Assert.assertTrue(assigned < (mean + sd),
 					"Job distribution for " + username + " was more than 1 standard deviation "
-					+ "off of the expected value. Actual: " + created + ", Expected: " + assigned + " +- " + sd);
+							+ "off of the expected value. Actual: " + created +
+							", Expected: " + assigned + " < " + (mean + sd));
+//			Assert.assertTrue((assigned < (mean - sd)) || (assigned >= (mean + sd)),
+//					"Job distribution for " + username + " was more than 1 standard deviation "
+//					+ "off of the expected value. Actual: " + created + ", Expected: " + assigned + " +- " + sd);
 		}
 	}
 	

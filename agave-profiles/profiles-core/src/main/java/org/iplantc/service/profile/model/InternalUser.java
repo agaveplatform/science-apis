@@ -3,23 +3,11 @@
  */
 package org.iplantc.service.profile.model;
 
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.UniqueConstraint;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
@@ -37,11 +25,12 @@ import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import javax.persistence.*;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.Date;
 
 
 /**
@@ -881,12 +870,9 @@ public class InternalUser extends Profile
 			return false;
 		if (createdBy == null)
 		{
-			if (other.createdBy != null)
-				return false;
+			return other.createdBy == null;
 		}
-		else if (!createdBy.equals(other.createdBy))
-			return false;
-		return true;
+		else return createdBy.equals(other.createdBy);
 	}
 
 
@@ -911,7 +897,7 @@ public class InternalUser extends Profile
 			clonedInternalUser.setResearchArea(researchArea);
 			clonedInternalUser.setState(state);
 			clonedInternalUser.setUsername(username);
-		} catch (ProfileArgumentException e) {}
+		} catch (ProfileArgumentException ignore) {}
 
 		return clonedInternalUser;
 	}

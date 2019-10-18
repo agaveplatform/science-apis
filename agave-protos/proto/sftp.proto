@@ -1,9 +1,12 @@
 syntax="proto3";
 
-package sftp;
-option go_package="sftppb";
-option java_package = "org.agaveplatform.transfer.service.sftp";
+package sftpproto;
+option go_package="sftpproto";
+option java_package = "org.agaveplatform.transfer.proto.sftp";
 option java_multiple_files = true;
+
+option objc_class_prefix = "AgaveSftp";
+option java_outer_classname = "AgaveSftpProto";
 
 message Sftp {
 	string username = 1;
@@ -29,30 +32,9 @@ message CopyFromRemoteResponse{
 	string result = 1;
 }
 
-
-message List {
-	string fileName = 1;
-	string fileDir	= 2;
-	string fileSize = 3;
-	string isDir = 4;
-	string startDir = 5;
-	string userName = 6;
-	string passWord = 7;
-	string systemId = 8;
-	string hostPort = 9;
-}
-
-message GetDirRequest{
-	List list = 1;
-}
-
-message GetDirResponse{
-	string result = 1;
-}
-
-service SFTP{
+service SFTPRelay {
 	rpc CopyFromRemoteService(CopyFromRemoteRequest) returns (CopyFromRemoteResponse);
 	rpc CopyLocalToRemoteService(CopyLocalToRemoteRequest) returns (CopyLocalToRemoteResponse);
-	rpc GetDirListing(GetDirRequest)returns(stream GetDirResponse);
+//	rpc GetDirListing(GetDirRequest)returns(stream GetDirResponse);
 }
 

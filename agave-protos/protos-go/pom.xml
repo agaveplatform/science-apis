@@ -23,19 +23,35 @@
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>
 				<version>1.6.0</version>
-				<configuration>
-					<executable>protoc</executable>
-					<workingDirectory>${basedir}</workingDirectory>
-					<arguments>
-						<argument>--go_out=plugins=grpc:target/pkg/client</argument>
-						<argument>proto/sftp.proto</argument>
-					</arguments>
-				</configuration>
+
+
 				<executions>
 					<execution>
+						<phase>clean</phase>
 						<goals>
 							<goal>exec</goal>
 						</goals>
+						<configuration>
+							<executable>make</executable>
+							<workingDirectory>${basedir}/..</workingDirectory>
+							<arguments>
+								<argument>clean</argument>
+							</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>exec</goal>
+						</goals>
+						<configuration>
+							<executable>make</executable>
+							<workingDirectory>${basedir}/..</workingDirectory>
+							<arguments>
+								<argument>genproto</argument>
+								<argument></argument>
+							</arguments>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>

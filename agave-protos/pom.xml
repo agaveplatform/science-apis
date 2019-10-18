@@ -49,7 +49,7 @@
         <grpc.version>1.23.0</grpc.version><!-- CURRENT_GRPC_VERSION -->
         <protobuf.version>3.9.1</protobuf.version>
         <protoc.version>3.9.1</protoc.version>
-        <protobuf-maven-plugin.version>0.5.1</protobuf-maven-plugin.version>
+        <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
         <!-- required for jdk9 -->
         <maven.compiler.source>1.9</maven.compiler.source>
         <maven.compiler.target>1.9</maven.compiler.target>
@@ -57,39 +57,7 @@
 
     <dependencies>
         <!-- https://mvnrepository.com/artifact/com.google.protobuf/protoc -->
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protoc</artifactId>
-            <version>${protoc.version}</version>
-            <type>pom</type>
-        </dependency>
 
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty-shaded</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-protobuf</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-stub</artifactId>
-            <version>${grpc.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
-            <version>${protoc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java-util</artifactId>
-            <version>${protoc.version}</version>
-        </dependency>
     </dependencies>
 
     <build>

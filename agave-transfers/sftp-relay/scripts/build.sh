@@ -7,7 +7,6 @@
 # (BUILD_PLATFORMS, BUILD_ARCHS) pair.
 # BUILD_PLATFORMS="linux" BUILD_ARCHS="amd64" ./scripts/build.sh
 # can be called to build only for linux-amd64
-echo Starting script
 DIR=$( cd "$( dirname "$0" )" && pwd )
 
 PROJECT_ROOT=$(dirname $DIR)

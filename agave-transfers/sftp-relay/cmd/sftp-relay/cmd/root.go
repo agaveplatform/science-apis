@@ -30,7 +30,7 @@ func Execute() {
 
 	log.Println("Initializing grpc server")
 	s := grpc.NewServer()
-	sftpproto.RegisterSFTPServer(s, &api.Server{})
+	sftpproto.RegisterSFTPRelayServer(s, &api.Server{})
 	log.Println("Server has been initialized.  Now listening on port 50051")
 	err = s.Serve(lis)
 	if err != nil {

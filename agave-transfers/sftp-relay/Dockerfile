@@ -1,10 +1,12 @@
 FROM agaveplatform/grpc-go:1.13
 
-COPY . $GOPATH/src/github.com/agaveplatform/agave-goSFTP
+COPY agave-protos $GOPATH/src/github.com/agaveplatform/science-apis/agave-protos
+COPY agave-transfers/sftp-relay $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
 
-WORKDIR $GOPATH/src/github.com/agaveplatform/agave-goSFTP
+WORKDIR $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
 
-RUN make genproto; make build
+RUN make clean && \
+	make default
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates openssl curl bash
@@ -16,7 +18,7 @@ LABEL agave_platform=2.0
 LABEL tooling=transfer,sftp,worker,put
 
 WORKDIR /go/
-COPY --from=0 /go/src/github.com/agaveplatform/agave-goSFTP/release/fileServer /usr/local/bin/agave-sftp
+COPY --from=0 /go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/release/sftp-relay-linux-amd64 /usr/local/bin/agave-sftp
 
 RUN \
     chmod +x /usr/local/bin/agave-sftp

@@ -20,7 +20,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	c := sftppb.NewSFTPClient(conn)
+	c := sftppb.NewSFTPRelayClient(conn)
 	// push file test
 	doUnaryPut(c)
 	//pull the test file
@@ -30,19 +30,19 @@ func main() {
 
 }
 
-func doUnaryPut(c sftppb.SFTPClient) {
+func doUnaryPut(c sftppb.SFTPRelayClient) {
 	fmt.Println("Starting to do uniary rpc client: ")
 	startPulltime := time.Now()
 	fmt.Println("Start Pull Time = " + startPulltime.String())
 
 	req := &sftppb.CopyLocalToRemoteRequest{
 		Sftp: &sftppb.Sftp{
-			Username: "foo",
-			SystemId: "127.0.0.1",
-			FileName: "test2.txt",
+			Username: "testuser",
+			SystemId: "sftp",
+			FileName: "/tmp/hosts",
 			HostKey:  "",
-			PassWord: "123",
-			HostPort: ":2225",
+			PassWord: "testuser",
+			HostPort: ":22",
 		},
 	}
 	fmt.Println("Username = " + req.Sftp.Username)
@@ -57,17 +57,17 @@ func doUnaryPut(c sftppb.SFTPClient) {
 
 }
 
-func doUnaryPull(c sftppb.SFTPClient) {
+func doUnaryPull(c sftppb.SFTPRelayClient) {
 	fmt.Println("Starting 2nd do uniary rpc client: ")
 	startPulltime := time.Now()
 	req := &sftppb.CopyFromRemoteRequest{
 		Sftp: &sftppb.Sftp{
-			Username: "foo",
-			SystemId: "127.0.0.1",
-			FileName: "test2.txt",
+			Username: "testuser",
+			SystemId: "sftp",
+			FileName: "/tmp/hosts",
 			HostKey:  "",
-			PassWord: "123",
-			HostPort: ":2225",
+			PassWord: "testuser",
+			HostPort: ":22",
 		},
 	}
 	res, err := c.CopyFromRemoteService(context.Background(), req)

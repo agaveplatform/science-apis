@@ -3,18 +3,16 @@ PLATFORM := $(shell go env GOOS)
 ARCH := $(shell go env GOARCH)
 GOPATH := $(shell go env GOPATH)
 PROJECT_DIR := $(shell pwd)
-PROJECT_PROTO_PKG := github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/proto
-PROJECT_PROTO_DIR := pkg/sftpproto
+PWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+PROJECT_PROTO_SRC_DIR := $(abspath $(PWD)/../../agave-protos)/proto/
+PROJECT_PROTO_OUT_DIR := pkg/sftpproto
 PROJECT_NAME := "sftp-relay"
-PROJECT_PROTOS := $(wildcard *.proto)
-PROJECT_GEN_PB := $(addprefix pkg/sftprelay/,$(notdir $(patsubst %.proto,%.pb.go,$(PROJECT_PROTOS))))
+#PROJECT_PROTOS := $(wildcard $(PROJECT_PROTO_SRC_DIR)/*.proto)
+#PROJECT_GEN_PB := $(addprefix pkg/sftprelay/,$(notdir $(patsubst %.proto,%.pb.go,$(PROJECT_PROTOS))))
 
 .DEFAULT_GOAL := default
 
 firstGOPATH := $(firstword $(subst :, ,$(GOPATH)) <invalid_path>)
-
-PROJECT_PROTOS := $(wildcard proto/*.proto)
-PROJECT_GEN_PB := $(addprefix pkg/sftprelay/,$(notdir $(patsubst %.proto,%.pb.go,$(PROJECT_PROTOS))))
 
 .PHONY: help
 help: ## Print help for targets with comments.
@@ -42,9 +40,12 @@ help: ## Print help for targets with comments.
 	"make clean" "Clear protobuf libraries, build artifacts, and application binary"
 
 
+PROJECT_PROTOS := $(wildcard $(PROJECT_PROTO_SRC_DIR)*.proto)
+PROJECT_GEN_PB := $(addprefix pkg/sftprelay/,$(notdir $(patsubst %.proto,%.pb.go,$(PROJECT_PROTOS))))
+
 $(PROJECT_GEN_PB):
-	@mkdir -p $(PROJECT_PROTO_DIR)
-	protoc -I./proto --go_out=plugins=grpc:$(PROJECT_PROTO_DIR) $(PROJECT_PROTOS)
+	@mkdir -p $(PROJECT_PROTO_OUT_DIR)
+	protoc -I $(PROJECT_PROTO_SRC_DIR) --go_out=plugins=grpc:$(PROJECT_PROTO_OUT_DIR) $(PROJECT_PROTOS)
 	@#protoc -I ./proto --java_out=./proto/java/ ./proto/sftp.proto
 
 .PHONY: all
@@ -67,9 +68,9 @@ install:
 # Build the application into a Docker image
 .PHONY: image
 image:
-	echo Starting Image process
+	@echo Starting Image process
 	cd $(PROJECT_DIR); docker build --rm=true -t $(PROJECT_NAME):latest .
-	echo Done with image
+	@echo Done with image
 
 # Build protobuf
 .PHONY: genproto
@@ -87,8 +88,8 @@ build:
 
 .PHONY: clean
 clean:
-	#go clean -i -cache
-	#rm -rf release/*
+	@go clean -i -cache
+	@rm -rf release/*
 	rm -rf proto/go/*
 	rm -rf proto/java/*
 	rm -rf pkg/sftpproto/*

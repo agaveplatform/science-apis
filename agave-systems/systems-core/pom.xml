@@ -91,14 +91,26 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
 				<version>${maven-failsafe-plugin.version}</version>
-				<configuration>
-					<groups>integration</groups>
-					<excludedGroups>broken,notReady,unit,azure,s3,gridftp</excludedGroups>
-					<systemPropertyVariables>
-						<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
-						</log4j.configuration>
-					</systemPropertyVariables>
-				</configuration>
+				<executions>
+					<execution>
+						<id>systems-core-integration-tests</id>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>integration-test</goal>
+						</goals>
+						<configuration>
+							<includes>
+								<include>org.iplantc.service.transfer.sftp.SftpPasswordRemoteDataClientTest</include>
+							</includes>
+							<groups>integration</groups>
+							<excludedGroups>broken,notReady,unit,azure,s3,gridftp</excludedGroups>
+							<systemPropertyVariables>
+								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+								</log4j.configuration>
+							</systemPropertyVariables>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

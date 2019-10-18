@@ -64,7 +64,9 @@
 						<configuration>
 							<projectName>${project.artifactId}</projectName>
 							<composeFiles>
-								<composeFile>${project.basedir}/src/main/resources/docker-compose.integration.yml</composeFile>
+								<composeFile>${project.basedir}/../../agave-transfers/sftp-relay/docker-compose.single.yml</composeFile>
+								<composeFile>${project.basedir}/../../compose/third-party/docker-compose.yml</composeFile>
+								<composeFile>${project.basedir}/../../config/testbed/data.yml</composeFile>
 							</composeFiles>
 							<ignorePullFailures>true</ignorePullFailures>
 						</configuration>
@@ -214,16 +216,7 @@
 			<artifactId>commons-fileupload</artifactId>
 			<version>${commons-fileupload.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>protos-java</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>metadata-core</artifactId>
-			<version>${project.version}</version>
-		</dependency>
+
 		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpmime</artifactId>

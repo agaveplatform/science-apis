@@ -2,9 +2,8 @@ SHELL := /bin/bash
 PLATFORM := $(shell go env GOOS)
 ARCH := $(shell go env GOARCH)
 GOPATH := $(shell go env GOPATH)
-PROJECT_DIR := $(shell pwd)
-PWD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
-PROJECT_PROTO_SRC_DIR := $(abspath $(PWD)/../../agave-protos)/proto/
+PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+PROJECT_PROTO_SRC_DIR := $(abspath $(PROJECT_DIR)/../../agave-protos)/proto/
 PROJECT_PROTO_OUT_DIR := pkg/sftpproto
 PROJECT_NAME := "sftp-relay"
 #PROJECT_PROTOS := $(wildcard $(PROJECT_PROTO_SRC_DIR)/*.proto)
@@ -69,7 +68,7 @@ install:
 .PHONY: image
 image:
 	@echo Starting Image process
-	cd $(PROJECT_DIR); docker build --rm=true -t $(PROJECT_NAME):latest .
+	docker build --rm=true -t $(PROJECT_NAME):latest -f $(PROJECT_DIR)/Dockerfile $(PROJECT_DIR)/../..
 	@echo Done with image
 
 # Build protobuf

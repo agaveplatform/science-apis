@@ -70,7 +70,7 @@
         </extensions>
     </build>
     <modules>
-        <module>protos-go</module>
         <module>protos-java</module>
+        <module>protos-go</module>
     </modules>
 </project>

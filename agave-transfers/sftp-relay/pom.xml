@@ -25,34 +25,36 @@
 				<version>1.6.0</version>
 
 				<executions>
+<!--					<execution>-->
+<!--						<id></id>-->
+<!--						<phase>clean</phase>-->
+<!--						<goals>-->
+<!--							<goal>exec</goal>-->
+<!--						</goals>-->
+<!--						<configuration>-->
+<!--							<executable>make</executable>-->
+<!--							<workingDirectory>${basedir}</workingDirectory>-->
+<!--							<arguments>-->
+<!--								<argument>clean</argument>-->
+<!--							</arguments>-->
+<!--						</configuration>-->
+<!--					</execution>-->
+<!--					<execution>-->
+<!--						<phase>pre-integration-test</phase>-->
+<!--						<goals>-->
+<!--							<goal>exec</goal>-->
+<!--						</goals>-->
+<!--						<configuration>-->
+<!--							<executable>make</executable>-->
+<!--							<workingDirectory>${basedir}</workingDirectory>-->
+<!--							<arguments>-->
+<!--								<argument>default</argument>-->
+<!--							</arguments>-->
+<!--						</configuration>-->
+<!--					</execution>-->
 					<execution>
-						<phase>clean</phase>
-						<goals>
-							<goal>exec</goal>
-						</goals>
-						<configuration>
-							<executable>make</executable>
-							<workingDirectory>${basedir}</workingDirectory>
-							<arguments>
-								<argument>clean</argument>
-							</arguments>
-						</configuration>
-					</execution>
-					<execution>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>exec</goal>
-						</goals>
-						<configuration>
-							<executable>make</executable>
-							<workingDirectory>${basedir}</workingDirectory>
-							<arguments>
-								<argument>default</argument>
-							</arguments>
-						</configuration>
-					</execution>
-					<execution>
-						<phase>generate-sources</phase>
+						<id>sftpimagebuild</id>
+						<phase>pre-integration-test</phase>
 						<goals>
 							<goal>exec</goal>
 						</goals>

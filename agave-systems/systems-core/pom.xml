@@ -47,6 +47,7 @@
 							<detachedMode>true</detachedMode>
 							<projectName>${project.artifactId}</projectName>
 							<composeFiles>
+								<composeFile>${project.basedir}/../../agave-transfers/sftp-relay/docker-compose.single.yml</composeFile>
 								<composeFile>${project.basedir}/../../compose/third-party/docker-compose.yml</composeFile>
 								<composeFile>${project.basedir}/../../config/testbed/data.yml</composeFile>
 								<!--<composeFile>${project.basedir}/config/testbed/compute.yml</composeFile>-->
@@ -68,22 +69,22 @@
 							<ignorePullFailures>true</ignorePullFailures>
 						</configuration>
 					</execution>
-					<execution>
-						<id>systemsdown</id>
-						<phase>post-integration-test</phase>
-						<goals>
-							<goal>down</goal>
-						</goals>
-						<configuration>
-							<projectName>${project.artifactId}</projectName>
-							<composeFiles>
-								<composeFile>${project.basedir}/compose/third-party/docker-compose.yml</composeFile>
-								<composeFile>${project.basedir}/config/testbed/data.yml</composeFile>
-								<!--<composeFile>${project.basedir}/config/testbed/compute.yml</composeFile>-->
-							</composeFiles>
-							<ignorePullFailures>true</ignorePullFailures>
-						</configuration>
-					</execution>
+<!--					<execution>-->
+<!--						<id>systemsdown</id>-->
+<!--						<phase>post-integration-test</phase>-->
+<!--						<goals>-->
+<!--							<goal>down</goal>-->
+<!--						</goals>-->
+<!--						<configuration>-->
+<!--							<projectName>${project.artifactId}</projectName>-->
+<!--							<composeFiles>-->
+<!--								<composeFile>${project.basedir}/compose/third-party/docker-compose.yml</composeFile>-->
+<!--								<composeFile>${project.basedir}/config/testbed/data.yml</composeFile>-->
+<!--								&lt;!&ndash;<composeFile>${project.basedir}/config/testbed/compute.yml</composeFile>&ndash;&gt;-->
+<!--							</composeFiles>-->
+<!--							<ignorePullFailures>true</ignorePullFailures>-->
+<!--						</configuration>-->
+<!--					</execution>-->
 				</executions>
 			</plugin>
 			<plugin>

@@ -1,0 +1,11 @@
+version: '3.7'
+
+services:
+
+  sftp-relay:
+    build:
+      context: ../../
+      dockerfile: agave-transfers/sftp-relay/Dockerfile
+    image: sftp-relay:develop
+    ports:
+      - 50051:50051

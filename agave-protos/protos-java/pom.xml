@@ -40,6 +40,7 @@
 				</configuration>
 				<executions>
 					<execution>
+						<phase>compile</phase>
 						<goals>
 							<goal>compile</goal>
 							<goal>compile-custom</goal>

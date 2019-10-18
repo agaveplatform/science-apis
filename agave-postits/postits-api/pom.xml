@@ -18,7 +18,7 @@
 	</properties>
 
     <build>
-				<outputDirectory>${project.build.directory}/html</outputDirectory>
+		<outputDirectory>${project.build.directory}/html</outputDirectory>
         <finalName>${service.war.name}</finalName>
 		<resources>
 		  <resource>
@@ -69,6 +69,7 @@
                     </execution>
                 </executions>
                 <configuration>
+					<skip>true</skip>
                     <warName>${service.war.name}</warName>
                     <useCache>true</useCache>
                     <nonFilteredFileExtensions>
@@ -121,6 +122,9 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-site-plugin</artifactId>
+				<configuration>
+					<skipDeploy>true</skipDeploy>
+				</configuration>
 			</plugin>
 
             <!-- ************************************ -->

@@ -27,29 +27,30 @@
 
 				<executions>
 					<execution>
+						<id>gocleanproto</id>
 						<phase>clean</phase>
 						<goals>
 							<goal>exec</goal>
 						</goals>
 						<configuration>
 							<executable>make</executable>
-							<workingDirectory>${basedir}/..</workingDirectory>
+							<workingDirectory>${basedir}</workingDirectory>
 							<arguments>
 								<argument>clean</argument>
 							</arguments>
 						</configuration>
 					</execution>
 					<execution>
+						<id>gogenproto</id>
 						<phase>generate-sources</phase>
 						<goals>
 							<goal>exec</goal>
 						</goals>
 						<configuration>
 							<executable>make</executable>
-							<workingDirectory>${basedir}/..</workingDirectory>
+							<workingDirectory>${basedir}</workingDirectory>
 							<arguments>
-								<argument>genproto</argument>
-								<argument></argument>
+								<argument>default</argument>
 							</arguments>
 						</configuration>
 					</execution>

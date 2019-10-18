@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.proto.go.sftp.*;
+import org.agaveplatform.transfer.proto.sftp.*;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.apache.commons.io.FilenameUtils;
@@ -749,7 +749,7 @@ public final class MaverickSFTP implements RemoteDataClient
 					ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).build();
 
 					// Create an sfpt service client (blocking - synchronous)
-					SFTPGrpc.SFTPBlockingStub sftpClient = SFTPGrpc.newBlockingStub(channel);
+					SFTPRelayGrpc.SFTPRelayBlockingStub sftpClient = SFTPRelayGrpc.newBlockingStub(channel);
 
 					// create a protocol buffer sftp message
 					Sftp sftp = Sftp.newBuilder()
@@ -779,19 +779,19 @@ public final class MaverickSFTP implements RemoteDataClient
         			channel.shutdown();
 					}
 				    catch (Exception e){
-	                    String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource + 
+	                    String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource +
                                      " to local target " + localTarget.getAbsolutePath() + ": " + e.getMessage();
 	                    log.error(msg, e);
 	                    throw e;
 				    }
-				
+
 				// make sure file transferred
 				if (!localTarget.exists()) {
-                    String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource + 
+                    String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource +
                             " to local target " + localTarget.getAbsolutePath() + ".";
                     log.error(msg);
 					throw new RemoteDataException(msg);
-				} 
+				}
 				// we could do a size check here...meah
 			}
 		}
@@ -804,12 +804,12 @@ public final class MaverickSFTP implements RemoteDataClient
 		}
 		catch (IOException | RemoteDataException e) {
 			throw e;
-		} 
+		}
 		catch (Exception e) {
 			throw new RemoteDataException("Failed to get data from " + remoteSource, e);
 		}
 	}
-	
+
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.transfer.RemoteDataClient#append(java.lang.String, java.lang.String)
 	 */
@@ -819,12 +819,12 @@ public final class MaverickSFTP implements RemoteDataClient
     {
         append(localpath, remotepath, null);
     }
-	
+
     /* (non-Javadoc)
      * @see org.iplantc.service.transfer.RemoteDataClient#append(java.lang.String, java.lang.String, org.iplantc.service.transfer.RemoteTransferListener)
      */
     @Override
-    public void append(String localpath, String remotepath, RemoteTransferListener listener) 
+    public void append(String localpath, String remotepath, RemoteTransferListener listener)
     throws IOException, FileNotFoundException, RemoteDataException
     {
         File localFile = new File(localpath);
@@ -832,9 +832,9 @@ public final class MaverickSFTP implements RemoteDataClient
             String msg = getMsgPrefix() + "Local path " + localFile.getAbsolutePath() + " does not exist.";
             log.error(msg);
             throw new FileNotFoundException("No such file or directory");
-        } 
-        
-        try 
+        }
+
+        try
         {
             boolean remoteExists;
             try {remoteExists = !doesExist(remotepath);}
@@ -843,19 +843,19 @@ public final class MaverickSFTP implements RemoteDataClient
                     log.error(msg);
                     throw e;
                 }
-            
-            
-            if (!remoteExists) 
+
+
+            if (!remoteExists)
             {
                 put(localpath, remotepath, listener);
             }
-            else if (localFile.isDirectory()) 
-            {   
+            else if (localFile.isDirectory())
+            {
                 String msg = getMsgPrefix() + "Local path " + localFile.getAbsolutePath() + " cannot be a directory.";
                 log.error(msg);
                 throw new RemoteDataException(msg);
             }
-            else 
+            else
             {
                 String resolvedPath;
                 try {resolvedPath = resolvePath(remotepath);}
@@ -864,7 +864,7 @@ public final class MaverickSFTP implements RemoteDataClient
                         log.error(msg, e);
                         throw e;
                     }
-                
+
                 // bust cache since this file has now changed
                 fileInfoCache.remove(resolvedPath);
                 long position = Math.max(length(resolvedPath) - 1, 0);
@@ -880,12 +880,12 @@ public final class MaverickSFTP implements RemoteDataClient
         }
         catch (IOException e) {
             throw e;
-        } 
+        }
         catch (Exception e) {
             throw new RemoteDataException("Failed to append data to " + remotepath, e);
         }
     }
-	
+
 	@Override
 	public void put(String localdir, String remotedir)
 	throws IOException, FileNotFoundException, RemoteDataException
@@ -894,7 +894,7 @@ public final class MaverickSFTP implements RemoteDataClient
 	}
 
 	@Override
-	public void put(String localdir, String remotedir, RemoteTransferListener listener) 
+	public void put(String localdir, String remotedir, RemoteTransferListener listener)
 	throws IOException, FileNotFoundException, RemoteDataException
 	{
 		File localFile = new File(localdir);
@@ -902,12 +902,12 @@ public final class MaverickSFTP implements RemoteDataClient
             String msg = getMsgPrefix() + "Local path " + localFile.getAbsolutePath() + " does not exist.";
             log.error(msg);
 			throw new FileNotFoundException("No such file or directory");
-		} 
-		
+		}
+
 		try
 		{
-		    if (localFile.isDirectory()) 
-			{	
+		    if (localFile.isDirectory())
+			{
 		        boolean remoteExists;
 		        try {remoteExists = doesExist(remotedir);}
 		            catch (Exception e){
@@ -915,17 +915,17 @@ public final class MaverickSFTP implements RemoteDataClient
 		                log.error(msg, e);
 		                throw e;
 		            }
-		        
+
 			    // can't upload folder to an existing file
-				if (remoteExists) 
+				if (remoteExists)
 				{
 					// can't put dir to file
 					if (!isDirectory(remotedir)) {
                         String msg = getMsgPrefix() + "Cannot overwrite non-directory " + remotedir + " with directory " + localFile.getAbsolutePath();
                         log.error(msg);
 						throw new RemoteDataException(msg);
-					} 
-					else 
+					}
+					else
 					{
 						remotedir += (StringUtils.isEmpty(remotedir) ? "" : "/") + localFile.getName();
 					}
@@ -940,7 +940,7 @@ public final class MaverickSFTP implements RemoteDataClient
                     log.error(msg);
 					throw new FileNotFoundException("No such file or directory");
 				}
-				
+
 				// bust cache since this file has now changed
 				String resolvedPath;
 				try {resolvedPath = resolvePath(remotedir);}
@@ -949,28 +949,28 @@ public final class MaverickSFTP implements RemoteDataClient
 		                log.error(msg, e);
 		                throw e;
 				    }
-				
+
 				fileInfoCache.remove(resolvedPath);
-				
+
 				DirectoryOperation operation;
 				try {
-				    operation = getClient().copyLocalDirectory(localFile.getAbsolutePath(), resolvedPath, 
+				    operation = getClient().copyLocalDirectory(localFile.getAbsolutePath(), resolvedPath,
 				                                                true, false, true, listener);
 				} catch (Exception e) {
-                    String msg = getMsgPrefix() + "Failure to copy local directory " + localFile.getAbsolutePath() + 
+                    String msg = getMsgPrefix() + "Failure to copy local directory " + localFile.getAbsolutePath() +
                                  " to " + resolvedPath + ": " + e.getMessage();
                     log.error(msg, e);
                     throw e;
                 }
-				
+
 				if (operation != null && !operation.getFailedTransfers().isEmpty()) {
-                    String msg = getMsgPrefix() + "One or more files failed to copy from local directory " + 
+                    String msg = getMsgPrefix() + "One or more files failed to copy from local directory " +
 				                 localFile.getAbsolutePath() + " to " + resolvedPath + ".";
                     log.error(msg);
 					throw new RemoteDataException(msg);
-				} 
-			} 
-			else 
+				}
+			}
+			else
 			{
 			    String resolvedPath;
 			    try {resolvedPath = resolvePath(remotedir);}
@@ -979,10 +979,10 @@ public final class MaverickSFTP implements RemoteDataClient
                         log.error(msg, e);
                         throw e;
                     }
-			    
+
 			    // bust cache since this file has now changed
                 fileInfoCache.remove(resolvedPath);
-                
+
                 try {
 
 					//getClient().get(resolvePath(remoteSource), localTarget.getAbsolutePath(), listener);
@@ -990,7 +990,7 @@ public final class MaverickSFTP implements RemoteDataClient
 						.build();
 
 					// Create an sfpt service client (blocking - synchronous)
-					SFTPGrpc.SFTPBlockingStub sftpClient = SFTPGrpc.newBlockingStub(channel);
+					SFTPRelayGrpc.SFTPRelayBlockingStub sftpClient = SFTPRelayGrpc.newBlockingStub(channel);
 
 					// create a protocol buffer sftp message
 					Sftp sftp = Sftp.newBuilder()

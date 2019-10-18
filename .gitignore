@@ -76,3 +76,6 @@ config/testbed/third-party-rc.yml
 
 
 /pathhash2.txt
+agave-protos/protos-go/pkg
+agave-transfers/sftp-relay/cmd/client/main.go.bak
+agave-transfers/sftp-relay/cmd/client/cmd/root.go.bak

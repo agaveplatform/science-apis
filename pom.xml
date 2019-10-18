@@ -488,6 +488,7 @@
 
 	<modules>
 		<module>agave-protos</module>
+		<module>agave-transfers</module>
 		<module>agave-common</module>
 		<module>agave-postits</module>
 		<module>agave-usage</module>

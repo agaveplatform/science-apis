@@ -1,139 +1,281 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-	<modelVersion>4.0.0</modelVersion>
+    <modelVersion>4.0.0</modelVersion>
 
-	<parent>
-		<groupId>org.agaveplatform</groupId>
-		<artifactId>science-apis</artifactId>
-		<version>2.2.24</version>
-	</parent>
+    <parent>
+        <groupId>org.agaveplatform</groupId>
+        <artifactId>science-apis</artifactId>
+        <version>2.2.24</version>
+    </parent>
 
-	<artifactId>agave-migrations</artifactId>
-	<name>Agave Platform Database Migrations</name>
-	<description>Migration definitions and controls for the Agave Platform</description>
-	<packaging>jar</packaging>
+    <artifactId>agave-migrations</artifactId>
+    <name>Agave Platform Database Migrations</name>
+    <description>Migration definitions and controls for the Agave Platform</description>
+    <packaging>jar</packaging>
 
-	<build>
-		<resources>
-			<resource>
-				<filtering>true</filtering>
-				<directory>src/main/resources</directory>
-			</resource>
-			<resource>
-				<filtering>true</filtering>
-				<directory>src/main/docker</directory>
-			</resource>
-		</resources>
-		<testResources>
-			<testResource>
-				<filtering>true</filtering>
-				<directory>src/test/docker</directory>
-			</testResource>
-		</testResources>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>copy-dependencies</id>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>copy-dependencies</goal>
-						</goals>
-						<configuration>
-							<!-- <outputDirectory>${project.build.directory}/lib</outputDirectory> -->
-							<overWriteReleases>false</overWriteReleases>
-							<overWriteSnapshots>false</overWriteSnapshots>
-							<overWriteIfNewer>true</overWriteIfNewer>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>
-			<!-- Migration script runs during test setup phase. The result will be 
-				a contain -->
-			<plugin>
-				<groupId>org.flywaydb</groupId>
-			    <artifactId>flyway-maven-plugin</artifactId>
-			    <version>${flyway-maven-plugin.version}</version>
-				<configuration>
-					<driver>${foundation.db.driver}</driver>
-					<table>migrations</table>
-					<url>${foundation.db.url}</url> 
-					<user>${foundation.db.username}</user> 
-					<password>${foundation.db.password}</password>
-					<baselineVersion>${project.version}</baselineVersion> 
-					<baselineDescription>Base Migration</baselineDescription>
-					<locations>
-        				<location>filesystem:src/main/resources/db/migration</location>
-        				<location>classpath:org/iplantc/service/common/migration</location>
-					</locations>
-					<skip>${skip.migrations}</skip>
-				</configuration>
-			</plugin>
-		</plugins>
-		<pluginManagement>
-			<plugins>
-				<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-				<plugin>
-					<groupId>org.eclipse.m2e</groupId>
-					<artifactId>lifecycle-mapping</artifactId>
-					<version>${org.eclipse.m2e.lifecycle-mapping.version}</version>
-					<configuration>
-						<lifecycleMappingMetadata>
-							<pluginExecutions>
-								<pluginExecution>
-									<pluginExecutionFilter>
-										<groupId>org.flywaydb</groupId>
-										<artifactId>
-											flyway-maven-plugin
-										</artifactId>
-										<versionRange>
-											${flyway-maven-plugin.versionRange}
-										</versionRange>
-										<goals>
-											<goal>migrate</goal>
-										</goals>
-									</pluginExecutionFilter>
-									<action>
-										<ignore></ignore>
-									</action>
-								</pluginExecution>
-							</pluginExecutions>
-						</lifecycleMappingMetadata>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
-	</build>
+    <build>
+        <resources>
+            <resource>
+                <filtering>true</filtering>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <filtering>true</filtering>
+                <directory>src/main/docker</directory>
+            </resource>
+        </resources>
+        <testResources>
+            <testResource>
+                <filtering>true</filtering>
+                <directory>src/test/docker</directory>
+            </testResource>
+        </testResources>
+        <plugins>
+            <!-- Copies flyway dependencies to the target directory
+                 for inclusion in the resulting image. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <!-- <outputDirectory>${project.build.directory}/lib</outputDirectory> -->
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.spotify</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <version>${docker-maven-plugin.version}</version>
+                <configuration>
+                    <!-- Standard build will build an image without the prefix so we don't
+                        force conventions on folks. -->
+                    <imageName>${project.artifactId}</imageName>
+                    <dockerDirectory>${basedir}/target/docker</dockerDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>build-container</id>
+                        <!-- Generic docker build of API -->
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                        <configuration>
 
-	<dependencies>
-		<!-- Fly way -->
-		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
-			<version>${flyway-core.version}</version>
-		</dependency>
+                            <useGitCommitId>false</useGitCommitId>
+                            <imageTags>
+                                <tag>${project.version}</tag>
+                            </imageTags>
+                            <forceTags>true</forceTags>
+                            <resources>
+                                <resource>
+                                    <targetPath>/</targetPath>
+                                    <directory>${basedir}/target/classes</directory>
+                                    <include>Dockerfile</include>
+                                </resource>
+                                <resource>
+                                    <targetPath>/conf</targetPath>
+                                    <directory>${basedir}/target/classes</directory>
+                                    <include>flyway.conf</include>
+                                </resource>
+                                <resource>
+                                    <targetPath>/</targetPath>
+                                    <directory>${basedir}/target/classes</directory>
+                                    <include>docker-entrypoint.sh</include>
+                                </resource>
+                                <resource>
+                                    <targetPath>/lib</targetPath>
+                                    <directory>${basedir}/target/</directory>
+                                    <include>${project.artifactId}-${project.version}.jar</include>
+                                </resource>
+                                <resource>
+                                    <targetPath>/lib</targetPath>
+                                    <directory>${basedir}/target/dependency</directory>
+                                    <include>**</include>
+<!--                                    <exclude>mysql*.jar</exclude>-->
+                                    <exclude>mariadb*.jar</exclude>
+                                    <exclude>flyway*.jar</exclude>
+                                </resource>
+                                <resource>
+                                    <targetPath>/drivers</targetPath>
+                                    <directory>${basedir}/target/dependency</directory>
+                                    <include>mariadb*.jar</include>
+                                </resource>
+                                <resource>
+                                    <targetPath>/sql</targetPath>
+                                    <directory>${basedir}/target/classes/db/migration</directory>
+                                    <include>*.sql</include>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+<!--                    <execution>-->
+<!--                        <id>remove-image</id>-->
+<!--                        &lt;!&ndash; Tag as the "latest". This represents the latest of the api &ndash;&gt;-->
+<!--                        <phase>clean</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>removeImage</goal>-->
+<!--                        </goals>-->
+<!--                        <configuration>-->
+<!--                            <imageTags>-->
+<!--                                <tag>latest</tag>-->
+<!--                                <tag>${project.version}</tag>-->
+<!--                                <tag>${buildNumber}</tag>-->
+<!--                                <tag>${buildNumber}.DIRTY</tag>-->
+<!--                            </imageTags>-->
+<!--                            <skip>${skip.docker.clean}</skip>-->
+<!--                            <imageName>${project.artifactId}</imageName>-->
+<!--                        </configuration>-->
+<!--                    </execution>-->
+                </executions>
+            </plugin>
 
-		<!-- mysql jdbc driver -->
-		<dependency>
-			<groupId>mysql</groupId>
-			<artifactId>mysql-connector-java</artifactId>
-			<version>${mysql-connector-java.version}</version>
-		</dependency>
-		
-		<!-- logging depedencies -->
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-log4j12</artifactId>
-			<version>${slf4j-log4j12.version}</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>${project.groupId}</groupId>
-			<artifactId>common-core</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-	</dependencies>
+            <!-- Snapshots the migrated db image and commits as our test image
+                 to be used in subsequent tests. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>${exec-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>migrate-integration-db</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>docker</executable>
+                            <workingDirectory>${basedir}</workingDirectory>
+                            <arguments>
+                                <argument>commit</argument>
+                                <argument>${project.artifactId}_mysql_1</argument>
+                                <argument>
+                                    agave-mariadb:${project.version}
+                                </argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Stands up a mariadb instance for the migrations to run against
+                 to create the db image for subsequent tests. -->
+            <plugin>
+                <groupId>com.dkanejs.maven.plugins</groupId>
+                <artifactId>docker-compose-maven-plugin</artifactId>
+                <configuration>
+                    <projectName>${project.artifactId}</projectName>
+                    <composeFiles>
+                        <composeFile>${basedir}/target/classes/docker-compose.yml</composeFile>
+                    </composeFiles>
+                    <ignorePullFailures>true</ignorePullFailures>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>migration-db-start</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>up</goal>
+                        </goals>
+                        <configuration>
+                            <services>mysql</services>
+                            <detachedMode>true</detachedMode>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>migration-db-run</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>up</goal>
+                        </goals>
+                        <configuration>
+                            <services>migrate</services>
+                            <detachedMode>false</detachedMode>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>migration-db-stop</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>down</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Runs migration script against the mariadb instance stood up in
+                 the pre-integration-test phase. The result will be our standard
+                 test db. -->
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>${flyway-maven-plugin.version}</version>
+                <configuration>
+                    <driver>${foundation.db.driver}</driver>
+                    <table>migrations</table>
+                    <url>${foundation.db.url}</url>
+                    <user>${foundation.db.username}</user>
+                    <password>${foundation.db.password}</password>
+                    <baselineVersion>${project.version}</baselineVersion>
+                    <baselineDescription>Base Migration</baselineDescription>
+                    <locations>
+                        <location>filesystem:src/main/resources/db/migration</location>
+                        <location>classpath:org/iplantc/service/common/migration</location>
+                    </locations>
+                    <skip>${skip.migrations}</skip>
+                </configuration>
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>integration-test</id>-->
+<!--                        <phase>integration-test</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>migrate</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+            </plugin>
+
+
+        </plugins>
+    </build>
+
+    <dependencies>
+        <!-- Fly way -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>${flyway-core.version}</version>
+        </dependency>
+
+        <!-- mysql jdbc driver -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>${mysql-connector-java.version}</version>
+        </dependency>
+
+        <!-- logging depedencies -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>${slf4j-log4j12.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>common-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
 </project>

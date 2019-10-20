@@ -1,38 +1,24 @@
-FROM agaveapi/java:8-maven
+FROM flyway/flyway:6.0
 
 MAINTAINER Agave Platform <help@agaveplatform.org>
 
-ENV FLYWAY_VERSION 4.1.1
-ENV FLYWAY_HOME /source/flyway-$FLYWAY_VERSION
-
-WORKDIR /source
-
-# Allow wget to connect to the maven repo without an ssl error.
-RUN apk update \
-    && apk add ca-certificates wget \
-    && update-ca-certificates
-
-RUN apk --update add bash && \
-	wget https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/$FLYWAY_VERSION/flyway-commandline-$FLYWAY_VERSION.tar.gz && \ 
-
-	# Now install the already built jar files into the container
-	# local maven repository
-	ls -al && \
-	tar xzf ./flyway-commandline-$FLYWAY_VERSION.tar.gz && \ 
-
-	ls -al $FLYWAY_HOME && \
-	rm flyway-commandline-$FLYWAY_VERSION.tar.gz && \
-	rm -rf $FLYWAY_HOME/drivers 
+ENV FLYWAY_VERSION 6.0
+ENV FLYWAY_HOME /flyway
+ENV FLYWAY_EDITION community
 
 # Now move in the filtered data and migrations
 # from the build.
 COPY conf/flyway.conf 			$FLYWAY_HOME/conf/flyway.conf
-COPY lib/** 					$FLYWAY_HOME/lib/
 COPY sql 						$FLYWAY_HOME/sql
-COPY drivers 					$FLYWAY_HOME/drivers
-COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY docker-entrypoint.sh 		/docker-entrypoint.sh
+COPY lib/** 					$FLYWAY_HOME/lib/
 
-RUN chmod +x /docker-entrypoint.sh
+USER root
+
+RUN chown -R flyway:flyway $FLYWAY_HOME && \
+	chmod +x /docker-entrypoint.sh
+
+USER flyway
 
 WORKDIR $FLYWAY_HOME
 

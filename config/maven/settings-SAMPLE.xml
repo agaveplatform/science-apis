@@ -34,7 +34,7 @@
 						<force.docker.push>false</force.docker.push>
 						<force.check.update>false</force.check.update>
 						<force.check.version>false</force.check.version>
-						<skip.docker.build>true</skip.docker.build>
+						<skip.docker.build>false</skip.docker.build>
 						<skip.docker.tag>true</skip.docker.tag>
 						<skip.docker.clean>true</skip.docker.clean>
 						<skip.utest.docker.build>true</skip.utest.docker.build>
@@ -45,7 +45,7 @@
 						<docker.registry.id>docker-registry</docker.registry.id>
 						<docker.registry.url>https://index.docker.io/v1/</docker.registry.url>
 						<docker.registry.username>agaveplatform</docker.registry.username>
-					    <skipDocker>true</skipDocker>
+					    <skipDocker>false</skipDocker>
 				</properties>
 		</profile>
 		<profile>

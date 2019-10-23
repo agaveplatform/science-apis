@@ -3,11 +3,37 @@ package iwriter
 import (
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
 	"io"
 	"os"
-	"strconv"
 )
+
 var log = logrus.New()
+
+type UriReader struct {
+	Username   string
+	PassWord   string
+	SystemId   string
+	HostKey    string
+	HostPort   string
+	ClientKey  string
+	FileName   string
+	FileSize   int64
+	BufferSize int64
+	IsLocal    bool
+}
+type UriWriter struct {
+	Username   string
+	PassWord   string
+	SystemId   string
+	HostKey    string
+	HostPort   string
+	ClientKey  string
+	FileName   string
+	FileSize   int64
+	BufferSize int64
+	IsLocal    bool
+}
 
 func init() {
 	// log to console and file
@@ -21,22 +47,12 @@ func init() {
 	log.Info("Set up loggin for server")
 }
 
+func IWriter(uriReader UriReader, UriWriter UriWriter, conn *ssh.Client) (int64, error) {
+	log.Info("Streaming Get Service function was invoked with")
 
-func IWriter(URI)  {
-	log.Info("CopyFromRemoteService function was invoked with %v\n", req)
-	fileName := req.Sftp.FileName
-	fileSize := req.Sftp.FileSize
-	bufferSize := req.Sftp.BufferSize
-	ConnParams.PassWord = req.Sftp.PassWord
-	ConnParams.SystemId = req.Sftp.SystemId
-	ConnParams.Username = req.Sftp.Username
-	ConnParams.HostKey = req.Sftp.HostKey
-	ConnParams.HostPort = req.Sftp.HostPort
-	ConnParams.ClientKey = req.Sftp.ClientKey
-
-	conn, err := getConnection()
-
+	log.Info(uriReader.FileSize)
 	result := ""
+	log.Info(result)
 
 	// create new SFTP client
 	client, err := sftp.NewClient(conn)
@@ -47,7 +63,8 @@ func IWriter(URI)  {
 	defer client.Close()
 
 	// create destination file
-	dstFile, err := os.Create(fileName)
+	//TODO make a unique file name here /scratch/filename
+	dstFile, err := os.Create(uriReader.FileName)
 	if err != nil {
 		log.Info("Error creating dest file", err)
 		result = err.Error()
@@ -55,25 +72,17 @@ func IWriter(URI)  {
 	defer dstFile.Close()
 
 	// open source file
-	srcFile, err := client.Open(fileName)
+	srcFile, err := client.Open(uriReader.FileName)
 	if err != nil {
 		log.Info("Opening source file: ", err)
 		result = err.Error()
 	}
 
-	for i
-	// copy with the WriteTo function
 	bytesWritten, err := srcFile.WriteTo(dstFile)
 	if err != nil {
 		log.Info("Error writing to file: ", err)
 	}
-
-
 	log.Info("%d bytes copied\n", bytesWritten)
-	log.Info(result)
-	res := &sftppb.CopyFromRemoteResponse{
-		Result: strconv.FormatInt(bytesWritten, 10),
-	}
-	log.Println(res.String())
-	return  nil
+
+	return bytesWritten, nil
 }

@@ -3,25 +3,37 @@ package ireader
 import (
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
-	conn "./pkg/connectionpol"
+	"golang.org/x/crypto/ssh"
 	"io"
 	"os"
 )
+
 var log = logrus.New()
 
-type URI struct {
-	Username string
-	PassWord string
-	SystemId string
-	HostKey string
-	HostPort string
-	ClientKey string
-	FileName string
-	FileSize int64
-	IsLocal bool
+type UriReader struct {
+	Username   string
+	PassWord   string
+	SystemId   string
+	HostKey    string
+	HostPort   string
+	ClientKey  string
+	FileName   string
+	FileSize   int64
+	BufferSize int64
+	IsLocal    bool
 }
-
-//var ConnUri = make ([]*URI,0)
+type UriWriter struct {
+	Username   string
+	PassWord   string
+	SystemId   string
+	HostKey    string
+	HostPort   string
+	ClientKey  string
+	FileName   string
+	FileSize   int64
+	BufferSize int64
+	IsLocal    bool
+}
 
 func init() {
 	// log to console and file
@@ -35,12 +47,10 @@ func init() {
 	log.Info("Set up loggin for server")
 }
 
+func IReader(uriReader UriReader, UriWriter UriWriter, conn *ssh.Client) (int64, error) {
+	log.Info("Streaming Get Service function was invoked with")
 
-func IReader(URI)  {
-	log.Info("Streaming Get Service function was invoked with %v\n", req)
-
-	conn, err := getConnection()
-	log.Info(fileSize)
+	log.Info(uriReader.FileSize)
 	result := ""
 	log.Info(result)
 
@@ -52,27 +62,27 @@ func IReader(URI)  {
 	}
 	defer client.Close()
 
+	// create destination file
+	//TODO make a unique file name here /scratch/filename
+	dstFile, err := os.Create(uriReader.FileName)
+	if err != nil {
+		log.Info("Error creating dest file", err)
+		result = err.Error()
+	}
+	defer dstFile.Close()
+
 	// open source file
-	srcFile, err := client.Open(fileName)
+	srcFile, err := client.Open(uriReader.FileName)
 	if err != nil {
 		log.Info("Opening source file: ", err)
 		result = err.Error()
 	}
-	defer srcFile.Close()
 
-
-	log.Info("reading %v bytes", bufferSize)
-	// Copy the file
-
-	for _, file := range files {
-		res := &sftppb.SrvGetResponse {
-			Result        string   `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-			XXX_NoUnkeyedLiteral struct{} `json:"-"`
-			XXX_unrecognized     []byte   `json:"-"`
-			XXX_sizecache        int32    `json:"-"`
-		}
-		stream.Send(res)
+	bytesWritten, err := srcFile.WriteTo(dstFile)
+	if err != nil {
+		log.Info("Error writing to file: ", err)
 	}
+	log.Info("%d bytes copied\n", bytesWritten)
 
-	return nil
+	return bytesWritten, nil
 }

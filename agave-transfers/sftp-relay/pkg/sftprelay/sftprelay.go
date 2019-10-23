@@ -1,14 +1,16 @@
 package sftprelay
 
 import (
+	cp "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/connectionpool"
+	iread "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/ireader"
+	iwrite "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/iwriter"
+	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 	"io"
 	"os"
 	"strconv"
-	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 )
 
 var log = logrus.New()
@@ -16,17 +18,20 @@ var log = logrus.New()
 type Server struct{}
 
 type URI struct {
-	Username string
-	PassWord string
-	SystemId string
-	HostKey string
-	HostPort string
-	ClientKey string
-	FileName string
-	FileSize int64
+	Username   string
+	PassWord   string
+	SystemId   string
+	HostKey    string
+	HostPort   string
+	ClientKey  string
+	FileName   string
+	FileSize   int64
+	BufferSize int64
 }
-//var ConnParams param
-var UriParams = make ([]*URI,0)
+
+var ConnParams URI
+
+//var UriParams = make ([]*URI,0)
 
 func init() {
 	// log to console and file
@@ -40,139 +45,182 @@ func init() {
 	log.Info("Set up loggin for server")
 }
 
-
-func getConnection(uri URI) (*ssh.Client, error){
-
-
-	// get host public key
-	//HostKey := getHostKey(systemId)
-	config := ssh.ClientConfig{
-		User: uri.Username,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(uri.PassWord),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		//HostKeyCallback: ssh.FixedHostKey(HostKey),
-	}
-
-	// connect
-	conn, err := ssh.Dial("tcp", uri.SystemId + uri.HostPort, &config)
-	if err != nil {
-		log.Info("Error Dialing the server: %f", err)
-		log.Error(err)
-	}
-	defer conn.Close()
-	return conn, nil
-}
-
-
 /*
 	This service gets a single request for a file from an SFTP server.  It goes to the server and sends back the file in
 	chunks sized based on the buffer_size variable.
 */
-func (*Server) StreamingReader(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvGetResponse){
-	log.Info("Streaming Get Service function was invoked with %v\n", req)
+func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) *sftppb.SrvGetResponse {
+	log.Info("Get Service function was invoked with %v\n", req)
 
-	fileName := req.HostSftp.FileName
-	fileSize := req.HostSftp.FileSize
-	bufferSize := req.HostSftp.BufferSize
+	ConnParams.Username = req.HostSftp.Username
 	ConnParams.PassWord = req.HostSftp.PassWord
 	ConnParams.SystemId = req.HostSftp.SystemId
-	ConnParams.Username = req.HostSftp.Username
 	ConnParams.HostKey = req.HostSftp.HostKey
 	ConnParams.HostPort = req.HostSftp.HostPort
 	ConnParams.ClientKey = req.HostSftp.ClientKey
+	ConnParams.FileName = req.HostSftp.FileName
+	ConnParams.FileSize = req.HostSftp.FileSize
+	ConnParams.BufferSize = req.HostSftp.BufferSize
 
-	conn, err := getConnection()
-	log.Info(fileSize)
-	result := ""
-	log.Info(result)
+	var bytes_Read int64 = 0
+	if ConnParams.Username != "" && ConnParams.PassWord != "" {
+		if ConnParams.SystemId != "" && ConnParams.HostPort != "" {
 
-	// create new SFTP client
-	client, err := sftp.NewClient(conn)
-	if err != nil {
-		log.Info("Error creating new client", err)
-		result = err.Error()
-	}
-	defer client.Close()
+			conn, err := cp.ConnectionPool(ConnParams.Username, ConnParams.PassWord, ConnParams.SystemId, ConnParams.HostKey, ConnParams.HostPort, ConnParams.ClientKey, ConnParams.FileName, ConnParams.FileSize)
+			if err != nil {
+				log.Error(err)
+			}
+			readsys := iread.UriReader{ConnParams.Username,
+				ConnParams.PassWord,
+				ConnParams.SystemId,
+				ConnParams.HostKey,
+				ConnParams.HostPort,
+				ConnParams.ClientKey,
+				ConnParams.FileName,
+				ConnParams.FileSize,
+				ConnParams.BufferSize,
+				true}
+			writesys := iread.UriWriter{ConnParams.Username,
+				ConnParams.PassWord,
+				ConnParams.SystemId,
+				ConnParams.HostKey,
+				ConnParams.HostPort,
+				ConnParams.ClientKey,
+				ConnParams.FileName,
+				ConnParams.FileSize,
+				ConnParams.BufferSize,
+				true}
+			bytesRead, err := iread.IReader(readsys, writesys, conn)
+			if err != nil {
+				log.Error(err)
+			}
+			if bytesRead <= 1 {
+				log.Error("It looks like nothing was done. There was a total of  %v bytes read ", bytesRead)
+			}
 
-	// open source file
-	srcFile, err := client.Open(fileName)
-	if err != nil {
-		log.Info("Opening source file: ", err)
-		result = err.Error()
-	}
-	defer srcFile.Close()
+			read_sys := iwrite.UriReader{ConnParams.Username,
+				ConnParams.PassWord,
+				ConnParams.SystemId,
+				ConnParams.HostKey,
+				ConnParams.HostPort,
+				ConnParams.ClientKey,
+				ConnParams.FileName,
+				ConnParams.FileSize,
+				ConnParams.BufferSize,
+				true}
+			write_sys := iwrite.UriWriter{ConnParams.Username,
+				ConnParams.PassWord,
+				ConnParams.SystemId,
+				ConnParams.HostKey,
+				ConnParams.HostPort,
+				ConnParams.ClientKey,
+				ConnParams.FileName,
+				ConnParams.FileSize,
+				ConnParams.BufferSize,
+				true}
+			bytes_Read, err := iwrite.IWriter(read_sys, write_sys, conn)
+			if err != nil {
+				log.Error(err)
+			}
 
-
-	log.Info("reading %v bytes", bufferSize)
-	// Copy the file
-
-	for _, file := range files {
-		res := &sftppb.SrvGetResponse {
-			Result        string   `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-			XXX_NoUnkeyedLiteral struct{} `json:"-"`
-			XXX_unrecognized     []byte   `json:"-"`
-			XXX_sizecache        int32    `json:"-"`
+			if bytes_Read <= 1 {
+				log.Error("It looks like nothing was done. There was a total of  %v bytes read ", bytes_Read)
+				return nil
+			}
 		}
-		stream.Send(res)
 	}
-
-	return nil
+	log.Info("%d bytes copied\n", bytes_Read)
+	res := &sftppb.SrvGetResponse{
+		Result: strconv.FormatInt(bytes_Read, 10),
+	}
+	log.Info(res.String())
+	return res
 }
 
-func (*Server) StreamingWriter(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvPutResponse){
+func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) *sftppb.SrvPutResponse {
 	log.Info("CopyFromRemoteService function was invoked with %v\n", req)
-	fileName := req.Sftp.FileName
-	fileSize := req.Sftp.FileSize
-	bufferSize := req.Sftp.BufferSize
-	ConnParams.PassWord = req.Sftp.PassWord
-	ConnParams.SystemId = req.Sftp.SystemId
-	ConnParams.Username = req.Sftp.Username
-	ConnParams.HostKey = req.Sftp.HostKey
-	ConnParams.HostPort = req.Sftp.HostPort
-	ConnParams.ClientKey = req.Sftp.ClientKey
 
-	conn, err := getConnection()
+	ConnParams.Username = req.HostSftp.Username
+	ConnParams.PassWord = req.HostSftp.PassWord
+	ConnParams.SystemId = req.HostSftp.SystemId
+	ConnParams.HostKey = req.HostSftp.HostKey
+	ConnParams.HostPort = req.HostSftp.HostPort
+	ConnParams.ClientKey = req.HostSftp.ClientKey
+	ConnParams.FileName = req.HostSftp.FileName
+	ConnParams.FileSize = req.HostSftp.FileSize
+	ConnParams.BufferSize = req.HostSftp.BufferSize
 
-	result := ""
+	var bytes_Read int64 = 0
+	if ConnParams.Username != "" && ConnParams.PassWord != "" {
+		if ConnParams.SystemId != "" && ConnParams.HostPort != "" {
 
-	// create new SFTP client
-	client, err := sftp.NewClient(conn)
-	if err != nil {
-		log.Info("Error creating new client", err)
-		result = err.Error()
+			conn, err := cp.ConnectionPool(ConnParams.Username, ConnParams.PassWord, ConnParams.SystemId, ConnParams.HostKey, ConnParams.HostPort, ConnParams.ClientKey, ConnParams.FileName, ConnParams.FileSize)
+			if err != nil {
+				log.Error(err)
+			}
+			readsys := iread.UriReader{ConnParams.Username,
+				ConnParams.PassWord,
+				ConnParams.SystemId,
+				ConnParams.HostKey,
+				ConnParams.HostPort,
+				ConnParams.ClientKey,
+				ConnParams.FileName,
+				ConnParams.FileSize,
+				ConnParams.BufferSize,
+				true}
+			writesys := iread.UriWriter{ConnParams.Username,
+				ConnParams.PassWord,
+				ConnParams.SystemId,
+				ConnParams.HostKey,
+				ConnParams.HostPort,
+				ConnParams.ClientKey,
+				ConnParams.FileName,
+				ConnParams.FileSize,
+				ConnParams.BufferSize,
+				true}
+			bytesRead, err := iread.IReader(readsys, writesys, conn)
+			if err != nil {
+				log.Error(err)
+			}
+			if bytesRead <= 1 {
+				log.Error("It looks like nothing was done. There was a total of  %v bytes read ", bytesRead)
+			}
+
+			read_sys := iwrite.UriReader{ConnParams.Username,
+				ConnParams.PassWord,
+				ConnParams.SystemId,
+				ConnParams.HostKey,
+				ConnParams.HostPort,
+				ConnParams.ClientKey,
+				ConnParams.FileName,
+				ConnParams.FileSize,
+				ConnParams.BufferSize,
+				true}
+			write_sys := iwrite.UriWriter{ConnParams.Username,
+				ConnParams.PassWord,
+				ConnParams.SystemId,
+				ConnParams.HostKey,
+				ConnParams.HostPort,
+				ConnParams.ClientKey,
+				ConnParams.FileName,
+				ConnParams.FileSize,
+				ConnParams.BufferSize,
+				true}
+			bytes_Read, err := iwrite.IWriter(read_sys, write_sys, conn)
+			if err != nil {
+				log.Error(err)
+			}
+
+			if bytes_Read <= 1 {
+				log.Error("It looks like nothing was done. There was a total of  %v bytes read ", bytes_Read)
+				return nil
+			}
+		}
 	}
-	defer client.Close()
-
-	// create destination file
-	dstFile, err := os.Create(fileName)
-	if err != nil {
-		log.Info("Error creating dest file", err)
-		result = err.Error()
+	log.Info("%d bytes copied\n", bytes_Read)
+	res := &sftppb.SrvPutResponse{
+		Result: strconv.FormatInt(bytes_Read, 10),
 	}
-	defer dstFile.Close()
-
-	// open source file
-	srcFile, err := client.Open(fileName)
-	if err != nil {
-		log.Info("Opening source file: ", err)
-		result = err.Error()
-	}
-
-	for i
-	// copy with the WriteTo function
-	bytesWritten, err := srcFile.WriteTo(dstFile)
-	if err != nil {
-		log.Info("Error writing to file: ", err)
-	}
-
-
-	log.Info("%d bytes copied\n", bytesWritten)
-	log.Info(result)
-	res := &sftppb.CopyFromRemoteResponse{
-		Result: strconv.FormatInt(bytesWritten, 10),
-	}
-	log.Println(res.String())
-	return  nil
+	log.Info(res.String())
+	return res
 }

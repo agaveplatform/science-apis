@@ -11,18 +11,19 @@ var log = logrus.New()
 
 type Server struct{}
 
-type URI struct {
-	Username  string
-	PassWord  string
-	SystemId  string
-	HostKey   string
-	HostPort  string
-	ClientKey string
-	FileName  string
-	FileSize  int64
+type UriParams struct {
+	username  string
+	passWord  string
+	systemId  string
+	hostKey   string
+	hostPort  string
+	clientKey string
+	fileName  string
+	fileSize  int64
+	conn      *ssh.Client
 }
 
-var UriParams = make([]*URI, 0)
+var UriSlice = make([]*UriParams, 10)
 
 func init() {
 	// log to console and file
@@ -36,26 +37,46 @@ func init() {
 	log.Info("Set up loggin for server")
 }
 
-func connectionpool(uri URI) (*ssh.Client, error) {
+func ConnectionPool(Username string, PassWord string, SystemId string, HostKey string, HostPort string, ClientKey string, FileName string, FileSize int64) (*ssh.Client, error) {
 
+	concat := Username + PassWord + SystemId + HostKey + HostPort + ClientKey
+	var i int
+
+	for i = 0; i < len(UriSlice); i++ {
+		if concat == UriSlice[i].username+UriSlice[i].passWord+UriSlice[i].systemId+UriSlice[i].hostKey+UriSlice[i].hostPort+UriSlice[i].clientKey {
+			return UriSlice[i].conn, nil
+		}
+	}
 	// get host public key
 	//HostKey := getHostKey(systemId)
 	config := ssh.ClientConfig{
-		User: uri.Username,
+		User: Username,
 		Auth: []ssh.AuthMethod{
-			ssh.Password(uri.PassWord),
+			ssh.Password(PassWord),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		//HostKeyCallback: ssh.FixedHostKey(HostKey),
 	}
 
 	// connect
-	conn, err := ssh.Dial("tcp", uri.SystemId+uri.HostPort, &config)
+	conn, err := ssh.Dial("tcp", SystemId+HostPort, &config)
 	if err != nil {
 		log.Info("Error Dialing the server: %f", err)
 		log.Error(err)
-
+		return nil, err
 	}
 	defer conn.Close()
+
+	UriSlice = append(UriSlice, &UriParams{
+		Username,
+		PassWord,
+		SystemId,
+		HostKey,
+		HostPort,
+		ClientKey,
+		FileName,
+		FileSize,
+		conn})
+
 	return conn, nil
 }

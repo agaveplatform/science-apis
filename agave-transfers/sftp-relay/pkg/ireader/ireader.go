@@ -47,6 +47,8 @@ func init() {
 	log.Info("Set up loggin for server")
 }
 
+//The assumption is that we are going to copy a file from a remote server to a local temp file.
+// it will then be processed by a second client that will take the client and move the file to a second remote server.
 func IReader(uriReader UriReader, UriWriter UriWriter, conn *ssh.Client) (int64, error) {
 	log.Info("Streaming Get Service function was invoked with")
 

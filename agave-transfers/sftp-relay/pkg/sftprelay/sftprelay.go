@@ -5,7 +5,6 @@ import (
 	iread "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/ireader"
 	iwrite "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/iwriter"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
-	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"io"
@@ -154,7 +153,7 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) *sftppb.SrvPu
 	if ConnParams.Username != "" && ConnParams.PassWord != "" {
 		if ConnParams.SystemId != "" && ConnParams.HostPort != "" {
 
-			conn, err := cp.ConnectionPool(ConnParams.Username, ConnParams.PassWord, ConnParams.SystemId, ConnParams.HostKey, ConnParams.HostPort, ConnParams.ClientKey, ConnParams.FileName, ConnParams.FileSize)
+			read_conn, err := cp.ConnectionPool(ConnParams.Username, ConnParams.PassWord, ConnParams.SystemId, ConnParams.HostKey, ConnParams.HostPort, ConnParams.ClientKey, ConnParams.FileName, ConnParams.FileSize)
 			if err != nil {
 				log.Error(err)
 			}
@@ -168,6 +167,7 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) *sftppb.SrvPu
 				ConnParams.FileSize,
 				ConnParams.BufferSize,
 				true}
+
 			writesys := iread.UriWriter{ConnParams.Username,
 				ConnParams.PassWord,
 				ConnParams.SystemId,
@@ -178,7 +178,7 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) *sftppb.SrvPu
 				ConnParams.FileSize,
 				ConnParams.BufferSize,
 				true}
-			bytesRead, err := iread.IReader(readsys, writesys, conn)
+			bytesRead, err := iread.IReader(readsys, writesys, read_conn)
 			if err != nil {
 				log.Error(err)
 			}
@@ -206,7 +206,7 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) *sftppb.SrvPu
 				ConnParams.FileSize,
 				ConnParams.BufferSize,
 				true}
-			bytes_Read, err := iwrite.IWriter(read_sys, write_sys, conn)
+			bytes_Read, err := iwrite.IWriter(read_sys, write_sys, read_conn)
 			if err != nil {
 				log.Error(err)
 			}

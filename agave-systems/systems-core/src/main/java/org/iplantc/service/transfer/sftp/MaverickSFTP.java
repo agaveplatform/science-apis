@@ -110,16 +110,16 @@ public final class MaverickSFTP implements RemoteDataClient
 	}
 
 	public MaverickSFTP(String host, int port, String username, String password, String rootDir, String homeDir, String proxyHost, int proxyPort)
-{
-	this.host = host;
-	this.port = port > 0 ? port : 22;
-	this.username = username;
-	this.password = password;
-	this.proxyHost = proxyHost;
-	this.proxyPort = proxyPort;
+	{
+		this.host = host;
+		this.port = port > 0 ? port : 22;
+		this.username = username;
+		this.password = password;
+		this.proxyHost = proxyHost;
+		this.proxyPort = proxyPort;
 
-	updateSystemRoots(rootDir, homeDir);
-}
+		updateSystemRoots(rootDir, homeDir);
+	}
 	
 	public MaverickSFTP(String host, int port, String username, String password, String rootDir, String homeDir, String publicKey, String privateKey)
 	{
@@ -746,7 +746,7 @@ public final class MaverickSFTP implements RemoteDataClient
 				
 				try {
 					//getClient().get(resolvePath(remoteSource), localTarget.getAbsolutePath(), listener);
-					ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).build();
+					ManagedChannel channel = ManagedChannelBuilder.forAddress(remoteSource, 50051).usePlaintext().build();
 
 					// Create an sfpt service client (blocking - synchronous)
 					SFTPRelayGrpc.SFTPRelayBlockingStub sftpClient = SFTPRelayGrpc.newBlockingStub(channel);
@@ -758,6 +758,13 @@ public final class MaverickSFTP implements RemoteDataClient
                 			.setSystemId(host)
 							.setHostPort(":2225")
                 			.build();
+
+					Sftp uriFrom = hostSftp.newBuilder()
+							.setPassWord(password)
+							.setUsername(username)
+							.setSystemId(host)
+							.setHostPort(":2225")
+							.build();
 
 					 //create a CopyLocalToRemoteRequest
 					CopyFromRemoteRequest copyFromRemoteRequest = CopyFromRemoteRequest.newBuilder()

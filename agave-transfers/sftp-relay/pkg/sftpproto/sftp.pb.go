@@ -34,6 +34,7 @@ type Sftp struct {
 	HostPort             string   `protobuf:"bytes,7,opt,name=hostPort,proto3" json:"hostPort,omitempty"`
 	ClientKey            string   `protobuf:"bytes,8,opt,name=clientKey,proto3" json:"clientKey,omitempty"`
 	BufferSize           int64    `protobuf:"varint,9,opt,name=bufferSize,proto3" json:"bufferSize,omitempty"`
+	Type                 string   `protobuf:"bytes,10,opt,name=type,proto3" json:"type,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -127,268 +128,16 @@ func (m *Sftp) GetBufferSize() int64 {
 	return 0
 }
 
-type URI struct {
-	Username             string   `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
-	PassWord             string   `protobuf:"bytes,2,opt,name=passWord,proto3" json:"passWord,omitempty"`
-	SystemId             string   `protobuf:"bytes,3,opt,name=systemId,proto3" json:"systemId,omitempty"`
-	HostKey              string   `protobuf:"bytes,4,opt,name=hostKey,proto3" json:"hostKey,omitempty"`
-	FileName             string   `protobuf:"bytes,5,opt,name=fileName,proto3" json:"fileName,omitempty"`
-	FileSize             int64    `protobuf:"varint,6,opt,name=fileSize,proto3" json:"fileSize,omitempty"`
-	HostPort             string   `protobuf:"bytes,7,opt,name=hostPort,proto3" json:"hostPort,omitempty"`
-	ClientKey            string   `protobuf:"bytes,8,opt,name=clientKey,proto3" json:"clientKey,omitempty"`
-	BufferSize           int64    `protobuf:"varint,9,opt,name=bufferSize,proto3" json:"bufferSize,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *URI) Reset()         { *m = URI{} }
-func (m *URI) String() string { return proto.CompactTextString(m) }
-func (*URI) ProtoMessage()    {}
-func (*URI) Descriptor() ([]byte, []int) {
-	return fileDescriptor_78fc9c5a618b7cda, []int{1}
-}
-
-func (m *URI) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_URI.Unmarshal(m, b)
-}
-func (m *URI) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_URI.Marshal(b, m, deterministic)
-}
-func (m *URI) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_URI.Merge(m, src)
-}
-func (m *URI) XXX_Size() int {
-	return xxx_messageInfo_URI.Size(m)
-}
-func (m *URI) XXX_DiscardUnknown() {
-	xxx_messageInfo_URI.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_URI proto.InternalMessageInfo
-
-func (m *URI) GetUsername() string {
+func (m *Sftp) GetType() string {
 	if m != nil {
-		return m.Username
-	}
-	return ""
-}
-
-func (m *URI) GetPassWord() string {
-	if m != nil {
-		return m.PassWord
-	}
-	return ""
-}
-
-func (m *URI) GetSystemId() string {
-	if m != nil {
-		return m.SystemId
-	}
-	return ""
-}
-
-func (m *URI) GetHostKey() string {
-	if m != nil {
-		return m.HostKey
-	}
-	return ""
-}
-
-func (m *URI) GetFileName() string {
-	if m != nil {
-		return m.FileName
-	}
-	return ""
-}
-
-func (m *URI) GetFileSize() int64 {
-	if m != nil {
-		return m.FileSize
-	}
-	return 0
-}
-
-func (m *URI) GetHostPort() string {
-	if m != nil {
-		return m.HostPort
-	}
-	return ""
-}
-
-func (m *URI) GetClientKey() string {
-	if m != nil {
-		return m.ClientKey
-	}
-	return ""
-}
-
-func (m *URI) GetBufferSize() int64 {
-	if m != nil {
-		return m.BufferSize
-	}
-	return 0
-}
-
-type CopyLocalToRemoteRequest struct {
-	Sftp                 *Sftp    `protobuf:"bytes,1,opt,name=sftp,proto3" json:"sftp,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *CopyLocalToRemoteRequest) Reset()         { *m = CopyLocalToRemoteRequest{} }
-func (m *CopyLocalToRemoteRequest) String() string { return proto.CompactTextString(m) }
-func (*CopyLocalToRemoteRequest) ProtoMessage()    {}
-func (*CopyLocalToRemoteRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_78fc9c5a618b7cda, []int{2}
-}
-
-func (m *CopyLocalToRemoteRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_CopyLocalToRemoteRequest.Unmarshal(m, b)
-}
-func (m *CopyLocalToRemoteRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_CopyLocalToRemoteRequest.Marshal(b, m, deterministic)
-}
-func (m *CopyLocalToRemoteRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CopyLocalToRemoteRequest.Merge(m, src)
-}
-func (m *CopyLocalToRemoteRequest) XXX_Size() int {
-	return xxx_messageInfo_CopyLocalToRemoteRequest.Size(m)
-}
-func (m *CopyLocalToRemoteRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_CopyLocalToRemoteRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_CopyLocalToRemoteRequest proto.InternalMessageInfo
-
-func (m *CopyLocalToRemoteRequest) GetSftp() *Sftp {
-	if m != nil {
-		return m.Sftp
-	}
-	return nil
-}
-
-type CopyLocalToRemoteResponse struct {
-	Result               string   `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *CopyLocalToRemoteResponse) Reset()         { *m = CopyLocalToRemoteResponse{} }
-func (m *CopyLocalToRemoteResponse) String() string { return proto.CompactTextString(m) }
-func (*CopyLocalToRemoteResponse) ProtoMessage()    {}
-func (*CopyLocalToRemoteResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_78fc9c5a618b7cda, []int{3}
-}
-
-func (m *CopyLocalToRemoteResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_CopyLocalToRemoteResponse.Unmarshal(m, b)
-}
-func (m *CopyLocalToRemoteResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_CopyLocalToRemoteResponse.Marshal(b, m, deterministic)
-}
-func (m *CopyLocalToRemoteResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CopyLocalToRemoteResponse.Merge(m, src)
-}
-func (m *CopyLocalToRemoteResponse) XXX_Size() int {
-	return xxx_messageInfo_CopyLocalToRemoteResponse.Size(m)
-}
-func (m *CopyLocalToRemoteResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_CopyLocalToRemoteResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_CopyLocalToRemoteResponse proto.InternalMessageInfo
-
-func (m *CopyLocalToRemoteResponse) GetResult() string {
-	if m != nil {
-		return m.Result
-	}
-	return ""
-}
-
-type CopyFromRemoteRequest struct {
-	Sftp                 *Sftp    `protobuf:"bytes,1,opt,name=sftp,proto3" json:"sftp,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *CopyFromRemoteRequest) Reset()         { *m = CopyFromRemoteRequest{} }
-func (m *CopyFromRemoteRequest) String() string { return proto.CompactTextString(m) }
-func (*CopyFromRemoteRequest) ProtoMessage()    {}
-func (*CopyFromRemoteRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_78fc9c5a618b7cda, []int{4}
-}
-
-func (m *CopyFromRemoteRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_CopyFromRemoteRequest.Unmarshal(m, b)
-}
-func (m *CopyFromRemoteRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_CopyFromRemoteRequest.Marshal(b, m, deterministic)
-}
-func (m *CopyFromRemoteRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CopyFromRemoteRequest.Merge(m, src)
-}
-func (m *CopyFromRemoteRequest) XXX_Size() int {
-	return xxx_messageInfo_CopyFromRemoteRequest.Size(m)
-}
-func (m *CopyFromRemoteRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_CopyFromRemoteRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_CopyFromRemoteRequest proto.InternalMessageInfo
-
-func (m *CopyFromRemoteRequest) GetSftp() *Sftp {
-	if m != nil {
-		return m.Sftp
-	}
-	return nil
-}
-
-type CopyFromRemoteResponse struct {
-	Result               string   `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *CopyFromRemoteResponse) Reset()         { *m = CopyFromRemoteResponse{} }
-func (m *CopyFromRemoteResponse) String() string { return proto.CompactTextString(m) }
-func (*CopyFromRemoteResponse) ProtoMessage()    {}
-func (*CopyFromRemoteResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_78fc9c5a618b7cda, []int{5}
-}
-
-func (m *CopyFromRemoteResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_CopyFromRemoteResponse.Unmarshal(m, b)
-}
-func (m *CopyFromRemoteResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_CopyFromRemoteResponse.Marshal(b, m, deterministic)
-}
-func (m *CopyFromRemoteResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CopyFromRemoteResponse.Merge(m, src)
-}
-func (m *CopyFromRemoteResponse) XXX_Size() int {
-	return xxx_messageInfo_CopyFromRemoteResponse.Size(m)
-}
-func (m *CopyFromRemoteResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_CopyFromRemoteResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_CopyFromRemoteResponse proto.InternalMessageInfo
-
-func (m *CopyFromRemoteResponse) GetResult() string {
-	if m != nil {
-		return m.Result
+		return m.Type
 	}
 	return ""
 }
 
 type SrvPutRequest struct {
-	HostSftp             *URI     `protobuf:"bytes,1,opt,name=hostSftp,proto3" json:"hostSftp,omitempty"`
-	RemSftp              *URI     `protobuf:"bytes,2,opt,name=remSftp,proto3" json:"remSftp,omitempty"`
+	SrceSftp             *Sftp    `protobuf:"bytes,1,opt,name=srceSftp,proto3" json:"srceSftp,omitempty"`
+	DestSftp             *Sftp    `protobuf:"bytes,2,opt,name=destSftp,proto3" json:"destSftp,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -398,7 +147,7 @@ func (m *SrvPutRequest) Reset()         { *m = SrvPutRequest{} }
 func (m *SrvPutRequest) String() string { return proto.CompactTextString(m) }
 func (*SrvPutRequest) ProtoMessage()    {}
 func (*SrvPutRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_78fc9c5a618b7cda, []int{6}
+	return fileDescriptor_78fc9c5a618b7cda, []int{1}
 }
 
 func (m *SrvPutRequest) XXX_Unmarshal(b []byte) error {
@@ -419,16 +168,16 @@ func (m *SrvPutRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_SrvPutRequest proto.InternalMessageInfo
 
-func (m *SrvPutRequest) GetHostSftp() *URI {
+func (m *SrvPutRequest) GetSrceSftp() *Sftp {
 	if m != nil {
-		return m.HostSftp
+		return m.SrceSftp
 	}
 	return nil
 }
 
-func (m *SrvPutRequest) GetRemSftp() *URI {
+func (m *SrvPutRequest) GetDestSftp() *Sftp {
 	if m != nil {
-		return m.RemSftp
+		return m.DestSftp
 	}
 	return nil
 }
@@ -444,7 +193,7 @@ func (m *SrvPutResponse) Reset()         { *m = SrvPutResponse{} }
 func (m *SrvPutResponse) String() string { return proto.CompactTextString(m) }
 func (*SrvPutResponse) ProtoMessage()    {}
 func (*SrvPutResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_78fc9c5a618b7cda, []int{7}
+	return fileDescriptor_78fc9c5a618b7cda, []int{2}
 }
 
 func (m *SrvPutResponse) XXX_Unmarshal(b []byte) error {
@@ -473,8 +222,8 @@ func (m *SrvPutResponse) GetResult() string {
 }
 
 type SrvGetRequest struct {
-	HostSftp             *URI     `protobuf:"bytes,1,opt,name=hostSftp,proto3" json:"hostSftp,omitempty"`
-	RemSftp              *URI     `protobuf:"bytes,2,opt,name=remSftp,proto3" json:"remSftp,omitempty"`
+	SrceSftp             *Sftp    `protobuf:"bytes,1,opt,name=srceSftp,proto3" json:"srceSftp,omitempty"`
+	DestSftp             *Sftp    `protobuf:"bytes,2,opt,name=destSftp,proto3" json:"destSftp,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -484,7 +233,7 @@ func (m *SrvGetRequest) Reset()         { *m = SrvGetRequest{} }
 func (m *SrvGetRequest) String() string { return proto.CompactTextString(m) }
 func (*SrvGetRequest) ProtoMessage()    {}
 func (*SrvGetRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_78fc9c5a618b7cda, []int{8}
+	return fileDescriptor_78fc9c5a618b7cda, []int{3}
 }
 
 func (m *SrvGetRequest) XXX_Unmarshal(b []byte) error {
@@ -505,16 +254,16 @@ func (m *SrvGetRequest) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_SrvGetRequest proto.InternalMessageInfo
 
-func (m *SrvGetRequest) GetHostSftp() *URI {
+func (m *SrvGetRequest) GetSrceSftp() *Sftp {
 	if m != nil {
-		return m.HostSftp
+		return m.SrceSftp
 	}
 	return nil
 }
 
-func (m *SrvGetRequest) GetRemSftp() *URI {
+func (m *SrvGetRequest) GetDestSftp() *Sftp {
 	if m != nil {
-		return m.RemSftp
+		return m.DestSftp
 	}
 	return nil
 }
@@ -530,7 +279,7 @@ func (m *SrvGetResponse) Reset()         { *m = SrvGetResponse{} }
 func (m *SrvGetResponse) String() string { return proto.CompactTextString(m) }
 func (*SrvGetResponse) ProtoMessage()    {}
 func (*SrvGetResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_78fc9c5a618b7cda, []int{9}
+	return fileDescriptor_78fc9c5a618b7cda, []int{4}
 }
 
 func (m *SrvGetResponse) XXX_Unmarshal(b []byte) error {
@@ -560,11 +309,6 @@ func (m *SrvGetResponse) GetResult() string {
 
 func init() {
 	proto.RegisterType((*Sftp)(nil), "sftpproto.Sftp")
-	proto.RegisterType((*URI)(nil), "sftpproto.URI")
-	proto.RegisterType((*CopyLocalToRemoteRequest)(nil), "sftpproto.CopyLocalToRemoteRequest")
-	proto.RegisterType((*CopyLocalToRemoteResponse)(nil), "sftpproto.CopyLocalToRemoteResponse")
-	proto.RegisterType((*CopyFromRemoteRequest)(nil), "sftpproto.CopyFromRemoteRequest")
-	proto.RegisterType((*CopyFromRemoteResponse)(nil), "sftpproto.CopyFromRemoteResponse")
 	proto.RegisterType((*SrvPutRequest)(nil), "sftpproto.SrvPutRequest")
 	proto.RegisterType((*SrvPutResponse)(nil), "sftpproto.SrvPutResponse")
 	proto.RegisterType((*SrvGetRequest)(nil), "sftpproto.SrvGetRequest")
@@ -574,38 +318,31 @@ func init() {
 func init() { proto.RegisterFile("sftp.proto", fileDescriptor_78fc9c5a618b7cda) }
 
 var fileDescriptor_78fc9c5a618b7cda = []byte{
-	// 489 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe4, 0x54, 0xd1, 0x8a, 0xd3, 0x40,
-	0x14, 0x25, 0x49, 0x6d, 0x37, 0x57, 0xac, 0x30, 0xe0, 0x32, 0x5b, 0x44, 0x6a, 0x56, 0xa1, 0xf8,
-	0x10, 0xa4, 0xfb, 0xb6, 0x08, 0xe2, 0x0a, 0xbb, 0x14, 0x45, 0xc2, 0x64, 0x17, 0x41, 0x7c, 0xc9,
-	0x76, 0x6f, 0x6a, 0x21, 0xe9, 0xc4, 0x99, 0x49, 0xa1, 0xbe, 0x8a, 0x7e, 0x88, 0x5f, 0xe4, 0x27,
-	0xc9, 0x4c, 0x3a, 0x69, 0x88, 0xa1, 0x8a, 0x0f, 0xbe, 0xec, 0x5b, 0xce, 0x9c, 0x7b, 0xee, 0xb9,
-	0xb9, 0x73, 0x18, 0x00, 0x99, 0xaa, 0x22, 0x2c, 0x04, 0x57, 0x9c, 0xf8, 0xfa, 0xdb, 0x7c, 0x06,
-	0xdf, 0x5d, 0xe8, 0xc5, 0xa9, 0x2a, 0xc8, 0x08, 0x0e, 0x4a, 0x89, 0x62, 0x95, 0xe4, 0x48, 0x9d,
-	0xb1, 0x33, 0xf1, 0x59, 0x8d, 0x35, 0x57, 0x24, 0x52, 0xbe, 0xe7, 0xe2, 0x86, 0xba, 0x15, 0x67,
-	0xb1, 0xe6, 0xe4, 0x46, 0x2a, 0xcc, 0x67, 0x37, 0xd4, 0xab, 0x38, 0x8b, 0x09, 0x85, 0xc1, 0x27,
-	0x2e, 0xd5, 0x1b, 0xdc, 0xd0, 0x9e, 0xa1, 0x2c, 0xd4, 0xaa, 0x74, 0x99, 0xe1, 0x3b, 0xed, 0x76,
-	0xa7, 0x52, 0x59, 0x6c, 0xb9, 0x78, 0xf9, 0x05, 0x69, 0x7f, 0xec, 0x4c, 0x3c, 0x56, 0x63, 0xcd,
-	0xe9, 0x16, 0x11, 0x17, 0x8a, 0x0e, 0x2a, 0x9d, 0xc5, 0xe4, 0x21, 0xf8, 0xf3, 0x6c, 0x89, 0x2b,
-	0xe3, 0x77, 0x60, 0xc8, 0xdd, 0x01, 0x79, 0x04, 0x70, 0x5d, 0xa6, 0x29, 0x0a, 0xd3, 0xd7, 0x37,
-	0x7d, 0x1b, 0x27, 0xc1, 0x37, 0x17, 0xbc, 0x2b, 0x36, 0xbb, 0xf5, 0x7b, 0x78, 0x09, 0xf4, 0x35,
-	0x2f, 0x36, 0x6f, 0xf9, 0x3c, 0xc9, 0x2e, 0x39, 0xc3, 0x9c, 0x2b, 0x64, 0xf8, 0xb9, 0x44, 0xa9,
-	0xc8, 0x31, 0xf4, 0x74, 0x72, 0xcc, 0x5e, 0xee, 0x4e, 0xef, 0x87, 0x75, 0x8c, 0x42, 0x1d, 0x21,
-	0x66, 0xc8, 0xe0, 0x04, 0x8e, 0x3a, 0x1a, 0xc8, 0x82, 0xaf, 0x24, 0x92, 0x43, 0xe8, 0x0b, 0x94,
-	0x65, 0xa6, 0xb6, 0xbb, 0xdd, 0xa2, 0xe0, 0x05, 0x3c, 0xd0, 0xa2, 0x73, 0xc1, 0xf3, 0x7f, 0xb0,
-	0x7c, 0x0e, 0x87, 0x6d, 0xf5, 0x1f, 0xfc, 0x10, 0xee, 0xc5, 0x62, 0x1d, 0x95, 0xca, 0xfa, 0x3c,
-	0xab, 0x16, 0x1a, 0xef, 0xbc, 0x86, 0x0d, 0xaf, 0x2b, 0x36, 0x63, 0x35, 0x4f, 0x26, 0x30, 0x10,
-	0x98, 0x9b, 0x52, 0xb7, 0xb3, 0xd4, 0xd2, 0xc1, 0x04, 0x86, 0xd6, 0xe6, 0xaf, 0x06, 0xba, 0xc0,
-	0xff, 0x32, 0x90, 0xb1, 0xd9, 0x3f, 0xd0, 0xf4, 0xa7, 0x03, 0x7e, 0x7c, 0x7e, 0x19, 0x31, 0xcc,
-	0x92, 0x0d, 0xf9, 0xd8, 0xbe, 0x9f, 0x18, 0xc5, 0x7a, 0x39, 0x47, 0x32, 0x6e, 0x38, 0x75, 0xde,
-	0xe0, 0xe8, 0xf1, 0x9e, 0x8a, 0xed, 0x0c, 0xd8, 0x91, 0x39, 0x6b, 0x70, 0xdc, 0x92, 0x77, 0x05,
-	0x73, 0xf4, 0x64, 0x7f, 0x51, 0x65, 0x33, 0xfd, 0xaa, 0x7f, 0x49, 0xa7, 0xc6, 0xfc, 0xd2, 0x29,
-	0x78, 0x17, 0xa8, 0x08, 0x6d, 0x46, 0xaa, 0x79, 0x03, 0xa3, 0xa3, 0x0e, 0x66, 0x3b, 0xf0, 0x29,
-	0x78, 0x51, 0xf9, 0x9b, 0x76, 0x17, 0xa7, 0xb6, 0xb6, 0x91, 0x80, 0xb3, 0x08, 0x9e, 0x72, 0xb1,
-	0x08, 0x93, 0x45, 0xb2, 0xc6, 0x22, 0x4b, 0x54, 0xca, 0x45, 0x1e, 0x2a, 0x91, 0xac, 0x64, 0x8a,
-	0xa2, 0x7a, 0xa0, 0x8d, 0xf8, 0x6c, 0xf8, 0x4a, 0x97, 0xe8, 0x81, 0x23, 0x7d, 0x18, 0x39, 0x1f,
-	0x76, 0xef, 0xf6, 0x0f, 0xd7, 0xaf, 0xd9, 0xeb, 0xbe, 0x39, 0x3a, 0xf9, 0x15, 0x00, 0x00, 0xff,
-	0xff, 0x5d, 0xdd, 0x56, 0x06, 0xe3, 0x05, 0x00, 0x00,
+	// 376 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x53, 0x4d, 0x4b, 0xc3, 0x40,
+	0x10, 0x25, 0x49, 0x6d, 0x9b, 0x11, 0x2b, 0xec, 0x41, 0xd6, 0x22, 0x52, 0x0a, 0x42, 0x41, 0xc8,
+	0xa1, 0xde, 0x7a, 0xb3, 0x97, 0x22, 0x82, 0x84, 0xf4, 0x20, 0x78, 0x4b, 0xdb, 0x49, 0x0d, 0xa4,
+	0xd9, 0x75, 0x77, 0x53, 0x88, 0x57, 0xff, 0x85, 0x47, 0x7f, 0xa9, 0xec, 0x26, 0x9b, 0x06, 0xbf,
+	0x8e, 0xde, 0xe6, 0xcd, 0x7b, 0x6f, 0xe6, 0x31, 0x9b, 0x00, 0xc8, 0x44, 0xf1, 0x80, 0x0b, 0xa6,
+	0x18, 0xf1, 0x75, 0x6d, 0xca, 0xf1, 0xbb, 0x0b, 0x9d, 0x65, 0xa2, 0x38, 0x19, 0x42, 0xbf, 0x90,
+	0x28, 0xf2, 0x78, 0x87, 0xd4, 0x19, 0x39, 0x13, 0x3f, 0x6a, 0xb0, 0xe6, 0x78, 0x2c, 0xe5, 0x23,
+	0x13, 0x1b, 0xea, 0x56, 0x9c, 0xc5, 0x9a, 0x93, 0xa5, 0x54, 0xb8, 0xbb, 0xdb, 0x50, 0xaf, 0xe2,
+	0x2c, 0x26, 0x14, 0x7a, 0xcf, 0x4c, 0xaa, 0x7b, 0x2c, 0x69, 0xc7, 0x50, 0x16, 0x6a, 0x57, 0x92,
+	0x66, 0xf8, 0xa0, 0xb7, 0x1d, 0x55, 0x2e, 0x8b, 0x2d, 0xb7, 0x4c, 0x5f, 0x91, 0x76, 0x47, 0xce,
+	0xc4, 0x8b, 0x1a, 0xac, 0x39, 0x3d, 0x22, 0x64, 0x42, 0xd1, 0x5e, 0xe5, 0xb3, 0x98, 0x5c, 0x80,
+	0xbf, 0xce, 0x52, 0xcc, 0xcd, 0xbe, 0xbe, 0x21, 0x0f, 0x0d, 0x72, 0x09, 0xb0, 0x2a, 0x92, 0x04,
+	0x85, 0x99, 0xeb, 0x9b, 0xb9, 0xad, 0x0e, 0x21, 0xd0, 0x51, 0x25, 0x47, 0x0a, 0xc6, 0x68, 0xea,
+	0x71, 0x0a, 0x27, 0x4b, 0xb1, 0x0f, 0x0b, 0x15, 0xe1, 0x4b, 0x81, 0x52, 0x91, 0x6b, 0xe8, 0x4b,
+	0xb1, 0x46, 0x7d, 0x30, 0x73, 0xa4, 0xe3, 0xe9, 0x69, 0xd0, 0xdc, 0x32, 0xd0, 0xed, 0xa8, 0x11,
+	0x68, 0xf1, 0x06, 0xa5, 0x32, 0x62, 0xf7, 0x17, 0xb1, 0x15, 0x8c, 0x27, 0x30, 0xb0, 0xab, 0x24,
+	0x67, 0xb9, 0x44, 0x72, 0x06, 0x5d, 0x81, 0xb2, 0xc8, 0x54, 0xfd, 0x1c, 0x35, 0xaa, 0x43, 0x2d,
+	0xf0, 0xdf, 0x42, 0x99, 0x55, 0x7f, 0x87, 0x9a, 0xbe, 0x39, 0xe0, 0x1b, 0x33, 0x66, 0x71, 0x49,
+	0x66, 0xe0, 0x2d, 0x50, 0x11, 0xda, 0x9e, 0xdc, 0x8e, 0x3c, 0x3c, 0xff, 0x81, 0xa9, 0x37, 0xcc,
+	0xc0, 0x0b, 0x8b, 0x6f, 0xde, 0xc3, 0x1b, 0x7c, 0xf5, 0xb6, 0x4e, 0x36, 0x0f, 0xe1, 0x8a, 0x89,
+	0x6d, 0x10, 0x6f, 0xe3, 0x3d, 0xf2, 0x2c, 0x56, 0x09, 0x13, 0xbb, 0x40, 0x89, 0x38, 0x97, 0x09,
+	0x8a, 0xea, 0xdb, 0x37, 0xe6, 0xf9, 0xe0, 0x56, 0x4b, 0x74, 0xe0, 0x50, 0x37, 0x43, 0xe7, 0xe9,
+	0xf0, 0x4b, 0x7c, 0xb8, 0x7e, 0xc3, 0xae, 0xba, 0xa6, 0x75, 0xf3, 0x19, 0x00, 0x00, 0xff, 0xff,
+	0x06, 0x90, 0xb6, 0x29, 0x3e, 0x03, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -615,114 +352,6 @@ var _ grpc.ClientConn
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
-
-// SFTPRelayClient is the client API for SFTPRelay service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type SFTPRelayClient interface {
-	CopyFromRemoteService(ctx context.Context, in *CopyFromRemoteRequest, opts ...grpc.CallOption) (*CopyFromRemoteResponse, error)
-	CopyLocalToRemoteService(ctx context.Context, in *CopyLocalToRemoteRequest, opts ...grpc.CallOption) (*CopyLocalToRemoteResponse, error)
-}
-
-type sFTPRelayClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewSFTPRelayClient(cc *grpc.ClientConn) SFTPRelayClient {
-	return &sFTPRelayClient{cc}
-}
-
-func (c *sFTPRelayClient) CopyFromRemoteService(ctx context.Context, in *CopyFromRemoteRequest, opts ...grpc.CallOption) (*CopyFromRemoteResponse, error) {
-	out := new(CopyFromRemoteResponse)
-	err := c.cc.Invoke(ctx, "/sftpproto.SFTPRelay/CopyFromRemoteService", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *sFTPRelayClient) CopyLocalToRemoteService(ctx context.Context, in *CopyLocalToRemoteRequest, opts ...grpc.CallOption) (*CopyLocalToRemoteResponse, error) {
-	out := new(CopyLocalToRemoteResponse)
-	err := c.cc.Invoke(ctx, "/sftpproto.SFTPRelay/CopyLocalToRemoteService", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// SFTPRelayServer is the server API for SFTPRelay service.
-type SFTPRelayServer interface {
-	CopyFromRemoteService(context.Context, *CopyFromRemoteRequest) (*CopyFromRemoteResponse, error)
-	CopyLocalToRemoteService(context.Context, *CopyLocalToRemoteRequest) (*CopyLocalToRemoteResponse, error)
-}
-
-// UnimplementedSFTPRelayServer can be embedded to have forward compatible implementations.
-type UnimplementedSFTPRelayServer struct {
-}
-
-func (*UnimplementedSFTPRelayServer) CopyFromRemoteService(ctx context.Context, req *CopyFromRemoteRequest) (*CopyFromRemoteResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CopyFromRemoteService not implemented")
-}
-func (*UnimplementedSFTPRelayServer) CopyLocalToRemoteService(ctx context.Context, req *CopyLocalToRemoteRequest) (*CopyLocalToRemoteResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CopyLocalToRemoteService not implemented")
-}
-
-func RegisterSFTPRelayServer(s *grpc.Server, srv SFTPRelayServer) {
-	s.RegisterService(&_SFTPRelay_serviceDesc, srv)
-}
-
-func _SFTPRelay_CopyFromRemoteService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CopyFromRemoteRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SFTPRelayServer).CopyFromRemoteService(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/sftpproto.SFTPRelay/CopyFromRemoteService",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SFTPRelayServer).CopyFromRemoteService(ctx, req.(*CopyFromRemoteRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _SFTPRelay_CopyLocalToRemoteService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CopyLocalToRemoteRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SFTPRelayServer).CopyLocalToRemoteService(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/sftpproto.SFTPRelay/CopyLocalToRemoteService",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SFTPRelayServer).CopyLocalToRemoteService(ctx, req.(*CopyLocalToRemoteRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _SFTPRelay_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "sftpproto.SFTPRelay",
-	HandlerType: (*SFTPRelayServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "CopyFromRemoteService",
-			Handler:    _SFTPRelay_CopyFromRemoteService_Handler,
-		},
-		{
-			MethodName: "CopyLocalToRemoteService",
-			Handler:    _SFTPRelay_CopyLocalToRemoteService_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "sftp.proto",
-}
 
 // SftpRelayClient is the client API for SftpRelay service.
 //

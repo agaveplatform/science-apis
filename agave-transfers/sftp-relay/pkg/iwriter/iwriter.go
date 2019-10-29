@@ -1,6 +1,7 @@
 package iwriter
 
 import (
+	cp "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftprelay"
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
@@ -11,18 +12,6 @@ import (
 var log = logrus.New()
 
 type UriReader struct {
-	Username   string
-	PassWord   string
-	SystemId   string
-	HostKey    string
-	HostPort   string
-	ClientKey  string
-	FileName   string
-	FileSize   int64
-	BufferSize int64
-	IsLocal    bool
-}
-type UriWriter struct {
 	Username   string
 	PassWord   string
 	SystemId   string
@@ -47,7 +36,7 @@ func init() {
 	log.Info("Set up loggin for server")
 }
 
-func IWriter(uriReader UriReader, UriWriter UriWriter, conn *ssh.Client) (int64, error) {
+func IWriter(params cp.ConnParams, conn *ssh.Client) (int64, error) {
 	log.Info("Streaming Get Service function was invoked with")
 
 	log.Info(uriReader.FileSize)

@@ -31,42 +31,59 @@ func init() {
 	log.Info("Set up loggin for server")
 }
 
-func (*Server) CopyLocalToRemoteService(ctx context.Context, req *sftppb.CopyLocalToRemoteRequest) (*sftppb.CopyLocalToRemoteResponse, error) {
-	log.Info("CopyLocalToRemoteService function was invoked with %v\n", req)
-	fileName := req.Sftp.FileName
-	passWord := req.Sftp.PassWord
-	systemId := req.Sftp.SystemId
-	username := req.Sftp.Username
-	//hostKey := req.Sftp.HostKey
-	hostPort := req.Sftp.HostPort
+type param struct {
+	Username string
+	PassWord string
+	SystemId string
+	HostKey string
+	HostPort string
+	ClientKey string
+}
+var ConnParams param
+//var ConnParams = make ([]*param,0)
 
-	if username == "" {
+func getConnection() (*ssh.Client, error){
+	if ConnParams.Username == "" {
 		log.Println("username is null")
 	}
-	if passWord == "" {
+	if ConnParams.PassWord == "" {
 		log.Println("pwd is null")
 	}
 	// get host public key
 	//HostKey := getHostKey(systemId)
 	config := ssh.ClientConfig{
-		User: username,
+		User: ConnParams.Username,
 		Auth: []ssh.AuthMethod{
-			ssh.Password(passWord),
+			ssh.Password(ConnParams.PassWord),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		//HostKeyCallback: ssh.FixedHostKey(HostKey),
 	}
 
-	result := ""
 	// connect
-	conn, err := ssh.Dial("tcp", systemId+hostPort, &config)
+	conn, err := ssh.Dial("tcp", ConnParams.SystemId + ConnParams.HostPort, &config)
 	if err != nil {
 		log.Info("Error Dialing the server: %f", err)
 		log.Error(err)
-		result = err.Error()
+
 	}
 	defer conn.Close()
+	return conn, nil
+}
 
+func (*Server) CopyLocalToRemoteService(ctx context.Context, req *sftppb.CopyLocalToRemoteRequest) (*sftppb.CopyLocalToRemoteResponse, error) {
+	log.Info("CopyLocalToRemoteService function was invoked with %v\n", req)
+	fileName := req.Sftp.FileName
+	ConnParams.PassWord = req.Sftp.PassWord
+	ConnParams.SystemId = req.Sftp.SystemId
+	ConnParams.Username = req.Sftp.Username
+	ConnParams.HostKey = req.Sftp.HostKey
+	ConnParams.HostPort = req.Sftp.HostPort
+	ConnParams.ClientKey = req.Sftp.ClientKey
+
+	conn, err := getConnection()
+
+	result := ""
 	// create new SFTP client
 	client, err := sftp.NewClient(conn)
 	if err != nil {
@@ -116,39 +133,16 @@ func (*Server) CopyLocalToRemoteService(ctx context.Context, req *sftppb.CopyLoc
 func (*Server) CopyFromRemoteService(ctx context.Context, req *sftppb.CopyFromRemoteRequest) (*sftppb.CopyFromRemoteResponse, error) {
 	log.Info("CopyFromRemoteService function was invoked with %v\n", req)
 	fileName := req.Sftp.FileName
-	passWord := req.Sftp.PassWord
-	systemId := req.Sftp.SystemId
-	username := req.Sftp.Username
-	//hostKey := req.Sftp.HostKey
-	hostPort := req.Sftp.HostPort
+	ConnParams.PassWord = req.Sftp.PassWord
+	ConnParams.SystemId = req.Sftp.SystemId
+	ConnParams.Username = req.Sftp.Username
+	ConnParams.HostKey = req.Sftp.HostKey
+	ConnParams.HostPort = req.Sftp.HostPort
+	ConnParams.ClientKey = req.Sftp.ClientKey
 
-	if username == "" {
-		log.Println("username is null")
-	}
-	if passWord == "" {
-		log.Println("pwd is null")
-	}
-	// get host public key
-	//HostKey := getHostKey(systemId)
-
-	config := ssh.ClientConfig{
-		User: username,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(passWord),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		//HostKeyCallback: ssh.FixedHostKey(HostKey),
-	}
+	conn, err := getConnection()
 
 	result := ""
-	// connect
-	conn, err := ssh.Dial("tcp", systemId+hostPort, &config)
-	if err != nil {
-		log.Info("Error dialing system: ", err)
-		result = err.Error()
-	}
-	defer conn.Close()
-
 	// create new SFTP client
 	client, err := sftp.NewClient(conn)
 	if err != nil {
@@ -190,6 +184,119 @@ func (*Server) CopyFromRemoteService(ctx context.Context, req *sftppb.CopyFromRe
 	}
 	log.Println(res.String())
 	return res, nil
+}
+
+
+/*
+	This service gets a single request for a file from an SFTP server.  It goes to the server and sends back the file in
+	chunks sized based on the buffer_size variable.
+ */
+func (*Server) StreamingReader(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvGetResponse){
+	log.Info("Streaming Get Service function was invoked with %v\n", req)
+
+	fileName := req.HostSftp.FileName
+	fileSize := req.HostSftp.FileSize
+	bufferSize := req.HostSftp.BufferSize
+	ConnParams.PassWord = req.HostSftp.PassWord
+	ConnParams.SystemId = req.HostSftp.SystemId
+	ConnParams.Username = req.HostSftp.Username
+	ConnParams.HostKey = req.HostSftp.HostKey
+	ConnParams.HostPort = req.HostSftp.HostPort
+	ConnParams.ClientKey = req.HostSftp.ClientKey
+
+	conn, err := getConnection()
+	log.Info(fileSize)
+	result := ""
+	log.Info(result)
+
+	// create new SFTP client
+	client, err := sftp.NewClient(conn)
+	if err != nil {
+		log.Info("Error creating new client", err)
+		result = err.Error()
+	}
+	defer client.Close()
+
+	// open source file
+	srcFile, err := client.Open(fileName)
+	if err != nil {
+		log.Info("Opening source file: ", err)
+		result = err.Error()
+	}
+	defer srcFile.Close()
+
+
+	log.Info("reading %v bytes", bufferSize)
+	// Copy the file
+
+	for _, file := range files {
+		result := file
+		res := &sftp.GetDirResponse{
+			Result               string   `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+			XXX_NoUnkeyedLiteral struct{} `json:"-"`
+			XXX_unrecognized     []byte   `json:"-"`
+			XXX_sizecache        int32    `json:"-"`
+		}
+		stream.Send(res)
+	}
+
+	return nil
+}
+
+func (*Server) StreamingPut(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvPutResponse){
+	log.Info("CopyFromRemoteService function was invoked with %v\n", req)
+	fileName := req.Sftp.FileName
+	fileSize := req.Sftp.FileSize
+	bufferSize := req.Sftp.BufferSize
+	ConnParams.PassWord = req.Sftp.PassWord
+	ConnParams.SystemId = req.Sftp.SystemId
+	ConnParams.Username = req.Sftp.Username
+	ConnParams.HostKey = req.Sftp.HostKey
+	ConnParams.HostPort = req.Sftp.HostPort
+	ConnParams.ClientKey = req.Sftp.ClientKey
+
+	conn, err := getConnection()
+
+	result := ""
+
+	// create new SFTP client
+	client, err := sftp.NewClient(conn)
+	if err != nil {
+		log.Info("Error creating new client", err)
+		result = err.Error()
+	}
+	defer client.Close()
+
+	// create destination file
+	dstFile, err := os.Create(fileName)
+	if err != nil {
+		log.Info("Error creating dest file", err)
+		result = err.Error()
+	}
+	defer dstFile.Close()
+
+	// open source file
+	srcFile, err := client.Open(fileName)
+	if err != nil {
+		log.Info("Opening source file: ", err)
+		result = err.Error()
+	}
+
+	for i
+	// copy with the WriteTo function
+	bytesWritten, err := srcFile.WriteTo(dstFile)
+	if err != nil {
+		log.Info("Error writing to file: ", err)
+	}
+
+
+	log.Info("%d bytes copied\n", bytesWritten)
+	log.Info(result)
+	res := &sftppb.CopyFromRemoteResponse{
+		Result: strconv.FormatInt(bytesWritten, 10),
+	}
+	log.Println(res.String())
+	return  nil
 }
 
 //func (*Server) GetDirListing(ctx context.Context, req *sftppb.GetDirRequest) (*sftppb.GetDirResponse, error) {

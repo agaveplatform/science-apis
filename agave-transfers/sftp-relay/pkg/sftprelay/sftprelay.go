@@ -180,7 +180,7 @@ type FileTransfer struct {
 }
 
 type TransferFactory interface {
-	ReadFrom() FileTransfer
+	ReadFrom(params ConnParams) FileTransfer
 }
 
 type LOCAL struct{}
@@ -201,7 +201,7 @@ func GetSourceType(typeTxfr string) FileTransfer {
 	switch typeTxfr {
 	case "SFTP":
 		txfrFact = SFTP_Factory{}
-		return txfrFact.ReadFrom()
+		return txfrFact.ReadFrom(ConnParams{Srce: SysUri{}, Dest: SysUri{}})
 		//case "LOCAL-SFTP":
 		//	txfrFact = LOCAL_Factory{}
 		//	return txfrFact.CreateFileTxfr()

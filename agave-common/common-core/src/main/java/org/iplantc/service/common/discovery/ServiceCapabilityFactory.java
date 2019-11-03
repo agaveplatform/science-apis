@@ -3,8 +3,8 @@
  */
 package org.iplantc.service.common.discovery;
 
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.discovery.providers.sql.DiscoverableServiceCapability;
-import org.testng.log4testng.Logger;
 
 /**
  * Factorty to create {@link ServiceCapability} objects. This is needed

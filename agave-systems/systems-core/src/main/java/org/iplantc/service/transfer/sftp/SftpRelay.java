@@ -44,20 +44,20 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author dooley
  *
  */
-public final class MaverickSFTP implements RemoteDataClient
+public final class SftpRelay implements RemoteDataClient
 {
     // Logging.
-	private static final Logger log = Logger.getLogger(MaverickSFTP.class);
-	
+	private static final Logger log = Logger.getLogger(SftpRelay.class);
+
 	// Set the logging level for the maverick library code.
-	// Comment out this static initializer to turn off 
+	// Comment out this static initializer to turn off
 	// maverick library logging.
 	static {initializeMaverickSFTPLogger();}
-	
+
 	private SftpClient sftpClient = null;
 	private Ssh2Client ssh2 = null;
 	private SshClient forwardedConnection = null;
-	
+
 	private String host;
 	private int    port;
 	private String username;
@@ -71,36 +71,36 @@ public final class MaverickSFTP implements RemoteDataClient
 	private SshConnector con;
 	private SshAuthentication auth;
 	private Map<String, SftpFileAttributes> fileInfoCache = new ConcurrentHashMap<String, SftpFileAttributes>();
-	
+
 	// Not clear what's going on here.  MAX_BUFFER_SIZE is commented out in all
 	// but one place--the one place with external visibility.  Defined the jumbo
-	// size here to avoid inline magic number usage.  No justification for value.  
+	// size here to avoid inline magic number usage.  No justification for value.
     private static final int MAX_BUFFER_SIZE = 32768 * 64;           // 2 MB
     private static final int JUMBO_BUFFER_SIZE = 500 * 1024 * 1024;  // 500 MB
-	
-    public MaverickSFTP(String host, int port, String username, String password, String rootDir, String homeDir)
+
+    public SftpRelay(String host, int port, String username, String password, String rootDir, String homeDir)
 	{
 		this.host = host;
 		this.port = port > 0 ? port : 22;
 		this.username = username;
 		this.password = password;
-		
-		updateSystemRoots(rootDir, homeDir);
-	}
-
-	public MaverickSFTP(String host, int port, String username, String password, String rootDir, String homeDir, String proxyHost, int proxyPort)
-	{
-		this.host = host;
-		this.port = port > 0 ? port : 22;
-		this.username = username;
-		this.password = password;
-		this.proxyHost = proxyHost;
-		this.proxyPort = proxyPort;
 
 		updateSystemRoots(rootDir, homeDir);
 	}
-	
-	public MaverickSFTP(String host, int port, String username, String password, String rootDir, String homeDir, String publicKey, String privateKey)
+
+	public SftpRelay(String host, int port, String username, String password, String rootDir, String homeDir, String proxyHost, int proxyPort)
+{
+	this.host = host;
+	this.port = port > 0 ? port : 22;
+	this.username = username;
+	this.password = password;
+	this.proxyHost = proxyHost;
+	this.proxyPort = proxyPort;
+
+	updateSystemRoots(rootDir, homeDir);
+}
+
+	public SftpRelay(String host, int port, String username, String password, String rootDir, String homeDir, String publicKey, String privateKey)
 	{
 		this.host = host;
 		this.port = port > 0 ? port : 22;
@@ -108,11 +108,11 @@ public final class MaverickSFTP implements RemoteDataClient
 		this.password = password;
 		this.publicKey = publicKey;
 		this.privateKey = privateKey;
-		
+
 		updateSystemRoots(rootDir, homeDir);
 	}
 
-	public MaverickSFTP(String host, int port, String username, String password, String rootDir, String homeDir, String proxyHost, int proxyPort, String publicKey, String privateKey)
+	public SftpRelay(String host, int port, String username, String password, String rootDir, String homeDir, String proxyHost, int proxyPort, String publicKey, String privateKey)
 	{
 		this.host = host;
 		this.port = port > 0 ? port : 22;
@@ -176,249 +176,64 @@ public final class MaverickSFTP implements RemoteDataClient
 	@Override
 	public void authenticate() throws RemoteDataException 
 	{
-	    // clear cache here as we may have stale information in between authentications
-	    fileInfoCache.clear();
-	    
-	    // Maybe we're already authenticated.
-		if (ssh2 != null && ssh2.isConnected() && ssh2.isAuthenticated()) return;
-		
-		// Get a new authenticated session.
-		Socket sock = null;
-		try
-		{   
-		    // Get a connector.
-			try {con = SshConnector.createInstance();}
-			    catch (Exception e) {
-			        String msg = getMsgPrefix() + "Unable to create SshConnector instance: " + e.getMessage();
-			        log.error(msg, e);
-			        throw e;
-			    }
-			
-			// Get a component manager.
-			JCEComponentManager cm;
-			try {cm = (JCEComponentManager)ComponentManager.getInstance();}
-			    catch (Exception e) {
-                    String msg = getMsgPrefix() + "Unable to create ComponentManager instance: " + e.getMessage();
-                    log.error(msg, e);
-                    throw e;
-			    }
-			
-			// Install some ciphers.
-			cm.installArcFourCiphers(cm.supportedSsh2CiphersCS());
-			cm.installArcFourCiphers(cm.supportedSsh2CiphersSC());
-			
-			// Set preferences.
-			try {
-			    ((Ssh2Context)con.getContext()).setPreferredKeyExchange(Ssh2Context.KEX_DIFFIE_HELLMAN_GROUP14_SHA1);
-			
-			    ((Ssh2Context)con.getContext()).setPreferredPublicKey(Ssh2Context.PUBLIC_KEY_SSHDSS);
-			    ((Ssh2Context)con.getContext()).setPublicKeyPreferredPosition(Ssh2Context.PUBLIC_KEY_ECDSA_521, 1);
-	        
-			    ((Ssh2Context)con.getContext()).setPreferredCipherCS(Ssh2Context.CIPHER_ARCFOUR_256);
-			    ((Ssh2Context)con.getContext()).setCipherPreferredPositionCS(Ssh2Context.CIPHER_ARCFOUR, 1);
-			    ((Ssh2Context)con.getContext()).setCipherPreferredPositionCS(Ssh2Context.CIPHER_AES128_CTR, 1);
-	        
-			    ((Ssh2Context)con.getContext()).setPreferredCipherSC(Ssh2Context.CIPHER_ARCFOUR_256);
-			    ((Ssh2Context)con.getContext()).setCipherPreferredPositionSC(Ssh2Context.CIPHER_ARCFOUR, 1);
-			    ((Ssh2Context)con.getContext()).setCipherPreferredPositionCS(Ssh2Context.CIPHER_AES128_CTR, 1);
-	        
-			    ((Ssh2Context)con.getContext()).setPreferredMacCS(Ssh2Context.HMAC_SHA256);
-			    ((Ssh2Context)con.getContext()).setMacPreferredPositionCS(Ssh2Context.HMAC_SHA1, 1);
-			    ((Ssh2Context)con.getContext()).setMacPreferredPositionCS(Ssh2Context.HMAC_MD5, 2);
-	        
-			    ((Ssh2Context)con.getContext()).setPreferredMacSC(Ssh2Context.HMAC_SHA256);
-			    ((Ssh2Context)con.getContext()).setMacPreferredPositionSC(Ssh2Context.HMAC_SHA1, 1);
-			    ((Ssh2Context)con.getContext()).setMacPreferredPositionSC(Ssh2Context.HMAC_MD5, 2);
+		ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).build();
+
+		// Create an sfpt service client (blocking - synchronous)
+		SFTPRelayGrpc.SFTPRelayBlockingStub sftpClient = SFTPRelayGrpc.newBlockingStub(channel);
+
+		// create a protocol buffer sftp message
+		SftpConfig sftp = null;
+		try {
+			sftp = SftpConfig.newBuilder()
+					.setPassword(ByteString.copyFrom(password, "utf-8"))
+					.setUsername(username)
+					.setHost(host)
+					.setPort(String.valueOf(port))
+					.build();
+
+			//create a CopyLocalToRemoteRequest
+			AuthenticateToRemoteRequest authenticateToRemoteRequest = AuthenticateToRemoteRequest.newBuilder()
+					.setSftpConfig(sftp)
+					//.setSftpTunnelConfig
+					.build();
+
+			// call the gRPC and get back a CopyLocalToRemoteResponse
+			AuthenticateToRemoteResponse authenticateToRemoteResponse =
+					sftpClient.authenticateToRemoteService(authenticateToRemoteRequest);
+
+			if ( ! authenticateToRemoteResponse.getResult() ) {
+				throw new RemoteDataException("Failed to authenticate to remote host");
 			}
-			catch (Exception e) {
-                String msg = getMsgPrefix() + "Failure setting a cipher preference: " + e.getMessage();
-                log.error(msg, e);
-                throw e;
-			}
-	        
-			// Initialize socket.
-	        SocketAddress sockaddr = null; 
-	        sock = new Socket();
-			if (useTunnel()) sockaddr = new InetSocketAddress(proxyHost, proxyPort);
-			  else sockaddr = new InetSocketAddress(host, port);
-			     
-			
-			// Configure the socket.
-			//  - No delay means send each buffer without waiting to fill a packet.
-			//  - The performance preferences mean bandwidth, latency, connection time 
-			//    are given that priority.
-			//
-			// Note the original Agave code connected before setting these options,
-			// which at least in the case of the performance preferences caused them
-			// to be ignored.
-			try {
-			    sock.setTcpNoDelay(true);
-			    sock.setPerformancePreferences(0, 1, 2);
-			    sock.connect(sockaddr, 15000);
-			} catch (Exception e) {
-                String msg = getMsgPrefix() + "Socket connection failure: " + e.getMessage();
-                log.error(msg, e);
-                throw e; // sock is closed in final catch clause.
-			}
-			
-			// Use the connected socket to perform the ssh handshake.
-			try {ssh2 = (Ssh2Client) con.connect(new com.sshtools.net.SocketWrapper(sock), username);}
-			    catch (Exception e) {
-	                String msg = getMsgPrefix() + "Failure during ssh initialization: " + e.getMessage();
-	                log.error(msg, e);
-	                throw e;
-			    }
-			
-			String[] authenticationMethods;
-			try {authenticationMethods = ssh2.getAuthenticationMethods(username);}
-			    catch (Exception e) {
-                    String msg = getMsgPrefix() + "Failure to get ssh2 authentication methods: " + e.getMessage();
-                    log.error(msg, e);
-                    throw e;
-			    }
-			
-			int authStatus;
-			if (!StringUtils.isEmpty(publicKey) && !StringUtils.isEmpty(privateKey))
-			{
-				// Authenticate the user using pki authentication.
-				auth = new Ssh2PublicKeyAuthentication();
-				
-				do {
-					SshPrivateKeyFile pkfile;
-					try {pkfile = SshPrivateKeyFileFactory.parse(privateKey.getBytes());}
-					    catch (Exception e) {
-		                    String msg = getMsgPrefix() + "Failure to parse private key: " + e.getMessage();
-		                    log.error(msg, e);
-		                    throw e;
-					    }
-					
-					// Create the key pair.
-					SshKeyPair pair;
-					try {
-					    if (pkfile.isPassphraseProtected()) pair = pkfile.toKeyPair(password);
-					      else pair = pkfile.toKeyPair(null);
-					} catch (Exception e) {
-                        String msg = getMsgPrefix() + "Failure to create key pair: " + e.getMessage();
-                        log.error(msg, e);
-                        throw e;
-					}
-					
-					// Assign keys to auth object.
-					((PublicKeyAuthentication)auth).setPrivateKey(pair.getPrivateKey());
-					((PublicKeyAuthentication)auth).setPublicKey(pair.getPublicKey());
-					
-					// Authenticate.
-					try {authStatus = ssh2.authenticate(auth);}
-					    catch (Exception e) {
-	                        String msg = getMsgPrefix() + "Failure to authenticate using key pair: " + e.getMessage();
-	                        log.error(msg, e);
-	                        throw e;
-					    }
-					
-					// Try to handle interactive session.
-					if (authStatus == SshAuthentication.FURTHER_AUTHENTICATION_REQUIRED && 
-							Arrays.asList(authenticationMethods).contains("keyboard-interactive")) 
-					{
-					    // Set up MFA request handler.
-						KBIAuthentication kbi = new KBIAuthentication();
-						kbi.setUsername(username);
-						kbi.setKBIRequestHandler(new MultiFactorKBIRequestHandler(password, null, username, host, port));
-						try {authStatus = ssh2.authenticate(kbi);}
-                            catch (Exception e) {
-                                String msg = getMsgPrefix() + "Failure to MFA authenticate using key pair: " + e.getMessage();
-                                log.error(msg, e);
-                                throw e;
-                            }
-					}
-				} while (authStatus != SshAuthentication.COMPLETE  && 
-					     authStatus != SshAuthentication.FAILED    &&
-					     authStatus != SshAuthentication.CANCELLED &&
-					     ssh2.isConnected());
-			}
-			else
-			{
-				//Authenticate the user using password authentication.
-				auth = new PasswordAuthentication();
-				do
-				{
-					((PasswordAuthentication)auth).setPassword(password);
-					
-					auth = checkForPasswordOverKBI(authenticationMethods);
-					
-					try {authStatus = ssh2.authenticate(auth);}
-                        catch (Exception e) {
-                            String mfa = (auth instanceof PasswordAuthentication) ? "" : "MFA ";
-                            String msg = getMsgPrefix() + "Failure to " + mfa + "authenticate using a password: " + e.getMessage();
-                            log.error(msg, e);
-                            throw e;
-                    }
-				} while (authStatus != SshAuthentication.COMPLETE  && 
-                         authStatus != SshAuthentication.FAILED    &&
-                         authStatus != SshAuthentication.CANCELLED &&
-                         ssh2.isConnected());
-			}
-			
-			// What happened?
-			if (!ssh2.isAuthenticated()) {
-                String msg = getMsgPrefix() + "Failed to authenticate.";
-                log.error(msg);
-				throw new RemoteDataException(msg);
-			}
-			
-			// Do we need to continue authentication using a proxy?
-			if (useTunnel()) 
-			{
-				SshTunnel tunnel;
-				try {tunnel = ssh2.openForwardingChannel(host, port, "127.0.0.1", 22, "127.0.0.1", 22, null, null);}
-				    catch (Exception e) {
-                        String msg = getMsgPrefix() + "Failure open forwarding channel using proxy: " + e.getMessage();
-                        log.error(msg, e);
-                        throw e;
-				    }
-				
-				// Connect using the tunnel.
-				try {forwardedConnection = con.connect(tunnel, username);}
-				    catch (Exception e) {
-                        String msg = getMsgPrefix() + "Failure to connect using proxy: " + e.getMessage();
-                        log.error(msg, e);
-                        throw e;
-				    }
-				
-				try {forwardedConnection.authenticate(auth);}
-                    catch (Exception e) {
-                        String msg = getMsgPrefix() + "Failure to authenticate using proxy: " + e.getMessage();
-                        log.error(msg, e);
-                        throw e;
-                    }
-			} 
+
 		}
 		catch (Exception e)
 		{
 		    // All exceptions have previously been caught and logged.
 		    // We just have to make sure all resources are cleaned up
 		    // and that the declared exception type is thrown.
-		    if (ssh2 != null) try {ssh2.disconnect();} catch (Exception e1) {}
-		    if (forwardedConnection != null) try {forwardedConnection.disconnect();} catch (Exception e1) {}
-		    if (sock != null) try {sock.close();} catch (Exception e1){}
-		    
-		    // Null out fields.
-		    ssh2 = null;
-		    forwardedConnection = null;
-		    auth = null;
-		    con = null;
-		    
+			try {
+				if (channel != null && ! channel.isShutdown()) {
+					channel.shutdown();
+				}
+			}
+			catch (Throwable t) {
+				log.error("Unable to shutdown the channel to the sftp client. Ignoring.");
+			}
+
 		    // Throw the expected exception.
-		    if (e instanceof RemoteDataException) throw (RemoteDataException)e;
-		      else throw new RemoteDataException(e.getMessage(), e);
+		    if (e instanceof RemoteDataException)
+		    	throw (RemoteDataException)e;
+		    else
+		    	throw new RemoteDataException(e.getMessage(), e);
 		}
 	}
-	
+
 	/**
 	 * Looks through the supported auth returned from the server and overrides the
 	 * password auth type if the server only lists keyboard-interactive. This acts
-	 * as a frontline check to override the default behavior and use our 
-	 * {@link MultiFactorKBIRequestHandler}. 
-	 *   
+	 * as a frontline check to override the default behavior and use our
+	 * {@link MultiFactorKBIRequestHandler}.
+	 *
 	 * @param authenticationMethods
 	 * @return a {@link SshAuthentication} based on the ordering and existence of auth methods returned from the server.
 	 */
@@ -725,7 +540,7 @@ public final class MaverickSFTP implements RemoteDataClient
 				
 				try {
 					//getClient().get(resolvePath(remoteSource), localTarget.getAbsolutePath(), listener);
-					ManagedChannel channel = ManagedChannelBuilder.forAddress(remoteSource, 50051).usePlaintext().build();
+					ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 50051).build();
 
 					// Create an sfpt service client (blocking - synchronous)
 					SFTPRelayGrpc.SFTPRelayBlockingStub sftpClient = SFTPRelayGrpc.newBlockingStub(channel);
@@ -741,7 +556,7 @@ public final class MaverickSFTP implements RemoteDataClient
 					 //create a CopyLocalToRemoteRequest
 					CopyFromRemoteRequest copyFromRemoteRequest = CopyFromRemoteRequest.newBuilder()
                 		.setSftpConfig(sftp)
-						.setSrc(remoteSource)
+						.setSrc(resolvePath(remoteSource))
 						.setDest(localTarget.getAbsolutePath())
                 		.build();
 
@@ -758,13 +573,13 @@ public final class MaverickSFTP implements RemoteDataClient
 					}
 
         			channel.shutdown();
-				}
-				catch (Exception e){
-					String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource +
-								 " to local target " + localTarget.getAbsolutePath() + ": " + e.getMessage();
-					log.error(msg, e);
-					throw e;
-				}
+					}
+				    catch (Exception e){
+	                    String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource +
+                                     " to local target " + localTarget.getAbsolutePath() + ": " + e.getMessage();
+	                    log.error(msg, e);
+	                    throw e;
+				    }
 
 				// make sure file transferred
 				if (!localTarget.exists()) {
@@ -1938,7 +1753,7 @@ public final class MaverickSFTP implements RemoteDataClient
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		MaverickSFTP other = (MaverickSFTP) obj;
+		SftpRelay other = (SftpRelay) obj;
 		if (homeDir == null)
 		{
 			if (other.homeDir != null)

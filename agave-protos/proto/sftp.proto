@@ -8,33 +8,45 @@ option java_multiple_files = true;
 option objc_class_prefix = "AgaveSftp";
 option java_outer_classname = "AgaveSftpProto";
 
-message Sftp {
-	string username = 1;
-	string passWord = 2;
-	string systemId = 3;
-	string hostKey  = 4;
-	string fileName = 5;
-	string hostPort = 6;
-	string clientKey = 7;
+message SftpConfig {
+	string host = 1;
+	string port = 2;
+
+	string username = 3;
+	bytes password = 4;
+	bytes key = 5;
 }
 
 message CopyLocalToRemoteRequest{
-	Sftp sftp = 1;
+	SftpConfig sftpConfig = 1;
+	string src = 2;
+	string dest = 3;
 }
 message CopyLocalToRemoteResponse{
 	string result = 1;
 }
 
 message CopyFromRemoteRequest{
-	Sftp sftp = 1;
+	SftpConfig sftpConfig = 1;
+	string src = 2;
+	string dest = 3;
 }
 message CopyFromRemoteResponse{
 	string result = 1;
 }
 
+message AuthenticateToRemoteRequest{
+	SftpConfig sftpConfig = 1;
+}
+
+message AuthenticateToRemoteResponse{
+	bool result = 1;
+}
+
 service SFTPRelay {
 	rpc CopyFromRemoteService(CopyFromRemoteRequest) returns (CopyFromRemoteResponse);
 	rpc CopyLocalToRemoteService(CopyLocalToRemoteRequest) returns (CopyLocalToRemoteResponse);
+	rpc AuthenticateToRemoteService(AuthenticateToRemoteRequest) returns (AuthenticateToRemoteResponse);
 //	rpc GetDirListing(GetDirRequest)returns(stream GetDirResponse);
 }
 

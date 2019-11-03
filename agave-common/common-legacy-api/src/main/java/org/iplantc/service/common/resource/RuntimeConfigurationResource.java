@@ -16,7 +16,7 @@ import org.restlet.data.Status;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
-import org.testng.log4testng.Logger;
+import org.apache.log4j.Logger;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;

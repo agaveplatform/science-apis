@@ -2,3 +2,4 @@
 /release/
 *.iml
 /.idea/
+/SFTPServer.log

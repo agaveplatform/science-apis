@@ -450,7 +450,7 @@
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <version>${testng.version}</version>
-            <scope>testing</scope>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

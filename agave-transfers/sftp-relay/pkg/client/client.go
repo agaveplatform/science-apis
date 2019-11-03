@@ -11,6 +11,14 @@ import (
 	"time"
 )
 
+const (
+	testUsername = "testuser"
+	testHost     = "sftp"
+	testKey      = ""
+	testPassword = "testuser"
+	testPort     = "10022"
+)
+
 func main() {
 	fmt.Println("Starting SFTP client")
 
@@ -21,61 +29,93 @@ func main() {
 	defer conn.Close()
 
 	c := sftppb.NewSFTPRelayClient(conn)
+	// check auth
+	fmt.Println("=====================================================")
+	doCheckAuth(c)
+	fmt.Println("=====================================================")
+
+	fmt.Println("\n")
+
 	// push file test
+	fmt.Println("=====================================================")
 	doUnaryPut(c)
+	fmt.Println("=====================================================")
+
+	fmt.Println("\n")
+
 	//pull the test file
+	fmt.Println("=====================================================")
 	doUnaryPull(c)
-
-	//p
-
+	fmt.Println("=====================================================")
 }
 
-func doUnaryPut(c sftppb.SFTPRelayClient) {
-	fmt.Println("Starting to do uniary rpc client: ")
-	startPulltime := time.Now()
-	fmt.Println("Start Pull Time = " + startPulltime.String())
+func getTestSftpConfig() *sftppb.SftpConfig {
+	return  &sftppb.SftpConfig{
+		Host:                 testHost,
+		Port:                 testPort,
+		Username:             testUsername,
+		Password:             []byte(testPassword),
+		Key:                  []byte(testKey),
+	}
+}
+
+type Client struct {}
+
+func (c *Client) doCheckAuth(sftpRelay sftppb.SFTPRelayClient) {
+	log.Println("Starting Auth rpc client: ")
+	startTime := time.Now()
+
+	req := &sftppb.AuthenticateToRemoteRequest{
+		SftpConfig: getTestSftpConfig(),
+	}
+
+	fmt.Println("Username = " + req.SftpConfig.Username)
+
+	res, err := sftpRelay.AuthenticateToRemoteService(context.Background(), req)
+	if err != nil {
+		log.Fatalf("error while calling RPC auth: %v", err)
+	}
+	secs := time.Since(startTime).Seconds()
+	log.Println("Response from Auth: " + strconv.FormatBool(res.GetResult()))
+	log.Println("RPC Auth Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+}
+
+func (c *Client) doUnaryPut(sftpRelay sftppb.SFTPRelayClient) {
+	log.Println("Starting Push rpc client: ")
+	startPushtime := time.Now()
 
 	req := &sftppb.CopyLocalToRemoteRequest{
-		Sftp: &sftppb.Sftp{
-			Username: "testuser",
-			SystemId: "sftp",
-			FileName: "/tmp/hosts",
-			HostKey:  "",
-			PassWord: "testuser",
-			HostPort: ":22",
-		},
+		SftpConfig: getTestSftpConfig(),
+		Src: "/etc/hosts",
+		Dest: "/tmp/hosts",
 	}
-	fmt.Println("Username = " + req.Sftp.Username)
 
-	res, err := c.CopyLocalToRemoteService(context.Background(), req)
+	res, err := sftpRelay.CopyLocalToRemoteService(context.Background(), req)
 	if err != nil {
-		log.Fatalf("error while calling RPC: %v", err)
+		log.Fatalf("error while calling RPC push: %v", err)
 	}
-	secs := time.Since(startPulltime).Seconds()
-	log.Println("Response from SFTP: " + res.Result)
-	fmt.Println("Function Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+	secs := time.Since(startPushtime).Seconds()
+	log.Println("Response from Push: " + res.Result)
+	log.Println("RPC Push Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 
 }
 
-func doUnaryPull(c sftppb.SFTPRelayClient) {
-	fmt.Println("Starting 2nd do uniary rpc client: ")
+func (c *Client) doUnaryPull(sftpRelay sftppb.SFTPRelayClient) {
+	log.Println("Starting Pull rpc client: ")
 	startPulltime := time.Now()
-	req := &sftppb.CopyFromRemoteRequest{
-		Sftp: &sftppb.Sftp{
-			Username: "testuser",
-			SystemId: "sftp",
-			FileName: "/tmp/hosts",
-			HostKey:  "",
-			PassWord: "testuser",
-			HostPort: ":22",
-		},
-	}
-	res, err := c.CopyFromRemoteService(context.Background(), req)
-	if err != nil {
-		log.Fatalf("error while calling RPC: %v", err)
-	}
-	secs := time.Since(startPulltime).Seconds()
-	log.Println("Response from SFTP: " + res.Result)
-	fmt.Println("Function Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 
+	req := &sftppb.CopyFromRemoteRequest{
+		SftpConfig: getTestSftpConfig(),
+		Src: "/etc/hosts",
+		Dest: "/tmp/hosts",
+	}
+
+	res, err := sftpRelay.CopyFromRemoteService(context.Background(), req)
+	if err != nil {
+		log.Fatalf("error while calling RPC pull: %v", err)
+	}
+
+	secs := time.Since(startPulltime).Seconds()
+	log.Println("Response from Pull: " + res.Result)
+	log.Println("RPC Pull Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 }

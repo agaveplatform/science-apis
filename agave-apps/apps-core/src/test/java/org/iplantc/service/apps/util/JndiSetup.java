@@ -1,24 +1,15 @@
 package org.iplantc.service.apps.util;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.Properties;
+import com.mysql.cj.jdbc.MysqlDataSource;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
 
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
-
-
-/**
- * Created with IntelliJ IDEA.
- * User: wcs
- * Date: 7/18/13
- * Time: 8:28 AM
- * To change this template use File | Settings | File Templates.
- */
-public class JndiSetup 
+public class JndiSetup
 {
     static Properties props = new Properties();
 

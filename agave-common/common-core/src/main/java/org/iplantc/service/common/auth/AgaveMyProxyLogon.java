@@ -17,8 +17,8 @@ import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
 import org.ietf.jgss.GSSCredential;
 import org.ietf.jgss.GSSException;
+import org.iplantc.service.common.exceptions.MyProxyGatewayException;
 import org.iplantc.service.common.util.Slug;
-import org.testng.Assert;
 
 import javax.net.ssl.*;
 import javax.security.auth.login.FailedLoginException;
@@ -926,10 +926,15 @@ public class AgaveMyProxyLogon {
 			m.requestTrustRoots(true);
 			GSSCredential proxy = m.getCredentials();
 			m.writeProxyFile();
-			
-			Assert.assertNotNull(proxy, "No proxy retrieved");
-			Assert.assertTrue(new File(m.getTrustRootPath()).exists(), "Trusted CA folder was not created");
-			Assert.assertTrue(Objects.requireNonNull(new File(m.getTrustRootPath()).list()).length > 0, "Trusted CA folder is empty");
+
+			if (proxy == null)
+				throw new MyProxyGatewayException("No proxy retrieved");
+			if (! new File(m.getTrustRootPath()).exists())
+				throw new MyProxyGatewayException("Trusted CA folder was not created");
+
+			String[] trustRootPaths = new File(m.getTrustRootPath()).list();
+			if (trustRootPaths == null || trustRootPaths.length == 0 )
+				throw new MyProxyGatewayException("Trusted CA folder is empty");
 			
 		} catch (Exception e) {
 			e.printStackTrace(System.err);
@@ -941,11 +946,7 @@ public class AgaveMyProxyLogon {
 
 		b64data = Base64.encode(data);
 		for (int i = 0; i < b64data.length; i += b64linelen) {
-			if ((b64data.length - i) > b64linelen) {
-				out.write(b64data, i, b64linelen);
-			} else {
-				out.write(b64data, i, b64data.length - i);
-			}
+			out.write(b64data, i, Math.min((b64data.length - i), b64linelen));
 			out.println();
 		}
 	}

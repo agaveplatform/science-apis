@@ -6,6 +6,7 @@ import java.util.HashMap;
 import javax.servlet.http.HttpSession;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.quartz.util.QuartzUtility;
 import org.iplantc.service.common.resource.AgaveResource;
 import org.quartz.SchedulerException;
@@ -19,7 +20,6 @@ import org.restlet.ext.json.JsonRepresentation;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
-import org.testng.log4testng.Logger;
 
 import freemarker.template.Configuration;
 import freemarker.template.Template;

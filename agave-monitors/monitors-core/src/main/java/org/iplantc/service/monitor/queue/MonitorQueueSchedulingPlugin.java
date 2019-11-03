@@ -13,7 +13,7 @@ import org.quartz.JobDetail;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
-import org.testng.log4testng.Logger;
+import org.apache.log4j.Logger;
 
 /**
  * Class to initialize worker tasks to process monitor events.

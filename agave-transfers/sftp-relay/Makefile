@@ -68,7 +68,7 @@ install:
 .PHONY: image
 image:
 	@echo Starting Image process
-	docker build --rm=true -t $(PROJECT_NAME):latest -f $(PROJECT_DIR)/Dockerfile $(PROJECT_DIR)/../..
+	docker build -t $(PROJECT_NAME):latest -f $(PROJECT_DIR)/Dockerfile $(PROJECT_DIR)/../..
 	@echo Done with image
 
 # Build protobuf
@@ -87,7 +87,7 @@ build:
 
 .PHONY: clean
 clean:
-	@go clean -i -cache
+	@go clean -i -cache ./...
 	@rm -rf release/*
 	rm -rf proto/go/*
 	rm -rf proto/java/*

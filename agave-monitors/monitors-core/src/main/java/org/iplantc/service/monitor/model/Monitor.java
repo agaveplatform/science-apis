@@ -31,7 +31,7 @@ import org.iplantc.service.profile.model.InternalUser;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.joda.time.DateTime;
-import org.testng.log4testng.Logger;
+import org.apache.log4j.Logger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

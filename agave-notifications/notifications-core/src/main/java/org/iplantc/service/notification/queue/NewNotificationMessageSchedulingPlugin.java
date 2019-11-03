@@ -12,7 +12,7 @@ import org.joda.time.DateTime;
 import org.quartz.JobDetail;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
-import org.testng.log4testng.Logger;
+import org.apache.log4j.Logger;
 
 /**
  * Class to initialize worker tasks to process notification events.

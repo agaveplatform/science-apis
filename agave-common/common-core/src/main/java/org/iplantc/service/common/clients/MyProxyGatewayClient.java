@@ -20,6 +20,7 @@ import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.LaxRedirectStrategy;
+import org.apache.log4j.Logger;
 import org.apache.log4j.lf5.util.StreamUtils;
 import org.globus.gsi.X509Credential;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
@@ -27,7 +28,6 @@ import org.ietf.jgss.GSSCredential;
 import org.iplantc.service.common.auth.JWTClient;
 import org.iplantc.service.common.auth.TrustedCALocation;
 import org.iplantc.service.common.exceptions.MyProxyGatewayException;
-import org.testng.log4testng.Logger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

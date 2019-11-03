@@ -1,16 +1,14 @@
 package org.iplantc.service.common.persistence;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
+import com.mysql.cj.jdbc.MysqlDataSource;
+import org.apache.log4j.Logger;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
-
-import org.apache.log4j.Logger;
-
-import com.mysql.jdbc.jdbc2.optional.MysqlDataSource;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 
 
 /**

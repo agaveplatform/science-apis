@@ -84,13 +84,37 @@ func (c *Client) doUnaryPut(sftpRelay sftppb.SFTPRelayClient) {
 	log.Println("Starting Push rpc client: ")
 	startPushtime := time.Now()
 
-	req := &sftppb.CopyLocalToRemoteRequest{
+	req := &sftppb.SrvPutRequest{
 		SftpConfig: getTestSftpConfig(),
 		Src: "/etc/hosts",
 		Dest: "/tmp/hosts",
+		SrceSftp: &sftppb.Sftp{
+			Username:   "ertanner",
+			PassWord:   "Bambie69",
+			SystemId:   "192.168.1.16",
+			HostKey:    "",
+			HostPort:   ":2225",
+			ClientKey:  "",
+			FileName:   "/tmp/hosts",
+			FileSize:   0,
+			BufferSize: 0,
+			Type:       "SFTP",
+		},
+		DestSftp: &sftppb.Sftp{
+			Username:   "ertanner",
+			PassWord:   "Bambie69",
+			SystemId:   "192.168.1.16",
+			HostKey:    "",
+			FileName:   "/tmp/hosts_et",
+			FileSize:   0,
+			HostPort:   ":2225",
+			ClientKey:  "",
+			BufferSize: 0,
+			Type:       "LOCAL",
+		},
 	}
 
-	res, err := sftpRelay.CopyLocalToRemoteService(context.Background(), req)
+	res, err := sftpRelay.Put(context.Background(), req)
 	if err != nil {
 		log.Fatalf("error while calling RPC push: %v", err)
 	}
@@ -104,13 +128,37 @@ func (c *Client) doUnaryPull(sftpRelay sftppb.SFTPRelayClient) {
 	log.Println("Starting Pull rpc client: ")
 	startPulltime := time.Now()
 
-	req := &sftppb.CopyFromRemoteRequest{
+	req := &sftppb.SrvGetRequest{
 		SftpConfig: getTestSftpConfig(),
 		Src: "/etc/hosts",
 		Dest: "/tmp/hosts",
+		SrceSftp: &sftppb.Sftp{
+			Username:   "testuser",
+			PassWord:   "testuser",
+			SystemId:   "192.168.1.16",
+			HostKey:    "",
+			HostPort:   ":2225",
+			ClientKey:  "",
+			FileName:   "/tmp/hosts",
+			FileSize:   0,
+			BufferSize: 0,
+			Type:       "LOCAL",
+		},
+		DestSftp: &sftppb.Sftp{
+			Username:   "testuser",
+			PassWord:   "testuser",
+			SystemId:   "192.168.1.16",
+			HostKey:    "",
+			FileName:   "/tmp/hosts_et",
+			FileSize:   0,
+			HostPort:   ":2225",
+			ClientKey:  "",
+			BufferSize: 0,
+			Type:       "SFTP",
+		},
 	}
 
-	res, err := sftpRelay.CopyFromRemoteService(context.Background(), req)
+	res, err := sftpRelay.Get(context.Background(), req)
 	if err != nil {
 		log.Fatalf("error while calling RPC pull: %v", err)
 	}

@@ -5,7 +5,8 @@ COPY agave-transfers/sftp-relay $GOPATH/src/github.com/agaveplatform/science-api
 
 WORKDIR $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
 
-RUN make clean && \
+RUN make genproto && \
+	make clean && \
 	make default
 
 FROM alpine:latest

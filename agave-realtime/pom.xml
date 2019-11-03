@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>realtime</artifactId>
-	<name>Agave Realtime Service Parent POM</name>
+	<name>Agave Platform Realtime Service Parent POM</name>
 	<description>This is the parent project for the realtime proxy service.</description>
 	<packaging>pom</packaging>
 

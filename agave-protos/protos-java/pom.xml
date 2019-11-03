@@ -9,7 +9,7 @@
 		<version>2.2.24</version>
 	</parent>
 	<artifactId>protos-java</artifactId>
-	<name>Agave Core Java Proto</name>
+	<name>Agave Platform Protobuffer Java Bindings</name>
 	<description>Proto file generation for all Java protobuf stubs</description>
 	<packaging>jar</packaging>
 

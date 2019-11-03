@@ -7,7 +7,7 @@
     <groupId>org.agaveplatform</groupId>
     <artifactId>science-apis</artifactId>
     <version>2.2.24</version>
-    <name>Agave Core Science API Parent POM</name>
+    <name>Agave Platform Science API Parent POM</name>
     <description>Super pom for all Agave services</description>
     <packaging>pom</packaging>
     <organization>

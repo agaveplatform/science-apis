@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>uuids</artifactId>
-	<name>Agave Core Science API UUIDs Service Parent POM</name>
+	<name>Agave Platform UUIDs Service Parent POM</name>
 	<description>This is the parent project for the UUIDs service.</description>
 	<packaging>pom</packaging>
 

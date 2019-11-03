@@ -12,7 +12,7 @@
 
     <artifactId>transfers</artifactId>
     <version>2.2.24</version>
-    <name>Agave Core Transfer POM</name>
+    <name>Agave Platform Transfer Service Parent POM</name>
     <description>Agave grpc data transfer services</description>
     <packaging>pom</packaging>
     <organization>

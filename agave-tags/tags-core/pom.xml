@@ -9,7 +9,7 @@
 		<version>2.2.24</version>
 	</parent>
 	<artifactId>tags-core</artifactId>
-	<name>Agave Core Science API Tags Service Core</name>
+	<name>Agave Platform Tags Service Core</name>
 	<description>Core classes for Agave Tags Service</description>
 	<packaging>jar</packaging>
 

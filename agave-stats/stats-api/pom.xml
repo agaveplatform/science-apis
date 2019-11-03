@@ -8,7 +8,7 @@
         <version>2.2.24</version>
     </parent>
     <artifactId>stats-api</artifactId>
-    <name>Agave Core Science API Stats Service API Endpoints</name>
+    <name>Agave Platform Stats Service API Endpoints</name>
     <description>This is the Stats service used to provide usage information about the core science APIs.</description>
     <packaging>jar</packaging>
 

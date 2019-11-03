@@ -9,7 +9,7 @@
 		<version>2.2.24</version>
 	</parent>
 	<artifactId>tags-api</artifactId>
-	<name>Agave Core Science API Tags Service API Endpoints</name>
+	<name>Agave Platform Tags Service API Endpoints</name>
 	<description>Webapp that contains the REST endpoints for the Tags service</description>
 	<packaging>war</packaging>
 

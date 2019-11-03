@@ -9,7 +9,7 @@
 		<version>2.2.24</version>
 	</parent>
 	<artifactId>sftp-relay</artifactId>
-	<name>Agave Core SFTP Transfer Service</name>
+	<name>Agave Platform Transfer SFTP Relay Service</name>
 	<description>Go service to handle sftp transfers as a backend microservice</description>
 	<packaging>jar</packaging>
 

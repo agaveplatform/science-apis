@@ -12,7 +12,7 @@
 
     <artifactId>protos</artifactId>
     <version>2.2.24</version>
-    <name>Agave Core Proto POM</name>
+    <name>Agave Platform Protobuffer Parent POM</name>
     <description>Proto file generation for all Agave grpc services</description>
     <packaging>pom</packaging>
     <organization>

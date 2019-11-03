@@ -9,7 +9,7 @@
 		<version>2.2.24</version>
 	</parent>
 	<artifactId>uuids-api</artifactId>
-	<name>Agave Core Science API UUIDs Service API Endpoints</name>
+	<name>Agave Platform UUIDs Service API Endpoints</name>
 	<description>Webapp that contains the REST endpoints for the UUIDs service</description>
 	<packaging>war</packaging>
 

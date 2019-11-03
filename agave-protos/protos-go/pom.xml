@@ -9,7 +9,7 @@
 		<version>2.2.24</version>
 	</parent>
 	<artifactId>protos-go</artifactId>
-	<name>Agave Core Go Proto</name>
+	<name>Agave Platform Protobuffer Go Bindings</name>
 	<description>Proto file generation for all Go protobuf stubs</description>
 	<packaging>jar</packaging>
 

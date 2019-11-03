@@ -7,7 +7,7 @@
 	"site": "docker-compose",
 	"storage": {
 		"host": "docker.example.com",
-		"port": 22,
+		"port": 10022,
 		"protocol": "SFTP",
 		"rootDir": "/",
 		"homeDir": "/home/testuser",

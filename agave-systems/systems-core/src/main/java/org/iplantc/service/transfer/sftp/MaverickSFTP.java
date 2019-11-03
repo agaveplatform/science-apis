@@ -16,7 +16,6 @@ import com.sshtools.ssh2.Ssh2Context;
 import com.sshtools.ssh2.Ssh2PublicKeyAuthentication;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import org.agaveplatform.transfer.proto.sftp.*;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
@@ -723,48 +722,13 @@ public final class MaverickSFTP implements RemoteDataClient
 					localTarget = new File(localTarget,  FilenameUtils.getName(remoteSource));
 				}
 				
-				try {
-					//getClient().get(resolvePath(remoteSource), localTarget.getAbsolutePath(), listener);
-					ManagedChannel channel = ManagedChannelBuilder.forAddress(remoteSource, 50051).usePlaintext().build();
-
-					// Create an sfpt service client (blocking - synchronous)
-					SFTPRelayGrpc.SFTPRelayBlockingStub sftpClient = SFTPRelayGrpc.newBlockingStub(channel);
-
-					// create a protocol buffer sftp message
-					SftpConfig sftp = SftpConfig.newBuilder()
-                			.setPassword(ByteString.copyFrom(password, "utf-8"))
-                			.setUsername(username)
-                			.setHost(host)
-							.setPort(String.valueOf(port))
-                			.build();
-
-					 //create a CopyLocalToRemoteRequest
-					CopyFromRemoteRequest copyFromRemoteRequest = CopyFromRemoteRequest.newBuilder()
-                		.setSftpConfig(sftp)
-						.setSrc(remoteSource)
-						.setDest(localTarget.getAbsolutePath())
-                		.build();
-
-					// call the gRPC and get back a CopyLocalToRemoteResponse
-					CopyFromRemoteResponse copyResponse = sftpClient.copyFromRemoteService(copyFromRemoteRequest);
-
-        			String response = copyResponse.getResult();
-        			if ( response.contains("Dialing") || response.contains("creating new client")  || response.contains("opening source file") ) {
-        				throw new RemoteDataException(response);
-        			}
-        			else {
-        				//TODO find another output for the response
-        				System.out.println("Result: " + response);
-					}
-
-        			channel.shutdown();
-				}
-				catch (Exception e){
-					String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource +
-								 " to local target " + localTarget.getAbsolutePath() + ": " + e.getMessage();
-					log.error(msg, e);
-					throw e;
-				}
+				try {getClient().get(resolvePath(remoteSource), localTarget.getAbsolutePath(), listener);}
+				    catch (Exception e){
+	                    String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource +
+                                     " to local target " + localTarget.getAbsolutePath() + ": " + e.getMessage();
+	                    log.error(msg, e);
+	                    throw e;
+				    }
 
 				// make sure file transferred
 				if (!localTarget.exists()) {
@@ -964,49 +928,7 @@ public final class MaverickSFTP implements RemoteDataClient
 			    // bust cache since this file has now changed
                 fileInfoCache.remove(resolvedPath);
 
-                try {
-
-					//getClient().get(resolvePath(remoteSource), localTarget.getAbsolutePath(), listener);
-					ManagedChannel channel = ManagedChannelBuilder.forAddress("sftp-relay", 50051)
-							.usePlaintext()
-							.build();
-
-					// Create an sfpt service client (blocking - synchronous)
-					SFTPRelayGrpc.SFTPRelayBlockingStub sftpClient = SFTPRelayGrpc.newBlockingStub(channel);
-
-					// create a protocol buffer sftp message
-					SftpConfig sftp = SftpConfig.newBuilder()
-							.setPassword(ByteString.copyFrom(password, "utf-8"))
-							.setUsername(username)
-							.setHost(host)
-							.setPort(String.valueOf(port))
-							.build();
-
-					// create a protocol buffer sftp message
-					CopyLocalToRemoteRequest copyToRequest = CopyLocalToRemoteRequest.newBuilder()
-							.setSftpConfig(sftp)
-							.setSrc(localdir)
-							.setDest(resolvedPath)
-							.build();
-
-					// call the gRPC and get back a CopyLocalToRemoteResponse
-					CopyLocalToRemoteResponse copyResponse = sftpClient.copyLocalToRemoteService(copyToRequest);
-
-
-					String response = copyResponse.getResult();
-
-					if ( response.contains("Dialing") || response.contains("creating new client")  || response.contains("opening source file") ) {
-						throw new RemoteDataException(response);
-					}
-					else {
-						//TODO find another output for the response
-						System.out.println("Result: " + response);
-					}
-
-					channel.shutdown();
-
-                	//getClient().put(localFile.getAbsolutePath(), resolvedPath, listener);
-                }
+                try {getClient().put(localFile.getAbsolutePath(), resolvedPath, listener);}
                     catch (Exception e){
                         String msg = getMsgPrefix() + "Failure to write local file " + localFile.getAbsolutePath() +
                                      " to " + resolvedPath + ": " + e.getMessage();
@@ -1168,8 +1090,8 @@ public final class MaverickSFTP implements RemoteDataClient
 	 * This speeds up most operations as the logic of this adaptor heavily
 	 * relies on explicit metadata checking for each operation.
 	 * 
-	 * @param resolvedPath
-	 * @return 
+	 * @param resolvedPath the remote absolute path to stat
+	 * @return file attributes for the remote file item
 	 * @throws SftpStatusException
 	 * @throws SshException
 	 * @throws IOException

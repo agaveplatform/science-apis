@@ -14,7 +14,7 @@ import java.io.IOException;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"sftp", "sftp-password", "filesystem", "integration"})
+@Test(singleThreaded=true, groups= {"sftp", "sftp-password", "filesystem", "integration", "broken", "notReady"})
 public class SftpRelayPasswordRemoteDataClientTest extends AbstractRemoteDataClientTest {
 
 	/* (non-Javadoc)

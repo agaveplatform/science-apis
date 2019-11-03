@@ -35,16 +35,22 @@ RUN \
   # unset root password
   passwd -d root && \
 
+  # add test group for shared acl
+  addgroup testers && \
   # add test users
-  adduser -D -s /bin/ash testuser && \
+  adduser -D -s /bin/bash testuser && \
   echo "testuser:testuser" | chpasswd && \
   chown -R testuser:testuser /home/testuser && \
-  adduser -D -s /bin/ash testshareuser && \
+  adduser -D -s /bin/bash testshareuser && \
   echo "testshareuser:testshareuser" | chpasswd && \
   chown -R testshareuser:testshareuser /home/testshareuser && \
-  adduser -D -s /bin/ash testotheruser && \
+  adduser -D -s /bin/bash testotheruser && \
   echo "testotheruser:testotheruser" | chpasswd && \
   chown -R testotheruser:testotheruser /home/testotheruser && \
+
+  # create /scratch and /work for testing
+  mkdir -p /scratch /work && \
+  chmod -R 777 /scratch /work && \
 
   # clean up apk cache
   rm -rf /var/cache/apk/*

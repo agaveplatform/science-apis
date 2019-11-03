@@ -11,7 +11,7 @@ import (
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
-	ssh "golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 )
 
@@ -45,7 +45,7 @@ var Conn *ssh.Client
 	chunks sized based on the buffer_size variable.
 */
 func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvGetResponse, error) {
-	log.Info("Get Service function was invoked with %v\n", req)
+	log.Infof("Get Service function was invoked with %v\n", req)
 
 	Params = setGetParams(req) // return type is ConnParams
 
@@ -68,7 +68,7 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 	// Write from local system To a file
 	GetSourceType(Params, to, name)
 
-	log.Info("%d bytes copied\n", bytesReadf)
+	log.Infof("%d bytes copied\n", bytesReadf)
 	res := &sftppb.SrvGetResponse{
 		Result: strconv.FormatInt(bytesReadf, 10),
 	}
@@ -77,7 +77,7 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 }
 
 func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvPutResponse, error) {
-	log.Info("Put function was invoked with %v\n", req)
+	log.Infof("Put function was invoked with %v\n", req)
 	Params := setPutParams(req) // return type is ConnParams
 
 	// we assume that the calling functions have already established that the system has the ability to make a connection.
@@ -93,13 +93,13 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	var tmpName FileTransfer
 
 	// Read From system
-	log.Info("calling GetSourceType(%v): ", from)
+	log.Infof("calling GetSourceType(%v): ", from)
 	tmpName = GetSourceType(Params, from, "")
 	// Write from local system To a file
 	name := tmpName.s
 	GetSourceType(Params, to, name)
 
-	log.Info("%d bytes copied\n", bytesReadf)
+	log.Infof("%d bytes copied\n", bytesReadf)
 	res := &sftppb.SrvPutResponse{
 		Result: strconv.FormatInt(bytesReadf, 10),
 	}
@@ -170,9 +170,9 @@ func (a SFTP_Factory) ReadFrom(params ConnParams, name string) FileTransfer { //
 	if name == "" {
 		log.Info("SFTP read from (GET) txfr")
 		result := ""
-		log.Info("Dial the conenction now")
-		log.Info("Sys= %s", params.Srce.SystemId)
-		log.Info("Sys= %s", params.Srce.HostPort)
+		log.Info("Dial the connection now")
+		log.Infof("Sys= %s", params.Srce.SystemId)
+		log.Infof("Sys= %s", params.Srce.HostPort)
 
 		var config ssh.ClientConfig
 		config = ssh.ClientConfig{
@@ -185,7 +185,7 @@ func (a SFTP_Factory) ReadFrom(params ConnParams, name string) FileTransfer { //
 
 		conn, err := ssh.Dial("tcp", params.Srce.SystemId+params.Srce.HostPort, &config)
 		if err != nil {
-			log.Info("Error Dialing the server: %f", err)
+			log.Infof("Error Dialing the server: %f", err)
 			log.Error(err)
 			result = err.Error()
 		}
@@ -227,7 +227,7 @@ func (a SFTP_Factory) ReadFrom(params ConnParams, name string) FileTransfer { //
 		if err != nil {
 			log.Info("Error writing to file: ", err)
 		}
-		log.Info("%d bytes copied\n", bytesWritten)
+		log.Infof("%d bytes copied\n", bytesWritten)
 		nameIs = dstFile.Name()
 		return FileTransfer{params.Srce.FileName, bytesWritten, nil}
 
@@ -269,7 +269,7 @@ func (a SFTP_Factory) ReadFrom(params ConnParams, name string) FileTransfer { //
 		if err != nil {
 			log.Info("Error writing to file: ", err)
 		}
-		log.Info("%d bytes copied\n", bytesWritten)
+		log.Infof("%d bytes copied\n", bytesWritten)
 		return FileTransfer{params.Srce.FileName, bytesWritten, nil}
 	}
 	return FileTransfer{nameIs, 0, nil}

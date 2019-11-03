@@ -20,34 +20,53 @@ func main() {
 	}
 	defer conn.Close()
 
-	c := sftppb.NewSFTPRelayClient(conn)
+	fmt.Println("getting realy client")
+	c := sftppb.NewSftpRelayClient(conn)
 	// push file test
+	fmt.Println("doing the put request")
 	doUnaryPut(c)
+	fmt.Println("done with put now doing the get request")
 	//pull the test file
 	doUnaryPull(c)
-
+	fmt.Println("done with everything.")
 	//p
 
 }
 
-func doUnaryPut(c sftppb.SFTPRelayClient) {
+func doUnaryPut(c sftppb.SftpRelayClient) {
 	fmt.Println("Starting to do uniary rpc client: ")
 	startPulltime := time.Now()
 	fmt.Println("Start Pull Time = " + startPulltime.String())
 
-	req := &sftppb.CopyLocalToRemoteRequest{
-		Sftp: &sftppb.Sftp{
-			Username: "testuser",
-			SystemId: "sftp",
-			FileName: "/tmp/hosts",
-			HostKey:  "",
-			PassWord: "testuser",
-			HostPort: ":22",
+	req := &sftppb.SrvPutRequest{
+		SrceSftp: &sftppb.Sftp{
+			Username:   "ertanner",
+			PassWord:   "Bambie69",
+			SystemId:   "192.168.1.16",
+			HostKey:    "",
+			HostPort:   ":2225",
+			ClientKey:  "",
+			FileName:   "/tmp/hosts",
+			FileSize:   0,
+			BufferSize: 0,
+			Type:       "SFTP",
+		},
+		DestSftp: &sftppb.Sftp{
+			Username:   "ertanner",
+			PassWord:   "Bambie69",
+			SystemId:   "192.168.1.16",
+			HostKey:    "",
+			FileName:   "/tmp/hosts_et",
+			FileSize:   0,
+			HostPort:   ":2225",
+			ClientKey:  "",
+			BufferSize: 0,
+			Type:       "LOCAL",
 		},
 	}
-	fmt.Println("Username = " + req.Sftp.Username)
+	fmt.Println("Username = " + req.SrceSftp.Username)
 
-	res, err := c.CopyLocalToRemoteService(context.Background(), req)
+	res, err := c.Put(context.Background(), req)
 	if err != nil {
 		log.Fatalf("error while calling RPC: %v", err)
 	}
@@ -57,20 +76,36 @@ func doUnaryPut(c sftppb.SFTPRelayClient) {
 
 }
 
-func doUnaryPull(c sftppb.SFTPRelayClient) {
+func doUnaryPull(c sftppb.SftpRelayClient) {
 	fmt.Println("Starting 2nd do uniary rpc client: ")
 	startPulltime := time.Now()
-	req := &sftppb.CopyFromRemoteRequest{
-		Sftp: &sftppb.Sftp{
-			Username: "testuser",
-			SystemId: "sftp",
-			FileName: "/tmp/hosts",
-			HostKey:  "",
-			PassWord: "testuser",
-			HostPort: ":22",
+	req := &sftppb.SrvGetRequest{
+		SrceSftp: &sftppb.Sftp{
+			Username:   "testuser",
+			PassWord:   "testuser",
+			SystemId:   "192.168.1.16",
+			HostKey:    "",
+			HostPort:   ":2225",
+			ClientKey:  "",
+			FileName:   "/tmp/hosts",
+			FileSize:   0,
+			BufferSize: 0,
+			Type:       "LOCAL",
+		},
+		DestSftp: &sftppb.Sftp{
+			Username:   "testuser",
+			PassWord:   "testuser",
+			SystemId:   "192.168.1.16",
+			HostKey:    "",
+			FileName:   "/tmp/hosts_et",
+			FileSize:   0,
+			HostPort:   ":2225",
+			ClientKey:  "",
+			BufferSize: 0,
+			Type:       "SFTP",
 		},
 	}
-	res, err := c.CopyFromRemoteService(context.Background(), req)
+	res, err := c.Get(context.Background(), req)
 	if err != nil {
 		log.Fatalf("error while calling RPC: %v", err)
 	}

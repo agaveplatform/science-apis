@@ -14,27 +14,30 @@ message Sftp {
 	string systemId = 3;
 	string hostKey  = 4;
 	string fileName = 5;
-	string hostPort = 6;
-	string clientKey = 7;
+	int64 fileSize = 6;
+	string hostPort = 7;
+	string clientKey = 8;
+	int64 bufferSize = 9;
+	string type = 10;
 }
 
-message CopyLocalToRemoteRequest{
-	Sftp sftp = 1;
+message SrvPutRequest{
+	Sftp srceSftp = 1;
+	Sftp destSftp = 2;
 }
-message CopyLocalToRemoteResponse{
+message SrvPutResponse{
 	string result = 1;
 }
 
-message CopyFromRemoteRequest{
-	Sftp sftp = 1;
+message SrvGetRequest{
+	Sftp srceSftp = 1;
+	Sftp destSftp = 2;
 }
-message CopyFromRemoteResponse{
+message SrvGetResponse{
 	string result = 1;
 }
 
-service SFTPRelay {
-	rpc CopyFromRemoteService(CopyFromRemoteRequest) returns (CopyFromRemoteResponse);
-	rpc CopyLocalToRemoteService(CopyLocalToRemoteRequest) returns (CopyLocalToRemoteResponse);
-//	rpc GetDirListing(GetDirRequest)returns(stream GetDirResponse);
+service SftpRelay {
+	rpc Get(SrvGetRequest) returns (SrvGetResponse);
+	rpc Put(SrvPutRequest) returns (SrvPutResponse);
 }
-

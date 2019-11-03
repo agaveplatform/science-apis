@@ -134,9 +134,6 @@ type FileTransfer struct {
 type ReadTransferFactory interface {
 	ReadFrom(params ConnParams, name string) FileTransfer
 }
-type WriteTransferFactory interface {
-	WriteTo(params ConnParams, name string)
-}
 type LOCAL_Factory struct{}
 type SFTP_Factory struct{}
 
@@ -276,49 +273,6 @@ func (a SFTP_Factory) ReadFrom(params ConnParams, name string) FileTransfer { //
 		return FileTransfer{params.Srce.FileName, bytesWritten, nil}
 	}
 	return FileTransfer{nameIs, 0, nil}
-}
-
-// the following will take a name and move that to an SFTP.  Basically doing a put on the file
-func (a SFTP_Factory) WriteTo(params ConnParams, name string) FileTransfer { // name is a temporary file name that was created at the put end of the stream
-	log.Info("Put sFTP Service function was invoked with")
-
-	conn, err := connPool.ConnectionPool(params.Srce.Username, params.Srce.PassWord, params.Srce.SystemId, params.Srce.HostKey,
-		params.Srce.HostPort, params.Srce.ClientKey, params.Srce.FileName, params.Srce.FileSize)
-	log.Info(params.Dest.FileSize)
-
-	result := ""
-	log.Info(result)
-
-	// create new SFTP client
-	client, err := sftp.NewClient(conn)
-	if err != nil {
-		log.Info("Error creating new client", err)
-		result = err.Error()
-	}
-	defer client.Close()
-
-	// create destination file
-	dstFile, err := client.Create(params.Dest.FileName)
-	if err != nil {
-		log.Info("Error creating dest file", err)
-		result = err.Error()
-	}
-	defer dstFile.Close()
-
-	// open source file
-	// note this should include the /scratch directory
-	srcFile, err := client.Open(name)
-	if err != nil {
-		log.Info("Opening source file: ", err)
-		result = err.Error()
-	}
-
-	bytesWritten, err := srcFile.WriteTo(dstFile)
-	if err != nil {
-		log.Info("Error writing to file: ", err)
-	}
-	log.Info("%d bytes copied\n", bytesWritten)
-	return FileTransfer{params.Srce.FileName, bytesWritten, nil}
 }
 
 func (a LOCAL_Factory) ReadFrom(params ConnParams, name string) FileTransfer {

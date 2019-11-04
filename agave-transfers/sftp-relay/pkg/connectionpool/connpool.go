@@ -25,7 +25,7 @@ type UriParams struct {
 	conn      *ssh.Client
 }
 
-var UriSlice = make([]*UriParams, 10, 20)
+var UriSlice = make([]UriParams, 1)
 
 func init() {
 	// log to console and file
@@ -40,19 +40,27 @@ func init() {
 }
 
 func ConnectionPool(Username string, PassWord string, SystemId string, HostKey string, HostPort string, ClientKey string, FileName string, FileSize int64) (*ssh.Client, error) {
-
+	log.Info("got into the connection pool")
 	concat := Username + PassWord + SystemId + HostKey + HostPort
-	var i int
+	log.Info(concat)
+	//var i int
 	var config ssh.ClientConfig
 	var hostKey ssh.PublicKey
-
+	log.Info(len(UriSlice))
+	log.Info(concat)
+	log.Info("check to see if the connection already exists")
 	//check to see if the connection already exists.  If it does then return the connection.
-	for i = 0; i < len(UriSlice); i++ {
-		if concat == UriSlice[i].username+UriSlice[i].passWord+UriSlice[i].systemId+UriSlice[i].hostKey+UriSlice[i].hostPort {
-			return UriSlice[i].conn, nil
-		}
-	}
+	//if len(UriSlice) > 0 {
+	//	log.Info("length is greater than 0")
+	//	for i = 0; i < len(UriSlice); i++ {
+	//		log.Info("iteration %v", i)
+	//		if concat == UriSlice[i].username + UriSlice[i].passWord + UriSlice[i].systemId + UriSlice[i].hostKey + UriSlice[i].hostPort {
+	//			return UriSlice[i].conn, nil
+	//		}
+	//	}
+	//}
 
+	log.Info("Check username %v and clientkey %v is not blank", Username, ClientKey)
 	if Username != "" && ClientKey != "" {
 
 		// A public key may be used to authenticate against the remote
@@ -81,6 +89,7 @@ func ConnectionPool(Username string, PassWord string, SystemId string, HostKey s
 		}
 		// Checking if username and password are not null.  If so then try that method of connection
 	} else if Username != "" && PassWord != "" {
+		log.Info("Check username %v and Password %v is not blank", Username, PassWord)
 		config = ssh.ClientConfig{
 			User: Username,
 			Auth: []ssh.AuthMethod{
@@ -91,6 +100,7 @@ func ConnectionPool(Username string, PassWord string, SystemId string, HostKey s
 		}
 	} else {
 		//Return an error with no client connection
+		log.Info("Return an error with no client connection")
 		pwd := ""
 		if PassWord == "" {
 			pwd = "null"
@@ -104,6 +114,7 @@ func ConnectionPool(Username string, PassWord string, SystemId string, HostKey s
 	}
 
 	//validate port #
+	log.Info("validate port #")
 	port, err := validatePort(HostPort)
 	if err != nil {
 		return nil, fmt.Errorf("Wrong port number.  You entered %v", err)
@@ -113,6 +124,7 @@ func ConnectionPool(Username string, PassWord string, SystemId string, HostKey s
 	// *****************************************************
 	// connect to the system and establish a "connection"
 	// *****************************************************
+	log.Info("Dial the conenction now")
 	conn, err := ssh.Dial("tcp", SystemId+HostPort, &config)
 	if err != nil {
 		log.Info("Error Dialing the server: %f", err)
@@ -121,7 +133,8 @@ func ConnectionPool(Username string, PassWord string, SystemId string, HostKey s
 	}
 	defer conn.Close()
 
-	UriSlice = append(UriSlice, &UriParams{
+	log.Info("Put the info into the slice for future use")
+	UriSlice = append(UriSlice, UriParams{
 		Username,
 		PassWord,
 		SystemId,

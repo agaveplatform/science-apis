@@ -59,6 +59,7 @@
 							<goal>exec</goal>
 						</goals>
 						<configuration>
+							<skip>true</skip>
 							<executable>make</executable>
 							<workingDirectory>${basedir}</workingDirectory>
 							<arguments>

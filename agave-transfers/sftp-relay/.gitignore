@@ -3,3 +3,4 @@
 *.iml
 /.idea/
 /SFTPServer.log
+!/docker-compose.yml

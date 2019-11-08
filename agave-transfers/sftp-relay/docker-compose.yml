@@ -1,0 +1,29 @@
+version: '3.7'
+
+services:
+
+  sftp-relay:
+    build:
+      context: ../../
+      dockerfile: agave-transfers/sftp-relay/Dockerfile
+    image: sftp-relay:develop
+    ports:
+      - 50051:50051
+    restart: always
+
+  sftp:
+    image: agaveplatform/sshd:latest
+    ports:
+      - '10022:22'
+
+  sftptunnel:
+   image: agaveplatform/sshd:latest
+   links:
+     - sftphidden
+   ports:
+     - '10033:22'
+
+  sftphidden:
+    image: agaveplatform/sshd:latest
+    ports:
+      - '10044:22'

@@ -8,7 +8,6 @@ import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.AuthConfig;
 import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.enumerations.AuthConfigType;
-import org.iplantc.service.transfer.AbstractRemoteDataClientTest;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.json.JSONException;
@@ -22,15 +21,16 @@ import java.io.IOException;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"sftp", "sftp-password", "filesystem", "integration", "broken", "notReady"})
-public class SftpRelayPasswordRemoteDataClientTest extends AbstractRemoteDataClientTest {
+@Test(singleThreaded=true, groups= {"sftp", "sftp-sshkeys", "filesystem", "integration"})
+public class SftpRelaySshKeysRemoteDataClientTest extends SftpPasswordRemoteDataClientTest {
 
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.transfer.AbstractRemoteDataClientTest#getSystemJson()
 	 */
 	@Override
+	@Test(enabled=false)
 	protected JSONObject getSystemJson() throws JSONException, IOException {
-		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "sftp-password.example.com.json");
+		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "sftp-sshkeys.example.com.json");
 	}
 
 	protected RemoteDataClient _getRemoteDataClient() throws EncryptionException {
@@ -107,15 +107,4 @@ public class SftpRelayPasswordRemoteDataClientTest extends AbstractRemoteDataCli
 
 		return threadClient.get();
 	}
-	
-	@Override
-	protected String getForbiddenDirectoryPath(boolean shouldExist) {
-		if (shouldExist) {
-			return "/root";
-		} else {
-			return "/root/helloworld";
-		}
-	}
-	
-
 }

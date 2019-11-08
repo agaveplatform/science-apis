@@ -14,7 +14,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"sftp","sanitization","broken","integration"})
+@Test(singleThreaded=true, groups= {"sftp","sanitization","filesystem","integration"})
 public class SftpPathSanitizationTest extends AbstractPathSanitizationTest {
 
     /* (non-Javadoc)

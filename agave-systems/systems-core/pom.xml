@@ -76,8 +76,11 @@
 						<configuration>
 							<includes>
 								<include>org.iplantc.service.transfer.sftp.SftpPasswordRemoteDataClientTest</include>
+								<include>org.iplantc.service.transfer.sftp.SftpPathResolutionTests</include>
+								<include>org.iplantc.service.transfer.sftp.SftpPathSanitizationTest</include>
+								<include>org.iplantc.service.transfer.sftp.SftpSshKeysRemoteDataClientTest</include>
 							</includes>
-							<groups>integration</groups>
+							<groups>integration,s3</groups>
 							<excludedGroups>broken,notReady,unit,azure,s3,gridftp</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
@@ -148,11 +151,11 @@
 			<artifactId>jclouds-allblobstore</artifactId>
 			<version>${jclouds.version}</version>
 		</dependency>
-		<dependency>
-			<groupId>org.apache.jclouds.labs</groupId>
-			<artifactId>google-cloud-storage</artifactId>
-			<version>${jclouds.version}</version>
-		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.apache.jclouds.labs</groupId>-->
+<!--			<artifactId>google-cloud-storage</artifactId>-->
+<!--			<version>${jclouds.version}</version>-->
+<!--		</dependency>-->
 		<dependency>
 			<groupId>org.apache.jclouds.driver</groupId>
 			<artifactId>jclouds-slf4j</artifactId>

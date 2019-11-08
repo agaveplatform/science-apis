@@ -2187,13 +2187,11 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
     }
     
     @Test(groups={"sync"}, dependsOnMethods= {"syncToRemoteFolderReplacesOverlappingFilesAndFolders"})
-    public void syncToRemoteSyncesSubfoldersRatherThanEmbeddingThem() 
-    {
+    public void syncToRemoteSyncesSubfoldersRatherThanEmbeddingThem() throws IOException, RemoteDataException {
         _syncToRemoteSyncesSubfoldersRatherThanEmbeddingThem();
     }
     
-    protected void _syncToRemoteSyncesSubfoldersRatherThanEmbeddingThem()
-    {
+    protected void _syncToRemoteSyncesSubfoldersRatherThanEmbeddingThem() throws IOException, RemoteDataException {
         try 
         {
             tmpFile = new File(tempDir, "temp.txt");
@@ -2240,10 +2238,14 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
                 Assert.assertTrue(getClient().doesExist(tempDir.getName() + "/" + path + "/file2.txt"),
                         "Failed to copy local file2.txt to remote folder in proper place.");
             }
-        } 
+        }
+        catch (AssertionError e) {
+            throw e;
+        }
         catch (Exception e) 
         {
-            Assert.fail("Put of file or folder should not throw exception.", e);
+            log.error("Put of file or folder should not throw exception.", e);
+            throw e;
         }
     }
     

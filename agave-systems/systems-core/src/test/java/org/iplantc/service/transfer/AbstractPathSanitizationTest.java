@@ -79,7 +79,7 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
             Assert.fail("Failed to clean up test home directory " + getClient().resolvePath("") + " after test method.", e);
         }
         finally {
-            try { getClient().disconnect(); } catch (Exception e) {}
+            try { getClient().disconnect(); } catch (Exception ignored) {}
         }
     }
     

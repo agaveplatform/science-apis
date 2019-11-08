@@ -737,7 +737,7 @@ public final class SftpRelay implements RemoteDataClient {
                     // call the gRPC and get back a CopyLocalToRemoteResponse
                     SrvGetResponse srvGetResponseResponse = sftpClient.get(srvGetRequest);
 
-                    String response = srvGetResponseResponse.getError();
+                    String response = srvGetResponseResponse.getResult();
                     if (response.contains("Dialing") || response.contains("creating new client") || response.contains("opening source file")) {
                         throw new RemoteDataException(response);
                     } else {
@@ -963,7 +963,7 @@ public final class SftpRelay implements RemoteDataClient {
                     // call the gRPC and get back a SrvPutResponse
                     SrvPutResponse copyResponse = sftpClient.put(srvPutRequest);
 
-                    String response = copyResponse.getError();
+                    String response = copyResponse.getResult();
 
                     if (response.contains("Dialing") || response.contains("creating new client") || response.contains("opening source file")) {
                         throw new RemoteDataException(response);

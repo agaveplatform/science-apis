@@ -213,6 +213,7 @@ public class S3Jcloud implements RemoteDataClient
 				overrides.setProperty(PROPERTY_S3_VIRTUAL_HOST_BUCKETS, "false");
 		        overrides.setProperty(PROPERTY_TRUST_ALL_CERTS, "true"); 
 		        overrides.setProperty(PROPERTY_RELAX_HOSTNAME, "true");
+
 		        Iterable<Module> modules = ImmutableSet.<Module> of(new SLF4JLoggingModule());
 		        
 		        
@@ -296,10 +297,10 @@ public class S3Jcloud implements RemoteDataClient
 			
 //			BlobMetadata meta = getFileMeta(resolvedPath);
 //			if (meta == null)
-			if (!getBlobStore().directoryExists(containerName, resolvedPath))
+			if (!_directoryExists(resolvedPath))
             {
 			    String resolvedParentPath = _doResolvePath(getParentPath(remotepath));
-                if (getBlobStore().directoryExists(containerName, resolvedParentPath)) {
+                if (_directoryExists(resolvedParentPath)) {
 			        getBlobStore().createDirectory(containerName, resolvedPath);
 			    } else {
 			        throw new FileNotFoundException("No such file or directory");
@@ -362,6 +363,26 @@ public class S3Jcloud implements RemoteDataClient
 	    return mkdirs(remotepath, null);
     }
 
+	/**
+	 * Safe check for directory existence. This is used rather than the native jcloud check due to the
+	 * spotty support for trailing characters and other delimiters in various implementations.
+	 * @param remotePath
+	 * @return
+	 * @throws FileNotFoundException
+	 * @throws RemoteDataException
+	 */
+    protected boolean _directoryExists(String remotePath)
+	throws FileNotFoundException, RemoteDataException {
+		BlobMetadata md;
+		try {
+			md = getFileMeta(remotePath);
+			return (md != null && md.getContentMetadata().getContentType().equals("application/directory"));
+		}
+		catch (FileNotFoundException | RemoteDataException ignore) {}
+
+		return false;
+	}
+
 	@Override
 	public boolean mkdirs(String remotepath, String authorizedUsername) 
 	throws IOException, RemoteDataException 
@@ -398,7 +419,7 @@ public class S3Jcloud implements RemoteDataClient
 						newdirectories.append(pathTokens[i]);
 						 
 //						if (meta == null || meta.getProviderId() == null)
-						if (!getBlobStore().directoryExists(containerName, newdirectories.toString()))
+						if (!_directoryExists(newdirectories.toString()))
 						{
 							getBlobStore().createDirectory(containerName, newdirectories.toString());
 							
@@ -1587,7 +1608,7 @@ public class S3Jcloud implements RemoteDataClient
 	 * Convenience method to work around AWS being picky about trailing slashes
 	 * and to cache the result for quicker complex operations.
 	 * 
-	 * @param remotepath
+	 * @param resolvedPath resolved path within the s3 container
 	 * @return
 	 * @throws FileNotFoundException
 	 * @throws RemoteDataException 
@@ -1600,7 +1621,7 @@ public class S3Jcloud implements RemoteDataClient
 	
 	/**
      * Convenience method to work around AWS being picky about trailing slashes.
-     * @param remotepath
+     * @param resolvedPath the actual remote path to the file
      * @param forceCheck whether to break the cache and force a remote check
      * @return
      * @throws FileNotFoundException

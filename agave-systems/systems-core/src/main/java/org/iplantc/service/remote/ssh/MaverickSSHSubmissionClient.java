@@ -169,7 +169,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient
             SocketAddress sockaddr = null; 
             transport = new Socket();
             if (useTunnel()) sockaddr = new InetSocketAddress(proxyHost, proxyPort);
-              else sockaddr = new InetSocketAddress(hostname, port);
+            else sockaddr = new InetSocketAddress(hostname, port);
 			
             // Timeouts may get adjusted on retries.
             if (log.isDebugEnabled())
@@ -281,7 +281,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient
                         String msg = getMsgPrefix() + "Failure to " + mfa + "authenticate using a password: " + e.getMessage();
                         log.error(msg, e);
                         throw e;
-                }
+                	}
 				} while (authStatus != SshAuthentication.COMPLETE  &&
 						 authStatus != SshAuthentication.FAILED    &&
 						 authStatus != SshAuthentication.CANCELLED &&
@@ -318,7 +318,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient
 			if (StringUtils.isNotBlank(publicKey) && StringUtils.isNotBlank(privateKey))
 			{
 				/**
-				 * Authenticate the user using password authentication
+				 * Authenticate the user using public key authentication
 				 */
 				auth = new Ssh2PublicKeyAuthentication();
 					

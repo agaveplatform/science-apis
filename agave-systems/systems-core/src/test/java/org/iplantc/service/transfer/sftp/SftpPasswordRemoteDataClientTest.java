@@ -6,6 +6,7 @@ package org.iplantc.service.transfer.sftp;
 import java.io.IOException;
 
 import org.iplantc.service.transfer.AbstractRemoteDataClientTest;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;

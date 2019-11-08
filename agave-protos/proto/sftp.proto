@@ -26,7 +26,9 @@ message SrvPutRequest{
 	Sftp destSftp = 2;
 }
 message SrvPutResponse{
-	string result = 1;
+	string fileName = 1;
+	string bytesReturned = 2;
+	string error = 3;
 }
 
 message SrvGetRequest{
@@ -34,7 +36,9 @@ message SrvGetRequest{
 	Sftp destSftp = 2;
 }
 message SrvGetResponse{
-	string result = 1;
+	string fileName = 1;
+	string bytesReturned = 2;
+	string error = 3;
 }
 
 service SftpRelay {

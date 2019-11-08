@@ -191,7 +191,7 @@
 				<foundation.auth.source>wso2</foundation.auth.source>
 				<foundation.service.slave.mode>false</foundation.service.slave.mode>
 				<foundation.remote.default.path>/scratch</foundation.remote.default.path>
-				<foundation.local.scratch.dir>/scratch</foundation.local.scratch.dir>
+				<foundation.local.scratch.dir>/tmp</foundation.local.scratch.dir>
 
 				<foundation.api.page.size.default>100</foundation.api.page.size.default>
 				<foundation.api.page.size.max>250</foundation.api.page.size.max>
@@ -229,7 +229,7 @@
 				<foundation.db.password>password</foundation.db.password>
 				<foundation.db.url>jdbc:mysql://${foundation.db.host}:${foundation.db.port}/${foundation.db.database}?zeroDateTimeBehavior=convertToNull&amp;sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false</foundation.db.url>
 				<foundation.db.bootstrap>jdbc:mysql://${foundation.db.host}:${foundation.db.port}/mavenbootstrap?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false</foundation.db.bootstrap>
-				<foundation.db.driver>com.mysql.jdbc.Driver</foundation.db.driver>
+				<foundation.db.driver>com.mysql.cj.jdbc.Driver</foundation.db.driver>
 				<foundation.db.postits.table>postits</foundation.db.postits.table>
 				<foundation.db.tenants.table>tenants</foundation.db.tenants.table>
 				<foundation.db.internaluser.table>internalusers</foundation.db.internaluser.table>
@@ -246,12 +246,12 @@
 				<foundation.db.test.password>password</foundation.db.test.password>
 				<foundation.db.test.url>jdbc:mysql://${foundation.db.test.host}:${foundation.db.test.port}/${foundation.db.test.database}?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true</foundation.db.test.url>
 				<foundation.db.test.bootstrap>jdbc:mysql://${foundation.db.test.host}:${foundation.db.test.port}/mavenbootstrap?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true</foundation.db.test.bootstrap>
-				<foundation.db.test.driver>com.mysql.jdbc.Driver</foundation.db.test.driver>
+				<foundation.db.test.driver>com.mysql.cj.jdbc.Driver</foundation.db.test.driver>
 
-				<!-- **************** AWS Credentials for Integration Tests ********** -->
-				<aws.bucket></aws.bucket>
-				<aws.access.key></aws.access.key>
-				<aws.secret.key></aws.secret.key>
+				<!-- **************** Minio Credentials for Integration Tests ********** -->
+				<s3.bucket>agaveapitestdata</s3.bucket>
+				<s3.access.key>agaveuser</s3.access.key>
+				<s3.secret.key>password</s3.secret.key>
 
 				<!-- *********************************************************************
 				**************************************************************************

@@ -6,17 +6,17 @@
 	"description": "Example storage system accessible via Amazon S3 API.",
 	"site": "amazon.com",
 	"storage": {
-		"host": "s3-website-us-east-1.amazonaws.com",
-		"port": 443,
+		"host": "docker.example.com",
+		"port": 9000,
 		"protocol": "S3",
 		"homeDir": "/",
 		"rootDir": "/",
 		"auth": {
-			"publicKey": "${aws.access.key}",
-			"privateKey": "${aws.secret.key}",
+			"publicKey": "${s3.access.key}",
+			"privateKey": "${s3.secret.key}",
 			"type": "APIKEYS"
 		},
-		"container": "${aws.bucket}"
+		"container": "${s3.bucket}"
 		
 	},
 	"default": false

@@ -21,9 +21,9 @@ FROM sickp/alpine-sshd:7.9
 
 MAINTAINER Agave Platform <help@agaveplatform.org>
 
-COPY keys/id_rsa.pub /home/testuser/.ssh/authorized_keys
-COPY keys/id_rsa.pub /home/testshareuser/.ssh/authorized_keys
-COPY keys/id_rsa.pub /home/testotheruser/.ssh/authorized_keys
+COPY keys/ /home/testuser/.ssh/
+COPY keys/ /home/testshareuser/.ssh/
+COPY keys/ /home/testotheruser/.ssh/
 
 RUN \
   apk --no-cache add bash && \
@@ -40,12 +40,15 @@ RUN \
   # add test users
   adduser -D -s /bin/bash testuser && \
   echo "testuser:testuser" | chpasswd && \
+  cp /home/testuser/.ssh/id_rsa.pub /home/testuser/.ssh/authorized_keys
   chown -R testuser:testuser /home/testuser && \
   adduser -D -s /bin/bash testshareuser && \
   echo "testshareuser:testshareuser" | chpasswd && \
+  cp /home/testshareuser/.ssh/id_rsa.pub /home/testshareuser/.ssh/authorized_keys
   chown -R testshareuser:testshareuser /home/testshareuser && \
   adduser -D -s /bin/bash testotheruser && \
   echo "testotheruser:testotheruser" | chpasswd && \
+  cp /home/testotheruser/.ssh/id_rsa.pub /home/testotheruser/.ssh/authorized_keys
   chown -R testotheruser:testotheruser /home/testotheruser && \
 
   # create /scratch and /work for testing

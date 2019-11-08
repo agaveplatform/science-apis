@@ -1,0 +1,66 @@
+version: '3.7'
+
+volumes:
+  scratch:
+
+services:
+
+#  sftp-relay:
+##    build:
+##      context: ../../
+##      dockerfile: agave-transfers/sftp-relay/Dockerfile
+#    image: sftp-relay:develop
+#    ports:
+#      - 50051:50051
+#    restart: always
+#    volumes:
+#      - scratch:/scratch
+
+  sftp:
+    image: agaveplatform/sshd:latest
+    command: "-p 10022"
+    hostname: docker.example.com
+    ports:
+      - '10022:10022'
+
+  sftptunnel:
+   image: agaveplatform/sshd:latest
+   command: "-p 10033"
+   links:
+     - sftphidden
+   ports:
+     - '10033:10033'
+
+  sftphidden:
+    image: agaveplatform/sshd:latest
+    command: "-p 10044"
+
+  minio:
+    image: minio/minio:RELEASE.2019-10-12T01-39-57Z
+    command: "server /data"
+    environment:
+      MINIO_ACCESS_KEY: agaveuser
+      MINIO_SECRET_KEY: password
+    ports:
+      - '9000:9000'
+
+  minio-init:
+    image: minio/mc:latest
+    environment:
+      MINIO_BUCKET: agaveapitestdata
+      MINIO_ACCESS_KEY: agaveuser
+      MINIO_SECRET_KEY: password
+    depends_on:
+      - minio
+    entrypoint:
+      - sh
+    command: |
+        -c "\
+          set +x && \
+          while ! nc -z minio 9000; do echo 'Wait minio to startup...' && sleep 0.1; done; \
+          sleep 5 && \
+          echo mc config host add myminio http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY && \
+          mc config host add myminio http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY && \
+          mc rm -r --force myminio/$$MINIO_BUCKET || true && \
+          mc mb myminio/$$MINIO_BUCKET \
+        "

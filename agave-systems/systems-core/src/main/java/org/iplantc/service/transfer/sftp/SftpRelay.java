@@ -731,13 +731,17 @@ public final class SftpRelay implements RemoteDataClient {
                     //create a CopyLocalToRemoteRequest
                     SrvGetRequest srvGetRequest = SrvGetRequest.newBuilder()
                             .setSrceSftp(srceSftp)
-                            .setDestSftp(destSftp)
                             .build();
 
                     // call the gRPC and get back a CopyLocalToRemoteResponse
                     SrvGetResponse srvGetResponseResponse = sftpClient.get(srvGetRequest);
 
                     String response = srvGetResponseResponse.getError();
+                    String fileName = srvGetResponseResponse.getFileName();
+                    String byteCount = srvGetResponseResponse.getBytesReturned();
+                    log.info(fileName);
+                    log.info(byteCount);
+                    log.info(response);
                     if (response.contains("Dialing") || response.contains("creating new client") || response.contains("opening source file")) {
                         throw new RemoteDataException(response);
                     } else {
@@ -957,14 +961,17 @@ public final class SftpRelay implements RemoteDataClient {
                     //create a CopyLocalToRemoteRequest
                     SrvPutRequest srvPutRequest = SrvPutRequest.newBuilder()
                             .setSrceSftp(srceSftp)
-                            .setDestSftp(destSftp)
                             .build();
 
                     // call the gRPC and get back a SrvPutResponse
                     SrvPutResponse copyResponse = sftpClient.put(srvPutRequest);
 
                     String response = copyResponse.getError();
-
+                    String fileName = copyResponse.getFileName();
+                    String byteCount = copyResponse.getBytesReturned();
+                    log.info(fileName);
+                    log.info(byteCount);
+                    log.info(response);
                     if (response.contains("Dialing") || response.contains("creating new client") || response.contains("opening source file")) {
                         throw new RemoteDataException(response);
                     } else {

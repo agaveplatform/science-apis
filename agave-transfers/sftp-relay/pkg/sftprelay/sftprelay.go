@@ -3,14 +3,14 @@ package sftprelay
 import (
 	"bufio"
 	"errors"
-	connPool "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/connectionpool"
+	"fmt"
+	//connPool "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/connectionpool"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 )
@@ -34,7 +34,6 @@ type SysUri struct {
 
 type ConnParams struct {
 	Srce SysUri
-	Dest SysUri
 }
 
 var Params ConnParams
@@ -45,20 +44,20 @@ var Conn *ssh.Client
 	chunks sized based on the buffer_size variable.
 */
 func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvGetResponse, error) {
-	log.Infof("Get Service function was invoked with %v\n", req)
+	fmt.Printf("Get Service function was invoked with %v\n", req)
 
 	Params = setGetParams(req) // return type is ConnParams
 
 	var filename string
 	log.Info(filename)
 	from := Params.Srce.Type
-	to := Params.Dest.Type
+	//to := Params.Dest.Type
 	//name := Params.Dest.FileName
-	//toFile := factory.TransferFactory.ReadFrom(params)
+	//toFile := factory.TransferFactory.ReadFrom(Params)
 	var bytesReadf int64 = 0
 
-	log.Info(from)
-	log.Info(to)
+	fmt.Println(from)
+	//log.Info(to)
 
 	var tmpName FileTransfer
 
@@ -85,11 +84,12 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	//
 	var filename string
 	log.Info(filename)
+	fmt.Println("Hi")
 	from := Params.Srce.Type
-	to := Params.Dest.Type
-	log.Info(to)
+	//to := Params.Dest.Type
+	//log.Info(to)
 
-	var bytesReadf int64 = 0
+	//var bytesReadf int64 = 0
 	var tmpName FileTransfer
 
 	// Read From system
@@ -97,11 +97,15 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 
 	// Write from local system To a file
 	tmpName = GetSourceType(Params, Params.Srce.Type+"-Put")
+	fmt.Println(Params.Srce.Type + "-Put")
 
-	log.Infof("%d bytes copied\n", bytesReadf)
+	fmt.Printf("BytesWritten: %d", tmpName.i)
+	fmt.Println("File Name = " + tmpName.s)
+	fmt.Println("Error : " + tmpName.e.Error())
+	log.Infof("%d bytes copied\n", tmpName.i)
 	res := &sftppb.SrvPutResponse{
 		FileName:      tmpName.s,
-		BytesReturned: strconv.FormatInt(bytesReadf, 10),
+		BytesReturned: strconv.FormatInt(tmpName.i, 10),
 		Error:         tmpName.e.Error(),
 	}
 	log.Info(res.String())
@@ -110,15 +114,19 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 
 func setGetParams(req *sftppb.SrvGetRequest) ConnParams {
 	connParams := ConnParams{
-		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId, HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey, FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize, Type: req.SrceSftp.Type},
-		Dest: SysUri{Username: req.DestSftp.Username, PassWord: req.DestSftp.PassWord, SystemId: req.DestSftp.SystemId, HostKey: req.DestSftp.HostKey, HostPort: req.DestSftp.HostPort, ClientKey: req.DestSftp.ClientKey, FileName: req.DestSftp.FileName, FileSize: req.DestSftp.FileSize, BufferSize: req.DestSftp.BufferSize, Type: req.DestSftp.Type},
+		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
+			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
+			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
+			Type: req.SrceSftp.Type},
 	}
 	return connParams
 }
 func setPutParams(req *sftppb.SrvPutRequest) ConnParams {
 	connParams := ConnParams{
-		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId, HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey, FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize, Type: req.SrceSftp.Type},
-		Dest: SysUri{Username: req.DestSftp.Username, PassWord: req.DestSftp.PassWord, SystemId: req.DestSftp.SystemId, HostKey: req.DestSftp.HostKey, HostPort: req.DestSftp.HostPort, ClientKey: req.DestSftp.ClientKey, FileName: req.DestSftp.FileName, FileSize: req.DestSftp.FileSize, BufferSize: req.DestSftp.BufferSize, Type: req.DestSftp.Type},
+		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
+			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
+			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
+			Type: req.SrceSftp.Type},
 	}
 	return connParams
 }
@@ -155,16 +163,19 @@ func GetSourceType(params ConnParams, source string) FileTransfer {
 		readTxfrFactory = SFTP_ReadFrom_Factory{}
 		return readTxfrFactory.ReadFrom(params)
 	case "SFTP-Put":
+		fmt.Println("Calling the SFTP Put class")
 		log.Info("Calling the SFTP Put class")
 		writeTxfrFactory = SFTP_WriteTo_Factory{}
 		return writeTxfrFactory.WriteTo(params)
 	case "LOCAL":
+		fmt.Println("Calling the Local class")
 		log.Info("Calling the Local class")
 		readTxfrFactory = LOCAL_Factory{}
 		return readTxfrFactory.ReadFrom(params)
 	default:
+		fmt.Println("No classes were called")
 		log.Info("No classes were called.")
-		return FileTransfer{nil, nil, errors.New("No classes were called")}
+		return FileTransfer{"", 0, errors.New("No classes were called")}
 	}
 }
 
@@ -177,11 +188,11 @@ func GetSourceType(params ConnParams, source string) FileTransfer {
 // this is synonymous to a get for sftp
 func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer { // return temp filename, bytecount, and error
 
-	log.Info("SFTP read from (GET) txfr")
+	fmt.Println("SFTP read from (GET) txfr")
 	result := ""
 	log.Info("Dial the connection now")
-	log.Infof("Sys= %s", params.Srce.SystemId)
-	log.Infof("Sys= %s", params.Srce.HostPort)
+	fmt.Printf("SysIP= %s \n", params.Srce.SystemId)
+	fmt.Printf("SysPort= %s \n", params.Srce.HostPort)
 
 	var config ssh.ClientConfig
 	config = ssh.ClientConfig{
@@ -194,93 +205,132 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer { // ret
 
 	conn, err := ssh.Dial("tcp", params.Srce.SystemId+params.Srce.HostPort, &config)
 	if err != nil {
-		log.Infof("Error Dialing the server: %f", err)
+		fmt.Printf("Error Dialing the server: %v", err)
 		log.Error(err)
 		result = err.Error()
 	}
 	defer conn.Close()
 
-	log.Info(params.Srce.FileSize)
+	//log.Info(params.Srce.FileSize)
+	//
+	//log.Info(result)
 
-	log.Info(result)
+	var MaxPcktSize int
+	MaxPcktSize = 1024
 
+	fmt.Printf("Packet size is: %v \n", MaxPcktSize)
 	// create new SFTP client
-	client, err := sftp.NewClient(conn)
+	client, err := sftp.NewClient(conn, sftp.MaxPacket(MaxPcktSize))
 	if err != nil {
-		log.Info("Error creating new client", err)
+		fmt.Printf("Error creating new client, %v \n", err)
 		result = err.Error()
 	}
 	defer client.Close()
 
+	fmt.Println("Connection Data:  " + conn.User() + "  " + conn.Conn.RemoteAddr().String())
 	// create destination file
 	// make a unique file name here /scratch/filename
-	//verify that /scratch is present
-	tempDir, _ := ioutil.TempDir("", "/scratch")
+	//fmt.Println("Verify that /scratch is present")
+	//tempDir, _ := ioutil.TempDir("", "/tmp")
+	//fmt.Println("Temp Dir = "+ tempDir)
 
-	dstFile, _ := ioutil.TempFile(tempDir, params.Srce.FileName)
+	fmt.Printf("Create destination file  %v \n", params.Srce.FileName)
+	dstFile, _ := os.Create(params.Srce.FileName) //local file
 	//dstFile, err := os.Create(params.uriReader.FileName)
 	if err != nil {
-		log.Info("Error creating dest file", err)
+		fmt.Printf("Error creating dest file. %v \n", err)
 		result = err.Error()
 	}
 	defer dstFile.Close()
 
-	// open source file
+	fmt.Printf("Open source file %v \n", params.Srce.FileName)
 	srcFile, err := client.Open(params.Srce.FileName)
 	if err != nil {
-		log.Info("Opening source file: ", err)
+		fmt.Printf("Opening source file: %v \n", err)
 		result = err.Error()
 	}
+	fmt.Println("Source file is opened.")
 
 	bytesWritten, err := srcFile.WriteTo(dstFile)
 	if err != nil {
-		log.Info("Error writing to file: ", err)
+		fmt.Printf("Error writing to file: %v \n", err)
+		result = err.Error()
 	}
 	log.Infof("%d bytes copied\n", bytesWritten)
 
-	return FileTransfer{params.Srce.FileName, bytesWritten, errors.New("result")}
+	return FileTransfer{params.Srce.FileName, int64(bytesWritten), errors.New(result)}
 
 }
 func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	log.Info("WriteTo sFTP Service function was invoked ")
 
-	conn, err := connPool.ConnectionPool(params.Srce.Username, params.Srce.PassWord, params.Srce.SystemId, params.Srce.HostKey,
-		params.Srce.HostPort, params.Srce.ClientKey, params.Srce.FileName, params.Srce.FileSize)
-	log.Info(params.Dest.FileSize)
+	//conn, err := connPool.ConnectionPool(params.Srce.Username, params.Srce.PassWord, params.Srce.SystemId, params.Srce.HostKey,
+	//	params.Srce.HostPort, params.Srce.ClientKey, params.Srce.FileName, params.Srce.FileSize)
+	//log.Info(params.Dest.FileSize)
+	fmt.Println("User name: " + params.Srce.Username)
+	fmt.Println("Password: " + params.Srce.PassWord)
+	fmt.Println("System = " + params.Srce.SystemId)
+	fmt.Println("port = " + params.Srce.HostPort)
+	fmt.Println("File name: " + params.Srce.FileName)
+
+	//var config ssh.ClientConfig
+	fmt.Println("Make the ssh/sftp connection")
+	config := ssh.ClientConfig{
+		User: params.Srce.Username,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(params.Srce.PassWord),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		//HostKeyCallback: ssh.FixedHostKey(HostKey),
+	}
+	fmt.Println("Dial the conenction now")
+	conn, err := ssh.Dial("tcp", params.Srce.SystemId+params.Srce.HostPort, &config)
+	if err != nil {
+		fmt.Printf("Error Dialing the server: %f", err)
+		//log.Error(err)
+	}
+	defer conn.Close()
 
 	result := ""
 	log.Info(result)
 
-	// create new SFTP client
+	fmt.Println("Create new SFTP client")
 	client, err := sftp.NewClient(conn)
 	if err != nil {
-		log.Info("Error creating new client", err)
+		fmt.Println("Error creating new client", err)
 		result = err.Error()
 	}
 	defer client.Close()
 
-	// create destination file
-	dstFile, err := client.Create(params.Dest.FileName)
+	fmt.Println("Create destination file")
+	dstFile, err := client.Create(params.Srce.FileName + "_1")
 	if err != nil {
-		log.Info("Error creating dest file", err)
+		fmt.Println("Error creating dest file", err)
 		result = err.Error()
 	}
 	defer dstFile.Close()
 
-	// open source file
+	fmt.Println("Open source file: " + params.Srce.FileName)
 	// note this should include the /scratch directory
-	srcFile, err := client.Open(params.Srce.FileName)
+	srcFile, err := os.Open(params.Srce.FileName)
 	if err != nil {
 		log.Info("Opening source file: ", err)
 		result = err.Error()
 	}
 
-	bytesWritten, err := srcFile.WriteTo(dstFile)
+	fmt.Println("Write to dstFile: " + dstFile.Name())
+	//bytesWritten, err := srcFile.WriteTo(dstFile)
+	bytesWritten, err := dstFile.ReadFrom(srcFile)
 	if err != nil {
 		log.Info("Error writing to file: ", err)
+		result = err.Error()
 	}
-	log.Infof("%d bytes copied\n", bytesWritten)
-	return FileTransfer{params.Srce.FileName, bytesWritten, errors.New(result)}
+	fmt.Println(bytesWritten)
+	err = errors.New(result)
+	fmt.Printf("%d bytes copied\n", bytesWritten)
+	fmt.Println("Name: " + dstFile.Name())
+	fmt.Println("Errors: " + err.Error())
+	return FileTransfer{dstFile.Name(), bytesWritten, err}
 }
 
 func (a LOCAL_Factory) ReadFrom(params ConnParams) FileTransfer {
@@ -291,7 +341,7 @@ func (a LOCAL_Factory) ReadFrom(params ConnParams) FileTransfer {
 	file, err := os.Open(name)
 	if err != nil {
 		log.Errorf("Error opening input file: %s", err)
-		return FileTransfer{nil, nil, err}
+		return FileTransfer{"", 0, err}
 	}
 	// close fi on exit and check for its returned error
 	defer func() {
@@ -306,7 +356,7 @@ func (a LOCAL_Factory) ReadFrom(params ConnParams) FileTransfer {
 	fileOut, err := os.Create("output.txt")
 	if err != nil {
 		log.Errorf("Error opening output file: %s", err)
-		return FileTransfer{nil, nil, err}
+		return FileTransfer{"", 0, err}
 	}
 	// close fo on exit and check for its returned error
 	defer func() {
@@ -324,7 +374,7 @@ func (a LOCAL_Factory) ReadFrom(params ConnParams) FileTransfer {
 		n, err := r.Read(buf)
 		if err != nil && err != io.EOF {
 			log.Errorf("Error reading input file: %s", err)
-			return FileTransfer{nil, nil, err}
+			return FileTransfer{"", 0, err}
 		}
 		if n == 0 {
 			break
@@ -332,20 +382,20 @@ func (a LOCAL_Factory) ReadFrom(params ConnParams) FileTransfer {
 		// write a chunk
 		if _, err := w.Write(buf[:n]); err != nil {
 			log.Errorf("Error writing output file: %s", err)
-			return FileTransfer{nil, nil, err}
+			return FileTransfer{"", 0, err}
 		}
 	}
 
 	if err = w.Flush(); err != nil {
 		log.Errorf("Unexpected error: %s", err)
-		return FileTransfer{nil, nil, err}
+		return FileTransfer{"", 0, err}
 		//panic(err)
 	}
 
 	fileSize, err := GetFileSize(fileOut.Name())
 	if err != nil {
 		log.Errorf("File size error: %s", err)
-		return FileTransfer{nil, nil, err}
+		return FileTransfer{"", 0, err}
 	}
 
 	return FileTransfer{name, fileSize, nil}

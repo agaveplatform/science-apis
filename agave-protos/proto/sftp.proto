@@ -1,7 +1,7 @@
-syntax="proto3";
+syntax = "proto3";
 
 package sftpproto;
-option go_package="sftpproto";
+option go_package = "sftpproto";
 option java_package = "org.agaveplatform.transfer.proto.sftp";
 option java_multiple_files = true;
 
@@ -9,40 +9,38 @@ option objc_class_prefix = "AgaveSftp";
 option java_outer_classname = "AgaveSftpProto";
 
 message Sftp {
-	string username = 1;
-	string passWord = 2;
-	string systemId = 3;
-	string hostKey  = 4;
-	string fileName = 5;
-	int64 fileSize = 6;
-	string hostPort = 7;
-	string clientKey = 8;
-	int64 bufferSize = 9;
-	string type = 10;
+    string username = 1;
+    string passWord = 2;
+    string systemId = 3;
+    string hostKey = 4;
+    string fileName = 5;
+    int64 fileSize = 6;
+    string hostPort = 7;
+    string clientKey = 8;
+    int64 bufferSize = 9;
+    string type = 10;
 }
 
-message SrvPutRequest{
-	Sftp srceSftp = 1;
-	Sftp destSftp = 2;
+message SrvPutRequest {
+    Sftp srceSftp = 1;
 }
-message SrvPutResponse{
-	string fileName = 1;
-	string bytesReturned = 2;
-	string error = 3;
+message SrvPutResponse {
+    string fileName = 1;
+    string bytesReturned = 2;
+    string error = 3;
 }
 
-message SrvGetRequest{
-	Sftp srceSftp = 1;
-	Sftp destSftp = 2;
+message SrvGetRequest {
+    Sftp srceSftp = 1;
 }
-message SrvGetResponse{
-	string fileName = 1;
-	string bytesReturned = 2;
-	string error = 3;
+message SrvGetResponse {
+    string fileName = 1;
+    string bytesReturned = 2;
+    string error = 3;
 }
 
 service SftpRelay {
-	rpc Get(SrvGetRequest) returns (SrvGetResponse);
-	rpc Put(SrvPutRequest) returns (SrvPutResponse);
+    rpc Get (SrvGetRequest) returns (SrvGetResponse);
+    rpc Put (SrvPutRequest) returns (SrvPutResponse);
 }
 

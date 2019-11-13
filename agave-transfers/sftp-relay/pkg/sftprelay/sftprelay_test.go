@@ -6,6 +6,7 @@ import (
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -35,6 +36,16 @@ func init() {
 	}()
 
 }
+
+func createTestFile() {
+	// put the test.txt file in /tmp/test.txt  Make the file length = 3 "abc"
+	d := []byte("abc")
+	err := ioutil.WriteFile("/tmp/test.txt", d, 0777)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func bufDialer(string, time.Duration) (net.Conn, error) {
 	return lis.Dial()
 }
@@ -80,6 +91,7 @@ func testChdir(t *testing.T, dir string) func() {
 
 //helper  net.Conn
 func TestAuthenticate(t *testing.T) {
+	createTestFile()
 	ctx := context.Background()
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -88,29 +100,121 @@ func TestAuthenticate(t *testing.T) {
 	defer conn.Close()
 	client := agaveproto.NewSftpRelayClient(conn)
 
-	const (
-		username = "testuser"
-		host     = "sftp"
-		key      = ""
-		password = "testuser"
-		port     = 10022
-	)
 	req := &agaveproto.AuthenticateToRemoteRequest{
 		Auth: &agaveproto.Sftp{
-			Username:   "testuser",
-			PassWord:   "testuser",
-			SystemId:   "192.168.1.9",
-			HostKey:    "",
-			FileName:   "",
-			FileSize:   0,
-			HostPort:   ":22",
-			ClientKey:  "",
-			BufferSize: 16384,
-			Type:       "",
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "localhost",
+			HostKey:      "",
+			FileName:     "",
+			FileSize:     0,
+			HostPort:     ":22",
+			ClientKey:    "",
+			BufferSize:   16384,
+			Type:         "",
+			DestFileName: "",
 		},
 	}
 
 	resp, err := client.Authenticate(ctx, req)
+	if err != nil {
+		t.Errorf("Error while calling RPC auth: %v", err)
+	}
+	log.Printf("Response: %+v", resp)
+}
+
+func TestPut(t *testing.T) {
+	createTestFile()
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	req := &agaveproto.SrvPutRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "localhost",
+			HostKey:      "",
+			FileName:     "/tmp/test.txt",
+			FileSize:     0,
+			HostPort:     ":22",
+			ClientKey:    "",
+			BufferSize:   16384,
+			Type:         "SFTP",
+			DestFileName: "",
+		},
+	}
+
+	resp, err := client.Put(ctx, req)
+	if err != nil {
+		t.Errorf("Error while calling RPC auth: %v", err)
+	}
+	log.Printf("Response: %+v", resp)
+}
+func TestGet(t *testing.T) {
+	createTestFile()
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	req := &agaveproto.SrvGetRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "localhost",
+			HostKey:      "",
+			FileName:     "/tmp/test.txt",
+			FileSize:     0,
+			HostPort:     ":22",
+			ClientKey:    "",
+			BufferSize:   16384,
+			Type:         "SFTP",
+			DestFileName: "",
+		},
+	}
+
+	resp, err := client.Get(ctx, req)
+	if err != nil {
+		t.Errorf("Error while calling RPC auth: %v", err)
+	}
+	log.Printf("Response: %+v", resp)
+}
+
+func TestLOCAL_Factory_ReadFrom(t *testing.T) {
+	createTestFile()
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	req := &agaveproto.SrvGetRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "localhost",
+			HostKey:      "",
+			FileName:     "/tmp/test.txt",
+			FileSize:     0,
+			HostPort:     ":22",
+			ClientKey:    "",
+			BufferSize:   16384,
+			Type:         "LOCAL",
+			DestFileName: "",
+		},
+	}
+
+	resp, err := client.Get(ctx, req)
 	if err != nil {
 		t.Errorf("Error while calling RPC auth: %v", err)
 	}

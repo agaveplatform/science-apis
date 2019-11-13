@@ -19,6 +19,7 @@ message Sftp {
     string clientKey = 8;
     int64 bufferSize = 9;
     string type = 10;
+    string destFileName = 11;
 }
 
 message SrvPutRequest {

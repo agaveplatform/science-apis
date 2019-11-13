@@ -20,16 +20,17 @@ var log = logrus.New()
 type Server struct{}
 
 type SysUri struct {
-	Username   string
-	PassWord   string
-	SystemId   string
-	HostKey    string
-	HostPort   string
-	ClientKey  string
-	FileName   string
-	FileSize   int64
-	BufferSize int64
-	Type       string // Valid values are:  FTP, AZURE, S3, SWIFT, SFTP, GRIDFTP, IRODS, IRODS4, LOCAL
+	Username     string
+	PassWord     string
+	SystemId     string
+	HostKey      string
+	HostPort     string
+	ClientKey    string
+	FileName     string
+	FileSize     int64
+	BufferSize   int64
+	Type         string // Valid values are:  FTP, AZURE, S3, SWIFT, SFTP, GRIDFTP, IRODS, IRODS4, LOCAL
+	DestFileName string
 }
 
 type ConnParams struct {
@@ -157,7 +158,7 @@ func setGetParams(req *sftppb.SrvGetRequest) ConnParams {
 		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
 			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
 			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
-			Type: req.SrceSftp.Type},
+			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName},
 	}
 	return connParams
 }
@@ -166,22 +167,23 @@ func setPutParams(req *sftppb.SrvPutRequest) ConnParams {
 		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
 			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
 			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
-			Type: req.SrceSftp.Type},
+			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName},
 	}
 	return connParams
 }
 func setGetAuthParams(req *sftppb.AuthenticateToRemoteRequest) ConnParams {
 	connParams := ConnParams{Srce: SysUri{
-		Username:   req.Auth.Username,
-		PassWord:   req.Auth.PassWord,
-		SystemId:   req.Auth.SystemId,
-		HostKey:    req.Auth.HostKey,
-		HostPort:   req.Auth.HostPort,
-		ClientKey:  req.Auth.ClientKey,
-		FileName:   req.Auth.FileName,
-		FileSize:   0,
-		BufferSize: 16138,
-		Type:       req.Auth.Type,
+		Username:     req.Auth.Username,
+		PassWord:     req.Auth.PassWord,
+		SystemId:     req.Auth.SystemId,
+		HostKey:      req.Auth.HostKey,
+		HostPort:     req.Auth.HostPort,
+		ClientKey:    req.Auth.ClientKey,
+		FileName:     req.Auth.FileName,
+		FileSize:     req.Auth.FileSize,
+		BufferSize:   req.Auth.BufferSize,
+		Type:         req.Auth.Type,
+		DestFileName: req.Auth.DestFileName,
 	}}
 	return connParams
 }
@@ -222,9 +224,14 @@ func GetSourceType(params ConnParams, source string) FileTransfer {
 		log.Info("Calling the SFTP Put class")
 		writeTxfrFactory = SFTP_WriteTo_Factory{}
 		return writeTxfrFactory.WriteTo(params)
-	case "LOCAL":
-		fmt.Println("Calling the Local class")
-		log.Info("Calling the Local class")
+	case "LOCAL-Put":
+		fmt.Println("Calling the Local Put class")
+		log.Info("Calling the Local Put class")
+		readTxfrFactory = LOCAL_Factory{}
+		return readTxfrFactory.ReadFrom(params)
+	case "LOCAL-Get":
+		fmt.Println("Calling the Local Get class")
+		log.Info("Calling the Local Get class")
 		readTxfrFactory = LOCAL_Factory{}
 		return readTxfrFactory.ReadFrom(params)
 	default:
@@ -358,7 +365,7 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	defer client.Close()
 
 	fmt.Println("Create destination file")
-	dstFile, err := client.Create(params.Srce.FileName + "_1")
+	dstFile, err := client.Create(params.Srce.FileName)
 	if err != nil {
 		fmt.Println("Error creating dest file", err)
 		result = err.Error()
@@ -392,40 +399,42 @@ func (a LOCAL_Factory) ReadFrom(params ConnParams) FileTransfer {
 	log.Info("got into ReadFrom Local")
 	name := params.Srce.FileName
 
-	// open input file
+	log.Info("Open input file")
 	file, err := os.Open(name)
 	if err != nil {
 		log.Errorf("Error opening input file: %s", err)
 		return FileTransfer{"", 0, err}
 	}
-	// close fi on exit and check for its returned error
+	log.Info("Close fi on exit and check for its returned error")
 	defer func() {
 		if err := file.Close(); err != nil {
 			log.Errorf("Error closing output file: %s", err)
 		}
 	}()
-	// make a read buffer
+
+	log.Info("Make a read buffer")
 	r := bufio.NewReader(file)
 
-	// open output file
+	log.Info("Open output file")
 	fileOut, err := os.Create("output.txt")
 	if err != nil {
 		log.Errorf("Error opening output file: %s", err)
 		return FileTransfer{"", 0, err}
 	}
-	// close fo on exit and check for its returned error
+	log.Info("Close fo on exit and check for its returned error")
 	defer func() {
 		if err := fileOut.Close(); err != nil {
 			log.Errorf("Error opening output file: %s", err)
 		}
 	}()
-	// make a write buffer
+
+	log.Info("Make a write buffer")
 	w := bufio.NewWriter(fileOut)
 
-	// make a buffer to keep chunks that are read
+	log.Info("Make a buffer to keep chunks that are read")
 	buf := make([]byte, 1024)
 	for {
-		// read a chunk
+		log.Info("Read a chunk")
 		n, err := r.Read(buf)
 		if err != nil && err != io.EOF {
 			log.Errorf("Error reading input file: %s", err)
@@ -434,19 +443,19 @@ func (a LOCAL_Factory) ReadFrom(params ConnParams) FileTransfer {
 		if n == 0 {
 			break
 		}
-		// write a chunk
+		log.Info("Write a chunk")
 		if _, err := w.Write(buf[:n]); err != nil {
 			log.Errorf("Error writing output file: %s", err)
 			return FileTransfer{"", 0, err}
 		}
 	}
-
+	log.Info("Flush the cash")
 	if err = w.Flush(); err != nil {
 		log.Errorf("Unexpected error: %s", err)
 		return FileTransfer{"", 0, err}
 		//panic(err)
 	}
-
+	log.Info("Get the file size")
 	fileSize, err := GetFileSize(fileOut.Name())
 	if err != nil {
 		log.Errorf("File size error: %s", err)

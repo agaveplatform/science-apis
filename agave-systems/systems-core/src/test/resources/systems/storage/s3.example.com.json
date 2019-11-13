@@ -6,8 +6,8 @@
   "description": "Example storage system accessible via Amazon S3 API.",
   "site": "minio",
   "storage": {
-    "host": "http://docker.example.com",
-    "port": 9000,
+    "host": "${s3.host}",
+    "port": ${s3.port},
     "protocol": "S3",
     "homeDir": "/",
     "rootDir": "/",

@@ -79,12 +79,14 @@ public class S3OutputStream extends RemoteOutputStream<S3Jcloud> {
 	 */
 	@Override
 	public void close() throws IOException {
-		stream.close();
 		if (!hasWrittenContent)
 		{
+			stream.close();
+
 			InputStream in = null;
 			try {
 //				File test = new File("/Users/dooley/workspace/agave/agave-systems/systems-core/src/test/resources/transfer/test_upload.txt");
+//				in = new FileInputStream(tempFile);
 				ByteSource payload = Files.asByteSource(tempFile);
 				if (this.blob == null)
 				{
@@ -100,8 +102,11 @@ public class S3OutputStream extends RemoteOutputStream<S3Jcloud> {
 				}
 				else
 				{
+//					this.blob.setPayload(in);
 					in = payload.openBufferedStream();
 					this.blob.setPayload(in);
+					this.blob.getMetadata().getContentMetadata().setContentType(new MimetypesFileTypeMap().getContentType(tempFile));
+					this.blob.getMetadata().getContentMetadata().setContentLength(tempFile.length());
 				}
 				
 				client.getBlobStore().putBlob(client.containerName, blob, multipart());
@@ -111,11 +116,9 @@ public class S3OutputStream extends RemoteOutputStream<S3Jcloud> {
 			}
 			finally {
 				hasWrittenContent = true;
-				try { in.close(); } catch (Exception e) {}
+				try { in.close(); } catch (Exception ignore) {}
 				FileUtils.deleteQuietly(tempFile);
-				
 			}
-				
 		}
 	}
 

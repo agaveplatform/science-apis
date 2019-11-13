@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -25,7 +26,7 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
     
     private static final Logger log = Logger.getLogger(AbstractPathSanitizationTest.class);
     
-    public static String SPECIAL_CHARS = " _-!@#$%^*()+[]{}:."; // excluding "&" due to a bug in irods
+    public static String SPECIAL_CHARS = "{";//" _-!@#$%^*()+[]{}:."; // excluding "&" due to a bug in irods
     
     protected ThreadLocal<RemoteDataClient> threadClient = new ThreadLocal<RemoteDataClient>();
     
@@ -153,29 +154,31 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
         };
     }
     
-//    @Test(dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", priority=1)
-//    public void mkDirSanitizesSingleSpecialCharacter(String filename, boolean shouldThrowException, String message)  throws FileNotFoundException
-//    {
-//        _mkDirSanitizationTest(filename, shouldThrowException, message);
-//    }
-//    
-//    @Test(dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", priority=2)
-//    public void mkDirSanitizesSingleSpecialCharacterRelativePath(String filename, boolean shouldThrowException, String message)  throws FileNotFoundException
-//    {
-//        String relativePath = "relative_path_test/";
-//        
-//        _mkDirsSanitizationTest(relativePath + filename, shouldThrowException, message);
-//    }
-//    
-//    @Test(dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", priority=3)
-//    public void mkDirSanitizesSingleSpecialCharacterAbsolutePath(String filename, boolean shouldThrowException, String message)  throws FileNotFoundException
-//    {
-//        String absolutePath = system.getStorageConfig().getHomeDir() + "/thread-" + Thread.currentThread().getId() +  "/" + "absolute_path_test/";
-//        
-//        _mkDirsSanitizationTest(absolutePath + filename, shouldThrowException, message);
-//    }
-//    
-    @Test(dataProvider="mkDirSanitizesRepeatedSpecialCharacterProvider", priority=4)
+    @Test(dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", priority=1)
+    public void mkDirSanitizesSingleSpecialCharacter(String filename, boolean shouldThrowException, String message)  throws FileNotFoundException
+    {
+        _mkDirSanitizationTest(filename, shouldThrowException, message);
+    }
+
+    @Test(dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", priority=2)
+    public void mkDirSanitizesSingleSpecialCharacterRelativePath(String filename, boolean shouldThrowException, String message)  throws FileNotFoundException
+    {
+        String relativePath = UUID.randomUUID().toString() + "/";
+
+        _mkDirsSanitizationTest(relativePath + filename, shouldThrowException, message);
+    }
+
+    @Test(dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", priority=3)
+    public void mkDirSanitizesSingleSpecialCharacterAbsolutePath(String filename, boolean shouldThrowException, String message)  throws FileNotFoundException
+    {
+        String absolutePath = system.getStorageConfig().getHomeDir() +
+                "/thread-" + Thread.currentThread().getId() +
+                "/" + UUID.randomUUID().toString() + "/";
+
+        _mkDirsSanitizationTest(absolutePath + filename, shouldThrowException, message);
+    }
+
+    @Test(enabled = false, dataProvider="mkDirSanitizesRepeatedSpecialCharacterProvider", priority=4)
     public void mkDirSanitizesRepeatedSpecialCharacter(String filename, boolean shouldSucceed, String message)  throws FileNotFoundException
     {
         _mkDirSanitizationTest(filename, shouldSucceed, message);
@@ -184,7 +187,7 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
 //    @Test(dataProvider="mkDirSanitizesRepeatedSpecialCharacterProvider", priority=5)
 //    public void mkDirSanitizesRepeatedSpecialCharacterRelativePath(String filename, boolean shouldSucceed, String message)  throws FileNotFoundException
 //    {
-//        String relativePath = "relative_path_test/";
+//        String relativePath = UUID.randomUUID().toString() + "/";
 //        
 //        _mkDirsSanitizationTest(relativePath + filename, shouldSucceed, message);
 //    }
@@ -192,28 +195,30 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
 //    @Test(dataProvider="mkDirSanitizesRepeatedSpecialCharacterProvider", priority=6)
 //    public void mkDirSanitizesRepeatedSpecialCharacterAbsolutePath(String filename, boolean shouldSucceed, String message)  throws FileNotFoundException
 //    {
-//        String absolutePath = system.getStorageConfig().getHomeDir() + "/thread-" + Thread.currentThread().getId() +  "/" + "absolute_path_test/";
+//        String absolutePath = system.getStorageConfig().getHomeDir() +
+//          "/thread-" + Thread.currentThread().getId() +
+//          "/" + UUID.randomUUID().toString() + "/";
 //        
 //        _mkDirsSanitizationTest(absolutePath + filename, shouldSucceed, message);
 //    }
     
-//    @Test(dataProvider="mkDirSanitizesWhitespaceProvider", priority=7)
-//    public void mkDirSanitizesWhitespace(String filename, boolean shouldSucceed, String message)  throws FileNotFoundException
-//    {
-//        _mkDirSanitizationTest(filename, shouldSucceed, message);
-//    }
-//
-//    @Test(dataProvider="mkDirSanitizesWhitespaceProvider", priority=8)
-//    public void mkDirSanitizesWhitespace(String filename, String message)  throws IOException, RemoteDataException
-//    {
-////        getClient().mkdirs("");
-//        _mkDirSanitizationTest(filename, false, message);
-//    }
+    @Test(dataProvider="mkDirSanitizesWhitespaceProvider", priority=7)
+    public void mkDirSanitizesWhitespace(String filename, boolean shouldSucceed, String message)  throws FileNotFoundException
+    {
+        _mkDirSanitizationTest(filename, shouldSucceed, message);
+    }
+
+    @Test(dataProvider="mkDirSanitizesWhitespaceProvider", priority=8)
+    public void mkDirSanitizesWhitespace(String filename, String message)  throws IOException, RemoteDataException
+    {
+        _mkDirSanitizationTest(filename, false, message);
+    }
     
     protected void _mkDirSanitizationTest(String filename, boolean shouldSucceed, String message) throws FileNotFoundException
     {
         try {
-            Assert.assertEquals(getClient().mkdir(filename), shouldSucceed);
+            Assert.assertEquals(getClient().mkdir(filename), shouldSucceed,
+                    "Creating directory " + filename + " should return " + shouldSucceed);
             Assert.assertTrue(getClient().doesExist(filename), message);
         } 
         catch (Exception e) 

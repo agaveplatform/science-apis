@@ -120,7 +120,7 @@ public class S3RenameTests {
 	    
 	    /**
 	     * Generates the prefix or suffixes to use in rename tests.
-	     * @param placement
+	     *
 	     * @return
 	     */
 	    @DataProvider(name="renameProvider")
@@ -223,24 +223,24 @@ public class S3RenameTests {
 	     * Generates a test folder with the given {@code basename} on the remote system
 	     * and performs the rename test.
 	     * 
-	     * @param originalFilename
-	     * @param renamedFilename
+	     * @param originalDirName
+	     * @param renamedDirName
 	     * @param message
 	     * @throws IOException
 	     * @throws RemoteDataException
 	     */
-	    protected void _testRenamedDirectory(String originalFilename, String renamedFilename, String message) 
+	    protected void _testRenamedDirectory(String originalDirName, String renamedDirName, String message)
 	    throws IOException, RemoteDataException 
 	    {
 	    	S3Jcloud s3 = null;
 	    	try {
 	    		s3 = getRemoteDataClient();
 	    		
-		    	s3.mkdirs(originalFilename);
-		        s3.doRename(originalFilename, renamedFilename);
+		    	s3.mkdirs(originalDirName);
+		        s3.doRename(originalDirName, renamedDirName);
 		        
-		        Assert.assertFalse(s3.doesExist(originalFilename), "Original directory is not present on the remote system");
-		        Assert.assertTrue(s3.doesExist(renamedFilename), "Renamed directory is not present on the remote system");
+		        Assert.assertFalse(s3.doesExist(originalDirName), "Original directory is not present on the remote system");
+		        Assert.assertTrue(s3.doesExist(renamedDirName), "Renamed directory is not present on the remote system");
 	    	}
 	    	catch (Exception e) {
 	    		Assert.fail(message, e);

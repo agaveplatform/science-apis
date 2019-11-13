@@ -289,7 +289,7 @@ public class AzureJcloud implements RemoteDataClient
 					
 					StorageMetadata storageMetadata = null;
 					for (Iterator<? extends StorageMetadata> iter = pageSet.iterator(); iter.hasNext(); storageMetadata = iter.next()) {
-						listing.add(new RemoteFileInfo(storageMetadata));
+						listing.add(new RemoteFileInfo((BlobMetadata)storageMetadata));
 					}
 					
 				} while (pageSet.getNextMarker() != null);

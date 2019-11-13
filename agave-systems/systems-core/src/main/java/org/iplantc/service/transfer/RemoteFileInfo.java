@@ -1,9 +1,12 @@
 package org.iplantc.service.transfer;
 
 import java.io.File;
+import java.nio.file.attribute.PosixFilePermission;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.StringTokenizer;
 
 import org.apache.commons.io.FilenameUtils;
@@ -350,7 +353,7 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
 //		}
 //	}
 
-	public RemoteFileInfo(StorageMetadata storageMetadata) throws RemoteDataException
+	public RemoteFileInfo(BlobMetadata storageMetadata) throws RemoteDataException
 	{
 		this.name = FilenameUtils.getName(storageMetadata.getName());
     	this.owner = UNKNOWN_STRING;
@@ -358,8 +361,8 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
     	try
 		{
     		this.lastModified = storageMetadata.getLastModified();
-			
-    		if (storageMetadata.getType() == StorageType.RELATIVE_PATH || storageMetadata.getType() == StorageType.FOLDER)
+
+    		if (storageMetadata.getContentMetadata().getContentType().equals("application/directory"))
     		{
     			this.fileType = DIRECTORY_TYPE;
     			this.size = 0;
@@ -839,6 +842,32 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
 		{
 			return null;
 		}
+	}
+
+	/**
+	 * Returns the a Set of PosixFilePermission corresponding to the permissions of the
+	 * original object. These will be pulled from the original source of the file item.
+	 * In object storage systems, these will be pulled from the cloud ACL and user metadata.
+	 * In posix file systems these will be from the original file system.
+	 *
+	 * @return the original permissions translated to unix permissions.
+	 */
+	public Set<PosixFilePermission> getPosixFilePermissions() {
+		Set<PosixFilePermission> perms = new HashSet<PosixFilePermission>();
+		//add owners permission
+		if (userCanRead()) perms.add(PosixFilePermission.OWNER_READ);
+		if (userCanWrite()) perms.add(PosixFilePermission.OWNER_WRITE);
+		if (userCanExecute()) perms.add(PosixFilePermission.OWNER_EXECUTE);
+		//add group permissions
+		if (groupCanRead()) perms.add(PosixFilePermission.GROUP_READ);
+		if (groupCanWrite()) perms.add(PosixFilePermission.GROUP_WRITE);
+		if (groupCanExecute()) perms.add(PosixFilePermission.GROUP_EXECUTE);
+		//add others permissions
+		if (allCanRead()) perms.add(PosixFilePermission.OTHERS_READ);
+		if (allCanWrite()) perms.add(PosixFilePermission.OTHERS_WRITE);
+		if (allCanExecute()) perms.add(PosixFilePermission.OTHERS_EXECUTE);
+
+		return perms;
 	}
     
 }

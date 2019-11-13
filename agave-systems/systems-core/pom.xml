@@ -35,7 +35,7 @@
 			<plugin>
 				<groupId>com.dkanejs.maven.plugins</groupId>
 				<artifactId>docker-compose-maven-plugin</artifactId>
-				<version>2.5.1</version>
+				<version>${docker-compose-maven-plugin.version}</version>
 				<configuration>
 					<detachedMode>true</detachedMode>
 					<projectName>${project.artifactId}</projectName>
@@ -75,13 +75,14 @@
 						</goals>
 						<configuration>
 							<includes>
-								<include>org.iplantc.service.transfer.sftp.SftpPasswordRemoteDataClientTest</include>
-								<include>org.iplantc.service.transfer.sftp.SftpPathResolutionTests</include>
-								<include>org.iplantc.service.transfer.sftp.SftpPathSanitizationTest</include>
-								<include>org.iplantc.service.transfer.sftp.SftpSshKeysRemoteDataClientTest</include>
+<!--								<include>org.iplantc.service.transfer.sftp.SftpPasswordRemoteDataClientTest</include>-->
+<!--								<include>org.iplantc.service.transfer.sftp.SftpPathResolutionTests</include>-->
+<!--								<include>org.iplantc.service.transfer.sftp.SftpPathSanitizationTest</include>-->
+<!--								<include>org.iplantc.service.transfer.sftp.SftpSshKeysRemoteDataClientTest</include>-->
+<!--								<include>org.iplantc.service.transfer.s3.*Test</include>-->
 							</includes>
-							<groups>integration,s3</groups>
-							<excludedGroups>broken,notReady,unit,azure,s3,gridftp</excludedGroups>
+							<groups>integration,s3*</groups>
+							<excludedGroups>broken,notReady,unit,azure,sftp,gridftp</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
 								</log4j.configuration>
@@ -160,6 +161,12 @@
 			<groupId>org.apache.jclouds.driver</groupId>
 			<artifactId>jclouds-slf4j</artifactId>
 			<version>${jclouds.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>com.google.guava</groupId>
+					<artifactId>guava</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.irods.jargon</groupId>

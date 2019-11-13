@@ -19,7 +19,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"s3.filesystem","integration"})
+@Test(enabled = false, singleThreaded=true, groups= {"s3.filesystem","integration","broken"})
 public class S3PublicRemoteDataClientTest extends AbstractReadOnlyRemoteDataClientTest 
 {
 	protected String containerName;
@@ -65,7 +65,10 @@ public class S3PublicRemoteDataClientTest extends AbstractReadOnlyRemoteDataClie
     {
         try 
         {
-            Assert.assertFalse(getClient().isDirectory(LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME), 
+            getClient().put(LOCAL_BINARY_FILE, "");
+            String remotePutPath = LOCAL_BINARY_FILE_NAME;
+
+            Assert.assertFalse(getClient().isDirectory(remotePutPath),
                     "isDirectory should return false for file.");
         } 
         catch (Exception e) {

@@ -5,16 +5,16 @@ volumes:
 
 services:
 
-#  sftp-relay:
-##    build:
-##      context: ../../
-##      dockerfile: agave-transfers/sftp-relay/Dockerfile
-#    image: sftp-relay:develop
-#    ports:
-#      - 50051:50051
-#    restart: always
-#    volumes:
-#      - scratch:/scratch
+  sftp-relay:
+#    build:
+#      context: ../../
+#      dockerfile: agave-transfers/sftp-relay/Dockerfile
+    image: sftp-relay:develop
+    ports:
+      - 50051:50051
+    restart: always
+    volumes:
+      - scratch:/scratch
 
   sftp:
     image: agaveplatform/sshd:latest

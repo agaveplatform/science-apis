@@ -167,7 +167,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
     @Test(dataProvider="doesExistProvider", dependsOnGroups= {"proxy"})
     public void doesExist(String remotedir, boolean shouldExist, String message)
     {
-//        _doesExist(remotedir, shouldExist, message);
+        _doesExist(remotedir, shouldExist, message);
     }
     
     protected void _doesExist(String remotedir, boolean shouldExist, String message)
@@ -181,7 +181,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
         }
     }
    
-    @Test//(dependsOnMethods= {"doesExist"})
+    @Test(dependsOnMethods= {"doesExist"})
     public void length()
     {
         _length();
@@ -191,9 +191,12 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
     {
         try 
         {
-            Assert.assertTrue(getClient().doesExist(LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME), 
+            getClient().put(LOCAL_BINARY_FILE, "");
+            String remotePutPath = LOCAL_BINARY_FILE_NAME;
+
+            Assert.assertTrue(getClient().doesExist(remotePutPath),
                     "Data not found on remote system.");
-            Assert.assertTrue(new File(LOCAL_BINARY_FILE).length() == getClient().length(LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME),
+            Assert.assertTrue(new File(LOCAL_BINARY_FILE).length() == getClient().length(remotePutPath),
                     "remote length does not match local length.");
         } 
         catch (Exception e) {
@@ -393,7 +396,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
         }
     }
     
-    @Test(groups={"get", "download"}, dependsOnMethods={"getThrowsExceptionOnMissingRemotePath"})
+    @Test(groups={"get", "download"}, dataProvider = "getDirectoryRetrievesToCorrectLocationProvider", dependsOnMethods={"getThrowsExceptionOnMissingRemotePath"})
     public void getDirectoryRetrievesToCorrectLocation(String localdir, boolean createTestDownloadFolder, String expectedDownloadPath, String message) 
     {
         _getDirectoryRetrievesToCorrectLocation(localdir, createTestDownloadFolder, expectedDownloadPath, message);
@@ -413,7 +416,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
             }
             
             remotePutPath = LOCAL_DIR_NAME;
-            
+
             getClient().put(LOCAL_DIR, "");
             
             Assert.assertTrue(getClient().doesExist(remotePutPath), "Data not found on remote system after put.");
@@ -473,7 +476,7 @@ public abstract class AbstractReadOnlyRemoteDataClientTest extends BaseTransferT
         };
     }
     
-    @Test(groups={"stream", "get"}, dataProvider="getInputStreamProvider", dependsOnGroups= {"download"})
+    @Test(groups={"stream", "get"}, dataProvider="getInputStreamProvider", dependsOnGroups={"download"})
     public void getInputStream(String localFile, String remotedir, boolean shouldThrowException, String message)
     {
         _getInputStream(localFile, remotedir, shouldThrowException, message);

@@ -940,7 +940,7 @@ public final class SftpRelay implements RemoteDataClient {
                             .usePlaintext()
                             .build();
 
-                    // Create an sfpt service client (blocking - synchronous)
+                    // Create an sftp service client (blocking - synchronous)
 
                     SftpRelayGrpc.SftpRelayBlockingStub sftpClient = SftpRelayGrpc.newBlockingStub(channel);
 

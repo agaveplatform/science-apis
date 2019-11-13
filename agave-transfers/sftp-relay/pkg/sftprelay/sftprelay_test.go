@@ -44,6 +44,11 @@ func createTestFile() {
 	if err != nil {
 		panic(err)
 	}
+
+	err = os.Remove("/tmp/testDest.txt")
+	if err != nil {
+		fmt.Printf("Error removing file %v", err)
+	}
 }
 
 func bufDialer(string, time.Duration) (net.Conn, error) {
@@ -145,7 +150,7 @@ func TestPut(t *testing.T) {
 			ClientKey:    "",
 			BufferSize:   16384,
 			Type:         "SFTP",
-			DestFileName: "",
+			DestFileName: "/tmp/testDest.txt",
 		},
 	}
 
@@ -177,7 +182,7 @@ func TestGet(t *testing.T) {
 			ClientKey:    "",
 			BufferSize:   16384,
 			Type:         "SFTP",
-			DestFileName: "",
+			DestFileName: "/tmp/testDest.txt",
 		},
 	}
 
@@ -187,65 +192,6 @@ func TestGet(t *testing.T) {
 	}
 	log.Printf("Response: %+v", resp)
 }
-
-func TestLOCAL_Factory_ReadFrom(t *testing.T) {
-	createTestFile()
-	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
-	if err != nil {
-		t.Fatalf("Failed to dial bufnet: %v", err)
-	}
-	defer conn.Close()
-	client := agaveproto.NewSftpRelayClient(conn)
-
-	req := &agaveproto.SrvGetRequest{
-		SrceSftp: &agaveproto.Sftp{
-			Username:     "testuser",
-			PassWord:     "testuser",
-			SystemId:     "localhost",
-			HostKey:      "",
-			FileName:     "/tmp/test.txt",
-			FileSize:     0,
-			HostPort:     ":22",
-			ClientKey:    "",
-			BufferSize:   16384,
-			Type:         "LOCAL",
-			DestFileName: "",
-		},
-	}
-
-	resp, err := client.Get(ctx, req)
-	if err != nil {
-		t.Errorf("Error while calling RPC auth: %v", err)
-	}
-	log.Printf("Response: %+v", resp)
-}
-
-//func TestAutheticate(t *testing.T)  {
-//	s := Server{}
-//
-//	req := &agaveproto.AuthenticateToRemoteRequest{
-//		Auth: &agaveproto.Sftp{
-//			Username:   	"testuser",
-//			PassWord:   	"testuser",
-//			SystemId:		"192.168.1.9",
-//			HostKey:        "",
-//			FileName:       "",
-//			FileSize:       0,
-//			HostPort:       ":10022",
-//			ClientKey:      "",
-//			BufferSize:     16384,
-//			Type:           "",
-//		},
-//	}
-//	res, err := s.Authenticate(context.Background(), req)
-//	if err != nil {
-//		t.Errorf("Error with authenticate %v", err)
-//	}
-//	if res.Response == "true" || res.Response == "false" {
-//		t.Errorf("Error with response: %v", res.Response)
-//	}
-//}
 
 func TestThing(t *testing.T) {
 	userHome, err := os.UserHomeDir()

@@ -1,7 +1,6 @@
 package sftprelay
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	//connPool "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/connectionpool"
@@ -10,7 +9,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
-	"io"
 	"os"
 	"strconv"
 )
@@ -203,7 +201,6 @@ type ReadTransferFactory interface {
 type WriteTransferFactory interface {
 	WriteTo(params ConnParams) FileTransfer
 }
-type LOCAL_Factory struct{}
 type SFTP_ReadFrom_Factory struct{}
 type SFTP_WriteTo_Factory struct{}
 
@@ -224,16 +221,6 @@ func GetSourceType(params ConnParams, source string) FileTransfer {
 		log.Info("Calling the SFTP Put class")
 		writeTxfrFactory = SFTP_WriteTo_Factory{}
 		return writeTxfrFactory.WriteTo(params)
-	case "LOCAL-Put":
-		fmt.Println("Calling the Local Put class")
-		log.Info("Calling the Local Put class")
-		readTxfrFactory = LOCAL_Factory{}
-		return readTxfrFactory.ReadFrom(params)
-	case "LOCAL-Get":
-		fmt.Println("Calling the Local Get class")
-		log.Info("Calling the Local Get class")
-		readTxfrFactory = LOCAL_Factory{}
-		return readTxfrFactory.ReadFrom(params)
 	default:
 		fmt.Println("No classes were called")
 		log.Info("No classes were called.")
@@ -365,7 +352,7 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	defer client.Close()
 
 	fmt.Println("Create destination file")
-	dstFile, err := client.Create(params.Srce.FileName)
+	dstFile, err := client.Create(params.Srce.DestFileName)
 	if err != nil {
 		fmt.Println("Error creating dest file", err)
 		result = err.Error()
@@ -395,75 +382,6 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	return FileTransfer{dstFile.Name(), bytesWritten, err}
 }
 
-func (a LOCAL_Factory) ReadFrom(params ConnParams) FileTransfer {
-	log.Info("got into ReadFrom Local")
-	name := params.Srce.FileName
-
-	log.Info("Open input file")
-	file, err := os.Open(name)
-	if err != nil {
-		log.Errorf("Error opening input file: %s", err)
-		return FileTransfer{"", 0, err}
-	}
-	log.Info("Close fi on exit and check for its returned error")
-	defer func() {
-		if err := file.Close(); err != nil {
-			log.Errorf("Error closing output file: %s", err)
-		}
-	}()
-
-	log.Info("Make a read buffer")
-	r := bufio.NewReader(file)
-
-	log.Info("Open output file")
-	fileOut, err := os.Create("output.txt")
-	if err != nil {
-		log.Errorf("Error opening output file: %s", err)
-		return FileTransfer{"", 0, err}
-	}
-	log.Info("Close fo on exit and check for its returned error")
-	defer func() {
-		if err := fileOut.Close(); err != nil {
-			log.Errorf("Error opening output file: %s", err)
-		}
-	}()
-
-	log.Info("Make a write buffer")
-	w := bufio.NewWriter(fileOut)
-
-	log.Info("Make a buffer to keep chunks that are read")
-	buf := make([]byte, 1024)
-	for {
-		log.Info("Read a chunk")
-		n, err := r.Read(buf)
-		if err != nil && err != io.EOF {
-			log.Errorf("Error reading input file: %s", err)
-			return FileTransfer{"", 0, err}
-		}
-		if n == 0 {
-			break
-		}
-		log.Info("Write a chunk")
-		if _, err := w.Write(buf[:n]); err != nil {
-			log.Errorf("Error writing output file: %s", err)
-			return FileTransfer{"", 0, err}
-		}
-	}
-	log.Info("Flush the cash")
-	if err = w.Flush(); err != nil {
-		log.Errorf("Unexpected error: %s", err)
-		return FileTransfer{"", 0, err}
-		//panic(err)
-	}
-	log.Info("Get the file size")
-	fileSize, err := GetFileSize(fileOut.Name())
-	if err != nil {
-		log.Errorf("File size error: %s", err)
-		return FileTransfer{"", 0, err}
-	}
-
-	return FileTransfer{name, fileSize, nil}
-}
 func GetFileSize(filepath string) (int64, error) {
 	fi, err := os.Stat(filepath)
 	if err != nil {

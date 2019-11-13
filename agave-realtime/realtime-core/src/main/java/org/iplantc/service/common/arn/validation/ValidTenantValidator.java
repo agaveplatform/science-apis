@@ -32,7 +32,7 @@ public class ValidTenantValidator implements ConstraintValidator<ValidTenant, St
         	constraintContext.disableDefaultConstraintViolation();
         	constraintContext
                 .buildConstraintViolationWithTemplate( "{org.iplantc.service.common.arn.validation.ValidTenant.message}" )
-                .addPropertyNode( "tenant" )
+                .addNode( "tenant" )
                 .addConstraintViolation();
         }
         

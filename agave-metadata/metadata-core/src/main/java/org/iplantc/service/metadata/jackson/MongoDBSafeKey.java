@@ -1,6 +1,6 @@
 package org.iplantc.service.metadata.jackson;
-import static com.google.common.base.Objects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.regex.Matcher.quoteReplacement;
 import static java.util.regex.Pattern.compile;
 import static java.util.regex.Pattern.quote;

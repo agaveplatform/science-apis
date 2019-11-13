@@ -159,6 +159,8 @@
 		<profile>
 			<id>agave</id>
 			<properties>
+				<downloadSources>false</downloadSources>
+				<downloadJavadocs>false</downloadJavadocs>
 				<foundation.db.test.url>jdbc:mysql://mysql:3306/test?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false</foundation.db.test.url>
 				<foundation.db.test.bootstrap>
 					jdbc:mysql://mysql:3306/mavenbootstrap?sessionVariables=FOREIGN_KEY_CHECKS=0&amp;relaxAutoCommit=true&amp;tinyInt1isBit=false
@@ -250,8 +252,10 @@
 
 				<!-- **************** Minio Credentials for Integration Tests ********** -->
 				<s3.bucket>agaveapitestdata</s3.bucket>
-				<s3.access.key>agaveuser</s3.access.key>
-				<s3.secret.key>password</s3.secret.key>
+				<s3.host>https://s3.amazonaws.com</s3.host>
+				<s3.port>443</s3.port>
+				<s3.access.key>AKIAJ5WOFQE4XGSWNK2Q</s3.access.key>
+				<s3.secret.key>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</s3.secret.key>
 
 				<!-- *********************************************************************
 				**************************************************************************

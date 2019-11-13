@@ -32,7 +32,7 @@ public class ValidServiceValidator implements ConstraintValidator<ValidService, 
         	constraintContext.disableDefaultConstraintViolation();
         	constraintContext
                 .buildConstraintViolationWithTemplate( "{org.iplantc.service.common.arn.validation.ValidService.message}" )
-                .addPropertyNode( "service" )
+				.addNode( "service" )
                 .addConstraintViolation();
         }
         

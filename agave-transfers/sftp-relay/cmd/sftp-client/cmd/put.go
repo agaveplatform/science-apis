@@ -26,7 +26,7 @@ import (
 var putCmd = &cobra.Command{
 	Use:   "put",
 	Short: "Perform a PUT operations",
-	Long: `Performs a put operation copying a file on the relay server to a remote server`,
+	Long:  `Performs a put operation copying a file on the relay server to a remote server`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("put called")
 	},
@@ -44,11 +44,10 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// putCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	putCmd.Flags().StringVarP(&src, "src", "s", "", "Path of the source file item.")
-	putCmd.MarkFlagRequired("src")
-	putCmd.Flags().StringVarP(&dest, "dest", "d", "", "Path of the dest file item.")
-	putCmd.MarkFlagRequired("dest")
-
+	putCmd.Flags().StringVarP(&src, "src", "s", DefaultDest, "Path of the source file item.")
+	//putCmd.MarkFlagRequired("src")
+	putCmd.Flags().StringVarP(&dest, "dest", "d", DefaultSrc, "Path of the dest file item.")
+	//putCmd.MarkFlagRequired("dest")
 
 	viper.BindPFlag("src", putCmd.Flags().Lookup("src"))
 	viper.BindPFlag("dest", putCmd.Flags().Lookup("dest"))

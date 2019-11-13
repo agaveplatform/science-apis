@@ -49,11 +49,10 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// getCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	getCmd.Flags().StringVarP(&src, "src", "s", "", "Path of the source file item.")
+	getCmd.Flags().StringVarP(&src, "src", "s", DefaultSrc, "Path of the source file item.")
 	getCmd.MarkFlagRequired("src")
-	getCmd.Flags().StringVarP(&dest, "dest", "d", "", "Path of the dest file item.")
+	getCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest file item.")
 	rootCmd.MarkFlagRequired("dest")
-
 
 	viper.BindPFlag("src", rootCmd.Flags().Lookup("src"))
 	viper.BindPFlag("dest", rootCmd.Flags().Lookup("dest"))

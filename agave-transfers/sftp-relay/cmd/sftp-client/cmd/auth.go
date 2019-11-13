@@ -29,7 +29,7 @@ import (
 var authCmd = &cobra.Command{
 	Use:   "auth",
 	Short: "Test authentication to the remote host",
-	Long: `Attempts to login to the remote sftp host`,
+	Long:  `Attempts to login to the remote sftp host`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		sftpRelay := sftphelper.GetSftpRelay()
@@ -38,15 +38,15 @@ var authCmd = &cobra.Command{
 		startTime := time.Now()
 
 		req := &agaveproto.AuthenticateToRemoteRequest{
-			SftpConfig: sftphelper.ParseSftpConfig(cmd.Flags()),
+			Auth: sftphelper.ParseSftpConfig(cmd.Flags()),
 		}
 
-		res, err := sftpRelay.AuthenticateToRemoteService(context.Background(), req)
+		res, err := sftpRelay.Authenticate(context.Background(), req)
 		if err != nil {
 			log.Fatalf("error while calling RPC auth: %v", err)
 		}
 		secs := time.Since(startTime).Seconds()
-		log.Println("Response from Auth: " + strconv.FormatBool(res.GetResult()))
+		log.Println("Response from Auth: " + res.Response)
 		log.Println("RPC Auth Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }

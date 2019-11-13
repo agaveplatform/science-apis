@@ -38,9 +38,20 @@ message SrvGetResponse {
     string bytesReturned = 2;
     string error = 3;
 }
+message AuthenticateToRemoteRequest {
+    Sftp auth = 1;
+}
+message AuthenticateToRemoteResponse {
+    string response = 1;
+}
 
 service SftpRelay {
     rpc Get (SrvGetRequest) returns (SrvGetResponse);
     rpc Put (SrvPutRequest) returns (SrvPutResponse);
+    rpc Authenticate (AuthenticateToRemoteRequest) returns (AuthenticateToRemoteResponse);
 }
+
+
+
+
 

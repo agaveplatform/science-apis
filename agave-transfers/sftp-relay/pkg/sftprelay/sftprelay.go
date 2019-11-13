@@ -39,6 +39,46 @@ type ConnParams struct {
 var Params ConnParams
 var Conn *ssh.Client
 
+func (*Server) Authenticate(ctx context.Context, req *sftppb.AuthenticateToRemoteRequest) (*sftppb.AuthenticateToRemoteResponse, error) {
+	fmt.Printf("Get Service function was invoked with %v\n", req)
+
+	Params = setGetAuthParams(req) // return type is ConnParams
+
+	var filename string
+	log.Info(filename)
+	from := Params.Srce.Type
+	fmt.Println(from)
+
+	// Read From system
+	result := ""
+	log.Info("Dial the connection now")
+	fmt.Printf("SysIP= %s \n", Params.Srce.SystemId)
+	fmt.Printf("SysPort= %s \n", Params.Srce.HostPort)
+
+	var config ssh.ClientConfig
+	config = ssh.ClientConfig{
+		User: Params.Srce.Username,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(Params.Srce.PassWord),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	conn, err := ssh.Dial("tcp", Params.Srce.SystemId+Params.Srce.HostPort, &config)
+	if err != nil {
+		fmt.Printf("Error Dialing the server: %v", err)
+		log.Error(err)
+		result = err.Error()
+	}
+	defer conn.Close()
+
+	res := &sftppb.AuthenticateToRemoteResponse{
+		Response: result,
+	}
+	log.Info(res.String())
+	return res, nil
+}
+
 /*
 	This service gets a single request for a file from an SFTP server.  It goes to the server and sends back the file in
 	chunks sized based on the buffer_size variable.
@@ -128,6 +168,21 @@ func setPutParams(req *sftppb.SrvPutRequest) ConnParams {
 			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
 			Type: req.SrceSftp.Type},
 	}
+	return connParams
+}
+func setGetAuthParams(req *sftppb.AuthenticateToRemoteRequest) ConnParams {
+	connParams := ConnParams{Srce: SysUri{
+		Username:   req.Auth.Username,
+		PassWord:   req.Auth.PassWord,
+		SystemId:   req.Auth.SystemId,
+		HostKey:    req.Auth.HostKey,
+		HostPort:   req.Auth.HostPort,
+		ClientKey:  req.Auth.ClientKey,
+		FileName:   req.Auth.FileName,
+		FileSize:   0,
+		BufferSize: 16138,
+		Type:       req.Auth.Type,
+	}}
 	return connParams
 }
 

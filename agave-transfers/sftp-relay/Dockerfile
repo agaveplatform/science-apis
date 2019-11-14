@@ -1,29 +1,36 @@
 FROM agaveplatform/grpc-go:1.13
 
-COPY agave-protos $GOPATH/src/github.com/agaveplatform/science-apis/agave-protos
-COPY agave-transfers/sftp-relay $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
-
-WORKDIR $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
-
-RUN make genproto && \
-	make clean && \
-	make default
-
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates openssl curl bash
-
 LABEL maintainer="Agave Platform<help@agaveplatform.org>"
 LABEL protoc_version="${PROTOC_VERSION}"
 LABEL language="golang:1.11"
 LABEL agave_platform=2.0
 LABEL tooling=transfer,sftp,worker,put
 
-WORKDIR /go/
-COPY --from=0 /go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/release/sftp-relay-linux-amd64 /usr/local/bin/agave-sftp
+COPY . $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
+COPY tmp/* $GOPATH/src/github.com/agaveplatform/science-apis/agave-protos/proto/
 
-RUN \
-    chmod +x /usr/local/bin/agave-sftp
+WORKDIR $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
 
-ENTRYPOINT ["agave-sftp"]
+RUN make genproto && make deps
+
+RUN make default && make install
+
+# Commenting out to avoid insanely long buid times every time
+#FROM alpine:latest
+#RUN apk --no-cache add ca-certificates openssl curl bash
+#
+#LABEL maintainer="Agave Platform<help@agaveplatform.org>"
+#LABEL protoc_version="${PROTOC_VERSION}"
+#LABEL language="golang:1.11"
+#LABEL agave_platform=2.0
+#LABEL tooling=transfer,sftp,worker,put
+#
+#WORKDIR /go/
+#COPY --from=0 /go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/release/sftp-relay-linux-amd64 /usr/local/bin/sftp-relay
+#
+#RUN \
+#    chmod +x /usr/local/bin/sftp-relay
+#
+ENTRYPOINT ["sftp-relay"]
 
 CMD ["--help"]

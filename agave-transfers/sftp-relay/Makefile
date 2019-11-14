@@ -6,6 +6,8 @@ PROJECT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 PROJECT_PROTO_SRC_DIR := $(abspath $(PROJECT_DIR)/../../agave-protos)/proto/
 PROJECT_PROTO_OUT_DIR := pkg/sftpproto
 PROJECT_NAME := "sftp-relay"
+CLIENT_NAME := "sftp-client"
+
 #PROJECT_PROTOS := $(wildcard $(PROJECT_PROTO_SRC_DIR)/*.proto)
 #PROJECT_GEN_PB := $(addprefix pkg/sftprelay/,$(notdir $(patsubst %.proto,%.pb.go,$(PROJECT_PROTOS))))
 
@@ -45,13 +47,12 @@ PROJECT_GEN_PB := $(addprefix pkg/sftprelay/,$(notdir $(patsubst %.proto,%.pb.go
 $(PROJECT_GEN_PB):
 	@mkdir -p $(PROJECT_PROTO_OUT_DIR)
 	protoc -I $(PROJECT_PROTO_SRC_DIR) --go_out=plugins=grpc:$(PROJECT_PROTO_OUT_DIR) $(PROJECT_PROTOS)
-	@#protoc -I ./proto --java_out=./proto/java/ ./proto/sftp.proto
 
 .PHONY: all
 all: genproto test build image
 
 .PHONY: default
-default: genproto deps build
+default: deps build
 
 .PHONY: test
 test:
@@ -60,16 +61,17 @@ test:
 # Install the application binary into $GOBIN
 .PHONY: install
 install:
-	cp release/client-$(PLATFORM)-$(ARCH) $(firstGOPATH)/bin/$(PROJECT_NAME)-client
+	#cp release/$(CLIENT_NAME)-$(PLATFORM)-$(ARCH) $(firstGOPATH)/bin/$(CLIENT_NAME)
 	cp release/$(PROJECT_NAME)-$(PLATFORM)-$(ARCH) $(firstGOPATH)/bin/$(PROJECT_NAME)
-
 
 # Build the application into a Docker image
 .PHONY: image
 image:
-	@echo Starting Image process
-	docker build -t $(PROJECT_NAME):latest -f $(PROJECT_DIR)/Dockerfile $(PROJECT_DIR)/../..
-	@echo Done with image
+	@# Copying protobuf file locally to avoid import of entire project repo and speed up build
+	@ mkdir -p tmp
+	@ cp -rf $(PROJECT_PROTO_SRC_DIR) tmp
+	-docker build -t $(PROJECT_NAME):latest .
+	@- rm -rf tmp
 
 # Build protobuf
 .PHONY: genproto
@@ -77,18 +79,20 @@ genproto: $(PROJECT_GEN_PB)
 
 # Vendor all dependencies
 .PHONY: deps
-deps:
+deps: genproto
 	if [[ ! -e vendor/modules.txt ]]; then go mod vendor; else go mod tidy; fi
 
+# Build binaries
 .PHONY: build 
 build:
-	#BASE_CMD_NAME=client BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
+	#BASE_CMD_NAME=$(CLIENT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
 	BASE_CMD_NAME=$(PROJECT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
 
+# Clean go cache and artifacts
 .PHONY: clean
 clean:
-	@go clean -i -cache ./...
-	@rm -rf release/*
+	@ go clean -cache ./... 2> /dev/null || true
+	rm -rf release/*
 	rm -rf proto/go/*
 	rm -rf proto/java/*
 	rm -rf pkg/sftpproto/*

@@ -59,6 +59,7 @@ for OS in ${BUILD_PLATFORMS[@]}; do
         if [[ $? -eq 0 ]]; then
           pushd "${PROJECT_ROOT}/release" > /dev/null
           shasum -a 256 "${NAME}" > "${NAME}.sha256"
+          chmod +x "${NAME}"
           popd > /dev/null
         fi
     fi

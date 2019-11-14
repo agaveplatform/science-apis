@@ -254,8 +254,8 @@
 				<s3.bucket>agaveapitestdata</s3.bucket>
 				<s3.host>https://s3.amazonaws.com</s3.host>
 				<s3.port>443</s3.port>
-				<s3.access.key>AKIAJ5WOFQE4XGSWNK2Q</s3.access.key>
-				<s3.secret.key>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</s3.secret.key>
+				<s3.access.key>agaveuser</s3.access.key>
+				<s3.secret.key>password</s3.secret.key>
 
 				<!-- *********************************************************************
 				**************************************************************************

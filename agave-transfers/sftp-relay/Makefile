@@ -88,6 +88,11 @@ build:
 	#BASE_CMD_NAME=$(CLIENT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
 	BASE_CMD_NAME=$(PROJECT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
 
+.PHONY: cli
+cli:
+	BASE_CMD_NAME=$(CLIENT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
+
+
 # Clean go cache and artifacts
 .PHONY: clean
 clean:

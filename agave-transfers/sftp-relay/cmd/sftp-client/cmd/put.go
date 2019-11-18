@@ -68,7 +68,7 @@ var putCmd = &cobra.Command{
 				HostKey:      "",
 				FileName:     src,
 				FileSize:     0,
-				HostPort:     strconv.Itoa(port),
+				HostPort:     ":" + strconv.Itoa(port),
 				ClientKey:    key,
 				BufferSize:   16138,
 				Type:         "SFTP",
@@ -90,7 +90,7 @@ var putCmd = &cobra.Command{
 			log.Printf("Response from Error Code: %v \n", res.Error)
 		} else {
 			log.Printf("Response from FileName: %v \n", res.FileName)
-			log.Printf("Response from BytesReturned: %d \n", res.BytesReturned)
+			log.Printf("Response from BytesReturned: %v \n", res.BytesReturned)
 		}
 		log.Println("gRPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
@@ -108,9 +108,9 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// putCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	putCmd.Flags().StringVarP(&src, "src", "s", DefaultDest, "Path of the source file item.")
+	putCmd.Flags().StringVarP(&src, "src", "s", DefaultSrc, "Path of the source file item.")
 	//putCmd.MarkFlagRequired("src")
-	putCmd.Flags().StringVarP(&dest, "dest", "d", DefaultSrc, "Path of the dest file item.")
+	putCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest file item.")
 	//putCmd.MarkFlagRequired("dest")
 
 	viper.BindPFlag("src", putCmd.Flags().Lookup("src"))

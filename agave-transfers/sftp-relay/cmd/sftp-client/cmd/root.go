@@ -35,19 +35,19 @@ const (
 	DefaultPort     = 10022
 	DefaultSrc      = "/etc/hosts"
 	DefaultDest     = "/tmp/hosts"
-	DefaultGrpcPort = "50051"
+	GrpcService     = "[::1]:50051"
 )
 
 var (
-	cfgFile  string
-	username string
-	host     string
-	key      string
-	passwd   string
-	port     int
-	src      string
-	dest     string
-	Grpcport string
+	cfgFile     string
+	username    string
+	host        string
+	key         string
+	passwd      string
+	port        int
+	src         string
+	dest        string
+	grpcservice string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -64,7 +64,6 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	fmt.Println("Root is being executed")
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -93,15 +92,14 @@ func init() {
 	pflags.StringVarP(&key, "key", "i", "", "Private key to use to connect to the remote host.")
 	pflags.StringVarP(&host, "host", "H", DefaultHost, "Hostname or ip of the remote host.")
 	pflags.IntVarP(&port, "port", "P", DefaultPort, "Port of the remote host.")
-	pflags.StringVarP(&Grpcport, "grpcport", "g", DefaultGrpcPort, "Port of the grpc server.")
+	pflags.StringVarP(&grpcservice, "grpcservice", "g", GrpcService, "Address of the grpc server. (default is [::1]:50051")
 
 	viper.BindPFlag("username", pflags.Lookup("username"))
 	viper.BindPFlag("password", pflags.Lookup("password"))
 	viper.BindPFlag("key", pflags.Lookup("key"))
 	viper.BindPFlag("host", pflags.Lookup("host"))
 	viper.BindPFlag("port", pflags.Lookup("port"))
-	viper.BindPFlag("Grpcport", pflags.Lookup("Grpcport"))
-
+	viper.BindPFlag("grpcservice", pflags.Lookup("grpcservice"))
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

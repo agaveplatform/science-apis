@@ -48,7 +48,8 @@ var putCmd = &cobra.Command{
 		wrt := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(wrt)
 
-		conn, err := grpc.Dial(host+":"+Grpcport, grpc.WithInsecure())
+		log.Printf("connecting to %v...", grpcservice)
+		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
 			log.Fatalf("could not connect: %v", err)
 		}
@@ -80,19 +81,19 @@ var putCmd = &cobra.Command{
 		res, err := sftpRelay.Put(context.Background(), req)
 		if err != nil {
 			log.Errorf("error while calling gRPC Put: %v", err)
-		}
-		if res == nil {
-			log.Errorf("error with res varable while calling RPC")
-		}
-		log.Println("End Time %s", time.Since(startPushtime).Seconds())
-		secs := time.Since(startPushtime).Seconds()
-		if res.Error != "" {
-			log.Printf("Response from Error Code: %v \n", res.Error)
+		} else if res == nil {
+			log.Errorf("error with res variable while calling RPC")
 		} else {
-			log.Printf("Response from FileName: %v \n", res.FileName)
-			log.Printf("Response from BytesReturned: %v \n", res.BytesReturned)
+			log.Println("End Time %s", time.Since(startPushtime).Seconds())
+			secs := time.Since(startPushtime).Seconds()
+			if res.Error != "" {
+				log.Printf("Response from Error Code: %v \n", res.Error)
+			} else {
+				log.Printf("Response from FileName: %v \n", res.FileName)
+				log.Printf("Response from BytesReturned: %v \n", res.BytesReturned)
+			}
+			log.Println("gRPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 		}
-		log.Println("gRPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 

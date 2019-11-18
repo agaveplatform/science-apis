@@ -52,7 +52,7 @@ to quickly create a Cobra application.`,
 		wrt := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(wrt)
 
-		conn, err := grpc.Dial(host+":"+Grpcport, grpc.WithInsecure())
+		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
 			log.Fatalf("could not connect: %v", err)
 		}

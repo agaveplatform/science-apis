@@ -18,8 +18,9 @@ package cmd
 import (
 	"context"
 	sftphelper "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
-	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
+	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 	"io"
 	"os"
 	"strconv"
@@ -44,12 +45,22 @@ var authCmd = &cobra.Command{
 		wrt := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(wrt)
 
-		sftpRelay := sftphelper.GetSftpRelay()
+		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("could not connect: %v", err)
+		}
+		defer conn.Close()
+
+		sftpRelay := sftppb.NewSftpRelayClient(conn)
+
+		log.Println("Starting Push rpc client: ")
+		startPushtime := time.Now()
+		log.Printf("Start Time = %v", startPushtime)
 
 		log.Println("Starting Auth rpc client: ")
 		startTime := time.Now()
 
-		req := &agaveproto.AuthenticateToRemoteRequest{
+		req := &sftppb.AuthenticateToRemoteRequest{
 			Auth: sftphelper.ParseSftpConfig(cmd.Flags()),
 		}
 

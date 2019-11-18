@@ -61,7 +61,6 @@ test:
 # Install the application binary into $GOBIN
 .PHONY: install
 install:
-	#cp release/$(CLIENT_NAME)-$(PLATFORM)-$(ARCH) $(firstGOPATH)/bin/$(CLIENT_NAME)
 	cp release/$(PROJECT_NAME)-$(PLATFORM)-$(ARCH) $(firstGOPATH)/bin/$(PROJECT_NAME)
 
 # Build the application into a Docker image
@@ -85,7 +84,6 @@ deps: genproto
 # Build binaries
 .PHONY: build 
 build:
-	#BASE_CMD_NAME=$(CLIENT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
 	BASE_CMD_NAME=$(PROJECT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
 
 .PHONY: cli

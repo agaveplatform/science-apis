@@ -16,11 +16,19 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
-	"github.com/spf13/viper"
+	"context"
 
+	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"google.golang.org/grpc"
+	"io"
+	"os"
+	"strconv"
+	"time"
 )
+
+//var log = logrus.New()
 
 // putCmd represents the put command
 var putCmd = &cobra.Command{
@@ -28,7 +36,63 @@ var putCmd = &cobra.Command{
 	Short: "Perform a PUT operations",
 	Long:  `Performs a put operation copying a file on the relay server to a remote server`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("put called")
+		log.Println("Put Command =====================================")
+		log.Printf("srce file= %v \n", src)
+		log.Printf("dst file= %v \n", dest)
+
+		// log to console and file
+		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
+		}
+		wrt := io.MultiWriter(os.Stdout, f)
+		log.SetOutput(wrt)
+
+		conn, err := grpc.Dial(host+":"+Grpcport, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("could not connect: %v", err)
+		}
+		defer conn.Close()
+
+		sftpRelay := sftppb.NewSftpRelayClient(conn)
+
+		log.Println("Starting Push rpc client: ")
+		startPushtime := time.Now()
+		log.Printf("Start Time = %v", startPushtime)
+
+		req := &sftppb.SrvPutRequest{
+			SrceSftp: &sftppb.Sftp{
+				Username:     username,
+				PassWord:     passwd,
+				SystemId:     host,
+				HostKey:      "",
+				FileName:     src,
+				FileSize:     0,
+				HostPort:     strconv.Itoa(port),
+				ClientKey:    key,
+				BufferSize:   16138,
+				Type:         "SFTP",
+				DestFileName: dest,
+			},
+		}
+		log.Println("got past req :=")
+
+		res, err := sftpRelay.Put(context.Background(), req)
+		if err != nil {
+			log.Errorf("error while calling gRPC Put: %v", err)
+		}
+		if res == nil {
+			log.Errorf("error with res varable while calling RPC")
+		}
+		log.Println("End Time %s", time.Since(startPushtime).Seconds())
+		secs := time.Since(startPushtime).Seconds()
+		if res.Error != "" {
+			log.Printf("Response from Error Code: %v \n", res.Error)
+		} else {
+			log.Printf("Response from FileName: %v \n", res.FileName)
+			log.Printf("Response from BytesReturned: %d \n", res.BytesReturned)
+		}
+		log.Println("gRPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 

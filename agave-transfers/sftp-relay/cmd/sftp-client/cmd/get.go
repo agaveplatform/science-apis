@@ -16,11 +16,19 @@ limitations under the License.
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"github.com/spf13/viper"
-
+	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+	"google.golang.org/grpc"
+	"io"
+	"os"
+	"strconv"
+	"time"
 )
+
+//var log = logrus.New()
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
@@ -33,7 +41,59 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("get called")
+		fmt.Println("Get Command")
+
+		// log to console and file
+		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
+		}
+		wrt := io.MultiWriter(os.Stdout, f)
+		log.SetOutput(wrt)
+
+		conn, err := grpc.Dial(host+":"+Grpcport, grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("could not connect: %v", err)
+		}
+		defer conn.Close()
+
+		sftpRelay := sftppb.NewSftpRelayClient(conn)
+
+		log.Println("Starting Push rpc client: ")
+		startPushtime := time.Now()
+		log.Printf("Start Time = %v", startPushtime)
+
+		req := &sftppb.SrvGetRequest{
+			SrceSftp: &sftppb.Sftp{
+				Username:     username,
+				PassWord:     passwd,
+				SystemId:     host,
+				HostKey:      "",
+				FileName:     src,
+				FileSize:     0,
+				HostPort:     strconv.Itoa(port),
+				ClientKey:    key,
+				BufferSize:   16138,
+				Type:         "SFTP",
+				DestFileName: dest,
+			},
+		}
+		log.Println("got past req :=")
+
+		res, err := sftpRelay.Get(context.Background(), req)
+		if err != nil {
+			log.Errorf("error while calling gRPC Put: %v", err)
+		}
+		if res == nil {
+			log.Errorf("error with res varable while calling RPC")
+		}
+		log.Println("End Time %s", time.Since(startPushtime).Seconds())
+		secs := time.Since(startPushtime).Seconds()
+		log.Printf("Result = %v", res)
+		log.Printf("Response from FileName: %v", res.FileName)
+		log.Printf("Response from BytesReturned: %d", res.BytesReturned)
+		log.Printf("Response from Error Code: %v", res.Error)
+		log.Println("RPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 

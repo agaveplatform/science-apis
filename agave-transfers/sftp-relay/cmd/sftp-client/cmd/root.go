@@ -17,12 +17,15 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"os"
-
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"io"
+	"os"
 )
+
+var log = logrus.New()
 
 const (
 	DefaultUsername = "testuser"
@@ -32,23 +35,24 @@ const (
 	DefaultPort     = 10022
 	DefaultSrc      = "/etc/hosts"
 	DefaultDest     = "/tmp/hosts"
+	DefaultGrpcPort = "50051"
 )
 
 var (
-	cfgFile      string
-	username     string
-	host         string
-	key          string
-	passwd       string
-	port         int
-	src          string
-	dest         string
-	filename     string
-	destFilename string
+	cfgFile  string
+	username string
+	host     string
+	key      string
+	passwd   string
+	port     int
+	src      string
+	dest     string
+	Grpcport string
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
+
 	Use:   "sftp-client",
 	Short: "CLI interface to the sftp-server",
 	Long:  `CLI client written in Go for the Agave sftp-server application.`,
@@ -60,6 +64,7 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	fmt.Println("Root is being executed")
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -68,6 +73,14 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// log to console and file
+	f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	wrt := io.MultiWriter(os.Stdout, f)
+	log.SetOutput(wrt)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -80,12 +93,14 @@ func init() {
 	pflags.StringVarP(&key, "key", "i", "", "Private key to use to connect to the remote host.")
 	pflags.StringVarP(&host, "host", "H", DefaultHost, "Hostname or ip of the remote host.")
 	pflags.IntVarP(&port, "port", "P", DefaultPort, "Port of the remote host.")
+	pflags.StringVarP(&Grpcport, "grpcport", "g", DefaultGrpcPort, "Port of the grpc server.")
 
 	viper.BindPFlag("username", pflags.Lookup("username"))
 	viper.BindPFlag("password", pflags.Lookup("password"))
 	viper.BindPFlag("key", pflags.Lookup("key"))
 	viper.BindPFlag("host", pflags.Lookup("host"))
 	viper.BindPFlag("port", pflags.Lookup("port"))
+	viper.BindPFlag("Grpcport", pflags.Lookup("Grpcport"))
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

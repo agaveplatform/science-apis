@@ -3,6 +3,7 @@ package helper
 import (
 	"fmt"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
+
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
 	"log"

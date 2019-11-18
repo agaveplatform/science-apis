@@ -20,10 +20,13 @@ import (
 	sftphelper "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
-	"log"
+	"io"
+	"os"
 	"strconv"
 	"time"
 )
+
+//var log = logrus.New()
 
 // authCmd represents the auth command
 var authCmd = &cobra.Command{
@@ -31,6 +34,15 @@ var authCmd = &cobra.Command{
 	Short: "Test authentication to the remote host",
 	Long:  `Attempts to login to the remote sftp host`,
 	Run: func(cmd *cobra.Command, args []string) {
+		log.Println("Auth command")
+
+		// log to console and file
+		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("error opening file: %v", err)
+		}
+		wrt := io.MultiWriter(os.Stdout, f)
+		log.SetOutput(wrt)
 
 		sftpRelay := sftphelper.GetSftpRelay()
 

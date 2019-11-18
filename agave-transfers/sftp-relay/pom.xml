@@ -59,13 +59,59 @@
 							<goal>exec</goal>
 						</goals>
 						<configuration>
-							<skip>true</skip>
 							<executable>make</executable>
 							<workingDirectory>${basedir}</workingDirectory>
 							<arguments>
 								<argument>image</argument>
 							</arguments>
 						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+				<version>${docker-compose-maven-plugin.version}</version>
+				<configuration>
+					<detachedMode>true</detachedMode>
+					<projectName>${project.artifactId}</projectName>
+					<composeFiles>
+						<composeFile>${project.basedir}/docker-compose.test.yml</composeFile>
+					</composeFiles>
+					<ignorePullFailures>true</ignorePullFailures>
+				</configuration>
+				<executions>
+					<execution>
+						<id>${project.artifactId}-support-up</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>up</goal>
+						</goals>
+						<configuration>
+							<services>
+								<service>sftp</service>
+							</services>
+						</configuration>
+					</execution>
+					<execution>
+						<id>${project.artifactId}-test</id>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>up</goal>
+						</goals>
+						<configuration>
+							<detachedMode>false</detachedMode>
+							<services>
+								<service>test</service>
+							</services>
+						</configuration>
+					</execution>
+					<execution>
+						<id>${project.artifactId}-down</id>
+						<phase>post-integration-test</phase>
+						<goals>
+							<goal>down</goal>
+						</goals>
 					</execution>
 				</executions>
 			</plugin>

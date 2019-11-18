@@ -45,10 +45,8 @@ func createTestFile() {
 		panic(err)
 	}
 
-	err = os.Remove("/tmp/testDest.txt")
-	if err != nil {
-		fmt.Printf("Error removing file %v", err)
-	}
+	// Remote without error as this should not be run against localhost
+	os.Remove("/tmp/testDest.txt")
 }
 
 func bufDialer(string, time.Duration) (net.Conn, error) {
@@ -109,11 +107,11 @@ func TestAuthenticate(t *testing.T) {
 		Auth: &agaveproto.Sftp{
 			Username:     "testuser",
 			PassWord:     "testuser",
-			SystemId:     "localhost",
+			SystemId:     "sftp",
 			HostKey:      "",
 			FileName:     "",
 			FileSize:     0,
-			HostPort:     ":22",
+			HostPort:     ":10022",
 			ClientKey:    "",
 			BufferSize:   16384,
 			Type:         "",
@@ -142,11 +140,11 @@ func TestPut(t *testing.T) {
 		SrceSftp: &agaveproto.Sftp{
 			Username:     "testuser",
 			PassWord:     "testuser",
-			SystemId:     "localhost",
+			SystemId:     "sftp",
 			HostKey:      "",
 			FileName:     "/tmp/test.txt",
 			FileSize:     0,
-			HostPort:     ":22",
+			HostPort:     ":10022",
 			ClientKey:    "",
 			BufferSize:   16384,
 			Type:         "SFTP",
@@ -174,11 +172,11 @@ func TestGet(t *testing.T) {
 		SrceSftp: &agaveproto.Sftp{
 			Username:     "testuser",
 			PassWord:     "testuser",
-			SystemId:     "localhost",
+			SystemId:     "sftp",
 			HostKey:      "",
 			FileName:     "/tmp/test.txt",
 			FileSize:     0,
-			HostPort:     ":22",
+			HostPort:     ":10022",
 			ClientKey:    "",
 			BufferSize:   16384,
 			Type:         "SFTP",

@@ -17,7 +17,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -41,7 +40,9 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Get Command")
+		log.Println("Get Command =====================================")
+		log.Printf("srce file= %v \n", src)
+		log.Printf("dst file= %v \n", dest)
 
 		// log to console and file
 		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -71,7 +72,7 @@ to quickly create a Cobra application.`,
 				HostKey:      "",
 				FileName:     src,
 				FileSize:     0,
-				HostPort:     strconv.Itoa(port),
+				HostPort:     ":" + strconv.Itoa(port),
 				ClientKey:    key,
 				BufferSize:   16138,
 				Type:         "SFTP",
@@ -89,11 +90,13 @@ to quickly create a Cobra application.`,
 		}
 		log.Println("End Time %s", time.Since(startPushtime).Seconds())
 		secs := time.Since(startPushtime).Seconds()
-		log.Printf("Result = %v", res)
-		log.Printf("Response from FileName: %v", res.FileName)
-		log.Printf("Response from BytesReturned: %d", res.BytesReturned)
-		log.Printf("Response from Error Code: %v", res.Error)
-		log.Println("RPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+		if res.Error != "" {
+			log.Printf("Response from Error Code: %v \n", res.Error)
+		} else {
+			log.Printf("Response from FileName: %v \n", res.FileName)
+			log.Printf("Response from BytesReturned: %v \n", res.BytesReturned)
+		}
+		log.Println("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 
@@ -110,9 +113,9 @@ func init() {
 	// is called directly, e.g.:
 	// getCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	getCmd.Flags().StringVarP(&src, "src", "s", DefaultSrc, "Path of the source file item.")
-	getCmd.MarkFlagRequired("src")
+	//getCmd.MarkFlagRequired("src")
 	getCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest file item.")
-	rootCmd.MarkFlagRequired("dest")
+	//rootCmd.MarkFlagRequired("dest")
 
 	viper.BindPFlag("src", rootCmd.Flags().Lookup("src"))
 	viper.BindPFlag("dest", rootCmd.Flags().Lookup("dest"))

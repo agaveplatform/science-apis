@@ -291,7 +291,7 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer { // ret
 	log.Println("Connection Data:  " + conn.User() + "  " + conn.Conn.RemoteAddr().String())
 
 	log.Printf("Create destination file  %v \n", params.Srce.FileName)
-	dstFile, _ := os.Create(params.Srce.FileName) //local file
+	dstFile, _ := os.Create(params.Srce.DestFileName) //local file
 	if err != nil {
 		log.Errorf("Error creating dest file. %v \n", err)
 		result = err.Error()
@@ -316,7 +316,7 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer { // ret
 	}
 	log.Infof("%d bytes copied\n", bytesWritten)
 
-	return FileTransfer{params.Srce.FileName, int64(bytesWritten), errors.New(result)}
+	return FileTransfer{params.Srce.DestFileName, int64(bytesWritten), errors.New(result)}
 
 }
 func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {

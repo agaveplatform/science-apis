@@ -7,7 +7,7 @@ services:
     command: "-p 10022"
 
   test:
-    image: sftp-relay:latest
+    image: sftp-relay:develop
     entrypoint: "make test"
     volumes:
      - .:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay

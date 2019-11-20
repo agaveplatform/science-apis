@@ -88,6 +88,46 @@ func (*Server) Authenticate(ctx context.Context, req *sftppb.AuthenticateToRemot
 	return res, nil
 }
 
+// Performs a mkdirs operation on a remote host. Upon success, the created
+// directory name is returned.
+func (*Server) Mkdirs(ctx context.Context, req *sftppb.SrvMkdirsRequest) (*sftppb.SrvMkdirsResponse, error) {
+	log.Printf("Mkdirs Service function was invoked with %v\n", req)
+
+	Params = setMkdirsParams(req) // return type is ConnParams
+
+	var tmpName FileTransfer
+
+	// Read From system
+	tmpName = GetSourceType(Params, Params.Srce.Type+"-Mkdirs")
+
+	res := &sftppb.SrvMkdirsResponse{
+		FileName: tmpName.s,
+		Error:    tmpName.e.Error(),
+	}
+	log.Info(res.String())
+	return res, nil
+}
+
+// Removes the remote path. If the remote path is a directory,
+// the entire tree is deleted.
+func (*Server) Remove(ctx context.Context, req *sftppb.SrvRemoveRequest) (*sftppb.SrvRemoveResponse, error) {
+	log.Printf("Remove Service function was invoked with %v\n", req)
+
+	Params = setRemoveParams(req) // return type is ConnParams
+
+	var tmpName FileTransfer
+
+	// Read From system
+	tmpName = GetSourceType(Params, Params.Srce.Type+"-Remove")
+
+	res := &sftppb.SrvRemoveResponse{
+		FileName: tmpName.s,
+		Error:    tmpName.e.Error(),
+	}
+	log.Info(res.String())
+	return res, nil
+}
+
 /*
 	This service gets a single request for a file from an SFTP server.  It goes to the server and sends back the file in
 	chunks sized based on the buffer_size variable.
@@ -161,6 +201,26 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	return res, nil
 }
 
+func setMkdirsParams(req *sftppb.SrvMkdirsRequest) ConnParams {
+	connParams := ConnParams{
+		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
+			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
+			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
+			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName},
+	}
+	return connParams
+}
+
+func setRemoveParams(req *sftppb.SrvRemoveRequest) ConnParams {
+	connParams := ConnParams{
+		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
+			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
+			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
+			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName},
+	}
+	return connParams
+}
+
 func setGetParams(req *sftppb.SrvGetRequest) ConnParams {
 	connParams := ConnParams{
 		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
@@ -170,6 +230,7 @@ func setGetParams(req *sftppb.SrvGetRequest) ConnParams {
 	}
 	return connParams
 }
+
 func setPutParams(req *sftppb.SrvPutRequest) ConnParams {
 	connParams := ConnParams{
 		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
@@ -179,6 +240,7 @@ func setPutParams(req *sftppb.SrvPutRequest) ConnParams {
 	}
 	return connParams
 }
+
 func setGetAuthParams(req *sftppb.AuthenticateToRemoteRequest) ConnParams {
 	connParams := ConnParams{Srce: SysUri{
 		Username:     req.Auth.Username,
@@ -211,14 +273,24 @@ type ReadTransferFactory interface {
 type WriteTransferFactory interface {
 	WriteTo(params ConnParams) FileTransfer
 }
+type MkdirsTransferFactory interface {
+	Mkdirs(params ConnParams) FileTransfer
+}
+type RemoveTransferFactory interface {
+	Remove(params ConnParams) FileTransfer
+}
 type SFTP_ReadFrom_Factory struct{}
 type SFTP_WriteTo_Factory struct{}
+type SFTP_Mkdirs_Factory struct{}
+type SFTP_Remove_Factory struct{}
 
 // main factory method
 func GetSourceType(params ConnParams, source string) FileTransfer {
 	log.Info("Got into the GetSourceType function")
 	var readTxfrFactory ReadTransferFactory
 	var writeTxfrFactory WriteTransferFactory
+	var mkdirsTxfrFactory MkdirsTransferFactory
+	var removeTxfrFactory RemoveTransferFactory
 	//source := params.Srce.Type
 
 	switch source {
@@ -231,6 +303,16 @@ func GetSourceType(params ConnParams, source string) FileTransfer {
 		log.Info("Calling the SFTP Put class")
 		writeTxfrFactory = SFTP_WriteTo_Factory{}
 		return writeTxfrFactory.WriteTo(params)
+	case "SFTP-Mkdirs":
+		log.Println("Calling the SFTP Mkdirs class")
+		log.Info("Calling the SFTP Mkdirs class")
+		mkdirsTxfrFactory = SFTP_Mkdirs_Factory{}
+		return mkdirsTxfrFactory.Mkdirs(params)
+	case "SFTP-Remove":
+		log.Println("Calling the SFTP Remove class")
+		log.Info("Calling the SFTP Remove class")
+		removeTxfrFactory = SFTP_Remove_Factory{}
+		return removeTxfrFactory.Remove(params)
 	default:
 		log.Println("No classes were called")
 		log.Info("No classes were called.")
@@ -319,6 +401,7 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer { // ret
 	return FileTransfer{params.Srce.DestFileName, int64(bytesWritten), errors.New(result)}
 
 }
+
 func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	log.Info("WriteTo sFTP Service function was invoked ")
 
@@ -328,7 +411,7 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	log.Println("User name: " + params.Srce.Username)
 	log.Println("Password: " + params.Srce.PassWord)
 	log.Println("System = " + params.Srce.SystemId)
-	log.Println("port = " + params.Srce.HostPort)
+	log.Println("Port = " + params.Srce.HostPort)
 	log.Println("File name: " + params.Srce.FileName)
 
 	//var config ssh.ClientConfig
@@ -397,6 +480,145 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	err = errors.New(result)
 	log.Errorf("There was an error with the transfer.  Err = %s \n", err)
 	return FileTransfer{"", 0, err}
+}
+
+func (a SFTP_Mkdirs_Factory) Mkdirs(params ConnParams) FileTransfer {
+	log.Info("Mkdirs sFTP Service function was invoked ")
+
+	//conn, err := connPool.ConnectionPool(params.Srce.Username, params.Srce.PassWord, params.Srce.SystemId, params.Srce.HostKey,
+	//	params.Srce.HostPort, params.Srce.ClientKey, params.Srce.FileName, params.Srce.FileSize)
+	//log.Info(params.Dest.FileSize)
+	log.Println("User name: " + params.Srce.Username)
+	log.Println("Password: " + params.Srce.PassWord)
+	log.Println("System = " + params.Srce.SystemId)
+	log.Println("Port = " + params.Srce.HostPort)
+	log.Println("Dest File name: " + params.Srce.DestFileName)
+
+	//var config ssh.ClientConfig
+	log.Println("Make the ssh/sftp connection")
+	config := ssh.ClientConfig{
+		User: params.Srce.Username,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(params.Srce.PassWord),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		//HostKeyCallback: ssh.FixedHostKey(HostKey),
+	}
+	log.Println("Dial the connection now")
+	conn, err := ssh.Dial("tcp", params.Srce.SystemId+params.Srce.HostPort, &config)
+	if err != nil {
+		log.Errorf("Error Dialing the server: %f", err)
+		return FileTransfer{"", 0, err}
+	}
+	defer conn.Close()
+
+	result := ""
+
+	log.Println("Create new SFTP client")
+	client, err := sftp.NewClient(conn)
+	if err != nil {
+		log.Println("Error creating new client", err)
+		return FileTransfer{"", 0, err}
+	}
+	defer client.Close()
+
+	log.Println("Create destination directory")
+	err = client.MkdirAll(params.Srce.DestFileName)
+	if err != nil {
+		log.Errorf("Error creating directory. %s. %s \n", params.Srce.DestFileName, err)
+		result = err.Error()
+		return FileTransfer{"", 0, err}
+	}
+	defer client.Close()
+
+	// if there were no error opening the two files then process them
+	if result == "" {
+		log.Println("Created destination directory: " + params.Srce.DestFileName)
+		err = errors.New(result)
+		return FileTransfer{params.Srce.DestFileName, 0, err}
+	} else {
+		log.Println(result)
+		err = errors.New(result)
+		log.Errorf("There was an error creating the directory.  Err = %s \n", err)
+		return FileTransfer{"", 0, err}
+	}
+}
+
+func (a SFTP_Remove_Factory) Remove(params ConnParams) FileTransfer {
+	log.Info("Remove sFTP Service function was invoked ")
+
+	//conn, err := connPool.ConnectionPool(params.Srce.Username, params.Srce.PassWord, params.Srce.SystemId, params.Srce.HostKey,
+	//	params.Srce.HostPort, params.Srce.ClientKey, params.Srce.FileName, params.Srce.FileSize)
+	//log.Info(params.Dest.FileSize)
+	log.Println("User name: " + params.Srce.Username)
+	log.Println("Password: " + params.Srce.PassWord)
+	log.Println("System = " + params.Srce.SystemId)
+	log.Println("Port = " + params.Srce.HostPort)
+	log.Println("Dest File name: " + params.Srce.DestFileName)
+
+	//var config ssh.ClientConfig
+	log.Println("Make the ssh/sftp connection")
+	config := ssh.ClientConfig{
+		User: params.Srce.Username,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(params.Srce.PassWord),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		//HostKeyCallback: ssh.FixedHostKey(HostKey),
+	}
+	log.Println("Dial the connection now")
+	conn, err := ssh.Dial("tcp", params.Srce.SystemId+params.Srce.HostPort, &config)
+	if err != nil {
+		log.Errorf("Error Dialing the server: %f", err)
+		return FileTransfer{"", 0, err}
+	}
+	defer conn.Close()
+
+	result := ""
+
+	log.Println("Create new SFTP client")
+	client, err := sftp.NewClient(conn)
+	if err != nil {
+		log.Println("Error creating new client", err)
+		return FileTransfer{"", 0, err}
+	}
+	defer client.Close()
+
+	var stat os.FileInfo
+
+	stat, err = client.Stat(params.Srce.DestFileName)
+	if err != nil {
+		log.Errorf("Unable to stat. %s. %s \n", params.Srce.DestFileName, err)
+		result = err.Error()
+		return FileTransfer{"", 0, err}
+	}
+
+	if stat.IsDir() {
+		log.Printf("Deleting destination directory %s", params.Srce.DestFileName)
+		err = client.RemoveDirectory(params.Srce.DestFileName)
+	} else {
+		log.Printf("Deleting destination file %s", params.Srce.DestFileName)
+		err = client.Remove(params.Srce.DestFileName)
+	}
+
+	if err != nil {
+		log.Errorf("Error deleting %s. %s \n", params.Srce.DestFileName, err)
+		result = err.Error()
+		return FileTransfer{"", 0, err}
+	}
+	defer client.Close()
+
+	// if there were no error opening the two files then process them
+	if result == "" {
+		log.Printf("Deleted destination: %s", params.Srce.DestFileName)
+		err = errors.New(result)
+		return FileTransfer{params.Srce.DestFileName, 0, err}
+	} else {
+		log.Println(result)
+		err = errors.New(result)
+		log.Errorf("Unexpected error occurred.  Err = %s \n", err)
+		return FileTransfer{"", 0, err}
+	}
 }
 
 func GetFileSize(filepath string) (int64, error) {

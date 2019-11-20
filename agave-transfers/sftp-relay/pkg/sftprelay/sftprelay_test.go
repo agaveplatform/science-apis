@@ -126,6 +126,68 @@ func TestAuthenticate(t *testing.T) {
 	log.Printf("Response: %+v", resp)
 }
 
+func TestMkdirs(t *testing.T) {
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	req := &agaveproto.SrvMkdirsRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "sftp",
+			HostKey:      "",
+			HostPort:     ":10022",
+			ClientKey:    "",
+			BufferSize:   16384,
+			Type:         "SFTP",
+			DestFileName: "/tmp/deleteme",
+		},
+	}
+
+	resp, err := client.Mkdirs(ctx, req)
+	if err != nil {
+		t.Errorf("Error while calling RPC auth: %v", err)
+	}
+	log.Printf("Response: %+v", resp)
+}
+
+func TestRemove(t *testing.T) {
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	req := &agaveproto.SrvRemoveRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "sftp",
+			HostKey:      "",
+			HostPort:     ":10022",
+			ClientKey:    "",
+			BufferSize:   16384,
+			Type:         "SFTP",
+			DestFileName: "/tmp/deleteme",
+		},
+	}
+
+	resp, err := client.Remove(ctx, req)
+	if err != nil {
+		t.Errorf("Error while calling RPC auth: %v", err)
+	}
+	log.Printf("Response: %+v", resp)
+}
+
 func TestPut(t *testing.T) {
 	createTestFile()
 	ctx := context.Background()
@@ -158,6 +220,7 @@ func TestPut(t *testing.T) {
 	}
 	log.Printf("Response: %+v", resp)
 }
+
 func TestGet(t *testing.T) {
 	createTestFile()
 	ctx := context.Background()

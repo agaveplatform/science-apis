@@ -39,6 +39,23 @@ message SrvGetResponse {
     string bytesReturned = 2;
     string error = 3;
 }
+
+message SrvMkdirsRequest {
+    Sftp srceSftp = 1;
+}
+message SrvMkdirsResponse {
+    string fileName = 1;
+    string error = 2;
+}
+
+message SrvRemoveRequest {
+    Sftp srceSftp = 1;
+}
+message SrvRemoveResponse {
+    string fileName = 1;
+    string error = 2;
+}
+
 message AuthenticateToRemoteRequest {
     Sftp auth = 1;
 }
@@ -49,6 +66,8 @@ message AuthenticateToRemoteResponse {
 service SftpRelay {
     rpc Get (SrvGetRequest) returns (SrvGetResponse);
     rpc Put (SrvPutRequest) returns (SrvPutResponse);
+    rpc Mkdirs (SrvMkdirsRequest) returns (SrvMkdirsResponse);
+    rpc Remove (SrvRemoveRequest) returns (SrvRemoveResponse);
     rpc Authenticate (AuthenticateToRemoteRequest) returns (AuthenticateToRemoteResponse);
 }
 

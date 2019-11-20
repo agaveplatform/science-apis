@@ -3,7 +3,7 @@ version: '3.7'
 services:
 
   sftp-relay:
-    image: sftp-relay:latest
+    image: sftp-relay:develop
     ports:
       - 50051:50051
     restart: always

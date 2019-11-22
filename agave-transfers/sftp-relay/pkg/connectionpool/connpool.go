@@ -73,13 +73,11 @@ func ConnectionPool(Username string, PassWord string, SystemId string, HostKey s
 		if key == nil {
 			log.Fatalf("unable to read private key")
 		}
-
 		// Create the Signer for this private key.
 		signer, err := ssh.ParsePrivateKey(key)
 		if err != nil {
 			log.Fatalf("unable to parse private key: %v", err)
 		}
-
 		config = ssh.ClientConfig{
 			User: Username,
 			Auth: []ssh.AuthMethod{
@@ -124,6 +122,7 @@ func ConnectionPool(Username string, PassWord string, SystemId string, HostKey s
 	// *****************************************************
 	// connect to the system and establish a "connection"
 	// *****************************************************
+
 	log.Info("Dial the conenction now")
 	conn, err := ssh.Dial("tcp", SystemId+HostPort, &config)
 	if err != nil {

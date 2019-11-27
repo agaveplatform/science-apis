@@ -2,7 +2,10 @@ package sftprelay
 
 import (
 	"errors"
-	cp "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/connectionpool"
+	sftp_cp "github.com/ertanner/ssh_sftp_connection_pool"
+	"strings"
+
+	//cp "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/connectionpool"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
@@ -11,6 +14,8 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"time"
+	//"time"
 )
 
 var log = logrus.New()
@@ -38,6 +43,8 @@ type ConnParams struct {
 
 var Params ConnParams
 var Conn *ssh.Client
+var Pool *sftp_cp.SSHPool
+var AgentSocket string
 
 func init() {
 	// log to console and file
@@ -46,8 +53,21 @@ func init() {
 		log.Fatalf("error opening file: %v", err)
 	}
 	wrt := io.MultiWriter(os.Stdout, f)
-
 	log.SetOutput(wrt)
+
+	// set up the ssh connection pool
+	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
+	if !ok {
+		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
+	}
+	log.Infof("SSH_AUTH_SOCK = %s", AgentSocket)
+
+	poolCfg := &sftp_cp.PoolConfig{
+		GCInterval: 5 * time.Second,
+		MaxConns:   5,
+	}
+	Pool = sftp_cp.NewPool(poolCfg)
+
 }
 
 func (*Server) Authenticate(ctx context.Context, req *sftppb.AuthenticateToRemoteRequest) (*sftppb.AuthenticateToRemoteResponse, error) {
@@ -97,8 +117,6 @@ func (*Server) Authenticate(ctx context.Context, req *sftppb.AuthenticateToRemot
 	log.Info(res.String())
 	return res, result
 }
-
-//sftppb.SftpRelayClient, *sftp.Client, error
 
 // Performs a mkdirs operation on a remote host. Upon success, the created
 // directory name is returned.
@@ -167,16 +185,39 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 		result = err
 	}
 
+	// get the sftp connection from the pool.
+	// -------------------------------------------------------------------------------------------------
+	sshCfg := &sftp_cp.SSHConfig{
+		User:            "testuser",
+		Host:            "localhost",
+		Port:            10022,
+		AgentSocket:     AgentSocket,
+		Timeout:         30 * time.Second,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	output, err := Pool.CombinedOutput(sshCfg, "uname -a ; sleep 3", nil, nil)
+	if err != nil {
+		log.Fatalf("%s: %s\n", err, output)
+	}
+
+	log.Println(string(output))
+	sshConn, err := sftp_cp.NewSSHConn(ctx, *sshCfg)
+	if err != nil {
+		log.Errorf("Error with NewSSHConn %v", err)
+	}
+	log.Infof("sshConn text %s", sshConn.Client.User())
+	log.Println("Active connections:", Pool.ActiveConns())
+	params.Srce.SftpConn = sshConn.Client
+	log.Infof("params.Srce.SftpConn = %s", params.Srce.SftpConn)
+	// -------------------------------------------------------------------------------------------------
+
 	var filename string
 	log.Info(filename)
 	from := params.Srce.Type
-	//to := Params.Dest.Type
-	//name := Params.Dest.FileName
-	//toFile := factory.TransferFactory.ReadFrom(Params)
 	var bytesReadf int64 = 0
 
 	log.Println(from)
-	//log.Info(to)
 
 	var tmpName FileTransfer
 
@@ -193,7 +234,6 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 	log.Info(res.String())
 	return res, result
 }
-
 func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvPutResponse, error) {
 	log.Infof("Put function was invoked with %v\n", req)
 
@@ -202,8 +242,41 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	params, err := setPutParams(req) // return type is ConnParams
 	if err != nil {
 		log.Errorf("Error with connection $s", err)
-		result = err
+		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
 	}
+	// get the sftp connection from the pool.
+	// -------------------------------------------------------------------------------------------------
+	log.Info("SSH config pool")
+
+	s_port := strings.Replace(req.SrceSftp.HostPort, ":", "", -1)
+	port, _ := strconv.Atoi(s_port)
+	sshCfg := &sftp_cp.SSHConfig{
+		User:               req.SrceSftp.Username,
+		Host:               req.SrceSftp.SystemId,
+		Port:               port,
+		Auth:               []ssh.AuthMethod{ssh.Password("testuser")},
+		Timeout:            30 * time.Second,
+		TCPKeepAlive:       false,
+		TCPKeepAlivePeriod: 30 * time.Second,
+		AgentSocket:        AgentSocket,
+		ForwardAgent:       false,
+		HostKeyCallback:    ssh.InsecureIgnoreHostKey(),
+	}
+
+	sshConnection, err := sftp_cp.NewSSHConn(ctx, *sshCfg)
+	if err != nil {
+		log.Errorf("Error with conncection = %s", err)
+		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
+	}
+
+	params.Srce.SftpConn = sshConnection.Client
+	log.Info("ouputing pool info")
+	log.Infof("Active connections: %s", Pool.ActiveConns())
+
+	// now assign the ssh connection to the sftp
+	log.Println("Create new SFTP client")
+	// -------------------------------------------------------------------------------------------------
+
 	// we assume that the calling functions have already established that the system has the ability to make a connection.
 	// This is assuming that we are doing SFTP right now.  This will change in the future to support other file systems
 	//
@@ -245,12 +318,12 @@ func setMkdirsParams(req *sftppb.SrvMkdirsRequest) (ConnParams, error) {
 		It should speed up multi file performance sigificantly.
 	*/
 	var result error
-	grpcConn, err := cp.ConnectionPool(req.SrceSftp.Username, req.SrceSftp.PassWord, req.SrceSftp.SystemId, req.SrceSftp.HostKey,
-		req.SrceSftp.HostPort, req.SrceSftp.ClientKey, req.SrceSftp.FileName, req.SrceSftp.FileSize)
-	if err != nil {
-		log.Errorf("Error with connection pool = ", err)
-		result = err
-	}
+	//grpcConn, err := cp.ConnectionPool(req.SrceSftp.Username, req.SrceSftp.PassWord, req.SrceSftp.SystemId, req.SrceSftp.HostKey,
+	//	req.SrceSftp.HostPort, req.SrceSftp.ClientKey, req.SrceSftp.FileName, req.SrceSftp.FileSize)
+	//if err != nil {
+	//	log.Errorf("Error with connection pool = ", err)
+	//	result = err
+	//}
 
 	connParams := ConnParams{
 		Srce: SysUri{Username: req.SrceSftp.Username,
@@ -264,11 +337,10 @@ func setMkdirsParams(req *sftppb.SrvMkdirsRequest) (ConnParams, error) {
 			BufferSize:   req.SrceSftp.BufferSize,
 			Type:         req.SrceSftp.Type,
 			DestFileName: req.SrceSftp.DestFileName,
-			SftpConn:     grpcConn},
+		},
 	}
 	return connParams, result
 }
-
 func setRemoveParams(req *sftppb.SrvRemoveRequest) (ConnParams, error) {
 	/*
 		This will take the various parameters of the req and return an sftp connection.  It will check the connection pool
@@ -277,22 +349,21 @@ func setRemoveParams(req *sftppb.SrvRemoveRequest) (ConnParams, error) {
 		It should speed up multi file performance sigificantly.
 	*/
 	var result error
-	grpcConn, err := cp.ConnectionPool(req.SrceSftp.Username, req.SrceSftp.PassWord, req.SrceSftp.SystemId, req.SrceSftp.HostKey,
-		req.SrceSftp.HostPort, req.SrceSftp.ClientKey, req.SrceSftp.FileName, req.SrceSftp.FileSize)
-	if err != nil {
-		log.Errorf("Error with connection pool = ", err)
-		result = err
-	}
+	//grpcConn, err := cp.ConnectionPool(req.SrceSftp.Username, req.SrceSftp.PassWord, req.SrceSftp.SystemId, req.SrceSftp.HostKey,
+	//	req.SrceSftp.HostPort, req.SrceSftp.ClientKey, req.SrceSftp.FileName, req.SrceSftp.FileSize)
+	//if err != nil {
+	//	log.Errorf("Error with connection pool = ", err)
+	//	result = err
+	//}
 
 	connParams := ConnParams{
 		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
 			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
 			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
-			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName, SftpConn: grpcConn},
+			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName},
 	}
 	return connParams, result
 }
-
 func setGetParams(req *sftppb.SrvGetRequest) (ConnParams, error) {
 	/*
 		This will take the various parameters of the req and return an sftp connection.  It will check the connection pool
@@ -301,46 +372,44 @@ func setGetParams(req *sftppb.SrvGetRequest) (ConnParams, error) {
 		It should speed up multi file performance sigificantly.
 	*/
 	var result error
-	grpcConn, err := cp.ConnectionPool(req.SrceSftp.Username, req.SrceSftp.PassWord, req.SrceSftp.SystemId, req.SrceSftp.HostKey,
-		req.SrceSftp.HostPort, req.SrceSftp.ClientKey, req.SrceSftp.FileName, req.SrceSftp.FileSize)
-	if err != nil {
-		log.Errorf("Error with connection pool = ", err)
-		result = err
-	}
+	//grpcConn, err := cp.ConnectionPool(req.SrceSftp.Username, req.SrceSftp.PassWord, req.SrceSftp.SystemId, req.SrceSftp.HostKey,
+	//	req.SrceSftp.HostPort, req.SrceSftp.ClientKey, req.SrceSftp.FileName, req.SrceSftp.FileSize)
+	//if err != nil {
+	//	log.Errorf("Error with connection pool = ", err)
+	//	result = err
+	//}
 
 	connParams := ConnParams{
 		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
 			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
 			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
-			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName, SftpConn: grpcConn},
+			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName},
 	}
 	return connParams, result
 }
-
 func setPutParams(req *sftppb.SrvPutRequest) (ConnParams, error) {
 	/*
 		This will take the various parameters of the req and return an sftp connection.  It will check the connection pool
 		for the sftp connection before making another connection.
 
-		It should speed up multi file performance sigificantly.
+		It should speed up multi file performance significantly.
 	*/
 	var result error
-	grpcConn, err := cp.ConnectionPool(req.SrceSftp.Username, req.SrceSftp.PassWord, req.SrceSftp.SystemId, req.SrceSftp.HostKey,
-		req.SrceSftp.HostPort, req.SrceSftp.ClientKey, req.SrceSftp.FileName, req.SrceSftp.FileSize)
-	if err != nil {
-		log.Errorf("Error with connection pool = ", err)
-		result = err
-	}
+	//grpcConn, err := cp.ConnectionPool(req.SrceSftp.Username, req.SrceSftp.PassWord, req.SrceSftp.SystemId, req.SrceSftp.HostKey,
+	//	req.SrceSftp.HostPort, req.SrceSftp.ClientKey, req.SrceSftp.FileName, req.SrceSftp.FileSize)
+	//if err != nil {
+	//	log.Errorf("Error with connection pool = ", err)
+	//	result = err
+	//}
 
 	connParams := ConnParams{
 		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
 			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
 			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
-			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName, SftpConn: grpcConn},
+			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName},
 	}
 	return connParams, result
 }
-
 func setGetAuthParams(req *sftppb.AuthenticateToRemoteRequest) (ConnParams, error) {
 	/*
 		This will take the various parameters of the req and return an sftp connection.  It will check the connection pool
@@ -349,12 +418,12 @@ func setGetAuthParams(req *sftppb.AuthenticateToRemoteRequest) (ConnParams, erro
 		It should speed up multi file performance sigificantly.
 	*/
 	var result error
-	grpcConn, err := cp.ConnectionPool(req.Auth.Username, req.Auth.PassWord, req.Auth.SystemId, req.Auth.HostKey,
-		req.Auth.HostPort, req.Auth.ClientKey, req.Auth.FileName, req.Auth.FileSize)
-	if err != nil {
-		log.Errorf("Error with connection pool = ", err)
-		result = err
-	}
+	//grpcConn, err := cp.ConnectionPool(req.Auth.Username, req.Auth.PassWord, req.Auth.SystemId, req.Auth.HostKey,
+	//	req.Auth.HostPort, req.Auth.ClientKey, req.Auth.FileName, req.Auth.FileSize)
+	//if err != nil {
+	//	log.Errorf("Error with connection pool = ", err)
+	//	result = err
+	//}
 
 	connParams := ConnParams{Srce: SysUri{
 		Username:     req.Auth.Username,
@@ -368,7 +437,6 @@ func setGetAuthParams(req *sftppb.AuthenticateToRemoteRequest) (ConnParams, erro
 		BufferSize:   req.Auth.BufferSize,
 		Type:         req.Auth.Type,
 		DestFileName: req.Auth.DestFileName,
-		SftpConn:     grpcConn,
 	}}
 	return connParams, result
 }
@@ -449,29 +517,12 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer { // ret
 	log.Info("Dial the connection now")
 	log.Printf("SysIP= %s \n", params.Srce.SystemId)
 	log.Printf("SysPort= %s \n", params.Srce.HostPort)
-
-	//var config ssh.ClientConfig
-	//config = ssh.ClientConfig{
-	//	User: params.Srce.Username,
-	//	Auth: []ssh.AuthMethod{
-	//		ssh.Password(params.Srce.PassWord),
-	//	},
-	//	HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	//}
-	//
-	//conn, err := ssh.Dial("tcp", params.Srce.SystemId+params.Srce.HostPort, &config)
-	//if err != nil {
-	//	log.Printf("Error Dialing the server: %v", err)
-	//	log.Error(err)
-	//	result = err.Error()
-	//	return FileTransfer{"", 0, err}
-	//}
-	//defer conn.Close()
-
-	conn := params.Srce.SftpConn
-	//log.Info(params.Srce.FileSize)
-	//
-	//log.Info(result)
+	var conn *ssh.Client
+	if params.Srce.SftpConn != nil {
+		conn = params.Srce.SftpConn
+	} else {
+		return FileTransfer{params.Srce.DestFileName, int64(0), errors.New("Error with connection pool connection")}
+	}
 
 	var MaxPcktSize int
 	MaxPcktSize = 1024
@@ -532,21 +583,6 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 
 	//var config ssh.ClientConfig
 	log.Println("Make the ssh/sftp connection")
-	//config := ssh.ClientConfig{
-	//	User: params.Srce.Username,
-	//	Auth: []ssh.AuthMethod{
-	//		ssh.Password(params.Srce.PassWord),
-	//	},
-	//	HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	//	//HostKeyCallback: ssh.FixedHostKey(HostKey),
-	//}
-	//log.Println("Dial the conenction now")
-	//conn, err := ssh.Dial("tcp", params.Srce.SystemId+params.Srce.HostPort, &config)
-	//if err != nil {
-	//	log.Errorf("Error Dialing the server: %f", err)
-	//	return FileTransfer{"", 0, err}
-	//}
-	//defer conn.Close()
 
 	conn := params.Srce.SftpConn
 
@@ -614,21 +650,6 @@ func (a SFTP_Mkdirs_Factory) Mkdirs(params ConnParams) FileTransfer {
 
 	//var config ssh.ClientConfig
 	log.Println("Make the ssh/sftp connection")
-	//config := ssh.ClientConfig{
-	//	User: params.Srce.Username,
-	//	Auth: []ssh.AuthMethod{
-	//		ssh.Password(params.Srce.PassWord),
-	//	},
-	//	HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	//	//HostKeyCallback: ssh.FixedHostKey(HostKey),
-	//}
-	//log.Println("Dial the connection now")
-	//conn, err := ssh.Dial("tcp", params.Srce.SystemId+params.Srce.HostPort, &config)
-	//if err != nil {
-	//	log.Errorf("Error Dialing the server: %f", err)
-	//	return FileTransfer{"", 0, err}
-	//}
-	//defer conn.Close()
 
 	conn := params.Srce.SftpConn
 
@@ -678,21 +699,6 @@ func (a SFTP_Remove_Factory) Remove(params ConnParams) FileTransfer {
 
 	//var config ssh.ClientConfig
 	log.Println("Make the ssh/sftp connection")
-	//config := ssh.ClientConfig{
-	//	User: params.Srce.Username,
-	//	Auth: []ssh.AuthMethod{
-	//		ssh.Password(params.Srce.PassWord),
-	//	},
-	//	HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	//	//HostKeyCallback: ssh.FixedHostKey(HostKey),
-	//}
-	//log.Println("Dial the connection now")
-	//conn, err := ssh.Dial("tcp", params.Srce.SystemId+params.Srce.HostPort, &config)
-	//if err != nil {
-	//	log.Errorf("Error Dialing the server: %f", err)
-	//	return FileTransfer{"", 0, err}
-	//}
-	//defer conn.Close()
 
 	conn := params.Srce.SftpConn
 	result := ""
@@ -713,7 +719,7 @@ func (a SFTP_Remove_Factory) Remove(params ConnParams) FileTransfer {
 		result = err.Error()
 		return FileTransfer{"", 0, err}
 	}
-
+	log.Println("starting IsDir")
 	if stat.IsDir() {
 		log.Printf("Deleting destination directory %s", params.Srce.DestFileName)
 		err = client.RemoveDirectory(params.Srce.DestFileName)
@@ -721,7 +727,6 @@ func (a SFTP_Remove_Factory) Remove(params ConnParams) FileTransfer {
 		log.Printf("Deleting destination file %s", params.Srce.DestFileName)
 		err = client.Remove(params.Srce.DestFileName)
 	}
-
 	if err != nil {
 		log.Errorf("Error deleting %s. %s \n", params.Srce.DestFileName, err)
 		result = err.Error()

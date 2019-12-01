@@ -945,22 +945,19 @@ public final class SftpRelay implements RemoteDataClient {
                     SftpRelayGrpc.SftpRelayBlockingStub sftpClient = SftpRelayGrpc.newBlockingStub(channel);
 
                     // create a protocol buffer sftp message
-                    Sftp destSftp = Sftp.newBuilder()
+                    Sftp putConfig = Sftp.newBuilder()
                             .setPassWord(password)
                             .setUsername(username)
+                            .setClientKey(privateKey)
                             .setSystemId(host)
                             .setHostPort(String.valueOf(port))
-                            .setFileName(resolvedPath)
-                            .build();
-
-                    Sftp srceSftp = Sftp.newBuilder()
-                            .setSystemId("localhost")
                             .setFileName(localdir)
+                            .setDestFileName(resolvedPath)
                             .build();
 
                     //create a CopyLocalToRemoteRequest
                     SrvPutRequest srvPutRequest = SrvPutRequest.newBuilder()
-                            .setSrceSftp(srceSftp)
+                            .setSrceSftp(putConfig)
                             .build();
 
                     // call the gRPC and get back a SrvPutResponse

@@ -8,8 +8,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;
 
-@Test(groups= {"s3","path-resolution","integration"})
-public class S3PathResolutionTests extends AbstractPathResolutionTests
+@Test(groups= {"s3.path.resolution"})
+public class S3PathResolutionIT extends AbstractPathResolutionTests
 {
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {

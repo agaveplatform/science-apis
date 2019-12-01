@@ -20,7 +20,6 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"permissions.irods.password", "broken","integration"})
 public class IrodsRemoteDataClientPermissionProviderTest extends
 		RemoteDataClientPermissionProviderTest {
 

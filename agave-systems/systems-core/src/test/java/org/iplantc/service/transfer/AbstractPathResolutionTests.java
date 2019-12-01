@@ -14,7 +14,6 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(singleThreaded=true, groups= {"path-resolution","integration"})
 public abstract class AbstractPathResolutionTests extends BaseTransferTestCase 
 {
 	protected abstract JSONObject getSystemJson() throws JSONException, IOException;
@@ -184,7 +183,6 @@ public abstract class AbstractPathResolutionTests extends BaseTransferTestCase
 	 */
 	protected void abstractResolvePath(RemoteDataClient client, String beforePath, String resolvedPath, boolean shouldThrowException, String message)
 	{
-//		System.out.println("Running resolvePath: " + client + ", " + beforePath + ", " + resolvedPath + ", " + shouldThrowException + ", " + message);
     	boolean actuallyThrewException = false;
     	
 		try 

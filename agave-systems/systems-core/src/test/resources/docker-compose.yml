@@ -2,13 +2,18 @@ version: '3.7'
 
 volumes:
   scratch:
+  etcceph:
+  varlibceph:
 
+networks:
+  ceph_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.41.0.0/16
 services:
 
   sftp-relay:
-#    build:
-#      context: ../../
-#      dockerfile: agave-transfers/sftp-relay/Dockerfile
     image: sftp-relay:develop
     ports:
       - 50051:50051
@@ -35,32 +40,72 @@ services:
     image: agaveplatform/sshd:latest
     command: "-p 10044"
 
-  minio:
-    image: minio/minio:RELEASE.2019-10-12T01-39-57Z
-    command: "server /data"
-    environment:
-      MINIO_ACCESS_KEY: agaveuser
-      MINIO_SECRET_KEY: password
+  cephrgw:
+    image: ceph/daemon:latest-nautilus
+    command: demo
     ports:
-      - '9000:9000'
-
-  minio-init:
-    image: minio/mc:latest
+      - "5000:5000"
+      - "8080:8080"
+      - "9000:9000"
     environment:
-      MINIO_BUCKET: agaveapitestdata
-      MINIO_ACCESS_KEY: agaveuser
-      MINIO_SECRET_KEY: password
-    depends_on:
-      - minio
-    entrypoint:
-      - sh
-    command: |
-        -c "\
-          set +x && \
-          while ! nc -z minio 9000; do echo 'Wait minio to startup...' && sleep 0.1; done; \
-          sleep 5 && \
-          echo mc config host add myminio http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY && \
-          mc config host add myminio http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY && \
-          mc rm -r --force myminio/$$MINIO_BUCKET || true && \
-          mc mb myminio/$$MINIO_BUCKET \
-        "
+      CEPH_PUBLIC_NETWORK: 172.41.0.0/16
+      MON_IP: 172.41.0.10
+      RGW_REMOTE_CGI: 1
+      RGW_REMOTE_CGI_HOST: 172.41.0.10
+      CEPH_DEMO_UID: 1000
+      CEPH_DEMO_ACCESS_KEY: agaveuser
+      CEPH_DEMO_SECRET_KEY: password
+      CEPH_DEMO_BUCKET: agaveapitestdata
+    volumes:
+      - etcceph:/etc/ceph
+      - varlibceph:/var/lib/ceph
+    networks:
+      ceph_net:
+        ipv4_address: 172.41.0.10
+
+  irods4:
+    image: agaveapi/irods:4.0.3
+    command: changeit
+    hostname: docker.example.com
+    environment:
+      - 'DOCKER_HOSTNAME=docker.example.com'
+      - 'IRODS_ZONE=iplant'
+    ports:
+      - '1257:1247'
+      - '5442:5432'
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 2G
+
+#  minio:
+#    image: minio/minio:RELEASE.2019-10-12T01-39-57Z
+#    command: "server /data"
+#    environment:
+#      MINIO_ACCESS_KEY: agaveuser
+#      MINIO_SECRET_KEY: password
+#    ports:
+#      - '9000:9000'
+#
+#  minio-init:
+#    image: minio/mc:latest
+#    environment:
+#      MINIO_BUCKET: agaveapitestdata
+#      MINIO_ACCESS_KEY: agaveuser
+#      MINIO_SECRET_KEY: password
+#    depends_on:
+#      - minio
+#    entrypoint:
+#      - sh
+#    command: |
+#        -c "\
+#          set +x && \
+#          while ! nc -z minio 9000; do echo 'Wait minio to startup...' && sleep 0.1; done; \
+#          sleep 5 && \
+#          echo mc config host add myminio http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY && \
+#          mc config host add myminio http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY && \
+#          mc rm -r --force myminio/$$MINIO_BUCKET || true && \
+#          mc mb myminio/$$MINIO_BUCKET \
+#        "

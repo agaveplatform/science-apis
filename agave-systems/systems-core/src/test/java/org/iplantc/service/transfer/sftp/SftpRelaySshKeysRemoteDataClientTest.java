@@ -8,7 +8,9 @@ import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.AuthConfig;
 import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.enumerations.AuthConfigType;
+import org.iplantc.service.transfer.IRemoteDataClientIT;
 import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.RemoteDataClientTestUtils;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -21,14 +23,10 @@ import java.io.IOException;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"sftp", "sftp-sshkeys", "filesystem", "integration"})
-public class SftpRelaySshKeysRemoteDataClientTest extends SftpPasswordRemoteDataClientTest {
+@Test(groups={"sftp-sshkeys.operations"})
+public class SftpRelaySshKeysRemoteDataClientTest extends SftpRelayPasswordRemoteDataClientTest {
 
-	/* (non-Javadoc)
-	 * @see org.iplantc.service.transfer.AbstractRemoteDataClientTest#getSystemJson()
-	 */
 	@Override
-	@Test(enabled=false)
 	protected JSONObject getSystemJson() throws JSONException, IOException {
 		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "sftp-sshkeys.example.com.json");
 	}
@@ -88,8 +86,6 @@ public class SftpRelaySshKeysRemoteDataClientTest extends SftpPasswordRemoteData
 	/**
 	 * Gets getClient() from current thread
 	 * @return SftpRelay instance to the test server
-	 * @throws RemoteCredentialException
-	 * @throws RemoteDataException
 	 */
 	protected RemoteDataClient getClient()
 	{

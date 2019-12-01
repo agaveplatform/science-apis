@@ -17,7 +17,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"permissions.irods4.password","integration"})
+@Test(groups= {"irods4.permissions"})
 public class Irods4RemoteDataClientPermissionProviderTest extends IrodsRemoteDataClientPermissionProviderTest 
 {
     /* (non-Javadoc)
@@ -25,7 +25,6 @@ public class Irods4RemoteDataClientPermissionProviderTest extends IrodsRemoteDat
      */
     @Override
     protected JSONObject getSystemJson() throws JSONException, IOException {
-        return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "irods4.example.com.json");
-//    	return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "qairods.cyverse.org.json");
+        return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "irods4-password.example.com.json");
     }
 }

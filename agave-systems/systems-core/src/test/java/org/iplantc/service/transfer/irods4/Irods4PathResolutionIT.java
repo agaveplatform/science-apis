@@ -8,8 +8,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;
 
-@Test(groups= {"irods4.path-resolution","integration"})
-public class Irods4PathResolutionTests extends AbstractPathResolutionTests
+@Test(groups= {"irods4.path.resolution"})
+public class Irods4PathResolutionIT extends AbstractPathResolutionTests
 {
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {

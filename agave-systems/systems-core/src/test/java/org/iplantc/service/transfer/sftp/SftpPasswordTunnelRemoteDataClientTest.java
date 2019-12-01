@@ -14,24 +14,11 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"sftp","sftp-password", "tunnel", "filesystem", "broken", "integration"})
-public class SftpPasswordTunnelRemoteDataClientTest extends AbstractRemoteDataClientTest {
+@Test(groups= {"sftp-password-tunnel.operations","disabled"})
+public class SftpPasswordTunnelRemoteDataClientTest extends SftpPasswordRemoteDataClientIT {
 
-	/* (non-Javadoc)
-	 * @see org.iplantc.service.transfer.AbstractRemoteDataClientTest#getSystemJson()
-	 */
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {
 		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "sftp-password-tunnel.example.com.json");
 	}
-
-	@Override
-	protected String getForbiddenDirectoryPath(boolean shouldExist) {
-		if (shouldExist) {
-			return "/root";
-		} else {
-			return "/root/helloworld";
-		}
-	}
-	
 }

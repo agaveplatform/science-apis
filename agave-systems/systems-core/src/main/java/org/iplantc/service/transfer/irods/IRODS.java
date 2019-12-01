@@ -385,7 +385,7 @@ public class IRODS implements RemoteDataClient
 	@Override
 	public String resolvePath(String path) throws java.io.FileNotFoundException
 	{
-		if (StringUtils.isEmpty(path)) {
+		if (StringUtils.isBlank(path)) {
 		    return StringUtils.stripEnd(homeDir, " ");
 		}
 		else if (path.startsWith("/"))
@@ -418,7 +418,7 @@ public class IRODS implements RemoteDataClient
 			}
 		}
 
-		return StringUtils.stripEnd(path, " ");
+		return StringUtils.trimToEmpty(path);
     }
 
 	/* (non-Javadoc)

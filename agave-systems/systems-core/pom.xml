@@ -75,11 +75,27 @@
 						</goals>
 						<configuration>
 							<includes>
-<!--								<include>org.iplantc.service.transfer.sftp.SftpPasswordRemoteDataClientTest</include>-->
-<!--								<include>org.iplantc.service.transfer.sftp.SftpPathResolutionTests</include>-->
-<!--								<include>org.iplantc.service.transfer.sftp.SftpPathSanitizationTest</include>-->
-<!--								<include>org.iplantc.service.transfer.sftp.SftpSshKeysRemoteDataClientTest</include>-->
-<!--								<include>org.iplantc.service.transfer.s3.*Test</include>-->
+								<!-- Remote data client operational tests -->
+								<include>org.iplantc.service.transfer.sftp.SftpPasswordRemoteDataClientTest</include>
+								<include>org.iplantc.service.transfer.sftp.SftpSshKeysRemoteDataClientTest</include>
+								<include>org.iplantc.service.transfer.s3.S3RemoteDataClientIT</include>
+
+								<!-- Path sanitization group tests-->
+								<include>org.iplantc.service.transfer.sftp.SftpPathSanitizationIT</include>
+								<include>org.iplantc.service.transfer.sftp.SpecialCharacterFilenameTest</include>
+								<include>org.iplantc.service.transfer.s3.S3PathSanitizationIT</include>
+
+								<!-- Path resolution tests -->
+								<include>org.iplantc.service.transfer.sftp.SftpPathResolutionIT</include>
+								<include>org.iplantc.service.transfer.s3.S3PathResolutionIT</include>
+
+								<!-- Rename operation tests -->
+								<include>org.iplantc.service.transfer.sftp.S3RenameTests</include>
+								<include>org.iplantc.service.transfer.s3.S3RenameIT</include>
+
+								<!-- Transfer operation tests -->
+								<include>org.iplantc.service.transfer.sftp.operations.SftpIsPermissionMirroringRequiredOperationTest</include>
+								<include>org.iplantc.service.transfer.s3.operations.S3IsPermissionMirroringRequiredOperationTest</include>
 							</includes>
 							<groups>integration,s3*</groups>
 							<excludedGroups>broken,notReady,unit,azure,sftp,gridftp</excludedGroups>

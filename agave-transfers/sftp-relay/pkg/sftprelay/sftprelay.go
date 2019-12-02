@@ -743,11 +743,11 @@ func (a SFTP_Remove_Factory) Remove(params ConnParams) FileTransfer {
 This will return the size of the file in bytes.
 It is not presently used.
 */
-//func GetFileSize(filepath string) (int64, error) {
-//	fi, err := os.Stat(filepath)
-//	if err != nil {
-//		return 0, err
-//	}
-//	// get the size
-//	return fi.Size(), nil
-//}
+func GetFileSize(filepath string) (int64, error) {
+	fi, err := os.Stat(filepath)
+	if err != nil {
+		return 0, err
+	}
+	// get the size
+	return fi.Size(), nil
+}

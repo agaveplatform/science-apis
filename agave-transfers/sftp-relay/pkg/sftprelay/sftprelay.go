@@ -2,7 +2,7 @@ package sftprelay
 
 import (
 	"errors"
-	sftp_cp "github.com/ertanner/ssh_sftp_connection_pool"
+	sftp_cp "github.com/agaveplatform/ssh_sftp_connection_pool"
 	"strings"
 
 	//cp "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/connectionpool"

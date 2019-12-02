@@ -56,10 +56,10 @@ func init() {
 	log.SetOutput(wrt)
 
 	// set up the ssh connection pool
-	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
-	if !ok {
-		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
-	}
+	AgentSocket = "/var/folders/14/jjtrwj5x4zl2tp72ncljn6n40000gn/T//ssh-1t1VnKoFb1xv/agent.28756" //, ok := os.LookupEnv("SSH_AUTH_SOCK")
+	//if !ok {
+	//	log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
+	//}
 	log.Infof("SSH_AUTH_SOCK = %s", AgentSocket)
 
 	poolCfg := &sftp_cp.PoolConfig{
@@ -67,7 +67,7 @@ func init() {
 		MaxConns:   5,
 	}
 	Pool = sftp_cp.NewPool(poolCfg)
-
+	log.Infof("Active connections: %s", Pool.ActiveConns())
 }
 
 func (*Server) Authenticate(ctx context.Context, req *sftppb.AuthenticateToRemoteRequest) (*sftppb.AuthenticateToRemoteResponse, error) {
@@ -254,7 +254,7 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 		User:               req.SrceSftp.Username,
 		Host:               req.SrceSftp.SystemId,
 		Port:               port,
-		Auth:               []ssh.AuthMethod{ssh.Password("testuser")},
+		Auth:               []ssh.AuthMethod{ssh.Password(req.SrceSftp.PassWord)},
 		Timeout:            30 * time.Second,
 		TCPKeepAlive:       false,
 		TCPKeepAlivePeriod: 30 * time.Second,
@@ -263,13 +263,15 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 		HostKeyCallback:    ssh.InsecureIgnoreHostKey(),
 	}
 
-	sshConnection, err := sftp_cp.NewSSHConn(ctx, *sshCfg)
+	log.Infof("sshCfg = ", sshCfg.User, sshCfg.Host, sshCfg.Port, sshCfg.Auth, sshCfg.AgentSocket)
+	SshConnection, err := sftp_cp.NewSSHConn(ctx, *sshCfg)
 	if err != nil {
-		log.Errorf("Error with conncection = %s", err)
+		log.Errorf("Error with conncection = ", err)
 		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
 	}
 
-	params.Srce.SftpConn = sshConnection.Client
+	log.Infof("ref count = %s", SshConnection.RefCount())
+	params.Srce.SftpConn = SshConnection.Client
 	log.Info("ouputing pool info")
 	log.Infof("Active connections: %s", Pool.ActiveConns())
 
@@ -510,9 +512,16 @@ func GetSourceType(params ConnParams, source string) FileTransfer {
 //The assumption is that we are going to copy a file from a remote server to a local temp file.
 // it will then be processed by a second client that will take the client and move the file to a second remote server.
 // this is synonymous to a get for sftp
-func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer { // return temp filename, bytecount, and error
-
+func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
+	// return temp filename, bytecount, and error
 	log.Println("SFTP read from (GET) txfr")
+
+	log.Println("User name: " + params.Srce.Username)
+	log.Println("Password: " + params.Srce.PassWord)
+	log.Println("System = " + params.Srce.SystemId)
+	log.Println("Port = " + params.Srce.HostPort)
+	log.Println("File name: " + params.Srce.FileName)
+
 	result := ""
 	log.Info("Dial the connection now")
 	log.Printf("SysIP= %s \n", params.Srce.SystemId)
@@ -529,7 +538,7 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer { // ret
 
 	log.Printf("Packet size is: %v \n", MaxPcktSize)
 	// create new SFTP client
-	client, err := sftp.NewClient(conn, sftp.MaxPacket(MaxPcktSize))
+	client, err := sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
 	if err != nil {
 		log.Errorf("Error creating new client, %v \n", err)
 		result = err.Error()
@@ -584,12 +593,13 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	//var config ssh.ClientConfig
 	log.Println("Make the ssh/sftp connection")
 
-	conn := params.Srce.SftpConn
-
 	result := ""
 
+	var MaxPcktSize int
+	MaxPcktSize = int(params.Srce.BufferSize)
+
 	log.Println("Create new SFTP client")
-	client, err := sftp.NewClient(conn)
+	client, err := sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
 	if err != nil {
 		log.Println("Error creating new client", err)
 		return FileTransfer{"", 0, err}
@@ -651,12 +661,10 @@ func (a SFTP_Mkdirs_Factory) Mkdirs(params ConnParams) FileTransfer {
 	//var config ssh.ClientConfig
 	log.Println("Make the ssh/sftp connection")
 
-	conn := params.Srce.SftpConn
-
 	result := ""
 
 	log.Println("Create new SFTP client")
-	client, err := sftp.NewClient(conn)
+	client, err := sftp.NewClient(params.Srce.SftpConn)
 	if err != nil {
 		log.Println("Error creating new client", err)
 		return FileTransfer{"", 0, err}
@@ -700,11 +708,10 @@ func (a SFTP_Remove_Factory) Remove(params ConnParams) FileTransfer {
 	//var config ssh.ClientConfig
 	log.Println("Make the ssh/sftp connection")
 
-	conn := params.Srce.SftpConn
 	result := ""
 
 	log.Println("Create new SFTP client")
-	client, err := sftp.NewClient(conn)
+	client, err := sftp.NewClient(params.Srce.SftpConn)
 	if err != nil {
 		log.Println("Error creating new client", err)
 		return FileTransfer{"", 0, err}

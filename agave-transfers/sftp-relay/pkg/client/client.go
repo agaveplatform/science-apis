@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
-	"github.com/pkg/sftp"
+	//"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/ssh"
+	//"golang.org/x/crypto/ssh"
 	"google.golang.org/grpc"
 	"io"
 	"os"
@@ -36,6 +36,12 @@ func init() {
 func main() {
 	log.Println("Starting SFTP client")
 
+	AgentSocket := "/var/folders/14/jjtrwj5x4zl2tp72ncljn6n40000gn/T//ssh-1t1VnKoFb1xv/agent.28756" //, ok := os.LookupEnv("SSH_AUTH_SOCK")
+	log.Infof("AgentSocket = ", AgentSocket)
+	//if !ok {
+	//	log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
+	//}
+
 	conn, err := grpc.Dial("0.0.0.0:50052", grpc.WithInsecure())
 	if err != nil {
 		log.Errorf("could not connect: %v", err)
@@ -53,32 +59,32 @@ func main() {
 
 	//+++++++++++++++++++++++++++++++++++
 	// sftp file used to delete a file once it has been up loaded
-	var config ssh.ClientConfig
-	config = ssh.ClientConfig{
-		User: "testuser",
-		Auth: []ssh.AuthMethod{
-			ssh.Password("testuser"),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	}
+	//var config ssh.ClientConfig
+	//config = ssh.ClientConfig{
+	//	User: "testuser",
+	//	Auth: []ssh.AuthMethod{
+	//		ssh.Password("testuser"),
+	//	},
+	//	HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	//}
 
-	sftpConn, err := ssh.Dial("tcp", "0.0.0.0:10022", &config)
-	if err != nil {
-		log.Printf("Error Dialing the server: %v", err)
-		log.Error(err)
-	}
-	defer conn.Close()
-
-	// create new SFTP client
-	client, err := sftp.NewClient(sftpConn, sftp.MaxPacket(8192))
-	if err != nil {
-		log.Errorf("Error creating new client, %v \n", err)
-	}
-	defer client.Close()
+	//sftpConn, err := ssh.Dial("tcp", "0.0.0.0:10022", &config)
+	//if err != nil {
+	//	log.Printf("Error Dialing the server: %v", err)
+	//	log.Error(err)
+	//}
+	//defer conn.Close()
+	//
+	//// create new SFTP client
+	//client, err := sftp.NewClient(sftpConn, sftp.MaxPacket(8192))
+	//if err != nil {
+	//	log.Errorf("Error creating new client, %v \n", err)
+	//}
+	//defer client.Close()
 
 	//+++++++++++++++++++++++++++++++++++
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 10; i++ {
 
 		req := &sftppb.SrvPutRequest{
 			SrceSftp: &sftppb.Sftp{
@@ -86,7 +92,7 @@ func main() {
 				PassWord:   "testuser",
 				SystemId:   "0.0.0.0",
 				HostKey:    "",
-				FileName:   "/tmp/test/1K.txt",
+				FileName:   "/tmp/test/100K.txt",
 				FileSize:   0,
 				HostPort:   ":10022",
 				ClientKey:  "",
@@ -95,7 +101,7 @@ func main() {
 				//BufferSize:	  32768,
 				//BufferSize:   65536,
 				Type:         "SFTP",
-				DestFileName: "/tmp/1K_" + strconv.Itoa(i) + ".txt",
+				DestFileName: "/tmp/100K_" + strconv.Itoa(i) + ".txt",
 			},
 		}
 		log.Println("got past req :=")
@@ -110,7 +116,11 @@ func main() {
 		//log.Printf( "%v", res )
 		if res != nil {
 			log.Errorf("Response from Error Code: %v \n", res.Error)
-
+			log.Infof("Error: ", res.Error)
+			log.Infof("FileName: ", res.FileName)
+			log.Infof("BytesReturned:", res.BytesReturned)
+			//log.Fatal("Error from return")
+			//os.Exit(1)
 		} else {
 			log.Printf("Response from FileName: %v \n", res.FileName)
 			log.Printf("Response from BytesReturned: %d \n", res.BytesReturned)

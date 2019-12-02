@@ -145,13 +145,9 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     			Assert.fail("System home directory " + client.resolvePath("") + " exists, but is not a directory.");
     		}
     	} 
-    	catch (IOException e) {
+    	catch (IOException | RemoteDataException e) {
     		throw e;
-    	}
-    	catch (RemoteDataException e) {
-    		throw e;
-    	}
-    	catch (Exception e) {
+    	} catch (Exception e) {
     		Assert.fail("Failed to create home directory " + (client == null ? "" : client.resolvePath("")) + " before test method.", e);
     	}
     }

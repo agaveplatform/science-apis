@@ -29,9 +29,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  */
 @Test(singleThreaded=true, groups= {"sftp", "sanitization", "broken", "integration"})
-public class VDJSpecialCharacterFilenameTest extends BaseTransferTestCase {
+public class SpecialCharacterFilenameTest extends BaseTransferTestCase {
 
-private static final Logger log = Logger.getLogger(VDJSpecialCharacterFilenameTest.class);
+private static final Logger log = Logger.getLogger(SpecialCharacterFilenameTest.class);
     
     public static String SPECIAL_CHARS = " _-!@#$%^*()+[]{}:."; // excluding "&" due to a bug in irods
     

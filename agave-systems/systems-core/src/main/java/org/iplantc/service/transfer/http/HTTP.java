@@ -383,20 +383,24 @@ public class HTTP implements RemoteDataClient {
 			File localFile = new File(localdir);
 				
 			// verify local path and explicity resolve target path
-			if (!localFile.exists()) {
-				if (!localFile.getParentFile().exists()) {
-					throw new FileNotFoundException("No such file or directory");
-				} 
-			} 
-			// if not a directory, overwrite local file
-			else if (!localFile.isDirectory()) {
-				
+			if (localFile.exists()) {
+				// if a directory, download to a file named after the remote file
+				// in the local directory
+				if (localFile.isDirectory()) {
+					localFile = new File(localFile, FilenameUtils.getName(remotePath));
+				} else {
+					// overwrite the local file
+				}
 			}
-			// if a directory, resolve full path
+			else if (localFile.getParentFile().exists()) {
+				// if the path does not exist, but the parent does, we will create a new
+				// file at teh named path to download the file to
+			}
+			// parent path does not exist either, so throw an exception
 			else {
-				localFile = new File(localFile,  FilenameUtils.getName(remotePath));
-			}
-			
+				throw new FileNotFoundException("No such file or directory");
+			} 
+
 			response = doGet(remotePath);
 			
 		    StatusLine statusLine = response.getStatusLine();

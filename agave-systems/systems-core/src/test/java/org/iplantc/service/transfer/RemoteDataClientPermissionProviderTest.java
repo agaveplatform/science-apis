@@ -3,6 +3,7 @@ package org.iplantc.service.transfer;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
@@ -28,8 +29,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(singleThreaded=true, groups= {"integration", "permissions", "broken", "integration"})
-public abstract class RemoteDataClientPermissionProviderTest extends BaseTransferTestCase 
+public abstract class RemoteDataClientPermissionProviderTest extends BaseTransferTestCase
 {
 	private static final Logger	log	= Logger.getLogger(RemoteDataClientPermissionProviderTest.class);
 	protected RemoteDataClient client;
@@ -99,6 +99,35 @@ public abstract class RemoteDataClientPermissionProviderTest extends BaseTransfe
         
         return threadClient.get();
     }
+
+	/**
+	 * Generates a random directory name for the remote test folder. The
+	 * remote folder is not created. Use #createRemoteTestDir() to generate
+	 * a test directory on the remote system.
+	 *
+	 * @see #createRemoteTestDir()
+	 * @return string representing remote test directory.
+	 */
+	protected String getRemoteTestDirPath() {
+		return UUID.randomUUID().toString();
+	}
+
+	/**
+	 * Creates a random test directory on the remote system using the
+	 * RemoteDataClient#mkdirs method. The path is obtained form a
+	 * call to #getRemoteTestDirPath().
+	 *
+	 * @see #getRemoteTestDirPath()
+	 * @return path to the test directory on the remote system
+	 * @throws IOException
+	 * @throws RemoteDataException
+	 */
+	protected String createRemoteTestDir() throws IOException, RemoteDataException {
+		String remoteBaseDir = getRemoteTestDirPath();
+		getClient().mkdirs(remoteBaseDir);
+
+		return remoteBaseDir;
+	}
     
     protected String getLocalDownloadDir() {
         return LOCAL_DOWNLOAD_DIR + Thread.currentThread().getId();
@@ -152,11 +181,11 @@ public abstract class RemoteDataClientPermissionProviderTest extends BaseTransfe
     		if (!getClient().doesExist(m.getName())) {
     		    getClient().mkdirs(m.getName(), system.getOwner());
     		}
-    		
+
     		if (!getClient().doesExist(m.getName() + "/" + LOCAL_DIR_NAME)) {
     		    getClient().put(LOCAL_DIR, m.getName());
     		}
-    		
+
     		if (!getClient().isDirectory(m.getName() + "/" + LOCAL_DIR_NAME)) {
                 Assert.fail("Test work directory " + client.resolvePath(m.getName()) + " exists, but is not a directory.");
             }
@@ -672,6 +701,7 @@ public abstract class RemoteDataClientPermissionProviderTest extends BaseTransfe
 	protected Object[][] clearPermissionProvider(Method m)
 	{
 		return new Object[][] {
+			// username, 		 path, 								 initialPermission,  recursive, shouldClearPermission, errorMessage
 			{SHARED_SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME, PermissionType.ALL, false, true, "Failed to delete delegated ALL permission on folder root"},
 			{SHARED_SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME, PermissionType.EXECUTE, false, true, "Failed to delete delegated EXECUTE permission on folder root"},
 			{SHARED_SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME, PermissionType.READ, false, true, "Failed to delete delegated READ permission on folder root"},
@@ -716,7 +746,7 @@ public abstract class RemoteDataClientPermissionProviderTest extends BaseTransfe
 	}
 	
 	@Test(groups= {"permissions", "delete"}, dataProvider="clearPermissionProvider", dependsOnMethods={"removeWritePermission"})
-	public void clearPermissions(String username, String path, PermissionType initialPermission, boolean recursive, boolean shouldClearPermission, String errorMessage) 
+	public void clearPermissions(String username, String path, PermissionType initialPermission, boolean recursive, boolean shouldClearPermission, String errorMessage)
 	throws Exception
 	{
 		getClient().setPermissionForUser(username, path, initialPermission, recursive);
@@ -726,28 +756,25 @@ public abstract class RemoteDataClientPermissionProviderTest extends BaseTransfe
 			Assert.assertTrue(getClient().hasWritePermission(path, username), "Failed to set read permission for the user.");
 		if (initialPermission.canExecute())
 			Assert.assertTrue(getClient().hasExecutePermission(path, username), "Failed to set read permission for the user.");
-		
+
 		getClient().clearPermissions(username, path, recursive);
-		
+
 		Assert.assertEquals(getClient().getPermissionForUser(username, path).equals(PermissionType.NONE), shouldClearPermission, errorMessage);
-		
-		if (recursive)
-		{
-		    if (StringUtils.equalsIgnoreCase(username, SHARED_SYSTEM_USER))
-		    {
-    		    try {
-    		        getClient().ls(path);
-    		    }
-    		    catch (RemoteDataException e) {
-    		        Assert.assertTrue(e.getMessage().contains("insufficient privileges"), 
-    		                "User without permissions should not have permission to view the folder contents after permissions are cleared.");
-    		    }
-		    } else {
-		     	for (RemoteFileInfo fileInfo: getClient().ls(path)) {
-    				String childPath = path + "/" + fileInfo.getName();
-    				Assert.assertEquals(getClient().getPermissionForUser(username, childPath).equals(PermissionType.NONE), shouldClearPermission, errorMessage);
-    			}
-		    }
+
+		if (recursive) {
+			if (StringUtils.equalsIgnoreCase(username, SHARED_SYSTEM_USER)) {
+				try {
+					getClient().ls(path);
+				} catch (RemoteDataException e) {
+					Assert.assertTrue(e.getMessage().contains("insufficient privileges"),
+							"User without permissions should not have permission to view the folder contents after permissions are cleared.");
+				}
+			} else {
+				for (RemoteFileInfo fileInfo : getClient().ls(path)) {
+					String childPath = path + "/" + fileInfo.getName();
+					Assert.assertEquals(getClient().getPermissionForUser(username, childPath).equals(PermissionType.NONE), shouldClearPermission, errorMessage);
+				}
+			}
 		}
 	}
 }

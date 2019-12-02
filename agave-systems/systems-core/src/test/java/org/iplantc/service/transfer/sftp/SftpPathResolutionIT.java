@@ -8,8 +8,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;
 
-@Test(groups= {"sftp","path-resolution","filesystem","integration"})
-public class SftpPathResolutionTests extends AbstractPathResolutionTests
+@Test(groups={"sftp.path.resolution"})
+public class SftpPathResolutionIT extends AbstractPathResolutionTests
 {
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {

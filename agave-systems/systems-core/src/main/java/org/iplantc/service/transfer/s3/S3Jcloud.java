@@ -3,30 +3,28 @@ package org.iplantc.service.transfer.s3;
 import static org.jclouds.Constants.PROPERTY_RELAX_HOSTNAME;
 import static org.jclouds.Constants.PROPERTY_TRUST_ALL_CERTS;
 import static org.jclouds.blobstore.options.PutOptions.Builder.multipart;
+import static org.jclouds.io.Payloads.newByteArrayPayload;
 import static org.jclouds.s3.reference.S3Constants.PROPERTY_S3_SERVICE_PATH;
 import static org.jclouds.s3.reference.S3Constants.PROPERTY_S3_VIRTUAL_HOST_BUCKETS;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.activation.MimeType;
 import javax.activation.MimetypesFileTypeMap;
+import javax.ws.rs.core.EntityTag;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -88,7 +86,7 @@ public class S3Jcloud implements RemoteDataClient
 	protected String containerName = "";
 	protected BlobStoreContext context;
 	protected S3BlobStore blobStore = null;
-	
+	protected MimetypesFileTypeMap mimetypesFileTypeMap = null;
 	private String accountKey = null;
 	private String accountSecret = null;
 	private String host = null;
@@ -280,8 +278,13 @@ public class S3Jcloud implements RemoteDataClient
 	public boolean mkdir(String remotepath)
 	throws IOException, RemoteDataException
 	{
+		if ( remotepath != null && FilenameUtils.getName(remotepath).equals("{") ) {
+			throw new RemoteDataException("'{' is not supported as a directory name.");
+		}
+
 		String resolvedPath = _doResolvePath(remotepath);
-		
+
+
 		fileInfoCache.remove(resolvedPath);
 
 		// if the resolved path is empty, that represents the bucket root, which had
@@ -292,8 +295,6 @@ public class S3Jcloud implements RemoteDataClient
 		}
 		else
 		{
-//			resolvedPath = StringUtils.removeEnd(resolvedPath, "/");
-
 			// fetch RemoteFileInfo so we only pull metadata once
 			RemoteFileInfo fileInfo = null;
 			try { fileInfo = getFileInfo(remotepath); } catch (FileNotFoundException ignore){}
@@ -305,8 +306,21 @@ public class S3Jcloud implements RemoteDataClient
 				// if the parent exists, we can create the directory. This is the only scenario in which
 				// true can be resolved.
 				if (_directoryExists(resolvedParentPath)) {
-					getBlobStore().createDirectory(containerName, resolvedPath);
-					return true;
+					try {
+//						String resp = getBlobStore().putBlob(
+//								containerName,
+//								blobStore.blobBuilder(resolvedPath + "/")
+//										.type(StorageType.FOLDER)
+//										.payload(newByteArrayPayload(new byte[] {}))
+//										.contentType("application/x-directory").build());
+//
+//						log.debug(String.format("Response from creating directory %s: %s", resolvedPath, resp));
+						getBlobStore().createDirectory(containerName, resolvedPath);
+						return true;
+					}
+					catch(Throwable t) {
+						throw new RemoteDataException("Failed to create " + remotepath, t);
+					}
 				}
 				// no parent, so we throw an exception
 				else {
@@ -315,7 +329,9 @@ public class S3Jcloud implements RemoteDataClient
 			}
 			// if present, but the remote is a file object, throw exception
 			else if (fileInfo.isFile()) {
-				throw new RemoteDataException("Failed to create " + resolvedPath + ". File already exists.");
+				// handle this by returning false rather than throwing exception for consistency with other
+				// RemoteDataClient implementations.
+				return false;
 			}
 
 			return false;
@@ -333,7 +349,7 @@ public class S3Jcloud implements RemoteDataClient
 	 * Safe check for directory existence. This is used rather than the native jcloud check due to the
 	 * spotty support for trailing characters and other delimiters in various implementations.
 	 * @param resolvedPath resolved path within bucket
-	 * @return
+	 * @return true if the path is a directory marker, false otherwise
 	 * @throws FileNotFoundException
 	 * @throws RemoteDataException
 	 */
@@ -876,13 +892,20 @@ public class S3Jcloud implements RemoteDataClient
 			} else { 
 			
 				ByteSource payload = Files.asByteSource(localFile);
+				String mimeType = resolveMimeTypeOfFile(localFile);
+
 				String resolvedPath = _doResolvePath(remotedir);
+
 				Blob blob = getBlobStore().blobBuilder(resolvedPath)
 						  .payload(payload)
 						  .contentLength(localFile.length())
-						  .contentType("application/octet-stream")
+						  .contentType(mimeType)
 						  .build();
-				
+
+				if (destFileInfo != null) {
+					blob.getMetadata().setCreationDate(new Date());
+				}
+
 				if (listener != null) {
 					listener.started(localFile.length(), remotedir);
 				}
@@ -1363,7 +1386,7 @@ public class S3Jcloud implements RemoteDataClient
 	throws IOException, RemoteDataException 
 	{
 		String resolvedPath = null;
-		
+//		String encodedPath = null;
 		try 
 		{
 			resolvedPath = _doResolvePath(path);
@@ -1375,35 +1398,47 @@ public class S3Jcloud implements RemoteDataClient
 			else
 			{
 				PageSet<? extends StorageMetadata> pageset = null;
-				
-				do 
-				{
-					ListContainerOptions options = new ListContainerOptions();
+//				encodedPath = urlEncodeResolvedPathComponents(resolvedPath);
 
-					// handle urlencoding of hex codes and url encoded characters.
-					options.inDirectory(resolvedPath.replaceAll("%","%25"));
-					options.recursive();
+				ListContainerOptions options = new ListContainerOptions();
+				options.prefix(resolvedPath);
+				options.delimiter("/");
+				options.recursive();
+
+				ArrayList<String> fileItems = new ArrayList<String>();
+
+				do
+				{
+					fileItems.clear();
+
 					if (pageset != null && StringUtils.isEmpty(pageset.getNextMarker())) {
 						options.afterMarker(pageset.getNextMarker());
 					}
-					
+
 					pageset = getBlobStore().list(containerName, options);
-					
+
 					for (StorageMetadata meta: pageset.toArray(new StorageMetadata[]{}))  {
-						if (_isDirectoryMarker((BlobMetadata)meta)) {
-						    fileInfoCache.remove(containerName + "/" + meta.getName());
-							getBlobStore().deleteDirectory(containerName, meta.getName());
-						}
-						else {
-						    fileInfoCache.remove(containerName + "/" + meta.getName());
-						    getBlobStore().removeBlob(containerName, meta.getName());
-						}
+						fileItems.add(meta.getName());
+						fileInfoCache.remove(containerName + "/" + meta.getName());
+
+//						if (_isDirectoryMarker((BlobMetadata)meta)) {
+//						    fileInfoCache.remove(containerName + "/" + meta.getName());
+//							getBlobStore().deleteDirectory(containerName, meta.getName());
+//						}
+//						else {
+//						    fileInfoCache.remove(containerName + "/" + meta.getName());
+//						    getBlobStore().removeBlob(containerName, meta.getName());
+//						}
 					}
+
+					// perform a bulk delete operation
+					getBlobStore().removeBlobs(containerName, fileItems);
 				} 
 				while (!StringUtils.isEmpty(pageset.getNextMarker()));
-				
+
 				fileInfoCache.remove(containerName + "/" + resolvedPath);
 				getBlobStore().deleteDirectory(containerName, resolvedPath);
+//				getBlobStore().deleteDirectory(containerName, encodedPath);
 			}
 		}
 		catch (FileNotFoundException e) {
@@ -1418,6 +1453,46 @@ public class S3Jcloud implements RemoteDataClient
 		}
 	}
 
+//	/**
+//	 * URL encodes supported special charaters in the path. This handles characters on a char
+//	 * by char basis, so use of url-encoded paths will be double encoded.
+//	 *
+//	 * @param resolvedPath
+//	 * @return
+//	 */
+//	private String urlEncodeResolvedPathComponents(String resolvedPath) {
+////		String[] SPECIAL_CHARS = new String[]{ " ", "_", "-", "!", "@", "#", "$", "%", "^", "*", "(", ")",
+////				"+", "[", "]", "{", "}", ":", "."};
+//		Map<String, String> specialChars = Map.ofEntries(
+//				new AbstractMap.SimpleEntry<String, String>(" ","+"),
+//				new AbstractMap.SimpleEntry<String, String>("!", "%21"),
+//				new AbstractMap.SimpleEntry<String, String>("@", "%40"),
+//				new AbstractMap.SimpleEntry<String, String>("#", "%23"),
+//				new AbstractMap.SimpleEntry<String, String>("$", "%24"),
+//				new AbstractMap.SimpleEntry<String, String>("%", "%25"),
+//				new AbstractMap.SimpleEntry<String, String>("^", "%5E"),
+//				new AbstractMap.SimpleEntry<String, String>("(", "%28"),
+//				new AbstractMap.SimpleEntry<String, String>(")", "%29"),
+//				new AbstractMap.SimpleEntry<String, String>("+", "%2B"),
+//				new AbstractMap.SimpleEntry<String, String>("[", "%5B"),
+//				new AbstractMap.SimpleEntry<String, String>("]", "%5D"),
+//				new AbstractMap.SimpleEntry<String, String>("{", "%7B"),
+//				new AbstractMap.SimpleEntry<String, String>("}", "%7D"),
+//				new AbstractMap.SimpleEntry<String, String>(":", "%3A")
+//		);
+//
+//		StringBuilder sb = new StringBuilder(resolvedPath.length());
+//		Charset charset;
+//		CharArrayWriter charArrayWriter = new CharArrayWriter();
+//
+//		for (char c: resolvedPath.toCharArray()) {
+//			String s = String.valueOf(c);
+//			sb.append(specialChars.getOrDefault(s, s));
+//		}
+//
+//		return sb.toString();
+//	}
+
 	/**
 	 * Checks whether the BlobMetadata object has a content type of application/directory.
 	 * This is the default directory marker across BlobStore implementations.
@@ -1426,7 +1501,8 @@ public class S3Jcloud implements RemoteDataClient
 	 * @return
 	 */
 	protected boolean _isDirectoryMarker(BlobMetadata blobMetadata) {
-		return blobMetadata.getContentMetadata().getContentType().equalsIgnoreCase("application/directory");
+		return ArrayUtils.contains(new String[]{"application/directory", "application/x-directory"},
+			blobMetadata.getContentMetadata().getContentType());
 	}
 
 	@Override
@@ -1491,7 +1567,7 @@ public class S3Jcloud implements RemoteDataClient
 	
 	@Override
     public String resolvePath(String path) throws FileNotFoundException {
-		if (StringUtils.isEmpty(path)) {
+		if (StringUtils.isBlank(path)) {
 		    return homeDir;
 //			return StringUtils.removeStart(homeDir, "/");
 		}
@@ -1525,7 +1601,7 @@ public class S3Jcloud implements RemoteDataClient
 			}
 		}
 		
-		return path;
+		return StringUtils.trimToEmpty(path);
 	}
 	
 	public String getParentPath(String path) {
@@ -1569,14 +1645,28 @@ public class S3Jcloud implements RemoteDataClient
 		    try 
 		    {
 		    	blobMeta = getBlobStore().blobMetadata(containerName, resolvedPath);
+		    	// if a value was returned and the name matches the path, then we're good. otherwise, it could
+				// be a shadow object that s3 delegated to the parent bucket. Happens when requesting an object
+				// of name "{"
     		    if (blobMeta != null) {
         			// cool, found it
         		    fileInfoCache.put(containerName + "/" + resolvedPath, blobMeta);
-        		} else if (!StringUtils.endsWith(resolvedPath, "/")) { 
+        		} else if (!StringUtils.endsWith(resolvedPath, "/")) {
         		    blobMeta = getBlobStore().blobMetadata(containerName, resolvedPath + "/");
         		    if (blobMeta != null) {
-        		        fileInfoCache.put(containerName + "/" + resolvedPath, blobMeta);
+//        		    	if (!blobMeta.getUri().getPath().substring(1).equals(blobMeta.getName())) {
+//							log.debug(String.format("False object returned by S3 for %s/%s. " +
+//											"Object name does not reflect the URL. This is a ghost metadata item",
+//									containerName, resolvedPath));
+//							return null;
+//						}
+//        		    	else {
+							fileInfoCache.put(containerName + "/" + resolvedPath, blobMeta);
+//						}
         		    }
+        		    else {
+        		    	return null;
+					}
         		} else {
         			return null;
         		}
@@ -1764,5 +1854,41 @@ public class S3Jcloud implements RemoteDataClient
 	@Override
 	public boolean isPermissionMirroringRequired() {
 		return false;
+	}
+
+	/**
+	 * Determines the mime type for a local file. The file must already exist on disk.
+	 * Mime type is determined by the file name. If the file extension is not recognized,
+	 * a value of "application/octet-stream" is returned.
+	 *
+	 * @param localFile the local file to for which to get the mimetype.
+	 * @return the mime type of the file item or "application/octet-stream" if unknown
+	 */
+	protected String resolveMimeTypeOfFile(File localFile){
+    	return getMimetypesFileTypeMap().getContentType(localFile.getAbsolutePath());
+	}
+
+	/**
+	 * Loads the known mime types as a map. Values are read from a mime.types file in the classpath.
+	 * If the file cannot be found, the default system file is loaded. If that is not found, all
+	 * Files wind up being resolved as "application/octet-stream"
+	 * @return
+	 */
+	protected MimetypesFileTypeMap getMimetypesFileTypeMap() {
+    	if (mimetypesFileTypeMap == null) {
+			InputStream mimeTypesStream = null;
+			try {
+				mimeTypesStream = this.getClass().getClassLoader().getResourceAsStream("mime.types");
+				mimetypesFileTypeMap = new MimetypesFileTypeMap(mimeTypesStream);
+			} catch (Exception e) {
+				log.error("Unable to load bundled mime.types file. Falling back on system file.", e);
+				// Try again on a different map.
+				mimetypesFileTypeMap = new MimetypesFileTypeMap();
+			} finally {
+				if (mimeTypesStream != null) try {mimeTypesStream.close();} catch (Exception ignore){}
+			}
+		}
+
+    	return mimetypesFileTypeMap;
 	}
 }

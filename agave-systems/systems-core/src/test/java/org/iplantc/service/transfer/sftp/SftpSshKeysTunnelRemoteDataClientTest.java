@@ -13,14 +13,10 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups= {"sftp", "sftp-sshkeys-tunnel", "filesystem", "broken", "integration" })
-public class SftpSshKeysTunnelRemoteDataClientTest extends SftpPasswordRemoteDataClientTest {
+@Test(groups= {"sftp-sshkeys-tunnel.operation","disabled"})
+public class SftpSshKeysTunnelRemoteDataClientTest extends SftpSshKeysRemoteDataClientIT {
 
-	/* (non-Javadoc)
-	 * @see org.iplantc.service.transfer.AbstractRemoteDataClientTest#getSystemJson()
-	 */
 	@Override
-	@Test(enabled=false)
 	protected JSONObject getSystemJson() throws JSONException, IOException {
 		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "sftp-sshkeys-tunnel.example.com.json");
 	}

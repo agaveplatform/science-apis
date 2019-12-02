@@ -17,6 +17,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * @author dooley
@@ -113,7 +114,7 @@ public class SftpRelayPasswordRemoteDataClientTest extends AbstractRemoteDataCli
 		if (shouldExist) {
 			return "/root";
 		} else {
-			return "/root/helloworld";
+			return "/root/" + UUID.randomUUID().toString();
 		}
 	}
 	

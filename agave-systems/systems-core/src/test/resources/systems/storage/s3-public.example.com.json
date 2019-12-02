@@ -1,10 +1,10 @@
 {
-  "id": "s3.example.com",
+  "id": "s3-public.example.com",
   "name": "Amazon S3 Public Example",
   "status": "UP",
   "type": "STORAGE",
   "description": "Example storage system accessible via public readonly S3 bucket.",
-  "site": "minio",
+  "site": "aws",
   "storage": {
     "host": "http://docker.example.com",
     "port": 9000,

@@ -62,7 +62,7 @@
                         force conventions on folks. -->
                     <imageName>${project.artifactId}</imageName>
                     <dockerDirectory>${basedir}/target/docker</dockerDirectory>
-                    <skipDocker>true</skipDocker>
+                    <skipDocker>${skip.migrations}</skipDocker>
                 </configuration>
                 <executions>
                     <execution>

@@ -74,15 +74,24 @@
 							<goal>integration-test</goal>
 						</goals>
 						<configuration>
-							<includes>
-<!--								<include>org.iplantc.service.transfer.sftp.SftpPasswordRemoteDataClientTest</include>-->
-<!--								<include>org.iplantc.service.transfer.sftp.SftpPathResolutionTests</include>-->
-<!--								<include>org.iplantc.service.transfer.sftp.SftpPathSanitizationTest</include>-->
-<!--								<include>org.iplantc.service.transfer.sftp.SftpSshKeysRemoteDataClientTest</include>-->
-<!--								<include>org.iplantc.service.transfer.s3.*Test</include>-->
-							</includes>
-							<groups>integration,s3*</groups>
-							<excludedGroups>broken,notReady,unit,azure,sftp,gridftp</excludedGroups>
+<!--							<suiteXmlFiles>-->
+<!--								<suiteXmlFile>testng-integration.xml</suiteXmlFile>-->
+<!--							</suiteXmlFiles>-->
+							<properties>
+								<property>
+									<name>parallel</name>
+									<value>methods</value>
+								</property>
+								<property>
+									<name>dataproviderthreadcount</name>
+									<value>5</value>
+								</property>
+							</properties>
+<!--							<includes>-->
+<!--								<include>*IT</include>-->
+<!--							</includes>-->
+<!--							<groups>sftp*,s3*,irods*</groups>-->
+							<excludedGroups>broken</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
 								</log4j.configuration>

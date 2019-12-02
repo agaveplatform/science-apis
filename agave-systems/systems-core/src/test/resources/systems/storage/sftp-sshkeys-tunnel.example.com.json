@@ -1,5 +1,5 @@
 {
-  "id": "sftp-sshkeys.example.com",
+  "id": "sftp-sshkeys-tunnel.example.com",
   "name": "SFTP Example",
   "status": "UP",
   "type": "STORAGE",

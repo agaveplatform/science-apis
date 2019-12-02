@@ -760,10 +760,14 @@ public final class MaverickSFTP implements RemoteDataClient {
         MaverickSFTPInputStream ins;
         try {
             ins = new MaverickSFTPInputStream(getClient(), path);
-        } catch (Exception e) {
+        } catch (RemoteDataException | FileNotFoundException e) {
             String msg = getMsgPrefix() + "Failure to create inputstream for path: " + path + ": " + e.getMessage();
             log.error(msg, e);
             throw e;
+        } catch (Exception e) {
+            String msg = getMsgPrefix() + "Failure to create inputstream for path: " + path + ": " + e.getMessage();
+            log.error(msg, e);
+            throw new RemoteDataException("Failed to open input stream to " + path, e);
         }
 
         return ins;

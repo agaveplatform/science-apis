@@ -54,15 +54,12 @@ import org.irods.jargon.core.exception.JargonRuntimeException;
 import org.irods.jargon.core.exception.SpecificQueryException;
 import org.irods.jargon.core.packinstr.TransferOptions;
 import org.irods.jargon.core.protovalues.FilePermissionEnum;
-import org.irods.jargon.core.pub.CollectionAO;
-import org.irods.jargon.core.pub.CollectionAndDataObjectListAndSearchAO;
-import org.irods.jargon.core.pub.DataObjectAO;
-import org.irods.jargon.core.pub.DataTransferOperations;
-import org.irods.jargon.core.pub.IRODSAccessObjectFactory;
-import org.irods.jargon.core.pub.IRODSAccessObjectFactoryImpl;
-import org.irods.jargon.core.pub.IRODSFileSystemAO;
+import org.irods.jargon.core.protovalues.UserTypeEnum;
+import org.irods.jargon.core.pub.*;
 import org.irods.jargon.core.pub.domain.ObjStat;
+import org.irods.jargon.core.pub.domain.User;
 import org.irods.jargon.core.pub.domain.UserFilePermission;
+import org.irods.jargon.core.pub.domain.UserGroup;
 import org.irods.jargon.core.pub.io.FileIOOperations.SeekWhenceType;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.pub.io.IRODSFileFactory;
@@ -124,6 +121,7 @@ public class IRODS4 implements RemoteDataClient
 	private Map<String, IRODSFile> fileInfoCache = new ConcurrentHashMap<String, IRODSFile>();
 
 	protected static final int MAX_BUFFER_SIZE = 4194304; // 4MB
+	private User irodsAccountUser;
 
 	public IRODS4() {}
 
@@ -405,7 +403,7 @@ public class IRODS4 implements RemoteDataClient
 	@Override
 	public String resolvePath(String path) throws java.io.FileNotFoundException
 	{
-		if (StringUtils.isEmpty(path)) {
+		if (StringUtils.isBlank(path)) {
 		    return StringUtils.stripEnd(homeDir, " ");
 		}
 		else if (path.startsWith("/"))
@@ -436,7 +434,7 @@ public class IRODS4 implements RemoteDataClient
 			}
 		}
 
-		return StringUtils.stripEnd(path, " ");
+		return StringUtils.trimToEmpty(path);
     }
 
 	/* (non-Javadoc)
@@ -489,9 +487,10 @@ public class IRODS4 implements RemoteDataClient
 
 		try
 		{
-		    if (doesExist(remotedir)) {
-                return false;
-            } else {
+//		    if (doesExist(remotedir)) {
+//                return false;
+//            } else {
+			if (!doesExist(remotedir)) {
                 file = getFile(remotedir);
                 getIRODSFileSystemAO().mkdir(file, true);
             }
@@ -1875,6 +1874,55 @@ public class IRODS4 implements RemoteDataClient
     	return getPermissionForUser(username, path, false);
     }
 
+	/**
+	 * Retrieves user object for the authenticated account from IRODS.
+	 * @return the IRODS User account or null if not found
+	 */
+	protected User getIRODSAccountUser() {
+		try {
+			if (this.irodsAccountUser == null) {
+				this.irodsAccountUser = getAccessObjectFactory().getUserAO(getIRODSAccount()).findByName(this.getUsername());
+			}
+
+			return this.irodsAccountUser;
+
+		} catch (JargonException e) {
+			log.error("Unable to lookup user account for " + this.username + " in IRODS4", e);
+			return null;
+		}
+	}
+
+	/**
+	 * Checks whether the current IRODS account user is of type UserTypeEnum.RODS_ADMIN or has been
+	 * assigned a group with type UserTypeEnum.RODS_ADMIN.
+	 *
+	 * @return true if the user has direct or group admin permissions. false otherwise.
+	 */
+    protected boolean isIRODSAdminUser() {
+    	try {
+			User user = getIRODSAccountUser();
+			if (user == null) {
+				return false;
+			}
+			// otherwise see if the user is of type RODS_ADMIN
+			else if (user.getUserType().compareTo(UserTypeEnum.RODS_ADMIN) == 0) {
+				return true;
+			}
+			// otherwise, no current way to check their group permission, so return false
+			else {
+//				List<UserGroup> userGroups = getAccessObjectFactory().getUserGroupAO(getIRODSAccount()).findUserGroupsForUser(this.username);
+//				for (UserGroup group : userGroups) {
+//					group.getUserGroupId();
+//				}
+				return false;
+			}
+
+		} catch (Exception e) {
+    		// unable to query for admin role, implies they are not an admin.
+    		return false;
+		}
+	}
+
     private PermissionType getPermissionForUser(String username, String path, boolean skipOwnerCheck)
     throws RemoteDataException, IOException
     {
@@ -1904,23 +1952,29 @@ public class IRODS4 implements RemoteDataClient
                     pem = userPem == null ? null : userPem.getFilePermissionEnum();
             	}
         	}
-        	else {
-				// there seems to be some confusion over the behavior of the above check.
-				// in some situations it's not returning the proper user inherited permission
-				// and, as a result, this always fails permissions on files and folders that
-				// do not exist. So, we're rolling back to the irods3 behavior here.
-        	    // return PermissionType.NONE;
-
-       			file = getFile(path);
-
-           		// check the parent folder to get the parent pem
-           		do {
-					file = (IRODSFile) file.getParentFile();
-				} while (!file.exists() && file.getAbsolutePath().startsWith(rootDir));
-
-           		UserFilePermission userPem = getCollectionAO().getPermissionForUserName(file.getAbsolutePath(), username);
-           		pem = userPem == null ? null : userPem.getFilePermissionEnum();
-        	}
+        	// the existence failure is ambiguous with a lack of permissions, so in order to return the correct response,
+			// we check whether the user is a RODS_ADMIN. If so, then no permission denied would have been possible,
+			// thus indicating a true failure on the existence check. If not, then we check upstream.
+			else if (isIRODSAdminUser()) {
+				throw new RemoteDataException("File/folder not found");
+			}
+//        	else {
+//				// there seems to be some confusion over the behavior of the above check.
+//				// in some situations it's not returning the proper user inherited permission
+//				// and, as a result, this always fails permissions on files and folders that
+//				// do not exist. So, we're rolling back to the irods3 behavior here.
+//        	    // return PermissionType.NONE;
+//
+//				file = getFile(path);
+//
+//           		// check the parent folder to get the parent pem
+//           		do {
+//					file = (IRODSFile) file.getParentFile();
+//				} while (!file.exists() && file.getAbsolutePath().startsWith(rootDir));
+//
+//           		UserFilePermission userPem = getCollectionAO().getPermissionForUserName(file.getAbsolutePath(), username);
+//           		pem = userPem == null ? null : userPem.getFilePermissionEnum();
+//        	}
 
             if (pem == null) {
                 return PermissionType.NONE;

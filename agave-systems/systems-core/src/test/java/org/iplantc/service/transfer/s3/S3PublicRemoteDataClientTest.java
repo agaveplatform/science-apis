@@ -19,8 +19,8 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(enabled = false, singleThreaded=true, groups= {"s3.filesystem","integration","broken"})
-public class S3PublicRemoteDataClientTest extends AbstractReadOnlyRemoteDataClientTest 
+@Test(enabled = false, groups= {"s3.filesystem","broken"})
+public class S3PublicRemoteDataClientTest extends S3RemoteDataClientIT
 {
 	protected String containerName;
 	

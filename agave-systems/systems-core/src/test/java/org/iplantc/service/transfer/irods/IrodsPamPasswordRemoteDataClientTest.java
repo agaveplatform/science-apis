@@ -13,14 +13,14 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"irods.filesystem", "irods.auth.pam", "irods.version.3", "broken","integration"})
-public class IrodsPamPasswordRemoteDataClientTest extends IrodsPasswordRemoteDataClientTest {
+@Test(groups={"irods3-pam.operations"})
+public class IrodsPamPasswordRemoteDataClientTest extends IrodsPasswordRemoteDataClientIT {
 
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.transfer.AbstractRemoteDataClientTest#getSystemJson()
 	 */
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {
-		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "irods-pam.example.com.json");
+		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "irods3-pam.example.com.json");
 	}
 }

@@ -14,21 +14,21 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 /**
- * Test for all IRODS client permission implementations. This inherits nearly
+ * Test for all IRODS3 client permission implementations. This inherits nearly
  * all it's functionality from the parent class.
  * 
  * @author dooley
  *
  */
-public class IrodsRemoteDataClientPermissionProviderTest extends
-		RemoteDataClientPermissionProviderTest {
+@Test(groups= {"irods3.permissions"})
+public class IrodsRemoteDataClientPermissionProviderTest extends RemoteDataClientPermissionProviderTest {
 
     /* (non-Javadoc)
      * @see org.iplantc.service.transfer.RemoteDataClientPermissionProviderTest#getSystemJson()
      */
     @Override
     protected JSONObject getSystemJson() throws JSONException, IOException {
-        return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "irods.example.com.json");
+        return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "irods3.example.com.json");
     }
 	
 	@DataProvider(name="setPermissionForSharedUserProvider")

@@ -74,31 +74,24 @@
 							<goal>integration-test</goal>
 						</goals>
 						<configuration>
-							<includes>
-								<!-- Remote data client operational tests -->
-								<include>org.iplantc.service.transfer.sftp.SftpPasswordRemoteDataClientTest</include>
-								<include>org.iplantc.service.transfer.sftp.SftpSshKeysRemoteDataClientTest</include>
-								<include>org.iplantc.service.transfer.s3.S3RemoteDataClientIT</include>
-
-								<!-- Path sanitization group tests-->
-								<include>org.iplantc.service.transfer.sftp.SftpPathSanitizationIT</include>
-								<include>org.iplantc.service.transfer.sftp.SpecialCharacterFilenameTest</include>
-								<include>org.iplantc.service.transfer.s3.S3PathSanitizationIT</include>
-
-								<!-- Path resolution tests -->
-								<include>org.iplantc.service.transfer.sftp.SftpPathResolutionIT</include>
-								<include>org.iplantc.service.transfer.s3.S3PathResolutionIT</include>
-
-								<!-- Rename operation tests -->
-								<include>org.iplantc.service.transfer.sftp.S3RenameTests</include>
-								<include>org.iplantc.service.transfer.s3.S3RenameIT</include>
-
-								<!-- Transfer operation tests -->
-								<include>org.iplantc.service.transfer.sftp.operations.SftpIsPermissionMirroringRequiredOperationTest</include>
-								<include>org.iplantc.service.transfer.s3.operations.S3IsPermissionMirroringRequiredOperationTest</include>
-							</includes>
-							<groups>integration,s3*</groups>
-							<excludedGroups>broken,notReady,unit,azure,sftp,gridftp</excludedGroups>
+<!--							<suiteXmlFiles>-->
+<!--								<suiteXmlFile>testng-integration.xml</suiteXmlFile>-->
+<!--							</suiteXmlFiles>-->
+							<properties>
+								<property>
+									<name>parallel</name>
+									<value>methods</value>
+								</property>
+								<property>
+									<name>dataproviderthreadcount</name>
+									<value>5</value>
+								</property>
+							</properties>
+<!--							<includes>-->
+<!--								<include>*IT</include>-->
+<!--							</includes>-->
+<!--							<groups>sftp*,s3*,irods*</groups>-->
+							<excludedGroups>broken</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
 								</log4j.configuration>

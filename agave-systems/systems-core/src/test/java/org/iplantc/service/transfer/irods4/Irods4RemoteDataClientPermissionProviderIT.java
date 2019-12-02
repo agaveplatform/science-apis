@@ -11,14 +11,14 @@ import org.json.JSONObject;
 import org.testng.annotations.Test;
 
 /**
- * Test for all IRODS client permission implementations. This inherits nearly
+ * Test for all IRODS4 client permission implementations. This inherits nearly
  * all it's functionality from the parent class.
  * 
  * @author dooley
  *
  */
 @Test(groups= {"irods4.permissions"})
-public class Irods4RemoteDataClientPermissionProviderTest extends IrodsRemoteDataClientPermissionProviderTest 
+public class Irods4RemoteDataClientPermissionProviderIT extends IrodsRemoteDataClientPermissionProviderTest
 {
     /* (non-Javadoc)
      * @see org.iplantc.service.transfer.RemoteDataClientPermissionProviderTest#getSystemJson()

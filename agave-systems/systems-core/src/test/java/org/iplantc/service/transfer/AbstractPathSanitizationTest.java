@@ -163,7 +163,7 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
             dirName = UUID.randomUUID().toString() + sc + "suffix";
             tests.add(new Object[] { dirName, true, "Directory name," + dirName + ", with singleinternal special character '" + sc + "' should be created" });
         }
-        
+
         return tests.toArray(new Object[][] {});
     }
     

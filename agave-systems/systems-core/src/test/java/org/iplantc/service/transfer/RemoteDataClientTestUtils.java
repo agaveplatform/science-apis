@@ -1281,7 +1281,6 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
     {
         String remoteBaseDir = null;
         String remotePath = null;
-        Path tempDir = null;
         try
         {
             // Create remote test directory
@@ -1290,9 +1289,6 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
 
             // Stage upload date
             getClient().put(LOCAL_BINARY_FILE, remotePath);
-//
-//            // ensure put succeeded
-//            Assert.assertTrue(getClient().doesExist(remotePath), "Data not found on remote system after put.");
 
             // download remote path to local file system
             getClient().get(remotePath, localPath.toAbsolutePath().toString());

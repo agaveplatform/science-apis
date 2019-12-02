@@ -8,12 +8,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;
 
-@Test(groups= {"irods.path-resolution", "broken","integration"})
-public class IrodsPathResolutionTests extends AbstractPathResolutionTests
+@Test(groups= {"irods3.path.resolution"})
+public class IrodsPathResolutionIT extends AbstractPathResolutionTests
 {
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {
-		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "irods.example.com.json");
+		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "irods3.example.com.json");
 	}
 
 	@Test(dataProvider="resolvePathProvider")

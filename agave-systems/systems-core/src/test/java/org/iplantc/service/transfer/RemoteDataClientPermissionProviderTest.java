@@ -29,8 +29,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(singleThreaded=true, groups= {"integration", "permissions", "broken", "integration"})
-public abstract class RemoteDataClientPermissionProviderTest extends BaseTransferTestCase 
+public abstract class RemoteDataClientPermissionProviderTest extends BaseTransferTestCase
 {
 	private static final Logger	log	= Logger.getLogger(RemoteDataClientPermissionProviderTest.class);
 	protected RemoteDataClient client;
@@ -702,6 +701,7 @@ public abstract class RemoteDataClientPermissionProviderTest extends BaseTransfe
 	protected Object[][] clearPermissionProvider(Method m)
 	{
 		return new Object[][] {
+			// username, 		 path, 								 initialPermission,  recursive, shouldClearPermission, errorMessage
 			{SHARED_SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME, PermissionType.ALL, false, true, "Failed to delete delegated ALL permission on folder root"},
 			{SHARED_SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME, PermissionType.EXECUTE, false, true, "Failed to delete delegated EXECUTE permission on folder root"},
 			{SHARED_SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME, PermissionType.READ, false, true, "Failed to delete delegated READ permission on folder root"},
@@ -745,47 +745,36 @@ public abstract class RemoteDataClientPermissionProviderTest extends BaseTransfe
 		};
 	}
 	
-	@Test(groups= {"permissions", "delete"}, dataProvider="clearPermissionProvider")//, dependsOnMethods={"removeWritePermission"})
-	public void clearPermissions(String username, String path, PermissionType initialPermission, boolean recursive, boolean shouldClearPermission, String errorMessage) 
+	@Test(groups= {"permissions", "delete"}, dataProvider="clearPermissionProvider", dependsOnMethods={"removeWritePermission"})
+	public void clearPermissions(String username, String path, PermissionType initialPermission, boolean recursive, boolean shouldClearPermission, String errorMessage)
 	throws Exception
 	{
-//		String remoteBaseDir = null;
-//		String remotePath = null;
-		try {
-//			remoteBaseDir = createRemoteTestDir();
+		getClient().setPermissionForUser(username, path, initialPermission, recursive);
+		if (initialPermission.canRead())
+			Assert.assertTrue(getClient().hasReadPermission(path, username), "Failed to set read permission for the user.");
+		if (initialPermission.canWrite())
+			Assert.assertTrue(getClient().hasWritePermission(path, username), "Failed to set read permission for the user.");
+		if (initialPermission.canExecute())
+			Assert.assertTrue(getClient().hasExecutePermission(path, username), "Failed to set read permission for the user.");
 
-//			remotePath = remoteBaseDir + "/" + path;
+		getClient().clearPermissions(username, path, recursive);
 
-			getClient().setPermissionForUser(username, path, initialPermission, recursive);
-			if (initialPermission.canRead())
-				Assert.assertTrue(getClient().hasReadPermission(path, username), "Failed to set read permission for the user.");
-			if (initialPermission.canWrite())
-				Assert.assertTrue(getClient().hasWritePermission(path, username), "Failed to set read permission for the user.");
-			if (initialPermission.canExecute())
-				Assert.assertTrue(getClient().hasExecutePermission(path, username), "Failed to set read permission for the user.");
+		Assert.assertEquals(getClient().getPermissionForUser(username, path).equals(PermissionType.NONE), shouldClearPermission, errorMessage);
 
-			getClient().clearPermissions(username, path, recursive);
-
-			Assert.assertEquals(getClient().getPermissionForUser(username, path).equals(PermissionType.NONE), shouldClearPermission, errorMessage);
-
-			if (recursive) {
-				if (StringUtils.equalsIgnoreCase(username, SHARED_SYSTEM_USER)) {
-					try {
-						getClient().ls(path);
-					} catch (RemoteDataException e) {
-						Assert.assertTrue(e.getMessage().contains("insufficient privileges"),
-								"User without permissions should not have permission to view the folder contents after permissions are cleared.");
-					}
-				} else {
-					for (RemoteFileInfo fileInfo : getClient().ls(path)) {
-						String childPath = path + "/" + fileInfo.getName();
-						Assert.assertEquals(getClient().getPermissionForUser(username, childPath).equals(PermissionType.NONE), shouldClearPermission, errorMessage);
-					}
+		if (recursive) {
+			if (StringUtils.equalsIgnoreCase(username, SHARED_SYSTEM_USER)) {
+				try {
+					getClient().ls(path);
+				} catch (RemoteDataException e) {
+					Assert.assertTrue(e.getMessage().contains("insufficient privileges"),
+							"User without permissions should not have permission to view the folder contents after permissions are cleared.");
+				}
+			} else {
+				for (RemoteFileInfo fileInfo : getClient().ls(path)) {
+					String childPath = path + "/" + fileInfo.getName();
+					Assert.assertEquals(getClient().getPermissionForUser(username, childPath).equals(PermissionType.NONE), shouldClearPermission, errorMessage);
 				}
 			}
-		}
-		catch (Exception e) {
-//			try { getClient().delete(remoteBaseDir); } catch (Exception ignore){}
 		}
 	}
 }

@@ -248,7 +248,6 @@ public class IRODS implements RemoteDataClient
 		{
 			this.irodsAccount = createAccount();
 
-			accessObjectFactory = IRODSAccessObjectFactoryImpl.instance(getThreadLocalSession(irodsAccount));
 			log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " open connection for thread");
 			stat("/", false); // Avoid an infinite loop.
 		}
@@ -282,7 +281,7 @@ public class IRODS implements RemoteDataClient
 	private CollectionAndDataObjectListAndSearchAO getCollectionAndDataObjectListAndSearchAO() throws JargonException
 	{
 		if (collectionAndDataObjectListAndSearchAO == null) {
-			collectionAndDataObjectListAndSearchAO = accessObjectFactory.getCollectionAndDataObjectListAndSearchAO(getIRODSAccount());
+			collectionAndDataObjectListAndSearchAO = getAccessObjectFactory().getCollectionAndDataObjectListAndSearchAO(getIRODSAccount());
 		}
 
 		return collectionAndDataObjectListAndSearchAO;
@@ -291,7 +290,7 @@ public class IRODS implements RemoteDataClient
 	private CollectionAO getCollectionAO() throws JargonException
 	{
 		if (collectionAO == null) {
-			collectionAO = accessObjectFactory.getCollectionAO(getIRODSAccount());
+			collectionAO = getAccessObjectFactory().getCollectionAO(getIRODSAccount());
 		}
 
 		return collectionAO;
@@ -300,7 +299,7 @@ public class IRODS implements RemoteDataClient
 	private IRODSFileSystemAO getIRODSFileSystemAO() throws JargonException
 	{
 		if (fileSystemAO == null) {
-		    fileSystemAO = accessObjectFactory.getIRODSFileSystemAO(getIRODSAccount());
+		    fileSystemAO = getAccessObjectFactory().getIRODSFileSystemAO(getIRODSAccount());
 		}
 
 		return fileSystemAO;
@@ -309,7 +308,7 @@ public class IRODS implements RemoteDataClient
 	private DataObjectAO getDataObjectAO() throws JargonException
 	{
 		if (dataObjectAO == null) {
-			dataObjectAO = accessObjectFactory.getDataObjectAO(getIRODSAccount());
+			dataObjectAO = getAccessObjectFactory().getDataObjectAO(getIRODSAccount());
 		}
 
 		return dataObjectAO;
@@ -319,7 +318,7 @@ public class IRODS implements RemoteDataClient
 	private DataTransferOperations getDataTransferOperations() throws JargonException
 	{
 		if (dataTransferOperations == null) {
-			dataTransferOperations = accessObjectFactory.getDataTransferOperations(getIRODSAccount());
+			dataTransferOperations = getAccessObjectFactory().getDataTransferOperations(getIRODSAccount());
 		}
 
 		return dataTransferOperations;
@@ -328,10 +327,19 @@ public class IRODS implements RemoteDataClient
 	private IRODSFileFactory getIRODSFileFactory() throws JargonException
 	{
 		if (irodsFileFactory == null) {
-			irodsFileFactory = accessObjectFactory.getIRODSFileFactory(getIRODSAccount());
+			irodsFileFactory = getAccessObjectFactory().getIRODSFileFactory(getIRODSAccount());
 		}
 
 		return irodsFileFactory;
+	}
+
+	private IRODSAccessObjectFactory getAccessObjectFactory() throws JargonException
+	{
+		if (accessObjectFactory == null) {
+			accessObjectFactory = IRODSAccessObjectFactoryImpl.instance(getThreadLocalSession(getIRODSAccount()));
+		}
+
+		return accessObjectFactory;
 	}
 
 	/**
@@ -1534,7 +1542,7 @@ public class IRODS implements RemoteDataClient
 	public void disconnect()
 	{
 		try {
-			this.accessObjectFactory.closeSessionAndEatExceptions(irodsAccount);
+			getAccessObjectFactory().closeSessionAndEatExceptions(irodsAccount);
 		} catch (Throwable e) {}
 		this.accessObjectFactory = null;
 		log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " closed connection for thread");

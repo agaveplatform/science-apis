@@ -40,29 +40,6 @@ services:
     image: agaveplatform/sshd:latest
     command: "-p 10044"
 
-  cephrgw:
-    image: ceph/daemon:latest-nautilus
-    command: demo
-    ports:
-      - "5000:5000"
-      - "8080:8080"
-      - "9000:9000"
-    environment:
-      CEPH_PUBLIC_NETWORK: 172.41.0.0/16
-      MON_IP: 172.41.0.10
-      RGW_REMOTE_CGI: 1
-      RGW_REMOTE_CGI_HOST: 172.41.0.10
-      CEPH_DEMO_UID: 1000
-      CEPH_DEMO_ACCESS_KEY: agaveuser
-      CEPH_DEMO_SECRET_KEY: password
-      CEPH_DEMO_BUCKET: agaveapitestdata
-    volumes:
-      - etcceph:/etc/ceph
-      - varlibceph:/var/lib/ceph
-    networks:
-      ceph_net:
-        ipv4_address: 172.41.0.10
-
   irods4:
     image: agaveapi/irods:4.0.3
     command: changeit
@@ -80,6 +57,73 @@ services:
         limits:
           memory: 2G
 
+  irods3:
+    image: agaveapi/irods:3.3.1
+    hostname: docker.example.com
+    ports:
+      - '10055:22'
+      - '1247:1247'
+      - '5432:5432'
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 2G
+
+  irods3-pam:
+    image: agaveapi/irods-pam:latest
+    hostname: docker.example.com
+    ports:
+      - '10066:22'
+      - '1248:1247'
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 2G
+
+  httpd:
+    image: agaveapi/apache-dev
+    hostname: docker.example.com
+    ports:
+      - '10080:80'
+      - '10443:443'
+    volumes:
+      - type: bind
+        source: ./transfer
+        target: /var/www/html/public
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 512M
+
+#  cephrgw:
+#    image: ceph/daemon:latest-nautilus
+#    command: demo
+#    ports:
+#      - "5000:5000"
+#      - "8080:8080"
+#      - "9000:9000"
+#    environment:
+#      CEPH_PUBLIC_NETWORK: 172.41.0.0/16
+#      MON_IP: 172.41.0.10
+#      RGW_REMOTE_CGI: 1
+#      RGW_REMOTE_CGI_HOST: 172.41.0.10
+#      CEPH_DEMO_UID: 1000
+#      CEPH_DEMO_ACCESS_KEY: agaveuser
+#      CEPH_DEMO_SECRET_KEY: password
+#      CEPH_DEMO_BUCKET: agaveapitestdata
+#    volumes:
+#      - etcceph:/etc/ceph
+#      - varlibceph:/var/lib/ceph
+#    networks:
+#      ceph_net:
+#        ipv4_address: 172.41.0.10
+#
 #  minio:
 #    image: minio/minio:RELEASE.2019-10-12T01-39-57Z
 #    command: "server /data"

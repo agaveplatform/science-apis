@@ -23,7 +23,7 @@ func Execute() {
 	log.SetOutput(wrt)
 
 	// set up the protobuf server
-	lis, err := net.Listen("tcp", "0.0.0.0:50052")
+	lis, err := net.Listen("tcp", "0.0.0.0:50051")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
@@ -37,7 +37,7 @@ func Execute() {
 			Timeout:           (time.Duration(10) * time.Second),
 		}))
 	sftpproto.RegisterSftpRelayServer(s, &api.Server{})
-	log.Println("Server has been initialized.  Now listening on port 50052")
+	log.Println("Server has been initialized.  Now listening on port 50051")
 	err = s.Serve(lis)
 	if err != nil {
 		log.Fatalf("failed to serve: %v", err)

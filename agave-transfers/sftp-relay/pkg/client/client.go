@@ -84,7 +84,7 @@ func main() {
 
 	//+++++++++++++++++++++++++++++++++++
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 50; i++ {
 
 		req := &sftppb.SrvPutRequest{
 			SrceSftp: &sftppb.Sftp{
@@ -106,30 +106,38 @@ func main() {
 		}
 		log.Println("got past req :=")
 
-		res, err := sftpRelay.Put(context.Background(), req)
-		if err != nil {
-			log.Errorf("error while calling RPC push: %s", err)
-			log.Fatal()
-		}
-		log.Println("End Time %s", time.Since(startPushtime).Seconds())
+		out := make(chan int)
+		go func() {
+			res, err := sftpRelay.Put(context.Background(), req)
+			if err != nil {
+				log.Errorf("error while calling RPC push: %s", err)
+				log.Fatal()
+			}
+			log.Println("End Time %s", time.Since(startPushtime).Seconds())
 
-		//log.Printf( "%v", res )
-		if res != nil {
-			log.Errorf("Response from Error Code: %v \n", res.Error)
-			log.Infof("Error: ", res.Error)
-			log.Infof("FileName: ", res.FileName)
-			log.Infof("BytesReturned:", res.BytesReturned)
-			//log.Fatal("Error from return")
-			//os.Exit(1)
-		} else {
-			log.Printf("Response from FileName: %v \n", res.FileName)
-			log.Printf("Response from BytesReturned: %d \n", res.BytesReturned)
-		}
-		// rm file
+			//log.Printf( "%v", res )
+			if res != nil {
+				log.Errorf("Response from Error Code: %v \n", res.Error)
+				log.Infof("Error: ", res.Error)
+				log.Infof("FileName: ", res.FileName)
+				log.Infof("BytesReturned:", res.BytesReturned)
+				//log.Fatal("Error from return")
+				os.Exit(1)
+			} else {
+				log.Printf("Response from FileName: %v \n", res.FileName)
+				log.Printf("Response from BytesReturned: %d \n", res.BytesReturned)
+			}
+			// rm file
 
-		// connect to the sftp server and delete the file
-		//client.Remove("/tmp/100MB_" + strconv.Itoa(i) + ".txt")
-		os.Remove("/tmp/receive/1K_" + strconv.Itoa(i) + ".txt")
+			// connect to the sftp server and delete the file
+			//client.Remove("/tmp/100MB_" + strconv.Itoa(i) + ".txt")
+			//os.Remove("/tmp/receive/1K_" + strconv.Itoa(i) + ".txt")
+
+			close(out)
+			//log.Infof("Channel results = ", <-out)
+		}()
+
+		time.Sleep(1000)
 	}
 
 	secs := time.Since(startPushtime).Seconds()

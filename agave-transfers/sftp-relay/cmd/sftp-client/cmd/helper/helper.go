@@ -12,10 +12,11 @@ import (
 func GetSftpRelay() agaveproto.SftpRelayClient {
 	fmt.Println("Starting SFTP client")
 
-	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	conn, err := grpc.Dial("0.0.0.0:50051", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("could not connect: %v", err)
 	}
+	log.Printf("Got a connection to the grpc server on %v", conn.Target())
 	defer conn.Close()
 
 	return agaveproto.NewSftpRelayClient(conn)
@@ -29,6 +30,8 @@ func ParseSftpConfig(flags *pflag.FlagSet) *agaveproto.Sftp {
 	key, _ := flags.GetString("key")
 	dest, _ := flags.GetString("dest")
 	src, _ := flags.GetString("src")
+
+	//fmt.Println(&agaveproto.Sftp )
 
 	return &agaveproto.Sftp{
 		SystemId:     hostname,

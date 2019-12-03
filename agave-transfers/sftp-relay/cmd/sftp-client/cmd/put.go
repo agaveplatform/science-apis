@@ -17,7 +17,6 @@ package cmd
 
 import (
 	"context"
-
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -49,10 +48,12 @@ var putCmd = &cobra.Command{
 		log.SetOutput(wrt)
 
 		log.Printf("connecting to %v...", grpcservice)
+
 		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
 			log.Fatalf("could not connect: %v", err)
 		}
+		log.Printf("Connected to %s", conn.Target())
 		defer conn.Close()
 
 		sftpRelay := sftppb.NewSftpRelayClient(conn)
@@ -76,7 +77,8 @@ var putCmd = &cobra.Command{
 				DestFileName: dest,
 			},
 		}
-		log.Println("got past req :=")
+		log.Println("got past req :=  ", req)
+		log.Println("connection: " + host + ":" + strconv.Itoa(port))
 
 		res, err := sftpRelay.Put(context.Background(), req)
 		if err != nil {

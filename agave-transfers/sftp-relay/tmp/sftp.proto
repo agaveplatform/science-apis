@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package sftpproto;
+option go_package = "sftpproto";
+option java_package = "org.agaveplatform.transfer.proto.sftp";
+option java_multiple_files = true;
+
+option objc_class_prefix = "AgaveSftp";
+option java_outer_classname = "AgaveSftpProto";
+
+message Sftp {
+    string username = 1;
+    string passWord = 2;
+    string systemId = 3;
+    string hostKey = 4;
+    string fileName = 5;
+    int64 fileSize = 6;
+    string hostPort = 7;
+    string clientKey = 8;
+    int64 bufferSize = 9;
+    string type = 10;
+    string destFileName = 11;
+}
+
+message SrvPutRequest {
+    Sftp srceSftp = 1;
+}
+message SrvPutResponse {
+    string fileName = 1;
+    string bytesReturned = 2;
+    string error = 3;
+}
+
+message SrvGetRequest {
+    Sftp srceSftp = 1;
+}
+message SrvGetResponse {
+    string fileName = 1;
+    string bytesReturned = 2;
+    string error = 3;
+}
+message AuthenticateToRemoteRequest {
+    Sftp auth = 1;
+}
+message AuthenticateToRemoteResponse {
+    string response = 1;
+}
+
+service SftpRelay {
+    rpc Get (SrvGetRequest) returns (SrvGetResponse);
+    rpc Put (SrvPutRequest) returns (SrvPutResponse);
+    rpc Authenticate (AuthenticateToRemoteRequest) returns (AuthenticateToRemoteResponse);
+}
+
+
+
+
+

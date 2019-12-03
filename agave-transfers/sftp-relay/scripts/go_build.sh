@@ -13,3 +13,4 @@ pwd
 # go install cmd/Server/fileServer.go
 
 echo Finished
+

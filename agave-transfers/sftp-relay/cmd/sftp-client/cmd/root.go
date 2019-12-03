@@ -29,7 +29,7 @@ var log = logrus.New()
 
 const (
 	DefaultUsername = "testuser"
-	DefaultHost     = "sftp"
+	DefaultHost     = "0.0.0.0"
 	DefaultKey      = ""
 	DefaultPassword = "testuser"
 	DefaultPort     = 10022

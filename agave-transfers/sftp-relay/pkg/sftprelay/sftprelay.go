@@ -2,10 +2,11 @@ package sftprelay
 
 import (
 	"errors"
-	sftp_cp "github.com/agaveplatform/ssh_sftp_connection_pool"
+	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/ssh_sftp_connection_pool"
+
+	//ssh_sftp_connection_pool "github.com/agaveplatform/ssh_sftp_connection_pool"
 	"strings"
 
-	//cp "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/connectionpool"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
@@ -38,6 +39,7 @@ type SysUri struct {
 	Type         string // Valid values are:  FTP, AZURE, S3, SWIFT, SFTP, GRIDFTP, IRODS, IRODS4, LOCAL
 	DestFileName string
 	SftpConn     *ssh.Client
+	SftpClient   *sftp.Client
 }
 
 // This defines the Srce type that contains the type defined above.
@@ -49,12 +51,12 @@ type ConnParams struct {
 var Params ConnParams
 
 //The Pool and AgentSocket variables are created here and instantiated in the init() function.
-var Pool *sftp_cp.SSHPool
+var Pool *ssh_sftp_connection_pool.SSHPool
 var AgentSocket string
 
 func init() {
 	// Open a log file to log the server
-	f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile("sftp-relay.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
@@ -65,19 +67,20 @@ func init() {
 		Now set up the ssh connection pool
 	*/
 	//TODO we need to get the AgentSocket varaible.  It is hard coded here to make everythingo work
-	AgentSocket = "/var/folders/14/jjtrwj5x4zl2tp72ncljn6n40000gn/T//ssh-1t1VnKoFb1xv/agent.28756" //, ok := os.LookupEnv("SSH_AUTH_SOCK")
-	//if !ok {
-	//	log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
-	//}
+	//AgentSocket = "/var/folders/14/jjtrwj5x4zl2tp72ncljn6n40000gn/T//ssh-1t1VnKoFb1xv/agent.28756"
+	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
+	if !ok {
+		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
+	}
 	log.Infof("SSH_AUTH_SOCK = %s", AgentSocket)
 
 	// set the pool configuration.  The MaxConns sets the maximum connections for the pool.
-	poolCfg := &sftp_cp.PoolConfig{
+	poolCfg := &ssh_sftp_connection_pool.PoolConfig{
 		GCInterval: 5 * time.Second,
 		MaxConns:   500,
 	}
 	// Create the new pool
-	Pool = sftp_cp.NewPool(poolCfg)
+	Pool = ssh_sftp_connection_pool.NewPool(poolCfg)
 
 	log.Infof("Active connections: %d", Pool.ActiveConns())
 }
@@ -90,19 +93,54 @@ func (*Server) Authenticate(ctx context.Context, req *sftppb.AuthenticateToRemot
 	*/
 	params := Params
 	var result error
+	var message string
 	params, err := setGetAuthParams(req) // return type is ConnParams
 	if err != nil {
 		log.Errorf("Erorr retrieving conn paramteres %s", err)
 		result = err
+		message = err.Error()
 	}
-	// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-	var filename string
-	log.Info(filename)
-	from := Params.Srce.Type
-	log.Println(from)
+	// get the sftp connection from the pool.
+	// -------------------------------------------------------------------------------------------------
+	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
+	if !ok {
+		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
+	}
+	log.Infof("SSH_AUTH_SOCK = %s", AgentSocket)
 
-	// Read From system
+	// get the sftp connection from the pool.
+	// -------------------------------------------------------------------------------------------------
+	log.Info("SSH config pool")
+
+	s_port := strings.Replace(req.Auth.HostPort, ":", "", -1)
+	port, _ := strconv.Atoi(s_port)
+	sshCfg := &ssh_sftp_connection_pool.SSHConfig{
+		User:               req.Auth.Username,
+		Host:               req.Auth.SystemId,
+		Port:               port,
+		Auth:               []ssh.AuthMethod{ssh.Password(req.Auth.PassWord)},
+		Timeout:            30 * time.Second,
+		TCPKeepAlive:       false,
+		TCPKeepAlivePeriod: 30 * time.Second,
+		AgentSocket:        AgentSocket,
+		ForwardAgent:       false,
+		HostKeyCallback:    ssh.InsecureIgnoreHostKey(),
+	}
+
+	log.Infof("sshCfg = %s %s %d %v %v", sshCfg.User, sshCfg.Host, sshCfg.Port, sshCfg.Auth, sshCfg.AgentSocket)
+
+	var MaxPcktSize int
+	MaxPcktSize = int(params.Srce.BufferSize)
+	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
+	if err != nil {
+		log.Errorf("Error with conncection = %s", err)
+		return &sftppb.AuthenticateToRemoteResponse{Response: err.Error()}, nil
+	}
+	defer Pool.ReleaseClient(sshCfg)
+	defer sftpClient.Close()
+
+	params.Srce.SftpClient = sftpClient
 
 	log.Info("Dial the connection now")
 	log.Printf("SysIP= %s \n", params.Srce.SystemId)
@@ -112,7 +150,7 @@ func (*Server) Authenticate(ctx context.Context, req *sftppb.AuthenticateToRemot
 		Now that everything is working we then return the call
 	*/
 	res := &sftppb.AuthenticateToRemoteResponse{
-		Response: result.Error(),
+		Response: message,
 	}
 	log.Info(res.String())
 	return res, result
@@ -131,10 +169,52 @@ func (*Server) Mkdirs(ctx context.Context, req *sftppb.SrvMkdirsRequest) (*sftpp
 		log.Errorf("Error with connection %s", err)
 		result = err
 	}
+
+	// get the sftp connection from the pool.
+	// -------------------------------------------------------------------------------------------------
+	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
+	if !ok {
+		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
+	}
+	log.Infof("SSH_AUTH_SOCK = %s", AgentSocket)
+
+	// get the sftp connection from the pool.
+	// -------------------------------------------------------------------------------------------------
+	log.Info("SSH config pool")
+
+	s_port := strings.Replace(req.SrceSftp.HostPort, ":", "", -1)
+	port, _ := strconv.Atoi(s_port)
+	sshCfg := &ssh_sftp_connection_pool.SSHConfig{
+		User:               req.SrceSftp.Username,
+		Host:               req.SrceSftp.SystemId,
+		Port:               port,
+		Auth:               []ssh.AuthMethod{ssh.Password(req.SrceSftp.PassWord)},
+		Timeout:            30 * time.Second,
+		TCPKeepAlive:       false,
+		TCPKeepAlivePeriod: 30 * time.Second,
+		AgentSocket:        AgentSocket,
+		ForwardAgent:       false,
+		HostKeyCallback:    ssh.InsecureIgnoreHostKey(),
+	}
+
+	log.Infof("sshCfg = %s %s %d %v %v", sshCfg.User, sshCfg.Host, sshCfg.Port, sshCfg.Auth, sshCfg.AgentSocket)
+
+	var MaxPcktSize int
+	MaxPcktSize = int(params.Srce.BufferSize)
+	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
+	if err != nil {
+		log.Errorf("Error with conncection = %s", err)
+		return &sftppb.SrvMkdirsResponse{FileName: "", Error: err.Error()}, nil
+	}
+	defer Pool.ReleaseClient(sshCfg)
+	defer sftpClient.Close()
+
+	params.Srce.SftpClient = sftpClient
+
 	var tmpName FileTransfer
 
 	// Read From system
-	tmpName = GetSourceType(Params, params.Srce.Type+"-Mkdirs")
+	tmpName = GetSourceType(params, params.Srce.Type+"-Mkdirs")
 
 	res := &sftppb.SrvMkdirsResponse{
 		FileName: tmpName.s,
@@ -156,6 +236,48 @@ func (*Server) Remove(ctx context.Context, req *sftppb.SrvRemoveRequest) (*sftpp
 		log.Errorf("Error with connection %s", err)
 		result = err
 	}
+
+	// get the sftp connection from the pool.
+	// -------------------------------------------------------------------------------------------------
+	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
+	if !ok {
+		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
+	}
+	log.Infof("SSH_AUTH_SOCK = %s", AgentSocket)
+
+	// get the sftp connection from the pool.
+	// -------------------------------------------------------------------------------------------------
+	log.Info("SSH config pool")
+
+	s_port := strings.Replace(req.SrceSftp.HostPort, ":", "", -1)
+	port, _ := strconv.Atoi(s_port)
+	sshCfg := &ssh_sftp_connection_pool.SSHConfig{
+		User:               req.SrceSftp.Username,
+		Host:               req.SrceSftp.SystemId,
+		Port:               port,
+		Auth:               []ssh.AuthMethod{ssh.Password(req.SrceSftp.PassWord)},
+		Timeout:            30 * time.Second,
+		TCPKeepAlive:       false,
+		TCPKeepAlivePeriod: 30 * time.Second,
+		AgentSocket:        AgentSocket,
+		ForwardAgent:       false,
+		HostKeyCallback:    ssh.InsecureIgnoreHostKey(),
+	}
+
+	log.Infof("sshCfg = %s %s %d %v %v", sshCfg.User, sshCfg.Host, sshCfg.Port, sshCfg.Auth, sshCfg.AgentSocket)
+
+	var MaxPcktSize int
+	MaxPcktSize = int(params.Srce.BufferSize)
+	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
+	if err != nil {
+		log.Errorf("Error with conncection = %s", err)
+		return &sftppb.SrvRemoveResponse{FileName: "", Error: err.Error()}, nil
+	}
+	defer Pool.ReleaseClient(sshCfg)
+	defer sftpClient.Close()
+
+	params.Srce.SftpClient = sftpClient
+
 	var tmpName FileTransfer
 
 	// Read From system
@@ -187,70 +309,19 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 
 	// get the sftp connection from the pool.
 	// -------------------------------------------------------------------------------------------------
-	sshCfg := &sftp_cp.SSHConfig{
-		User:            "testuser",
-		Host:            "localhost",
-		Port:            10022,
-		AgentSocket:     AgentSocket,
-		Timeout:         30 * time.Second,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
+	if !ok {
+		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
 	}
+	log.Infof("SSH_AUTH_SOCK = %s", AgentSocket)
 
-	output, err := Pool.CombinedOutput(sshCfg, "uname -a ; sleep 3", nil, nil)
-	if err != nil {
-		log.Fatalf("%s: %s\n", err, output)
-	}
-
-	log.Println(string(output))
-	sshConn, err := sftp_cp.NewSSHConn(ctx, *sshCfg)
-	if err != nil {
-		log.Errorf("Error with NewSSHConn %v", err)
-	}
-	log.Infof("sshConn text %s", sshConn.Client.User())
-	log.Println("Active connections:", Pool.ActiveConns())
-	params.Srce.SftpConn = sshConn.Client
-	log.Infof("params.Srce.SftpConn = %v", params.Srce.SftpConn)
-	// -------------------------------------------------------------------------------------------------
-
-	var filename string
-	log.Info(filename)
-	from := params.Srce.Type
-	var bytesReadf int64 = 0
-
-	log.Println(from)
-
-	var tmpName FileTransfer
-
-	// Read From system
-	tmpName = GetSourceType(params, params.Srce.Type+"-Get")
-
-	bytesReadf = tmpName.i
-	log.Infof("%d bytes copied\n", bytesReadf)
-	res := &sftppb.SrvGetResponse{
-		FileName:      tmpName.s,
-		BytesReturned: strconv.FormatInt(bytesReadf, 10),
-		Error:         tmpName.e.Error(),
-	}
-	log.Info(res.String())
-	return res, result
-}
-func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvPutResponse, error) {
-	log.Infof("Put function was invoked with %v\n", req)
-
-	params := Params
-	var result error
-	params, err := setPutParams(req) // return type is ConnParams
-	if err != nil {
-		log.Errorf("Error with connection %s", err)
-		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
-	}
 	// get the sftp connection from the pool.
 	// -------------------------------------------------------------------------------------------------
 	log.Info("SSH config pool")
 
 	s_port := strings.Replace(req.SrceSftp.HostPort, ":", "", -1)
 	port, _ := strconv.Atoi(s_port)
-	sshCfg := &sftp_cp.SSHConfig{
+	sshCfg := &ssh_sftp_connection_pool.SSHConfig{
 		User:               req.SrceSftp.Username,
 		Host:               req.SrceSftp.SystemId,
 		Port:               port,
@@ -264,14 +335,97 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	}
 
 	log.Infof("sshCfg = %s %s %d %v %v", sshCfg.User, sshCfg.Host, sshCfg.Port, sshCfg.Auth, sshCfg.AgentSocket)
-	SshConnection, err := sftp_cp.NewSSHConn(ctx, *sshCfg)
+
+	var MaxPcktSize int
+	MaxPcktSize = int(params.Srce.BufferSize)
+	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
+
+	if err != nil {
+		log.Errorf("Error with connection = %s", err)
+		return &sftppb.SrvGetResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
+	}
+	defer Pool.ReleaseClient(sshCfg)
+	defer sftpClient.Close()
+
+	params.Srce.SftpClient = sftpClient
+	log.Info("ouputting pool info")
+	log.Infof("Active connections: %d", Pool.ActiveConns())
+
+	// now assign the ssh connection to the sftp
+	log.Println("Create new SFTP client")
+	// -------------------------------------------------------------------------------------------------
+
+	// we assume that the calling functions have already established that the system has the ability to make a connection.
+	// This is assuming that we are doing SFTP right now.  This will change in the future to support other file systems
+	//
+	var filename string
+	log.Info(filename)
+
+	//var bytesReadf int64 = 0
+	var tmpName FileTransfer
+
+	// Read From system
+	tmpName = GetSourceType(params, params.Srce.Type+"-Get")
+
+	log.Infof("%d bytes copied\n", tmpName.i)
+	res := &sftppb.SrvGetResponse{
+		FileName:      tmpName.s,
+		BytesReturned: strconv.FormatInt(tmpName.i, 10),
+		Error:         tmpName.e.Error(),
+	}
+	log.Info(res.String())
+	return res, result
+}
+
+func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvPutResponse, error) {
+	log.Infof("Put function was invoked with %v\n", req)
+
+	params := Params
+	var result error
+	params, err := setPutParams(req) // return type is ConnParams
+	if err != nil {
+		log.Errorf("Error with connection %s", err)
+		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
+	}
+
+	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
+	if !ok {
+		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
+	}
+	log.Infof("SSH_AUTH_SOCK = %s", AgentSocket)
+
+	// get the sftp connection from the pool.
+	// -------------------------------------------------------------------------------------------------
+	log.Info("SSH config pool")
+
+	s_port := strings.Replace(req.SrceSftp.HostPort, ":", "", -1)
+	port, _ := strconv.Atoi(s_port)
+	sshCfg := &ssh_sftp_connection_pool.SSHConfig{
+		User:               req.SrceSftp.Username,
+		Host:               req.SrceSftp.SystemId,
+		Port:               port,
+		Auth:               []ssh.AuthMethod{ssh.Password(req.SrceSftp.PassWord)},
+		Timeout:            30 * time.Second,
+		TCPKeepAlive:       false,
+		TCPKeepAlivePeriod: 30 * time.Second,
+		AgentSocket:        AgentSocket,
+		ForwardAgent:       false,
+		HostKeyCallback:    ssh.InsecureIgnoreHostKey(),
+	}
+
+	log.Infof("sshCfg = %s %s %d %v %v", sshCfg.User, sshCfg.Host, sshCfg.Port, sshCfg.Auth, sshCfg.AgentSocket)
+	var MaxPcktSize int
+	MaxPcktSize = int(params.Srce.BufferSize)
+	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
 	if err != nil {
 		log.Errorf("Error with conncection = %s", err)
 		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
 	}
+	defer Pool.ReleaseClient(sshCfg)
+	defer sftpClient.Close()
 
-	log.Infof("ref count = %d", SshConnection.RefCount())
-	params.Srce.SftpConn = SshConnection.Client
+	params.Srce.SftpClient = sftpClient
+
 	log.Info("ouputing pool info")
 	log.Infof("Active connections: %d", Pool.ActiveConns())
 
@@ -284,16 +438,12 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	//
 	var filename string
 	log.Info(filename)
-	log.Println("Hi")
-	from := params.Srce.Type
-	//to := Params.Dest.Type
-	//log.Info(to)
 
 	//var bytesReadf int64 = 0
 	var tmpName FileTransfer
 
 	// Read From system
-	log.Infof("calling GetSourceType(%v): ", from)
+	log.Infof("calling GetSourceType(%v): ", params.Srce.FileName)
 
 	// Write from local system To a file
 	tmpName = GetSourceType(params, params.Srce.Type+"-Put")
@@ -353,10 +503,18 @@ func setRemoveParams(req *sftppb.SrvRemoveRequest) (ConnParams, error) {
 	var result error
 
 	connParams := ConnParams{
-		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
-			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
-			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
-			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName},
+		Srce: SysUri{Username: req.SrceSftp.Username,
+			PassWord:     req.SrceSftp.PassWord,
+			SystemId:     req.SrceSftp.SystemId,
+			HostKey:      req.SrceSftp.HostKey,
+			HostPort:     req.SrceSftp.HostPort,
+			ClientKey:    req.SrceSftp.ClientKey,
+			FileName:     req.SrceSftp.FileName,
+			FileSize:     req.SrceSftp.FileSize,
+			BufferSize:   req.SrceSftp.BufferSize,
+			Type:         req.SrceSftp.Type,
+			DestFileName: req.SrceSftp.DestFileName,
+		},
 	}
 	return connParams, result
 }
@@ -370,10 +528,18 @@ func setGetParams(req *sftppb.SrvGetRequest) (ConnParams, error) {
 	var result error
 
 	connParams := ConnParams{
-		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
-			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
-			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
-			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName},
+		Srce: SysUri{Username: req.SrceSftp.Username,
+			PassWord:     req.SrceSftp.PassWord,
+			SystemId:     req.SrceSftp.SystemId,
+			HostKey:      req.SrceSftp.HostKey,
+			HostPort:     req.SrceSftp.HostPort,
+			ClientKey:    req.SrceSftp.ClientKey,
+			FileName:     req.SrceSftp.FileName,
+			FileSize:     req.SrceSftp.FileSize,
+			BufferSize:   req.SrceSftp.BufferSize,
+			Type:         req.SrceSftp.Type,
+			DestFileName: req.SrceSftp.DestFileName,
+		},
 	}
 	return connParams, result
 }
@@ -387,10 +553,18 @@ func setPutParams(req *sftppb.SrvPutRequest) (ConnParams, error) {
 	var result error
 
 	connParams := ConnParams{
-		Srce: SysUri{Username: req.SrceSftp.Username, PassWord: req.SrceSftp.PassWord, SystemId: req.SrceSftp.SystemId,
-			HostKey: req.SrceSftp.HostKey, HostPort: req.SrceSftp.HostPort, ClientKey: req.SrceSftp.ClientKey,
-			FileName: req.SrceSftp.FileName, FileSize: req.SrceSftp.FileSize, BufferSize: req.SrceSftp.BufferSize,
-			Type: req.SrceSftp.Type, DestFileName: req.SrceSftp.DestFileName},
+		Srce: SysUri{Username: req.SrceSftp.Username,
+			PassWord:     req.SrceSftp.PassWord,
+			SystemId:     req.SrceSftp.SystemId,
+			HostKey:      req.SrceSftp.HostKey,
+			HostPort:     req.SrceSftp.HostPort,
+			ClientKey:    req.SrceSftp.ClientKey,
+			FileName:     req.SrceSftp.FileName,
+			FileSize:     req.SrceSftp.FileSize,
+			BufferSize:   req.SrceSftp.BufferSize,
+			Type:         req.SrceSftp.Type,
+			DestFileName: req.SrceSftp.DestFileName,
+		},
 	}
 	return connParams, result
 }
@@ -506,33 +680,33 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 	log.Info("Dial the connection now")
 	log.Printf("SysIP= %s \n", params.Srce.SystemId)
 	log.Printf("SysPort= %s \n", params.Srce.HostPort)
-	var conn *ssh.Client
-	if params.Srce.SftpConn != nil {
-		conn = params.Srce.SftpConn
-		log.Info("Got connection for the GET")
-	} else {
-		log.Infof("Error with getting the connection pool connection for GET")
-		return FileTransfer{params.Srce.DestFileName, int64(0), errors.New("Error with connection pool connection")}
-	}
+	//var conn *ssh.Client
+	//if params.Srce.SftpConn != nil {
+	//	conn = params.Srce.SftpConn
+	//	log.Info("Got connection for the GET")
+	//} else {
+	//	log.Infof("Error with getting the connection pool connection for GET")
+	//	return FileTransfer{params.Srce.DestFileName, int64(0), errors.New("Error with connection pool connection")}
+	//}
 
 	// get the MaxPcktSize (BufferSize)
-	var MaxPcktSize int
-	MaxPcktSize = int(params.Srce.BufferSize)
+	//var MaxPcktSize int
+	//MaxPcktSize = int(params.Srce.BufferSize)
 
-	log.Printf("Packet size is: %v \n", MaxPcktSize)
-	// create new SFTP client on the specified connection
-	client, err := sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
-	if err != nil {
-		log.Errorf("Error creating new client, %v \n", err)
-		result = err.Error()
-		return FileTransfer{"", 0, err}
-	}
-	defer client.Close()
-	log.Println("Connection Data:  " + conn.User() + "  " + conn.Conn.RemoteAddr().String())
+	//log.Printf("Packet size is: %v \n", MaxPcktSize)
+	//// create new SFTP client on the specified connection
+	//client, err := sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
+	//if err != nil {
+	//	log.Errorf("Error creating new client, %v \n", err)
+	//	result = err.Error()
+	//	return FileTransfer{"", 0, err}
+	//}
+	client := params.Srce.SftpClient
+	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
 
 	// Create the destination file
 	log.Printf("Create destination file  %v \n", params.Srce.FileName)
-	dstFile, _ := os.Create(params.Srce.DestFileName) //local file
+	dstFile, err := os.Create(params.Srce.DestFileName) //local file
 	if err != nil {
 		log.Errorf("Error creating 1 dest file. %v \n", err)
 		result = err.Error()
@@ -578,16 +752,18 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	log.Println("Make the ssh/sftp connection")
 	result := ""
 
-	var MaxPcktSize int
-	MaxPcktSize = int(params.Srce.BufferSize)
-
-	log.Println("Create new SFTP client")
-	client, err := sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
-	if err != nil {
-		log.Println("Error creating new client", err)
-		return FileTransfer{"", 0, err}
-	}
-	defer client.Close()
+	//var MaxPcktSize int
+	//MaxPcktSize = int(params.Srce.BufferSize)
+	//
+	//log.Println("Create new SFTP client")
+	//client, err := sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
+	//if err != nil {
+	//	log.Println("Error creating new client", err)
+	//	return FileTransfer{"", 0, err}
+	//}
+	//defer client.Close()
+	client := params.Srce.SftpClient
+	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
 
 	// If the connection works then the next step is to create the dest file
 	log.Println("Create destination file")
@@ -647,17 +823,19 @@ func (a SFTP_Mkdirs_Factory) Mkdirs(params ConnParams) FileTransfer {
 
 	// Create the new sftp client from the pool
 	result := ""
-	log.Println("Create new SFTP client")
-	client, err := sftp.NewClient(params.Srce.SftpConn)
-	if err != nil {
-		log.Println("Error creating new client", err)
-		return FileTransfer{"", 0, err}
-	}
-	defer client.Close()
+	//log.Println("Create new SFTP client")
+	//client, err := sftp.NewClient(params.Srce.SftpConn)
+	//if err != nil {
+	//	log.Println("Error creating new client", err)
+	//	return FileTransfer{"", 0, err}
+	//}
+	//defer client.Close()
+	client := params.Srce.SftpClient
+	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
 
 	// Create destination directory
 	log.Println("Create destination directory")
-	err = client.MkdirAll(params.Srce.DestFileName)
+	err := client.MkdirAll(params.Srce.DestFileName)
 	if err != nil {
 		log.Errorf("Error creating directory. %s. %s \n", params.Srce.DestFileName, err)
 		result = err.Error()
@@ -694,18 +872,20 @@ func (a SFTP_Remove_Factory) Remove(params ConnParams) FileTransfer {
 
 	result := ""
 
-	// Create the new sftp client from the pool
-	log.Println("Create new SFTP client")
-	client, err := sftp.NewClient(params.Srce.SftpConn)
-	if err != nil {
-		log.Println("Error creating new client", err)
-		return FileTransfer{"", 0, err}
-	}
-	defer client.Close()
+	//// Create the new sftp client from the pool
+	//log.Println("Create new SFTP client")
+	//client, err := sftp.NewClient(params.Srce.SftpConn)
+	//if err != nil {
+	//	log.Println("Error creating new client", err)
+	//	return FileTransfer{"", 0, err}
+	//}
+	//defer client.Close()
+	client := params.Srce.SftpClient
+	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
 
 	var stat os.FileInfo
 
-	stat, err = client.Stat(params.Srce.DestFileName)
+	stat, err := client.Stat(params.Srce.DestFileName)
 	if err != nil {
 		log.Errorf("Unable to stat. %s. %s \n", params.Srce.DestFileName, err)
 		result = err.Error()

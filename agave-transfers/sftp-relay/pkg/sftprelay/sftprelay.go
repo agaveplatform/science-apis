@@ -79,7 +79,7 @@ func init() {
 	// Create the new pool
 	Pool = sftp_cp.NewPool(poolCfg)
 
-	log.Infof("Active connections: %s", Pool.ActiveConns())
+	log.Infof("Active connections: %d", Pool.ActiveConns())
 }
 
 func (*Server) Authenticate(ctx context.Context, req *sftppb.AuthenticateToRemoteRequest) (*sftppb.AuthenticateToRemoteResponse, error) {
@@ -128,7 +128,7 @@ func (*Server) Mkdirs(ctx context.Context, req *sftppb.SrvMkdirsRequest) (*sftpp
 
 	params, err := setMkdirsParams(req) // return type is ConnParams
 	if err != nil {
-		log.Errorf("Error with connection $s", err)
+		log.Errorf("Error with connection %s", err)
 		result = err
 	}
 	var tmpName FileTransfer
@@ -153,7 +153,7 @@ func (*Server) Remove(ctx context.Context, req *sftppb.SrvRemoveRequest) (*sftpp
 	var result error
 	params, err := setRemoveParams(req) // return type is ConnParams
 	if err != nil {
-		log.Errorf("Error with connection $s", err)
+		log.Errorf("Error with connection %s", err)
 		result = err
 	}
 	var tmpName FileTransfer
@@ -181,7 +181,7 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 
 	params, err := setGetParams(req) // return type is ConnParams
 	if err != nil {
-		log.Errorf("Error with connection $s", err)
+		log.Errorf("Error with connection %s", err)
 		result = err
 	}
 
@@ -209,7 +209,7 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 	log.Infof("sshConn text %s", sshConn.Client.User())
 	log.Println("Active connections:", Pool.ActiveConns())
 	params.Srce.SftpConn = sshConn.Client
-	log.Infof("params.Srce.SftpConn = %s", params.Srce.SftpConn)
+	log.Infof("params.Srce.SftpConn = %v", params.Srce.SftpConn)
 	// -------------------------------------------------------------------------------------------------
 
 	var filename string
@@ -241,7 +241,7 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	var result error
 	params, err := setPutParams(req) // return type is ConnParams
 	if err != nil {
-		log.Errorf("Error with connection $s", err)
+		log.Errorf("Error with connection %s", err)
 		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
 	}
 	// get the sftp connection from the pool.
@@ -263,17 +263,17 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 		HostKeyCallback:    ssh.InsecureIgnoreHostKey(),
 	}
 
-	log.Infof("sshCfg = ", sshCfg.User, sshCfg.Host, sshCfg.Port, sshCfg.Auth, sshCfg.AgentSocket)
+	log.Infof("sshCfg = %s %s %d %v %v", sshCfg.User, sshCfg.Host, sshCfg.Port, sshCfg.Auth, sshCfg.AgentSocket)
 	SshConnection, err := sftp_cp.NewSSHConn(ctx, *sshCfg)
 	if err != nil {
-		log.Errorf("Error with conncection = ", err)
+		log.Errorf("Error with conncection = %s", err)
 		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
 	}
 
-	log.Infof("ref count = %s", SshConnection.RefCount())
+	log.Infof("ref count = %d", SshConnection.RefCount())
 	params.Srce.SftpConn = SshConnection.Client
 	log.Info("ouputing pool info")
-	log.Infof("Active connections: %s", Pool.ActiveConns())
+	log.Infof("Active connections: %d", Pool.ActiveConns())
 
 	// now assign the ssh connection to the sftp
 	log.Println("Create new SFTP client")

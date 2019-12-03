@@ -3,10 +3,12 @@ module github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
 go 1.13
 
 require (
+	github.com/agaveplatform/ssh_sftp_connection_pool v0.0.0-20191202180155-bed569a48825
 	github.com/golang/protobuf v1.3.2
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/pkg/errors v0.8.1
 	github.com/pkg/sftp v1.10.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5

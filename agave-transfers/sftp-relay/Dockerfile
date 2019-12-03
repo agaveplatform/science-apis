@@ -8,6 +8,7 @@ LABEL tooling=transfer,sftp,worker,put
 
 COPY . $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
 COPY tmp/* $GOPATH/src/github.com/agaveplatform/science-apis/agave-protos/proto/
+COPY ./scripts/docker-entrypoint.sh /docker-entrypoint.sh
 
 WORKDIR $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
 
@@ -31,6 +32,6 @@ RUN make default && make install
 #RUN \
 #    chmod +x /usr/local/bin/sftp-relay
 #
-ENTRYPOINT ["sftp-relay"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 CMD ["--help"]

@@ -90,10 +90,10 @@ command in linux.`,
 }
 
 func init() {
-	rootCmd.AddCommand(getCmd)
+	rootCmd.AddCommand(mkdirsCmd)
 
-	getCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest folder.")
+	mkdirsCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest folder.")
 
-	viper.BindPFlag("dest", rootCmd.Flags().Lookup("dest"))
+	viper.BindPFlag("dest", removeCmd.Flags().Lookup("dest"))
 
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
+	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 	"io/ioutil"
@@ -18,6 +19,7 @@ type params ConnParams
 
 const bufSize = 1024 * 1024
 
+// net.Listener that creates local, buffered net.Conns over its Accept and Dial method
 var lis *bufconn.Listener
 
 func init() {
@@ -120,9 +122,7 @@ func TestAuthenticate(t *testing.T) {
 	}
 
 	resp, err := client.Authenticate(ctx, req)
-	if err != nil {
-		t.Errorf("Error while calling RPC auth: %v", err)
-	}
+	assert.Nilf(t, err, "Error while calling RPC Authenticate: %v", err)
 	log.Printf("Response: %+v", resp)
 }
 
@@ -151,9 +151,7 @@ func TestMkdirs(t *testing.T) {
 	}
 
 	resp, err := client.Mkdirs(ctx, req)
-	if err != nil {
-		t.Errorf("Error while calling RPC auth: %v", err)
-	}
+	assert.Nilf(t, err, "Error while calling RPC Mkdirs: %v", err)
 	log.Printf("Response: %+v", resp)
 }
 
@@ -182,9 +180,7 @@ func TestRemove(t *testing.T) {
 	}
 
 	resp, err := client.Remove(ctx, req)
-	if err != nil {
-		t.Errorf("Error while calling RPC auth: %v", err)
-	}
+	assert.Nilf(t, err, "Error while calling RPC Remove: %v", err)
 	log.Printf("Response: %+v", resp)
 }
 
@@ -215,9 +211,7 @@ func TestPut(t *testing.T) {
 	}
 
 	resp, err := client.Put(ctx, req)
-	if err != nil {
-		t.Errorf("Error while calling RPC auth: %v", err)
-	}
+	assert.Nilf(t, err, "Error while calling RPC Put: %v", err)
 	log.Printf("Response: %+v", resp)
 }
 
@@ -248,17 +242,13 @@ func TestGet(t *testing.T) {
 	}
 
 	resp, err := client.Get(ctx, req)
-	if err != nil {
-		t.Errorf("Error while calling RPC auth: %v", err)
-	}
+	assert.Nilf(t, err, "Error while calling RPC Get: %v", err)
 	log.Printf("Response: %+v", resp)
 }
 
 func TestThing(t *testing.T) {
 	userHome, err := os.UserHomeDir()
-	if err != nil {
-		t.Errorf("Unable to find user home directory. %s", err)
-	}
+	assert.Nilf(t, err, "Unable to find user home directory. %s", err)
 	defer testChdir(t, userHome)
 }
 
@@ -279,13 +269,10 @@ func TestGitGetter(t *testing.T) {
 
 func TestGetFileSize(t *testing.T) {
 	fileSize, err := GetFileSize("/bin/ls")
-	if fileSize <= 1 {
-		t.Error("Error with file size")
-	}
-	if err != nil {
-		t.Errorf("Error with GetFileSize: %v", err)
-	}
+	assert.Nilf(t, err, "Error with GetFileSize: %v", err)
+	assert.True(t, fileSize > 1, "File size should be greater than 1")
 }
+
 func TestSetGetParams(t *testing.T) {
 	const (
 		username = "testuser"
@@ -307,11 +294,13 @@ func TestSetGetParams(t *testing.T) {
 			Type:       "",
 		},
 	}
-	connParams := setGetParams(req)
-	if connParams.Srce.Username != "testuser" {
-		t.Error("Error with setGetParams.  Username != testuser")
-	}
+	connParams, err := setGetParams(req)
+
+	assert.Nilf(t, err, "Error with setGetParams: %v", err)
+	assert.Equal(t, connParams.Srce.Username, "testuser",
+		"Error with setGetParams.  Username != testuser")
 }
+
 func TestSetPutParams(t *testing.T) {
 	const (
 		username = "testuser"
@@ -333,11 +322,12 @@ func TestSetPutParams(t *testing.T) {
 			Type:       "",
 		},
 	}
-	connParams := setPutParams(req)
-	if connParams.Srce.Username != "testuser" {
-		t.Error("Error with setPutParams.  Username != testuser")
-	}
+	connParams, err := setPutParams(req)
+	assert.Nilf(t, err, "Error with setPutParams: %v", err)
+	assert.Equal(t, connParams.Srce.Username, "testuser",
+		"Error with setPutParams.  Username != testuser")
 }
+
 func TestSetGetAuthParams(t *testing.T) {
 	const (
 		username = "testuser"
@@ -359,8 +349,8 @@ func TestSetGetAuthParams(t *testing.T) {
 			Type:       "",
 		},
 	}
-	connParams := setGetAuthParams(req)
-	if connParams.Srce.Username != "testuser" {
-		t.Error("Error with setGetAuthParams.  Username != testuser")
-	}
+	connParams, err := setGetAuthParams(req)
+	assert.Nilf(t, err, "Error with setGetParams: %v", err)
+	assert.Equal(t, connParams.Srce.Username, "testuser",
+		"Error with setGetParams.  Username != testuser")
 }

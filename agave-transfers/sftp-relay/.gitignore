@@ -2,5 +2,6 @@
 /release/
 *.iml
 /.idea/
-/SFTPServer.log
+SFTPServer.log
 !/docker-compose.yml
+sftp-relay.log

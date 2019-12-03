@@ -90,10 +90,10 @@ command in linux.`,
 }
 
 func init() {
-	rootCmd.AddCommand(getCmd)
+	rootCmd.AddCommand(removeCmd)
 
-	getCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest file/folder to delete.")
+	removeCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest file/folder to delete.")
 
-	viper.BindPFlag("dest", rootCmd.Flags().Lookup("dest"))
+	viper.BindPFlag("dest", removeCmd.Flags().Lookup("dest"))
 
 }

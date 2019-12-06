@@ -42,57 +42,31 @@ func main() {
 	//	log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
 	//}
 
-	conn, err := grpc.Dial("0.0.0.0:50052", grpc.WithInsecure())
+	conn, err := grpc.Dial("0.0.0.0:50051", grpc.WithInsecure())
 	if err != nil {
-		log.Errorf("could not connect: %v", err)
+		log.Errorf("Could not connect: %v", err)
+		log.Exit(1)
 	}
 	log.Println("Connected to server.")
 	defer conn.Close()
 
 	//log.Printf("conn = %s", conn)
 	sftpRelay := sftppb.NewSftpRelayClient(conn)
-	log.Printf("c = %s", sftpRelay)
+	//log.Printf("Conn = %s", sftpRelay)
 	log.Println("Starting Get grpc client: ")
 
 	startPushtime := time.Now()
 	log.Printf("Start Time = %v \n", startPushtime)
 
-	//+++++++++++++++++++++++++++++++++++
-	// sftp file used to delete a file once it has been up loaded
-	//var config ssh.ClientConfig
-	//config = ssh.ClientConfig{
-	//	User: "testuser",
-	//	Auth: []ssh.AuthMethod{
-	//		ssh.Password("testuser"),
-	//	},
-	//	HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	//}
-
-	//sftpConn, err := ssh.Dial("tcp", "0.0.0.0:10022", &config)
-	//if err != nil {
-	//	log.Printf("Error Dialing the server: %v", err)
-	//	log.Error(err)
-	//}
-	//defer conn.Close()
-	//
-	//// create new SFTP client
-	//client, err := sftp.NewClient(sftpConn, sftp.MaxPacket(8192))
-	//if err != nil {
-	//	log.Errorf("Error creating new client, %v \n", err)
-	//}
-	//defer client.Close()
-
-	//+++++++++++++++++++++++++++++++++++
-
-	for i := 0; i < 50; i++ {
-
+	for i := 0; i < 1; i++ {
+		time.Sleep(1000)
 		req := &sftppb.SrvPutRequest{
 			SrceSftp: &sftppb.Sftp{
 				Username:   "testuser",
 				PassWord:   "testuser",
 				SystemId:   "0.0.0.0",
 				HostKey:    "",
-				FileName:   "/tmp/test/100K.txt",
+				FileName:   "/tmp/1MB.txt",
 				FileSize:   0,
 				HostPort:   ":10022",
 				ClientKey:  "",
@@ -101,48 +75,29 @@ func main() {
 				//BufferSize:	  32768,
 				//BufferSize:   65536,
 				Type:         "SFTP",
-				DestFileName: "/tmp/100K_" + strconv.Itoa(i) + ".txt",
+				DestFileName: "/tmp/1MB_" + strconv.Itoa(i) + ".txt",
 			},
 		}
-		log.Println("got past req :=")
+		log.Infof("got past req := ", req)
 
-		out := make(chan int)
-		go func() {
-			res, err := sftpRelay.Put(context.Background(), req)
-			if err != nil {
-				log.Errorf("error while calling RPC push: %s", err)
-				log.Fatal()
-			}
-			log.Println("End Time %s", time.Since(startPushtime).Seconds())
-
-			//log.Printf( "%v", res )
-			if res != nil {
-				log.Errorf("Response from Error Code: %v \n", res.Error)
-				log.Infof("Error: ", res.Error)
-				log.Infof("FileName: ", res.FileName)
-				log.Infof("BytesReturned:", res.BytesReturned)
-				//log.Fatal("Error from return")
-				os.Exit(1)
-			} else {
-				log.Printf("Response from FileName: %v \n", res.FileName)
-				log.Printf("Response from BytesReturned: %d \n", res.BytesReturned)
-			}
-			// rm file
-
-			// connect to the sftp server and delete the file
-			//client.Remove("/tmp/100MB_" + strconv.Itoa(i) + ".txt")
-			//os.Remove("/tmp/receive/1K_" + strconv.Itoa(i) + ".txt")
-
-			close(out)
-			//log.Infof("Channel results = ", <-out)
-		}()
-
-		time.Sleep(1000)
+		res, err := sftpRelay.Put(context.Background(), req)
+		if err != nil {
+			log.Errorf("Error while calling RPC push: %s", err)
+		}
+		if res != nil {
+			log.Errorf("Response from Error Code: %v \n", res.Error)
+			log.Printf("Response from FileName: %v \n", res.FileName)
+			log.Printf("Response from BytesReturned: %d \n", res.BytesReturned)
+		} else {
+			log.Printf("Response from FileName: %v \n", res.FileName)
+			log.Printf("Response from BytesReturned: %d \n", res.BytesReturned)
+		}
+		log.Println("End Time %s", time.Since(startPushtime).Seconds())
 	}
 
 	secs := time.Since(startPushtime).Seconds()
 	log.Println("gRPC Push Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
-
+	time.Sleep(1000)
 }
 
 func getTestSftpConfig() *sftppb.Sftp {

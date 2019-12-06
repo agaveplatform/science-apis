@@ -35,9 +35,9 @@ var putCmd = &cobra.Command{
 	Short: "Perform a PUT operations",
 	Long:  `Performs a put operation copying a file on the relay server to a remote server`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Println("Put Command =====================================")
-		log.Printf("srce file= %v \n", src)
-		log.Printf("dst file= %v \n", dest)
+		log.Infof("Put Command =====================================")
+		log.Infof("srce file= %v \n", src)
+		log.Infof("dst file= %v \n", dest)
 
 		// log to console and file
 		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -47,20 +47,20 @@ var putCmd = &cobra.Command{
 		wrt := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(wrt)
 
-		log.Printf("connecting to %v...", grpcservice)
+		log.Infof("connecting to %v...", grpcservice)
 
 		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
 			log.Fatalf("could not connect: %v", err)
 		}
-		log.Printf("Connected to %s", conn.Target())
+		log.Infof("Connected to %s", conn.Target())
 		defer conn.Close()
 
 		sftpRelay := sftppb.NewSftpRelayClient(conn)
 
-		log.Println("Starting Push rpc client: ")
+		log.Infof("Starting Push rpc client: ")
 		startPushtime := time.Now()
-		log.Printf("Start Time = %v", startPushtime)
+		log.Infof("Start Time = %v", startPushtime)
 
 		req := &sftppb.SrvPutRequest{
 			SrceSftp: &sftppb.Sftp{
@@ -72,29 +72,32 @@ var putCmd = &cobra.Command{
 				FileSize:     0,
 				HostPort:     ":" + strconv.Itoa(port),
 				ClientKey:    key,
-				BufferSize:   16138,
+				BufferSize:   8192,
 				Type:         "SFTP",
 				DestFileName: dest,
 			},
 		}
-		log.Println("got past req :=  ", req)
-		log.Println("connection: " + host + ":" + strconv.Itoa(port))
+		log.Infof("got past req :=  ", req)
+		log.Info("connection: " + host + ":" + strconv.Itoa(port))
 
 		res, err := sftpRelay.Put(context.Background(), req)
 		if err != nil {
-			log.Errorf("error while calling gRPC Put: %v", err)
+			log.Errorf("Error while calling gRPC Put: %v", err)
+			//log.Exit(1)
 		} else if res == nil {
-			log.Errorf("error with res variable while calling RPC")
+			log.Errorf("Error with res variable while calling RPC")
+			//log.Exit(1)
 		} else {
-			log.Println("End Time %s", time.Since(startPushtime).Seconds())
+			log.Info("End Time %s", time.Since(startPushtime).Seconds())
 			secs := time.Since(startPushtime).Seconds()
 			if res.Error != "" {
-				log.Printf("Response from Error Code: %v \n", res.Error)
+				log.Errorf("Response from Error Code: %v \n", res.Error)
+				//log.Exit(1)
 			} else {
-				log.Printf("Response from FileName: %v \n", res.FileName)
-				log.Printf("Response from BytesReturned: %v \n", res.BytesReturned)
+				log.Errorf("Response from FileName: %v \n", res.FileName)
+				log.Errorf("Response from BytesReturned: %v \n", res.BytesReturned)
 			}
-			log.Println("gRPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+			log.Info("gRPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 		}
 	},
 }

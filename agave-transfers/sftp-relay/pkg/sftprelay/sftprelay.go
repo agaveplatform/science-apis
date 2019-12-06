@@ -5,8 +5,6 @@ import (
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/ssh_sftp_connection_pool"
 
 	//ssh_sftp_connection_pool "github.com/agaveplatform/ssh_sftp_connection_pool"
-	"strings"
-
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
@@ -15,6 +13,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 	//"time"
 )
@@ -327,7 +326,7 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 		Port:               port,
 		Auth:               []ssh.AuthMethod{ssh.Password(req.SrceSftp.PassWord)},
 		Timeout:            30 * time.Second,
-		TCPKeepAlive:       false,
+		TCPKeepAlive:       true,
 		TCPKeepAlivePeriod: 30 * time.Second,
 		AgentSocket:        AgentSocket,
 		ForwardAgent:       false,
@@ -387,7 +386,8 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 		log.Errorf("Error with connection %s", err)
 		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
 	}
-
+	// get the sftp connection from the pool.
+	// -------------------------------------------------------------------------------------------------
 	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
 	if !ok {
 		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
@@ -414,9 +414,11 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	}
 
 	log.Infof("sshCfg = %s %s %d %v %v", sshCfg.User, sshCfg.Host, sshCfg.Port, sshCfg.Auth, sshCfg.AgentSocket)
+
 	var MaxPcktSize int
 	MaxPcktSize = int(params.Srce.BufferSize)
 	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
+
 	if err != nil {
 		log.Errorf("Error with conncection = %s", err)
 		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil

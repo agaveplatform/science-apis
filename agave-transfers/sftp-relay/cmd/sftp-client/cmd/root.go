@@ -33,9 +33,10 @@ const (
 	DefaultKey      = ""
 	DefaultPassword = "testuser"
 	DefaultPort     = 10022
-	DefaultSrc      = "/etc/hosts"
-	DefaultDest     = "/tmp/hosts"
-	GrpcService     = "[::1]:50051"
+	//DefaultSrc      = "/etc/hosts"
+	DefaultSrc  = "/tmp/10MB.txt"
+	DefaultDest = "/tmp/10MB.txt"
+	GrpcService = "[::1]:50051"
 )
 
 var (
@@ -74,7 +75,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// log to console and file
-	f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile("SFTPClient.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalf("error opening file: %v", err)
 	}
@@ -93,6 +94,9 @@ func init() {
 	pflags.StringVarP(&host, "host", "H", DefaultHost, "Hostname or ip of the remote host.")
 	pflags.IntVarP(&port, "port", "P", DefaultPort, "Port of the remote host.")
 	pflags.StringVarP(&grpcservice, "grpcservice", "g", GrpcService, "Address of the grpc server. (default is [::1]:50051")
+
+	pflags.StringVarP(&dest, "dest", "d", DefaultDest, "Dest file.  Defaults to /tmp/100K.txt")
+	pflags.StringVarP(&src, "src", "s", DefaultSrc, "Source file.  Defaults to /tmp/100K.txt")
 
 	viper.BindPFlag("username", pflags.Lookup("username"))
 	viper.BindPFlag("password", pflags.Lookup("password"))

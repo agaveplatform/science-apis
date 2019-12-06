@@ -40,9 +40,9 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Println("Get Command =====================================")
-		log.Printf("srce file= %v \n", src)
-		log.Printf("dst file= %v \n", dest)
+		log.Infof("Get Command =====================================")
+		log.Infof("srce file= %v \n", src)
+		log.Infof("dst file= %v \n", dest)
 
 		// log to console and file
 		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -60,9 +60,9 @@ to quickly create a Cobra application.`,
 
 		sftpRelay := sftppb.NewSftpRelayClient(conn)
 
-		log.Println("Starting Push rpc client: ")
+		log.Infof("Starting Push rpc client: ")
 		startPushtime := time.Now()
-		log.Printf("Start Time = %v", startPushtime)
+		log.Infof("Start Time = %v", startPushtime)
 
 		req := &sftppb.SrvGetRequest{
 			SrceSftp: &sftppb.Sftp{
@@ -74,29 +74,34 @@ to quickly create a Cobra application.`,
 				FileSize:     0,
 				HostPort:     ":" + strconv.Itoa(port),
 				ClientKey:    key,
-				BufferSize:   16138,
+				BufferSize:   8192,
 				Type:         "SFTP",
 				DestFileName: dest,
 			},
 		}
-		log.Println("got past req :=")
+		log.Infof("got past req :=", req)
+		log.Info("connection: " + host + ":" + strconv.Itoa(port))
 
 		res, err := sftpRelay.Get(context.Background(), req)
 		if err != nil {
-			log.Errorf("error while calling gRPC Put: %v", err)
+			log.Errorf("Error while calling gRPC Put: %v", err)
+			log.Exit(1)
 		}
 		if res == nil {
-			log.Errorf("error with res varable while calling RPC")
+			log.Errorf("Error with res varable while calling RPC")
+			log.Exit(1)
 		}
 		log.Println("End Time %s", time.Since(startPushtime).Seconds())
 		secs := time.Since(startPushtime).Seconds()
 		if res.Error != "" {
-			log.Printf("Response from Error Code: %v \n", res.Error)
+			log.Errorf("Response from Error Code: %v \n", res.Error)
+			log.Exit(1)
 		} else {
-			log.Printf("Response from FileName: %v \n", res.FileName)
-			log.Printf("Response from BytesReturned: %v \n", res.BytesReturned)
+			log.Errorf("Response from FileName: %v \n", res.FileName)
+			log.Errorf("Response from BytesReturned: %v \n", res.BytesReturned)
 		}
-		log.Println("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+		log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+		os.Remove(req.SrceSftp.DestFileName)
 	},
 }
 

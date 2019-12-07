@@ -36,7 +36,7 @@ const (
 	//DefaultSrc      = "/etc/hosts"
 	DefaultSrc  = "/tmp/10MB.txt"
 	DefaultDest = "/tmp/10MB.txt"
-	GrpcService = "[::1]:50051"
+	GrpcService = "[::1]:50052"
 )
 
 var (

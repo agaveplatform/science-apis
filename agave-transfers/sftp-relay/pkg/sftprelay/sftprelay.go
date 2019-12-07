@@ -3,6 +3,7 @@ package sftprelay
 import (
 	"errors"
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/ssh_sftp_connection_pool"
+	"path/filepath"
 
 	//ssh_sftp_connection_pool "github.com/agaveplatform/ssh_sftp_connection_pool"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
@@ -357,15 +358,22 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 	// we assume that the calling functions have already established that the system has the ability to make a connection.
 	// This is assuming that we are doing SFTP right now.  This will change in the future to support other file systems
 	//
-	var filename string
-	log.Info(filename)
+	//var filename string
+	//log.Info(filename)
 
 	//var bytesReadf int64 = 0
 	var tmpName FileTransfer
 
 	// Read From system
-	tmpName = GetSourceType(params, params.Srce.Type+"-Get")
+	log.Infof("calling GetSourceType(%v): ", params.Srce.FileName)
 
+	// Write to local system from a remote file system
+	tmpName = GetSourceType(params, params.Srce.Type+"-Get")
+	log.Println(params.Srce.Type + "-Get")
+
+	log.Printf("BytesWritten: %d", tmpName.i)
+	log.Println("File Name = " + tmpName.s)
+	log.Println("Error : " + tmpName.e.Error())
 	log.Infof("%d bytes copied\n", tmpName.i)
 	res := &sftppb.SrvGetResponse{
 		FileName:      tmpName.s,
@@ -381,11 +389,13 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 
 	params := Params
 	var result error
+
 	params, err := setPutParams(req) // return type is ConnParams
 	if err != nil {
 		log.Errorf("Error with connection %s", err)
 		return &sftppb.SrvPutResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
 	}
+
 	// get the sftp connection from the pool.
 	// -------------------------------------------------------------------------------------------------
 	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
@@ -406,7 +416,7 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 		Port:               port,
 		Auth:               []ssh.AuthMethod{ssh.Password(req.SrceSftp.PassWord)},
 		Timeout:            30 * time.Second,
-		TCPKeepAlive:       false,
+		TCPKeepAlive:       true,
 		TCPKeepAlivePeriod: 30 * time.Second,
 		AgentSocket:        AgentSocket,
 		ForwardAgent:       false,
@@ -427,7 +437,6 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	defer sftpClient.Close()
 
 	params.Srce.SftpClient = sftpClient
-
 	log.Info("ouputing pool info")
 	log.Infof("Active connections: %d", Pool.ActiveConns())
 
@@ -438,8 +447,8 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	// we assume that the calling functions have already established that the system has the ability to make a connection.
 	// This is assuming that we are doing SFTP right now.  This will change in the future to support other file systems
 	//
-	var filename string
-	log.Info(filename)
+	//var filename string
+	//log.Info(filename)
 
 	//var bytesReadf int64 = 0
 	var tmpName FileTransfer
@@ -447,7 +456,7 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 	// Read From system
 	log.Infof("calling GetSourceType(%v): ", params.Srce.FileName)
 
-	// Write from local system To a file
+	// Get file from remote file system To a file
 	tmpName = GetSourceType(params, params.Srce.Type+"-Put")
 	log.Println(params.Srce.Type + "-Put")
 
@@ -704,6 +713,13 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 	//	return FileTransfer{"", 0, err}
 	//}
 	client := params.Srce.SftpClient
+	wd, err := client.Getwd()
+	if err != nil {
+		log.Info("Error with working dir , %s", err)
+	}
+
+	log.Info("Working Dir = " + wd)
+
 	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
 
 	// Create the destination file
@@ -755,9 +771,9 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	result := ""
 
 	//var MaxPcktSize int
-	//MaxPcktSize = int(params.Srce.BufferSize)
-	//
-	//log.Println("Create new SFTP client")
+	//MaxPcktSize := int(params.Srce.BufferSize)
+
+	log.Println("Create new SFTP client")
 	//client, err := sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
 	//if err != nil {
 	//	log.Println("Error creating new client", err)
@@ -765,34 +781,57 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	//}
 	//defer client.Close()
 	client := params.Srce.SftpClient
+	wd, err := client.Getwd()
+	if err != nil {
+		log.Info("Error with working dir , %s", err)
+	}
+
+	log.Info("Working Dir = " + wd)
 	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
+
+	// walk a directory
+	//filepath.Dir(params.Srce.DestFileName)
+	w := client.Walk(filepath.Dir(params.Srce.DestFileName))
+	for w.Step() {
+		if w.Err() != nil {
+			continue
+		}
+		log.Info("Dir listing :" + w.Path())
+	}
 
 	// If the connection works then the next step is to create the dest file
 	log.Println("Create destination file")
-	dstFile, err := client.Create(params.Srce.DestFileName)
-	if err != nil {
-		log.Errorf("Error creating dest file. %s. %s \n", params.Srce.DestFileName, err)
-		result = err.Error()
-		return FileTransfer{"", 0, err}
-	}
-	defer dstFile.Close()
+	log.Info("DestFileName = " + params.Srce.DestFileName)
+
+	//###################################################################################################################
 
 	// now that the dest file is created the next step is to open the source file
 	log.Println("Open source file: " + params.Srce.FileName)
 	// note this should include the /scratch directory
-	srcFile, err := os.Open(params.Srce.FileName)
+	s := params.Srce.FileName
+	log.Info(strings.Trim(s, "\""))
+
+	srceFile, err := os.Open(params.Srce.FileName)
 	if err != nil {
 		log.Errorf("Opening source file: %s \n", err)
 		result = err.Error()
 		return FileTransfer{"", 0, err}
 	}
+
+	dstFile, err := client.OpenFile(params.Srce.DestFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
+	if err != nil {
+		log.Errorf("Error creating dest file. %s. %s \n", params.Srce.DestFileName, err)
+		result = err.Error()
+		return FileTransfer{"", 0, err}
+	}
+
 	var bytesWritten int64
 	// if there were no error opening the two files then process the file.
 	if result == "" {
 		log.Println("Write to dstFile: " + dstFile.Name())
 
 		// this will write the file BufferSize blocks until EOF is returned.
-		bytesWritten, err = dstFile.ReadFrom(srcFile)
+		bytesWritten, err = dstFile.ReadFrom(srceFile)
 		if err != nil {
 			log.Errorf("Error writing to file: %s \n", err)
 			result = err.Error()

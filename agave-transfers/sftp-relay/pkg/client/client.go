@@ -36,13 +36,13 @@ func init() {
 func main() {
 	log.Println("Starting SFTP client")
 
-	AgentSocket := "/var/folders/14/jjtrwj5x4zl2tp72ncljn6n40000gn/T//ssh-1t1VnKoFb1xv/agent.28756" //, ok := os.LookupEnv("SSH_AUTH_SOCK")
-	log.Infof("AgentSocket = ", AgentSocket)
+	//AgentSocket := "/var/folders/14/jjtrwj5x4zl2tp72ncljn6n40000gn/T//ssh-1t1VnKoFb1xv/agent.28756" //, ok := os.LookupEnv("SSH_AUTH_SOCK")
+	//log.Infof("AgentSocket = ", AgentSocket)
 	//if !ok {
 	//	log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
 	//}
 
-	conn, err := grpc.Dial("0.0.0.0:50051", grpc.WithInsecure())
+	conn, err := grpc.Dial("0.0.0.0:50052", grpc.WithInsecure())
 	if err != nil {
 		log.Errorf("Could not connect: %v", err)
 		log.Exit(1)
@@ -66,7 +66,7 @@ func main() {
 				PassWord:   "testuser",
 				SystemId:   "0.0.0.0",
 				HostKey:    "",
-				FileName:   "/tmp/1MB.txt",
+				FileName:   "/tmp/1K.txt",
 				FileSize:   0,
 				HostPort:   ":10022",
 				ClientKey:  "",
@@ -75,7 +75,7 @@ func main() {
 				//BufferSize:	  32768,
 				//BufferSize:   65536,
 				Type:         "SFTP",
-				DestFileName: "/tmp/1MB_" + strconv.Itoa(i) + ".txt",
+				DestFileName: "/tmp/1K_" + strconv.Itoa(i) + ".txt",
 			},
 		}
 		log.Infof("got past req := ", req)

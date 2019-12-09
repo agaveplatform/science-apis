@@ -20,6 +20,7 @@ message Sftp {
     int64 bufferSize = 9;
     string type = 10;
     string destFileName = 11;
+    bool force = 12;
 }
 
 message SrvPutRequest {

@@ -40,6 +40,7 @@ type SysUri struct {
 	DestFileName string
 	SftpConn     *ssh.Client
 	SftpClient   *sftp.Client
+	Force        bool
 }
 
 // This defines the Srce type that contains the type defined above.
@@ -500,6 +501,7 @@ func setMkdirsParams(req *sftppb.SrvMkdirsRequest) (ConnParams, error) {
 			BufferSize:   req.SrceSftp.BufferSize,
 			Type:         req.SrceSftp.Type,
 			DestFileName: req.SrceSftp.DestFileName,
+			Force:        req.SrceSftp.Force,
 		},
 	}
 	return connParams, result
@@ -525,6 +527,7 @@ func setRemoveParams(req *sftppb.SrvRemoveRequest) (ConnParams, error) {
 			BufferSize:   req.SrceSftp.BufferSize,
 			Type:         req.SrceSftp.Type,
 			DestFileName: req.SrceSftp.DestFileName,
+			Force:        req.SrceSftp.Force,
 		},
 	}
 	return connParams, result
@@ -550,6 +553,7 @@ func setGetParams(req *sftppb.SrvGetRequest) (ConnParams, error) {
 			BufferSize:   req.SrceSftp.BufferSize,
 			Type:         req.SrceSftp.Type,
 			DestFileName: req.SrceSftp.DestFileName,
+			Force:        req.SrceSftp.Force,
 		},
 	}
 	return connParams, result
@@ -575,6 +579,7 @@ func setPutParams(req *sftppb.SrvPutRequest) (ConnParams, error) {
 			BufferSize:   req.SrceSftp.BufferSize,
 			Type:         req.SrceSftp.Type,
 			DestFileName: req.SrceSftp.DestFileName,
+			Force:        req.SrceSftp.Force,
 		},
 	}
 	return connParams, result
@@ -600,6 +605,7 @@ func setGetAuthParams(req *sftppb.AuthenticateToRemoteRequest) (ConnParams, erro
 		BufferSize:   req.Auth.BufferSize,
 		Type:         req.Auth.Type,
 		DestFileName: req.Auth.DestFileName,
+		Force:        req.Auth.Force,
 	}}
 	return connParams, result
 }
@@ -722,37 +728,49 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 
 	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
 
+	// check if the file already exists. If is  does not and Force = false then error. Otherwise remove the
+	//file first then do everything else
+	fileExists := fileExists(params.Srce.DestFileName)
 	// Create the destination file
-	log.Printf("Create destination file  %v \n", params.Srce.FileName)
-	dstFile, err := os.Create(params.Srce.DestFileName) //local file
-	if err != nil {
-		log.Errorf("Error creating 1 dest file. %v \n", err)
-		result = err.Error()
-		return FileTransfer{"", 0, err}
-	}
-	defer dstFile.Close()
+	if fileExists && params.Srce.Force {
+		if fileExists {
+			err := os.Remove(params.Srce.DestFileName)
+			if err != nil {
+				log.Errorf("Error removing file ", err)
+			}
+		}
+		log.Printf("Create destination file  %v \n", params.Srce.FileName)
+		dstFile, err := os.Create(params.Srce.DestFileName) //local file
+		if err != nil {
+			log.Errorf("Error creating 1 dest file. %v \n", err)
+			result = err.Error()
+			return FileTransfer{"", 0, err}
+		}
+		defer dstFile.Close()
 
-	// Now open the source file and read the contents.
-	log.Printf("Open source file %v \n", params.Srce.FileName)
-	srcFile, err := client.Open(params.Srce.FileName)
-	if err != nil {
-		log.Errorf("Opening source 1 file: %v \n", err)
-		result = err.Error()
-		return FileTransfer{"", 0, err}
-	}
-	log.Printf("Source file 1 is opened. %s", params.Srce.FileName)
+		// Now open the source file and read the contents.
+		log.Printf("Open source file %v \n", params.Srce.FileName)
+		srcFile, err := client.Open(params.Srce.FileName)
+		if err != nil {
+			log.Errorf("Opening source 1 file: %v \n", err)
+			result = err.Error()
+			return FileTransfer{"", 0, err}
+		}
+		log.Printf("Source file 1 is opened. %s", params.Srce.FileName)
 
-	// Write the contents to the destination.
-	bytesWritten, err := srcFile.WriteTo(dstFile)
-	if err != nil {
-		log.Errorf("Error writing 1 to file: %v \n", err)
-		result = err.Error()
-		return FileTransfer{"", 0, err}
+		// Write the contents to the destination.
+		bytesWritten, err := srcFile.WriteTo(dstFile)
+		if err != nil {
+			log.Errorf("Error writing 1 to file: %v \n", err)
+			result = err.Error()
+			return FileTransfer{"", 0, err}
+		}
+		log.Infof("%d bytes copied\n", bytesWritten)
+		// If everything worked ok return the DestFileName, bytesWritten, and any Errors, with should be empty
+		return FileTransfer{params.Srce.DestFileName, int64(bytesWritten), errors.New(result)}
+	} else {
+		return FileTransfer{params.Srce.DestFileName, 0, errors.New("file already exists")}
 	}
-	log.Infof("%d bytes copied\n", bytesWritten)
-
-	// If everything worked ok return the DestFileName, bytesWritten, and any Errors, with should be empty
-	return FileTransfer{params.Srce.DestFileName, int64(bytesWritten), errors.New(result)}
 
 }
 
@@ -804,49 +822,63 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	log.Info("DestFileName = " + params.Srce.DestFileName)
 
 	//###################################################################################################################
-
-	// now that the dest file is created the next step is to open the source file
-	log.Println("Open source file: " + params.Srce.FileName)
-	// note this should include the /scratch directory
-	s := params.Srce.FileName
-	log.Info(strings.Trim(s, "\""))
-
-	srceFile, err := os.Open(params.Srce.FileName)
-	if err != nil {
-		log.Errorf("Opening source file: %s \n", err)
-		result = err.Error()
-		return FileTransfer{"", 0, err}
-	}
-
-	dstFile, err := client.OpenFile(params.Srce.DestFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
-	if err != nil {
-		log.Errorf("Error creating dest file. %s. %s \n", params.Srce.DestFileName, err)
-		result = err.Error()
-		return FileTransfer{"", 0, err}
-	}
-
-	var bytesWritten int64
-	// if there were no error opening the two files then process the file.
-	if result == "" {
-		log.Println("Write to dstFile: " + dstFile.Name())
-
-		// this will write the file BufferSize blocks until EOF is returned.
-		bytesWritten, err = dstFile.ReadFrom(srceFile)
-		if err != nil {
-			log.Errorf("Error writing to file: %s \n", err)
-			result = err.Error()
+	// check if the file already exists. If is  does not and Force = false then error. Otherwise remove the
+	//file first then do everything else
+	fileExists := fileExists(params.Srce.DestFileName)
+	// Create the destination file
+	if fileExists && params.Srce.Force {
+		if fileExists {
+			err := os.Remove(params.Srce.DestFileName)
+			if err != nil {
+				log.Errorf("Error removing file ", err)
+			}
 		}
-		log.Println("Name: " + dstFile.Name())
-		log.Println(bytesWritten)
+
+		// now that the dest file is created the next step is to open the source file
+		log.Println("Open source file: " + params.Srce.FileName)
+		// note this should include the /scratch directory
+		s := params.Srce.FileName
+		log.Info(strings.Trim(s, "\""))
+
+		srceFile, err := os.Open(params.Srce.FileName)
+		if err != nil {
+			log.Errorf("Opening source file: %s \n", err)
+			result = err.Error()
+			return FileTransfer{"", 0, err}
+		}
+
+		dstFile, err := client.OpenFile(params.Srce.DestFileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
+		if err != nil {
+			log.Errorf("Error creating dest file. %s. %s \n", params.Srce.DestFileName, err)
+			result = err.Error()
+			return FileTransfer{"", 0, err}
+		}
+
+		var bytesWritten int64
+		// if there were no error opening the two files then process the file.
+		if result == "" {
+			log.Println("Write to dstFile: " + dstFile.Name())
+
+			// this will write the file BufferSize blocks until EOF is returned.
+			bytesWritten, err = dstFile.ReadFrom(srceFile)
+			if err != nil {
+				log.Errorf("Error writing to file: %s \n", err)
+				result = err.Error()
+			}
+			log.Println("Name: " + dstFile.Name())
+			log.Println(bytesWritten)
+			err = errors.New(result)
+			log.Printf("%d bytes copied\n", bytesWritten)
+			log.Println("Errors: " + err.Error())
+			return FileTransfer{dstFile.Name(), bytesWritten, err}
+		}
+		log.Println(result)
 		err = errors.New(result)
-		log.Printf("%d bytes copied\n", bytesWritten)
-		log.Println("Errors: " + err.Error())
-		return FileTransfer{dstFile.Name(), bytesWritten, err}
+		log.Errorf("There was an error with the transfer.  Err = %s \n", err)
+		return FileTransfer{"", 0, err}
+	} else {
+		return FileTransfer{params.Srce.DestFileName, 0, errors.New("file already exists")}
 	}
-	log.Println(result)
-	err = errors.New(result)
-	log.Errorf("There was an error with the transfer.  Err = %s \n", err)
-	return FileTransfer{"", 0, err}
 }
 
 func (a SFTP_Mkdirs_Factory) Mkdirs(params ConnParams) FileTransfer {
@@ -974,3 +1006,10 @@ func GetFileSize(filepath string) (int64, error) {
 }
 
 //
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return true
+}

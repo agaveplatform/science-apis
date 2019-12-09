@@ -77,6 +77,7 @@ to quickly create a Cobra application.`,
 				BufferSize:   8192,
 				Type:         "SFTP",
 				DestFileName: dest,
+				Force:        force,
 			},
 		}
 		log.Infof("got past req :=", req)

@@ -34,9 +34,10 @@ const (
 	DefaultPassword = "testuser"
 	DefaultPort     = 10022
 	//DefaultSrc      = "/etc/hosts"
-	DefaultSrc  = "/tmp/10MB.txt"
-	DefaultDest = "/tmp/10MB.txt"
-	GrpcService = "[::1]:50052"
+	DefaultSrc   = "/tmp/10MB.txt"
+	DefaultDest  = "/tmp/10MB.txt"
+	GrpcService  = "[::1]:50052"
+	DefaultForce = true
 )
 
 var (
@@ -49,6 +50,7 @@ var (
 	src         string
 	dest        string
 	grpcservice string
+	force       bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -94,9 +96,9 @@ func init() {
 	pflags.StringVarP(&host, "host", "H", DefaultHost, "Hostname or ip of the remote host.")
 	pflags.IntVarP(&port, "port", "P", DefaultPort, "Port of the remote host.")
 	pflags.StringVarP(&grpcservice, "grpcservice", "g", GrpcService, "Address of the grpc server. (default is [::1]:50051")
-
 	pflags.StringVarP(&dest, "dest", "d", DefaultDest, "Dest file.  Defaults to /tmp/100K.txt")
 	pflags.StringVarP(&src, "src", "s", DefaultSrc, "Source file.  Defaults to /tmp/100K.txt")
+	pflags.BoolVarP(&force, "force", "f", DefaultForce, "Force true = overwrite the existing dest file.")
 
 	viper.BindPFlag("username", pflags.Lookup("username"))
 	viper.BindPFlag("password", pflags.Lookup("password"))
@@ -104,6 +106,7 @@ func init() {
 	viper.BindPFlag("host", pflags.Lookup("host"))
 	viper.BindPFlag("port", pflags.Lookup("port"))
 	viper.BindPFlag("grpcservice", pflags.Lookup("grpcservice"))
+	viper.BindPFlag("force", pflags.Lookup("force"))
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

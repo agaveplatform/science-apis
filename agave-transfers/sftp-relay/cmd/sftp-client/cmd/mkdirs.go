@@ -67,6 +67,7 @@ command in linux.`,
 				ClientKey:    key,
 				Type:         "SFTP",
 				DestFileName: dest,
+				Force:        force,
 			},
 		}
 		log.Println("got past req :=")

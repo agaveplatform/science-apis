@@ -30,6 +30,7 @@ func ParseSftpConfig(flags *pflag.FlagSet) *agaveproto.Sftp {
 	key, _ := flags.GetString("key")
 	dest, _ := flags.GetString("dest")
 	src, _ := flags.GetString("src")
+	force, _ := flags.GetBool("force")
 
 	//fmt.Println(&agaveproto.Sftp )
 
@@ -42,5 +43,6 @@ func ParseSftpConfig(flags *pflag.FlagSet) *agaveproto.Sftp {
 		DestFileName: dest,
 		FileName:     src,
 		Type:         "SFTP",
+		Force:        force,
 	}
 }

@@ -730,7 +730,7 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 
 	// check if the file already exists. If is  does not and Force = false then error. Otherwise remove the
 	//file first then do everything else
-	fileExists := fileExists(params.Srce.DestFileName)
+	fileExists := fileExistsLocal(params.Srce.DestFileName)
 	// Create the destination file
 	if fileExists && params.Srce.Force {
 		if fileExists {
@@ -824,9 +824,9 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	//###################################################################################################################
 	// check if the file already exists. If is  does not and Force = false then error. Otherwise remove the
 	//file first then do everything else
-	fileExists := fileExists(params.Srce.DestFileName)
+	fileExists := fileExistsRemote(params.Srce.DestFileName, client)
 	// Create the destination file
-	if fileExists && params.Srce.Force {
+	if (fileExists && params.Srce.Force) || !fileExists {
 		if fileExists {
 			err := os.Remove(params.Srce.DestFileName)
 			if err != nil {
@@ -1006,10 +1006,18 @@ func GetFileSize(filepath string) (int64, error) {
 }
 
 //
-func fileExists(filename string) bool {
+func fileExistsLocal(filename string) bool {
 	_, err := os.Stat(filename)
 	if os.IsNotExist(err) {
 		return false
 	}
 	return true
+}
+func fileExistsRemote(filename string, client *sftp.Client) bool {
+	_, err := client.Stat(filename)
+	if !errors.Is(err, sftp.ErrSshFxNoSuchFile) {
+		return false
+	}
+	return true
+
 }

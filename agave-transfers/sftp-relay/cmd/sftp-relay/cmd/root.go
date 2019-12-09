@@ -23,7 +23,7 @@ func Execute() {
 	wrt := io.MultiWriter(os.Stdout, f)
 	log.SetOutput(wrt)
 
-	port := "0.0.0.0:50052"
+	port := "0.0.0.0:50051"
 	// set up the protobuf server
 	lis, err := net.Listen("tcp", port)
 	if err != nil {

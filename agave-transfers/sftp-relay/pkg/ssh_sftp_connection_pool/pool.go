@@ -187,9 +187,9 @@ func (p *SSHPool) newSession(cfg *SSHConfig, envs map[string]string) (*ssh.Sessi
 		return nil, nil, err
 	}
 
-	conn.IncrRefCount()
+	//conn.IncrRefCount()
 
-	return session, conn.DecrRefCount, nil
+	return session, conn.IncrRefCount, nil
 }
 
 // NewSession creates and configures a new session reusing an existing
@@ -198,7 +198,7 @@ func (p *SSHPool) newSession(cfg *SSHConfig, envs map[string]string) (*ssh.Sessi
 // If no connection exists, or there are any problems with connection
 // a new connection will be created and added to the pool. After this
 // a new session will be set up.
-func (p *SSHPool) ClaimClient(cfg *SSHConfig, opts ...sftp.ClientOption) (*sftp.Client, error) {
+func (p *SSHPool) ClaimClient(cfg *SSHConfig, opts ...sftp.ClientOption) (*sftp.Client, int, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -207,28 +207,32 @@ func (p *SSHPool) ClaimClient(cfg *SSHConfig, opts ...sftp.ClientOption) (*sftp.
 	if !found {
 		conn, err = NewSSHConn(p.ctx, *cfg)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		p.table[conn.Hash()] = conn
 	}
 
 	s, err := conn.NewSession(nil)
+	conn.IncrRefCount()
+
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if err := s.RequestSubsystem("sftp"); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	pw, err := s.StdinPipe()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	pr, err := s.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return sftp.NewClientPipe(pr, pw, opts...)
+	sftpClient, err := sftp.NewClientPipe(pr, pw, opts...)
+
+	return sftpClient, conn.RefCount(), err
 }
 
 func (p *SSHPool) ReleaseClient(cfg *SSHConfig) error {

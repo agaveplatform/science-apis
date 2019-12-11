@@ -3,10 +3,9 @@ package sftprelay
 import (
 	"errors"
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/ssh_sftp_connection_pool"
-	"path/filepath"
-
 	//ssh_sftp_connection_pool "github.com/agaveplatform/ssh_sftp_connection_pool"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
+	"github.com/google/uuid"
 	"github.com/pkg/sftp"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
@@ -54,6 +53,7 @@ var Params ConnParams
 //The Pool and AgentSocket variables are created here and instantiated in the init() function.
 var Pool *ssh_sftp_connection_pool.SSHPool
 var AgentSocket string
+var requestId uuid.UUID
 
 func init() {
 	// Open a log file to log the server
@@ -67,7 +67,6 @@ func init() {
 	/*
 		Now set up the ssh connection pool
 	*/
-	//TODO we need to get the AgentSocket varaible.  It is hard coded here to make everythingo work
 	//AgentSocket = "/var/folders/14/jjtrwj5x4zl2tp72ncljn6n40000gn/T//ssh-1t1VnKoFb1xv/agent.28756"
 	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
 	if !ok {
@@ -77,7 +76,7 @@ func init() {
 
 	// set the pool configuration.  The MaxConns sets the maximum connections for the pool.
 	poolCfg := &ssh_sftp_connection_pool.PoolConfig{
-		GCInterval: 5 * time.Second,
+		GCInterval: 2 * time.Second,
 		MaxConns:   500,
 	}
 	// Create the new pool
@@ -121,9 +120,9 @@ func (*Server) Authenticate(ctx context.Context, req *sftppb.AuthenticateToRemot
 		Host:               req.Auth.SystemId,
 		Port:               port,
 		Auth:               []ssh.AuthMethod{ssh.Password(req.Auth.PassWord)},
-		Timeout:            30 * time.Second,
-		TCPKeepAlive:       false,
-		TCPKeepAlivePeriod: 30 * time.Second,
+		Timeout:            60 * time.Second,
+		TCPKeepAlive:       true,
+		TCPKeepAlivePeriod: 60 * time.Second,
 		AgentSocket:        AgentSocket,
 		ForwardAgent:       false,
 		HostKeyCallback:    ssh.InsecureIgnoreHostKey(),
@@ -133,14 +132,14 @@ func (*Server) Authenticate(ctx context.Context, req *sftppb.AuthenticateToRemot
 
 	var MaxPcktSize int
 	MaxPcktSize = int(params.Srce.BufferSize)
-	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
+	sftpClient, sessionCount, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
 	if err != nil {
 		log.Errorf("Error with conncection = %s", err)
 		return &sftppb.AuthenticateToRemoteResponse{Response: err.Error()}, nil
 	}
 	defer Pool.ReleaseClient(sshCfg)
 	defer sftpClient.Close()
-
+	log.Infof("Number of active connections: %d", sessionCount)
 	params.Srce.SftpClient = sftpClient
 
 	log.Info("Dial the connection now")
@@ -202,14 +201,14 @@ func (*Server) Mkdirs(ctx context.Context, req *sftppb.SrvMkdirsRequest) (*sftpp
 
 	var MaxPcktSize int
 	MaxPcktSize = int(params.Srce.BufferSize)
-	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
+	sftpClient, sessionCount, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
 	if err != nil {
 		log.Errorf("Error with conncection = %s", err)
 		return &sftppb.SrvMkdirsResponse{FileName: "", Error: err.Error()}, nil
 	}
 	defer Pool.ReleaseClient(sshCfg)
 	defer sftpClient.Close()
-
+	log.Infof("Number of active connections: %d", sessionCount)
 	params.Srce.SftpClient = sftpClient
 
 	var tmpName FileTransfer
@@ -269,14 +268,14 @@ func (*Server) Remove(ctx context.Context, req *sftppb.SrvRemoveRequest) (*sftpp
 
 	var MaxPcktSize int
 	MaxPcktSize = int(params.Srce.BufferSize)
-	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
+	sftpClient, sessionCount, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
 	if err != nil {
 		log.Errorf("Error with conncection = %s", err)
 		return &sftppb.SrvRemoveResponse{FileName: "", Error: err.Error()}, nil
 	}
 	defer Pool.ReleaseClient(sshCfg)
 	defer sftpClient.Close()
-
+	log.Infof("Number of active connections: %d", sessionCount)
 	params.Srce.SftpClient = sftpClient
 
 	var tmpName FileTransfer
@@ -298,6 +297,9 @@ func (*Server) Remove(ctx context.Context, req *sftppb.SrvRemoveRequest) (*sftpp
 */
 func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvGetResponse, error) {
 	log.Printf("Get Service function was invoked with %v\n", req)
+	//instanceUuid := uuid.New()
+	//log.Infof("begin uuid = %s", instanceUuid)
+	//defer log.Infof("end uuid = %s", instanceUuid)
 
 	params := Params
 	var result error
@@ -327,9 +329,9 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 		Host:               req.SrceSftp.SystemId,
 		Port:               port,
 		Auth:               []ssh.AuthMethod{ssh.Password(req.SrceSftp.PassWord)},
-		Timeout:            30 * time.Second,
+		Timeout:            60 * time.Second,
 		TCPKeepAlive:       true,
-		TCPKeepAlivePeriod: 30 * time.Second,
+		TCPKeepAlivePeriod: 60 * time.Second,
 		AgentSocket:        AgentSocket,
 		ForwardAgent:       false,
 		HostKeyCallback:    ssh.InsecureIgnoreHostKey(),
@@ -339,8 +341,7 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 
 	var MaxPcktSize int
 	MaxPcktSize = int(params.Srce.BufferSize)
-	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
-
+	sftpClient, sessionCount, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
 	if err != nil {
 		log.Errorf("Error with connection = %s", err)
 		return &sftppb.SrvGetResponse{FileName: "", BytesReturned: "0", Error: err.Error()}, nil
@@ -350,7 +351,7 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 
 	params.Srce.SftpClient = sftpClient
 	log.Info("ouputting pool info")
-	log.Infof("Active connections: %d", Pool.ActiveConns())
+	log.Infof("Number of active connections: %d", sessionCount)
 
 	// now assign the ssh connection to the sftp
 	log.Println("Create new SFTP client")
@@ -382,6 +383,8 @@ func (*Server) Get(ctx context.Context, req *sftppb.SrvGetRequest) (*sftppb.SrvG
 		Error:         tmpName.e.Error(),
 	}
 	log.Info(res.String())
+	//defer log.Infof("end uuid = %s", instanceUuid)
+	time.Sleep(1000)
 	return res, result
 }
 
@@ -428,7 +431,7 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 
 	var MaxPcktSize int
 	MaxPcktSize = int(params.Srce.BufferSize)
-	sftpClient, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
+	sftpClient, sessionCount, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MaxPcktSize))
 
 	if err != nil {
 		log.Errorf("Error with conncection = %s", err)
@@ -439,7 +442,7 @@ func (*Server) Put(ctx context.Context, req *sftppb.SrvPutRequest) (*sftppb.SrvP
 
 	params.Srce.SftpClient = sftpClient
 	log.Info("ouputing pool info")
-	log.Infof("Active connections: %d", Pool.ActiveConns())
+	log.Infof("Number of active connections: %d", sessionCount)
 
 	// now assign the ssh connection to the sftp
 	log.Println("Create new SFTP client")
@@ -698,48 +701,37 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 	log.Printf("SysIP= %s \n", params.Srce.SystemId)
 	log.Printf("SysPort= %s \n", params.Srce.HostPort)
 	//var conn *ssh.Client
-	//if params.Srce.SftpConn != nil {
-	//	conn = params.Srce.SftpConn
-	//	log.Info("Got connection for the GET")
-	//} else {
-	//	log.Infof("Error with getting the connection pool connection for GET")
-	//	return FileTransfer{params.Srce.DestFileName, int64(0), errors.New("Error with connection pool connection")}
-	//}
 
 	// get the MaxPcktSize (BufferSize)
-	//var MaxPcktSize int
-	//MaxPcktSize = int(params.Srce.BufferSize)
+	var MaxPcktSize int
+	MaxPcktSize = int(params.Srce.BufferSize)
 
-	//log.Printf("Packet size is: %v \n", MaxPcktSize)
-	//// create new SFTP client on the specified connection
-	//client, err := sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
-	//if err != nil {
-	//	log.Errorf("Error creating new client, %v \n", err)
-	//	result = err.Error()
-	//	return FileTransfer{"", 0, err}
-	//}
+	log.Printf("Packet size is: %v \n", MaxPcktSize)
+	// create new SFTP client on the specified connection
 	client := params.Srce.SftpClient
-	wd, err := client.Getwd()
-	if err != nil {
-		log.Info("Error with working dir , %s", err)
+	if client == nil {
+		var err error
+		client, err = sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
+		if err != nil {
+			log.Errorf("Error creating new client, %v \n", err)
+			result = err.Error()
+			return FileTransfer{"", 0, err}
+		}
 	}
-
-	log.Info("Working Dir = " + wd)
-
 	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
 
 	// check if the file already exists. If is  does not and Force = false then error. Otherwise remove the
 	//file first then do everything else
 	fileExists := fileExistsLocal(params.Srce.DestFileName)
 	// Create the destination file
-	if fileExists && params.Srce.Force {
+	if (fileExists && params.Srce.Force) || !fileExists {
 		if fileExists {
 			err := os.Remove(params.Srce.DestFileName)
 			if err != nil {
 				log.Errorf("Error removing file ", err)
 			}
 		}
-		log.Printf("Create destination file  %v \n", params.Srce.FileName)
+		log.Infof("Create destination file ", params.Srce.FileName)
 		dstFile, err := os.Create(params.Srce.DestFileName) //local file
 		if err != nil {
 			log.Errorf("Error creating 1 dest file. %v \n", err)
@@ -756,16 +748,27 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 			result = err.Error()
 			return FileTransfer{"", 0, err}
 		}
-		log.Printf("Source file 1 is opened. %s", params.Srce.FileName)
+		defer srcFile.Close()
+		log.Printf("Source file is opened. %s", params.Srce.FileName)
 
-		// Write the contents to the destination.
+		//const size = 1e10
+		//// Write the contents to the destination.
 		bytesWritten, err := srcFile.WriteTo(dstFile)
 		if err != nil {
 			log.Errorf("Error writing 1 to file: %v \n", err)
 			result = err.Error()
 			return FileTransfer{"", 0, err}
 		}
+		err = dstFile.Sync()
+		if err != nil {
+			log.Error(err)
+			result = err.Error()
+			return FileTransfer{"", 0, err}
+		}
+		dstFile.Close()
 		log.Infof("%d bytes copied\n", bytesWritten)
+		//time.Sleep(10000)
+
 		// If everything worked ok return the DestFileName, bytesWritten, and any Errors, with should be empty
 		return FileTransfer{params.Srce.DestFileName, int64(bytesWritten), errors.New(result)}
 	} else {
@@ -775,7 +778,7 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 }
 
 func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
-	log.Info("WriteTo sFTP Service function was invoked ")
+	log.Info("WriteTo (PUT) sFTP Service function was invoked ")
 
 	// write the parmas out to the log file
 	log.Println("User name: " + params.Srce.Username)
@@ -788,34 +791,22 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	log.Println("Make the ssh/sftp connection")
 	result := ""
 
-	//var MaxPcktSize int
-	//MaxPcktSize := int(params.Srce.BufferSize)
+	var MaxPcktSize int
+	MaxPcktSize = int(params.Srce.BufferSize)
 
-	log.Println("Create new SFTP client")
-	//client, err := sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
-	//if err != nil {
-	//	log.Println("Error creating new client", err)
-	//	return FileTransfer{"", 0, err}
-	//}
-	//defer client.Close()
 	client := params.Srce.SftpClient
-	wd, err := client.Getwd()
-	if err != nil {
-		log.Info("Error with working dir , %s", err)
-	}
-
-	log.Info("Working Dir = " + wd)
-	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
-
-	// walk a directory
-	//filepath.Dir(params.Srce.DestFileName)
-	w := client.Walk(filepath.Dir(params.Srce.DestFileName))
-	for w.Step() {
-		if w.Err() != nil {
-			continue
+	log.Info("Client =", client)
+	log.Println("Create new SFTP client")
+	if client == nil {
+		client, err := sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
+		if err != nil {
+			log.Println("Error creating new client", err)
+			return FileTransfer{"", 0, err}
 		}
-		log.Info("Dir listing :" + w.Path())
+		defer client.Close()
 	}
+
+	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
 
 	// If the connection works then the next step is to create the dest file
 	log.Println("Create destination file")
@@ -872,6 +863,14 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 			log.Println("Errors: " + err.Error())
 			return FileTransfer{dstFile.Name(), bytesWritten, err}
 		}
+		err = srceFile.Sync()
+		if err != nil {
+			log.Error(err)
+			result = err.Error()
+			return FileTransfer{"", 0, err}
+		}
+		srceFile.Close()
+
 		log.Println(result)
 		err = errors.New(result)
 		log.Errorf("There was an error with the transfer.  Err = %s \n", err)

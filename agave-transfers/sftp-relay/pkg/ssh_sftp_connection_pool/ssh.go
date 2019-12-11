@@ -248,6 +248,7 @@ func (c *SSHConn) RefCount() int {
 
 // DecrRefCount increments the reference counter.
 func (c *SSHConn) IncrRefCount() {
+	fmt.Println("Inc ref counter")
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.refCount += 1
@@ -256,6 +257,7 @@ func (c *SSHConn) IncrRefCount() {
 
 // DecrRefCount decrements the reference counter.
 func (c *SSHConn) DecrRefCount() {
+	fmt.Println("Dec ref counter")
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.refCount -= 1

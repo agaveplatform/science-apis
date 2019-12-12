@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -41,8 +42,8 @@ func init() {
 
 func createTestFile() {
 	// put the test.txt file in /tmp/test.txt  Make the file length = 3 "abc"
-	d := []byte("abc")
-	err := ioutil.WriteFile("/tmp/test.txt", d, 0777)
+	bigBuff := make([]byte, 32768)
+	err := ioutil.WriteFile("/tmp/test.txt", bigBuff, 0777)
 	if err != nil {
 		panic(err)
 	}
@@ -115,7 +116,7 @@ func TestAuthenticate(t *testing.T) {
 			FileSize:     0,
 			HostPort:     ":10022",
 			ClientKey:    "",
-			BufferSize:   16384,
+			BufferSize:   8192,
 			Type:         "",
 			DestFileName: "",
 		},
@@ -144,7 +145,7 @@ func TestMkdirs(t *testing.T) {
 			HostKey:      "",
 			HostPort:     ":10022",
 			ClientKey:    "",
-			BufferSize:   16384,
+			BufferSize:   8192,
 			Type:         "SFTP",
 			DestFileName: "/tmp/deleteme",
 		},
@@ -173,7 +174,7 @@ func TestRemove(t *testing.T) {
 			HostKey:      "",
 			HostPort:     ":10022",
 			ClientKey:    "",
-			BufferSize:   16384,
+			BufferSize:   8192,
 			Type:         "SFTP",
 			DestFileName: "/tmp/deleteme",
 		},
@@ -201,10 +202,10 @@ func TestPut(t *testing.T) {
 			SystemId:     "sftp",
 			HostKey:      "",
 			FileName:     "/tmp/test.txt",
-			FileSize:     0,
+			FileSize:     3,
 			HostPort:     ":10022",
 			ClientKey:    "",
-			BufferSize:   16384,
+			BufferSize:   8192,
 			Type:         "SFTP",
 			DestFileName: "/tmp/testDest.txt",
 		},
@@ -231,11 +232,11 @@ func TestGet(t *testing.T) {
 			PassWord:     "testuser",
 			SystemId:     "sftp",
 			HostKey:      "",
-			FileName:     "/tmp/test.txt",
-			FileSize:     0,
+			FileName:     "/tmp/testDest.txt",
+			FileSize:     3,
 			HostPort:     ":10022",
 			ClientKey:    "",
-			BufferSize:   16384,
+			BufferSize:   8192,
 			Type:         "SFTP",
 			DestFileName: "/tmp/testDest.txt",
 		},
@@ -243,6 +244,14 @@ func TestGet(t *testing.T) {
 
 	resp, err := client.Get(ctx, req)
 	assert.Nilf(t, err, "Error while calling RPC Get: %v", err)
+
+	destFile, err := os.Stat(req.SrceSftp.DestFileName)
+	assert.Nilf(t, err, "Downloaded file should be present at %s. No file found.", req.SrceSftp.DestFileName)
+
+	bytesTransferred, err := strconv.ParseInt(resp.BytesReturned, 0, 64)
+	assert.Equalf(t, bytesTransferred, destFile.Size(),
+		"Downloaded file does not have same size as bytes returned value %s != %d", resp.BytesReturned, destFile.Size())
+
 	log.Printf("Response: %+v", resp)
 }
 
@@ -290,7 +299,7 @@ func TestSetGetParams(t *testing.T) {
 			FileSize:   0,
 			HostPort:   fmt.Sprintf("%d", port),
 			ClientKey:  key,
-			BufferSize: 16384,
+			BufferSize: 8192,
 			Type:       "",
 		},
 	}
@@ -318,7 +327,7 @@ func TestSetPutParams(t *testing.T) {
 			FileSize:   0,
 			HostPort:   fmt.Sprintf("%d", port),
 			ClientKey:  key,
-			BufferSize: 16384,
+			BufferSize: 8192,
 			Type:       "",
 		},
 	}
@@ -345,7 +354,7 @@ func TestSetGetAuthParams(t *testing.T) {
 			FileSize:   0,
 			HostPort:   fmt.Sprintf("%d", port),
 			ClientKey:  key,
-			BufferSize: 16384,
+			BufferSize: 8192,
 			Type:       "",
 		},
 	}

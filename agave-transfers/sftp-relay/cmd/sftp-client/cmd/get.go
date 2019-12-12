@@ -102,7 +102,6 @@ to quickly create a Cobra application.`,
 			log.Errorf("Response from BytesReturned: %v \n", res.BytesReturned)
 		}
 		log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
-		os.Remove(req.SrceSftp.DestFileName)
 	},
 }
 

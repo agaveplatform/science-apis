@@ -69,12 +69,11 @@ message SrvStatRequest{
 message SrvStatResponse {
     string FileName = 1;
     int64 Size  = 2;
-    int32 Mode  = 3;
-    int32 Mtime = 4;
-    int32 Atime = 5;
-    int32 UID   = 6;
-    int32 GID   = 7;
-    string error = 8;
+    string Mode  = 3;
+    int64 LastUpdated = 4;
+    bool IsDirectory = 5;
+    bool IsLink   = 6;
+    string error = 7;
 }
 
 service SftpRelay {

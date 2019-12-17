@@ -85,10 +85,10 @@ type ServerOpts struct {
 func testChdir(t *testing.T, dir string) func() {
 	old, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("err: %s", err)
+		t.Fatalf("err: %v", err)
 	}
 	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("err: %s", err)
+		t.Fatalf("err: %v", err)
 	}
 	return func() {
 		os.Chdir(old)
@@ -124,6 +124,35 @@ func TestAuthenticate(t *testing.T) {
 
 	resp, err := client.Authenticate(ctx, req)
 	assert.Nilf(t, err, "Error while calling RPC Authenticate: %v", err)
+	log.Printf("Response: %+v", resp)
+}
+
+func TestStat(t *testing.T) {
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	req := &agaveproto.SrvStatRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "sftp",
+			HostKey:      "",
+			HostPort:     ":10022",
+			ClientKey:    "",
+			BufferSize:   8192,
+			Type:         "SFTP",
+			DestFileName: "/etc/hosts",
+		},
+	}
+
+	resp, err := client.Stat(ctx, req)
+	assert.Nilf(t, err, "Error while calling RPC Stat: %v", err)
 	log.Printf("Response: %+v", resp)
 }
 
@@ -246,18 +275,18 @@ func TestGet(t *testing.T) {
 	assert.Nilf(t, err, "Error while calling RPC Get: %v", err)
 
 	destFile, err := os.Stat(req.SrceSftp.DestFileName)
-	assert.Nilf(t, err, "Downloaded file should be present at %s. No file found.", req.SrceSftp.DestFileName)
+	assert.Nilf(t, err, "Downloaded file should be present at %Name. No file found.", req.SrceSftp.DestFileName)
 
 	bytesTransferred, err := strconv.ParseInt(resp.BytesReturned, 0, 64)
 	assert.Equalf(t, bytesTransferred, destFile.Size(),
-		"Downloaded file does not have same size as bytes returned value %s != %d", resp.BytesReturned, destFile.Size())
+		"Downloaded file does not have same size as bytes returned value %Name != %d", resp.BytesReturned, destFile.Size())
 
 	log.Printf("Response: %+v", resp)
 }
 
 func TestThing(t *testing.T) {
 	userHome, err := os.UserHomeDir()
-	assert.Nilf(t, err, "Unable to find user home directory. %s", err)
+	assert.Nilf(t, err, "Unable to find user home directory. %Name", err)
 	defer testChdir(t, userHome)
 }
 

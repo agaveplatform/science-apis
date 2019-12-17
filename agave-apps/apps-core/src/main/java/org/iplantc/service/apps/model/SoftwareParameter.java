@@ -203,12 +203,14 @@ public class SoftwareParameter implements SoftwareAttribute<SoftwareParameter>
 			}
 			else if (SoftwareParameterType.valueOf(type.toLowerCase()) == null)
 			{
-				throw new SoftwareException("Invalid type for software parameter. Valid types are [string, num, bool, enumeration]");
+				throw new SoftwareException("Invalid type for software parameter. Valid types are [" +
+						StringUtils.join(SoftwareParameterType.values(), ",") + "]");
 			}
 
 			this.type = SoftwareParameterType.valueOf(type.toLowerCase());
 		} catch (IllegalArgumentException e) {
-			throw new SoftwareException("Invalid type for software parameter. Valid types are [string, num, bool, enumeration]");
+			throw new SoftwareException("Invalid type for software parameter. Valid types are [" +
+					StringUtils.join(SoftwareParameterType.values(), ",") + "]");
 		}
 	}
 

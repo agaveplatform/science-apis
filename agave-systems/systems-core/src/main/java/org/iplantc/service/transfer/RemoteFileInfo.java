@@ -525,7 +525,24 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
             }
         }
     }
-    
+
+	/**
+	 * Updates the integer permission mode of this fileitem.
+	 * @param modeString unix mode such as "-rwx-r--r--"
+	 * @return
+	 * @throws RemoteDataException if a bad value is passed
+	 */
+	public String updateMode(String modeString) throws RemoteDataException{
+    	try {
+			for(int i=1;i<=9;i++) {
+				if (modeString.charAt(i) != '-') {
+					mode += 1 << (9 - i);
+				}
+			}
+		} catch (IndexOutOfBoundsException e) {
+			throw new RemoteDataException("Could not parse access permission bits");
+		}
+	}
     public String formatUnixListReply(String unixMode, boolean isDirectory) throws RemoteDataException 
     {
     	String unixListString = isDirectory ? "d" : "-";

@@ -13,6 +13,7 @@ import com.sshtools.ssh2.KBIAuthentication;
 import com.sshtools.ssh2.Ssh2Client;
 import com.sshtools.ssh2.Ssh2Context;
 import com.sshtools.ssh2.Ssh2PublicKeyAuthentication;
+import com.sshtools.util.UnsignedInteger64;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.agaveplatform.transfer.proto.sftp.*;
@@ -34,6 +35,7 @@ import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
 import java.io.*;
 import java.net.*;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -69,7 +71,7 @@ public final class SftpRelay implements RemoteDataClient {
     private String privateKey;
     private SshConnector con;
     private SshAuthentication auth;
-    private Map<String, SftpFileAttributes> fileInfoCache = new ConcurrentHashMap<String, SftpFileAttributes>();
+    private Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String, RemoteFileInfo>();
 
     // Not clear what's going on here.  MAX_BUFFER_SIZE is commented out in all
     // but one place--the one place with external visibility.  Defined the jumbo
@@ -1143,13 +1145,10 @@ public final class SftpRelay implements RemoteDataClient {
      *
      * @param resolvedPath
      * @return
-     * @throws SftpStatusException
-     * @throws SshException
-     * @throws IOException
+     * @throws FileNotFoundException
      * @throws RemoteDataException
      */
-    protected SftpFileAttributes stat(String resolvedPath)
-            throws SftpStatusException, SshException, IOException, RemoteDataException {
+    protected RemoteFileInfo stat(String resolvedPath) throws FileNotFoundException, RemoteDataException {
 //	    String resolvedPath = resolvePath(remotepath);
 
         try {
@@ -1184,25 +1183,9 @@ public final class SftpRelay implements RemoteDataClient {
                     .build();
 
             // call the gRPC and get back a SrvPutResponse
-            SrvStatResponse copyResponse = sftpClient.stat(srvStatRequest);
+            SrvStatResponse statResponse = sftpClient.stat(srvStatRequest);
 
-            String response = copyResponse.getError();
-            String fileName = copyResponse.getFileName();
-            int atime = copyResponse.getAtime();
-            int mtime = copyResponse.getMtime();
-            int gid = copyResponse.getGID();
-            int uid = copyResponse.getUID();
-            int mode = copyResponse.getMode();
-            long size = copyResponse.getSize();
-
-            log.info(fileName);
-            log.info(size);
-            log.info(response);
-            log.info(atime);
-            log.info(mtime);
-            log.info(gid);
-            log.info(uid);
-            log.info(mode);
+            String response = statResponse.getError();
 
             //TODO fix this
             String resString = response.toString();
@@ -1214,34 +1197,28 @@ public final class SftpRelay implements RemoteDataClient {
                     resString.contains("opening source file")) {
                 log.error("Error RemoteDataException");
                 throw new RemoteDataException(resString);
-            } else {
-                log.info("Result: " + resString);
-                log.info("File: " + fileName + " Bytes: " + size + " Errors: " + response);
+            } else if (StringUtils.isNotEmpty(resString)) {
+                throw new RemoteDataException("Unknown error calling stat on the relay server");
             }
+
             channel.shutdown();
 
             //#**********************************************************************************
+            // this has to be valid or the whole relay is busted
+            RemoteFileInfo grpcFileInfo = new RemoteFileInfo();
 
-            SftpFileAttributes atts = null;
+            grpcFileInfo.setName(FilenameUtils.getName(statResponse.getFileName()));
+            grpcFileInfo.setFileType(statResponse.getIsDirectory() ?
+                    RemoteFileInfo.DIRECTORY_TYPE : RemoteFileInfo.FILE_TYPE);
+            grpcFileInfo.setSize(statResponse.getSize());
+            grpcFileInfo.setLastModified(Date.from(Instant.ofEpochSecond(statResponse.getLastUpdated())));
+            grpcFileInfo.setOwner(username);
+            grpcFileInfo.updateMode(statResponse.getMode());
 
-            atts.setGID(String.valueOf(gid));
-            atts.setUID(String.valueOf(uid));
-            atts.setSize((int)size);
+            fileInfoCache.put(resolvedPath, grpcFileInfo);
 
-            if (atts == null) {
-                atts = getClient().stat(StringUtils.removeEnd(resolvedPath, "/"));
-
-                // adjust for links so we get info about the referenced file/folder
-                if (atts != null && atts.isLink()) {
-                    atts = getClient().statLink(resolvedPath);
-                }
-
-                if (atts != null) {
-                    fileInfoCache.put(resolvedPath, atts);
-                }
-            }
-            return atts;
-        } catch (SftpStatusException | SshException | RemoteDataException e) {
+            return grpcFileInfo;
+        } catch (RemoteDataException e) {
             fileInfoCache.remove(resolvedPath);
             throw e;
         }
@@ -1252,12 +1229,8 @@ public final class SftpRelay implements RemoteDataClient {
             throws IOException, FileNotFoundException, RemoteDataException {
         try {
             return stat(resolvePath(remotepath)).isDirectory();
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve information about " + remotepath, e);
-            }
+        } catch (FileNotFoundException e) {
+            throw e;
         } catch (Exception e) {
             throw new RemoteDataException("Failed to retrieve information about " + remotepath, e);
         }
@@ -1268,12 +1241,8 @@ public final class SftpRelay implements RemoteDataClient {
             throws IOException, FileNotFoundException, RemoteDataException {
         try {
             return stat(resolvePath(remotepath)).isFile();
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve information about " + remotepath, e);
-            }
+        } catch (FileNotFoundException e) {
+            throw e;
         } catch (Exception e) {
             throw new RemoteDataException("Failed to retrieve information about " + remotepath, e);
         }
@@ -1283,15 +1252,9 @@ public final class SftpRelay implements RemoteDataClient {
     public long length(String remotepath)
             throws IOException, FileNotFoundException, RemoteDataException {
         try {
-
-
-            return stat(resolvePath(remotepath)).getSize().longValue();
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve length of " + remotepath, e);
-            }
+            return stat(resolvePath(remotepath)).getSize();
+        } catch (FileNotFoundException e) {
+            throw e;
         } catch (Exception e) {
             throw new RemoteDataException("Failed to retrieve information about " + remotepath, e);
         }
@@ -1627,13 +1590,13 @@ public final class SftpRelay implements RemoteDataClient {
         if (resolvedPath == null) return false;
 
         // See if we get any attributes back.
-        SftpFileAttributes atts = null;
+        RemoteFileInfo atts = null;
         try {
             atts = stat(resolvedPath);
-        } catch (Exception e) {
-        }
-        if (atts == null) return false;
-        else return true;  // object found
+        } catch (Exception ignored) {}
+
+        // object found
+        return atts != null;
     }
 
     @Override
@@ -1648,21 +1611,9 @@ public final class SftpRelay implements RemoteDataClient {
         }
 
         try {
-            SftpFileAttributes atts = stat(resolvedPath);
-            return atts != null;
-        } catch (IOException e) {
-            return false;
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                return false;
-            } else {
-                String msg = getMsgPrefix() + "stat command failure on path: " + resolvedPath + ": " + e.getMessage();
-                log.error(msg, e);
-                throw new RemoteDataException(msg, e);
-            }
-        } catch (SshException e) {
-            String msg = getMsgPrefix() + "stat command exception on path: " + resolvedPath + ": " + e.getMessage();
-            log.error(msg, e);
+            stat(resolvedPath);
+            return true;
+        } catch (FileNotFoundException e) {
             return false;
         }
     }
@@ -1686,25 +1637,15 @@ public final class SftpRelay implements RemoteDataClient {
             throws IOException, FileNotFoundException, RemoteDataException {
         int mode;
         try {
-            mode = stat(resolvePath(path)).getPermissions().intValue();
-            Integer pem = Integer.parseInt(Integer.toString(mode, 8), 10);
-            pem = pem % 1000;
-            pem = pem / 100;
+            RemoteFileInfo fileInfo = stat(resolvePath(path));
+            PermissionType pem = PermissionType.NONE;
 
-            for (PermissionType type : PermissionType.values()) {
-                if (type.getUnixValue() == pem) {
-                    return type;
-                }
-            }
+            if (fileInfo.userCanRead()) pem.add(PermissionType.READ);
+            if (fileInfo.userCanWrite()) pem.add(PermissionType.WRITE);
+            if (fileInfo.userCanExecute()) pem.add(PermissionType.EXECUTE);
 
-            return PermissionType.NONE;
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve permissions for user.", e);
-            }
-        } catch (IOException e) {
+            return pem;
+        } catch (FileNotFoundException e) {
             throw e;
         } catch (Exception e) {
             throw new RemoteDataException("Failed to retrieve permissions for user.", e);
@@ -1720,14 +1661,10 @@ public final class SftpRelay implements RemoteDataClient {
             path = resolvePath(path);
 
             // check file exists
-            SftpFileAttributes attrs = stat(path);
+            stat(path);
             return true;
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve permissions for user.", e);
-            }
+        } catch (FileNotFoundException e) {
+            throw e;
         } catch (Exception e) {
             return false;
         }
@@ -1859,23 +1796,11 @@ public final class SftpRelay implements RemoteDataClient {
     }
 
     @Override
-    public RemoteFileInfo getFileInfo(String remotepath)
-            throws RemoteDataException, FileNotFoundException, IOException {
+    public RemoteFileInfo getFileInfo(String remotepath) throws RemoteDataException, FileNotFoundException {
+
         String resolvedPath = resolvePath(remotepath);
 
-        try {
-            SftpFileAttributes atts = stat(resolvedPath);
-            return new RemoteFileInfo(resolvedPath, atts);
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                log.error("Failed to stat " + remotepath + " => " + resolvedPath, e);
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve information for " + remotepath, e);
-            }
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to retrieve information for " + remotepath, e);
-        }
+        return stat(resolvedPath);
     }
 
     @Override

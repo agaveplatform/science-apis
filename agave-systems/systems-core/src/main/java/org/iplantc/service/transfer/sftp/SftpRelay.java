@@ -460,6 +460,8 @@ public final class SftpRelay implements RemoteDataClient {
         // elsewhere in the code?  The jumbo buffer size value that is used
         // below may have been intended here, but there's no indication one
         // way or the other.
+
+        //******************** This is used by the new GRPC server *******************
         return MAX_BUFFER_SIZE;
     }
 
@@ -848,13 +850,14 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public void put(String localdir, String remotedir)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws FileNotFoundException, RemoteDataException {
         put(localdir, remotedir, null);
     }
 
     @Override
     public void put(String localdir, String remotedir, RemoteTransferListener listener)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws FileNotFoundException,  RemoteDataException {
+
         File localFile = new File(localdir);
         if (!localFile.exists()) {
             String msg = getMsgPrefix() + "Local path " + localFile.getAbsolutePath() + " does not exist.";
@@ -944,15 +947,18 @@ public final class SftpRelay implements RemoteDataClient {
 
                     SftpRelayGrpc.SftpRelayBlockingStub sftpClient = SftpRelayGrpc.newBlockingStub(channel);
 
+                    log.info(host);
                     // create a protocol buffer sftp message
                     Sftp putConfig = Sftp.newBuilder()
-                            .setPassWord(password)
                             .setUsername(username)
-                            .setClientKey(privateKey)
-                            .setSystemId(host)
-                            .setHostPort(String.valueOf(port))
-                            .setFileName(localdir)
-                            .setDestFileName(resolvedPath)
+                            .setPassWord(password)
+                            .setBufferSize(8192)
+                            .setSystemId("sftp")
+                            .setHostPort(":" + String.valueOf(port))
+                            .setFileName(localdir)    //localdir)   "/tmp/10MB.txt"
+                            .setDestFileName(remotedir) // 10MB.txt  resolvedPath    "/tmp/10MB.txt"
+                            .setType("SFTP")
+                            .setForce(true)
                             .build();
 
                     //create a CopyLocalToRemoteRequest
@@ -969,35 +975,53 @@ public final class SftpRelay implements RemoteDataClient {
                     log.info(fileName);
                     log.info(byteCount);
                     log.info(response);
-                    if (response.contains("Dialing") || response.contains("creating new client") || response.contains("opening source file")) {
-                        throw new RemoteDataException(response);
-                    } else {
-                        //TODO find another output for the response
-                        System.out.println("Result: " + response);
-                        System.out.println("File: " + copyResponse.getFileName() + " Bytes: " + copyResponse.getBytesReturned() +  " Errors: " + response);
-                    }
 
+                    //TODO fix this
+                    String resString = response.toString();
+                    if (resString.equals("file does not exist") ) {
+                        log.error("Error returned FileNotFoundException");
+                        throw new FileNotFoundException(response);
+                    } else if (resString.contains("Dialing")  ||
+                            resString.contains("creating new client") ||
+                            resString.contains("opening source file")) {
+                        log.error("Error RemoteDataException");
+                        throw new RemoteDataException(resString);
+                    } else {
+                        log.info("Result: " + resString);
+                        log.info("File: " + copyResponse.getFileName() + " Bytes: " + copyResponse.getBytesReturned() + " Errors: " + response);
+                    }
                     channel.shutdown();
 
-                    //getClient().put(localFile.getAbsolutePath(), resolvedPath, listener);
-                } catch (Exception e) {
+                } catch (FileNotFoundException e) {
+                    log.error("FileNotFoundException: ", e);
+                    throw new FileNotFoundException (e.toString());
+                } catch (RemoteDataException e){
+                    log.error("RemoteDataException: ", e);
+                    throw new RemoteDataException(e);
+                }  catch (Exception e) {
                     String msg = getMsgPrefix() + "Failure to write local file " + localFile.getAbsolutePath() +
                             " to " + resolvedPath + ": " + e.getMessage();
                     log.error(msg, e);
                     throw e;
                 }
             }
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to put data to " + remotedir, e);
-            }
-        } catch (IOException e) {
+//        } //catch (SftpStatusException e) {
+//            if (e.getMessage().toLowerCase().contains("no such file")) {
+//                throw new FileNotFoundException("No such file or directory");
+//            } else {
+//                throw new RemoteDataException("Failed to put data to " + remotedir, e);
+//            }
+        } catch (FileNotFoundException e){
+            log.info("FileNotFoundExeption ",e);
             throw e;
-        } catch (Exception e) {
+        } catch (RemoteDataException e) {
+            log.info("RemoteDataException ",e);
+            throw e;
+        }
+        catch (Exception e) {
             throw new RemoteDataException("Failed to put data to " + remotedir, e);
         }
+
     }
 
     @Override
@@ -1130,7 +1154,80 @@ public final class SftpRelay implements RemoteDataClient {
 
         try {
 
-            SftpFileAttributes atts = fileInfoCache.get(resolvedPath);
+            //SftpFileAttributes atts = fileInfoCache.get(resolvedPath);
+            //#**********************************************************************************
+            //getClient().get(resolvePath(remoteSource), localTarget.getAbsolutePath(), listener);
+            ManagedChannel channel = ManagedChannelBuilder.forAddress("sftp-relay", 50051)
+                    .usePlaintext()
+                    .build();
+
+            // Create an sftp service client (blocking - synchronous)
+
+            SftpRelayGrpc.SftpRelayBlockingStub sftpClient = SftpRelayGrpc.newBlockingStub(channel);
+
+            log.info(host);
+            // create a protocol buffer sftp message
+            Sftp statConfig = Sftp.newBuilder()
+                    .setUsername(username)
+                    .setPassWord(password)
+                    .setBufferSize(8192)
+                    .setSystemId("sftp")
+                    .setHostPort(":" + String.valueOf(port))
+                    .setDestFileName(resolvedPath) // 10MB.txt  resolvedPath    "/tmp/10MB.txt"
+                    .setType("SFTP")
+                    .setForce(true)
+                    .build();
+
+            //create a CopyLocalToRemoteRequest
+            SrvStatRequest srvStatRequest = SrvStatRequest.newBuilder()
+                    .setSrceSftp(statConfig)
+                    .build();
+
+            // call the gRPC and get back a SrvPutResponse
+            SrvStatResponse copyResponse = sftpClient.stat(srvStatRequest);
+
+            String response = copyResponse.getError();
+            String fileName = copyResponse.getFileName();
+            int atime = copyResponse.getAtime();
+            int mtime = copyResponse.getMtime();
+            int gid = copyResponse.getGID();
+            int uid = copyResponse.getUID();
+            int mode = copyResponse.getMode();
+            long size = copyResponse.getSize();
+
+            log.info(fileName);
+            log.info(size);
+            log.info(response);
+            log.info(atime);
+            log.info(mtime);
+            log.info(gid);
+            log.info(uid);
+            log.info(mode);
+
+            //TODO fix this
+            String resString = response.toString();
+            if (resString.equals("file does not exist") ) {
+                log.error("Error returned FileNotFoundException");
+                throw new FileNotFoundException(response);
+            } else if (resString.contains("Dialing")  ||
+                    resString.contains("creating new client") ||
+                    resString.contains("opening source file")) {
+                log.error("Error RemoteDataException");
+                throw new RemoteDataException(resString);
+            } else {
+                log.info("Result: " + resString);
+                log.info("File: " + fileName + " Bytes: " + size + " Errors: " + response);
+            }
+            channel.shutdown();
+
+            //#**********************************************************************************
+
+            SftpFileAttributes atts = null;
+
+            atts.setGID(String.valueOf(gid));
+            atts.setUID(String.valueOf(uid));
+            atts.setSize((int)size);
+
             if (atts == null) {
                 atts = getClient().stat(StringUtils.removeEnd(resolvedPath, "/"));
 
@@ -1186,6 +1283,8 @@ public final class SftpRelay implements RemoteDataClient {
     public long length(String remotepath)
             throws IOException, FileNotFoundException, RemoteDataException {
         try {
+
+
             return stat(resolvePath(remotepath)).getSize().longValue();
         } catch (SftpStatusException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {

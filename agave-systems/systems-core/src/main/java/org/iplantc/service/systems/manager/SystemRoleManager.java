@@ -72,7 +72,9 @@ public class SystemRoleManager {
 
 		if (system.getOwner().equals(username))
 			return;
-		
+
+		// Apps cannot be published to storage systems, so this role means nothing for storage
+		// systems. We throw an exception if such assignment is attempted.
 		if (type == RoleType.PUBLISHER && system.getType() == RemoteSystemType.STORAGE) {
 			throw new SystemException("Cannot set PUBLISHER role on storage systems."); 
 		}
@@ -97,24 +99,6 @@ public class SystemRoleManager {
 				system.removeRole(currentRole);
 				
 				this.eventProcessor.processPermissionEvent(system, new SystemRole(username, RoleType.NONE), createdBy);
-				
-//				// now disable all apps for this system that were registered by 
-//				// the user who just had access revoked
-//				for (String appId: new SystemDao().getUserOwnedAppsForSystemId(currentRole.getUsername(), system.getId())) {
-////					if (app.getOwner().equals(currentRole.getUsername())) {
-////						app.setAvailable(false);
-////						app.setLastUpdated(new Date());
-////						SoftwareDao.persist(app);
-////						appIds.add(app.getUniqueName());
-//						try {
-//							json = "{\"system\":" + system.toJSON() + ",\"app\":{\"uuid\":\"" + appId + "\"}";
-//							NotificationManager.process(appId, "SYSTEM_DISABLE", currentRole.getUsername(), json);
-//						} catch (JSONException e) {
-//							log.error("Failed to send system_disable event to app " + appId, e);
-//						}	
-////					}
-//				}
-				
 			} 
 			else if (!ServiceUtils.isAdmin(username)) 
 			{
@@ -153,54 +137,7 @@ public class SystemRoleManager {
 			for (SystemRole deletedRole: deletedRoles) {
 				this.eventProcessor.processPermissionEvent(system, new SystemRole(deletedRole.getUsername(), RoleType.NONE), createdBy);
 			}
-			
-//			// now disable all apps for this system that were registered by users
-//			// who were granted permissions, but are now revoked.
-//			List<Software> apps = SoftwareDao.getAllBySystemId(system.getSystemId());
-//			Map<String, List<String>> ownerSoftwareMap = new HashMap<String, List<String>>();
-//			for (Software app: apps) {
-//				if (!app.getOwner().equals(system.getOwner())) {
-//					app.setAvailable(false);
-//					app.setLastUpdated(new Date());
-//					SoftwareDao.persist(app);
-//					NotificationManager.process(app.getUuid(), "DISABLE", app.getOwner());
-//					if (ownerSoftwareMap.containsKey(app.getOwner())) {
-//						ownerSoftwareMap.get(app.getOwner()).add(app.getUniqueName());
-//					} else {
-//						ownerSoftwareMap.put(app.getOwner(), Arrays.asList(app.getUniqueName()));
-//					}
-//				}
-//			}
-			
-//			// send the notifications in bulk
-//			for (String appOwner: ownerSoftwareMap.keySet()) {
-//				sendApplicationDisabledMessage(appOwner, ownerSoftwareMap.get(appOwner), system);
-//			}
 		}
-		
-//		StringBuilder sb = new StringBuilder();
-//		sb.append("[");
-//		for (SystemRole role: roles) {
-//		    if (sb.length() > 0) {
-//		        sb.append("," + role.toJSON(system));
-//		    } else {
-//		        sb.append(role.toJSON(system));
-//		    }
-//		}
-//		sb.append("]");
-//		try {
-//			String sysjsonn = "{\"system\":" + system.toJSON() + ",\"role\":";
-//			for (SystemRole role: roles) {
-//				String json = sysjsonn + role.toJSON(system) + "}";
-//				NotificationManager.process(system.getUuid(), SystemEventType.ROLES_REVOKE.name(), 
-//				        TenancyHelper.getCurrentEndUser(), json);
-//			} 
-//		} catch (JSONException e) {
-//			log.error("Failed to send role revoke event for system " + system.getUuid(), e);
-//		}
-    
-//		NotificationManager.process(system.getUuid(), SystemEventType.ROLES_REVOKE.name(), 
-//		        TenancyHelper.getCurrentEndUser(), sb.toString());
 	}
 	
 	/**
@@ -320,18 +257,6 @@ public class SystemRoleManager {
 					{
 						return new SystemRole(username, RoleType.GUEST, getSystem());
 					}
-	//				else if (worldRole.canRead() || publicRole.canRead())
-	//				{
-	//					if (worldRole.getRole().intVal() >= publicRole.getRole().intVal()) {
-	//						return worldRole;
-	//					} else {
-	//						return publicRole;
-	//					}
-	//				}
-	//				else if (worldRole.canRead())
-	//				{
-	//					return worldRole;
-	//				}
 					else
 					{
 						return new SystemRole(username, RoleType.USER, getSystem());

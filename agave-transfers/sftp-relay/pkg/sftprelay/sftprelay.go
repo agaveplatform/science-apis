@@ -709,15 +709,16 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 	log.Printf("Packet size is: %v \n", MaxPcktSize)
 	// create new SFTP client on the specified connection
 	client := params.Srce.SftpClient
-	if client == nil {
-		var err error
-		client, err = sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
-		if err != nil {
-			log.Errorf("Error creating new client, %v \n", err)
-			result = err.Error()
-			return FileTransfer{"", 0, err}
-		}
-	}
+	//if client == nil {
+	//	var err error
+	//	client, err = sftp.NewClient(params.Srce.SftpConn, sftp.MaxPacket(MaxPcktSize))
+	//	if err != nil {
+	//		log.Errorf("Error creating new client, %v \n", err)
+	//		result = err.Error()
+	//		return FileTransfer{"", 0, err}
+	//	}
+	//}
+	defer client.Close()
 	log.Println("Connection Data:  " + params.Srce.Username + "  " + params.Srce.SystemId + params.Srce.HostPort)
 
 	// check if the file already exists. If is  does not and Force = false then error. Otherwise remove the
@@ -728,17 +729,23 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 		if fileExists {
 			err := os.Remove(params.Srce.DestFileName)
 			if err != nil {
-				log.Errorf("Error removing file ", err)
+				log.Errorf("Error removing file %v", err)
 			}
 		}
-		log.Infof("Create destination file ", params.Srce.FileName)
-		dstFile, err := os.Create(params.Srce.DestFileName) //local file
+		log.Infof("Create destination file %v", params.Srce.FileName)
+		//dstFile, err := os.Create(params.Srce.DestFileName) //local file
+
+		dstFile, err := os.OpenFile(params.Srce.DestFileName, os.O_RDWR|os.O_CREATE, 0666)
+		if err != nil {
+			log.Errorf("Unable to open dest file %s: %v", params.Srce.DestFileName, err)
+			return FileTransfer{"", 0, err}
+		}
+
 		if err != nil {
 			log.Errorf("Error creating 1 dest file. %v \n", err)
 			result = err.Error()
 			return FileTransfer{"", 0, err}
 		}
-		defer dstFile.Close()
 
 		// Now open the source file and read the contents.
 		log.Printf("Open source file %v \n", params.Srce.FileName)
@@ -749,6 +756,7 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 			return FileTransfer{"", 0, err}
 		}
 		defer srcFile.Close()
+
 		log.Printf("Source file is opened. %s", params.Srce.FileName)
 
 		//const size = 1e10
@@ -759,13 +767,21 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 			result = err.Error()
 			return FileTransfer{"", 0, err}
 		}
+
 		err = dstFile.Sync()
 		if err != nil {
 			log.Error(err)
 			result = err.Error()
 			return FileTransfer{"", 0, err}
 		}
-		dstFile.Close()
+
+		err = srcFile.Close()
+		if err != nil {
+			log.Errorf("Failed to close the srcFile %s. %v ", params.Srce.FileName, err)
+		}
+
+		client.Close()
+
 		log.Infof("%d bytes copied\n", bytesWritten)
 		//time.Sleep(10000)
 
@@ -821,7 +837,7 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 		if fileExists {
 			err := os.Remove(params.Srce.DestFileName)
 			if err != nil {
-				log.Errorf("Error removing file ", err)
+				log.Errorf("Error removing file %v", err)
 			}
 		}
 
@@ -863,6 +879,7 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 			log.Println("Errors: " + err.Error())
 			return FileTransfer{dstFile.Name(), bytesWritten, err}
 		}
+
 		err = srceFile.Sync()
 		if err != nil {
 			log.Error(err)
@@ -1012,6 +1029,7 @@ func fileExistsLocal(filename string) bool {
 	}
 	return true
 }
+
 func fileExistsRemote(filename string, client *sftp.Client) bool {
 	_, err := client.Stat(filename)
 	if !errors.Is(err, sftp.ErrSshFxNoSuchFile) {

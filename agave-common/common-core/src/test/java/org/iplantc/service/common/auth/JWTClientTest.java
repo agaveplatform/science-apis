@@ -72,7 +72,8 @@ public class JWTClientTest
 	{
 		String jwtToken = FileUtils.readFileToString(new File(JWT_TEST_FOLDER + "stubbs.jwt"));
 		String jwtToken2 = FileUtils.readFileToString(new File(JWT_TEST_FOLDER + "stubbs2.jwt"));
-		return new Object[][] { 
+
+		return new Object[][] {
 				{ jwtToken, "tacc/jstubbs", false, "Decoded end user does not match expected end user" },
 				{ jwtToken2, "testadmin@test.com", false, "Decoded end user does not match expected end user" },
 		};

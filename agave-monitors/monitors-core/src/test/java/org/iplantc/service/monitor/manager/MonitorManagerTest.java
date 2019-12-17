@@ -1,7 +1,9 @@
 package org.iplantc.service.monitor.manager;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.iplantc.service.common.Settings;
-import org.iplantc.service.monitor.AbstractMonitorTest;
+import org.iplantc.service.monitor.AbstractMonitorIT;
 import org.iplantc.service.monitor.TestDataHelper;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.managers.MonitorManager;
@@ -20,11 +22,8 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
 @Test(singleThreaded=true, groups={"broken", "integration"})
-public class MonitorManagerTest extends AbstractMonitorTest {
+public class MonitorManagerTest extends AbstractMonitorIT {
 
 	protected MonitorManager manager = new MonitorManager();
 	

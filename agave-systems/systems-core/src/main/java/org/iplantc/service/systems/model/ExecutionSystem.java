@@ -210,7 +210,7 @@ public class ExecutionSystem extends RemoteSystem implements SerializableSystem 
 	
 	public void removeBatchQueue(BatchQueue queue)
 	{
-		queue.setExecutionSystem(null);
+//		queue.setExecutionSystem(null);
 		this.batchQueues.remove(queue);
 	}
 

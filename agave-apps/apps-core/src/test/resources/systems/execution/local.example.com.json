@@ -18,6 +18,9 @@
 	},
 	"storage": {
 		"host": "localhost",
+		"rootDir": "/",
+		"homeDir": "/home/testuser",
+		"publicAppsDir": "/tmp",
 		"port": 22,
 		"protocol": "LOCAL",
 		"auth": {

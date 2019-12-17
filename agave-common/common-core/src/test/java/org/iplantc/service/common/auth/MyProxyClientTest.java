@@ -13,7 +13,10 @@ import org.testng.annotations.Test;
 
 import com.google.common.io.Files;
 
-@Test(singleThreaded=true, groups = {"integration"} )
+/**
+ * @deprecated
+ */
+@Test(enabled=false, singleThreaded=true, groups = {"integration"} )
 public class MyProxyClientTest {
 
 	@BeforeMethod

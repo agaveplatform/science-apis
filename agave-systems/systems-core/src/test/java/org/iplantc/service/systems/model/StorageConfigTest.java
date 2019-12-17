@@ -118,7 +118,7 @@ public class StorageConfigTest extends SystemsModelTestCommon {
         String exceptionMsg = message;
 
         try {
-            jsonTree = jtd.getTestDataObject(JSONTestDataUtil.TEST_SYSTEM_FOLDER + "storage/irods.example.com.json")
+            jsonTree = jtd.getTestDataObject(JSONTestDataUtil.TEST_SYSTEM_FOLDER + "storage/irods3.example.com.json")
                     .getJSONObject("storage");
 
             jsonTree = updateTestData(name, changeValue);

@@ -11,7 +11,7 @@
         <property name="hibernate.connection.url"><![CDATA[jdbc:mysql://mysql:3306/agavecore?sessionVariables=FOREIGN_KEY_CHECKS=0&relaxAutoCommit=true]]></property>
         <property name="hibernate.connection.username">agaveuser</property>
         <property name="hibernate.connection.password">password</property>
-        <property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+        <property name="hibernate.connection.driver_class">com.mysql.cj.jdbc.Driver</property>
         <property name="hibernate.connection.provider_class">org.hibernate.connection.DriverManagerConnectionProvider</property>
 
         <!-- General connection properties -->

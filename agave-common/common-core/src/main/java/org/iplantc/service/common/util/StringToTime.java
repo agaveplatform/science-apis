@@ -321,21 +321,21 @@ public class StringToTime extends Date {
 					Matcher m = paf.matches(trimmed);
 					if (m.matches()) {
 						Long time = paf.parse(trimmed, now, m);
-						if (log.isDebugEnabled())
-							log.debug(String.format("[%s] triggered format [%s]: %s", dateTimeString, paf.f, new Date(time)));
+//						if (log.isDebugEnabled())
+//							log.debug(String.format("[%s] triggered format [%s]: %s", dateTimeString, paf.f, new Date(time)));
 						return time;
 					}
 				}
 				
 				// no match
-				if (log.isDebugEnabled())
-					log.debug(String.format("Unrecognized date/time string [%s]", dateTimeString));
+//				if (log.isDebugEnabled())
+//					log.debug(String.format("Unrecognized date/time string [%s]", dateTimeString));
 				return Boolean.FALSE;
 			}
 		} catch (Exception e) { // thrown by various features of the parser
 			if (!Boolean.parseBoolean(System.getProperty(StringToTime.class+".EXCEPTION_ON_PARSE_FAILURE", "false"))) {
-				if (log.isDebugEnabled())
-					log.debug(String.format("Failed to parse [%s] into a java.util.Date instance", dateTimeString));
+//				if (log.isDebugEnabled())
+//					log.debug(String.format("Failed to parse [%s] into a java.util.Date instance", dateTimeString));
 				return Boolean.FALSE;
 			}
 			else
@@ -347,7 +347,7 @@ public class StringToTime extends Date {
 		for(PatternAndFormat paf : known) {
 			Matcher m = paf.matches(trimmedDateTimeString);
 			if (m.matches()) {
-				log.debug(String.format("Date/time string [%s] triggered format [%s]", trimmedDateTimeString, paf.f));
+//				log.debug(String.format("Date/time string [%s] triggered format [%s]", trimmedDateTimeString, paf.f));
 				return new ParserResult(paf.parse(trimmedDateTimeString, now, m), paf.f.type);
 			}
 		}

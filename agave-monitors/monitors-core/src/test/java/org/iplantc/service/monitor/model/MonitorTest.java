@@ -12,6 +12,7 @@ import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.SystemRole;
+import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.json.JSONException;
 import org.testng.Assert;
@@ -29,13 +30,8 @@ import static org.iplantc.service.monitor.TestDataHelper.*;
 public class MonitorTest {
 
 	protected static final String TEST_USER = "systest";
-	protected static final String TEST_EMAIL = "help@agaveplatform.org";
-	protected static final String TEST_URL = "http://requestb.in/11pbi6m1?username=${USERNAME}&status=${STATUS}";
 
-	protected ObjectMapper mapper = new ObjectMapper();
-	protected SystemDao systemDao = new SystemDao();
 	protected MonitorDao dao = new MonitorDao();
-	protected MonitorCheckDao checkDao = new MonitorCheckDao();
 	protected TestDataHelper dataHelper;
 	protected StorageSystem publicStorageSystem;
 	protected StorageSystem privateStorageSystem;

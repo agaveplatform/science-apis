@@ -34,7 +34,7 @@ public class JSONTestDataUtil {
 	public static String TEST_PROXY_EXECUTION_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "execution/ssh-password-tunnel.example.com.json";
 	public static String TEST_GRID_EXECUTION_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "execution/gsissh.example.com.json";
     public static String TEST_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/sftp.example.com.json";
-	public static String TEST_IRODS_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/irods.example.com.json";
+	public static String TEST_IRODS_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/irods3.example.com.json";
     
 	public static JSONTestDataUtil jsonTestData;
 	public static String TEST_OWNER = "testuser";

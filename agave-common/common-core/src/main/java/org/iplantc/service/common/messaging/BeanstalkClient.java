@@ -243,7 +243,7 @@ public class BeanstalkClient implements MessageQueueClient
 	public void stop()
 	{
 		stop = true;
-		try {client.close();} catch (Throwable e) {}
+		try {client.close();} catch (Throwable ignored) {}
 		client = null;
 	}
 	

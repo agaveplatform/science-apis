@@ -6,7 +6,7 @@
   "description": "My example storage system used for testing",
   "site": "my.site",
   "storage": {
-    "host": "docker.example.com",
+    "host": "sftp",
     "port": 10022,
     "protocol": "SFTP",
     "rootDir": "/",

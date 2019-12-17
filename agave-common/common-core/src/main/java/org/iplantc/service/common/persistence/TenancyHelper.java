@@ -20,11 +20,35 @@ import org.iplantc.service.common.model.Tenant;
 public class TenancyHelper 
 {
 	private static final Logger log = Logger.getLogger(TenancyHelper.class);
+	static TenantDao tenantDao;
+
+	/**
+	 * Utility method to instantiate TenantDao. This allows for a bit easier
+	 * unit testing.
+	 */
+	protected static TenantDao _getTenantDao() throws TenantException {
+		if (tenantDao == null) {
+			tenantDao = new TenantDao();
+		}
+		return tenantDao;
+	}
+	/**
+	 * Utility method to fetch a tenant by id. This allows for a bit easier
+	 * unit testing.
+	 *
+	 * @param tenantId the id to lookup
+	 * @return Tenant matching the given id or null if no match
+	 * @throws TenantException
+	 */
+	protected static Tenant _getTenant(String tenantId) throws TenantException {
+		return _getTenantDao().findByTenantId(TenancyHelper.getCurrentTenantId());
+	}
+
 	public static String getCurrentTenantId() {
 		
 		String tenantId = JWTClient.getCurrentTenant();
 		if (StringUtils.isEmpty(tenantId)) {
-			tenantId = "iplantc.org";
+			tenantId = "agave.dev";
 		}
 		
 		return tenantId;
@@ -120,7 +144,7 @@ public class TenancyHelper
 		try {
 			String dedicatedTenantId = Settings.getDedicatedTenantIdFromServiceProperties();
 			if (StringUtils.isNotEmpty(dedicatedTenantId) && 
-			        dao.findByTenantId(StringUtils.stripStart(dedicatedTenantId, "!")) != null) {
+			        _getTenant(StringUtils.stripStart(dedicatedTenantId, "!")) != null) {
 				return dedicatedTenantId;
 			} else {
 				return null;
@@ -137,9 +161,9 @@ public class TenancyHelper
 	 * Adjusts the default API resource URLs to tenant-specific URLs given
 	 * in the tenants table in the db. This should be called for every
 	 * HAL url returned from the API. Say 
-	 * Settings.IPLANT_APPS_SERVICE = https://agave.iplantc.org/apps/v2
+	 * Settings.IPLANT_APPS_SERVICE = https://sandbox.agaveplatform.org/apps/v2
 	 * was the default url from the service settings. If there was a tenant 
-	 * called xsede.org in the db with tenantId = xsede.org,
+	 * called xsede.org in the db with baseUrl = api.xsede.org,
 	 * then after calling this method, the returned url would be 
 	 * https://api.xsede.org/apps/2.0
 	 * 
@@ -148,11 +172,10 @@ public class TenancyHelper
 	 */
 	public static String resolveURLToCurrentTenant(String url)
 	{
-		TenantDao dao = new TenantDao();
 		Tenant tenant;
 		try 
 		{
-			tenant = dao.findByTenantId(TenancyHelper.getCurrentTenantId());
+			tenant = _getTenant(TenancyHelper.getCurrentTenantId());
 			
 			if (tenant == null) 
 			{
@@ -197,11 +220,10 @@ public class TenancyHelper
 			return TenancyHelper.resolveURLToCurrentTenant(url);
 		}
 		
-		TenantDao dao = new TenantDao();
 		Tenant tenant;
 		try 
 		{
-			tenant = dao.findByTenantId(tenantId);
+			tenant = _getTenant(tenantId);
 			
 			if (tenant == null) 
 			{

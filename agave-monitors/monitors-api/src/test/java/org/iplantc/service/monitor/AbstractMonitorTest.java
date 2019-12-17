@@ -39,7 +39,7 @@ public class AbstractMonitorTest {
 
 	protected static final String TEST_USER = "systest";
 	protected static final String TEST_EMAIL = "help@agaveplatform.org";
-	protected static final String TEST_URL = "http://requestb.in/11pbi6m1?username=${USERNAME}&status=${STATUS}";
+	protected static final String TEST_URL = "http://requestbin/11pbi6m1?username=${USERNAME}&status=${STATUS}";
 	
 	protected ObjectMapper mapper = new ObjectMapper();
 	protected SystemDao systemDao = new SystemDao();

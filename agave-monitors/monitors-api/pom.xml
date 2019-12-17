@@ -39,6 +39,59 @@
 		</testResources>
 
 		<plugins>
+
+			<!-- Attach testng to the failsafe integration-test execution -->
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+				<version>${docker-compose-maven-plugin.version}</version>
+				<configuration>
+					<detachedMode>true</detachedMode>
+					<projectName>${project.artifactId}</projectName>
+					<composeFiles>
+						<composeFile>${project.basedir}/src/test/resources/docker-compose.yml</composeFile>
+						<composeFile>${project.basedir}/../../compose/third-party/docker-compose.yml</composeFile>
+					</composeFiles>
+					<ignorePullFailures>true</ignorePullFailures>
+				</configuration>
+				<executions>
+					<execution>
+						<id>${project.artifactId}up</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>up</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>${project.artifactId}down</id>
+						<phase>post-integration-test</phase>
+						<goals>
+							<goal>down</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<version>${maven-failsafe-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>${project.artifactId}-integration-tests</id>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>integration-test</goal>
+						</goals>
+						<configuration>
+							<excludedGroups>broken,notReady</excludedGroups>
+							<systemPropertyVariables>
+								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+								</log4j.configuration>
+							</systemPropertyVariables>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<!-- ************************************ -->
 			<!-- *** WAR BUILDER ** -->
 			<!-- ************************************ -->
@@ -136,11 +189,6 @@
 			<groupId>${project.groupId}</groupId>
 			<artifactId>common-api</artifactId>
 			<version>${project.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>mysql</groupId>
-			<artifactId>mysql-connector-java</artifactId>
-			<version>${mysql-connector-java.version}</version>
 		</dependency>
 	</dependencies>
 </project>

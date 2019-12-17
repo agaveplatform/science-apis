@@ -21,7 +21,7 @@
         }
     ],
 	"login": {
-		"host": "docker.example.com",
+		"host": "condorht",
 		"port": 22,
 		"protocol": "SSH",
 		"auth": {
@@ -31,11 +31,12 @@
 		}
 	},
 	"storage": {
-		"host": "docker.example.com",
+		"host": "condorht",
 		"port": 22,
 		"protocol": "SFTP",
 		"rootDir":"/",
 		"homeDir": "/home/${iplant.community.username}",
+		"publicAppsDir": "/tmp",
 		"auth": {
 			"username": "${iplant.community.username}",
 			"password": "${iplant.community.password}",

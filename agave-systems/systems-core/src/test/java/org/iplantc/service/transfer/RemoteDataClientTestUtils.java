@@ -588,9 +588,9 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
             String expectedRemotePath = remoteBaseDir + "/" + expectedRemoteDirectoryName;
 
             getClient().put(LOCAL_DIR, remotePath);
-            for(File child: new File(LOCAL_DIR).listFiles()) {
-                System.out.println(child.getAbsolutePath());
-            }
+//            for(File child: new File(LOCAL_DIR).listFiles()) {
+//                System.out.println(child.getAbsolutePath());
+//            }
 
             boolean fileExists = getClient().doesExist(expectedRemotePath);
 

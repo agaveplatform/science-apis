@@ -21,11 +21,9 @@
 		}
 	],
 	"login": {
-		"host": "docker.example.com",
+		"host": "sftp",
 		"port": 22,
 		"protocol": "SSH",
-		"scratchDir": "/tmp",
-		"workDir": "/tmp",
 		"auth": {
 			"username": "${iplant.community.username}",
 			"password": "${iplant.community.password}",
@@ -34,11 +32,12 @@
 		}
 	},
 	"storage": {
-		"host": "docker.example.com",
+		"host": "sftp",
 		"port": 22,
 		"protocol": "SFTP",
 		"rootDir":"/",
 		"homeDir": "/home/${iplant.test.username}",
+		"publicAppsDir": "/tmp",
 		"auth": {
 			"username": "${iplant.community.username}",
 			"password": "${iplant.community.password}",

@@ -8,11 +8,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
+import org.hibernate.Session;
 import org.hibernate.exception.ConstraintViolationException;
 import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.managers.ApplicationManagerPermissionTest;
+import org.iplantc.service.apps.managers.ApplicationManagerPermissionIT;
 import org.iplantc.service.apps.model.JSONTestDataUtil;
 import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.model.ExecutionSystem;
@@ -28,7 +30,7 @@ import org.json.JSONObject;
  * Time: 8:24 AM
  * To change this template use File | Settings | File Templates.
  */
-public class DomainSetup extends ApplicationManagerPermissionTest {
+public class DomainSetup extends ApplicationManagerPermissionIT {
 
     private static final String SOFTWARE_OWNER =       "api_sample_user";       // default software owner if none given
     private static final String SYSTEM_OWNER =         "sysowner";      // default system owner
@@ -75,9 +77,7 @@ public class DomainSetup extends ApplicationManagerPermissionTest {
         try {
             String contents = FileUtils.readFileToString(new File(pathToFile));
             json = new JSONObject(contents);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
         return json;
@@ -173,9 +173,7 @@ public class DomainSetup extends ApplicationManagerPermissionTest {
                 String key = (String)json.get("id");
 //                System.out.println(key);
                 storageSystemMap.put(key, StorageSystem.fromJSON(json));
-            } catch (SystemArgumentException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
+            } catch (SystemArgumentException | JSONException e) {
                 e.printStackTrace();
             }
         }
@@ -183,11 +181,9 @@ public class DomainSetup extends ApplicationManagerPermissionTest {
         for(JSONObject json : jsonExecutionList){
             try {
                 String key = (String)json.get("id");
-                System.out.println(key);
+//                System.out.println(key);
                 executionSystemMap.put(key, ExecutionSystem.fromJSON(json));
-            } catch (SystemArgumentException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
+            } catch (SystemArgumentException | JSONException e) {
                 e.printStackTrace();
             }
         }
@@ -206,9 +202,7 @@ public class DomainSetup extends ApplicationManagerPermissionTest {
             jsonStorageList = collectFiles(STORAGE_SYSTEM_TEMPLATE_DIR);
             jsonExecutionList = collectFiles(EXECUTION_SYSTEM_TEMPLATE_DIR);
             jsonSoftwareList = collectFiles(SOFTWARE_SYSTEM_TEMPLATE_DIR);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
         fillSystemMaps();
@@ -225,7 +219,6 @@ public class DomainSetup extends ApplicationManagerPermissionTest {
             try {
                 String key = (String)json.get("id");
                 // must be able read remote system from db to create a software object.
-                System.out.println(key);
                 softwareMap.put(key, Software.fromJSON(json,SOFTWARE_OWNER));
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -339,7 +332,7 @@ public class DomainSetup extends ApplicationManagerPermissionTest {
                            // dependency on systems being available in the database.
         for(JSONObject softwareJson : jsonSoftwareList){
             try {
-                System.out.println(softwareJson.get("id"));
+//                System.out.println(softwareJson.get("id"));
                 Software software = Software.fromJSON(softwareJson,SOFTWARE_OWNER);
                 software.setOwner(SOFTWARE_OWNER);
                 SoftwareDao.persist(software);;
@@ -461,7 +454,7 @@ public class DomainSetup extends ApplicationManagerPermissionTest {
         iplantStorage.setGlobalDefault(true);
         iplantStorage.setPubliclyAvailable(true);
         idao.persist(iplantStorage);
-        System.out.println();
+//        System.out.println();
     }
 
     /**
@@ -476,11 +469,75 @@ public class DomainSetup extends ApplicationManagerPermissionTest {
         //System.out.println("Total records in all tables "+g.totalTableRecords());
         //g.lockAndWipeTables();
        // System.out.println("Total records in all tables " + g.totalTableRecords());
-        System.out.println("\n\n");
+//        System.out.println("\n\n");
         persistDefaultTestSystemsData();
         //System.out.println("Total records in all tables "+g.totalTableRecords());
-        System.out.println("\n\n");
+//        System.out.println("\n\n");
         //g.closeConnection("DomainSetup");
+    }
+
+    /**
+     * Deletes all Software objects from the db.
+     */
+    public void clearSoftware() throws Exception
+    {
+        Session session = null;
+        try
+        {
+            HibernateUtil.beginTransaction();
+            session = HibernateUtil.getSession();
+            session.clear();
+            HibernateUtil.disableAllFilters();
+
+            session.createQuery("DELETE SoftwareParameter").executeUpdate();
+            session.createQuery("DELETE SoftwareInput").executeUpdate();
+            session.createQuery("DELETE SoftwareOutput").executeUpdate();
+            session.createSQLQuery("delete from softwares_parameters").executeUpdate();
+            session.createSQLQuery("delete from softwares_inputs").executeUpdate();
+            session.createSQLQuery("delete from softwares_outputs").executeUpdate();
+            session.createQuery("DELETE SoftwarePermission").executeUpdate();
+            session.createQuery("DELETE SoftwareParameterEnumeratedValue").executeUpdate();
+            session.createQuery("DELETE SoftwareEvent").executeUpdate();
+            session.createQuery("DELETE Software").executeUpdate();
+            session.flush();
+        }
+        finally
+        {
+            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+        }
+    }
+
+    /**
+     * Deletes all execution and storage systems from the db.
+     */
+    public void clearSystems()
+    {
+        Session session = null;
+        try
+        {
+            HibernateUtil.beginTransaction();
+            session = HibernateUtil.getSession();
+            session.clear();
+            HibernateUtil.disableAllFilters();
+
+            session.createQuery("DELETE ExecutionSystem").executeUpdate();
+            session.createQuery("DELETE BatchQueue").executeUpdate();
+            session.createQuery("DELETE AuthConfig").executeUpdate();
+            session.createQuery("DELETE LoginConfig").executeUpdate();
+            session.createQuery("DELETE CredentialServer").executeUpdate();
+            session.createQuery("DELETE TransferTask").executeUpdate();
+            session.createQuery("DELETE RemoteConfig").executeUpdate();
+            session.createQuery("DELETE StorageSystem").executeUpdate();
+            session.createQuery("DELETE StorageConfig").executeUpdate();
+            session.createQuery("DELETE SystemRole").executeUpdate();
+            session.createQuery("DELETE SystemPermission").executeUpdate();
+            session.createSQLQuery("delete from userdefaultsystems").executeUpdate();
+            session.flush();
+        }
+        finally
+        {
+            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+        }
     }
 }
 

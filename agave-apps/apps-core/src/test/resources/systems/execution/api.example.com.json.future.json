@@ -40,7 +40,7 @@
 		}
 	},
 	"storage": {
-		"host": "docker.example.com",
+		"host": "sftp",
 		"port": 2811,
 		"protocol": "SFTP",
 		"rootDir":"/",

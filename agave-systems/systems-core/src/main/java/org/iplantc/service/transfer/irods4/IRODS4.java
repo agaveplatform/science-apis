@@ -1247,7 +1247,7 @@ public class IRODS4 implements RemoteDataClient
         }
         catch (FileNotFoundException e) {
             String msg = "No such file or directory: " + remotepath;
-            log.error(msg, e);
+//            log.error(msg, e);
             throw new java.io.FileNotFoundException(msg);
         }
         catch (JargonException e) {

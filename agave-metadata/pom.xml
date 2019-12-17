@@ -59,10 +59,6 @@
 		</pluginManagement>
 	</build>
 
-	<dependencies>
-
-	</dependencies>
-
 	<modules>
 		<module>metadata-core</module>
 		<module>metadata-api</module>

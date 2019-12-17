@@ -84,6 +84,12 @@ services:
         limits:
           memory: 2G
 
+  requestbin:
+    image: agaveplatform/requestbin:2.0.0
+    hostname: requestbin
+    ports:
+      - '5000:5000'
+
   httpd:
     image: agaveapi/apache-dev
     hostname: docker.example.com

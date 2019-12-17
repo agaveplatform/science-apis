@@ -523,7 +523,7 @@ public class JWTClient
 			claimsSet.setCustomClaim("http://wso2.org/claims/applicationid", "-9999");
 			claimsSet.setCustomClaim("http://wso2.org/claims/applicationname", "SSOInternal");
 			claimsSet.setCustomClaim("http://wso2.org/claims/applicationtier", "Unlimited");
-			claimsSet.setCustomClaim("http://wso2.org/claims/apicontext", "/myproxy");
+			claimsSet.setCustomClaim("http://wso2.org/claims/apicontext", "/internal");
 			claimsSet.setCustomClaim("http://wso2.org/claims/version", Settings.SERVICE_VERSION);
 			claimsSet.setCustomClaim("http://wso2.org/claims/tier", "Unlimited");
 			claimsSet.setCustomClaim("http://wso2.org/claims/keytype", "PRODUCTION");

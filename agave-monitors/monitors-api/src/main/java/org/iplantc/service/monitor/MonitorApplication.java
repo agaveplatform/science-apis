@@ -17,7 +17,7 @@ import org.iplantc.service.monitor.resources.impl.QuartzResourceImpl;
 public class MonitorApplication extends Application {
 
 	/**
-	 * @see javax.ws.rs.core.ApplicationConfig#getResourceClasses()
+	 * @see Application#getClasses()
 	 */
 	@Override
     public Set<Class<?>> getClasses() {

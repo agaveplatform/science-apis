@@ -26,15 +26,15 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
 /**
- * Simple client library to reqeustb.in
+ * Simple client library to requestbin service
  * @author dooley
  *
  */
 public class RequestBin
 {
 	private static final Logger log = Logger.getLogger(RequestBin.class);
-	private static final String BASE_URL = "https://requestbin.agaveplatform.org/api/v1/bins";
-	private static final String PUBLIC_URL = "https://requestbin.agaveplatform.org";
+	private static final String BASE_URL = "http://requestbin/api/v1/bins";
+	private static final String PUBLIC_URL = "http://requestbin";
 	private ObjectMapper mapper = new ObjectMapper();
 	
 	private String binId;

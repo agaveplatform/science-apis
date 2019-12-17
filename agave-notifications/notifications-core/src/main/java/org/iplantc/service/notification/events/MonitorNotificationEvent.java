@@ -6,6 +6,7 @@ package org.iplantc.service.notification.events;
 import java.math.BigInteger;
 import java.util.Map;
 
+import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.Criteria;
@@ -201,14 +202,25 @@ public class MonitorNotificationEvent extends AbstractEventFilter {
 			body = StringUtils.replace(body, "${TARGET}", systemId);
 			
 			String currentlyActive = "false";
-            if (jobFieldMap.get("is_active") instanceof Byte) {
-                if ((Byte)jobFieldMap.get("is_active") == 1) {
-                    currentlyActive = "true";
-                }
-            }
-            else if ((Integer)jobFieldMap.get("is_active") == 1) {
-                currentlyActive = "true";
-            }
+			try {
+				if (jobFieldMap.get("is_active") instanceof Byte) {
+					if ((Byte) jobFieldMap.get("is_active") == 1) {
+						currentlyActive = "true";
+					}
+				} else if (jobFieldMap.get("is_active") instanceof Boolean) {
+					if ((Boolean) jobFieldMap.get("is_active")) {
+						currentlyActive = "true";
+					}
+				} else if (jobFieldMap.get("is_active") instanceof Integer) {
+					if ((Integer) jobFieldMap.get("is_active") == 1) {
+						currentlyActive = "true";
+					}
+				}
+			}
+			catch (ClassCastException e) {
+				log.error("Unable to parse value of is_active field for uuid " +
+						associatedUuid.toString() + ". Defaulting to false.");
+			}
             body = StringUtils.replace(body, "${ACTIVE}", currentlyActive);
             
             

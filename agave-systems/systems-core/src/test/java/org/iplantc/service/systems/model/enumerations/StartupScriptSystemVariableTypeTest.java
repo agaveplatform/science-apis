@@ -33,22 +33,22 @@ public class StartupScriptSystemVariableTypeTest extends PersistedSystemsModelTe
 	@DataProvider 
 	protected Object[][] resolveForSystemProvider() {
 		return new Object[][] {
-				{ SYSTEM_STORAGE_PROTOCOL, String.format("${%s}", SYSTEM_STORAGE_PROTOCOL), executionSystem.getStorageConfig().getProtocol().name() },
-				{ SYSTEM_STORAGE_HOST, String.format("${%s}", SYSTEM_STORAGE_HOST), executionSystem.getStorageConfig().getHost()},
-				{ SYSTEM_STORAGE_PORT, String.format("${%s}", SYSTEM_STORAGE_PORT), String.valueOf(executionSystem.getStorageConfig().getPort())},
-				{ SYSTEM_STORAGE_RESOURCE, String.format("${%s}", SYSTEM_STORAGE_RESOURCE), executionSystem.getStorageConfig().getResource()},
-				{ SYSTEM_STORAGE_ZONE, String.format("${%s}", SYSTEM_STORAGE_ZONE), executionSystem.getStorageConfig().getZone()},
-				{ SYSTEM_STORAGE_ROOTDIR, String.format("${%s}", SYSTEM_STORAGE_ROOTDIR), executionSystem.getStorageConfig().getRootDir()},
-				{ SYSTEM_STORAGE_HOMEDIR, String.format("${%s}", SYSTEM_STORAGE_HOMEDIR), executionSystem.getStorageConfig().getHomeDir()},
-				{ SYSTEM_STORAGE_AUTH_TYPE, String.format("${%s}", SYSTEM_STORAGE_AUTH_TYPE), executionSystem.getStorageConfig().getDefaultAuthConfig().getType().name()},
-				{ SYSTEM_STORAGE_CONTAINER, String.format("${%s}", SYSTEM_STORAGE_CONTAINER), executionSystem.getStorageConfig().getContainerName()},
-				{ SYSTEM_LOGIN_PROTOCOL, String.format("${%s}", SYSTEM_LOGIN_PROTOCOL), executionSystem.getLoginConfig().getProtocol().name()},
-				{ SYSTEM_LOGIN_HOST, String.format("${%s}", SYSTEM_LOGIN_HOST), executionSystem.getLoginConfig().getHost()},
-				{ SYSTEM_LOGIN_PORT, String.format("${%s}", SYSTEM_LOGIN_PORT), String.valueOf(executionSystem.getLoginConfig().getPort())},
-				{ SYSTEM_LOGIN_AUTH_TYPE, String.format("${%s}", SYSTEM_LOGIN_AUTH_TYPE), executionSystem.getLoginConfig().getDefaultAuthConfig().getType().name()},
-				{ SYSTEM_UUID, String.format("${%s}", SYSTEM_UUID), executionSystem.getUuid()},
-				{ SYSTEM_OWNER, String.format("${%s}", SYSTEM_OWNER), executionSystem.getUuid()},
-				{ SYSTEM_ID, String.format("${%s}", SYSTEM_ID), executionSystem.getSystemId()},
+				{ SYSTEM_STORAGE_PROTOCOL, 	String.format("${%s}", SYSTEM_STORAGE_PROTOCOL), 	executionSystem.getStorageConfig().getProtocol().name() },
+				{ SYSTEM_STORAGE_HOST, 		String.format("${%s}", SYSTEM_STORAGE_HOST), 		executionSystem.getStorageConfig().getHost()},
+				{ SYSTEM_STORAGE_PORT, 		String.format("${%s}", SYSTEM_STORAGE_PORT), 		String.valueOf(executionSystem.getStorageConfig().getPort())},
+				{ SYSTEM_STORAGE_RESOURCE, 	String.format("${%s}", SYSTEM_STORAGE_RESOURCE), 	executionSystem.getStorageConfig().getResource()},
+				{ SYSTEM_STORAGE_ZONE, 		String.format("${%s}", SYSTEM_STORAGE_ZONE), 		executionSystem.getStorageConfig().getZone()},
+				{ SYSTEM_STORAGE_ROOTDIR, 	String.format("${%s}", SYSTEM_STORAGE_ROOTDIR), 	executionSystem.getStorageConfig().getRootDir()},
+				{ SYSTEM_STORAGE_HOMEDIR, 	String.format("${%s}", SYSTEM_STORAGE_HOMEDIR), 	executionSystem.getStorageConfig().getHomeDir()},
+				{ SYSTEM_STORAGE_AUTH_TYPE, String.format("${%s}", SYSTEM_STORAGE_AUTH_TYPE), 	executionSystem.getStorageConfig().getDefaultAuthConfig().getType().name()},
+				{ SYSTEM_STORAGE_CONTAINER, String.format("${%s}", SYSTEM_STORAGE_CONTAINER), 	executionSystem.getStorageConfig().getContainerName()},
+				{ SYSTEM_LOGIN_PROTOCOL, 	String.format("${%s}", SYSTEM_LOGIN_PROTOCOL), 		executionSystem.getLoginConfig().getProtocol().name()},
+				{ SYSTEM_LOGIN_HOST, 		String.format("${%s}", SYSTEM_LOGIN_HOST), 			executionSystem.getLoginConfig().getHost()},
+				{ SYSTEM_LOGIN_PORT, 		String.format("${%s}", SYSTEM_LOGIN_PORT), 			String.valueOf(executionSystem.getLoginConfig().getPort())},
+				{ SYSTEM_LOGIN_AUTH_TYPE, 	String.format("${%s}", SYSTEM_LOGIN_AUTH_TYPE), 	executionSystem.getLoginConfig().getDefaultAuthConfig().getType().name()},
+				{ SYSTEM_UUID, 				String.format("${%s}", SYSTEM_UUID), 				executionSystem.getUuid()},
+				{ StartupScriptSystemVariableType.SYSTEM_OWNER, 			String.format("${%s}", SYSTEM_OWNER), 				executionSystem.getOwner()},
+				{ SYSTEM_ID, 				String.format("${%s}", SYSTEM_ID), 					executionSystem.getSystemId()},
 		};
 	}
 	

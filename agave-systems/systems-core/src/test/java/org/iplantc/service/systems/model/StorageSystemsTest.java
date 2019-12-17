@@ -9,7 +9,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
+@Test(groups={"unit"})
 public class StorageSystemsTest extends SystemsModelTestCommon {
 
     @BeforeClass
@@ -169,7 +169,7 @@ public class StorageSystemsTest extends SystemsModelTestCommon {
 		};
 	}
     
-   // @Test (groups={"model","system"}, dataProvider="storageSystemDefault")
+    @Test (groups={"model","system"}, dataProvider="storageSystemDefault")
     public void storageSystemDefaultTest(String name, Boolean changeValue, boolean expectedValue, String message) 
     throws Exception 
     {

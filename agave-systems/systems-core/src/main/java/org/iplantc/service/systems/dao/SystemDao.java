@@ -79,13 +79,13 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
             throw ex;
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -113,19 +113,19 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
             throw ex;
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
 
     public RemoteSystem merge(RemoteSystem system) {
-        log.debug("persisting RemoteSystem instance");
+//        log.debug("persisting RemoteSystem instance");
 
         try {
             Session session = getSession();
@@ -140,13 +140,13 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
             throw ex;
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -187,12 +187,12 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -219,7 +219,7 @@ public class SystemDao extends AbstractDao {
             try {
                 HibernateUtil.commitTransaction();
             } 
-            catch (Throwable e) {}
+            catch (Throwable ignored) {}
         }
     }
     
@@ -252,7 +252,7 @@ public class SystemDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -280,7 +280,7 @@ public class SystemDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -313,7 +313,7 @@ public class SystemDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -382,14 +382,14 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
 
             throw ex;
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -409,7 +409,7 @@ public class SystemDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -440,14 +440,14 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
 
             throw ex;
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -498,14 +498,14 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
 
             throw ex;
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -538,14 +538,14 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
 
             throw ex;
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -589,7 +589,7 @@ public class SystemDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
 
@@ -611,7 +611,7 @@ public class SystemDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -632,7 +632,7 @@ public class SystemDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -653,7 +653,7 @@ public class SystemDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -682,12 +682,12 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -714,12 +714,12 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -786,14 +786,14 @@ public class SystemDao extends AbstractDao {
                 } finally {
                     try {
                         HibernateUtil.commitTransaction();
-                    } catch (Throwable e) {}
+                    } catch (Throwable ignored) {}
                 }
             }
         }
     }
 
     public void updateAuthConfig(AuthConfig authConfig) {
-        log.debug("Updating auth config");
+//        log.debug("Updating auth config");
 
         try {
             HibernateUtil.beginTransaction();
@@ -806,13 +806,13 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
             throw ex;
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Throwable e) {
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -903,7 +903,7 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
 
             throw ex;
@@ -996,7 +996,7 @@ public class SystemDao extends AbstractDao {
                 if (HibernateUtil.getSession().isOpen()) {
                     HibernateUtil.rollbackTransaction();
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
 
             throw ex;
@@ -1235,7 +1235,7 @@ public class SystemDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
     }
@@ -1300,7 +1300,7 @@ public class SystemDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
 	}	

@@ -11,7 +11,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"broken", "integration"})
+@Test(groups={"unit"})
 public class RemoteConfigTest extends SystemsModelTestCommon{
 
 	private HashMap<StorageProtocolType, StorageConfig> storageConfigs = new HashMap<StorageProtocolType, StorageConfig>();
@@ -25,8 +25,10 @@ public class RemoteConfigTest extends SystemsModelTestCommon{
         try {
         // pull in storage configs
     	for(StorageProtocolType storageProtocol: StorageProtocolType.values()) {
-    		File testSystem = new File(JSONTestDataUtil.TEST_SYSTEM_FOLDER + "storage/" + 
-    				storageProtocol.name().toLowerCase() + ".example.com.json");
+    		String protocolName = storageProtocol == StorageProtocolType.IRODS ?
+					"irods3" : storageProtocol.name().toLowerCase();
+    		File testSystem = new File(JSONTestDataUtil.TEST_SYSTEM_FOLDER + "storage/" +
+					protocolName + ".example.com.json");
     		if (testSystem.exists()) {
 	    		jsonTree = jtd.getTestDataObject(testSystem.getPath())
 	    				.getJSONObject("storage");

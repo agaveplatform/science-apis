@@ -85,13 +85,13 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 
 			throw new SoftwareException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -115,7 +115,7 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e)
+			catch (Exception ignored)
 			{
 			}
 			throw new SoftwareException(ex);
@@ -153,14 +153,14 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e)
+			catch (Exception ignored)
 			{
 			}
 			throw new SoftwareException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -200,14 +200,14 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e)
+			catch (Exception ignored)
 			{
 			}
 			throw new SoftwareException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -289,14 +289,14 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e)
+			catch (Exception ignored)
 			{
 			}
 			throw new SoftwareException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -324,7 +324,7 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e)
+			catch (Exception ignored)
 			{
 			}
 			throw new SoftwareException(ex);
@@ -337,7 +337,7 @@ public class SoftwareDao
 
 	public static Software merge(Software software)
 	{
-		log.debug("merging Software instance");
+//		log.debug("merging Software instance");
 
 		try
 		{
@@ -357,12 +357,12 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			throw ex;
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Throwable e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Throwable ignored) {}
 		}
 	}
 
@@ -386,13 +386,13 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e){}
+			catch (Exception ignored){}
 
 			throw new SoftwareException("Failed to save application. " + ex.getMessage(), ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -418,14 +418,13 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e)
-			{
-			}
+			catch (Exception ignored) {}
+
 			throw new SoftwareException("Failed to delete application", ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -457,14 +456,14 @@ public class SoftwareDao
                     HibernateUtil.rollbackTransaction();
                 }
             }
-            catch (Exception e)
+            catch (Exception ignored)
             {
             }
             throw new SoftwareException("Failed to replace application", ex);
         }
         finally
         {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
     }
 
@@ -522,14 +521,14 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e)
+			catch (Exception ignored)
 			{
 			}
 			throw new SoftwareException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 
 	}
@@ -599,14 +598,14 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e)
+			catch (Exception ignored)
 			{
 			}
 			throw new SoftwareException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -634,7 +633,7 @@ public class SoftwareDao
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -687,7 +686,7 @@ public class SoftwareDao
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -730,13 +729,13 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 
 			throw new SoftwareException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -779,13 +778,13 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 
 			throw new SoftwareException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -839,14 +838,14 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e)
+			catch (Exception ignored)
 			{
 			}
 			throw new SoftwareException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -1037,7 +1036,7 @@ public class SoftwareDao
                 
             }
             
-            log.debug(q);
+//            log.debug(q);
             
             List<Software> softwares = query
                     .setFirstResult(offset)
@@ -1054,7 +1053,7 @@ public class SoftwareDao
             throw new SoftwareException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+            try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
         }
     }
 
@@ -1103,13 +1102,13 @@ public class SoftwareDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 
 			throw new SoftwareException(ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -1148,7 +1147,7 @@ public class SoftwareDao
             throw new SoftwareException(ex);
         } 
         finally {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
 	}
 
@@ -1191,7 +1190,7 @@ public class SoftwareDao
             throw new SoftwareException(ex);
         } 
         finally {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
 	}
 	

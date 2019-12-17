@@ -6,11 +6,12 @@
    "description":"My example storage system using SFTP to store data for testing",
    "site":"example.com",
    "storage":{
-      "host":"storage.example.com",
+      "host":"sftp",
       "port":10022,
       "protocol":"SFTP",
       "rootDir":"/",
       "homeDir":"/home/testuser",
+      "publicAppsDir": "/tmp",
       "auth": {
          "username":"testuser",
          "password":"testuser",

@@ -6,13 +6,14 @@
 	"description": "Example storage sytem accessible via sftp.",
 	"site": "example.com",
 	"storage": {
-		"host": "iplant-ssh.tacc.utexas.edu",
-		"port": 22,
+		"host": "sftp",
+		"port": 10022,
 		"protocol": "SFTP",
-		"rootDir": "/tmp",
+		"rootDir": "/",
+		"homeDir": "/home/testuser",
 		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
+			"username": "testuser",
+			"password": "testuser",
 			"type": "PASSWORD"
 		}
 		

@@ -20,7 +20,7 @@ import java.util.Map;
 
 /**
  * This class is the basis for search support across the API.
- * Each service shold implement this class to filter query parameters
+ * Each service should implement this class to filter query parameters
  * from the url into valid hibernate query.
  * 
  * @author dooley
@@ -69,7 +69,7 @@ public class MetadataSearchFilter extends AgaveResourceSearchFilter
 	 * @see org.iplantc.service.common.search.AgaveResourceSearchFilter#getSearchTermPrefix()
 	 */
 	@Override
-	protected String getSearchTermPrefix() {
+    protected String getSearchTermPrefix() {
 	    return "";
 	}
 

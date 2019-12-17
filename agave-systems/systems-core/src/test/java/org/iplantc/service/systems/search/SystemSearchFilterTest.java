@@ -85,7 +85,10 @@ public class SystemSearchFilterTest extends SystemsModelTestCommon
             for (SearchTerm.Operator operator: SearchTerm.Operator.values()) {
 				if (searchTypeMappings.get(key) == Date.class && operator.isSetOperator() && SearchTerm.Operator.BETWEEN != operator) {
 				    continue;
+				} else if (searchTypeMappings.get(key) == Boolean.class && !operator.isEqualityOperator()) {
+					continue;
 				}
+
 				String op =  "." + operator.name();
                 
 				testData.add(new Object[]{ key + op, true, "Exact terms with uppercase operator should be accepted" });
@@ -196,7 +199,7 @@ public class SystemSearchFilterTest extends SystemsModelTestCommon
 	}
 	
 	@SuppressWarnings("rawtypes")
-	public void _filterInvalidSearchCriteria(String testField, boolean shouldExistAfterFiltering, String message) throws Exception
+	protected void _filterInvalidSearchCriteria(String testField, boolean shouldExistAfterFiltering, String message) throws Exception
 	{
 		SystemSearchFilter systemSearchFilter = new SystemSearchFilter();
 		Map<String, String> searchCriteria = new HashMap<String, String>();

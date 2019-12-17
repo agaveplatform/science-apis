@@ -57,6 +57,9 @@ import org.jclouds.blobstore.options.CopyOptions;
 import org.jclouds.blobstore.options.ListContainerOptions;
 import org.jclouds.http.HttpException;
 import org.jclouds.http.options.GetOptions;
+import org.jclouds.io.ContentMetadata;
+import org.jclouds.io.Payload;
+import org.jclouds.io.payloads.ByteSourcePayload;
 import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
 //import org.jclouds.rest.RestContext;
 //import org.jclouds.s3.S3AsyncClient;
@@ -891,16 +894,19 @@ public class S3Jcloud implements RemoteDataClient
 				}
 			} else { 
 			
-				ByteSource payload = Files.asByteSource(localFile);
+				ByteSource byteSource = Files.asByteSource(localFile);
+				Payload payload = new ByteSourcePayload(byteSource);
 				String mimeType = resolveMimeTypeOfFile(localFile);
 
 				String resolvedPath = _doResolvePath(remotedir);
 
 				Blob blob = getBlobStore().blobBuilder(resolvedPath)
-						  .payload(payload)
-						  .contentLength(localFile.length())
-						  .contentType(mimeType)
-						  .build();
+					.payload(payload)
+				 	.contentLength(localFile.length())
+					.contentDisposition(FilenameUtils.getName(resolvedPath))
+					.contentMD5(payload.getContentMetadata().getContentMD5AsHashCode())
+					.contentType(mimeType)
+					.build();
 
 				if (destFileInfo != null) {
 					blob.getMetadata().setCreationDate(new Date());
@@ -1156,8 +1162,21 @@ public class S3Jcloud implements RemoteDataClient
 		try
 		{
 			if (isDirectory(remotepath)) {
-				throw new RemoteDataException("Directory cannot be checksummed.");
+				throw new RemoteDataException("Directory cannot be checksummed");
 			} else {
+				// TODO: enable checksum on s3 files. Need to ensure these are present by default in s3
+//				BlobMetadata blobMetadata = getFileMeta(remotepath, true);
+//				ContentMetadata contentMetadata = blobMetadata.getContentMetadata();
+//				if (contentMetadata != null) {
+//					HashCode hashCode = contentMetadata.getContentMD5AsHashCode();
+//					if (hashCode != null) {
+//						return hashCode.toString();
+//					} else {
+//						throw new RemoteDataException("No checksum found for " + remotepath);
+//					}
+//				} else {
+//					throw new RemoteDataException("Content metadata is not available");
+//				}
 				throw new NotImplementedException();
 			}
 		}

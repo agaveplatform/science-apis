@@ -9,7 +9,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
+@Test(groups={"unit"})
 public class BatchQueueTest extends SystemsModelTestCommon{
 
     @BeforeClass
@@ -266,21 +266,21 @@ public class BatchQueueTest extends SystemsModelTestCommon{
     @DataProvider(name = "batchQueueMaxMemoryParser")
     public Object[][] batchQueueMaxMemoryParser() {
     	return new Object[][] {
-    			{ "2.0GB", 2, "Decimal GB are converted to long values", false },
-    			{ "2.5GB", 2.5, "Decimal GB are rounded down to long values", false },
-    			{ "2.7GB", 2.7, "Decimal GB are rounded down to long values", false },
-    			{ "2GB", 2, "GB are converted to long values", false },
-    			{ "2gb", 2, "gb are converted to long values", false },
-    			{ "2TB", 2048, "TB are converted to long values", false },
-    			{ "2tb", 2048, "tb are converted to long values", false },
-    			{ "2PB", Long.parseLong("2097152"), "PB are converted to long values", false },
-    			{ "2pb", Long.parseLong("2097152"), "pb are converted to long values", false },
-    			{ "2EB", Long.parseLong("2147483648"), "EB are converted to long values", false },
-    			{ "2eb", Long.parseLong("2147483648"), "eb are converted to long values", false },
-    			{ "2", 2, "integers are treated as gb", false },
-    			{ "2.5", 2.5, "decimals greater than 1 are treated as gb", false },
-    			{ "2048", 2048, "integers are treated as gb", false },
-    			{ "0.5", .5, "decimals less than 1 are treated as partial gb", false },
+    			{ "2.0GB", 2d, "Decimal GB are converted to long values", false },
+    			{ "2.5GB", 2.5d, "Decimal GB are rounded down to long values", false },
+    			{ "2.7GB", 2.7d, "Decimal GB are rounded down to long values", false },
+    			{ "2GB", 2d, "GB are converted to long values", false },
+    			{ "2gb", 2d, "gb are converted to long values", false },
+    			{ "2TB", 2048d, "TB are converted to long values", false },
+    			{ "2tb", 2048d, "tb are converted to long values", false },
+    			{ "2PB", 2097152d, "PB are converted to long values", false },
+    			{ "2pb", 2097152d, "pb are converted to long values", false },
+    			{ "2EB", 2147483648d, "EB are converted to long values", false },
+    			{ "2eb", 2147483648d, "eb are converted to long values", false },
+    			{ "2", 2d, "integers are treated as gb", false },
+    			{ "2.5", 2.5d, "decimals greater than 1 are treated as gb", false },
+    			{ "2048", 2048d, "integers are treated as gb", false },
+    			{ "0.5", .5d, "decimals less than 1 are treated as partial gb", false },
     	};
     }
     
@@ -304,7 +304,7 @@ public class BatchQueueTest extends SystemsModelTestCommon{
 				Assert.fail(exceptionMsg, se);
 		}
 
-		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
+//		System.out.println(" exception thrown?  expected " + exceptionThrown + " actual " + exceptionFlag);
 
 		Assert.assertEquals(exceptionThrown, exceptionFlag, exceptionMsg);
     }

@@ -8,18 +8,25 @@ import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_OWNER;
 import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_SOFTWARE_SYSTEM_FILE;
 import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.hibernate.Session;
 import org.iplantc.service.apps.model.JSONTestDataUtil;
 import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.apps.model.SoftwareParameterEnumeratedValue;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.model.CredentialServer;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
+import org.iplantc.service.systems.model.SystemRole;
+import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.json.JSONObject;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.Random;
 
 /**
  * @author dooley
@@ -29,8 +36,8 @@ public class AbstractDaoTest
 {	
 	protected ObjectMapper mapper = new ObjectMapper();
 	
-	public static final String ADMIN_USER = "xxx";
-	public static final String TENANT_ADMIN = "xxx";
+	public static final String ADMIN_USER = "testadmin";
+	public static final String TENANT_ADMIN = "testtenantadmin";
 	public static final String SYSTEM_OWNER = "testuser";
 	public static final String SYSTEM_SHARE_USER = "testshare";
 	public static final String SYSTEM_PUBLIC_USER = "public";
@@ -73,6 +80,7 @@ public class AbstractDaoTest
 		privateStorageSystem.setOwner(TEST_OWNER);
 		privateStorageSystem.getUsersUsingAsDefault().add(TEST_OWNER);
         systemDao.persist(privateStorageSystem);
+
 	}
 	
 	protected void clearSystems()
@@ -82,22 +90,31 @@ public class AbstractDaoTest
         {
             HibernateUtil.beginTransaction();
             session = HibernateUtil.getSession();
-            session.clear();
             HibernateUtil.disableAllFilters();
 
             session.createQuery("DELETE ExecutionSystem").executeUpdate();
+			session.createQuery("DELETE BatchQueue").executeUpdate();
+			session.createQuery("DELETE AuthConfig").executeUpdate();
+			session.createQuery("DELETE LoginConfig").executeUpdate();
+			session.createQuery("DELETE CredentialServer").executeUpdate();
+			session.createQuery("DELETE TransferTask").executeUpdate();
+			session.createQuery("DELETE RemoteConfig").executeUpdate();
             session.createQuery("DELETE StorageSystem").executeUpdate();
-            session.flush();
+			session.createQuery("DELETE StorageConfig").executeUpdate();
+			session.createQuery("DELETE SystemRole").executeUpdate();
+			session.createQuery("DELETE SystemPermission").executeUpdate();
+			session.createSQLQuery("delete from userdefaultsystems").executeUpdate();
+			session.flush();
         }
         finally
         {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
 	}
 	
 	protected Software createSoftware() throws Exception
 	{
-		JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
+		JSONObject json = jtd.getTestDataObject(FORK_SOFTWARE_TEMPLATE_FILE);
 		Software software = Software.fromJSON(json, TEST_OWNER);
 		software.setExecutionSystem(privateExecutionSystem);
 		software.setOwner(SYSTEM_OWNER);
@@ -113,15 +130,23 @@ public class AbstractDaoTest
         {
             HibernateUtil.beginTransaction();
             session = HibernateUtil.getSession();
-            session.clear();
             HibernateUtil.disableAllFilters();
 
-            session.createQuery("DELETE Software").executeUpdate();
-            session.flush();
-        }
+			session.createQuery("DELETE SoftwareParameter").executeUpdate();
+			session.createQuery("DELETE SoftwareInput").executeUpdate();
+			session.createQuery("DELETE SoftwareOutput").executeUpdate();
+			session.createSQLQuery("delete from softwares_parameters").executeUpdate();
+			session.createSQLQuery("delete from softwares_inputs").executeUpdate();
+			session.createSQLQuery("delete from softwares_outputs").executeUpdate();
+			session.createQuery("DELETE SoftwarePermission").executeUpdate();
+			session.createQuery("DELETE SoftwareParameterEnumeratedValue").executeUpdate();
+			session.createQuery("DELETE SoftwareEvent").executeUpdate();
+			session.createQuery("DELETE Software").executeUpdate();
+			session.flush();
+		}
         finally
         {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
 	}
 	
@@ -131,5 +156,17 @@ public class AbstractDaoTest
 	{
 		clearSoftware();
 		clearSystems();
+	}
+
+	/**
+	 * Creates a nonce for use as the token by generating an md5 hash of the
+	 * salt, current timestamp, and a random number.
+	 *
+	 * @param salt
+	 * @return md5 hash of the adjusted salt
+	 */
+	public String createNonce(String salt) {
+		String digestMessage = salt + System.currentTimeMillis() + new Random().nextInt();
+		return DigestUtils.md5Hex(digestMessage);
 	}
 }

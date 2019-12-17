@@ -6,9 +6,12 @@
 	"description": "Example gridftp system",
 	"site": "example.com",
 	"storage": {
-		"host": "docker.example.com",
+		"host": "gridftp",
 		"port": 2811,
 		"protocol": "GRIDFTP",
+		"rootDir": "/",
+		"homeDir": "/home/testuser",
+		"publicAppsDir": "/tmp",
 		"auth": {
 			"username": "${iplant.community.username}",
 			"password": "${iplant.community.password}",

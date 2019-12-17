@@ -23,6 +23,7 @@ import org.iplantc.service.systems.model.RemoteSystem;
  * 
  * @author dooley
  */
+@SuppressWarnings("ALL")
 public class MonitorDao extends AbstractDao
 {
 	/* (non-Javadoc)
@@ -40,7 +41,7 @@ public class MonitorDao extends AbstractDao
 	/**
 	 * Gets all active monitors for a given user.
 	 * 
-	 * @param apiUsername
+	 * @param username the username for whom the monitors will be retrieved
 	 * @return
 	 * @throws MonitorException
 	 */
@@ -73,12 +74,12 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -145,12 +146,12 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -158,7 +159,7 @@ public class MonitorDao extends AbstractDao
 	 * Gets all internal users created by the given apiUsername. This will return both
 	 * active and inactive users.
 	 * 
-	 * @param apiUsername
+	 * @param uuid the uuid of the monitor to retrieve
 	 * @return
 	 * @throws MonitorException
 	 */
@@ -188,19 +189,19 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Returns the monitor matching the given uuid withing the current tenant id
 	 * 
-	 * @param apiUsername
+	 * @param uuid the uuid of the monitor to retrieve
 	 * @return
 	 * @throws MonitorException
 	 */
@@ -209,7 +210,7 @@ public class MonitorDao extends AbstractDao
 		try
 		{
 			Session session = getSession();
-			
+
 			String hql = "from Monitor t where t.uuid = :uuid";
 			
 			Monitor monitor = (Monitor)session.createQuery(hql)
@@ -228,25 +229,25 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Saves or updates the InternalUser
-	 * @param monitor
+	 * @param monitor the monitor to persist
 	 * @throws MonitorException
 	 */
 	public void persist(Monitor monitor) throws MonitorException
 	{
 		if (monitor == null)
 			throw new MonitorException("Monitor cannot be null");
-
+		boolean exceptionThrown = false;
 		try
 		{	
 			HibernateUtil.beginTransaction();
@@ -257,30 +258,36 @@ public class MonitorDao extends AbstractDao
 			session.flush();
 		}
 		catch (ConstraintViolationException ex) {
+			exceptionThrown = true;
 			throw new MonitorException("A monitor already exists for this user on system " + 
 					monitor.getSystem().getSystemId(), ex);
 		}
 		catch (HibernateException ex)
 		{
+			exceptionThrown = true;
 			try
 			{
 				if (HibernateUtil.getSession().isOpen()) {
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignore) {}
 			
 			throw new MonitorException("Failed to save monitor", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {e.printStackTrace();}
+			try {
+				if (!exceptionThrown) {
+					HibernateUtil.commitTransaction();
+				}
+			} catch (Exception ignore) {}
 		}
 	}
 
 	/**
 	 * Deletes a monitor
 	 * 
-	 * @param profile
+	 * @param monitor
 	 * @throws MonitorException
 	 */
 	public void delete(Monitor monitor) throws MonitorException
@@ -306,12 +313,12 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException("Failed to delete monitor", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -337,12 +344,12 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			throw new MonitorException("Failed to merge monitor", ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Throwable e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -364,12 +371,12 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			throw new MonitorException("Failed to merge monitor", ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Throwable e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -398,12 +405,12 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -439,12 +446,12 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 		
 	}
@@ -480,12 +487,12 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 		
 	}
@@ -528,12 +535,12 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -565,12 +572,12 @@ public class MonitorDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}	
 }

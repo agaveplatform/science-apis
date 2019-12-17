@@ -126,7 +126,9 @@ public class MonitorQueueListener implements org.quartz.Job
 	public void stop()
 	{
 		try {
-			messageClient.stop();
+			if (messageClient != null) {
+				messageClient.stop();
+			}
 		} catch (Exception e) {
 			log.error("Failed to stop message client.",e);
 		}

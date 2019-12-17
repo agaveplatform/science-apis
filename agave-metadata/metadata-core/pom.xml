@@ -32,7 +32,7 @@
 			</testResource>
 		</testResources>
 		<plugins>
-			<!-- Attach testng to the surefire execution -->
+			<!-- Attach testng to the surefire test execution -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
@@ -42,48 +42,58 @@
 					</suiteXmlFiles>
 				</configuration>
 			</plugin>
-
+			<!-- Attach testng to the failsafe integration-test execution -->
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+				<version>${docker-compose-maven-plugin.version}</version>
+				<configuration>
+					<detachedMode>true</detachedMode>
+					<projectName>${project.artifactId}</projectName>
+					<composeFiles>
+						<composeFile>${project.basedir}/../../compose/third-party/docker-compose.yml</composeFile>
+					</composeFiles>
+					<ignorePullFailures>true</ignorePullFailures>
+				</configuration>
+				<executions>
+					<execution>
+						<id>${project.artifactId}up</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>up</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>${project.artifactId}down</id>
+						<phase>post-integration-test</phase>
+						<goals>
+							<goal>down</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<version>${maven-failsafe-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>${project.artifactId}-integration-tests</id>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>integration-test</goal>
+						</goals>
+						<configuration>
+							<excludedGroups>broken,notReady</excludedGroups>
+							<systemPropertyVariables>
+								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+								</log4j.configuration>
+							</systemPropertyVariables>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
-		<pluginManagement>
-			<plugins>
-				<!--This plugin's configuration is used to store Eclipse m2e settings 
-					only. It has no influence on the Maven build itself. -->
-				<plugin>
-					<groupId>org.eclipse.m2e</groupId>
-					<artifactId>lifecycle-mapping</artifactId>
-					<version>${org.eclipse.m2e.lifecycle-mapping.version}</version>
-					<configuration>
-						<lifecycleMappingMetadata>
-							<pluginExecutions>
-								<pluginExecution>
-									<pluginExecutionFilter>
-										<groupId>
-											org.codehaus.gmaven
-										</groupId>
-										<artifactId>
-											gmaven-plugin
-										</artifactId>
-										<versionRange>
-											${gmaven-plugin.versionRange}
-										</versionRange>
-										<goals>
-											<goal>compile</goal>
-											<goal>testCompile</goal>
-											<goal>
-												generateTestStubs
-											</goal>
-										</goals>
-									</pluginExecutionFilter>
-									<action>
-										<ignore></ignore>
-									</action>
-								</pluginExecution>
-							</pluginExecutions>
-						</lifecycleMappingMetadata>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
 	</build>
 
 	<dependencies>

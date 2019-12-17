@@ -18,15 +18,14 @@ import org.testng.annotations.Test;
  * Time: 11:09 AM
  * To change this template use File | Settings | File Templates.
  */
-@Test(groups={"unit"})
 public class SystemsModelTestCommon 
 {
     public static final String TENANT_ADMIN = "testadmin";
 	public static final String SYSTEM_OWNER = "testuser";
-	public static final String SYSTEM_SHARE_USER = "bob";
+	public static final String SYSTEM_SHARE_USER = "testshare";
 	public static final String SYSTEM_PUBLIC_USER = "public";
-	public static final String SYSTEM_UNSHARED_USER = "dan";
-	public static final String SYSTEM_INTERNAL_USERNAME = "test_user";
+	public static final String SYSTEM_UNSHARED_USER = "testunshared";
+	public static final String SYSTEM_INTERNAL_USERNAME = "test_internal_user";
 	
 	public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/execution";
 	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage";

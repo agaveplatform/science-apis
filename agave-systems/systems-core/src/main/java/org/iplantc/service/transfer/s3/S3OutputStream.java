@@ -14,6 +14,7 @@ import java.util.Map;
 
 import javax.activation.MimetypesFileTypeMap;
 
+import com.google.common.hash.Hashing;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.iplantc.service.systems.Settings;
@@ -21,6 +22,9 @@ import org.iplantc.service.transfer.RemoteOutputStream;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.util.MD5Checksum;
 import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.io.Payload;
+import org.jclouds.io.Payloads;
+import org.jclouds.io.payloads.ByteSourcePayload;
 import org.jclouds.io.payloads.FilePayload;
 
 import com.google.common.hash.HashCode;
@@ -83,28 +87,32 @@ public class S3OutputStream extends RemoteOutputStream<S3Jcloud> {
 		{
 			stream.close();
 
-			InputStream in = null;
+//			InputStream in = null;
 			try {
 //				File test = new File("/Users/dooley/workspace/agave/agave-systems/systems-core/src/test/resources/transfer/test_upload.txt");
 //				in = new FileInputStream(tempFile);
-				ByteSource payload = Files.asByteSource(tempFile);
+				ByteSource byteSource = Files.asByteSource(tempFile);
+				Payload payload = new ByteSourcePayload(byteSource);
+
 				if (this.blob == null)
 				{
+
 					this.blob = client.getBlobStore().blobBuilder(remotePath)
 						  .payload(payload)
 						  .contentDisposition(FilenameUtils.getName(remotePath))
 						  .contentLength(tempFile.length())
 						  .contentType(new MimetypesFileTypeMap().getContentType(tempFile))
-						  .contentMD5((HashCode)null)
-//						  .contentMD5(MD5Checksum.getMD5Checksum(tempFile).getBytes())
+						  .contentMD5(payload.getContentMetadata().getContentMD5AsHashCode())
 						  .userMetadata(userMetadata)
 						  .build();
 				}
 				else
 				{
 //					this.blob.setPayload(in);
-					in = payload.openBufferedStream();
-					this.blob.setPayload(in);
+//					in = payload.openBufferedStream();
+//					this.blob.setPayload(in);
+					this.blob.setPayload(payload);
+					this.blob.getMetadata().getContentMetadata().setContentMD5(payload.getContentMetadata().getContentMD5AsHashCode());
 					this.blob.getMetadata().getContentMetadata().setContentType(new MimetypesFileTypeMap().getContentType(tempFile));
 					this.blob.getMetadata().getContentMetadata().setContentLength(tempFile.length());
 				}
@@ -116,7 +124,7 @@ public class S3OutputStream extends RemoteOutputStream<S3Jcloud> {
 			}
 			finally {
 				hasWrittenContent = true;
-				try { in.close(); } catch (Exception ignore) {}
+//				try { in.close(); } catch (Exception ignore) {}
 				FileUtils.deleteQuietly(tempFile);
 			}
 		}

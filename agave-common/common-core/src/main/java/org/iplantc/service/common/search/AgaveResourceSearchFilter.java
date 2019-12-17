@@ -107,8 +107,8 @@ public abstract class AgaveResourceSearchFilter {
     /**
      * Converts the search value given in a url query to the proper
      * object type for the hibernate query.
-     * 
-     * @param attributeName
+     *
+     * @param searchTerm
      * @param searchValue
      * @return
      * @throws IllegalArgumentException

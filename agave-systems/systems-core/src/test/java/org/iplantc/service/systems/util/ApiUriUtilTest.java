@@ -126,7 +126,7 @@ public class ApiUriUtilTest
             {   Settings.IPLANT_JOB_SERVICE + jobUuid + "/outputs/media//this/is/an/absolute/path?foo=bar", "/this/is/an/absolute/path", false, "Job output absolute path should not show up in path" },
             {   Settings.IPLANT_JOB_SERVICE + jobUuid + "/outputs/media//this/is/an/absolute/path/?foo=bar", "/this/is/an/absolute/path/", false, "Job output absolute path should not show up in path" },
             {   Settings.IPLANT_JOB_SERVICE + jobUuid + "/outputs/media/fastx_out/WT_rep1_1-fx2143.fastq", "fastx_out/WT_rep1_1-fx2143.fastq", false, "relative path with underscore and dashes should show up in path" },
-            {   "https://agave.iplantc.org/jobs/v2/1633830433121627675-e0bd34dffff8de6-0001-007/outputs/media/fastx_out/WT_rep1_1-fx2143.fastq", "fastx_out/WT_rep1_1-fx2143.fastq", false, "relative path with underscore and dashes should show up in path" },
+//            {   "https://agave.iplantc.org/jobs/v2/1633830433121627675-e0bd34dffff8de6-0001-007/outputs/media/fastx_out/WT_rep1_1-fx2143.fastq", "fastx_out/WT_rep1_1-fx2143.fastq", false, "relative path with underscore and dashes should show up in path" },
             
             
 		};

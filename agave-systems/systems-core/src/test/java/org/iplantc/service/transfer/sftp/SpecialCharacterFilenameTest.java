@@ -126,9 +126,9 @@ private static final Logger log = Logger.getLogger(SpecialCharacterFilenameTest.
             Assert.assertTrue(getClient().doesExist(filename), "Existence checks should succeed for files with special characters in the name.");
             Assert.assertNotNull(getClient().getFileInfo(filename), "File info checks should succeed for files with special characters in the name.");
             ObjectMapper mapper = new ObjectMapper();
-            System.out.println(mapper.writeValueAsString(getClient().getFileInfo(filename)));
+//            System.out.println(mapper.writeValueAsString(getClient().getFileInfo(filename)));
             Assert.assertNotNull(getClient().ls(filename), "Listing checks should succeed for files with special characters in the name.");
-            System.out.println(mapper.writeValueAsString(getClient().ls(filename)));
+//            System.out.println(mapper.writeValueAsString(getClient().ls(filename)));
         } 
         catch (Exception e) 
         {

@@ -47,14 +47,14 @@
 				</configuration>
 				<executions>
 					<execution>
-						<id>systemsup</id>
+						<id>${project.artifactId}up</id>
 						<phase>pre-integration-test</phase>
 						<goals>
 							<goal>up</goal>
 						</goals>
 					</execution>
 					<execution>
-						<id>systemsdown</id>
+						<id>${project.artifactId}down</id>
 						<phase>post-integration-test</phase>
 						<goals>
 							<goal>down</goal>
@@ -64,19 +64,69 @@
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.8</version>
+				<executions>
+					<execution>
+						<id>${project.artifactId}-sleep-for-mysql</id>
+						<phase>pre-integration-test</phase>
+						<configuration>
+							<target>
+								<sleep seconds="20" />
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>com.github.slem1</groupId>
+				<artifactId>await-maven-plugin</artifactId>
+				<version>${await-maven-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>${project.artifactId}-await-tcp-connection</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>Await</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<poll>
+						<attempts>10</attempts>
+						<sleep>5000</sleep>
+					</poll>
+					<tcpConnections>
+						<tcpConnection>
+							<host>irods3</host>
+							<port>1247</port>
+						</tcpConnection>
+						<tcpConnection>
+							<host>irods3-pam</host>
+							<port>1248</port>
+						</tcpConnection>
+						<tcpConnection>
+							<host>irods4</host>
+							<port>1257</port>
+						</tcpConnection>
+					</tcpConnections>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
 				<version>${maven-failsafe-plugin.version}</version>
 				<executions>
 					<execution>
-						<id>systems-core-integration-tests</id>
+						<id>${project.artifactId}-integration-tests</id>
 						<phase>integration-test</phase>
 						<goals>
 							<goal>integration-test</goal>
 						</goals>
 						<configuration>
-<!--							<suiteXmlFiles>-->
-<!--								<suiteXmlFile>testng-integration.xml</suiteXmlFile>-->
-<!--							</suiteXmlFiles>-->
 							<properties>
 								<property>
 									<name>parallel</name>
@@ -87,11 +137,7 @@
 									<value>5</value>
 								</property>
 							</properties>
-<!--							<includes>-->
-<!--								<include>*IT</include>-->
-<!--							</includes>-->
-<!--							<groups>sftp*,s3*,irods*</groups>-->
-							<excludedGroups>broken</excludedGroups>
+							<excludedGroups>broken,notReady</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
 								</log4j.configuration>

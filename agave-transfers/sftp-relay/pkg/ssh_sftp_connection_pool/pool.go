@@ -128,41 +128,6 @@ func (p *SSHPool) collect() {
 	}
 }
 
-func (p *SSHPool) ClaimSession(cfg *SSHConfig, envs map[string]string) (*ssh.Session, error) {
-	session, closeFn, err := p.newSession(cfg, envs)
-	if err != nil {
-		return nil, err
-	}
-	defer closeFn()
-
-	return session, nil
-}
-
-func (p *SSHPool) ReleaseSession(cfg *SSHConfig, session *ssh.Session) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	var err error
-
-	if session != nil {
-		err = session.Close()
-		if err != nil {
-			return err
-		}
-
-		conn, found := p.table[cfg.String()]
-		if !found {
-			err = errors.New("No connection found for config. Session was abandoned")
-		}
-
-		conn.DecrRefCount()
-	} else {
-		err = errors.New("Session is nil")
-	}
-
-	return err
-}
-
 // NewSession creates and configures a new session reusing an existing
 // SSH connection if possible.
 //

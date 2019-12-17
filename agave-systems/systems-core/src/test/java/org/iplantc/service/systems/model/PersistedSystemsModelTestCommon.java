@@ -4,7 +4,6 @@ import org.hibernate.Session;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.testng.annotations.Test;
 
-@Test(groups = {"integration"})
 public class PersistedSystemsModelTestCommon extends SystemsModelTestCommon {
 
     protected void clearSystems() throws Exception {
@@ -14,17 +13,19 @@ public class PersistedSystemsModelTestCommon extends SystemsModelTestCommon {
             session = HibernateUtil.getSession();
             session.clear();
             HibernateUtil.disableAllFilters();
-            @SuppressWarnings("JpaQlInspection") String query = "DELETE RemoteSystem";
 
-            session.createQuery(query).executeUpdate();
+            session.createQuery("delete RemoteSystem").executeUpdate();
+            session.createQuery("delete BatchQueue").executeUpdate();
+            session.createQuery("delete StorageConfig").executeUpdate();
+            session.createQuery("delete LoginConfig").executeUpdate();
+            session.createQuery("delete AuthConfig").executeUpdate();
+            session.createQuery("delete SystemRole").executeUpdate();
+            session.createQuery("delete CredentialServer").executeUpdate();
             session.flush();
         } catch (Throwable t) {
             t.printStackTrace();
         } finally {
-            try {
-                HibernateUtil.commitTransaction();
-            } catch (Exception ignored) {
-            }
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
     }
 }

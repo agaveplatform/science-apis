@@ -27,7 +27,6 @@ import java.util.List;
  * Time: 2:31 PM
  * To change this template use File | Settings | File Templates.
  */
-@Test(groups={"broken", "unit"})
 public class JSONTestDataUtil 
 {
 	private static String TEST_SOFTWARE_FOLDER = "src/test/resources/software/";

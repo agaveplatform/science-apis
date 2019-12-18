@@ -18,7 +18,7 @@ import org.iplantc.service.apps.resources.impl.SoftwareResourceImpl;
 public class SoftwareApplication extends Application {
 
 	/**
-	 * @see javax.ws.rs.core.ApplicationConfig#getResourceClasses()
+	 * @see javax.ws.rs.core.Application#getClasses()
 	 */
 	@Override
     public Set<Class<?>> getClasses() {

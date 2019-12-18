@@ -1,5 +1,6 @@
 package org.iplantc.service.profile.dao;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.hibernate.HibernateException;
@@ -7,8 +8,10 @@ import org.hibernate.ObjectNotFoundException;
 import org.hibernate.Session;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.profile.TestDataHelper;
+import org.iplantc.service.profile.exceptions.ProfileArgumentException;
 import org.iplantc.service.profile.exceptions.ProfileException;
 import org.iplantc.service.profile.model.InternalUser;
+import org.json.JSONException;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -22,12 +25,12 @@ import org.testng.annotations.Test;
  */
 @SuppressWarnings("unused")
 @Test(groups={"integration"})
-public class InternalUserDaoTest {
+public class InternalUserDaoIT {
 
-	private static final String INTERNAL_USER_CREATOR = "testuser";
-	private static final String INTERNAL_USER_STRANGER = "bob";
+	private static final String INTERNAL_USER_CREATOR = "testinternaluser";
+	private static final String INTERNAL_USER_STRANGER = "testinternalotheruser";
 	private static final String SYSTEM_PUBLIC_USER = "public";
-	private static final String SYSTEM_UNSHARED_USER = "dan";
+	private static final String SYSTEM_UNSHARED_USER = "testotheruser";
 
 	private InternalUserDao dao;
 	private TestDataHelper dataHelper;
@@ -35,21 +38,11 @@ public class InternalUserDaoTest {
 	/**
 	 * Initalizes the test db and adds the test app
 	 */
-	@BeforeClass(groups = {"integration"})
-	public void initDb()
+	@BeforeClass
+	public void beforeClass()
 	{
-		try
-		{
-			dataHelper = TestDataHelper.getInstance();
-
-			HibernateUtil.getConfiguration();
-
-			dao = new InternalUserDao();
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-		}
+		dataHelper = TestDataHelper.getInstance();
+		dao = new InternalUserDao();
 	}
 
 	@BeforeMethod
@@ -80,16 +73,16 @@ public class InternalUserDaoTest {
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 
 			throw new ProfileException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
-	private InternalUser createInternalUser() throws Exception {
+	private InternalUser createInternalUser() throws IOException, JSONException, ProfileArgumentException, ProfileException {
 
 		InternalUser internalUser = InternalUser.fromJSON(dataHelper.getTestDataObject(TestDataHelper.TEST_INTERNAL_USER_FILE));
 		internalUser.setCreatedBy(INTERNAL_USER_CREATOR);
@@ -106,24 +99,23 @@ public class InternalUserDaoTest {
 	}
 
 	@Test (dataProvider="persistenceInternalUserProvider")
-	public void persistInternalUser(InternalUser user, String message, Boolean shouldThrowException) throws Exception {
+	public void persistInternalUser(InternalUser internalUser, String message, boolean shouldThrowException) {
 		InternalUserDao dao = new InternalUserDao();
 		boolean actuallyThrewException = false;
 		String exceptionMsg = "";
 		try
 		{
-			dao.persist(user);
-			Assert.assertNotNull(user.getId(), "Failed to generate a user ID.");
+			dao.persist(internalUser);
+			Assert.assertTrue(internalUser.getId() > 0, "Failed to generate a user ID.");
 		}
 		catch(Exception e)
 		{
 			actuallyThrewException = true;
-            exceptionMsg = "Error persisting user " + user.getUsername() + ": " + message;
+            exceptionMsg = "Error persisting user " + internalUser.getUsername() + ": " + message;
             if (actuallyThrewException != shouldThrowException) e.printStackTrace();
 		}
 
-        //System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals(shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 
 	@DataProvider(name="updateInternalUserProvider")
@@ -135,17 +127,17 @@ public class InternalUserDaoTest {
 	}
 
 	@Test (dataProvider="updateInternalUserProvider")
-	public void updateInternalUserProviderTest(InternalUser user, String message, Boolean shouldThrowException) throws Exception {
+	public void updateInternalUserProviderTest(InternalUser internalUser, String message, boolean shouldThrowException) {
 		InternalUserDao dao = new InternalUserDao();
 		boolean actuallyThrewException = false;
 		String exceptionMsg = "";
 		try
 		{
-			dao.persist(user);
+			dao.persist(internalUser);
 
-			Assert.assertNotNull(user.getId(), "InternalUser got an id after persisting.");
+			Assert.assertTrue(internalUser.getId() > 0, "InternalUser got an id after persisting.");
 
-			InternalUser savedInternalUser = (InternalUser)dao.getInternalUserById(user.getId());
+			InternalUser savedInternalUser = dao.getInternalUserById(internalUser.getId());
 
 			Assert.assertNotNull(savedInternalUser, "InternalUser was found in db.");
 
@@ -155,21 +147,21 @@ public class InternalUserDaoTest {
 
 			dao.persist(savedInternalUser);
 
-			InternalUser updatedInternalUser = (InternalUser)dao.getInternalUserById(user.getId());
+			InternalUser updatedInternalUser = dao.getInternalUserById(internalUser.getId());
 
 			Assert.assertNotNull(updatedInternalUser, "InternalUser was found in db.");
 
-			Assert.assertTrue(updatedInternalUser.getFirstName().equals(name), "Failed to generate a user ID.");
+			Assert.assertEquals(name, updatedInternalUser.getFirstName(), "Failed to generate a user ID.");
 		}
 		catch(Exception e)
 		{
 			actuallyThrewException = true;
-            exceptionMsg = "Error persisting user " + user.getUsername() + ": " + message;
+            exceptionMsg = "Error persisting user " + internalUser.getUsername() + ": " + message;
             if (actuallyThrewException != shouldThrowException) e.printStackTrace();
 		}
 
         //System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals(actuallyThrewException, shouldThrowException, exceptionMsg);
 	}
 
 	@DataProvider(name="deleteInternalUserProvider")
@@ -181,8 +173,7 @@ public class InternalUserDaoTest {
 	}
 
 	@Test (dataProvider="deleteInternalUserProvider")
-	public void delete(InternalUser user, String message, Boolean shouldThrowException)
-	throws Exception
+	public void delete(InternalUser internalUser, String message, boolean shouldThrowException)
 	{
 		InternalUserDao dao = new InternalUserDao();
 		boolean actuallyThrewException = false;
@@ -190,31 +181,33 @@ public class InternalUserDaoTest {
 
 		try
 		{
-			dao.persist(user);
+			dao.persist(internalUser);
 
-			Assert.assertNotNull(user.getId(), "InternalUser got an id after persisting.");
+			Assert.assertTrue(internalUser.getId() > 0, "InternalUser got an id after persisting.");
 
-			Long id = user.getId();
+			long id = internalUser.getId();
 
-			user = dao.getInternalUserById(id);
+			internalUser = dao.getInternalUserById(id);
 
-			Assert.assertNotNull(user, "InternalUser was found in db.");
+			Assert.assertNotNull(internalUser, "InternalUser was found in db.");
 
-			dao.delete(user);
+			dao.delete(internalUser);
 
-			user = dao.getInternalUserById(id);
+			internalUser = dao.getInternalUserById(id);
 
-			Assert.assertNull(user, "InternalUser was not found in db.");
+			Assert.assertNull(internalUser, "InternalUser was not found in db.");
 		}
-		catch(Exception e)
+		catch(ProfileException e)
 		{
 			actuallyThrewException = true;
-            exceptionMsg = "Error persisting user " + user.getUsername() + ": " + message;
+			if (internalUser != null) {
+				exceptionMsg = "Error persisting user " + internalUser.getUsername() + ": " + message;
+			}
             if (actuallyThrewException != shouldThrowException) e.printStackTrace();
 		}
 
         //System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals(actuallyThrewException, shouldThrowException, exceptionMsg);
 	}
 
 	@DataProvider(name="findByExampleInternalUserProvider")
@@ -295,23 +288,21 @@ public class InternalUserDaoTest {
 	}
 
 	@Test (dataProvider="findByExampleInternalUserProvider")
-	public void findByExampleInternalUserProviderTest(InternalUser user, String searchTerm, Object searchValue, String message, Boolean shouldFind)
-	throws Exception
-	{
+	public void findByExampleInternalUserProviderTest(InternalUser user, String searchTerm, Object searchValue, String message, Boolean shouldFind) {
 		boolean actuallyThrewException = false;
 		String exceptionMsg = "";
 		try
 		{
 			dao.persist(user);
 
-			Assert.assertNotNull(user.getId(), "InternalUser got an id after persisting.");
+			Assert.assertTrue(user.getId() > 0, "InternalUser got an id after persisting.");
 
 			List<InternalUser> users = dao.findByExample(INTERNAL_USER_CREATOR, searchTerm, searchValue);
 
 			if (shouldFind)
 			{
 				Assert.assertFalse(users.isEmpty(), message);
-				Assert.assertTrue(users.size() == 1, "Wrong number of results returned form findbyexample");
+				Assert.assertEquals(users.size(), 1, "Wrong number of results returned form findbyexample");
 			}
 			else
 			{
@@ -330,7 +321,7 @@ public class InternalUserDaoTest {
 		InternalUserDao dao = new InternalUserDao();
 		boolean actuallyThrewException = false;
 		String exceptionMsg = "";
-		InternalUser user1 = null, user2 = null, user3 = null;
+		InternalUser user1, user2, user3;
 
 		try
 		{
@@ -348,15 +339,15 @@ public class InternalUserDaoTest {
 			dao.persist(user2);
 			dao.persist(user3);
 
-			Assert.assertNotNull(user1.getId(), "First user failed to persist.");
-			Assert.assertNotNull(user2.getId(), "Second user failed to persist.");
-			Assert.assertNotNull(user3.getId(), "Third user failed to persist.");
+			Assert.assertTrue(user1.getId() > 0, "First user failed to persist.");
+			Assert.assertTrue(user2.getId() > 0, "Second user failed to persist.");
+			Assert.assertTrue(user3.getId() > 0, "Third user failed to persist.");
 
 			List<InternalUser> users = dao.getActiveInternalUsersCreatedByAPIUser(INTERNAL_USER_CREATOR);
 
 			Assert.assertNotNull(users, "No internal users were found.");
 
-			Assert.assertTrue(users.size() == 2, "No internal users were found.");
+			Assert.assertEquals(users.size(), 2, "No internal users were found.");
 
 			Assert.assertTrue(users.contains(user1), "Results did not contain first user.");
 
@@ -382,7 +373,7 @@ public class InternalUserDaoTest {
 		InternalUserDao dao = new InternalUserDao();
 		boolean actuallyThrewException = false;
 		String exceptionMsg = "";
-		InternalUser user1 = null, user2 = null, user3 = null;
+		InternalUser user1, user2, user3 ;
 
 		try
 		{
@@ -400,15 +391,15 @@ public class InternalUserDaoTest {
 			dao.persist(user2);
 			dao.persist(user3);
 
-			Assert.assertNotNull(user1.getId(), "First user failed to persist.");
-			Assert.assertNotNull(user2.getId(), "Second user failed to persist.");
-			Assert.assertNotNull(user3.getId(), "Third user failed to persist.");
+			Assert.assertTrue(user1.getId() > 0, "First user failed to persist.");
+			Assert.assertTrue(user2.getId() > 0, "Second user failed to persist.");
+			Assert.assertTrue(user3.getId() > 0, "Third user failed to persist.");
 
 			List<InternalUser> users = dao.getAllInternalUsersCreatedByAPIUser(INTERNAL_USER_CREATOR);
 
 			Assert.assertNotNull(users, "No internal users were found.");
 
-			Assert.assertTrue(users.size() == 3, "No internal users were found.");
+			Assert.assertEquals(users.size(), 3, "No internal users were found.");
 
 			Assert.assertTrue(users.contains(user1), "Results did not contain first user.");
 
@@ -449,7 +440,7 @@ public class InternalUserDaoTest {
 		{
 			dao.persist(internalUser);
 
-			Assert.assertNotNull(internalUser.getId(), "InternalUser got an id after persisting.");
+			Assert.assertTrue(internalUser.getId() > 0, "InternalUser got an id after persisting.");
 
 			InternalUser savedUser = dao.getInternalUserByAPIUserAndUsername(username, internalUser.getUsername());
 
@@ -464,7 +455,7 @@ public class InternalUserDaoTest {
 		}
 
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals(actuallyThrewException, shouldThrowException, exceptionMsg);
 	}
 
 	@Test
@@ -473,7 +464,7 @@ public class InternalUserDaoTest {
 		InternalUserDao dao = new InternalUserDao();
 		boolean actuallyThrewException = false;
 		String exceptionMsg = "";
-		InternalUser user1 = null;
+		InternalUser user1;
 
 		try
 		{
@@ -481,13 +472,13 @@ public class InternalUserDaoTest {
 
 			dao.persist(user1);
 
-			Assert.assertNotNull(user1.getId(), "InternalUser got an id after persisting.");
+			Assert.assertTrue(user1.getId() > 0, "InternalUser got an id after persisting.");
 
 			InternalUser savedUser = dao.getInternalUserById(user1.getId());
 
 			Assert.assertNotNull(savedUser, "InternalUsers were found matching example.");
 
-			Assert.assertTrue(savedUser.equals(user1), "Persisted user was found.");
+			Assert.assertEquals(user1, savedUser, "Persisted user was found.");
 
 		}
 		catch(Exception e)

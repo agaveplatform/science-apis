@@ -25,7 +25,7 @@ import org.testng.annotations.Test;
  *
  */
 @Test(groups={"integration"})
-public class ProfileTest extends ModelTestCommon{
+public class ProfileIT extends ModelTestCommon {
 
 	private Tenant defaultTenant = null;
 	private Tenant alternateTenant = null;
@@ -42,7 +42,6 @@ public class ProfileTest extends ModelTestCommon{
     @BeforeMethod
 	public void beforeMethod() throws Exception {
 		jsonTree = dataHelper.getTestDataObject(TestDataHelper.TEST_INTERNAL_USER_FILE);
-
 	}
 
     @AfterClass
@@ -71,7 +70,7 @@ public class ProfileTest extends ModelTestCommon{
 			session.clear();
 			HibernateUtil.disableAllFilters();
 
-			session.createQuery("DELETE Tenant").executeUpdate();
+			session.createSQLQuery("DELETE FROM tenants WHERE tenant_id = 'agave.dev'").executeUpdate();
 
 			session.flush();
 		}
@@ -83,12 +82,12 @@ public class ProfileTest extends ModelTestCommon{
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 
 			throw new ProfileException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
     }
 
@@ -100,6 +99,7 @@ public class ProfileTest extends ModelTestCommon{
     			{ decoyTenant },
     	};
     }
+
     @Test (dataProvider="testUuidCreationProvider")
     public void testUuidCreation(Tenant tenant)
     throws Exception

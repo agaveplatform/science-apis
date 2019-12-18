@@ -66,13 +66,9 @@ public class InternalUserManager {
 			
 			return internalUser;
 		} 
-		catch(InternalUsernameConflictException e) {
+		catch(InternalUsernameConflictException | ProfileException e) {
 			throw e;
-		}
-		catch(ProfileException e) {
-			throw e;
-		}
-		catch(ProfileArgumentException e) {
+		} catch(ProfileArgumentException e) {
 			throw new ProfileException(e.getMessage(), e);
 		}
 		catch(Exception e) {
@@ -85,7 +81,7 @@ public class InternalUserManager {
 	 * information from the json representation of this InternalUser.
 	 * 
 	 * @param jsonInternalUser
-	 * @param currentUser
+	 * @param currentInternalUser
 	 * @return
 	 * @throws ProfileException
 	 */
@@ -115,7 +111,6 @@ public class InternalUserManager {
 	 * cancels any running jobs, and deletes their credentials on all the API user's
 	 * systems.
 	 * 
-	 * @param json
 	 * @param currentUser
 	 * @return
 	 * @throws ProfileException, RemoteDataException

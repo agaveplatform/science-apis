@@ -42,7 +42,11 @@ public class TestDataHelper {
 	    	return new JSONObject(json);
     	} 
     	finally {
-    		try { in.close(); } catch (Exception e) {}
+    		try {
+				if (in != null) {
+					in.close();
+				}
+			} catch (Exception ignored) {}
     	}
     }
 

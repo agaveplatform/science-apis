@@ -14,13 +14,13 @@ import org.testng.annotations.Test;
 
 @SuppressWarnings("unused")
 @Test(groups={"integration"})
-public class InternalUserManagerTest extends ModelTestCommon {
+public class InternalUserManagerIT extends ModelTestCommon {
 	
-	private static final String INTERNAL_USER_CREATOR = "testuser";
+	private static final String INTERNAL_USER_CREATOR = "testinternaluser";
 	
-	private static final String INTERNAL_USER_STRANGER = "bob";
+	private static final String INTERNAL_USER_STRANGER = "testinternaluser";
 	private static final String SYSTEM_PUBLIC_USER = "public";
-	private static final String SYSTEM_UNSHARED_USER = "dan";
+	private static final String SYSTEM_UNSHARED_USER = "testotheruser";
 	
 	private InternalUserManager manager;
 	private InternalUserDao dao;
@@ -70,7 +70,7 @@ public class InternalUserManagerTest extends ModelTestCommon {
             throw new ProfileException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
 	}
     
@@ -111,21 +111,21 @@ public class InternalUserManagerTest extends ModelTestCommon {
 //			{ internalUser, privateSystem.getOwner(), "Owner can manage their system", true },
 //			{ privateSystem, SYSTEM_PUBLIC_USER, "Guest cannot manage a private system", false },
 //			{ privateSystem, SYSTEM_SHARE_USER, "User cannot manage a private system", false },
-//			
+//
 //			{ publicSystem, publicSystem.getOwner(), "No one can manage a public system", false },
 //			{ publicSystem, SYSTEM_PUBLIC_USER, "Guest cannot manage a private system", false },
 //			{ publicSystem, SYSTEM_SHARE_USER, "User cannot manage a private system", false },
-//			
+//
 //			{ sharedSystem, SYSTEM_UNSHARED_USER, "Unshared user cannot manage a shared system", false },
 //		};
 //	}
-//	
+//
 //	@Test(dataProvider = "isManageableByUserProvider")
 //	public void isManageableByUser(RemoteSystem system, String username, String message, boolean userCanManager)
 //	{
 //		Assert.assertEquals(manager.isManageableByUser(system, username), userCanManager, message);
 //	}
-//	
+//
 //	@DataProvider(name="isManageableBySharedUserProvider")
 //	public Object[][] isManageableBySharedUserProvider() throws Exception
 //	{
@@ -137,19 +137,19 @@ public class InternalUserManagerTest extends ModelTestCommon {
 //				{ sharedSystem, RoleType.ADMIN, "User can manage a system they have admin role on", true },
 //		};
 //	}
-//	
+//
 //	@Test(dataProvider = "isManageableBySharedUserProvider")
 //	public void isManageableBySharedUserTest(RemoteSystem system, RoleType testType, String message, boolean userCanManager)
 //	{
 //		RoleType previousType = system.getRoles().get(0).getRole();
 //		system.getRoles().get(0).setRole(testType);
-//		
+//
 //		Assert.assertEquals(manager.isManageableByUser(system, SYSTEM_SHARE_USER), userCanManager, message);
 //
 //		// restore type
 //		system.getRoles().get(0).setRole(previousType);
 //	}
-//	
+//
 //	@DataProvider(name="isVisibleByUserProvider")
 //	public Object[][] isVisibleByUserProvider() throws Exception
 //	{
@@ -157,17 +157,17 @@ public class InternalUserManagerTest extends ModelTestCommon {
 //				{ privateSystem, privateSystem.getOwner(), "Owner can see their own system", true },
 //				{ privateSystem, SYSTEM_PUBLIC_USER, "Guest cannot see private system", false },
 //				{ privateSystem, SYSTEM_SHARE_USER, "non-owner cannot see private system", false },
-//				
+//
 //				{ publicSystem, publicSystem.getOwner(), "Original owner can see public system", true },
 //				{ publicSystem, SYSTEM_PUBLIC_USER, "Guest can see public system", true },
 //				{ publicSystem, SYSTEM_SHARE_USER, "Users can see public system", true },
-//				
+//
 //				{ sharedSystem, sharedSystem.getOwner(), "Owner can see their shared system", true },
 //				{ sharedSystem, SYSTEM_PUBLIC_USER, "Guest cannot see shared system", false },
 //				{ sharedSystem, SYSTEM_UNSHARED_USER, "non-shared user cannot see shared system", false },
 //		};
 //	}
-//	
+//
 //	@Test(dataProvider = "isVisibleByUserProvider")
 //	public void isVisibleByUser(RemoteSystem system, String username, String message, boolean userCanManager)
 //	{
@@ -187,18 +187,18 @@ public class InternalUserManagerTest extends ModelTestCommon {
 //				{ privateSystem, "Original owner can see a public system" },
 //		};
 //	}
-//				
+//
 //	@Test(dataProvider = "makePublicProvider")
 //	public void makePublic(RemoteSystem system, String message)
 //	{
 //		RemoteSystem publicSystem = null;
-//		try 
+//		try
 //		{
 //			publicSystem = manager.makePublic(system);
-//			
+//
 //			Assert.assertTrue(publicSystem.isPubliclyAvailable(), "System is public");
 //			Assert.assertTrue(manager.isVisibleByUser(publicSystem, SYSTEM_PUBLIC_USER), "System is public");
-//		} 
+//		}
 //		catch (Exception e) {
 //			try {new SystemDao().remove(publicSystem); } catch (Exception e1) {}
 //		}
@@ -212,17 +212,17 @@ public class InternalUserManagerTest extends ModelTestCommon {
 //				{ jtd.getTestDataObject(JSONSystemsTestData.TEST_STORAGE_SYSTEM_FILE), StorageSystem.class, "Storage system is parsed from json" },
 //		};
 //	}
-//	
-//	
+//
+//
 //	@Test(dataProvider = "parseSystemProvider")
 //	public void parseSystem(JSONObject json, Class expectedClass, String message)
 //	{
 //		RemoteSystem system = manager.parseSystem(json, SYSTEM_OWNER, null);
-//		
+//
 //		Assert.assertEquals(system.getOwner(), SYSTEM_OWNER, message);
-//		
+//
 //		Assert.assertFalse(system.isPubliclyAvailable(), "System was published as private");
-//		
+//
 //		Assert.assertEquals(system.getClass(), expectedClass, message);
 //	}
 }

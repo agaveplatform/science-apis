@@ -16,8 +16,8 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups={"unit","model","internaluser"})
-public class InternalUserTest extends ModelTestCommon {
+@Test(groups={"unit"})
+public class InternalUserIT extends ModelTestCommon {
 
     @BeforeClass
     public void setUp() throws Exception {

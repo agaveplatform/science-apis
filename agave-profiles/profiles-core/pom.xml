@@ -8,7 +8,7 @@
 		<version>2.2.24</version>
 	</parent>
 	<artifactId>profiles-core</artifactId>
-	<name>Agave Platform Profile ServiceCore</name>
+	<name>Agave Platform Profile Service Core</name>
 	<description>Core classes for the Agave Profile Services</description>
 	<packaging>jar</packaging>
 

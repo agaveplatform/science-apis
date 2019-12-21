@@ -1,4 +1,4 @@
-package org.iplantc.service.remote.ssh;
+package org.iplantc.service.remote.gsissh;
 
 import java.io.IOException;
 
@@ -10,9 +10,13 @@ import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
-public class MaverickSSHTunnelSubmissionClientTest extends
-		AbstractRemoteSubmissionClientTest {
+@Test(groups={"gsissh","integration","broken"})
+public class GSISSHSubmissionClientIT extends AbstractRemoteSubmissionClientTest {
+
+	@Override
+	protected JSONObject getSystemJson() throws JSONException, IOException {
+		return jtd.getTestDataObject(JSONTestDataUtil.TEST_GRID_EXECUTION_SYSTEM_FILE);
+	}
 
 	@Test
 	public void canAuthentication() {
@@ -27,18 +31,13 @@ public class MaverickSSHTunnelSubmissionClientTest extends
 	@Test(dependsOnMethods={"canAuthentication"})
 	public void runCommand() {
 		try {
-			String response = getClient().runCommand("echo $HOSTNAME");
+			String response = getClient().runCommand("whoami");
 			Assert.assertEquals(StringUtils.trim(response), 
-					system.getLoginConfig().getHost(), 
+					system.getLoginConfig().getDefaultAuthConfig().getUsername(), 
 					"Response from whoami on remote system should be the login config default auth config username");
 		}
 		catch (Exception e) {
 			Assert.fail("Running whoami should not throw exception.", e);
 		}
-	}
-
-	@Override
-	protected JSONObject getSystemJson() throws JSONException, IOException {
-		return jtd.getTestDataObject(JSONTestDataUtil.TEST_PROXY_EXECUTION_SYSTEM_FILE);
 	}
 }

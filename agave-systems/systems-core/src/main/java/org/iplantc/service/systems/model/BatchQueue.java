@@ -54,7 +54,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 	public static final String DEFAULT_MAX_RUN_TIME = "9999:23:59";
 	public static final String DEFAULT_MIN_RUN_TIME = "00:00:01";
 
-	private Integer			id;
+	private Long			id;
 	private String 			name;
 	private String 			mappedName;
 	private String 			description;
@@ -104,12 +104,12 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 	@Id
 	@GeneratedValue
 	@Column(name = "id", unique = true, nullable = false)
-	public Integer getId()
+	public Long getId()
 	{
 		return this.id;
 	}
 
-	public void setId(Integer id)
+	public void setId(Long id)
 	{
 		this.id = id;
 	}

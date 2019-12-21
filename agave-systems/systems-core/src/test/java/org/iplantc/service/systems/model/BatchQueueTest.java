@@ -372,7 +372,7 @@ public class BatchQueueTest extends SystemsModelTestCommon{
     	ExecutionSystem e = new ExecutionSystem();
     	
     	BatchQueue original = BatchQueue.fromJSON(jsonTree);
-    	original.setId(1);
+    	original.setId(1L);
     	original.setExecutionSystem(e);
     	
     	BatchQueue clone = original.clone();

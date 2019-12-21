@@ -2,10 +2,6 @@ package org.iplantc.service.systems.dao;
 
 // Generated Feb 1, 2013 6:15:53 PM by Hibernate Tools 3.4.0.CR1
 
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
@@ -15,25 +11,25 @@ import org.hibernate.Session;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.transform.Transformers;
 import org.hibernate.type.StandardBasicTypes;
-import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.dao.AbstractDao;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.search.SearchTerm;
-import org.iplantc.service.metadata.util.ServiceUtils;
 import org.iplantc.service.systems.Settings;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.BatchQueueLoad;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
-import org.iplantc.service.systems.search.SystemSearchResult;
-import org.iplantc.service.transfer.model.enumerations.PermissionType;
+import org.iplantc.service.systems.search.BatchQueueSearchFilter;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
- * Home object for domain model class RemoteSystem.
- * @see org.iplantc.service.systems.model.RemoteSystem
+ * Home object for domain model class BatchQueue.
+ * @see org.iplantc.service.systems.model.ExecutionSystem
  * @author Hibernate Tools
  */
 public class BatchQueueDao extends AbstractDao {
@@ -54,8 +50,7 @@ public class BatchQueueDao extends AbstractDao {
 	
 	/**
      * Returns all {@link BatchQueue} across all systems and tenants
-     * 
-     * @param queue
+     * @return list of all batch queues
      */
     @SuppressWarnings("unchecked")
     public List<BatchQueue> getAll()
@@ -64,7 +59,7 @@ public class BatchQueueDao extends AbstractDao {
         {
             Session session = getSession();
             session.clear();
-            return session.createQuery("from BatchQueue").list();
+            return session.createQuery("from org.iplantc.service.systems.model.BatchQueue").list();
         }
         catch (HibernateException ex)
         {
@@ -74,7 +69,7 @@ public class BatchQueueDao extends AbstractDao {
                     HibernateUtil.rollbackTransaction();
                 }
             }
-            catch (Exception e) {}
+            catch (Exception ignored) {}
             throw ex;
         }
     }
@@ -102,12 +97,12 @@ public class BatchQueueDao extends AbstractDao {
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			throw ex;
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Throwable e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Throwable ignored) {}
 		}
 	}
 
@@ -139,11 +134,11 @@ public class BatchQueueDao extends AbstractDao {
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Throwable e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Throwable ignored) {}
 		}
 	}
 
@@ -220,10 +215,11 @@ public class BatchQueueDao extends AbstractDao {
 			Session session = getSession();
 
 			String hql =  "from BatchQueue b "
-						+ "where (b.name = :name or b.uuid = :name) "
+						+ "where (b.name = :name or uuid = :name) "
 						+ "     and b.executionSystem.systemId = :systemId "
 						+ "		and b.executionSystem.tenantId = :tenantId "
 						+ "		and b.executionSystem.available = :available";
+
 			BatchQueue queue = (BatchQueue)session.createQuery(hql)
 			        .setString("name", queueNameOrUuid)
 			        .setString("systemId", systemId)
@@ -262,7 +258,7 @@ public class BatchQueueDao extends AbstractDao {
         {
             Session session = getSession();
 
-            String hql =  "from BatchQueue b "
+            String hql =  "from org.iplantc.service.systems.model.BatchQueue b "
                         + "where b.executionSystem.systemId = :systemId "
                         + "     and b.executionSystem.tenantId = :tenantId "
                         + "     and b.executionSystem.available = :available";
@@ -317,7 +313,7 @@ public class BatchQueueDao extends AbstractDao {
                     "     and j.queue_request = :queueName " + 
                     "     and j.tenant_id = :tenantId " + 
                     "group by j.queue_request ";
-            BatchQueueLoad queue = (BatchQueueLoad)session.createSQLQuery(sql)
+            BatchQueueLoad batchQueueLoad = (BatchQueueLoad)session.createSQLQuery(sql)
                     .addScalar("name",StandardBasicTypes.STRING)
                     .addScalar("created",StandardBasicTypes.DATE)
                     .addScalar("active",StandardBasicTypes.LONG)
@@ -336,8 +332,12 @@ public class BatchQueueDao extends AbstractDao {
                     .setString("systemId", systemId)
                     .setString("tenantId", TenancyHelper.getCurrentTenantId())
                     .uniqueResult();
-            
-            return queue;
+
+            if (batchQueueLoad == null) {
+				batchQueueLoad = new BatchQueueLoad(queueName);
+			}
+
+            return batchQueueLoad;
         }
         catch (ObjectNotFoundException ex)
         {
@@ -356,7 +356,7 @@ public class BatchQueueDao extends AbstractDao {
      * @param systemId
      * @param searchCriteria
      * @return
-     * @throws JobException
+     * @throws SystemException
      */
     public List<BatchQueue> findMatching(Long systemId, Map<SearchTerm, Object> searchCriteria)
     throws SystemException 
@@ -373,7 +373,7 @@ public class BatchQueueDao extends AbstractDao {
      * @param offset
      * @param limit
      * @return
-     * @throws JobException
+     * @throws SystemException
      */
     @SuppressWarnings("unchecked")
     public List<BatchQueue> findMatching(Long systemId, Map<SearchTerm, Object> searchCriteria, int limit, int offset)
@@ -381,7 +381,8 @@ public class BatchQueueDao extends AbstractDao {
         
         try 
         {
-            Session session = getSession();
+			Map<String, Class> searchTypeMappings = new BatchQueueSearchFilter().getSearchTypeMappings();
+			Session session = getSession();
             session.clear();
             
             String hql = "SELECT q \n"
@@ -432,6 +433,18 @@ public class BatchQueueDao extends AbstractDao {
                         && (searchTerm.getOperator() == SearchTerm.Operator.NEQ || searchTerm.getOperator() == SearchTerm.Operator.EQ )) {
                     // this was explicitly set to 'is null' or 'is not null'
                 }
+                else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Date.class ) {
+					query.setDate(searchTerm.getSafeSearchField(), (java.util.Date)searchCriteria.get(searchTerm));
+
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+							"'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+				}
+				else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Integer.class) {
+					query.setInteger(searchTerm.getSafeSearchField(), (Integer)searchCriteria.get(searchTerm));
+
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+							"'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+				}
                 else 
                 {
                     query.setParameter(searchTerm.getSafeSearchField(), 
@@ -454,7 +467,7 @@ public class BatchQueueDao extends AbstractDao {
         } finally {
             try {
                 HibernateUtil.commitTransaction();
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         }
     }

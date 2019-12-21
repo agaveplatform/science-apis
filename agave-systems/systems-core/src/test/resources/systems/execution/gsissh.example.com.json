@@ -23,7 +23,7 @@
 		}
 	],
 	"login": {
-		"host": "docker.example.com",
+		"host": "gridftp",
 		"port": 2222,
 		"protocol": "GSISSH",
 		"auth": {
@@ -34,14 +34,14 @@
 			"server": {
 				"id": "docker.example.com",
 				"name": "Agave Dev myproxy Docker container",
-				"endpoint": "docker.example.com",
+				"endpoint": "myproxy",
 				"port": 7514,
 				"protocol": "MYPROXY"
 			}
 		}
 	},
 	"storage": {
-		"host": "docker.example.com",
+		"host": "gridftp",
 		"port": 2811,
 		"protocol": "GRIDFTP",
 		"rootDir": "/",
@@ -54,7 +54,7 @@
 			"server": {
 				"id": "docker.example.com",
 				"name": "Agave Dev myproxy Docker container",
-				"endpoint": "docker.example.com",
+				"endpoint": "myproxy",
 				"port": 7515,
 				"protocol": "MYPROXY"
 			}

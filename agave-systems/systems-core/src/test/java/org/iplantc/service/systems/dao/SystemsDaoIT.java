@@ -90,7 +90,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		}
 		
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 	
 	@DataProvider(name="updateProvider")
@@ -125,8 +125,8 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			ExecutionSystem updatedSystem = (ExecutionSystem)dao.findById(system.getId());
 			
 			Assert.assertNotNull(updatedSystem, "System was found in db.");
-			
-			Assert.assertTrue(updatedSystem.getName().equals(name), "Failed to generate a system ID.");
+
+			Assert.assertEquals(name, updatedSystem.getName(), "Failed to generate a system ID.");
 		} 
 		catch(Exception e) 
 		{
@@ -136,18 +136,8 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		}
 		
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
-	
-//	@Test(dependsOnMethods={"persist"})
-//	public void persistAuthConfig() 
-//	{
-//		RemoteSystem system = createExecutionSystem();
-//		
-//		dao.persist(system);
-//		
-//		
-//	}
 	
 	@DataProvider(name="deleteProvider")
 	public Object[][] deleteProvider() throws Exception
@@ -188,7 +178,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		}
 		
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 	
 	@DataProvider(name="findByExampleSystemProvider")
@@ -213,10 +203,10 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			List<RemoteSystem> systems = dao.findByExample("name", system.getName());
 			
 			Assert.assertNotNull(systems, "Systems were found matching example.");
-			
-			Assert.assertTrue(systems.size() == 1, "Exactly one match was found");
-			
-			Assert.assertTrue(systems.get(0).getId().equals(system.getId()), "Match found was the correct system");
+
+			Assert.assertEquals(systems.size(), 1, "Exactly one match was found");
+
+			Assert.assertEquals(system.getId(), systems.get(0).getId(), "Match found was the correct system");
 		} 
 		catch(Exception e) 
 		{
@@ -226,7 +216,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		}
 		
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 	
 	public void udpateBatchQueue() throws Exception
@@ -283,8 +273,8 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertNotNull(system.getId(), "Failed to generate a system ID.");
 			
 			system = dao.findById(system.getId());
-			
-			Assert.assertTrue(system.getUsersUsingAsDefault().size() == 1, "Failed to save UserDefaultSystem.");
+
+			Assert.assertEquals(system.getUsersUsingAsDefault().size(), 1, "Failed to save UserDefaultSystem.");
 			Assert.assertTrue(system.getUsersUsingAsDefault().contains(username), "UserDefaultSystem was not saved.");
 		} 
 		catch(HibernateException e) {
@@ -298,7 +288,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		}
 		
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 	
 	@Test(dependsOnMethods = {"persistSystemUserDefaultSystem"})
@@ -319,15 +309,15 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertNotNull(system.getId(), "Failed to generate a system ID.");
 			
 			system = dao.findById(system.getId());
-			
-			Assert.assertTrue(system.getUsersUsingAsDefault().size() == 1, "Failed to save UserDefaultSystem.");
+
+			Assert.assertEquals(system.getUsersUsingAsDefault().size(), 1, "Failed to save UserDefaultSystem.");
 			Assert.assertTrue(system.getUsersUsingAsDefault().contains(SYSTEM_USER), "UserDefaultSystem was not saved.");
 			
 			system.getUsersUsingAsDefault().clear();
 			dao.persist(system);
 			
 			system = dao.findById(system.getId());
-			Assert.assertTrue(system.getUsersUsingAsDefault().size() == 0, "UserDefaultSystem were not deleted.");
+			Assert.assertEquals(system.getUsersUsingAsDefault().size(), 0, "UserDefaultSystem were not deleted.");
 			
 			
 		} 
@@ -372,8 +362,8 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertNotNull(system.getId(), "Failed to generate a system ID.");
 			
 			system = dao.findById(system.getId());
-			
-			Assert.assertTrue(system.getRoles().size() == 1, "Failed to save role.");
+
+			Assert.assertEquals(system.getRoles().size(), 1, "Failed to save role.");
 			//Assert.assertTrue(system.getRoles().contains(new SystemRole(SYSTEM_USER, role)), "Role was not saved.");
 		} 
 		catch(Exception e) 
@@ -384,7 +374,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		}
 		
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 	
 	@DataProvider(name="updateSystemRoleProvider")
@@ -414,8 +404,8 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertNotNull(system.getId(), "Failed to generate a system ID.");
 			
 			system = dao.findById(system.getId());
-			
-			Assert.assertTrue(system.getRoles().size() == 1, "Failed to save permission.");
+
+			Assert.assertEquals(system.getRoles().size(), 1, "Failed to save permission.");
 			// Assert.assertTrue(system.getRoles().contains(new SystemRole("SYSTEM_USER, originalType)), "Permission was not saved.");
 			
 			system.getRoles().remove(role);
@@ -436,7 +426,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		}
 		
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 	
 	@Test (dataProvider="updateSystemRoleProvider", dependsOnMethods = {"persistSystemRole", "updateSystemRole"})
@@ -458,15 +448,15 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertNotNull(system.getId(), "Failed to generate a system ID.");
 			
 			system = dao.findById(system.getId());
-			
-			Assert.assertTrue(system.getRoles().size() == 1, "Failed to save role.");
+
+			Assert.assertEquals(system.getRoles().size(), 1, "Failed to save role.");
 			Assert.assertTrue(system.getRoles().contains(pem), "Role was not saved.");
 			
 			system.getRoles().clear();
 			dao.persist(system);
 			
 			system = dao.findById(system.getId());
-			Assert.assertTrue(system.getRoles().size() == 0, "Roles were not deleted.");
+			Assert.assertEquals(system.getRoles().size(), 0, "Roles were not deleted.");
 			
 			
 		} 
@@ -478,7 +468,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		}
 		
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
+		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 	
 	@Test(dependsOnMethods = {"getUserSystems"})
@@ -597,29 +587,29 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertNotNull(privateExecutionSystem.getId(), "Public execution system was not saved.");
 			
 			List<RemoteSystem> systems = dao.getUserSystems(SYSTEM_USER, true);
-			Assert.assertTrue(systems.size() == 3, "Not all public and private systems were returned.");
+			Assert.assertEquals(systems.size(), 3, "Not all public and private systems were returned.");
 			
 			systems = dao.getUserSystems(SYSTEM_USER, false);
-			Assert.assertTrue(systems.size() == 2, "Exclusively private systems were not returned.");
+			Assert.assertEquals(systems.size(), 2, "Exclusively private systems were not returned.");
 			Assert.assertTrue(systems.contains(privateExecutionSystem), "Private execution system was not returned.");
 			Assert.assertTrue(systems.contains(privateStorageSystem), "Private storage system was not returned.");
 			
 			systems = dao.getUserSystems(SYSTEM_USER, true, RemoteSystemType.EXECUTION);
-			Assert.assertTrue(systems.size() == 2, "Incorrect number of results was returned.");
-			Assert.assertTrue(systems.get(0).getType().equals(RemoteSystemType.EXECUTION), "Results were not only execution systems.");
-			Assert.assertTrue(systems.get(1).getType().equals(RemoteSystemType.EXECUTION), "Results were not only execution systems.");
+			Assert.assertEquals(systems.size(), 2, "Incorrect number of results was returned.");
+			Assert.assertEquals(RemoteSystemType.EXECUTION, systems.get(0).getType(), "Results were not only execution systems.");
+			Assert.assertEquals(RemoteSystemType.EXECUTION, systems.get(1).getType(), "Results were not only execution systems.");
 			
 			systems = dao.getUserSystems(SYSTEM_USER, false, RemoteSystemType.EXECUTION);
-			Assert.assertTrue(systems.size() == 1, "Incorrect number of results was returned.");
-			Assert.assertTrue(systems.get(0).getType().equals(RemoteSystemType.EXECUTION), "Not only the private execution system was returned.");
+			Assert.assertEquals(systems.size(), 1, "Incorrect number of results was returned.");
+			Assert.assertEquals(RemoteSystemType.EXECUTION, systems.get(0).getType(), "Not only the private execution system was returned.");
 			
 			systems = dao.getUserSystems(SYSTEM_USER, true, RemoteSystemType.STORAGE);
-			Assert.assertTrue(systems.size() == 1, "Incorrect number of results was returned.");
-			Assert.assertTrue(systems.get(0).getType().equals(RemoteSystemType.STORAGE), "Result was not a storage system");
+			Assert.assertEquals(systems.size(), 1, "Incorrect number of results was returned.");
+			Assert.assertEquals(RemoteSystemType.STORAGE, systems.get(0).getType(), "Result was not a storage system");
 			
 			systems = dao.getUserSystems(SYSTEM_USER, false, RemoteSystemType.STORAGE);
-			Assert.assertTrue(systems.size() == 1, "Incorrect number of results was returned.");
-			Assert.assertTrue(systems.get(0).getType().equals(RemoteSystemType.STORAGE), "Result was not a storage system");
+			Assert.assertEquals(systems.size(), 1, "Incorrect number of results was returned.");
+			Assert.assertEquals(RemoteSystemType.STORAGE, systems.get(0).getType(), "Result was not a storage system");
 		}
 		catch (HibernateException e) {
 			e.printStackTrace();
@@ -651,8 +641,8 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertNotNull(publicExecutionSystem.getId(), "Public execution system was not saved.");
 			
 			List<RemoteSystem> publicSystems = dao.getUserSystems(SYSTEM_SHARE_USER, true);
-			Assert.assertTrue(publicSystems.size() == 1, "Too many systems returned for shared user");
-			Assert.assertTrue(publicSystems.get(0).getSystemId().equals(publicExecutionSystem.getSystemId()), "Public system not returned for shared user.");
+			Assert.assertEquals(publicSystems.size(), 1, "Too many systems returned for shared user");
+			Assert.assertEquals(publicExecutionSystem.getSystemId(), publicSystems.get(0).getSystemId(), "Public system not returned for shared user.");
 			
 			privateExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
 			privateExecutionSystem.setOwner(SYSTEM_USER);
@@ -661,7 +651,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertNotNull(privateExecutionSystem.getId(), "Private execution system was not saved.");
 			
 			List<RemoteSystem> sharedSystems = dao.getUserSystems(SYSTEM_SHARE_USER, true);
-			Assert.assertTrue(sharedSystems.size() == 2, "Too many systems returned for shared user");
+			Assert.assertEquals(sharedSystems.size(), 2, "Too many systems returned for shared user");
 			
 			boolean found = false;
 			for(RemoteSystem system: sharedSystems) {
@@ -680,7 +670,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertNotNull(privateStorageSystem.getId(), "Private storage system was not saved.");
 			
 			List<RemoteSystem> sharedSystems2 = dao.getUserSystems(SYSTEM_SHARE_USER, true);
-			Assert.assertTrue(sharedSystems2.size() == 3, "Too many systems returned for shared user");
+			Assert.assertEquals(sharedSystems2.size(), 3, "Too many systems returned for shared user");
 			
 			found = false;
 			for(RemoteSystem system: sharedSystems2) {

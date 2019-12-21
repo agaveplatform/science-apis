@@ -5,7 +5,7 @@
 	"type": "EXECUTION",
 	"description": "Sample ssh execution system.",
 	"site": "tacc.xsede.org",
-	"executionType": "HPC",
+	"executionType": "CLI",
 	"default": false,
 	"scratchDir": "/tmp",
 	"workDir": "/tmp",
@@ -25,7 +25,7 @@
 		}
 	],
 	"login": {
-		"host": "docker.example.com",
+		"host": "sftp",
 		"port": 10022,
 		"protocol": "SSH",
 		"auth": {
@@ -35,7 +35,7 @@
 		}
 	},
 	"storage": {
-		"host": "docker.example.com",
+		"host": "sftp",
 		"port": 10022,
 		"protocol": "SFTP",
 		"rootDir": "/",
@@ -46,7 +46,7 @@
 			"type": "PASSWORD"
 		}
 	},
-	"scheduler": "SGE",
+	"scheduler": "FORK",
 	"environment": "",
 	"startupScript": "./bashrc"
 }

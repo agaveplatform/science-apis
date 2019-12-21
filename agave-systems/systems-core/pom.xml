@@ -137,7 +137,7 @@
 									<value>5</value>
 								</property>
 							</properties>
-							<excludedGroups>broken,notReady</excludedGroups>
+							<excludedGroups>broken,notReady,s3.operations,s3.path.sanitization,s3.path.resolution</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
 								</log4j.configuration>

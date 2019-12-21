@@ -1,4 +1,4 @@
-package org.iplantc.service.remote.gsissh;
+package org.iplantc.service.remote.ssh;
 
 import java.io.IOException;
 
@@ -10,9 +10,13 @@ import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
-public class GSISSHSubmissionClientTest extends
-		AbstractRemoteSubmissionClientTest {
+@Test(groups={"ssh.run","integration"})
+public class MaverickSSHSubmissionClientIT extends AbstractRemoteSubmissionClientTest {
+
+	@Override
+	protected JSONObject getSystemJson() throws JSONException, IOException {
+		return jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE);
+	}
 
 	@Test
 	public void canAuthentication() {
@@ -35,10 +39,5 @@ public class GSISSHSubmissionClientTest extends
 		catch (Exception e) {
 			Assert.fail("Running whoami should not throw exception.", e);
 		}
-	}
-
-	@Override
-	protected JSONObject getSystemJson() throws JSONException, IOException {
-		return jtd.getTestDataObject(JSONTestDataUtil.TEST_GRID_EXECUTION_SYSTEM_FILE);
 	}
 }

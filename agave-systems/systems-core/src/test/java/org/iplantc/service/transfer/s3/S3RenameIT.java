@@ -26,7 +26,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
+@Test(groups={"s3.rename","integration"})
 public class S3RenameIT extends BaseTransferTestCase {
 	private final Logger log = Logger.getLogger(S3RenameIT.class);
 

@@ -10,9 +10,13 @@ import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
-public class MaverickSSHSubmissionClientTest extends
-		AbstractRemoteSubmissionClientTest {
+@Test(groups={"ssh-tunnel.run","integration", "broken"})
+public class MaverickSSHTunnelSubmissionClientIT extends AbstractRemoteSubmissionClientTest {
+
+	@Override
+	protected JSONObject getSystemJson() throws JSONException, IOException {
+		return jtd.getTestDataObject(JSONTestDataUtil.TEST_PROXY_EXECUTION_SYSTEM_FILE);
+	}
 
 	@Test
 	public void canAuthentication() {
@@ -24,12 +28,12 @@ public class MaverickSSHSubmissionClientTest extends
 		}
 	}
 
-	@Test(dependsOnMethods={"canAuthentication"})
+	@Test
 	public void runCommand() {
 		try {
-			String response = getClient().runCommand("whoami");
+			String response = getClient().runCommand("echo $HOSTNAME");
 			Assert.assertEquals(StringUtils.trim(response), 
-					system.getLoginConfig().getDefaultAuthConfig().getUsername(), 
+					system.getLoginConfig().getHost(), 
 					"Response from whoami on remote system should be the login config default auth config username");
 		}
 		catch (Exception e) {
@@ -37,8 +41,4 @@ public class MaverickSSHSubmissionClientTest extends
 		}
 	}
 
-	@Override
-	protected JSONObject getSystemJson() throws JSONException, IOException {
-		return jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE);
-	}
 }

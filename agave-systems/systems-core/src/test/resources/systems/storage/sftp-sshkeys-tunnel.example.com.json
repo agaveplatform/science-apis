@@ -19,8 +19,8 @@
     },
     "proxy": {
       "name": "Example proxy to sftp storage server",
-      "host": "docker.example.com",
-      "port": 10022
+      "host": "sftptunnel",
+      "port": 10033
     }
   },
   "default": false

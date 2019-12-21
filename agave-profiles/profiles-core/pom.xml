@@ -91,6 +91,32 @@
 				</executions>
 			</plugin>
 			<plugin>
+				<groupId>com.github.slem1</groupId>
+				<artifactId>await-maven-plugin</artifactId>
+				<version>${await-maven-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>${project.artifactId}-await-tcp-connection</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>Await</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<poll>
+						<attempts>10</attempts>
+						<sleep>5000</sleep>
+					</poll>
+					<tcpConnections>
+						<tcpConnection>
+							<host>mysql</host>
+							<port>3306</port>
+						</tcpConnection>
+					</tcpConnections>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
 				<version>${maven-failsafe-plugin.version}</version>

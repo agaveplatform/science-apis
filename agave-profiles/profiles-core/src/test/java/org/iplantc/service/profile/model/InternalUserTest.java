@@ -17,7 +17,7 @@ import org.testng.annotations.Test;
  *
  */
 @Test(groups={"unit"})
-public class InternalUserIT extends ModelTestCommon {
+public class InternalUserTest extends ModelTestCommon {
 
     @BeforeClass
     public void setUp() throws Exception {

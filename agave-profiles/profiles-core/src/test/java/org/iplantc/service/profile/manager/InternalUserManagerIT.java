@@ -65,7 +65,7 @@ public class InternalUserManagerIT extends ModelTestCommon {
                     HibernateUtil.rollbackTransaction();
                 }
             }
-            catch (Exception e) {}
+            catch (Exception ignored) {}
 
             throw new ProfileException(ex);
         }

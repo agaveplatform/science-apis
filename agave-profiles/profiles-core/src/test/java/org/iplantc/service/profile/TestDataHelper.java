@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.node.POJONode;
  */
 public class TestDataHelper {
 	
-	public static String TEST_INTERNAL_USER_FILE = "src/test/resources/internal_user.json";
+	public static String TEST_INTERNAL_USER_FILE = "src/test/resources/internal_users/internal_user.json";
 	
 	public static TestDataHelper testDataHelper;
 	

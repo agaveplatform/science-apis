@@ -532,7 +532,7 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
 	 * @return
 	 * @throws RemoteDataException if a bad value is passed
 	 */
-	public String updateMode(String modeString) throws RemoteDataException{
+	public void updateMode(String modeString) throws RemoteDataException{
     	try {
 			for(int i=1;i<=9;i++) {
 				if (modeString.charAt(i) != '-') {
@@ -543,6 +543,7 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
 			throw new RemoteDataException("Could not parse access permission bits");
 		}
 	}
+
     public String formatUnixListReply(String unixMode, boolean isDirectory) throws RemoteDataException 
     {
     	String unixListString = isDirectory ? "d" : "-";

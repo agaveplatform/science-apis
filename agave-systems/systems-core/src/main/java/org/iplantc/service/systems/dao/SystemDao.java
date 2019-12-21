@@ -41,6 +41,7 @@ import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.SystemRole;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
+import org.iplantc.service.systems.search.SystemSearchFilter;
 import org.iplantc.service.systems.search.SystemSearchResult;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
@@ -1011,7 +1012,7 @@ public class SystemDao extends AbstractDao {
      * @param username
      * @param searchCriteria
      * @return
-     * @throws JobException
+     * @throws SystemException
      */
     public List findMatching(String username, Map<SearchTerm, Object> searchCriteria)
     throws SystemException {
@@ -1027,7 +1028,7 @@ public class SystemDao extends AbstractDao {
      * @param offset
      * @param limit
      * @return
-     * @throws JobException
+     * @throws SystemException
      */
     @SuppressWarnings("unchecked")
     public List findMatching(String username, Map<SearchTerm, Object> searchCriteria, int limit, int offset, boolean fullResponse)
@@ -1035,7 +1036,7 @@ public class SystemDao extends AbstractDao {
         
         try {
             Class<?> transformClass = SystemSearchResult.class;
-            
+            Map<String, Class> searchTypeMappings = new SystemSearchFilter().getSearchTypeMappings();
             Session session = getSession();
             session.clear();
             String hql = "";
@@ -1212,6 +1213,18 @@ public class SystemDao extends AbstractDao {
                         || StringUtils.equalsIgnoreCase(searchCriteria.get(searchTerm).toString(), "null")
                         && (searchTerm.getOperator() == SearchTerm.Operator.NEQ || searchTerm.getOperator() == SearchTerm.Operator.EQ )) {
                     // this was explicitly set to 'is null' or 'is not null'
+                }
+                else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Date.class ) {
+                    query.setDate(searchTerm.getSafeSearchField(), (java.util.Date)searchCriteria.get(searchTerm));
+
+                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+                            "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+                }
+                else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Integer.class) {
+                    query.setInteger(searchTerm.getSafeSearchField(), (Integer)searchCriteria.get(searchTerm));
+
+                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+                            "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
                 }
                 else 
                 {

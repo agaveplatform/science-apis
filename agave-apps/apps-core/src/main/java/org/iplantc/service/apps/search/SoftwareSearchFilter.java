@@ -1,5 +1,10 @@
 package org.iplantc.service.apps.search;
 
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.temporal.Temporal;
 import java.util.Date;
 import java.util.Map;
 
@@ -153,10 +158,17 @@ public class SoftwareSearchFilter extends AgaveResourceSearchFilter
             if (Boolean.FALSE.equals(time)) {
                 if (NumberUtils.isDigits(searchValue)) {
                     try {
-                        DateTime dateTime = new DateTime(Long.valueOf(searchValue));
-                        return dateTime.toDate();
+                        Instant instant = Instant.ofEpochSecond(Long.parseLong(searchValue));
+                        return DateTime.parse(instant.toString()).toDate();
+                    } catch (DateTimeException e) {
+                        try {
+                            Instant instant = Instant.ofEpochMilli(Long.parseLong(searchValue));
+                            return new DateTime(instant.toString()).toDate();
+                        } catch (Exception iae) {
+                            throw new IllegalArgumentException("Invalid epoch value for " + searchField);
+                        }
                     } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Illegal date format for " + searchField);
+                        throw new IllegalArgumentException("Invalid epoch value for " + searchField);
                     }
                 } else {
                     try {

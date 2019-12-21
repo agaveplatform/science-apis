@@ -1,16 +1,8 @@
 package org.iplantc.service.apps.dao;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.Criteria;
-import org.hibernate.Hibernate;
-import org.hibernate.HibernateException;
-import org.hibernate.Query;
-import org.hibernate.Session;
+import org.hibernate.*;
 import org.hibernate.criterion.Order;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.transform.DistinctRootEntityResultTransformer;
@@ -18,12 +10,18 @@ import org.hibernate.transform.Transformers;
 import org.iplantc.service.apps.Settings;
 import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.apps.search.SoftwareSearchFilter;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 
 public class SoftwareDao
@@ -275,7 +273,7 @@ public class SoftwareDao
                 .setMaxResults(limit)
 				.setResultTransformer(DistinctRootEntityResultTransformer.INSTANCE)
 				.list();
-
+			session.createQuery("DELETE org.iplantc.service.apps.model.Software");
 			session.flush();
 
 			return apps;
@@ -570,8 +568,8 @@ public class SoftwareDao
 				}
 				else
 				{
-					hql = "from Software where name like '%" + name
-							+ "%' and publiclyAvailable = :publiclyAvailable";
+					hql = "from Software as s where s.name like '%" + name
+							+ "%' and s.publiclyAvailable = :publiclyAvailable";
 				}
 			}
 			else
@@ -853,10 +851,11 @@ public class SoftwareDao
      * Searches for software by the given user who matches the given set of 
      * parameters. Permissions are honored in this query.
      * 
-     * @param username
+     * @param username username reqeusting the query
      * @param searchCriteria Map of key value pairs by which to query.
-     * @return
-     * @throws SoftwareException
+	 * @param getfullResponse should the full response be returned
+     * @return list of results
+     * @throws SoftwareException if anything goes wrong
      */
     public static List<Software> findMatching(String username,
             Map<SearchTerm, Object> searchCriteria, boolean getfullResponse) throws SoftwareException
@@ -868,12 +867,13 @@ public class SoftwareDao
      * Searches for software by the given user who matches the given set of 
      * parameters. Permissions are honored in this query as in pagination
      *
-     * @param username
-     * @param searchCriteria
-     * @param offset
-     * @param limit
-     * @return
-     * @throws SoftwareException
+     * @param username username requesting the query
+     * @param searchCriteria map of search terms and values
+     * @param offset query offset
+     * @param limit max records returned
+	 * @param getfullResponse should full response be returned
+     * @return list of results
+     * @throws SoftwareException if anything goes wrong
      */
     @SuppressWarnings("unchecked")
     public static List<Software> findMatching(String username,
@@ -882,46 +882,28 @@ public class SoftwareDao
     {
         try
         {
+			Map<String, Class> searchTypeMappings = new SoftwareSearchFilter().getSearchTypeMappings();
+
             Session session = getSession();
             session.clear();
-            String hql =  " SELECT distinct s.id as id, \n"
-	                    + "     s.name as name, \n"
-	                    + "     s.version as version, \n"
-	                    + "     s.revisionCount as revisionCount, \n"
-	                    + "     system as executionSystem, \n"
-	                    + "     s.shortDescription as shortDescription, \n"
-	                    + "     s.longDescription as longDescription, \n"
-	                    + "     s.publiclyAvailable as publiclyAvailable, \n"
-	                    + "     s.label as label, \n"
-	                    + "     s.owner as owner, \n"
-	                    + "     s.created as created, \n"
-	                    + "     s.lastUpdated as lastUpdated, \n"
-	                    + "     s.uuid as uuid \n";
+            StringBuilder hql = new StringBuilder(" SELECT distinct s.id as id, \n"
+					+ "     s.name as name, \n"
+					+ "     s.version as version, \n"
+					+ "     s.revisionCount as revisionCount, \n"
+					+ "     system as executionSystem, \n"
+					+ "     s.shortDescription as shortDescription, \n"
+					+ "     s.longDescription as longDescription, \n"
+					+ "     s.publiclyAvailable as publiclyAvailable, \n"
+					+ "     s.label as label, \n"
+					+ "     s.owner as owner, \n"
+					+ "     s.created as created, \n"
+					+ "     s.lastUpdated as lastUpdated, \n"
+					+ "     s.uuid as uuid \n");
             if (getfullResponse) {
-            		hql += "     ,s.icon as icon, \n"
-    	    			+ "     s.parallelism as parallelism, \n"
-    	    			+ "     s.defaultProcessorsPerNode as defaultProcessorsPerNode, \n"
-    	    			+ "     s.defaultMemoryPerNode as defaultMemoryPerNode, \n"
-    	    			+ "     s.defaultNodes as defaultNodes, \n"
-    	    			+ "     s.defaultMaxRunTime as defaultMaxRunTime, \n"
-    	    			+ "     s.defaultQueue as defaultQueue, \n"
-    	    			+ "     s.tags as tags, \n"
-    	    			+ "     s.ontology as ontology, \n"
-    	    			+ "     s.executionType as executionType, \n"
-    	    			+ "     s.deploymentPath as deploymentPath, \n"
-    	    			+ "     s.storageSystem as storageSystem, \n"
-    	    			+ "     s.executablePath as executablePath, \n"
-    	    			+ "     s.testPath as testPath, \n"
-    	    			+ "     s.checkpointable as checkpointable, \n"
-    	    			+ "     s.modules as modules, \n "
-    	    			+ "     s.available as available \n";
+            		hql.append("     ,s.icon as icon, \n" + "     s.parallelism as parallelism, \n" + "     s.defaultProcessorsPerNode as defaultProcessorsPerNode, \n" + "     s.defaultMemoryPerNode as defaultMemoryPerNode, \n" + "     s.defaultNodes as defaultNodes, \n" + "     s.defaultMaxRunTime as defaultMaxRunTime, \n" + "     s.defaultQueue as defaultQueue, \n" + "     s.tags as tags, \n" + "     s.ontology as ontology, \n" + "     s.executionType as executionType, \n" + "     s.deploymentPath as deploymentPath, \n" + "     s.storageSystem as storageSystem, \n" + "     s.executablePath as executablePath, \n" + "     s.testPath as testPath, \n" + "     s.checkpointable as checkpointable, \n" + "     s.modules as modules, \n " + "     s.available as available \n");
             } 
             
-               hql += " FROM Software s \n"
-                    + "     left join s.inputs input \n"
-                    + "     left join s.parameters parameter \n" 
-                    + "     left join s.outputs output \n"
-                    + "     left join s.executionSystem system \n";
+               hql.append(" FROM Software s \n" + "     left join s.inputs input \n" + "     left join s.parameters parameter \n" + "     left join s.outputs output \n" + "     left join s.executionSystem system \n");
             
             SearchTerm publicSearchTerm = null;
             for (SearchTerm searchTerm: searchCriteria.keySet()) {
@@ -932,37 +914,24 @@ public class SoftwareDao
             if (!AuthorizationHelper.isTenantAdmin(username)) {
                 // no public search term specified. return public and private
                 if (publicSearchTerm == null) {
-                    hql +=  " WHERE ( \n" +
-                            "       s.owner = :owner OR \n" +
-                            "       s.publiclyAvailable = true OR \n" +
-                            "       s.id in ( \n" + 
-                            "               SELECT sp.software.id FROM SoftwarePermission sp \n" +
-                            "               WHERE sp.username = :owner AND sp.permission <> :none \n" +
-                            "              ) \n" +
-                            "      ) AND \n";
+                    hql.append(" WHERE ( \n" + "       s.owner = :owner OR \n" + "       s.publiclyAvailable = true OR \n" + "       s.id in ( \n" + "               SELECT sp.software.id FROM SoftwarePermission sp \n" + "               WHERE sp.username = :owner AND sp.permission <> :none \n" + "              ) \n" + "      ) AND \n");
                 } 
                 // public = false || public.eq = false || public.neq = true, return only private
                 else if ((publicSearchTerm.getOperator() == SearchTerm.Operator.EQ && 
                             !(Boolean)searchCriteria.get(publicSearchTerm)) || 
                         (publicSearchTerm.getOperator() == SearchTerm.Operator.NEQ && 
                             (Boolean)searchCriteria.get(publicSearchTerm))) {
-                    hql +=  " WHERE ( \n" +
-                            "       s.owner = :owner OR \n" +
-                            "       s.id in ( \n" + 
-                            "               SELECT sp.software.id FROM SoftwarePermission sp \n" +
-                            "               WHERE sp.username = :owner AND sp.permission <> :none \n" +
-                            "              ) \n" +
-                            "      ) AND \n";
+                    hql.append(" WHERE ( \n" + "       s.owner = :owner OR \n" + "       s.id in ( \n" + "               SELECT sp.software.id FROM SoftwarePermission sp \n" + "               WHERE sp.username = :owner AND sp.permission <> :none \n" + "              ) \n" + "      ) AND \n");
                 } 
                 // else return public apps. they will be included in the general where clause
                 else {
                     
                 }
             } else {
-                hql += " WHERE ";
+                hql.append(" WHERE ");
             }
             
-            hql +=  "        s.tenantId = :tenantid "; 
+            hql.append("        s.tenantId = :tenantid ");
             
             for (SearchTerm searchTerm: searchCriteria.keySet()) 
             {
@@ -970,32 +939,32 @@ public class SoftwareDao
                         || StringUtils.equalsIgnoreCase(searchCriteria.get(searchTerm).toString(), "null")) 
                 {
                 	if (searchTerm.getOperator() == SearchTerm.Operator.NEQ ) {
-                        hql += "\n       AND       " + String.format(searchTerm.getMappedField(), searchTerm.getPrefix()) + " is not null ";
+                        hql.append("\n       AND       ").append(String.format(searchTerm.getMappedField(), searchTerm.getPrefix())).append(" is not null ");
                     } else if (searchTerm.getOperator() == SearchTerm.Operator.EQ ) {
-                        hql += "\n       AND       " + String.format(searchTerm.getMappedField(), searchTerm.getPrefix()) + " is null ";
+                        hql.append("\n       AND       ").append(String.format(searchTerm.getMappedField(), searchTerm.getPrefix())).append(" is null ");
                     } else {
-                        hql += "\n       AND       " + searchTerm.getExpression();
+                        hql.append("\n       AND       ").append(searchTerm.getExpression());
                     }
                 } else {
-                    hql += "\n       AND       " + searchTerm.getExpression();
+                    hql.append("\n       AND       ").append(searchTerm.getExpression());
                 }
             }
             
-            if (!hql.contains("s.available")) {
-                hql +=  "\n       AND s.available = :visiblebydefault \n";
+            if (!hql.toString().contains("s.available")) {
+                hql.append("\n       AND s.available = :visiblebydefault \n");
             }
             
-            hql +=  " ORDER BY s.lastUpdated DESC\n";
+            hql.append(" ORDER BY s.lastUpdated DESC\n");
             
-            String q = hql;
+            String q = hql.toString();
             
-            Query query = session.createQuery(hql)
+            Query query = session.createQuery(hql.toString())
             			.setResultTransformer(Transformers.aliasToBean(Software.class))
 			            .setString("tenantid", TenancyHelper.getCurrentTenantId());
             
             q = q.replaceAll(":tenantid", "'" + TenancyHelper.getCurrentTenantId() + "'");
             
-            if (hql.contains(":visiblebydefault") ) {
+            if (hql.toString().contains(":visiblebydefault") ) {
                 query.setBoolean("visiblebydefault", Boolean.TRUE);
                 
                 q = q.replaceAll(":visiblebydefault", "1");
@@ -1027,6 +996,18 @@ public class SoftwareDao
                         && (searchTerm.getOperator() == SearchTerm.Operator.NEQ || searchTerm.getOperator() == SearchTerm.Operator.EQ )) {
                     // this was explicitly set to 'is null' or 'is not null'
                 }
+				else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Date.class ) {
+					query.setDate(searchTerm.getSafeSearchField(), (java.util.Date)searchCriteria.get(searchTerm));
+
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+							"'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+				}
+				else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Integer.class) {
+					query.setInteger(searchTerm.getSafeSearchField(), (Integer)searchCriteria.get(searchTerm));
+
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+							"'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+				}
                 else 
                 {
                     query.setParameter(searchTerm.getSafeSearchField(), 

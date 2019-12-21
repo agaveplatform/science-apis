@@ -27,6 +27,7 @@ import org.testng.annotations.BeforeClass;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Random;
+import java.util.UUID;
 
 /**
  * @author dooley
@@ -44,7 +45,7 @@ public class AbstractDaoTest
 	public static final String SYSTEM_UNSHARED_USER = "testother";
 	public static final String SYSTEM_INTERNAL_USERNAME = "test_user";
 	public static final String EXECUTION_SYSTEM_TEMPLATE_DIR = "src/test/resources/systems/execution";
-	public static final String STORAGE_SYSTEM_TEMPLATE_DIR = "src/test/resources/systems/storage";
+	public static final String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage";
 	public static final String SOFTWARE_SYSTEM_TEMPLATE_DIR = "src/test/resources/software";
 	public static final String FORK_SOFTWARE_TEMPLATE_FILE = SOFTWARE_SYSTEM_TEMPLATE_DIR + "/fork-1.0.0/app.json";
 	public static final String INTERNAL_USER_TEMPLATE_DIR = "src/test/resources/internal_users";
@@ -167,6 +168,17 @@ public class AbstractDaoTest
 	 */
 	public String createNonce(String salt) {
 		String digestMessage = salt + System.currentTimeMillis() + new Random().nextInt();
+		return DigestUtils.md5Hex(digestMessage);
+	}
+
+	/**
+	 * Creates a nonce for use as the token by generating an md5 hash of the
+	 * a random uuid, current timestamp, and a random number.
+	 *
+	 * @return md5 hash of the adjusted salt
+	 */
+	public String createNonce() {
+		String digestMessage = UUID.randomUUID().toString() + System.currentTimeMillis() + new Random().nextInt();
 		return DigestUtils.md5Hex(digestMessage);
 	}
 }

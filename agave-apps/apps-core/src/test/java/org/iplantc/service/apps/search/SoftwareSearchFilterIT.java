@@ -183,7 +183,7 @@ public class SoftwareSearchFilterIT extends AbstractDaoTest
 		}
 	}
 	
-	public void _filterInvalidSearchCriteria(String testField, boolean shouldExistAfterFiltering, String message) throws Exception
+	protected void _filterInvalidSearchCriteria(String testField, boolean shouldExistAfterFiltering, String message) throws Exception
 	{
 		SoftwareSearchFilter SoftwareSearchFilter = new SoftwareSearchFilter();
 		Map<String, String> searchCriteria = new HashMap<String, String>();

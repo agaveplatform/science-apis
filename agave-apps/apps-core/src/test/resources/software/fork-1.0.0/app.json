@@ -15,33 +15,34 @@
   "templatePath": "wrapper.sh",
   "testPath": "test/test.sh",
   "tags": [
-    "demo","debug"
+    "demo",
+    "debug"
   ],
   "modules": [],
   "inputs": [
-  	{
-		"details": {
-			"description": "Select an input file", 
-			"label": "Target File", 
-			"visible": true
-		}, 
-		"id": "inputfile", 
-		"semantics": {
-			"fileTypes": [
-				"TEXT-0"
-			], 
-			"minCardinality": 0, 
-			"ontology": [
-				"0"
-			]
-		}, 
-		"value": {
-			"default": null, 
-			"required": false, 
-			"validator": "", 
-			"visible": true
-		}
-	}
+    {
+      "details": {
+        "description": "Select an input file",
+        "label": "Target File",
+        "visible": true
+      },
+      "id": "inputfile",
+      "semantics": {
+        "fileTypes": [
+          "TEXT-0"
+        ],
+        "minCardinality": 0,
+        "ontology": [
+          "0"
+        ]
+      },
+      "value": {
+        "default": null,
+        "required": false,
+        "validator": "",
+        "visible": true
+      }
+    }
   ],
   "parameters": [
     {

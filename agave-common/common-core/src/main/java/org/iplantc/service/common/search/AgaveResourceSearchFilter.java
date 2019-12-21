@@ -1,5 +1,7 @@
 package org.iplantc.service.common.search;
 
+import java.time.DateTimeException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -53,7 +55,7 @@ public abstract class AgaveResourceSearchFilter {
     /**
      * Transforms a specific, user-supplied search term into the appropriate
      * {@link SearchTerm} object.
-     * @param name
+     * @param attributeName
      * @return
      */
     public SearchTerm filterAttributeName(String attributeName) 
@@ -202,10 +204,17 @@ public abstract class AgaveResourceSearchFilter {
             if (Boolean.FALSE.equals(time)) {
                 if (NumberUtils.isDigits(searchValue)) {
                     try {
-                        DateTime dateTime = new DateTime(Long.valueOf(searchValue));
-                        return dateTime.toDate();
+                        Instant instant = Instant.ofEpochSecond(Long.parseLong(searchValue));
+                        return DateTime.parse(instant.toString()).toDate();
+                    } catch (DateTimeException e) {
+                        try {
+                            Instant instant = Instant.ofEpochMilli(Long.parseLong(searchValue));
+                            return new DateTime(instant.toString()).toDate();
+                        } catch (Exception iae) {
+                            throw new IllegalArgumentException("Invalid epoch value for " + searchField);
+                        }
                     } catch (IllegalArgumentException e) {
-                        throw new IllegalArgumentException("Illegal date format for " + searchField);
+                        throw new IllegalArgumentException("Invalid epoch value for " + searchField);
                     }
                 } else {
                     try {

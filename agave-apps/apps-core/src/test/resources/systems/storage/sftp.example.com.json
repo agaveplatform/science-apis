@@ -10,11 +10,11 @@
       "port":10022,
       "protocol":"SFTP",
       "rootDir":"/",
-      "homeDir":"/home/${iplant.community.username}",
+      "homeDir":"/home/testuser",
       "publicAppsDir": "/tmp",
       "auth":{
-         "username":"${iplant.community.username}",
-         "password":"${iplant.community.password}",
+         "username":"testuser",
+         "password":"testuser",
          "type":"PASSWORD"
       }
    }

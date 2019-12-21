@@ -473,7 +473,6 @@
         <module>agave-files</module>
         <module>agave-apps</module>
         <module>agave-jobs</module>
-        <module>agave-legacy-jobs</module>
         <module>agave-tags</module>
         <module>agave-realtime</module>
         <module>agave-stats</module>

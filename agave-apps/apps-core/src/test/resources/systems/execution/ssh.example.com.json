@@ -1,50 +1,50 @@
 {
-	"id": "ssh.example.com",
-	"name": "SSH",
-	"status": "UP",
-	"type": "EXECUTION",
-	"description": "Sample ssh execution system.",
-	"site": "tacc.xsede.org",
-	"executionType": "HPC",
-	"default": false,
-	"queues": [
-		{
-			"name": "normal",
-			"maxJobs": 100,
-			"maxUserJobs": 10,
-			"maxNodes": 256,
-			"maxProcessorsPerNode": 16,
-			"maxMemoryPerNode": "2048GB",
-			"maxRequestedTime": "24:00:00",
-			"customDirectives": "#$ -A TG-MCB110022",
-			"default": true
-		}
-	],
-	"login": {
-		"host": "sftp",
-		"port": 22,
-		"protocol": "SSH",
-		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
-			"credential": null,
-			"type": "PASSWORD"
-		}
-	},
-	"storage": {
-		"host": "sftp",
-		"port": 22,
-		"protocol": "SFTP",
-		"rootDir":"/",
-		"homeDir": "/home/${iplant.test.username}",
-		"publicAppsDir": "/tmp",
-		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
-			"type": "PASSWORD"
-		}
-	},
-	"scheduler": "SGE",
-	"environment": "",
-	"startupScript": "./bashrc"
+  "id": "ssh.example.com",
+  "name": "SSH",
+  "status": "UP",
+  "type": "EXECUTION",
+  "description": "Sample ssh execution system.",
+  "site": "tacc.xsede.org",
+  "executionType": "HPC",
+  "default": false,
+  "queues": [
+    {
+      "name": "normal",
+      "maxJobs": 100,
+      "maxUserJobs": 10,
+      "maxNodes": 256,
+      "maxProcessorsPerNode": 16,
+      "maxMemoryPerNode": "2048GB",
+      "maxRequestedTime": "24:00:00",
+      "customDirectives": "#$ -A TG-MCB110022",
+      "default": true
+    }
+  ],
+  "login": {
+    "host": "sftp",
+    "port": 22,
+    "protocol": "SSH",
+    "auth": {
+      "username": "testuser",
+      "password": "testuser",
+      "credential": null,
+      "type": "PASSWORD"
+    }
+  },
+  "storage": {
+    "host": "sftp",
+    "port": 22,
+    "protocol": "SFTP",
+    "rootDir": "/",
+    "homeDir": "/home/${iplant.test.username}",
+    "publicAppsDir": "/tmp",
+    "auth": {
+      "username": "testuser",
+      "password": "testuser",
+      "type": "PASSWORD"
+    }
+  },
+  "scheduler": "SGE",
+  "environment": "",
+  "startupScript": "./bashrc"
 }

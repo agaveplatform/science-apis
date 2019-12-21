@@ -1,49 +1,49 @@
 {
-	"id": "condor.example.com",
-	"name": "Demo condor system",
-	"status": "UP",
-	"type": "EXECUTION",
-	"description": "Sample Condor system config",
-	"site": "example.com",
-	"executionType": "CONDOR",
-	"default": false,
-	"queues": [
-        {
-            "name": "condorqueue",
-            "maxJobs": 100,
-			"maxUserJobs": 10,
-			"maxNodes": 256,
-			"maxProcessorsPerNode": 16,
-			"maxMemoryPerNode": "2048GB",
-			"maxRequestedTime": "24:00:00",
-			"customDirectives": "",
-            "defaut":true
-        }
-    ],
-	"login": {
-		"host": "condorht",
-		"port": 22,
-		"protocol": "SSH",
-		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
-			"type": "PASSWORD"
-		}
-	},
-	"storage": {
-		"host": "condorht",
-		"port": 22,
-		"protocol": "SFTP",
-		"rootDir":"/",
-		"homeDir": "/home/${iplant.community.username}",
-		"publicAppsDir": "/tmp",
-		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
-			"type": "PASSWORD"
-		}
-	},
-	"scheduler": "CONDOR",
-	"environment": "",
-	"startupScript": "./bashrc"
+  "id": "condor.example.com",
+  "name": "Demo condor system",
+  "status": "UP",
+  "type": "EXECUTION",
+  "description": "Sample Condor system config",
+  "site": "example.com",
+  "executionType": "CONDOR",
+  "default": false,
+  "queues": [
+    {
+      "name": "condorqueue",
+      "maxJobs": 100,
+      "maxUserJobs": 10,
+      "maxNodes": 256,
+      "maxProcessorsPerNode": 16,
+      "maxMemoryPerNode": "2048GB",
+      "maxRequestedTime": "24:00:00",
+      "customDirectives": "",
+      "defaut": true
+    }
+  ],
+  "login": {
+    "host": "condorht",
+    "port": 22,
+    "protocol": "SSH",
+    "auth": {
+      "username": "testuser",
+      "password": "testuser",
+      "type": "PASSWORD"
+    }
+  },
+  "storage": {
+    "host": "condorht",
+    "port": 22,
+    "protocol": "SFTP",
+    "rootDir": "/",
+    "homeDir": "/home/testuser",
+    "publicAppsDir": "/tmp",
+    "auth": {
+      "username": "testuser",
+      "password": "testuser",
+      "type": "PASSWORD"
+    }
+  },
+  "scheduler": "CONDOR",
+  "environment": "",
+  "startupScript": "./bashrc"
 }

@@ -5,16 +5,19 @@ import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_SOFTWARE_SYST
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonPrimitive;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.apps.dao.AbstractDaoTest;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.HibernateUtil;
+import org.iplantc.service.common.search.SearchTerm;
 import org.joda.time.DateTime;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -26,7 +29,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
+@Test(groups={"integration", "broken"})
 public class SoftwareSearchIT extends AbstractDaoTest {
 
 	@BeforeClass
@@ -67,7 +70,7 @@ public class SoftwareSearchIT extends AbstractDaoTest {
         return software;
 	}
 	
-	@DataProvider(name="softwaresProvider")
+	@DataProvider
 	public Object[][] softwaresProvider() throws Exception
 	{
 	    Software software = createSoftware();
@@ -76,7 +79,6 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 	        { "available", software.isAvailable() },
 	        { "checkpointable", software.isCheckpointable() },
 	        { "checksum", software.getChecksum() },
-//	        { "created", software.getCreated() },
 	        { "defaultMaxRunTime", software.getDefaultMaxRunTime() },
 	        { "defaultMemoryPerNode", software.getDefaultMemoryPerNode() },
 	        { "defaultNodes", software.getDefaultNodes() },
@@ -90,11 +92,9 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 	        { "id", software.getUniqueName() },
 	        { "inputs.id", software.getInputs().get(0).getKey() },
 	        { "label", software.getLabel() },
-//	        { "lastUpdated", software.getLastUpdated() },
 	        { "longDescription", software.getLongDescription() },
 	        { "modules", software.getModulesAsList().get(0) },
 	        { "name", software.getName() },
-	        { "ontology", software.getOntologyAsList().get(0) },
 	        { "outputs.id", software.getOutputs().get(0).getKey() },
 	        { "owner", software.getOwner() },
 	        { "parallelism", software.getParallelism() },
@@ -105,7 +105,6 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 	        { "revision", software.getRevisionCount() },
 	        { "shortDescription", software.getShortDescription() },
 	        { "storageSystem", software.getStorageSystem().getSystemId() },
-//	        { "tags", software.getTagsAsList().get(0) },
 	        { "templatePath", software.getExecutablePath() },
             { "testPath", software.getTestPath() },
 	        { "uuid", software.getUuid() },
@@ -137,31 +136,130 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 		Assert.assertEquals(softwares.size(), 1, "findMatching returned the wrong number of software for search by " + attribute);
 		Assert.assertTrue(softwares.contains(software), "findMatching did not return the saved software.");
 	}
+
+	/**
+	 * Generates test cases using a list of ontologies, generating test cases to check that each can
+	 * be searched via zero or more wildcards.
+	 *
+	 * @return test data
+	 * @throws Exception
+	 */
+	@DataProvider
+	public Object[][] findMatchingOntologyProvider() throws Exception
+	{
+		JsonArray ontologies = new JsonArray();
+		ontologies.add(new JsonPrimitive("http://purl.org/ontology/mo/Lyrics"));
+		ontologies.add(new JsonPrimitive("http://purl.org/ontology/mo/MusicArtist"));
+		ontologies.add(new JsonPrimitive("http://purl.org/ontology/mo/MusicalExpression"));
+
+		List<Object[]> testCases = new ArrayList<Object[]>();
+		Object ontology = null;
+		for (int i=0; i<ontologies.size(); i++) {
+			ontology = ontologies.get(i);
+			testCases.add(new Object[]{ontologies, "ontology.like", ontology.toString(), false});
+			testCases.add(new Object[]{ontologies, "ontology.like", "*" + ontology.toString() + "*", true});
+			testCases.add(new Object[]{ontologies, "ontology.like", "*" + ontology.toString(), false});
+			testCases.add(new Object[]{ontologies, "ontology.like", ontology.toString() + "*", false});
+		}
+		return testCases.toArray(new Object[][]{});
+	}
+
+	@Test(dataProvider = "findMatchingOntologyProvider")
+	public void findMatchingOntology(JsonArray ontologies, String attribute, String value, boolean shouldMatch) throws Exception
+	{
+		Software software = createSoftware();
+		software.setOntology(ontologies.toString());
+		software.setName(UUID.randomUUID().toString());
+		SoftwareDao.persist(software);
+
+		Assert.assertNotNull(software.getId(), "Failed to generate a software ID.");
+
+		Map<String, String> map = new HashMap<String, String>();
+		map.put(attribute, value);
+
+		List<Software> softwares = SoftwareDao.findMatching(software.getOwner(), new SoftwareSearchFilter().filterCriteria(map), false);
+		Assert.assertNotNull(softwares, "findMatching should never return null");
+
+		if (shouldMatch) {
+			Assert.assertEquals(softwares.size(), 1, "findMatching returned the wrong number of software for search by " + attribute);
+			Assert.assertTrue(softwares.contains(software), "findMatching did not return the saved software.");
+		}
+		else {
+			Assert.assertEquals(softwares.size(), 0, "findMatching should return empty list.");
+		}
+	}
+
+	/**
+	 * Generates test cases using a list of ontologies, generating test cases to check that each can
+	 * be searched via zero or more wildcards.
+	 *
+	 * @return test data
+	 * @throws Exception
+	 */
+	@DataProvider
+	public Object[][] findMatchingTagProvider() throws Exception
+	{
+		JsonArray ontologies = new JsonArray();
+		ontologies.add(new JsonPrimitive(createNonce()));
+		ontologies.add(new JsonPrimitive(createNonce()));
+		ontologies.add(new JsonPrimitive(createNonce()));
+
+		List<Object[]> testCases = new ArrayList<Object[]>();
+		Object ontology = null;
+		for (int i=0; i<ontologies.size(); i++) {
+			ontology = ontologies.get(i);
+			testCases.add(new Object[]{ontologies, "tags.like", ontology.toString(), false});
+			testCases.add(new Object[]{ontologies, "tags.like", "*" + ontology.toString() + "*", true});
+			testCases.add(new Object[]{ontologies, "tags.like", "*" + ontology.toString(), false});
+			testCases.add(new Object[]{ontologies, "tags.like", ontology.toString() + "*", false});
+		}
+		return testCases.toArray(new Object[][]{});
+	}
+
+	@Test(dataProvider = "findMatchingTagProvider")
+	public void findMatchingTag(JsonArray ontologies, String attribute, String value, boolean shouldMatch) throws Exception
+	{
+		Software software = createSoftware();
+		software.setTags(ontologies.toString());
+		software.setName(UUID.randomUUID().toString());
+		SoftwareDao.persist(software);
+
+		Assert.assertNotNull(software.getId(), "Failed to generate a software ID.");
+
+		Map<String, String> map = new HashMap<String, String>();
+		map.put(attribute, value);
+
+		List<Software> softwares = SoftwareDao.findMatching(software.getOwner(), new SoftwareSearchFilter().filterCriteria(map), false);
+		Assert.assertNotNull(softwares, "findMatching should never return null");
+
+		if (shouldMatch) {
+			Assert.assertEquals(softwares.size(), 1, "findMatching returned the wrong number of software for search by " + attribute);
+			Assert.assertTrue(softwares.contains(software), "findMatching did not return the saved software.");
+		}
+		else {
+			Assert.assertEquals(softwares.size(), 0, "findMatching should return empty list.");
+		}
+	}
 	
-	@Test(dataProvider="softwaresProvider", dependsOnMethods={"findMatching"} )
-    public void findMatchingTime(String attribute, Object value) throws Exception
+	@Test
+    public void findMatchingTime() throws Exception
     {
 	    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-	    
+	    formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         Software software = createSoftware();
-        if (StringUtils.equalsIgnoreCase(attribute, "privateonly")) {
-            software.setPubliclyAvailable(false);
-        } else if (StringUtils.equalsIgnoreCase(attribute, "publiconly")) {
-            software.setPubliclyAvailable(true);
-        } 
         SoftwareDao.persist(software);
         Assert.assertNotNull(software.getId(), "Failed to generate a software ID.");
         
         Map<String, String> map = new HashMap<String, String>();
-        map.put("lastupdated", formatter.format(software.getLastUpdated()));
+        map.put("lastupdated.ON", formatter.format(software.getLastUpdated()));
         
         List<Software> softwares = SoftwareDao.findMatching(software.getOwner(), new SoftwareSearchFilter().filterCriteria(map), false);
-        Assert.assertNotNull(softwares, "findMatching failed to find any softwares matching starttime.");
-        Assert.assertEquals(softwares.size(), 1, "findMatching returned the wrong number of software records for search by starttime");
-        Assert.assertTrue(softwares.contains(software), "findMatching did not return the saved software when searching by starttime.");
+        Assert.assertNotNull(softwares, "findMatching failed to find any softwares matching lastupdated.");
+        Assert.assertEquals(softwares.size(), 1, "findMatching returned the wrong number of software records for search by lastupdated");
+        Assert.assertTrue(softwares.contains(software), "findMatching did not return the saved software when searching by lastupdated.");
         
         map.clear();
-        map.put("created", formatter.format(software.getCreated()));
+        map.put("created.ON", formatter.format(software.getCreated()));
         
         softwares = SoftwareDao.findMatching(software.getOwner(), new SoftwareSearchFilter().filterCriteria(map), false);
         Assert.assertNotNull(softwares, "findMatching failed to find any softwares matching created.");
@@ -169,7 +267,7 @@ public class SoftwareSearchIT extends AbstractDaoTest {
         Assert.assertTrue(softwares.contains(software), "findMatching did not return the saved software when searching by created.");
     }
 	
-	@Test(dependsOnMethods={"findMatchingTime"}, dataProvider="softwaresProvider")
+	@Test(dataProvider="softwaresProvider")
 	public void findMatchingCaseInsensitive(String attribute, Object value) throws Exception
 	{
 		Software software = createSoftware();
@@ -204,55 +302,62 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 	    String[] calendarDateFormats = new String[] {"MMMM d", "MMM d", "YYYY-MM-dd", "MMMM d, Y", 
 	                                                "MMM d, Y", "MMMM d, Y", "MMM d, Y",
 	                                                "M/d/Y", "M/dd/Y", "MM/dd/Y", "M/d/YYYY", "M/dd/YYYY", "MM/dd/YYYY"};
-	    
-	    DateTime dateTime = new DateTime().minusMonths(1);
-	    for(String field: new String[] {"created.before"}) {   
-	        
-	        // milliseconds since epoch
-	        testCases.add(new Object[] {field, "" + dateTime.getMillis(), true});
-            
-	        // ISO 8601
-	        testCases.add(new Object[] {field, dateTime.toString(), true});
-	        
-	        // SQL date and time format
-	        for (String date: sqlDateFormats) {
-	            for (String time: timeFormats) {
-                    testCases.add(new Object[] {field, dateTime.toString(date + " " + time), date.contains("dd") && !time.contains("Kmm")});
-                }
-	            testCases.add(new Object[] {field, dateTime.toString(date), true});
-	        }
-	        
-	        // Relative date formats
-	        for (String date: relativeDateFormats) {
-	            for (String time: timeFormats) {
-                    testCases.add(new Object[] {field, date + " " + dateTime.toString(time), !(!(date.contains("month") || date.contains("year") || date.contains(" day")) && time.contains("Kmm"))});
-                }
-	            testCases.add(new Object[] {field, date, true});
-	        }
-	        
-	        
-	        for (String date: calendarDateFormats) {
-	            for (String time: timeFormats) {
-	                testCases.add(new Object[] {field, dateTime.toString(date + " " + time), !(date.contains("d") && time.contains("Kmm"))});
-	            }
-	            testCases.add(new Object[] {field, dateTime.toString(date), true});
-	        }
-	            
-	    }
+
+
+
+	    for(String searchField: new String[] {"created", "lastupdated"}) {
+			for (SearchTerm.Operator operator : new SearchTerm.Operator[]{SearchTerm.Operator.BEFORE}) {
+
+				String field = searchField + "." + operator.name();
+
+				OffsetDateTime dateTime = OffsetDateTime.now(ZoneOffset.UTC);
+				if (operator == SearchTerm.Operator.BEFORE) {
+					dateTime = dateTime.minusMonths(1);
+				} else {
+					dateTime = dateTime.minusYears(2);
+				}
+
+				// milliseconds since epoch
+				testCases.add(new Object[]{field, "" + dateTime.toEpochSecond(), true});
+
+				// ISO 8601
+				testCases.add(new Object[]{field, dateTime.toString(), true});
+
+				// SQL date and time format
+				for (String date : sqlDateFormats) {
+					for (String time : timeFormats) {
+						testCases.add(new Object[]{field, dateTime.format(DateTimeFormatter.ofPattern(date + " " + time)), date.contains("dd") && !time.contains("Kmm")});
+					}
+					testCases.add(new Object[]{field, dateTime.format(DateTimeFormatter.ofPattern(date)), true});
+				}
+
+				// Relative date formats
+				for (String date : relativeDateFormats) {
+					for (String time : timeFormats) {
+						testCases.add(new Object[]{field, date + " " + dateTime.format(DateTimeFormatter.ofPattern(time)), !(!(date.contains("month") || date.contains("year") || date.contains(" day")) && time.contains("Kmm"))});
+					}
+					testCases.add(new Object[]{field, date, true});
+				}
+
+				for (String date : calendarDateFormats) {
+					for (String time : timeFormats) {
+						testCases.add(new Object[]{field, dateTime.format(DateTimeFormatter.ofPattern(date + " " + time)), !(date.contains("d") && time.contains("Kmm"))});
+					}
+					testCases.add(new Object[]{field, dateTime.format(DateTimeFormatter.ofPattern(date)), true});
+				}
+			}
+		}
 	    
 	    return testCases.toArray(new Object[][] {});
 	}
 	
-	@Test(dataProvider="dateSearchExpressionTestProvider", dependsOnMethods={"findMatchingCaseInsensitive"}, enabled=true)
+	@Test(dataProvider="dateSearchExpressionTestProvider")
 	public void dateSearchExpressionTest(String attribute, String dateFormattedString, boolean shouldSucceed) throws Exception
     {
 	    Software software = createSoftware();
-	    if (StringUtils.equalsIgnoreCase(attribute, "privateonly")) {
-            software.setPubliclyAvailable(false);
-        } else if (StringUtils.equalsIgnoreCase(attribute, "publiconly")) {
-            software.setPubliclyAvailable(true);
-        } 
 	    software.setCreated(new DateTime().minusYears(5).toDate());
+		software.setLastUpdated(new DateTime().minusYears(5).toDate());
+	    software.setName(UUID.randomUUID().toString());
         SoftwareDao.persist(software);
         Assert.assertNotNull(software.getId(), "Failed to generate a software ID.");
         
@@ -261,19 +366,30 @@ public class SoftwareSearchIT extends AbstractDaoTest {
         
         try
         {
-            List<Software> softwares = SoftwareDao.findMatching(software.getOwner(), new SoftwareSearchFilter().filterCriteria(map), false);
-            Assert.assertNotEquals(softwares == null, shouldSucceed, "Searching by date string of the format " 
-                        + dateFormattedString + " should " + (shouldSucceed ? "" : "not ") + "succeed");
+            List<Software> softwares = SoftwareDao.findMatching(software.getOwner(),
+					new SoftwareSearchFilter().filterCriteria(map), false);
+
+            Assert.assertNotNull(softwares, "findMatching should never return null");
+
             if (shouldSucceed) {
-                Assert.assertEquals(softwares.size(), 1, "findMatching returned the wrong number of software records for search by " 
-                        + attribute + "=" + dateFormattedString);
-                Assert.assertTrue(softwares.contains(software), "findMatching did not return the saved software.");
+                Assert.assertEquals(softwares.size(), 1,
+						"findMatching returned " + softwares.size() + " software records for search by "
+                        + attribute + "=" + dateFormattedString + " when 1 should have been returned.");
+                Assert.assertTrue(softwares.contains(software),
+						"findMatching did not return the test software record for search by " +
+								attribute + "=" + dateFormattedString);
             }
+            else {
+				Assert.assertEquals(softwares.size(), 1,
+						"findMatching returned software records for search by "
+								+ attribute + "=" + dateFormattedString +
+						" when none should have been returned.");
+			}
         }
         catch (Exception e) {
             if (shouldSucceed) {
                 Assert.fail("Searching by date string of the format " 
-                    + dateFormattedString + " should " + (shouldSucceed ? "" : "not ") + "succeed",e);
+                    + dateFormattedString + " should " + (shouldSucceed ? "" : "not ") + "succeed", e);
             }
         }
     }

@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.exceptions.SearchSyntaxException;
@@ -37,8 +38,10 @@ public class SearchTerm implements Comparable<SearchTerm>
 		GT("%s > :%s"),
 		AFTER("%s > :%s"),
 		GTE("%s >= :%s"),
+
 		IN("%s in :%s"),
 		NIN("%s not in :%s"),
+
 		LIKE("%s like :%s"),
 		RLIKE("%s REGEXP :%s"),
 		NLIKE(":%s not like :%s"),
@@ -66,7 +69,47 @@ public class SearchTerm implements Comparable<SearchTerm>
 		public boolean isSetOperator() {
 			return (this == IN || this == NIN || this == BETWEEN);
 		}
-		
+
+		/**
+		 * Returns a list of operators to apply against temporal fields
+		 * @return
+		 */
+		public static List<SearchTerm.Operator> temporalValues() {
+			return List.of(ON,EQ,BEFORE,AFTER,BETWEEN);
+		}
+
+		/**
+		 * Returns a list of operators to apply against sets of fields
+		 * @return
+		 */
+		public static List<SearchTerm.Operator> setValues() {
+			return List.of(IN,NIN,BETWEEN);
+		}
+
+		/**
+		 * Returns a list of operators to apply against numeric fields
+		 * @return
+		 */
+		public static List<SearchTerm.Operator> numericValues() {
+			return List.of(EQ,NEQ,GT,GTE,LT,LTE);
+		}
+
+		/**
+		 * Returns a list of operators to apply against numeric fields
+		 * @return
+		 */
+		public static List<SearchTerm.Operator> stringValues() {
+			return List.of(EQ,NEQ,LIKE,NLIKE,RLIKE,IN,NIN);
+		}
+
+		/**
+		 * Returns a list of operators to apply against numeric fields
+		 * @return
+		 */
+		public static List<SearchTerm.Operator> booleanValues() {
+			return List.of(EQ,NEQ);
+		}
+
 		/**
 		 * Returns true if this operator can be only be  
 		 * applied to a single value. This method delegates to 
@@ -89,7 +132,8 @@ public class SearchTerm implements Comparable<SearchTerm>
 		 * 
 		 * {@link Date} values are formatted to nanosecond precision with   
 		 * either 0's or 1's so we guarantee we are accurate to the second
-		 * regardless of the column precision in MySQL.
+		 * regardless of the column precision in MySQL. All formatted dates
+		 * are assumed to be in UTC. No adjustment is made at this level.
 		 *   
 		 * @param searchValue the search value
 		 * @return the escaped, filtered search value with wildcards replaced.
@@ -150,6 +194,24 @@ public class SearchTerm implements Comparable<SearchTerm>
         public boolean isEqualityOperator() {
             return this == EQ || this == NEQ;
         }
+
+		/**
+		 * Returns true of the operator is contained in {@link #temporalValues()}
+		 *
+		 * @return true if the current operator is an temporal check
+		 */
+		public boolean isTemporalOperator() {
+			return temporalValues().contains(this);
+		}
+
+		/**
+		 * Returns true of the operator is contained in {@link #numericValues()}
+		 *
+		 * @return true if the current operator is an numeric check
+		 */
+		public boolean isNumericOperator() {
+			return numericValues().contains(this);
+		}
 	}
 	
 	/**

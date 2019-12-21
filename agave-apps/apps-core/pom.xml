@@ -86,7 +86,7 @@
 				<executions>
 					<execution>
 						<id>${project.artifactId}-await-tcp-connection</id>
-						<phase>integration-test</phase>
+						<phase>pre-integration-test</phase>
 						<goals>
 							<goal>Await</goal>
 						</goals>
@@ -103,12 +103,6 @@
 							<port>3306</port>
 						</tcpConnection>
 					</tcpConnections>
-<!--					<httpConnections>-->
-<!--						<httpConnection>-->
-<!--							<url>http://mywebservice:9090</url>-->
-<!--							<statusCode>200</statusCode>-->
-<!--						</httpConnection>-->
-<!--					</httpConnections>-->
 				</configuration>
 			</plugin>
 			<plugin>

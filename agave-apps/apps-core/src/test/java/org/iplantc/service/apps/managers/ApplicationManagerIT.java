@@ -27,12 +27,12 @@ public class ApplicationManagerIT extends AbstractDaoTest
 	private Software publicSoftware;
 	private Software clonedSoftware;
 	
-	@AfterClass
-	public void tearDown() throws Exception 
-	{	
-		clearSystems();
-		clearSoftware();
-	}
+//	@AfterClass
+//	public void tearDown() throws Exception
+//	{
+//		clearSystems();
+//		clearSoftware();
+//	}
 	
 	@BeforeMethod
 	public void beforeMethod() throws Exception  
@@ -41,12 +41,12 @@ public class ApplicationManagerIT extends AbstractDaoTest
 		initSoftware();
 	}
 
-	@AfterMethod
-	public void afterMethod() throws Exception 
-	{
-		clearSystems();
-		clearSoftware();
-	}
+//	@AfterMethod
+//	public void afterMethod() throws Exception
+//	{
+//		clearSystems();
+//		clearSoftware();
+//	}
 	
 	protected void initSoftware() throws Exception
 	{

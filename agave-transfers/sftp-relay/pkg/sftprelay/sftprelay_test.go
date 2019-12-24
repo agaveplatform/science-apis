@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
@@ -156,6 +157,36 @@ func TestStat(t *testing.T) {
 	log.Printf("Response: %+v", resp)
 }
 
+func TestStatReturnsErrIfPathDoesNotExist(t *testing.T) {
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+	destPath := fmt.Sprintf("/%s", uuid.New().String())
+
+	req := &agaveproto.SrvStatRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "sftp",
+			HostKey:      "",
+			HostPort:     ":10022",
+			ClientKey:    "",
+			BufferSize:   8192,
+			Type:         "SFTP",
+			DestFileName: destPath,
+		},
+	}
+
+	resp, err := client.Stat(ctx, req)
+	assert.Contains(t, resp.Error, "does not exist", err)
+	log.Printf("Response: %+v", resp)
+}
+
 func TestMkdirs(t *testing.T) {
 
 	ctx := context.Background()
@@ -245,6 +276,72 @@ func TestPut(t *testing.T) {
 	log.Printf("Response: %+v", resp)
 }
 
+func TestPutReturnsErrIfPathDoesNotExist(t *testing.T) {
+
+	createTestFile()
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	destPath := fmt.Sprintf("/tmp/%s/%s", uuid.New().String(), uuid.New().String())
+
+	req := &agaveproto.SrvPutRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "sftp",
+			HostKey:      "",
+			FileName:     "/tmp/test.txt",
+			FileSize:     3,
+			HostPort:     ":10022",
+			ClientKey:    "",
+			BufferSize:   8192,
+			Type:         "SFTP",
+			DestFileName: destPath,
+		},
+	}
+
+	resp, err := client.Put(ctx, req)
+	assert.Contains(t, resp.Error, "does not exist", err)
+	log.Printf("Response: %+v", resp)
+}
+
+func TestPutReturnsErrIfDestIsDirectory(t *testing.T) {
+
+	createTestFile()
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	req := &agaveproto.SrvPutRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "sftp",
+			HostKey:      "",
+			FileName:     "/tmp/test.txt",
+			FileSize:     3,
+			HostPort:     ":10022",
+			ClientKey:    "",
+			BufferSize:   8192,
+			Type:         "SFTP",
+			DestFileName: "/tmp",
+		},
+	}
+
+	resp, err := client.Put(ctx, req)
+	assert.Contains(t, resp.Error, "destination path is a directory", err)
+	log.Printf("Response: %+v", resp)
+}
+
 func TestGet(t *testing.T) {
 	createTestFile()
 	ctx := context.Background()
@@ -275,18 +372,83 @@ func TestGet(t *testing.T) {
 	assert.Nilf(t, err, "Error while calling RPC Get: %v", err)
 
 	destFile, err := os.Stat(req.SrceSftp.DestFileName)
-	assert.Nilf(t, err, "Downloaded file should be present at %Name. No file found.", req.SrceSftp.DestFileName)
+	assert.Nilf(t, err, "Downloaded file should be present at %s. No file found.", req.SrceSftp.DestFileName)
 
 	bytesTransferred, err := strconv.ParseInt(resp.BytesReturned, 0, 64)
 	assert.Equalf(t, bytesTransferred, destFile.Size(),
-		"Downloaded file does not have same size as bytes returned value %Name != %d", resp.BytesReturned, destFile.Size())
+		"Downloaded file does not have same size as bytes returned value %d != %d", resp.BytesReturned, destFile.Size())
 
+	log.Printf("Response: %+v", resp)
+}
+
+func TestGetReturnsErrIfPathDoesNotExist(t *testing.T) {
+	createTestFile()
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	destPath := fmt.Sprintf("/tmp/%s/%s", uuid.New().String(), uuid.New().String())
+
+	req := &agaveproto.SrvGetRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "sftp",
+			HostKey:      "",
+			FileName:     "/tmp/testDest.txt",
+			FileSize:     3,
+			HostPort:     ":10022",
+			ClientKey:    "",
+			BufferSize:   8192,
+			Type:         "SFTP",
+			DestFileName: destPath,
+		},
+	}
+
+	resp, err := client.Get(ctx, req)
+	assert.Contains(t, resp.Error, "no such file or directory", err)
+	log.Printf("Response: %+v", resp)
+}
+
+func TestGetReturnsErrIfRemoteIsDir(t *testing.T) {
+	createTestFile()
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	req := &agaveproto.SrvGetRequest{
+		SrceSftp: &agaveproto.Sftp{
+			Username:     "testuser",
+			PassWord:     "testuser",
+			SystemId:     "sftp",
+			HostKey:      "",
+			FileName:     "/tmp/testDest.txt",
+			FileSize:     3,
+			HostPort:     ":10022",
+			ClientKey:    "",
+			BufferSize:   8192,
+			Type:         "SFTP",
+			DestFileName: "/tmp",
+		},
+	}
+
+	resp, err := client.Get(ctx, req)
+	assert.Nilf(t, err, "Error on Get: %v", err)
+	assert.Contains(t, resp.Error, "destination path is a directory", resp.Error)
 	log.Printf("Response: %+v", resp)
 }
 
 func TestThing(t *testing.T) {
 	userHome, err := os.UserHomeDir()
-	assert.Nilf(t, err, "Unable to find user home directory. %Name", err)
+	assert.Nilf(t, err, "Unable to find user home directory. %v", err)
 	defer testChdir(t, userHome)
 }
 

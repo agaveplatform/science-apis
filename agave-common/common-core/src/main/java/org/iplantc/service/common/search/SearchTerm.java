@@ -4,7 +4,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.exceptions.SearchSyntaxException;
@@ -72,7 +71,7 @@ public class SearchTerm implements Comparable<SearchTerm>
 
 		/**
 		 * Returns a list of operators to apply against temporal fields
-		 * @return
+		 * @return list of temporal operators
 		 */
 		public static List<SearchTerm.Operator> temporalValues() {
 			return List.of(ON,EQ,BEFORE,AFTER,BETWEEN);
@@ -80,7 +79,7 @@ public class SearchTerm implements Comparable<SearchTerm>
 
 		/**
 		 * Returns a list of operators to apply against sets of fields
-		 * @return
+		 * @return list of set operators
 		 */
 		public static List<SearchTerm.Operator> setValues() {
 			return List.of(IN,NIN,BETWEEN);
@@ -88,7 +87,7 @@ public class SearchTerm implements Comparable<SearchTerm>
 
 		/**
 		 * Returns a list of operators to apply against numeric fields
-		 * @return
+		 * @return list of jnumeric operators
 		 */
 		public static List<SearchTerm.Operator> numericValues() {
 			return List.of(EQ,NEQ,GT,GTE,LT,LTE);
@@ -96,7 +95,7 @@ public class SearchTerm implements Comparable<SearchTerm>
 
 		/**
 		 * Returns a list of operators to apply against numeric fields
-		 * @return
+		 * @return list of string operators
 		 */
 		public static List<SearchTerm.Operator> stringValues() {
 			return List.of(EQ,NEQ,LIKE,NLIKE,RLIKE,IN,NIN);
@@ -104,7 +103,7 @@ public class SearchTerm implements Comparable<SearchTerm>
 
 		/**
 		 * Returns a list of operators to apply against numeric fields
-		 * @return
+		 * @return list of boolean operators
 		 */
 		public static List<SearchTerm.Operator> booleanValues() {
 			return List.of(EQ,NEQ);
@@ -162,7 +161,7 @@ public class SearchTerm implements Comparable<SearchTerm>
 			    }
 			} else if (searchValue instanceof Date) {
 				if (this == ON) {
-					List<String> dates = new ArrayList<String>();
+					List<String> dates = new ArrayList<>();
 			        dates.add(new SimpleDateFormat("YYYY-MM-dd 00:00:00").format((Date)searchValue));
 			        dates.add(new SimpleDateFormat("YYYY-MM-dd 23:59:59").format((Date)searchValue));
 			        return dates;
@@ -283,10 +282,8 @@ public class SearchTerm implements Comparable<SearchTerm>
 	 * @param searchFieldWithOperator {@link SearchTerm#searchField} with the 
 	 * operation appended to the end. Ex. <code>name.eq</code>.
 	 * @param mappedField the field to be used in the resulting query
-	 * @param operator the conditional operation to perform on the mapped 
-	 * field in the resulting query 
-	 * @param prefix the string to prepend to the searchField when generating 
-	 * the final expression 
+	 * @param operator the conditional operation to perform on the mapped field in the resulting query
+	 * @param prefix the string to prepend to the searchField when generating the final expression
 	 * @throws SearchSyntaxException
 	 */
 	public SearchTerm(String searchFieldWithOperator, String mappedField, Operator operator, String prefix)
@@ -410,6 +407,7 @@ public class SearchTerm implements Comparable<SearchTerm>
 	}
 
 	/**
+	 * Sets the db prefix for the queries on the concrete implementation for a resource type
 	 * @param prefix
 	 */
 	public void setPrefix(String prefix) {

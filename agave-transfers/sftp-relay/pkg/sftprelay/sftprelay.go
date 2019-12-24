@@ -817,9 +817,25 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 
 	// check if the file already exists. If is  does not and Force = false then error. Otherwise remove the
 	//file first then do everything else
-	fileExists := fileExistsLocal(params.Srce.DestFileName)
+	var fileExists bool
+	localFileInfo, err := os.Stat(params.Srce.DestFileName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fileExists = false
+		} else {
+			log.Errorf("Getting stat for %s: %v", params.Srce.DestFileName, err)
+			result = err.Error()
+			return FileTransfer{"", 0, err}
+		}
+	} else {
+		fileExists = true
+	}
+
 	// Create the destination file
-	if (fileExists && params.Srce.Force) || !fileExists {
+	if fileExists && localFileInfo.IsDir() {
+		err = errors.New("destination path is a directory")
+		return FileTransfer{"", 0, err}
+	} else if (fileExists && params.Srce.Force) || !fileExists {
 		if fileExists {
 			err := os.Remove(params.Srce.DestFileName)
 			if err != nil {
@@ -849,23 +865,16 @@ func (a SFTP_ReadFrom_Factory) ReadFrom(params ConnParams) FileTransfer {
 			result = err.Error()
 			return FileTransfer{"", 0, err}
 		}
-		fileStat, err := os.Stat(params.Srce.FileName)
-		if err != nil {
-			log.Info("file info: ", err)
-		}
-		log.Info("Srce file stat: ", fileStat.Size())
-
 		defer srcFile.Close()
 		log.Printf("Source file is opened. %s", params.Srce.FileName)
 
 		//const size = 1e10
 		//Get the file stats.
-		fsize, err := srcFile.Stat()
+		srcfileInfo, err := srcFile.Stat()
 		if err != nil {
 			log.Info("File size error = ", err)
 		}
-		log.Info("File stats: ", fsize)
-		fileSize := uint64(fsize.Size())
+		fileSize := uint64(srcfileInfo.Size())
 		log.Infof("File name = %s  File size = %v ", dstFile.Name(), fileSize)
 
 		var bytesWritten int64
@@ -953,9 +962,25 @@ func (a SFTP_WriteTo_Factory) WriteTo(params ConnParams) FileTransfer {
 	//###################################################################################################################
 	// check if the file already exists. If is  does not and Force = false then error. Otherwise remove the
 	//file first then do everything else
-	fileExists := fileExistsRemote(params.Srce.DestFileName, client)
+	var fileExists bool
+	fileInfo, err := client.Stat(params.Srce.DestFileName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			fileExists = false
+		} else {
+			log.Errorf("Getting stat for %s: %v", params.Srce.DestFileName, err)
+			result = err.Error()
+			return FileTransfer{"", 0, err}
+		}
+	} else {
+		fileExists = true
+	}
+
 	// Create the destination file
-	if (fileExists && params.Srce.Force) || !fileExists {
+	if fileExists && fileInfo.IsDir() {
+		err = errors.New("destination path is a directory")
+		return FileTransfer{"", 0, err}
+	} else if (fileExists && params.Srce.Force) || !fileExists {
 		if fileExists {
 			err := os.Remove(params.Srce.DestFileName)
 			if err != nil {
@@ -1104,7 +1129,7 @@ func (a SFTP_Stat_Factory) Stat(params ConnParams) *sftppb.SrvStatResponse {
 	}
 
 	log.Infof("File stats: %v", fstat)
-	return &sftppb.SrvStatResponse{
+	srvStatResponse := sftppb.SrvStatResponse{
 		FileName:    fstat.Name(),
 		Size:        fstat.Size(),
 		Mode:        fstat.Mode().String(),
@@ -1114,6 +1139,7 @@ func (a SFTP_Stat_Factory) Stat(params ConnParams) *sftppb.SrvStatResponse {
 		Error:       "",
 	}
 
+	return &srvStatResponse
 }
 
 func (a SFTP_Remove_Factory) Remove(params ConnParams) FileTransfer {

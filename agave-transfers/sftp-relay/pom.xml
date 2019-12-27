@@ -59,6 +59,7 @@
 							<goal>exec</goal>
 						</goals>
 						<configuration>
+							<skip>${skip.integration.tests}</skip>
 							<executable>make</executable>
 							<workingDirectory>${basedir}</workingDirectory>
 							<arguments>
@@ -73,6 +74,7 @@
 				<artifactId>docker-compose-maven-plugin</artifactId>
 				<version>${docker-compose-maven-plugin.version}</version>
 				<configuration>
+					<skip>${skip.integration.tests}</skip>
 					<detachedMode>true</detachedMode>
 					<projectName>${project.artifactId}</projectName>
 					<composeFiles>

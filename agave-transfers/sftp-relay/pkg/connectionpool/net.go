@@ -1,4 +1,4 @@
-package ssh_sftp_connection_pool
+package connectionpool
 
 import (
 	"net"

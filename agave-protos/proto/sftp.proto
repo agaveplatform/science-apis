@@ -8,81 +8,120 @@ option java_multiple_files = true;
 option objc_class_prefix = "AgaveSftp";
 option java_outer_classname = "AgaveSftpProto";
 
-message Sftp {
-    string username = 1;
-    string passWord = 2;
-    string systemId = 3;
-    string hostKey = 4;
-    string fileName = 5;
-    int64 fileSize = 6;
-    string hostPort = 7;
-    string clientKey = 8;
-    int64 bufferSize = 9;
-    string type = 10;
-    string destFileName = 11;
-    bool force = 12;
+// General message objects
+message RemoteSystemConfig {
+    string host = 1;
+    int32 port = 2;
+    string username = 3;
+    string password = 4;
+    string publicKey = 5;
+    string privateKey = 6;
 }
 
-message SrvPutRequest {
-    Sftp srceSftp = 1;
+message RemoteFileInfo {
+    string name = 1;
+    string path = 2;
+    int64 size  = 3;
+    string mode  = 4;
+    int64 lastUpdated = 5;
+    bool isDirectory = 6;
+    bool isLink   = 7;
 }
-message SrvPutResponse {
-    string fileName = 1;
-    string bytesReturned = 2;
-    string error = 3;
+
+message RemoteDataError {
+    string message = 1;
+    int32 code = 2;
+}
+
+// Common request objects
+message SrvPutRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    string localPath = 3;
+    bool force = 4;
+    string range = 5;
+    bool append = 6;
 }
 
 message SrvGetRequest {
-    Sftp srceSftp = 1;
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    string localPath = 3;
+    bool force = 4;
+    string range = 5;
 }
-message SrvGetResponse {
-    string fileName = 1;
-    string bytesReturned = 2;
-    string error = 3;
+
+message SrvListRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
 }
 
 message SrvMkdirsRequest {
-    Sftp srceSftp = 1;
-}
-message SrvMkdirsResponse {
-    string fileName = 1;
-    string error = 2;
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
 }
 
 message SrvRemoveRequest {
-    Sftp srceSftp = 1;
+     RemoteSystemConfig systemConfig = 1;
+     string remotePath = 2;
 }
-message SrvRemoveResponse {
-    string fileName = 1;
+
+message SrvCopyRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    string localPath = 3;
+}
+
+message SrvRenameRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    string newName = 3;
+}
+
+message SrvMoveRequest {
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+    string newPath = 3;
+}
+
+message SrvStatRequest{
+    RemoteSystemConfig systemConfig = 1;
+    string remotePath = 2;
+}
+
+message AuthenticationCheckRequest {
+    RemoteSystemConfig systemConfig = 1;
+}
+
+// Common response objects
+message EmptyResponse {
+    string error = 1;
+}
+
+message TransferResponse {
+    RemoteFileInfo remoteFileInfo = 1;
+    int64 bytesTransferred = 2;
+    string error = 3;
+}
+
+message FileInfoResponse {
+    RemoteFileInfo remoteFileInfo = 1;
     string error = 2;
 }
 
-message AuthenticateToRemoteRequest {
-    Sftp auth = 1;
-}
-message AuthenticateToRemoteResponse {
-    string response = 1;
-}
-message SrvStatRequest{
-    Sftp srceSftp = 1;
-}
-message SrvStatResponse {
-    string FileName = 1;
-    int64 Size  = 2;
-    string Mode  = 3;
-    int64 LastUpdated = 4;
-    bool IsDirectory = 5;
-    bool IsLink   = 6;
-    string error = 7;
-}
+
 
 service SftpRelay {
-    rpc Get (SrvGetRequest) returns (SrvGetResponse);
-    rpc Put (SrvPutRequest) returns (SrvPutResponse);
-    rpc Mkdirs (SrvMkdirsRequest) returns (SrvMkdirsResponse);
-    rpc Remove (SrvRemoveRequest) returns (SrvRemoveResponse);
-    rpc Authenticate (AuthenticateToRemoteRequest) returns (AuthenticateToRemoteResponse);
-    rpc Stat (SrvStatRequest) returns (SrvStatResponse);
+    rpc AuthCheck (AuthenticationCheckRequest) returns (EmptyResponse);
+    rpc Get (SrvGetRequest) returns (TransferResponse);
+    rpc Put (SrvPutRequest) returns (TransferResponse);
+    rpc Mkdirs (SrvMkdirsRequest) returns (FileInfoResponse);
+    rpc Remove (SrvRemoveRequest) returns (EmptyResponse);
+    rpc Stat (SrvStatRequest) returns (FileInfoResponse);
+//    rpc List (SrvListRequest) returns (FileInfoResponse);
+//    rpc Copy (SrvCopyRequest) returns (FileInfoResponse);
+//    rpc Rename (SrvRenameRequest) returns (FileInfoResponse);
+//    rpc Move (SrvMoveRequest) returns (FileInfoResponse);
 }
 
 

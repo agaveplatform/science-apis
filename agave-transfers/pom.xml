@@ -15,37 +15,9 @@
     <name>Agave Platform Transfer Service Parent POM</name>
     <description>Agave grpc data transfer services</description>
     <packaging>pom</packaging>
-    <organization>
-        <name>Agave Platform</name>
-        <url>http://agaveplatform.org</url>
-    </organization>
-
-    <developers>
-        <developer>
-            <id>deardooley</id>
-            <name>Rion Dooleyy</name>
-            <email>deardooley@gmail.com</email>
-            <url>https://agaveplatform.org</url>
-            <organization>Chapman University</organization>
-            <organizationUrl>http://chapman.edu</organizationUrl>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>ertanner</id>
-            <name>Eric Tanner</name>
-            <email>ertanner@gmail.com</email>
-            <url>https://agaveplatform.org</url>
-            <organization>Chapman University</organization>
-            <organizationUrl>http://chapman.edu</organizationUrl>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-    </developers>
 
     <modules>
         <module>sftp-relay</module>
     </modules>
+
 </project>

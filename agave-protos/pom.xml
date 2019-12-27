@@ -15,49 +15,16 @@
     <name>Agave Platform Protobuffer Parent POM</name>
     <description>Proto file generation for all Agave grpc services</description>
     <packaging>pom</packaging>
-    <organization>
-        <name>Agave Platform</name>
-        <url>http://agaveplatform.org</url>
-    </organization>
-
-    <developers>
-        <developer>
-            <id>deardooley</id>
-            <name>Rion Dooleyy</name>
-            <email>deardooley@gmail.com</email>
-            <url>https://agaveplatform.org</url>
-            <organization>Chapman University</organization>
-            <organizationUrl>http://chapman.edu</organizationUrl>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-        <developer>
-            <id>ertanner</id>
-            <name>Eric Tanner</name>
-            <email>ertanner@gmail.com</email>
-            <url>https://agaveplatform.org</url>
-            <organization>Chapman University</organization>
-            <organizationUrl>http://chapman.edu</organizationUrl>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-    </developers>
 
     <properties>
         <grpc.version>1.23.0</grpc.version><!-- CURRENT_GRPC_VERSION -->
         <protobuf.version>3.9.1</protobuf.version>
         <protoc.version>3.9.1</protoc.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
-        <!-- required for jdk9 -->
-        <maven.compiler.source>1.9</maven.compiler.source>
-        <maven.compiler.target>1.9</maven.compiler.target>
+
     </properties>
 
     <dependencies>
-        <!-- https://mvnrepository.com/artifact/com.google.protobuf/protoc -->
-
     </dependencies>
 
     <build>
@@ -69,6 +36,7 @@
             </extension>
         </extensions>
     </build>
+
     <modules>
         <module>protos-java</module>
         <module>protos-go</module>

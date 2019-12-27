@@ -48,7 +48,6 @@
 					</execution>
 				</executions>
 			</plugin>
-
 		</plugins>
 	</build>
 	<dependencies>
@@ -58,7 +57,6 @@
 			<version>${protoc.version}</version>
 			<type>pom</type>
 		</dependency>
-
 		<dependency>
 			<groupId>io.grpc</groupId>
 			<artifactId>grpc-netty-shaded</artifactId>
@@ -79,21 +77,11 @@
 			<artifactId>grpc-api</artifactId>
 			<version>${grpc.version}</version>
 		</dependency>
-<!--		<dependency>-->
-<!--			<groupId>io.grpc</groupId>-->
-<!--			<artifactId>grpc-bom</artifactId>-->
-<!--			<version>${grpc.version}</version>-->
-<!--		</dependency>-->
 		<dependency>
 			<groupId>com.google.protobuf</groupId>
 			<artifactId>protobuf-java</artifactId>
 			<version>${protoc.version}</version>
 		</dependency>
-<!--		<dependency>-->
-<!--			<groupId>com.google.protobuf</groupId>-->
-<!--			<artifactId>protobuf-java-util</artifactId>-->
-<!--			<version>${protoc.version}</version>-->
-<!--		</dependency>-->
 		<dependency>
 			<groupId>javax.annotation</groupId>
 			<artifactId>javax.annotation-api</artifactId>

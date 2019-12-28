@@ -82,10 +82,10 @@ to quickly create a Cobra application.`,
 			log.Error("Empty response received from gRPC server")
 			log.Exit(1)
 		}
-		log.Infof("End Time %s", time.Since(startPushtime).Seconds())
+		log.Infof("End Time %f", time.Since(startPushtime).Seconds())
 		if res.Error != "" {
 			log.Errorf("Error response: %s", res.Error)
-			log.Exit(1)
+			//log.Exit(1)
 		} else {
 			log.Printf("Transfer complete: %s (%d bytes)", res.RemoteFileInfo.Path, res.BytesTransferred)
 			log.Debugf("%v", res)

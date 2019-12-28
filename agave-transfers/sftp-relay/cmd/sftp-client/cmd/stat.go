@@ -71,20 +71,21 @@ var statCmd = &cobra.Command{
 		if res == nil {
 			log.Error("Empty response received from gRPC server")
 		}
-		log.Infof("End Time %s", time.Since(startPushtime).Seconds())
+		log.Infof("End Time %f", time.Since(startPushtime).Seconds())
 
 		if res.Error != "" {
-			log.Errorf("Error message: %s \n", res.Error)
+			log.Errorf("Error message: %s", res.Error)
+		} else {
+			log.Printf("Name: %s", res.RemoteFileInfo.Name)
+			log.Printf("Path: %s", res.RemoteFileInfo.Path)
+			log.Printf("Mode: %s", res.RemoteFileInfo.Mode)
+			log.Printf("Size: %d", res.RemoteFileInfo.Size)
+			log.Printf("LastUpdated: %s", time.Unix(res.RemoteFileInfo.LastUpdated, 0).String())
+			log.Printf("IsDirector: %b", res.RemoteFileInfo.IsDirectory)
+			log.Printf("IsLink: %b", res.RemoteFileInfo.IsLink)
+			log.Println("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+			log.Debugf("%v", res)
 		}
-		log.Printf("Name: %s", res.RemoteFileInfo.Name)
-		log.Printf("Path: %s", res.RemoteFileInfo.Path)
-		log.Printf("Mode: %s", res.RemoteFileInfo.Mode)
-		log.Printf("Size: %d", res.RemoteFileInfo.Size)
-		log.Printf("LastUpdated: %s", time.Unix(res.RemoteFileInfo.LastUpdated, 0).String())
-		log.Printf("IsDirector: %b", res.RemoteFileInfo.IsDirectory)
-		log.Printf("IsLink: %b", res.RemoteFileInfo.IsLink)
-		log.Println("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
-		log.Debugf("%v", res)
 	},
 }
 

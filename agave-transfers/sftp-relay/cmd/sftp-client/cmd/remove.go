@@ -71,7 +71,7 @@ command in linux.`,
 		if res == nil {
 			log.Error("Empty response received from gRPC server")
 		}
-		log.Println("End Time %s", time.Since(startPushtime).Seconds())
+		log.Println("End Time %f", time.Since(startPushtime).Seconds())
 		secs := time.Since(startPushtime).Seconds()
 		if res.Error != "" {
 			log.Errorf("Error message: %s \n", res.Error)

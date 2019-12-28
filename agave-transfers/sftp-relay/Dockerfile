@@ -34,4 +34,3 @@ RUN make default && make install
 #
 ENTRYPOINT ["/docker-entrypoint.sh"]
 
-CMD ["--help"]

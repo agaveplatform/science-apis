@@ -5,6 +5,8 @@ import (
 	"fmt"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/google/uuid"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -50,7 +52,14 @@ func init() {
 	//set up for the servers
 	lis = bufconn.Listen(bufSize)
 	s := grpc.NewServer()
-	agaveproto.RegisterSftpRelayServer(s, &Server{})
+	// Init a new api server to register with the grpc server
+	relaysvr := Server{
+		Registry: *prometheus.NewRegistry(),
+		GrpcMetrics: *grpc_prometheus.NewServerMetrics(),
+	}
+	// set up prometheus metrics
+	relaysvr.InitMetrics()
+	agaveproto.RegisterSftpRelayServer(s, &relaysvr)
 	go func() {
 		if err := s.Serve(lis); err != nil {
 			consolelog.Fatalf("Server exited with error: %v", err)

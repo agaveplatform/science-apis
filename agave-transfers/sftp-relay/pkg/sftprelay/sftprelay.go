@@ -7,7 +7,9 @@ import (
 	"sort"
 
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
+	"github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/pkg/sftp"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/net/context"
@@ -20,13 +22,65 @@ var log = logrus.New()
 
 const MAX_PACKET_SIZE = 32768
 
+type Server struct{
+	Registry prometheus.Registry
+	GrpcMetrics grpc_prometheus.ServerMetrics
+}
+
 //The Pool and AgentSocket variables are created here and instantiated in the init() function.
-var Pool *connectionpool.SSHPool
+var (
+	Pool *connectionpool.SSHPool
 
-// The path to the unix socket on which the ssh-agent is listen
-var AgentSocket string
+	// The path to the unix socket on which the ssh-agent is listen
+	AgentSocket string
 
-type Server struct{}
+	// Get request counter.
+	getCounterMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_get_method_handle_count",
+		Help: "Total number of Get RPCs handled on the server.",
+	}, []string{"name"})
+	// get total bytes transferred
+	getTotalBytesTransferredMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_get_total_bytes_transferred",
+		Help: "Total bytes transferred on get requests.",
+	}, []string{"name"})
+	// Put request counter.
+	putCounterMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_put_method_handle_count",
+		Help: "Total number of Put RPCs handled on the server.",
+	}, []string{"name"})
+	// put total bytes transferred
+	putTotalBytesTransferredMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_put_total_bytes_transferred",
+		Help: "Total bytes transferred on put requests",
+	}, []string{"name"})
+	// Remove request counter.
+	removeCounterMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_remove_method_handle_count",
+		Help: "Total number of Remove RPCs handled on the server.",
+	}, []string{"name"})
+	// connectionpool request counter.
+	connectionpoolCounterMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_connectionpool_total_size",
+		Help: "Total number of configs in the connectin pool.",
+	}, []string{"name"})
+	// Stat request counter.
+	statCounterMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_stat_method_handle_count",
+		Help: "Total number of Stat RPCs handled on the server.",
+	}, []string{"name"})
+	// Mkdirs request counter.
+	mkdirsCounterMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_mkdirs_method_handle_count",
+		Help: "Total number of Mkdirs RPCs handled on the server.",
+	}, []string{"name"})
+	// AuthCheck request counter.
+	authCounterMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_authcheck_method_handle_count",
+		Help: "Total number of AuthCheck RPCs handled on the server.",
+	}, []string{"name"})
+)
+
 
 // generates a new SSHConfig from the *agaveproto.RemoteSystemConfig included in every server request
 func NewSSHConfig(systemConfig *agaveproto.RemoteSystemConfig) *connectionpool.SSHConfig {
@@ -79,15 +133,43 @@ func init() {
 	}
 	log.Debugf("SSH_AUTH_SOCK = %v", AgentSocket)
 
+}
+
+func newConnectionPool() *connectionpool.SSHPool {
 	// set the pool configuration.  The MaxConns sets the maximum connections for the pool.
 	poolCfg := &connectionpool.PoolConfig{
 		GCInterval: 5 * time.Second,
 		MaxConns:   500,
 	}
 	// Create the new pool
-	Pool = connectionpool.NewPool(poolCfg)
+	return connectionpool.NewPool(poolCfg)
 }
 
+func (s *Server) InitMetrics() {
+	Pool = newConnectionPool()
+
+	// Register standard server metrics and customized metrics to registry.
+
+	s.Registry.MustRegister(&s.GrpcMetrics,
+		getCounterMetric,
+		getTotalBytesTransferredMetric,
+		putCounterMetric, putTotalBytesTransferredMetric,
+		removeCounterMetric,
+		connectionpoolCounterMetric,
+		statCounterMetric,
+		mkdirsCounterMetric,
+		authCounterMetric)
+
+	//s.Registry.MustRegister(&s.GrpcMetrics, getCounterMetric)
+	//reg.MustRegister(grpcMetrics, getTotalBytesTransferredMetric)
+	//reg.MustRegister(grpcMetrics, putCounterMetric)
+	//reg.MustRegister(grpcMetrics, putTotalBytesTransferredMetric)
+	//reg.MustRegister(grpcMetrics, removeCounterMetric)
+	//reg.MustRegister(grpcMetrics, connectionpoolCounterMetric)
+	//reg.MustRegister(grpcMetrics, statCounterMetric)
+	//reg.MustRegister(grpcMetrics, mkdirsCounterMetric)
+	//reg.MustRegister(grpcMetrics, authCounterMetric)
+}
 // Performs a basic authentication handshake to the remote system
 func (*Server) AuthCheck(ctx context.Context, req *agaveproto.AuthenticationCheckRequest) (*agaveproto.EmptyResponse, error) {
 	log.Tracef("Get Service function was invoked")
@@ -108,6 +190,9 @@ func (*Server) AuthCheck(ctx context.Context, req *agaveproto.AuthenticationChec
 	log.Infof("Number of active connections: %d", sessionCount)
 
 	log.Infof(fmt.Sprintf("sftp://%s@%s:%d", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port))
+
+	// increment the request metric
+	authCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
 
 	// success returns an empty response
 	return &agaveproto.EmptyResponse{}, nil
@@ -133,6 +218,9 @@ func (*Server) Mkdirs(ctx context.Context, req *agaveproto.SrvMkdirsRequest) (*a
 	log.Infof("Number of active connections: %d", sessionCount)
 
 	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
+
+	// increment the request metric
+	mkdirsCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
 
 	var response agaveproto.FileInfoResponse
 
@@ -163,6 +251,9 @@ func (*Server) Stat(ctx context.Context, req *agaveproto.SrvStatRequest) (*agave
 
 	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
 
+	// increment the request metric
+	statCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
+
 	var response agaveproto.FileInfoResponse
 
 	// invoke the internal action
@@ -191,6 +282,9 @@ func (*Server) Remove(ctx context.Context, req *agaveproto.SrvRemoveRequest) (*a
 	log.Infof("Number of active connections: %d", sessionCount)
 
 	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
+
+	// increment the request metric
+	removeCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
 
 	var response agaveproto.EmptyResponse
 
@@ -221,11 +315,18 @@ func (*Server) Get(ctx context.Context, req *agaveproto.SrvGetRequest) (*agavepr
 
 	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s => file://localhost/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath, req.LocalPath))
 
+	// increment the request metric
+	getCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
+
 	var response agaveproto.TransferResponse
 
 	// invoke the internal action
 	response = get(sftpClient, req.LocalPath, req.RemotePath, req.Force, req.Range)
 
+	if response.BytesTransferred > 0 {
+		// increment the request metric
+		getTotalBytesTransferredMetric.WithLabelValues(req.SystemConfig.Host).Add(float64(response.BytesTransferred))
+	}
 	return &response, nil
 }
 
@@ -249,10 +350,18 @@ func (*Server) Put(ctx context.Context, req *agaveproto.SrvPutRequest) (*agavepr
 
 	log.Infof(fmt.Sprintf("put file://localhost/%s => sftp://%s@%s:%d/%s", req.LocalPath, req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
 
+	// increment the request metric
+	putCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
+
 	var response agaveproto.TransferResponse
 
 	// invoke the internal action
 	response = put(sftpClient, req.LocalPath, req.RemotePath, req.Force, req.Append)
+
+	if response.BytesTransferred > 0 {
+		// increment the request metric
+		putTotalBytesTransferredMetric.WithLabelValues(req.SystemConfig.Host).Add(float64(response.BytesTransferred))
+	}
 
 	return &response, nil
 }

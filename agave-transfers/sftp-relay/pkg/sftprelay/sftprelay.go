@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/connectionpool"
+	"path/filepath"
 	"sort"
 
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
@@ -79,6 +80,11 @@ var (
 		Name: "sftprelay_authcheck_method_handle_count",
 		Help: "Total number of AuthCheck RPCs handled on the server.",
 	}, []string{"name"})
+	// ListCheck request counter.
+	listCounterMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_list_method_handle_count",
+		Help: "Total number of List RPCs handled on the server.",
+	}, []string{"name"})
 )
 
 
@@ -105,8 +111,8 @@ func NewSSHConfig(systemConfig *agaveproto.RemoteSystemConfig) *connectionpool.S
 	}
 }
 
-func NewRemoteFileInfo(path string, fileInfo os.FileInfo) *agaveproto.RemoteFileInfo {
-	return &agaveproto.RemoteFileInfo{
+func NewRemoteFileInfo(path string, fileInfo os.FileInfo) agaveproto.RemoteFileInfo {
+	return agaveproto.RemoteFileInfo{
 		Name:        fileInfo.Name(),
 		Path:        path,
 		Size:        fileInfo.Size(),
@@ -366,6 +372,37 @@ func (*Server) Put(ctx context.Context, req *agaveproto.SrvPutRequest) (*agavepr
 	return &response, nil
 }
 
+// Transfers a file from the local system to the remote system
+func (*Server) List(ctx context.Context, req *agaveproto.SrvListRequest) (*agaveproto.FileInfoListResponse, error) {
+	log.Trace("Invoking list service")
+
+	sshCfg := NewSSHConfig(req.SystemConfig)
+
+	log.Debugf(sshCfg.String())
+
+	sftpClient, sessionCount, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MAX_PACKET_SIZE))
+	if err != nil {
+		log.Errorf("Error with connection = %v", err)
+		return &agaveproto.FileInfoListResponse{Error: err.Error()}, nil
+	}
+	defer Pool.ReleaseClient(sshCfg)
+	defer sftpClient.Close()
+
+	log.Infof("Number of active connections: %d", sessionCount)
+
+	log.Infof(fmt.Sprintf("ls sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
+
+	// increment the request metric
+	listCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
+
+	var response agaveproto.FileInfoListResponse
+
+	// invoke the internal action
+	response = list(sftpClient, req.RemotePath)
+
+	return &response, nil
+}
+
 //*****************************************************************************************
 
 /*
@@ -468,8 +505,9 @@ func get(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 		log.Debugf("Completed transfer to dest file %s", localFilePath)
 		localFileInfo, _ = os.Stat(localFilePath)
 
+		rfi := NewRemoteFileInfo(localFilePath, localFileInfo)
 		return agaveproto.TransferResponse{
-			RemoteFileInfo:   NewRemoteFileInfo(localFilePath, localFileInfo),
+			RemoteFileInfo: &rfi,
 			BytesTransferred: bytesWritten,
 		}
 	} else {
@@ -574,8 +612,9 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 
 		log.Debugf("Completed transfer to dest file %s", remoteFilePath)
 		remoteFileInfo, _ = sftpClient.Stat(remoteFilePath)
+		rfi := NewRemoteFileInfo(remoteFilePath, remoteFileInfo)
 		return agaveproto.TransferResponse{
-			RemoteFileInfo:   NewRemoteFileInfo(remoteFilePath, remoteFileInfo),
+			RemoteFileInfo: &rfi,
 			BytesTransferred: bytesWritten,
 		}
 	} else {
@@ -602,8 +641,9 @@ func mkdirs(sftpClient *sftp.Client, remoteDirectoryPath string) agaveproto.File
 		return agaveproto.FileInfoResponse{Error: err.Error()}
 	}
 
+	rfi := NewRemoteFileInfo(remoteDirectoryPath, remoteFileInfo)
 	return agaveproto.FileInfoResponse{
-		RemoteFileInfo: NewRemoteFileInfo(remoteDirectoryPath, remoteFileInfo),
+		RemoteFileInfo: &rfi,
 	}
 }
 
@@ -617,8 +657,9 @@ func stat(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoRespons
 		return agaveproto.FileInfoResponse{Error: err.Error()}
 	}
 
+	rfi := NewRemoteFileInfo(remotePath, remoteFileInfo)
 	return agaveproto.FileInfoResponse{
-		RemoteFileInfo: NewRemoteFileInfo(remotePath, remoteFileInfo),
+		RemoteFileInfo: &rfi,
 	}
 }
 
@@ -709,6 +750,50 @@ func remove(sftpClient *sftp.Client, remotePath string) agaveproto.EmptyResponse
 	// everything went well so we can return a successful response
 	return agaveproto.EmptyResponse{}
 }
+
+func list(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoListResponse {
+	log.Trace("List (Stat) sFTP Service function was invoked ")
+
+	defer sftpClient.Close()
+
+	// Stat the remote path
+	remoteFileInfo, err := sftpClient.Stat(remotePath)
+	if err != nil {
+		log.Infof("Unable to stat file %v", remotePath)
+		return agaveproto.FileInfoListResponse{Error: err.Error()}
+	}
+	var remoteFileInfoList []*agaveproto.RemoteFileInfo
+
+	if ! remoteFileInfo.IsDir() {
+		log.Debugf("Remote path is a file, returning stat for the file %s", remotePath)
+		remoteFileInfoList = make([]*agaveproto.RemoteFileInfo, 1)
+		rfi := NewRemoteFileInfo(filepath.Join(remotePath, remoteFileInfo.Name()), remoteFileInfo)
+		remoteFileInfoList[0] = &rfi
+	} else {
+		var sftpFileInfoList []os.FileInfo
+
+		log.Debugf("Listing directory %s", remotePath)
+
+		// fetch the directory listing
+		sftpFileInfoList, err = sftpClient.ReadDir(remotePath)
+		if err != nil {
+			log.Errorf("Unable to list directory %s", remotePath)
+			return agaveproto.FileInfoListResponse{Error: err.Error()}
+		}
+
+		// convert the os.FileInfo into RemoteFileInfo for the response to the user
+		remoteFileInfoList = make([]*agaveproto.RemoteFileInfo, len(sftpFileInfoList))
+		for index,fileInfo := range sftpFileInfoList {
+			rfi := NewRemoteFileInfo(filepath.Join(remotePath, fileInfo.Name()), fileInfo)
+			remoteFileInfoList[index] = &rfi
+		}
+	}
+
+	return agaveproto.FileInfoListResponse{
+		Listing: remoteFileInfoList,
+	}
+}
+
 
 /*
 This will return the size of the file in bytes.

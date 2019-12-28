@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
+	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -1081,6 +1082,64 @@ func TestGetReturnsErrIfLocalFilePathIsADirectory(t *testing.T) {
 		assert.True(t, tmpDownloadTestDirInfo.IsDir(), "Getting a file to a directory should fail and preserve the target directory")
 		assert.Contains(t, grpcResponse.Error, "destination path is a directory", "Error message in response should indicate the destination path is a directory")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
+	}
+
+	afterTest(t)
+}
+
+func TestListDirectory(t *testing.T) {
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	// create a random directory name in our test dir
+	tmpTestDirPath, err := _createTempDirectory("")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %s", err.Error())
+	}
+	// add a file to the temp dir
+	_, err = _createTempFileInDirectory(tmpTestDirPath, "1", ".bin")
+	_, err = _createTempFileInDirectory(tmpTestDirPath, "2", ".bin")
+	_, err = _createTempFileInDirectory(tmpTestDirPath, "3", ".bin")
+
+	// creating a nested directory structure in the temp dir
+	tmpNestedTestDirPath, err := _createTempDirectoryInDirectory(tmpTestDirPath, "")
+	_, err = _createTempFileInDirectory(tmpNestedTestDirPath, "4", ".bin")
+	_, err = _createTempFileInDirectory(tmpNestedTestDirPath, "5", ".bin")
+
+	remoteTestDirPath := _resolveTestPath(tmpTestDirPath, SFTP_SHARED_TEST_DIR)
+
+	req := &agaveproto.SrvListRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   remoteTestDirPath,
+	}
+	grpcResponse, err := client.List(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
+	} else {
+		assert.Equal(t, "", grpcResponse.Error, "Error message in response should be empty after successful request")
+
+		// get the test directory stat in the local shared directory
+		resolvedtmpTestDirPath := _resolveTestPath(tmpTestDirPath, LocalSharedTestDir)
+		localTmpFileList, err := ioutil.ReadDir(resolvedtmpTestDirPath)
+		if err != nil {
+			assert.Failf(t, "Unable to list local directory %s", resolvedtmpTestDirPath)
+		}
+		assert.Equal(t, len(localTmpFileList), len(grpcResponse.Listing), "Number of entries returned from List should be the same as number of test file items.")
+		var found = false
+		for _, fileInfo := range localTmpFileList {
+			for _, remoteFileInfo := range grpcResponse.Listing {
+				if remoteFileInfo.Name == fileInfo.Name() {
+					 found = true
+					 break
+				}
+			}
+
+			assert.True(t, found, "Response from List should include all top level files and folders. %s was missing.", filepath.Join(resolvedtmpTestDirPath, fileInfo.Name()))
+		}
 	}
 
 	afterTest(t)

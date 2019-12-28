@@ -28,29 +28,33 @@ import (
 var log = logrus.New()
 
 const (
-	DefaultUsername = "testuser"
-	DefaultHost     = "0.0.0.0"
-	DefaultKey      = ""
-	DefaultPassword = "testuser"
-	DefaultPort     = 10022
-	//DefaultSrc      = "/etc/hosts"
-	DefaultSrc   = "/tmp/10MB.txt"
-	DefaultDest  = "/tmp/10MB.txt"
-	GrpcService  = "[::1]:50051"
-	DefaultForce = true
+	DefaultUsername   = "testuser"
+	DefaultHost       = "sftp"
+	DefaultPrivateKey = ""
+	DefaultPublicKey  = ""
+	DefaultPassword   = "testuser"
+	DefaultPort       = 10022
+	DefaultLocalPath  = "/tmp/10MB.txt"
+	DefaultRemotePath = "/tmp/10MB.txt"
+	GrpcService       = "[::1]:50051"
+	DefaultForce      = true
+	DefaultAppend     = false
+	DefaultByteRange      = ""
 )
 
 var (
 	cfgFile     string
-	username    string
 	host        string
-	key         string
-	passwd      string
 	port        int
-	src         string
-	dest        string
+	privateKey  string
+	username    string
+	passwd      string
 	grpcservice string
+	remotePath  string
+	localPath   string
 	force       bool
+	append		bool
+	byteRange   string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -77,9 +81,9 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// log to console and file
-	f, err := os.OpenFile("SFTPClient.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		log.Fatalf("error opening file: %v", err)
+		log.Fatalf("Error opening file: %v", err)
 	}
 	wrt := io.MultiWriter(os.Stdout, f)
 	log.SetOutput(wrt)
@@ -92,21 +96,24 @@ func init() {
 	pflags.StringVar(&cfgFile, "config", "", "Location of configuration file, if wanted instead of flags. (default is $HOME/.sftp-client.yaml)")
 	pflags.StringVarP(&username, "username", "u", DefaultUsername, "Username to use to connect to the remote host. (default is "+DefaultUsername+")")
 	pflags.StringVarP(&passwd, "passwd", "p", DefaultPassword, "Password to use to connect to the remote host.")
-	pflags.StringVarP(&key, "key", "i", "", "Private key to use to connect to the remote host.")
+	pflags.StringVarP(&privateKey, "privateKey", "i", "", "Private key to use to connect to the remote host.")
 	pflags.StringVarP(&host, "host", "H", DefaultHost, "Hostname or ip of the remote host.")
 	pflags.IntVarP(&port, "port", "P", DefaultPort, "Port of the remote host.")
 	pflags.StringVarP(&grpcservice, "grpcservice", "g", GrpcService, "Address of the grpc server. (default is [::1]:50051")
-	pflags.StringVarP(&dest, "dest", "d", DefaultDest, "Dest file.  Defaults to /tmp/100K.txt")
-	pflags.StringVarP(&src, "src", "s", DefaultSrc, "Source file.  Defaults to /tmp/100K.txt")
-	pflags.BoolVarP(&force, "force", "f", DefaultForce, "Force true = overwrite the existing dest file.")
+	pflags.StringVarP(&remotePath, "remotePath", "d", DefaultRemotePath, "Remote path.  Defaults to /tmp/100K.txt")
+	//pflags.StringVarP(&localPath, "localPath", "s", DefaultLocalPath, "Local path.  Defaults to /tmp/100K.txt")
+	//pflags.BoolVarP(&force, "force", "f", DefaultForce, "Force true = overwrite the existing dest file.")
+	//pflags.BoolVarP(&append, "append", "a", DefaultAppend, "Force true = append the contents to the remote path.")
+	//pflags.StringVarP(&byteRange, "byteRange", "s", DefaultByteRange, "Byte range to fetch.  Defaults to the entire file")
 
 	viper.BindPFlag("username", pflags.Lookup("username"))
 	viper.BindPFlag("password", pflags.Lookup("password"))
-	viper.BindPFlag("key", pflags.Lookup("key"))
+	viper.BindPFlag("privateKey", pflags.Lookup("privateKey"))
 	viper.BindPFlag("host", pflags.Lookup("host"))
 	viper.BindPFlag("port", pflags.Lookup("port"))
 	viper.BindPFlag("grpcservice", pflags.Lookup("grpcservice"))
-	viper.BindPFlag("force", pflags.Lookup("force"))
+	viper.BindPFlag("remotePath", pflags.Lookup("remotePath"))
+
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	//rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

@@ -17,9 +17,9 @@ package cmd
 
 import (
 	"context"
-	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
+	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
+	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"io"
 	"os"
@@ -34,13 +34,13 @@ var removeCmd = &cobra.Command{
 	Long: `Deletes the file or folder on the remote host. Equivalent to the rm -rf 
 command in linux.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Println("Remove Command =====================================")
-		log.Printf("dst file= %v \n", dest)
+		log.Infof("Remove Command =====================================")
+		log.Infof("remotePath = %v", remotePath)
 
 		// log to console and file
-		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			log.Fatalf("error opening file: %v", err)
+			log.Fatalf("Error opening file: %v", err)
 		}
 		wrt := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(wrt)
@@ -51,50 +51,38 @@ command in linux.`,
 		}
 		defer conn.Close()
 
-		sftpRelay := sftppb.NewSftpRelayClient(conn)
+		sftpRelay := agaveproto.NewSftpRelayClient(conn)
 
 		log.Println("Starting Remove rpc client: ")
 		startPushtime := time.Now()
 		log.Printf("Start Time = %v", startPushtime)
 
-		req := &sftppb.SrvRemoveRequest{
-			SrceSftp: &sftppb.Sftp{
-				Username:     username,
-				PassWord:     passwd,
-				SystemId:     host,
-				HostKey:      "",
-				HostPort:     ":" + strconv.Itoa(port),
-				ClientKey:    key,
-				Type:         "SFTP",
-				DestFileName: dest,
-				Force:        force,
-			},
+		req := &agaveproto.SrvRemoveRequest{
+			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
+			RemotePath: remotePath,
 		}
-		log.Println("got past req :=")
+		log.Debugf("Connecting to grpc service at: %s:%d", host, port)
+
 
 		res, err := sftpRelay.Remove(context.Background(), req)
 		if err != nil {
-			log.Errorf("error while calling gRPC Remove: %v", err)
+			log.Errorf("Error while calling gRPC Remove: %v", err)
 		}
 		if res == nil {
-			log.Errorf("error with resp varable while calling RPC")
+			log.Error("Empty response received from gRPC server")
 		}
 		log.Println("End Time %s", time.Since(startPushtime).Seconds())
 		secs := time.Since(startPushtime).Seconds()
 		if res.Error != "" {
-			log.Printf("Response from Error Code: %v \n", res.Error)
+			log.Errorf("Error message: %s \n", res.Error)
 		} else {
-			log.Printf("Response from FileName: %v \n", res.FileName)
+			log.Printf("Deletion complete: %s", remotePath)
 		}
-		log.Println("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+		log.Debugf("%v", res)
+		log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(removeCmd)
-
-	removeCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest file/folder to delete.")
-
-	viper.BindPFlag("dest", removeCmd.Flags().Lookup("dest"))
-
 }

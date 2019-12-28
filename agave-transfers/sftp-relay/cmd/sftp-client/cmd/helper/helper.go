@@ -9,6 +9,7 @@ import (
 	"log"
 )
 
+
 func GetSftpRelay() agaveproto.SftpRelayClient {
 	fmt.Println("Starting SFTP client")
 
@@ -22,27 +23,28 @@ func GetSftpRelay() agaveproto.SftpRelayClient {
 	return agaveproto.NewSftpRelayClient(conn)
 }
 
-func ParseSftpConfig(flags *pflag.FlagSet) *agaveproto.Sftp {
+func ParseSftpConfig(flags *pflag.FlagSet) *agaveproto.RemoteSystemConfig {
 	hostname, _ := flags.GetString("host")
 	port, _ := flags.GetInt("port")
 	username, _ := flags.GetString("username")
 	password, _ := flags.GetString("passwd")
-	key, _ := flags.GetString("key")
-	dest, _ := flags.GetString("dest")
-	src, _ := flags.GetString("src")
-	force, _ := flags.GetBool("force")
+	privateKey, _ := flags.GetString("key")
+	publicKey, _ := flags.GetString("pubkey")
+	//remotePath, _ := flags.GetString("dest")
+	//localPath, _ := flags.GetString("src")
+	//force, _ := flags.GetBool("force")
+	//append, _ := flags.GetBool("append")
+	//byteRange, _ := flags.GetString("range")
 
 	//fmt.Println(&agaveproto.Sftp )
 
-	return &agaveproto.Sftp{
-		SystemId:     hostname,
-		HostPort:     fmt.Sprintf("%d", port),
-		Username:     username,
-		PassWord:     password,
-		HostKey:      key,
-		DestFileName: dest,
-		FileName:     src,
-		Type:         "SFTP",
-		Force:        force,
+	return &agaveproto.RemoteSystemConfig{
+		Host:     	hostname,
+		Port:     	int32(port),
+		Username:   username,
+		Password:   password,
+		PrivateKey: privateKey,
+		PublicKey:  publicKey,
+
 	}
 }

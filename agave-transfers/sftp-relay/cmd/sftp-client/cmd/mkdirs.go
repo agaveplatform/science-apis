@@ -17,9 +17,9 @@ package cmd
 
 import (
 	"context"
+	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"io"
 	"os"
@@ -34,13 +34,13 @@ var mkdirsCmd = &cobra.Command{
 	Long: `Creates the full directory path on the remote host. Equivalent to the mkdir -p 
 command in linux.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Println("Mkdirs Command =====================================")
-		log.Printf("dst file= %v \n", dest)
+		log.Infof("Mkdirs Command =====================================")
+		log.Infof("remotePath = %s", remotePath)
 
 		// log to console and file
-		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			log.Fatalf("error opening file: %v", err)
+			log.Fatalf("Error opening file: %v", err)
 		}
 		wrt := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(wrt)
@@ -58,43 +58,31 @@ command in linux.`,
 		log.Printf("Start Time = %v", startPushtime)
 
 		req := &sftppb.SrvMkdirsRequest{
-			SrceSftp: &sftppb.Sftp{
-				Username:     username,
-				PassWord:     passwd,
-				SystemId:     host,
-				HostKey:      "",
-				HostPort:     ":" + strconv.Itoa(port),
-				ClientKey:    key,
-				Type:         "SFTP",
-				DestFileName: dest,
-				Force:        force,
-			},
+			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
+			RemotePath: remotePath,
 		}
-		log.Println("got past req :=")
+		log.Debugf("Connecting to grpc service at: %s:%d", host, port)
 
 		res, err := sftpRelay.Mkdirs(context.Background(), req)
+		secs := time.Since(startPushtime).Seconds()
 		if err != nil {
-			log.Errorf("error while calling gRPC Mkdirs: %v", err)
+			log.Errorf("Error while calling gRPC Mkdirs: %v", err)
 		}
 		if res == nil {
-			log.Errorf("error with resp varable while calling RPC")
+			log.Error("Empty response received from gRPC server")
 		}
-		log.Println("End Time %s", time.Since(startPushtime).Seconds())
-		secs := time.Since(startPushtime).Seconds()
+		log.Infof("End Time %s", time.Since(startPushtime).Seconds())
 		if res.Error != "" {
-			log.Printf("Response from Error Code: %v \n", res.Error)
+			log.Errorf("Error response: %s", res.Error)
 		} else {
-			log.Printf("Response from FileName: %v \n", res.FileName)
+			log.Printf("Directory created: %s", res.RemoteFileInfo.Path)
 		}
-		log.Println("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+		log.Debugf("%v", res)
+		log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(mkdirsCmd)
-
-	mkdirsCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest folder.")
-
-	viper.BindPFlag("dest", removeCmd.Flags().Lookup("dest"))
 
 }

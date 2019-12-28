@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"context"
+	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -36,13 +37,13 @@ var putCmd = &cobra.Command{
 	Long:  `Performs a put operation copying a file on the relay server to a remote server`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Infof("Put Command =====================================")
-		log.Infof("srce file= %v \n", src)
-		log.Infof("dst file= %v \n", dest)
+		log.Infof("localPath = %v", localPath)
+		log.Infof("remotePath = %v", remotePath)
 
 		// log to console and file
-		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			log.Fatalf("error opening file: %v", err)
+			log.Fatalf("Error opening file: %v", err)
 		}
 		wrt := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(wrt)
@@ -63,41 +64,30 @@ var putCmd = &cobra.Command{
 		log.Infof("Start Time = %v", startPushtime)
 
 		req := &sftppb.SrvPutRequest{
-			SrceSftp: &sftppb.Sftp{
-				Username:     username,
-				PassWord:     passwd,
-				SystemId:     host,
-				HostKey:      "",
-				FileName:     src,
-				FileSize:     0,
-				HostPort:     ":" + strconv.Itoa(port),
-				ClientKey:    key,
-				BufferSize:   8192,
-				Type:         "SFTP",
-				DestFileName: dest,
-				Force:        force,
-			},
+			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
+			RemotePath: remotePath,
+			LocalPath: localPath,
+			Force: force,
+			Append: append,
 		}
-		log.Infof("got past req :=  ", req)
-		log.Info("connection: " + host + ":" + strconv.Itoa(port))
+		log.Debugf("Connecting to grpc service at: %s:%d", host, port)
 
 		res, err := sftpRelay.Put(context.Background(), req)
+		secs := time.Since(startPushtime).Seconds()
 		if err != nil {
 			log.Errorf("Error while calling gRPC Put: %v", err)
 			//log.Exit(1)
 		} else if res == nil {
-			log.Errorf("Error with res variable while calling RPC")
+			log.Error("Empty response received from gRPC server")
 			//log.Exit(1)
 		} else {
-			log.Info("End Time %s", time.Since(startPushtime).Seconds())
-			secs := time.Since(startPushtime).Seconds()
 			if res.Error != "" {
-				log.Errorf("Response from Error Code: %v \n", res.Error)
+				log.Errorf("Error response: %v", res.Error)
 				//log.Exit(1)
 			} else {
-				log.Errorf("Response from FileName: %v \n", res.FileName)
-				log.Errorf("Response from BytesReturned: %v \n", res.BytesReturned)
+				log.Printf("Transfer complete: %s (%d bytes)", res.RemoteFileInfo.Path, res.BytesTransferred)
 			}
+			log.Debugf("%v", res)
 			log.Info("gRPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 		}
 	},
@@ -106,20 +96,12 @@ var putCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(putCmd)
 
-	// Here you will define your flags and configuration settings.
+	putCmd.Flags().StringVarP(&localPath, "localPath", "s", DefaultLocalPath, "Path of the local file item.")
+	putCmd.Flags().BoolVarP(&force, "force", "f", DefaultForce, "Force true = overwrite the existing local file.")
+	putCmd.Flags().BoolVarP(&append, "append", "a", DefaultAppend, "Append true = append the contents to the remote path.")
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// putCmd.PersistentFlags().String("foo", "", "A help for foo")
+	viper.BindPFlag("localPath", putCmd.Flags().Lookup("localPath"))
+	viper.BindPFlag("force", putCmd.Flags().Lookup("force"))
+	viper.BindPFlag("append", putCmd.Flags().Lookup("append"))
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// putCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	putCmd.Flags().StringVarP(&src, "src", "s", DefaultSrc, "Path of the source file item.")
-	//putCmd.MarkFlagRequired("src")
-	putCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest file item.")
-	//putCmd.MarkFlagRequired("dest")
-
-	viper.BindPFlag("src", putCmd.Flags().Lookup("src"))
-	viper.BindPFlag("dest", putCmd.Flags().Lookup("dest"))
 }

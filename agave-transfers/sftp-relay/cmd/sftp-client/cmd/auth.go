@@ -17,8 +17,8 @@ package cmd
 
 import (
 	"context"
-	sftphelper "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
-	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
+	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
+	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"io"
@@ -26,8 +26,6 @@ import (
 	"strconv"
 	"time"
 )
-
-//var log = logrus.New()
 
 // authCmd represents the auth command
 var authCmd = &cobra.Command{
@@ -38,52 +36,46 @@ var authCmd = &cobra.Command{
 		log.Println("Auth command")
 
 		// log to console and file
-		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			log.Fatalf("error opening file: %v", err)
+			log.Fatalf("Error opening file: %v", err)
 		}
 		wrt := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(wrt)
 
 		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("could not connect: %v", err)
+			log.Fatalf("Could not connect: %v", err)
 		}
 		defer conn.Close()
 
-		sftpRelay := sftppb.NewSftpRelayClient(conn)
+		sftpRelay := agaveproto.NewSftpRelayClient(conn)
 
-		log.Println("Starting Push rpc client: ")
+		log.Tracef("Starting Push rpc client: ")
 		startPushtime := time.Now()
-		log.Printf("Start Time = %v", startPushtime)
+		log.Debugf("Start Time = %v", startPushtime)
 
-		log.Println("Starting Auth rpc client: ")
-		startTime := time.Now()
-
-		req := &sftppb.AuthenticateToRemoteRequest{
-			Auth: sftphelper.ParseSftpConfig(cmd.Flags()),
+		req := &agaveproto.AuthenticationCheckRequest{
+			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
 		}
+		log.Tracef("Connecting to grpc service at: %s:%d", host, port)
 
-		res, err := sftpRelay.Authenticate(context.Background(), req)
+		res, err := sftpRelay.AuthCheck(context.Background(), req)
+		secs := time.Since(startPushtime).Seconds()
 		if err != nil {
-			log.Fatalf("error while calling RPC auth: %v", err)
+			log.Fatalf("Error while calling RPC auth: %v", err)
 		}
-		secs := time.Since(startTime).Seconds()
-		log.Println("Response from Auth: " + res.Response)
-		log.Println("RPC Auth Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+
+		if res.Error != "" {
+			log.Errorf("Error response: %s", res.Error)
+		} else {
+			log.Println("Authentication success")
+		}
+		log.Debugf("%v", res)
+		log.Info("RPC Auth Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(authCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// authCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// authCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

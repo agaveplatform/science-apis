@@ -23,6 +23,5 @@ import (
 var log = logrus.New()
 
 func main() {
-	log.Println("Started client")
 	cmd.Execute()
 }

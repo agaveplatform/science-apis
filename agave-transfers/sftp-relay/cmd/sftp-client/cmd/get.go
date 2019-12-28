@@ -17,7 +17,8 @@ package cmd
 
 import (
 	"context"
-	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
+	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
+	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -26,8 +27,6 @@ import (
 	"strconv"
 	"time"
 )
-
-//var log = logrus.New()
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
@@ -40,67 +39,58 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Infof("Get Command =====================================")
-		log.Infof("srce file= %v \n", src)
-		log.Infof("dst file= %v \n", dest)
+		log.Debugf("Get Command =====================================")
+		log.Debugf("localPath = %v", localPath)
+		log.Debugf("remotePath = %v", remotePath)
 
 		// log to console and file
-		f, err := os.OpenFile("SFTPServer.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			log.Fatalf("error opening file: %v", err)
+			log.Fatalf("Error opening file: %v", err)
 		}
 		wrt := io.MultiWriter(os.Stdout, f)
 		log.SetOutput(wrt)
 
 		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("could not connect: %v", err)
+			log.Fatalf("Could not connect: %v", err)
 		}
 		defer conn.Close()
 
-		sftpRelay := sftppb.NewSftpRelayClient(conn)
+		sftpRelay := agaveproto.NewSftpRelayClient(conn)
 
-		log.Infof("Starting Push rpc client: ")
+		log.Tracef("Starting Push rpc client: ")
 		startPushtime := time.Now()
-		log.Infof("Start Time = %v", startPushtime)
+		log.Debugf("Start Time = %v", startPushtime)
 
-		req := &sftppb.SrvGetRequest{
-			SrceSftp: &sftppb.Sftp{
-				Username:     username,
-				PassWord:     passwd,
-				SystemId:     host,
-				HostKey:      "",
-				FileName:     src,
-				FileSize:     0,
-				HostPort:     ":" + strconv.Itoa(port),
-				ClientKey:    key,
-				BufferSize:   8192,
-				Type:         "SFTP",
-				DestFileName: dest,
-				Force:        force,
-			},
+		req := &agaveproto.SrvGetRequest{
+			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
+			RemotePath: remotePath,
+			LocalPath: localPath,
+			Force: force,
+			Range: byteRange,
 		}
-		log.Infof("got past req :=", req)
-		log.Info("connection: " + host + ":" + strconv.Itoa(port))
+		log.Tracef("Connecting to grpc service at: %s:%d", host, port)
 
 		res, err := sftpRelay.Get(context.Background(), req)
+		secs := time.Since(startPushtime).Seconds()
 		if err != nil {
 			log.Errorf("Error while calling gRPC Put: %v", err)
 			log.Exit(1)
 		}
 		if res == nil {
-			log.Errorf("Error with res varable while calling RPC")
+			log.Error("Empty response received from gRPC server")
 			log.Exit(1)
 		}
-		log.Println("End Time %s", time.Since(startPushtime).Seconds())
-		secs := time.Since(startPushtime).Seconds()
+		log.Infof("End Time %s", time.Since(startPushtime).Seconds())
 		if res.Error != "" {
-			log.Errorf("Response from Error Code: %v \n", res.Error)
+			log.Errorf("Error response: %s", res.Error)
 			log.Exit(1)
 		} else {
-			log.Errorf("Response from FileName: %v \n", res.FileName)
-			log.Errorf("Response from BytesReturned: %v \n", res.BytesReturned)
+			log.Printf("Transfer complete: %s (%d bytes)", res.RemoteFileInfo.Path, res.BytesTransferred)
+			log.Debugf("%v", res)
 		}
+		log.Debugf("%v", res)
 		log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
@@ -108,21 +98,12 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(getCmd)
 
-	// Here you will define your flags and configuration settings.
+	getCmd.Flags().StringVarP(&localPath, "localPath", "s", DefaultLocalPath, "Path of the local file item.")
+	getCmd.Flags().BoolVarP(&force, "force", "f", DefaultForce, "Force true = overwrite the existing remote file.")
+	getCmd.Flags().StringVarP(&byteRange, "byteRange", "b", DefaultByteRange, "Byte range to fetch.  Defaults to the entire file")
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// getCmd.PersistentFlags().String("foo", "", "A help for foo")
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// getCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	getCmd.Flags().StringVarP(&src, "src", "s", DefaultSrc, "Path of the source file item.")
-	//getCmd.MarkFlagRequired("src")
-	getCmd.Flags().StringVarP(&dest, "dest", "d", DefaultDest, "Path of the dest file item.")
-	//rootCmd.MarkFlagRequired("dest")
-
-	viper.BindPFlag("src", rootCmd.Flags().Lookup("src"))
-	viper.BindPFlag("dest", rootCmd.Flags().Lookup("dest"))
-
+	viper.BindPFlag("localPath", putCmd.Flags().Lookup("localPath"))
+	viper.BindPFlag("force", putCmd.Flags().Lookup("force"))
+	viper.BindPFlag("byteRange", putCmd.Flags().Lookup("byteRange"))
 }

@@ -336,7 +336,8 @@ func TestStatReturnsErrIfPathDoesNotExist(t *testing.T) {
 	afterTest(t)
 }
 
-func TestMkdirs(t *testing.T) {
+
+func TestMkdir(t *testing.T) {
 
 	beforeTest(t)
 
@@ -351,11 +352,12 @@ func TestMkdirs(t *testing.T) {
 	// resolve it to the absolute path within our shared test directory on the remote system
 	remoteTestDirectoryPath := _resolveTestPath(testDirectoryPath, SFTP_SHARED_TEST_DIR)
 
-	req := &agaveproto.SrvMkdirsRequest{
+	req := &agaveproto.SrvMkdirRequest{
 		SystemConfig: _createRemoteSystemConfig(),
 		RemotePath:   remoteTestDirectoryPath,
+		Recursive: false,
 	}
-	grpcResponse, err := client.Mkdirs(context.Background(), req)
+	grpcResponse, err := client.Mkdir(context.Background(), req)
 	if err != nil {
 		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
 	} else {
@@ -378,6 +380,216 @@ func TestMkdirs(t *testing.T) {
 	afterTest(t)
 }
 
+func TestMkdirReturnsErrorWhenPathIsForbidden(t *testing.T) {
+
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	// create a random directory name in our test dir
+	remoteTestFilePath := "/" + uuid.New().String()
+
+	req := &agaveproto.SrvMkdirRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   remoteTestFilePath,
+		Recursive: false,
+	}
+	grpcResponse, err := client.Mkdir(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
+	} else {
+		// get the test directory stat in the local shared directory
+		assert.Contains(t, grpcResponse.Error, "Permission denied", "Non-recursive Mkdirs on forbidden path should return response saying Permission denied")
+		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
+	}
+
+	afterTest(t)
+}
+
+func TestMkdirReturnsErrorWhenPathIsExistingFile(t *testing.T) {
+
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	// create a random directory name in our test dir
+	tmpTestFilePath, err := _createTempFile("", ".txt")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %s", err.Error())
+	}
+
+	remoteTestFilePath := _resolveTestPath(tmpTestFilePath, SFTP_SHARED_TEST_DIR)
+
+	req := &agaveproto.SrvMkdirRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   remoteTestFilePath,
+		Recursive: false,
+	}
+	grpcResponse, err := client.Mkdir(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
+	} else {
+		// get the test directory stat in the local shared directory
+		tmpTestFileInfo, err := os.Stat(_resolveTestPath(tmpTestFilePath, LocalSharedTestDir))
+		if err != nil {
+			assert.FailNowf(t, err.Error(), "Unable to open temp test file after calling mkdir: %s", err.Error())
+		}
+		assert.False(t, tmpTestFileInfo.IsDir(), "Remote path should still be a file after calling mkdir on it.")
+		assert.Contains(t, grpcResponse.Error, "file already exists", "Mkdirs on existing file should return response saying file already exists")
+		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
+	}
+
+	afterTest(t)
+}
+
+func TestMkdirReturnsErrorWhenPathIsExistingDirectory(t *testing.T) {
+
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	// create a random directory name in our test dir
+	tmpTestDirPath, err := _createTempDirectory("")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %s", err.Error())
+	}
+
+	resolvedRemoteTestFilePath := _resolveTestPath(tmpTestDirPath, SFTP_SHARED_TEST_DIR)
+
+	req := &agaveproto.SrvMkdirRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   resolvedRemoteTestFilePath,
+		Recursive: false,
+	}
+	grpcResponse, err := client.Mkdir(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
+	} else {
+		// get the test directory stat in the local shared directory
+		assert.Equal(t, "dir already exists", grpcResponse.Error, "Non recursive Mkdir on existing directory should return an error stating dir already exists")
+		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
+
+	}
+
+	afterTest(t)
+}
+
+func TestMkdirReturnsErrorWhenParentPathDoesNotExist(t *testing.T) {
+
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	// create a random directory name in our test dir
+	testDirectoryPath := filepath.Join(CurrentBaseTestDirPath, uuid.New().String(),uuid.New().String(),uuid.New().String())
+
+	resolvedRemoteTestFilePath := _resolveTestPath(testDirectoryPath, SFTP_SHARED_TEST_DIR)
+
+	req := &agaveproto.SrvMkdirRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   resolvedRemoteTestFilePath,
+		Recursive: false,
+	}
+	grpcResponse, err := client.Mkdir(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
+	} else {
+		// get the test directory stat in the local shared directory
+		_, err := os.Stat(_resolveTestPath(testDirectoryPath, LocalSharedTestDir))
+		assert.Truef(t, os.IsNotExist(err), "Nested directory should not be created when parent does not exist: %s", err.Error())
+		assert.Equal(t, "file does not exist", grpcResponse.Error, "Non recursive Mkdir on existing directory should return an error stating file does not exist")
+		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
+
+	}
+
+	afterTest(t)
+}
+
+
+func TestMkdirs(t *testing.T) {
+
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	// create a random directory name in our test dir
+	testDirectoryPath := fmt.Sprintf("%s/%s", CurrentBaseTestDirPath, uuid.New().String())
+
+	// resolve it to the absolute path within our shared test directory on the remote system
+	remoteTestDirectoryPath := _resolveTestPath(testDirectoryPath, SFTP_SHARED_TEST_DIR)
+
+	req := &agaveproto.SrvMkdirRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   remoteTestDirectoryPath,
+		Recursive: true,
+	}
+	grpcResponse, err := client.Mkdir(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
+	} else {
+		// get the test directory stat in the local shared directory
+		tmpTestDirInfo, err := os.Stat(_resolveTestPath(testDirectoryPath, LocalSharedTestDir))
+		if os.IsNotExist(err) {
+			assert.FailNowf(t, err.Error(), "Recursive Mkdir should created nested test directory on remote host: %s", err.Error())
+		}
+		assert.Equal(t, "", grpcResponse.Error, "Recursive Mkdirs on valid remote path should return empty Error")
+		assert.True(t, tmpTestDirInfo.IsDir(), "Remote path should be a directory. File found instead.")
+		assert.Equal(t, remoteTestDirectoryPath, grpcResponse.RemoteFileInfo.Path, "Returned file name should match the name of the new directory")
+		assert.Equal(t, tmpTestDirInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the new directory")
+		assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the new directory")
+		assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the new directory")
+		assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the new directory")
+		assert.True(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info should report as a directory")
+		assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+	}
+
+	afterTest(t)
+}
+
+func TestMkdirsReturnsErrorWhenPathIsForbidden(t *testing.T) {
+
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	// create a random directory name in our test dir
+	remoteTestFilePath := "/" + uuid.New().String()
+
+	req := &agaveproto.SrvMkdirRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   remoteTestFilePath,
+		Recursive: true,
+	}
+	grpcResponse, err := client.Mkdir(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
+	} else {
+		// get the test directory stat in the local shared directory
+		assert.Contains(t, grpcResponse.Error, "Permission denied", "Non-recursive Mkdirs on forbidden path should return response saying Permission denied")
+		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
+	}
+
+	afterTest(t)
+}
+
 func TestMkdirsReturnsErrorWhenPathIsFile(t *testing.T) {
 
 	beforeTest(t)
@@ -395,11 +607,12 @@ func TestMkdirsReturnsErrorWhenPathIsFile(t *testing.T) {
 
 	remoteTestFilePath := _resolveTestPath(tmpTestFilePath, SFTP_SHARED_TEST_DIR)
 
-	req := &agaveproto.SrvMkdirsRequest{
+	req := &agaveproto.SrvMkdirRequest{
 		SystemConfig: _createRemoteSystemConfig(),
 		RemotePath:   remoteTestFilePath,
+		Recursive: true,
 	}
-	grpcResponse, err := client.Mkdirs(context.Background(), req)
+	grpcResponse, err := client.Mkdir(context.Background(), req)
 	if err != nil {
 		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
 	} else {
@@ -433,11 +646,12 @@ func TestMkdirsReturnsNoErrorWhenDirectoryExists(t *testing.T) {
 
 	resolvedRemoteTestFilePath := _resolveTestPath(tmpTestDirPath, SFTP_SHARED_TEST_DIR)
 
-	req := &agaveproto.SrvMkdirsRequest{
+	req := &agaveproto.SrvMkdirRequest{
 		SystemConfig: _createRemoteSystemConfig(),
 		RemotePath:   resolvedRemoteTestFilePath,
+		Recursive: true,
 	}
-	grpcResponse, err := client.Mkdirs(context.Background(), req)
+	grpcResponse, err := client.Mkdir(context.Background(), req)
 	if err != nil {
 		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
 	} else {

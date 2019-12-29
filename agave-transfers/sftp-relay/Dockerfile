@@ -31,6 +31,7 @@ RUN make default && make install
 #
 #RUN \
 #    chmod +x /usr/local/bin/sftp-relay
-#
+
+EXPOSE 50051
 ENTRYPOINT ["/docker-entrypoint.sh"]
 

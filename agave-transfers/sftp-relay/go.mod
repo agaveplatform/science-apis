@@ -9,7 +9,7 @@ require (
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/pkg/sftp v1.10.1
+	github.com/pkg/sftp v1.10.2-0.20191111234405-8488d36edee7
 	github.com/prometheus/client_golang v1.3.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5

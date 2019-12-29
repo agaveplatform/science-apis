@@ -178,7 +178,7 @@ func (s *Server) InitMetrics() {
 }
 // Performs a basic authentication handshake to the remote system
 func (*Server) AuthCheck(ctx context.Context, req *agaveproto.AuthenticationCheckRequest) (*agaveproto.EmptyResponse, error) {
-	log.Tracef("Get Service function was invoked")
+	log.Tracef("Invoking Auth service")
 
 	sshCfg := NewSSHConfig(req.SystemConfig)
 
@@ -205,8 +205,8 @@ func (*Server) AuthCheck(ctx context.Context, req *agaveproto.AuthenticationChec
 }
 
 // Performs a mkdirs operation on a remote system.
-func (*Server) Mkdirs(ctx context.Context, req *agaveproto.SrvMkdirsRequest) (*agaveproto.FileInfoResponse, error) {
-	log.Printf("Mkdirs Service function was invoked with %v\n", req)
+func (*Server) Mkdir(ctx context.Context, req *agaveproto.SrvMkdirRequest) (*agaveproto.FileInfoResponse, error) {
+	log.Printf("Invoking Mkdirs service")
 
 	sshCfg := NewSSHConfig(req.SystemConfig)
 
@@ -221,7 +221,7 @@ func (*Server) Mkdirs(ctx context.Context, req *agaveproto.SrvMkdirsRequest) (*a
 	defer Pool.ReleaseClient(sshCfg)
 	defer sftpClient.Close()
 
-	log.Infof("Number of active connections: %d", sessionCount)
+	log.Debugf("Number of active connections: %d", sessionCount)
 
 	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
 
@@ -231,14 +231,14 @@ func (*Server) Mkdirs(ctx context.Context, req *agaveproto.SrvMkdirsRequest) (*a
 	var response agaveproto.FileInfoResponse
 
 	// Read From system
-	response = mkdirs(sftpClient, req.RemotePath)
+	response = mkdir(sftpClient, req.RemotePath, req.Recursive)
 
 	return &response, nil
 }
 
 // Fetches file info for a remote path
 func (*Server) Stat(ctx context.Context, req *agaveproto.SrvStatRequest) (*agaveproto.FileInfoResponse, error) {
-	log.Printf("Stat Service function was invoked with %v\n", req)
+	log.Printf("Invoking Stat service")
 
 	sshCfg := NewSSHConfig(req.SystemConfig)
 
@@ -253,7 +253,7 @@ func (*Server) Stat(ctx context.Context, req *agaveproto.SrvStatRequest) (*agave
 	defer Pool.ReleaseClient(sshCfg)
 	defer sftpClient.Close()
 
-	log.Infof("Number of active connections: %d", sessionCount)
+	log.Debugf("Number of active connections: %d", sessionCount)
 
 	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
 
@@ -270,7 +270,7 @@ func (*Server) Stat(ctx context.Context, req *agaveproto.SrvStatRequest) (*agave
 
 // Removes the remote path. If the remote path is a directory, the entire tree is deleted.
 func (*Server) Remove(ctx context.Context, req *agaveproto.SrvRemoveRequest) (*agaveproto.EmptyResponse, error) {
-	log.Printf("Remove Service function was invoked with %v\n", req)
+	log.Printf("Invoking Remove service")
 
 	sshCfg := NewSSHConfig(req.SystemConfig)
 
@@ -285,7 +285,7 @@ func (*Server) Remove(ctx context.Context, req *agaveproto.SrvRemoveRequest) (*a
 	defer Pool.ReleaseClient(sshCfg)
 	defer sftpClient.Close()
 
-	log.Infof("Number of active connections: %d", sessionCount)
+	log.Debugf("Number of active connections: %d", sessionCount)
 
 	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
 
@@ -302,7 +302,7 @@ func (*Server) Remove(ctx context.Context, req *agaveproto.SrvRemoveRequest) (*a
 
 // Fetches a file from the remote system and stores it locally
 func (*Server) Get(ctx context.Context, req *agaveproto.SrvGetRequest) (*agaveproto.TransferResponse, error) {
-	log.Trace("Invoking get service")
+	log.Trace("Invoking Get service")
 
 	sshCfg := NewSSHConfig(req.SystemConfig)
 
@@ -317,7 +317,7 @@ func (*Server) Get(ctx context.Context, req *agaveproto.SrvGetRequest) (*agavepr
 	defer Pool.ReleaseClient(sshCfg)
 	defer sftpClient.Close()
 
-	log.Infof("Number of active connections: %d", sessionCount)
+	log.Debugf("Number of active connections: %d", sessionCount)
 
 	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s => file://localhost/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath, req.LocalPath))
 
@@ -338,7 +338,7 @@ func (*Server) Get(ctx context.Context, req *agaveproto.SrvGetRequest) (*agavepr
 
 // Transfers a file from the local system to the remote system
 func (*Server) Put(ctx context.Context, req *agaveproto.SrvPutRequest) (*agaveproto.TransferResponse, error) {
-	log.Trace("Invoking put service")
+	log.Trace("Invoking Put service")
 
 	sshCfg := NewSSHConfig(req.SystemConfig)
 
@@ -352,7 +352,7 @@ func (*Server) Put(ctx context.Context, req *agaveproto.SrvPutRequest) (*agavepr
 	defer Pool.ReleaseClient(sshCfg)
 	defer sftpClient.Close()
 
-	log.Infof("Number of active connections: %d", sessionCount)
+	log.Debugf("Number of active connections: %d", sessionCount)
 
 	log.Infof(fmt.Sprintf("put file://localhost/%s => sftp://%s@%s:%d/%s", req.LocalPath, req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
 
@@ -388,7 +388,7 @@ func (*Server) List(ctx context.Context, req *agaveproto.SrvListRequest) (*agave
 	defer Pool.ReleaseClient(sshCfg)
 	defer sftpClient.Close()
 
-	log.Infof("Number of active connections: %d", sessionCount)
+	log.Debugf("Number of active connections: %d", sessionCount)
 
 	log.Infof(fmt.Sprintf("ls sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
 
@@ -622,15 +622,33 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 	}
 }
 
-func mkdirs(sftpClient *sftp.Client, remoteDirectoryPath string) agaveproto.FileInfoResponse {
-	log.Trace("Mkdirs (Mkdirs) sFTP Service function was invoked ")
+
+func mkdir(sftpClient *sftp.Client, remoteDirectoryPath string, recursive bool) agaveproto.FileInfoResponse {
+	log.Trace("Mkdir (Mkdirs) sFTP Service function was invoked ")
 
 	// Create destination directory
 	log.Debugf("Create destination directory %s", remoteDirectoryPath)
-	err := sftpClient.MkdirAll(remoteDirectoryPath)
-	if err != nil {
-		log.Errorf("Error creating directory. %s. %v", remoteDirectoryPath, err)
-		return agaveproto.FileInfoResponse{Error: err.Error()}
+	if recursive {
+		err := sftpClient.MkdirAll(remoteDirectoryPath)
+		if err != nil {
+			log.Errorf("Error creating directory. %s. %v", remoteDirectoryPath, err)
+			return agaveproto.FileInfoResponse{Error: err.Error()}
+		}
+	} else {
+		remoteFileInfo, err := sftpClient.Stat(remoteDirectoryPath)
+		if err == nil {
+			if remoteFileInfo.IsDir() {
+				return agaveproto.FileInfoResponse{Error: "dir already exists"}
+			} else {
+				return agaveproto.FileInfoResponse{Error: "file already exists"}
+			}
+		}
+
+		err = sftpClient.Mkdir(remoteDirectoryPath)
+		if err != nil {
+			log.Errorf("Error creating directory. %s. %v", remoteDirectoryPath, err)
+			return agaveproto.FileInfoResponse{Error: err.Error()}
+		}
 	}
 
 	log.Debugf("Created destination directory: " + remoteDirectoryPath)
@@ -685,7 +703,7 @@ func remove(sftpClient *sftp.Client, remotePath string) agaveproto.EmptyResponse
 		// after we complete walking the full tree.
 		for walker.Step() {
 			if err := walker.Err(); err != nil && err.Error() != "EOF" {
-				log.Warn("walker error", "err", err)
+				log.Warnf("Error traversing directory tree: %v", err)
 				break
 			}
 
@@ -730,9 +748,12 @@ func remove(sftpClient *sftp.Client, remotePath string) agaveproto.EmptyResponse
 					return agaveproto.EmptyResponse{Error: err.Error()}
 				}
 			}
-		} else {
+		} else if err != nil {
 			log.Errorf("Error deleting one or more nested files below %s. %v", remotePath, err)
 			return agaveproto.EmptyResponse{Error: err.Error()}
+		} else {
+			log.Errorf("Error deleting one or more nested files below %s. %v", remotePath, walker.Err())
+			return agaveproto.EmptyResponse{Error: walker.Err().Error()}
 		}
 
 		log.Debugf("Deleted remote directory: %s", remotePath)

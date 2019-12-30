@@ -53,6 +53,8 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Docker build of the flyway migration image -->
             <plugin>
                 <groupId>com.spotify</groupId>
                 <artifactId>docker-maven-plugin</artifactId>
@@ -142,8 +144,8 @@
                 </executions>
             </plugin>
 
-            <!-- Snapshots the migrated db image and commits as our test image
-                 to be used in subsequent tests. -->
+            <!-- Snapshots the migrated db image started from the docker-compose-maven-plugin
+                 and commits it as our test image to be used in subsequent tests. -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -156,6 +158,7 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
+                            <skip>${skip.migrations}</skip>
                             <executable>docker</executable>
                             <workingDirectory>${basedir}</workingDirectory>
                             <arguments>
@@ -176,6 +179,7 @@
                 <groupId>com.dkanejs.maven.plugins</groupId>
                 <artifactId>docker-compose-maven-plugin</artifactId>
                 <configuration>
+
                     <projectName>${project.artifactId}</projectName>
                     <composeFiles>
                         <composeFile>${basedir}/target/classes/docker-compose.yml</composeFile>
@@ -192,6 +196,7 @@
                         <configuration>
                             <services>mysql</services>
                             <detachedMode>true</detachedMode>
+                            <skip>${skip.migrations}</skip>
                         </configuration>
                     </execution>
                     <execution>
@@ -203,6 +208,7 @@
                         <configuration>
                             <services>migrate</services>
                             <detachedMode>false</detachedMode>
+                            <skip>${skip.migrations}</skip>
                         </configuration>
                     </execution>
                     <execution>
@@ -211,13 +217,17 @@
                         <goals>
                             <goal>down</goal>
                         </goals>
+                        <configuration>
+                            <skip>${skip.migrations}</skip>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
 
             <!-- Runs migration script against the mariadb instance stood up in
-                 the pre-integration-test phase. The result will be our standard
-                 test db. -->
+                 the pre-integration-test phase. This configuration is not tied
+                 to any specific lifecycle phase to allow for flyway to be run
+                 arbitrarily via maven in an ad-hock manner for testing, etc. -->
             <plugin>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-maven-plugin</artifactId>
@@ -236,18 +246,7 @@
                     </locations>
                     <skip>${skip.migrations}</skip>
                 </configuration>
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <id>integration-test</id>-->
-<!--                        <phase>integration-test</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>migrate</goal>-->
-<!--                        </goals>-->
-<!--                    </execution>-->
-<!--                </executions>-->
             </plugin>
-
-
         </plugins>
     </build>
 

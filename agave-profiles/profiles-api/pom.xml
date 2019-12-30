@@ -15,6 +15,7 @@
 	<properties>
 		<force.check.update>false</force.check.update>
 		<service.war.name>profiles</service.war.name>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
     <build>

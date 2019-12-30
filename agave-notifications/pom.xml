@@ -14,54 +14,29 @@
 	<description>This is the parent project for the notification service.</description>
 	<packaging>pom</packaging>
 
+	<properties>
+		<main.basedir>${project.basedir}/../../</main.basedir>
+	</properties>
+
 	<build>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<artifactId>maven-dependency-plugin</artifactId>
-					<executions>
-						<execution>
-							<id>install</id>
-							<phase>install</phase>
-							<goals>
-								<goal>sources</goal>
-							</goals>
-						</execution>
-					</executions>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>${maven-surefire-plugin.version}</version>
-					<configuration>
-						<groups>unit</groups>
-						<excludedGroups>broken,notReady</excludedGroups>
-						<systemPropertyVariables>
-							<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
-							</log4j.configuration>
-						</systemPropertyVariables>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-failsafe-plugin</artifactId>
-					<version>${maven-failsafe-plugin.version}</version>
-					<configuration>
-						<groups>integration</groups>
-						<excludedGroups>broken,notReady,unit</excludedGroups>
-						<systemPropertyVariables>
-							<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
-							</log4j.configuration>
-						</systemPropertyVariables>
-					</configuration>
-				</plugin>
-			</plugins>
-		</pluginManagement>
+		<plugins>
+			<!-- Default unit testing for all submodules. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+			</plugin>
+
+			<!-- Default integration testing for all submodules. Note that integration testing
+				requires persistence, queueing, etc. These are provided as containers and
+				managed by Docker Compose through the managed docker-compose-maven-plugin.
+				We omit the inclusion of those plugins here due to this being a parent folder
+				and not containing any tests that require orchestration. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+			</plugin>
+		</plugins>
 	</build>
-
-	<dependencies>
-
-	</dependencies>
 
 	<modules>
 		<module>notifications-core</module>

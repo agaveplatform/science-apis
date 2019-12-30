@@ -12,6 +12,7 @@
 
 	<properties>
 		<force.check.update>false</force.check.update>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>
@@ -28,6 +29,21 @@
 				<filtering>true</filtering>
 			</testResource>
 		</testResources>
+
+		<plugins>
+			<!-- Starts and stops integration test containers with Docker Compose -->
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+			</plugin>
+
+			<!-- iRODS containers take a while to startup, so we use a custom await config here
+			     to wait for them to start up completely. -->
+			<plugin>
+				<groupId>org.agaveplatform.ops</groupId>
+				<artifactId>await-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
 
 	</build>
 

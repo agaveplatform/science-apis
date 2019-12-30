@@ -44,60 +44,11 @@
         <developerConnection>scm:git:ssh://git@github.com:agaveplatform/science-apis.git</developerConnection>
         <url>https://github.com/agaveplatform/science-apis</url>
     </scm>
-
     <repositories>
         <repository>
-            <id>agave-maven-releases</id>
-            <name>Agave Maven repository</name>
-            <url>https://nexus.agaveplatform.org/repository/maven-releases</url>
-        </repository>
-
-        <!--		grpc repository-->
-        <repository>
-            <id>apache-maven-releases</id>
-            <name>Agave Maven repository</name>
-            <url>https://repo1.maven.org/maven2/</url>
-        </repository>
-
-        <repository>
-            <id>agave-maven-snapshot</id>
-            <name>Agave Maven repository</name>
-            <url>https://nexus.agaveplatform.org/repository/maven-snapshots</url>
-        </repository>
-        <repository>
-            <id>agave-maven-thirdparty</id>
-            <name>Agave Maven repository</name>
-            <url>https://nexus.agaveplatform.org/repository/maven-thirdparty</url>
-        </repository>
-        <repository>
-            <id>maven-restlet</id>
-            <name>Public online Restlet repository</name>
-            <url>http://maven.restlet.com</url>
-        </repository>
-        <repository>
-            <id>iron.io</id>
-            <name>Iron.io Maven repo</name>
-            <url>http://iron-io.github.com/maven/repository</url>
-        </repository>
-        <repository>
-            <id>jcenter</id>
-            <name>Public testng repository</name>
-            <url>http://jcenter.bintray.com</url>
-        </repository>
-        <repository>
-            <!-- irods jargon -->
-            <id>dice.repository</id>
-            <name>dice.repository</name>
-            <url>https://raw.github.com/DICE-UNC/DICE-Maven/master/releases</url>
-            <releases>
-                <enabled>true</enabled>
-                <updatePolicy>never</updatePolicy>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-                <updatePolicy>always</updatePolicy>
-                <checksumPolicy>warn</checksumPolicy>
-            </snapshots>
+            <id>agave-maven-public</id>
+            <name>Agave Maven public mirror</name>
+            <url>https://nexus.agaveplatform.org/repository/maven-public/</url>
         </repository>
     </repositories>
 
@@ -120,6 +71,10 @@
         <java-source.version>9</java-source.version>
         <java-target.version>9</java-target.version>
 
+        <!-- required for jdk9 -->
+        <maven.compiler.source>1.9</maven.compiler.source>
+        <maven.compiler.target>1.9</maven.compiler.target>
+
         <!-- Below are the version numbers for all software on which we explicitly depend. -->
         <!-- If a library or plugin appears as a dependency in some pom file, then that    -->
         <!-- artifact's version number should be in the lists below for easy managment and -->
@@ -135,20 +90,24 @@
         <!--                    PLEASE KEEP THESE LISTS ALPHABETIZED                       -->
 
         <!-- PLUGIN Versions (in alphabetical order) -->
+        <await-maven-plugin.version>1.3</await-maven-plugin.version>
         <buildnumber-maven-plugin.version>1.3</buildnumber-maven-plugin.version>
+        <directory-maven-plugin.version>0.1</directory-maven-plugin.version>
+        <docker-compose-maven-plugin.version>2.5.1</docker-compose-maven-plugin.version>
         <docker-maven-plugin.version>0.4.13</docker-maven-plugin.version>
         <duplicate-finder-maven-plugin.version>1.2.1</duplicate-finder-maven-plugin.version>
         <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
         <flyway-maven-plugin.version>4.0</flyway-maven-plugin.version>
         <flyway-maven-plugin.versionRange>[4.0,)</flyway-maven-plugin.versionRange>
-        <gmaven-plugin.versionRange>[1.5,)</gmaven-plugin.versionRange>
+        <jacoco.version>0.8.1</jacoco.version>
         <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
-        <maven-antrun-plugin.versionRange>[1.8,)</maven-antrun-plugin.versionRange>
+        <maven-antrun-plugin.version>1.8</maven-antrun-plugin.version>
         <maven-assembly-plugin.version>3.1.1</maven-assembly-plugin.version>
         <maven-compiler-plugin.version>3.8.1</maven-compiler-plugin.version>
         <maven-deploy-plugin.version>3.0.0-M1</maven-deploy-plugin.version>
         <maven-install-plugin.version>2.5.2</maven-install-plugin.version>
         <maven-jar-plugin.version>3.1.2</maven-jar-plugin.version>
+<!--        <maven-jib-plugin.version>1.7.0</maven-jib-plugin.version>-->
         <maven-php-plugin.version>2.0.2</maven-php-plugin.version>
         <maven-shade-plugin.version>3.2.1</maven-shade-plugin.version>
         <maven-site-plugin.version>3.8.2</maven-site-plugin.version>
@@ -156,11 +115,7 @@
         <maven-failsafe-plugin.version>3.0.0-M3</maven-failsafe-plugin.version>
         <maven-war-plugin.version>3.2.3</maven-war-plugin.version>
         <org.eclipse.m2e.lifecycle-mapping.version>1.0.0</org.eclipse.m2e.lifecycle-mapping.version>
-        <jacoco.version>0.8.1</jacoco.version>
-        <maven-jib-plugin.version>1.7.0</maven-jib-plugin.version>
-        <docker-compose-maven-plugin.version>2.5.1</docker-compose-maven-plugin.version>
-        <await-maven-plugin.version>1.2</await-maven-plugin.version>
-        <maven-antrun-plugin.version>1.8</maven-antrun-plugin.version>
+
         <!-- LIBRARY Versions (in alphabetical order) -->
         <amqp-client.version>3.1.4</amqp-client.version>
         <ant.version>1.8.2</ant.version>
@@ -221,7 +176,7 @@
         <simple-jndi.version>0.11.4.1</simple-jndi.version>
         <slf4j-api.version>1.6.1</slf4j-api.version>
         <slf4j-log4j12.version>1.6.1</slf4j-log4j12.version>
-        <spring.version>3.2.0.RELEASE</spring.version>
+<!--        <spring.version>3.2.0.RELEASE</spring.version>-->
         <testng.version>6.9.12</testng.version>
         <twilio-java-sdk.version>3.4.1</twilio-java-sdk.version>
         <uuid.version>3.4.0</uuid.version>
@@ -235,9 +190,17 @@
         <docker.image.commit.hash>${buildNumber}</docker.image.commit.hash>
         <force.check.update>true</force.check.update>
         <force.check.version>true</force.check.version>
+        <force.docker.environment>false</force.docker.environment>
+        <main.basedir>${project.basedir}</main.basedir>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.inceptionYear>2011</project.inceptionYear>
+
+        <skip.create-db>true</skip.create-db>
         <skip.docker.build>true</skip.docker.build>
+        <skip.integration.tests>true</skip.integration.tests>
+        <skip.unit.tests>true</skip.unit.tests>
+        <skip.integration.s3.tests>true</skip.integration.s3.tests>
+
 
     </properties>
 
@@ -318,6 +281,7 @@
                 </configuration>
             </plugin>
         </plugins>
+
         <pluginManagement>
 
             <plugins>
@@ -348,10 +312,140 @@
                     <artifactId>maven-site-plugin</artifactId>
                     <version>${maven-site-plugin.version}</version>
                 </plugin>
+
+                <!--  Basic unit test execution -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven-surefire-plugin.version}</version>
+                    <configuration>
+                        <skipTests>${skip.unit.tests}</skipTests>
+                        <groups>unit</groups>
+                        <excludedGroups>broken,notReady</excludedGroups>
+                        <systemPropertyVariables>
+                            <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+                            </log4j.configuration>
+                        </systemPropertyVariables>
+                    </configuration>
+                </plugin>
+
+                <!-- Integration test containers providing all third-party services, compute,      -->
+                <!-- storage, etc. needed by the tests in this module. Two plugins work in tandem  -->
+                <!-- here. The first starts up the containers using Docker Compose via the         -->
+                <!-- docker-compose-maven-plugin. This will start all the containers and guarantee -->
+                <!-- they are running. The second performs a rediness check on the containers      -->
+                <!-- ensuring they are ready to accept connections prior to the tests being run.   -->
+                <!-- This keeps us from experiencing test failures due to a db waiting to finish   -->
+                <!-- initializing.																   -->
+                <!--																			   -->
+                <!-- Once the integration tests finish, the containers are torn down and destroyed -->
+                <!-- by the docker-compose-maven-plugin. No data will be kept between invocations  -->
+                <!-- of maven.																	   -->
+
+                <!-- Starts and stops integration containers with Docker Compose -->
+                <plugin>
+                    <groupId>com.dkanejs.maven.plugins</groupId>
+                    <artifactId>docker-compose-maven-plugin</artifactId>
+                    <version>${docker-compose-maven-plugin.version}</version>
+                    <configuration>
+                        <skip>${skip.integration.tests}</skip>
+                        <detachedMode>true</detachedMode>
+                        <projectName>${project.artifactId}</projectName>
+                        <composeFiles>
+                            <composeFile>${project.basedir}/target/test-classes/docker-compose.yml</composeFile>
+                            <composeFile>${main.basedir}/compose/third-party/docker-compose.yml</composeFile>
+                        </composeFiles>
+                        <ignorePullFailures>true</ignorePullFailures>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>${project.artifactId}up</id>
+                            <phase>pre-integration-test</phase>
+                            <goals>
+                                <goal>up</goal>
+                            </goals>
+                            <configuration>
+                                <skip>${skip.integration.tests}</skip>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>${project.artifactId}down</id>
+                            <phase>post-integration-test</phase>
+                            <goals>
+                                <goal>down</goal>
+                            </goals>
+                            <configuration>
+                                <removeVolumes>true</removeVolumes>
+                                <skip>${skip.integration.tests}</skip>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- Introduces an initial pause for containers to start followed
+                    by a connection check via tcp or http(s) to a given port and
+                    hostname. This provides certainty that our containers are up
+                    for integration testing prior to the tests running -->
+                <plugin>
+                    <groupId>org.agaveplatform.ops</groupId>
+                    <artifactId>await-maven-plugin</artifactId>
+                    <version>${await-maven-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <phase>pre-integration-test</phase>
+                            <goals>
+                                <goal>Await</goal>
+                            </goals>
+                            <configuration>
+                                <skip>${skip.integration.tests}</skip>
+                                <initialWait>5000</initialWait>
+                                <poll>
+                                    <attempts>15</attempts>
+                                    <sleep>2000</sleep>
+                                </poll>
+                                <tcpConnections>
+                                    <tcpConnection>
+                                        <host>${foundation.db.test.host}</host>
+                                        <port>${foundation.db.test.port}</port>
+                                    </tcpConnection>
+                                    <tcpConnection>
+                                        <host>${foundation.service.meta.db.host}</host>
+                                        <port>${foundation.service.meta.db.port}</port>
+                                    </tcpConnection>
+                                </tcpConnections>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- Basic integration test execution -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>${maven-failsafe-plugin.version}</version>
+                    <configuration>
+                        <skipTests>${skip.integration.tests}</skipTests>
+                        <groups>integration</groups>
+                        <excludedGroups>broken,notReady</excludedGroups>
+                        <systemPropertyVariables>
+                            <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+                            </log4j.configuration>
+                        </systemPropertyVariables>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <phase>integration-test</phase>
+                            <goals>
+                                <goal>integration-test</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>${exec-maven-plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -365,6 +459,11 @@
                     <configuration>
                         <skip>true</skip>
                     </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>${maven-jar-plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -393,17 +492,11 @@
                 <!-- this approach significantly speeds up sucessive builds and make 		-->
                 <!-- deployment via skaffold significantly easier for new and seasoned      -->
                 <!-- contributors.															-->
-                <plugin>
-                    <groupId>com.google.cloud.tools</groupId>
-                    <artifactId>jib-maven-plugin</artifactId>
-                    <version>${maven-jib-plugin.version}</version>
-                </plugin>
-
-                <plugin>
-                    <groupId>com.dkanejs.maven.plugins</groupId>
-                    <artifactId>docker-compose-maven-plugin</artifactId>
-                    <version>${docker-compose-maven-plugin.version}</version>
-                </plugin>
+<!--                <plugin>-->
+<!--                    <groupId>com.google.cloud.tools</groupId>-->
+<!--                    <artifactId>jib-maven-plugin</artifactId>-->
+<!--                    <version>${maven-jib-plugin.version}</version>-->
+<!--                </plugin>-->
 
                 <plugin>
                     <groupId>org.jacoco</groupId>

@@ -13,7 +13,7 @@
 	<properties>
 		<force.check.update>false</force.check.update>
 		<service.war.name>jobs</service.war.name>
-		<hibernate.hbm2ddl>update</hibernate.hbm2ddl>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>
@@ -38,7 +38,7 @@
 			<!-- *** TESTING ** -->
 			<!-- ************************************ -->
 
-			<!-- Use TestNG as the test runner -->
+
 
 			<!-- ************************************ -->
 			<!-- *** WAR BUILDER ** -->

@@ -75,6 +75,7 @@
 				<artifactId>maven-failsafe-plugin</artifactId>
 				<version>${maven-failsafe-plugin.version}</version>
 				<configuration>
+					<skipTests>true</skipTests>
 					<groups>integration</groups>
 					<excludedGroups>broken,notReady,unit</excludedGroups>
 					<systemPropertyVariables>

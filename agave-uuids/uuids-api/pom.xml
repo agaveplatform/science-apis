@@ -16,7 +16,7 @@
 	<properties>
 		<force.check.version>false</force.check.version>
 		<service.war.name>uuids</service.war.name>
-    <hibernate.hbm2ddl>update</hibernate.hbm2ddl>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
     <build>

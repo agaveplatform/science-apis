@@ -20,7 +20,9 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.UUID;
 
 /**
@@ -28,7 +30,7 @@ import java.util.UUID;
  *
  */
 @Test(groups={"sftprelay.operations"})
-public class SftpRelayPasswordRemoteDataClientTest extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
+public class SftpRelayPasswordRemoteDataClientIT extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
 
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.transfer.AbstractRemoteDataClientTest#getSystemJson()
@@ -103,7 +105,11 @@ public class SftpRelayPasswordRemoteDataClientTest extends RemoteDataClientTestU
 			if (threadClient.get() == null) {
 
 				client = _getRemoteDataClient();
-				client.updateSystemRoots(client.getRootDir(), system.getStorageConfig().getHomeDir() + "/thread-" + Thread.currentThread().getId());
+				String threadHomeDir = String.format("%s/thread-%s-%d",
+						system.getStorageConfig().getHomeDir(),
+						UUID.randomUUID().toString(),
+						Thread.currentThread().getId());
+				client.updateSystemRoots(client.getRootDir(),  threadHomeDir);
 				threadClient.set(client);
 			}
 		} catch (EncryptionException e) {
@@ -122,6 +128,35 @@ public class SftpRelayPasswordRemoteDataClientTest extends RemoteDataClientTestU
 		}
 	}
 
+	/**
+	 * Creates a temp directory within the shared "target/test-classes/transfer
+	 * directory, which is mounted into the sftp-relay container for testing.
+	 * Without overriding this method, we could not verify that transferred
+	 * data matches the test data.
+	 * @param prefix the prefix string to be used in generating the directory's name. may be {@code null}
+	 * @return path to the temp dir
+	 * @throws IOException
+	 */
+	@Override
+	protected Path _createTempDirectory(String prefix) throws IOException {
+		Path mountedRelayServerDataDirectory = Paths.get("target/test-classes/transfer");
+		return Files.createTempDirectory(mountedRelayServerDataDirectory, prefix);
+	}
+
+	/** Creates a temp file within the shared "target/test-classes/transfer
+	 * directory, which is mounted into the sftp-relay container for testing.
+	 * Without overriding this method, we could not verify that transferred
+	 * data matches the test data.
+	 * @param prefix the prefix string to be used in generating the file's name. may be {@code null}
+	 * @param suffix  the suffix string to be used in generating the file's name. may be {@code null}
+	 * @return
+	 * @throws IOException
+	 */
+	@Override
+	protected Path _createTempFile(String prefix, String suffix) throws IOException {
+		Path mountedRelayServerDataDirectory = Paths.get("target/test-classes/transfer");
+		return Files.createTempFile(mountedRelayServerDataDirectory, prefix, suffix);
+	}
 
 	@Override
 	@Test(groups={"proxy"}, retryAnalyzer= TransferTestRetryAnalyzer.class)

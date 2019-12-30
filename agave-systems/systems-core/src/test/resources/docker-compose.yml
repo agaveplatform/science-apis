@@ -5,32 +5,58 @@ volumes:
   etcceph:
   varlibceph:
 
-networks:
-  ceph_net:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.41.0.0/16
+#networks:
+#  ceph_net:
+#    ipam:
+#      driver: default
+#      config:
+#        - subnet: 172.41.0.0/16
 services:
+
+#  traefik:
+#    image: traefik:v2.1
+#    command:
+#      - "--log.level=DEBUG"
+#      - "--api.insecure=true"
+#      - "--api.dashboard=true"
+#      - "--providers.docker=true"
+#      - "--providers.docker.exposedbydefault=false"
+#      - "--entryPoints.grpc.address=:80"
+#    ports:
+#      - 50052:80
+#      - 28443:8080
+#    restart: on-failure
+#    volumes:
+#      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+#    labels:
+#      - traefik.enable=true
 
   sftp-relay:
     image: sftp-relay:develop
     ports:
       - 50051:50051
-    restart: always
+      - 9092
+    restart: on-failure
     volumes:
-      - scratch:/scratch
+      - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
+#    labels:
+#      - traefik.enable=true
+#      - traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)
+#      - traefik.http.routers.sftp-relay.entrypoints=grpc
+#      - traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c
+#      - traefik.http.services.sftp-relay.loadbalancer.server.port=50051
 
   sftp:
     image: agaveplatform/sshd:latest
     command: "-p 10022"
-    hostname: docker.example.com
+    restart: on-failure
     ports:
       - '10022:10022'
 
   sftptunnel:
    image: agaveplatform/sshd:latest
    command: "-p 10033"
+   restart: on-failure
    links:
      - sftphidden
    ports:
@@ -39,6 +65,7 @@ services:
   sftphidden:
     image: agaveplatform/sshd:latest
     command: "-p 10044"
+    restart: on-failure
     ports:
       - '10044:10044'
 
@@ -46,6 +73,7 @@ services:
     image: agaveapi/irods:4.0.3
     command: changeit
     hostname: docker.example.com
+    restart: on-failure
     environment:
       - 'DOCKER_HOSTNAME=docker.example.com'
       - 'IRODS_ZONE=iplant'
@@ -62,6 +90,7 @@ services:
   irods3:
     image: agaveapi/irods:3.3.1
     hostname: docker.example.com
+    restart: on-failure
     ports:
       - '10055:22'
       - '1247:1247'
@@ -76,6 +105,7 @@ services:
   irods3-pam:
     image: agaveapi/irods-pam:latest
     hostname: docker.example.com
+    restart: on-failure
     ports:
       - '10066:22'
       - '1248:1247'
@@ -89,12 +119,14 @@ services:
   requestbin:
     image: agaveplatform/requestbin:2.0.0
     hostname: requestbin
+    restart: on-failure
     ports:
-      - '5000:5000'
+      - '5101:5000'
 
   httpd:
     image: agaveapi/apache-dev
     hostname: docker.example.com
+    restart: on-failure
     ports:
       - '10080:80'
       - '10443:443'
@@ -102,12 +134,14 @@ services:
       - type: bind
         source: ./transfer
         target: /var/www/html/public
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 512M
+
+#  ftp:
+#    image: agaveapi/pure-ftpd:latest
+#    hostname: docker.example.com
+#    privileged: true
+#    ports:
+#      - '10021:21'
+#      - '30000-30010:30000-30010'
 
 #  cephrgw:
 #    image: ceph/daemon:latest-nautilus

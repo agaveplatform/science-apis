@@ -14,7 +14,7 @@
 
 	<properties>
 		<force.check.update>false</force.check.update>
-		<suite.testng>testng.xml</suite.testng>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>
@@ -32,101 +32,22 @@
 			</testResource>
 		</testResources>
 		<plugins>
-			<plugin>
-				<groupId>com.dkanejs.maven.plugins</groupId>
-				<artifactId>docker-compose-maven-plugin</artifactId>
-				<version>${docker-compose-maven-plugin.version}</version>
-				<configuration>
-					<detachedMode>true</detachedMode>
-					<projectName>${project.artifactId}</projectName>
-					<composeFiles>
-						<composeFile>${project.basedir}/src/test/resources/docker-compose.yml</composeFile>
-						<composeFile>${project.basedir}/../../compose/third-party/docker-compose.yml</composeFile>
-					</composeFiles>
-					<ignorePullFailures>true</ignorePullFailures>
-				</configuration>
-				<executions>
-					<execution>
-						<id>${project.artifactId}up</id>
-						<phase>pre-integration-test</phase>
-						<goals>
-							<goal>up</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>${project.artifactId}down</id>
-						<phase>post-integration-test</phase>
-						<goals>
-							<goal>down</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-antrun-plugin</artifactId>
-				<version>${maven-antrun-plugin.version}</version>
-				<executions>
-					<execution>
-						<id>${project.artifactId}-sleep-for-mysql</id>
-						<phase>pre-integration-test</phase>
-						<configuration>
-							<target>
-								<sleep seconds="20" />
-							</target>
-						</configuration>
-						<goals>
-							<goal>run</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>com.github.slem1</groupId>
-				<artifactId>await-maven-plugin</artifactId>
-				<version>${await-maven-plugin.version}</version>
-				<executions>
-					<execution>
-						<id>${project.artifactId}-await-tcp-connection</id>
-						<phase>pre-integration-test</phase>
-						<goals>
-							<goal>Await</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<poll>
-						<attempts>10</attempts>
-						<sleep>5000</sleep>
-					</poll>
-					<tcpConnections>
-						<tcpConnection>
-							<host>irods3</host>
-							<port>1247</port>
-						</tcpConnection>
-						<tcpConnection>
-							<host>irods3-pam</host>
-							<port>1248</port>
-						</tcpConnection>
-						<tcpConnection>
-							<host>irods4</host>
-							<port>1257</port>
-						</tcpConnection>
-					</tcpConnections>
-				</configuration>
-			</plugin>
+			<!-- Default integration testing for all submodules. Note that integration testing
+				requires persistence, queueing, etc. These are provided as containers and
+				managed by Docker Compose through the managed docker-compose-maven-plugin.
+				We omit the inclusion of those plugins here due to this being a parent folder
+				and not containing any tests that require orchestration. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>${maven-failsafe-plugin.version}</version>
 				<executions>
 					<execution>
-						<id>${project.artifactId}-integration-tests</id>
 						<phase>integration-test</phase>
 						<goals>
 							<goal>integration-test</goal>
 						</goals>
 						<configuration>
+							<skipTests>true</skipTests>
 							<properties>
 								<property>
 									<name>parallel</name>
@@ -134,10 +55,113 @@
 								</property>
 								<property>
 									<name>dataproviderthreadcount</name>
-									<value>5</value>
+									<value>2</value>
 								</property>
 							</properties>
-							<excludedGroups>broken,notReady,s3.operations,s3.path.sanitization,s3.path.resolution</excludedGroups>
+							<excludedGroups>broken,notReady,s3,irods4</excludedGroups>
+							<systemPropertyVariables>
+								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+								</log4j.configuration>
+							</systemPropertyVariables>
+						</configuration>
+					</execution>
+					<execution>
+						<id>${project.artifactId}-integration-irods4</id>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>integration-test</goal>
+						</goals>
+						<configuration>
+							<skipTests>${skip.integration.tests}</skipTests>
+							<properties>
+								<property>
+									<name>parallel</name>
+									<value>methods</value>
+								</property>
+							</properties>
+							<groups>irods4</groups>
+							<excludedGroups>broken,notReady</excludedGroups>
+							<systemPropertyVariables>
+								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+								</log4j.configuration>
+							</systemPropertyVariables>
+						</configuration>
+					</execution>
+<!--					<execution>-->
+<!--						<phase>integration-test</phase>-->
+<!--						<goals>-->
+<!--							<goal>integration-test</goal>-->
+<!--						</goals>-->
+<!--						<configuration>-->
+<!--							<skipTests>${skip.integration.tests}</skipTests>-->
+<!--							<properties>-->
+<!--								<property>-->
+<!--									<name>parallel</name>-->
+<!--									<value>methods</value>-->
+<!--								</property>-->
+<!--								<property>-->
+<!--									<name>dataproviderthreadcount</name>-->
+<!--									<value>2</value>-->
+<!--								</property>-->
+<!--							</properties>-->
+<!--							<groups>irods4.operations,irods4.file.sanitization,irods4.file.resolution</groups>-->
+<!--							<excludedGroups>broken,notReady</excludedGroups>-->
+<!--							<systemPropertyVariables>-->
+<!--								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties-->
+<!--								</log4j.configuration>-->
+<!--							</systemPropertyVariables>-->
+<!--						</configuration>-->
+<!--					</execution>-->
+<!--					<execution>-->
+<!--						<phase>integration-test</phase>-->
+<!--						<goals>-->
+<!--							<goal>integration-test</goal>-->
+<!--						</goals>-->
+<!--						<configuration>-->
+<!--							<skipTests>${skip.integration.tests}</skipTests>-->
+<!--							<properties>-->
+<!--								<property>-->
+<!--									<name>parallel</name>-->
+<!--									<value>methods</value>-->
+<!--								</property>-->
+<!--								<property>-->
+<!--									<name>dataproviderthreadcount</name>-->
+<!--									<value>2</value>-->
+<!--								</property>-->
+<!--							</properties>-->
+<!--							<groups>irods4</groups>-->
+<!--							<excludedGroups>broken,notReady,s3.operations,s3.file.sanitization,s3.file.resolution</excludedGroups>-->
+<!--							<systemPropertyVariables>-->
+<!--								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties-->
+<!--								</log4j.configuration>-->
+<!--							</systemPropertyVariables>-->
+<!--						</configuration>-->
+<!--					</execution>-->
+					<!-- S3 tests  are disabled by default as they require a valid set of aws keys
+					     and bucket to test against. This is not expensive, and can easily fit in the free
+					     tier, but is not something we configure out of the box, so we leave it a
+					     flagged integration test until we find a suitable s3 compatibile container to
+					     test against. -->
+					<execution>
+						<id>${project.artifactId}-integration-s3</id>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>integration-test</goal>
+						</goals>
+						<configuration>
+							<skipTests>${skip.integration.s3.tests}</skipTests>
+							<properties>
+								<property>
+									<name>parallel</name>
+									<value>methods</value>
+								</property>
+								<property>
+									<name>dataproviderthreadcount</name>
+									<value>2</value>
+								</property>
+							</properties>
+							<groups>s3</groups>
+							<excludedGroups>broken,notReady</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
 								</log4j.configuration>
@@ -145,6 +169,18 @@
 						</configuration>
 					</execution>
 				</executions>
+			</plugin>
+
+			<!-- Starts and stops integration test containers with Docker Compose -->
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+			</plugin>
+
+			<!-- Performs a wait and rediness check for integration test container startup -->
+			<plugin>
+				<groupId>org.agaveplatform.ops</groupId>
+				<artifactId>await-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
 	</build>
@@ -170,17 +206,6 @@
 			</exclusions>
 		</dependency>
 
-		<!-- <dependency>
-			<groupId>com.javassh</groupId>
-			<artifactId>maverick</artifactId>
-			<version>${maverick.version}</version>
-		</dependency> -->
-		<!-- <dependency>
-			<groupId>com.javassh</groupId>
-			<artifactId>maverick</artifactId>
-			<version>1.6.16</version>
-		</dependency> -->
-		
 		<dependency>
 		   <groupId>com.sshtools</groupId>
 		   <artifactId>j2ssh-maverick</artifactId>
@@ -192,6 +217,7 @@
 			</exclusion>
 		   </exclusions>
 		</dependency>
+
 		<dependency>
 			<groupId>org.bouncycastle</groupId>
 			<artifactId>bcpkix-jdk15on</artifactId>
@@ -202,16 +228,13 @@
 			<artifactId>commons-exec</artifactId>
 			<version>${commons-exec.version}</version>
 		</dependency>
+
 		<dependency>
 			<groupId>org.apache.jclouds</groupId>
 			<artifactId>jclouds-allblobstore</artifactId>
 			<version>${jclouds.version}</version>
 		</dependency>
-<!--		<dependency>-->
-<!--			<groupId>org.apache.jclouds.labs</groupId>-->
-<!--			<artifactId>google-cloud-storage</artifactId>-->
-<!--			<version>${jclouds.version}</version>-->
-<!--		</dependency>-->
+
 		<dependency>
 			<groupId>org.apache.jclouds.driver</groupId>
 			<artifactId>jclouds-slf4j</artifactId>
@@ -223,6 +246,7 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
+
 		<dependency>
 			<groupId>org.irods.jargon</groupId>
 			<artifactId>jargon-core</artifactId>
@@ -260,11 +284,13 @@
 			<artifactId>httpmime</artifactId>
 			<version>${httpmime.version}</version>
 		</dependency>
+
 		<dependency>
 			<groupId>javax.el</groupId>
 			<artifactId>javax.el-api</artifactId>
 			<version>${javax.el.version}</version>
 		</dependency>
+
 		<dependency>
 			<groupId>org.glassfish.web</groupId>
 			<artifactId>javax.el</artifactId>

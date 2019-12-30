@@ -13,25 +13,72 @@
     <description>This is the parent project for the Agave Systems services.</description>
     <packaging>pom</packaging>
 
+    <properties>
+        <main.basedir>${project.basedir}/..</main.basedir>
+    </properties>
+
     <build>
+        <plugins>
+            <!-- Default unit testing for all submodules. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <!-- Default integration testing for all submodules. Note that integration testing
+				requires persistence, queueing, etc. These are provided as containers and
+				managed by Docker Compose through the managed docker-compose-maven-plugin.
+				We omit the inclusion of those plugins here due to this being a parent folder
+				and not containing any tests that require orchestration. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+        </plugins>
+
         <pluginManagement>
             <plugins>
+                <!-- iRODS containers take a while to startup, so we use a custom await config here
+                     to wait for them to start up completely. -->
                 <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>${maven-surefire-plugin.version}</version>
-                    <configuration>
-                        <groups>unit</groups>
-                        <excludedGroups>broken,notReady,integration,performance</excludedGroups>
-                        <systemPropertyVariables>
-                            <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
-                            </log4j.configuration>
-                        </systemPropertyVariables>
-                    </configuration>
+                    <groupId>org.agaveplatform.ops</groupId>
+                    <artifactId>await-maven-plugin</artifactId>
+                    <version>${await-maven-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <phase>pre-integration-test</phase>
+                            <goals>
+                                <goal>Await</goal>
+                            </goals>
+                            <configuration>
+                                <initialWait>20000</initialWait>
+                                <skip>${skip.integration.tests}</skip>
+                                <poll>
+                                    <attempts>10</attempts>
+                                    <sleep>5000</sleep>
+                                </poll>
+                                <tcpConnections>
+                                    <tcpConnection>
+                                        <host>irods3</host>
+                                        <port>1247</port>
+                                    </tcpConnection>
+                                    <tcpConnection>
+                                        <host>irods3-pam</host>
+                                        <port>1248</port>
+                                    </tcpConnection>
+                                    <tcpConnection>
+                                        <host>irods4</host>
+                                        <port>1257</port>
+                                    </tcpConnection>
+                                </tcpConnections>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
     </build>
+
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>

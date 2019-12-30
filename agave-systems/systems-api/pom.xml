@@ -16,7 +16,7 @@
 	<properties>
 		<force.check.update>false</force.check.update>
 		<service.war.name>systems</service.war.name>
-		<hibernate.hbm2ddl>update</hibernate.hbm2ddl>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>
@@ -35,7 +35,20 @@
 				<filtering>true</filtering>
 			</testResource>
 		</testResources>
+
 		<plugins>
+
+<!--			&lt;!&ndash; Starts and stops integration test containers with Docker Compose &ndash;&gt;-->
+<!--			<plugin>-->
+<!--				<groupId>com.dkanejs.maven.plugins</groupId>-->
+<!--				<artifactId>docker-compose-maven-plugin</artifactId>-->
+<!--			</plugin>-->
+
+<!--			&lt;!&ndash; Performs a wait and rediness check for integration test container startup &ndash;&gt;-->
+<!--			<plugin>-->
+<!--				<groupId>org.agaveplatform.ops</groupId>-->
+<!--				<artifactId>await-maven-plugin</artifactId>-->
+<!--			</plugin>-->
 
 			<!-- ************************************ -->
 			<!-- *** WAR BUILDER ** -->
@@ -118,9 +131,6 @@
 				</configuration>
 			</plugin>
 		</plugins>
-		<pluginManagement>
-
-		</pluginManagement>
 	</build>
 
 	<dependencies>

@@ -15,6 +15,7 @@
 
 	<properties>
 		<force.check.version>false</force.check.version>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>
@@ -35,116 +36,16 @@
 		</testResources>
 
 		<plugins>
-			<!-- Attach testng to the surefire test execution -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<configuration>
-					<suiteXmlFiles>
-						<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
-					</suiteXmlFiles>
-				</configuration>
-			</plugin>
-			<!-- Attach testng to the failsafe integration-test execution -->
+			<!-- Starts and stops integration test containers with Docker Compose -->
 			<plugin>
 				<groupId>com.dkanejs.maven.plugins</groupId>
 				<artifactId>docker-compose-maven-plugin</artifactId>
-				<version>${docker-compose-maven-plugin.version}</version>
-				<configuration>
-					<detachedMode>true</detachedMode>
-					<projectName>${project.artifactId}</projectName>
-					<composeFiles>
-						<composeFile>${project.basedir}/src/test/resources/docker-compose.yml</composeFile>
-						<composeFile>${project.basedir}/../../compose/third-party/docker-compose.yml</composeFile>
-					</composeFiles>
-					<ignorePullFailures>true</ignorePullFailures>
-				</configuration>
-				<executions>
-					<execution>
-						<id>${project.artifactId}up</id>
-						<phase>pre-integration-test</phase>
-						<goals>
-							<goal>up</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>${project.artifactId}down</id>
-						<phase>post-integration-test</phase>
-						<goals>
-							<goal>down</goal>
-						</goals>
-					</execution>
-				</executions>
 			</plugin>
+
+			<!-- Performs a wait and rediness check for integration test container startup -->
 			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-antrun-plugin</artifactId>
-				<version>${maven-antrun-plugin.version}</version>
-				<executions>
-					<execution>
-						<id>${project.artifactId}-sleep-for-mysql</id>
-						<phase>pre-integration-test</phase>
-						<configuration>
-							<target>
-								<sleep seconds="5" />
-							</target>
-						</configuration>
-						<goals>
-							<goal>run</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>com.github.slem1</groupId>
+				<groupId>org.agaveplatform.ops</groupId>
 				<artifactId>await-maven-plugin</artifactId>
-				<version>${await-maven-plugin.version}</version>
-				<executions>
-					<execution>
-						<id>${project.artifactId}-await-tcp-connection</id>
-						<phase>pre-integration-test</phase>
-						<goals>
-							<goal>Await</goal>
-						</goals>
-					</execution>
-				</executions>
-				<configuration>
-					<poll>
-						<attempts>10</attempts>
-						<sleep>5000</sleep>
-					</poll>
-					<tcpConnections>
-						<tcpConnection>
-							<host>mysql</host>
-							<port>3306</port>
-						</tcpConnection>
-						<connection>
-							<host>requestbin</host>
-							<port>5000</port>
-						</connection>
-					</tcpConnections>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>${maven-failsafe-plugin.version}</version>
-				<executions>
-					<execution>
-						<id>${project.artifactId}-integration-tests</id>
-						<phase>integration-test</phase>
-						<goals>
-							<goal>integration-test</goal>
-						</goals>
-						<configuration>
-							<excludedGroups>broken,notReady</excludedGroups>
-							<systemPropertyVariables>
-								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
-								</log4j.configuration>
-							</systemPropertyVariables>
-						</configuration>
-					</execution>
-				</executions>
 			</plugin>
 		</plugins>
 	</build>

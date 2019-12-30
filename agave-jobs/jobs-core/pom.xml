@@ -12,6 +12,7 @@
 
 	<properties>
 		<force.check.update>false</force.check.update>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>
@@ -33,7 +34,14 @@
 		</testResources>
 
 		<plugins>
-
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.agaveplatform.ops</groupId>
+				<artifactId>await-maven-plugin</artifactId>
+			</plugin>
 		</plugins>
 	</build>
 

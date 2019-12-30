@@ -7,13 +7,36 @@
 		<version>2.2.24</version>
 	</parent>
 	<artifactId>common-legacy-api</artifactId>
-	<name>Agave Platform Common Services Legacy Core</name>
+	<name>Agave Platform Common Legacy API</name>
 	<description>Library to support services using Restlets 1.8.</description>
 	<packaging>jar</packaging>
 
 	<properties>
 		<force.check.update>false</force.check.update>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
+
+	<build>
+		<testResources>
+			<testResource>
+				<filtering>true</filtering>
+				<directory>src/test/resources</directory>
+			</testResource>
+		</testResources>
+		<plugins>
+<!--			&lt;!&ndash; Starts and stops integration test containers with Docker Compose &ndash;&gt;-->
+<!--			<plugin>-->
+<!--				<groupId>com.dkanejs.maven.plugins</groupId>-->
+<!--				<artifactId>docker-compose-maven-plugin</artifactId>-->
+<!--			</plugin>-->
+
+<!--			&lt;!&ndash; Performs a wait and rediness check for integration test container startup &ndash;&gt;-->
+<!--			<plugin>-->
+<!--				<groupId>org.agaveplatform.ops</groupId>-->
+<!--				<artifactId>await-maven-plugin</artifactId>-->
+<!--			</plugin>-->
+		</plugins>
+	</build>
 
 	<dependencies>
 		<!-- Restlet -->
@@ -70,7 +93,7 @@
 			<version>2.4</version>
 		</dependency>
 		<dependency>
-			<groupId>freemarker</groupId>
+			<groupId>org.freemarker</groupId>
 			<artifactId>freemarker</artifactId>
 			<version>2.3.9</version>
 		</dependency>

@@ -11,6 +11,10 @@
 	<description>Parent pom for core, api, and worker projects.</description>
 	<packaging>pom</packaging>
 
+	<properties>
+		<main.basedir>${project.basedir}/../</main.basedir>
+	</properties>
+
 	<build>
 
 		<sourceDirectory>src/main/java</sourceDirectory>
@@ -35,21 +39,21 @@
 			<!-- ***           DEPLOYMENT          ** -->
 			<!-- ************************************ -->
 
-			<!-- Install a jar with the source code into maven when installing the
-				primary artifact -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-dependency-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>install</id>
-						<phase>install</phase>
-						<goals>
-							<goal>sources</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
+<!--			&lt;!&ndash; Install a jar with the source code into maven when installing the-->
+<!--				primary artifact &ndash;&gt;-->
+<!--			<plugin>-->
+<!--				<groupId>org.apache.maven.plugins</groupId>-->
+<!--				<artifactId>maven-dependency-plugin</artifactId>-->
+<!--				<executions>-->
+<!--					<execution>-->
+<!--						<id>install</id>-->
+<!--						<phase>install</phase>-->
+<!--						<goals>-->
+<!--							<goal>sources</goal>-->
+<!--						</goals>-->
+<!--					</execution>-->
+<!--				</executions>-->
+<!--			</plugin>-->
 
 			<!-- ************************************ -->
 			<!-- ***           TESTING             ** -->
@@ -59,28 +63,10 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
-				<version>${maven-surefire-plugin.version}</version>
-				<configuration>
-					<groups>unit</groups>
-					<excludedGroups>broken,notReady</excludedGroups>
-					<systemPropertyVariables>
-						<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
-						</log4j.configuration>
-					</systemPropertyVariables>
-				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>${maven-failsafe-plugin.version}</version>
-				<configuration>
-					<groups>integration</groups>
-					<excludedGroups>broken,notReady,unit</excludedGroups>
-					<systemPropertyVariables>
-						<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
-						</log4j.configuration>
-					</systemPropertyVariables>
-				</configuration>
 			</plugin>
 
 			<!-- ************************************ -->

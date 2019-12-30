@@ -56,9 +56,10 @@ message SrvListRequest {
     string remotePath = 2;
 }
 
-message SrvMkdirsRequest {
+message SrvMkdirRequest {
     RemoteSystemConfig systemConfig = 1;
     string remotePath = 2;
+    bool recursive = 3;
 }
 
 message SrvRemoveRequest {
@@ -109,18 +110,21 @@ message FileInfoResponse {
     string error = 2;
 }
 
-
+message FileInfoListResponse {
+    repeated RemoteFileInfo listing = 1;
+    string error = 2;
+}
 
 service SftpRelay {
     rpc AuthCheck (AuthenticationCheckRequest) returns (EmptyResponse);
     rpc Get (SrvGetRequest) returns (TransferResponse);
     rpc Put (SrvPutRequest) returns (TransferResponse);
-    rpc Mkdirs (SrvMkdirsRequest) returns (FileInfoResponse);
+    rpc Mkdir (SrvMkdirRequest) returns (FileInfoResponse);
     rpc Remove (SrvRemoveRequest) returns (EmptyResponse);
     rpc Stat (SrvStatRequest) returns (FileInfoResponse);
-//    rpc List (SrvListRequest) returns (FileInfoResponse);
+    rpc List (SrvListRequest) returns (FileInfoListResponse);
 //    rpc Copy (SrvCopyRequest) returns (FileInfoResponse);
-//    rpc Rename (SrvRenameRequest) returns (FileInfoResponse);
+    rpc Rename (SrvRenameRequest) returns (FileInfoResponse);
 //    rpc Move (SrvMoveRequest) returns (FileInfoResponse);
 }
 

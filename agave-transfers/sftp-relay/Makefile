@@ -89,7 +89,7 @@ build:
 .PHONY: cli
 cli:
 	BASE_CMD_NAME=$(CLIENT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
-	@ mv release/$(CLIENT_NAME)-$(PLATFORM)-$(ARCH) release/sftp-client
+	@ mv release/$(CLIENT_NAME)-$(PLATFORM)-$(ARCH) release/$(CLIENT_NAME)
 
 
 # Clean go cache and artifacts

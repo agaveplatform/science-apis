@@ -66,7 +66,7 @@ public class NotificationAttemptProcessorTest extends AbstractNotificationTest {
 		Notification validEmail = createEmailNotification();
 		Notification validURL = createWebhookNotification();
 		Notification validPort = createWebhookNotification();
-		validPort.setCallbackUrl(requestBin.toString().replace("requestb.in", "requestb.in:80") + TEST_URL_QUERY);
+		validPort.setCallbackUrl(requestBin.toString() + TEST_URL_QUERY);
 	
 		
 		return new Object[][] {

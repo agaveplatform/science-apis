@@ -1,6 +1,6 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
 
-<suite name="Agave profiles-core" verbose="1" thread-count="1" parallel="none">
+<suite name="Agave profiles-core" verbose="1">
     <groups>
         <run>
             <exclude name="broken"/>

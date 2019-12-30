@@ -16,6 +16,9 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import java.net.URI;
+import java.util.UUID;
+
 @Test(groups={"integration"})
 public class QueueTaskDaoTest extends BaseTestCase {
 	
@@ -24,14 +27,20 @@ public class QueueTaskDaoTest extends BaseTestCase {
 	private QueueTask task;
 	private LogicalFile file;
 	private SystemDao systemDao = new SystemDao();
-	
+	private String destPath;
+	private URI httpUri;
+
 	@BeforeClass
 	protected void beforeClass() throws Exception {
 		super.beforeClass();
 		
 		clearSystems();
 		clearLogicalFiles();
-		
+
+		destPath = String.format("/home/%s/%s/%s", SYSTEM_OWNER, UUID.randomUUID().toString(), LOCAL_TXT_FILE_NAME);
+		httpUri = new URI("http://example.com/foo/bar/baz");
+
+
 		system = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
 		system.setOwner(SYSTEM_OWNER);
 		system.setPubliclyAvailable(true);
@@ -52,7 +61,7 @@ public class QueueTaskDaoTest extends BaseTestCase {
 	{
 		clearLogicalFiles();
 		
-		file = new LogicalFile(username, system, httpUri, destPath);
+		file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 		file.setStatus(StagingTaskStatus.STAGING_QUEUED);
 		LogicalFileDao.persist(file);
 	}

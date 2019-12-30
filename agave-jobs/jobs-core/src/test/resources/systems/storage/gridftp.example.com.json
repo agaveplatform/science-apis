@@ -6,7 +6,7 @@
 	"description": "Example gridftp system",
 	"site": "example.com",
 	"storage": {
-		"host": "docker.example.com",
+		"host": "gridftp",
 		"port": 2811,
 		"protocol": "GRIDFTP",
 		"homeDir": "/home/testuser",

@@ -17,7 +17,7 @@
         }
     ],
 	"login": {
-		"host": "docker.example.com",
+		"host": "condorhq",
 		"port": 10155,
 		"protocol": "SSH",
 		"auth":{
@@ -27,11 +27,12 @@
       }
 	},
 	"storage":{
-      "host":"docker.example.com",
+      "host":"condorhq",
       "port":10155,
       "protocol":"SFTP",
       "rootDir":"/",
       "homeDir":"/home/testuser",
+      "publicAppsDir": "/tmp",
       "auth":{
          "username":"testuser",
          "password":"testuser",

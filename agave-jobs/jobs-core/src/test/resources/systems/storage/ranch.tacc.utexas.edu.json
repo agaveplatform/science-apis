@@ -12,8 +12,8 @@
 		"homeDir": "/home1/00475/xxx",
 		"rootDir": "/",
 		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
+			"username": "testuser",
+			"password": "testuser",
 			"credential": "",
 			"type": "X509",
 			"server": {

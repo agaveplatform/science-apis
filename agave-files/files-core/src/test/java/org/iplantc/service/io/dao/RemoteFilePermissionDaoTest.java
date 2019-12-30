@@ -1,6 +1,8 @@
 package org.iplantc.service.io.dao;
 
+import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 import org.hibernate.HibernateException;
 import org.iplantc.service.io.BaseTestCase;
@@ -25,6 +27,8 @@ public class RemoteFilePermissionDaoTest extends BaseTestCase {
 	private LogicalFile file;
 	private SystemDao systemDao = new SystemDao();
 	private StorageSystem system;
+	private String destPath;
+	private URI httpUri;
 	
 	@BeforeClass
 	protected void beforeClass() throws Exception 
@@ -32,7 +36,11 @@ public class RemoteFilePermissionDaoTest extends BaseTestCase {
 		super.beforeClass();
 		clearSystems();
 		clearLogicalFiles();
-		
+
+		destPath = String.format("/home/%s/%s/%s", SYSTEM_OWNER, UUID.randomUUID().toString(), LOCAL_TXT_FILE_NAME);
+		httpUri = new URI("http://example.com/foo/bar/baz");
+
+
 		system = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
 		system.setOwner(SYSTEM_OWNER);
 		system.setPubliclyAvailable(true);
@@ -45,7 +53,7 @@ public class RemoteFilePermissionDaoTest extends BaseTestCase {
 	@BeforeMethod
 	protected void setUp() throws Exception 
 	{	
-		file = new LogicalFile(username, system, httpUri, destPath);
+		file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
 		file.setStatus(StagingTaskStatus.STAGING_QUEUED);
 		//LogicalFileDao.persist(file);
 	}

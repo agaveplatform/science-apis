@@ -168,7 +168,7 @@ public class JobSearchFilter extends AgaveResourceSearchFilter
             		return searchValue;
             	}
             	else {
-            		return JobStatusType.valueOf(StringUtils.upperCase(searchValue)).name();
+            		return JobStatusType.valueOf(StringUtils.upperCase(searchValue));
             	}
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Unknown job status " + searchValue);

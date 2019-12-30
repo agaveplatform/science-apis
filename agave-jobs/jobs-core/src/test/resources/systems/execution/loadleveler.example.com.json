@@ -1,46 +1,47 @@
 {
-	"id": "loadleveler.example.com",
-	"name": "Exection system with loadleveler scheduler",
-	"status": "UP",
-	"type": "EXECUTION",
-	"description": "My example system used for loadleveler testing",
-	"site": "my.site",
-	"executionType": "HPC",
-	"default": true,
-	"queues": [
-		{
-			"name": "debug",
-			"maxJobs": 100,
-			"maxMemory": "2048GB",
-			"customDirectives": "",
-			"default": true
-		}
-	],
-	"login": {
-		"host": "loadleveler.example.com",
-		"port": 10177,
-		"protocol": "SSH",
-		"auth":{
-         "username":"testuser",
-         "password":"testuser",
-         "type":"PASSWORD"
-      }
-	},
-	"storage":{
-      "host":"loadleveler.example.com",
-      "port":10177,
-      "protocol":"SFTP",
-      "rootDir":"/",
-      "homeDir":"/home/testuser",
-      "auth":{
-         "username":"testuser",
-         "password":"testuser",
-         "type":"PASSWORD"
-      }
-    },
-    "scratchDir": "scratch",
-	"workDir": "scratch",
-	"scheduler": "LOADLEVELER",
-	"environment": "",
-	"startupScript": "~/bashrc"
+  "id": "loadleveler.example.com",
+  "name": "Exection system with loadleveler scheduler",
+  "status": "UP",
+  "type": "EXECUTION",
+  "description": "My example system used for loadleveler testing",
+  "site": "example.com",
+  "executionType": "HPC",
+  "default": true,
+  "queues": [
+    {
+      "name": "debug",
+      "maxJobs": 100,
+      "maxMemory": "2048GB",
+      "customDirectives": "",
+      "default": true
+    }
+  ],
+  "login": {
+    "host": "openlava",
+    "port": 10177,
+    "protocol": "SSH",
+    "auth": {
+      "username": "testuser",
+      "password": "testuser",
+      "type": "PASSWORD"
+    }
+  },
+  "storage": {
+    "host": "openlava",
+    "port": 10177,
+    "protocol": "SFTP",
+    "rootDir": "/",
+    "homeDir": "/home/testuser",
+    "publicAppsDir": "/tmp",
+    "auth": {
+      "username": "testuser",
+      "password": "testuser",
+      "type": "PASSWORD"
+    }
+  },
+  "scratchDir": "scratch",
+  "workDir": "scratch",
+  "scheduler": "LOADLEVELER",
+  "environment": "",
+  "startupScript": "~/bashrc"
 }

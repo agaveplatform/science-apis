@@ -63,46 +63,31 @@ public class JobStatusResource extends AbstractJobResource
 	 * <p>
 	 * The format for the job list will be:
 	 * <p>
-	 * [{<br>
-	 * &nbsp "created":"2010-03-01 15:01:37.0",<br>
-	 * &nbsp "localId":"4936233",<br>
-	 * &nbsp "submitTime":"2010-03-01 15:01:38.0",<br>
-	 * &nbsp "updateToken":"d9463c48-f86b-469f-a037-b00892464d78",<br>
-	 * &nbsp "status":"SUBMITTING",<br>
-	 * &nbsp "id":2,<br>
-	 * &nbsp "endTime":null,<br>
-	 * &nbsp "ownerDn":"uid=xxx,ou=People,dc=iplantcollaborative,dc=org",<br>
-	 * &nbsp "inputListing":null,<br>
-	 * &nbsp "running":true,<br>
-	 * &nbsp "lastUpdated":"2010-03-01 15:01:38.0",<br>
-	 * &nbsp "system":"slogin2",<br>
-	 * &nbsp "startTime":null,<br>
-	 * &nbsp "outputListing":null,<br>
-	 * &nbsp "name":"test_job"<br>
-	 * },{<br>
-	 * &nbsp "created":"2010-03-01 15:01:37.0",<br>
-	 * &nbsp "localId":"4936232",<br>
-	 * &nbsp "submitTime":"2010-03-01 15:01:38.0",<br>
-	 * &nbsp "updateToken":"d9463c48-f86b-469f-a037-b00892464d78",<br>
-	 * &nbsp "status":"FINISHED",<br>
-	 * &nbsp "id":1,<br>
-	 * &nbsp "endTime":2010-03-01 15:03:21.0,<br>
-	 * &nbsp "ownerDn":"uid=xxx,ou=People,dc=iplantcollaborative,dc=org",<br>
-	 * &nbsp "inputListing":null,<br>
-	 * &nbsp "running":false,<br>
-	 * &nbsp "lastUpdated":"2010-03-01 15:03:21.0",<br>
-	 * &nbsp "system":"slogin2",<br>
-	 * &nbsp "startTime":"2010-03-01 15:01:40.0",<br>
-	 * &nbsp "outputListing":null,<br>
-	 * &nbsp "name":"test_job"<br>
-	 * }]<br>
+	 * <code>
+	 * [
+	 *   {
+	 *     "created":"2010-03-01 15:01:37.0",
+	 *     "localId":"4936233",
+	 *     "submitTime":"2010-03-01 15:01:38.0",
+	 *     "updateToken":"d9463c48-f86b-469f-a037-b00892464d78",
+	 *     "status":"SUBMITTING",
+	 *     "id":2,
+	 *     "endTime":null,
+	 *     "ownerDn":"uid=xxx,ou=People,dc=iplantcollaborative,dc=org",
+	 *     "inputListing":null,
+	 *     "running":true,
+	 *     "lastUpdated":"2010-03-01 15:01:38.0",
+	 *     "system":"slogin2",
+	 *     "startTime":null,
+	 *     "outputListing":null,
+	 *     "name":"test_job"
+	 *   }
+	 * ]
+	 * </code>
 	 */
 	@Override
 	public Representation represent(Variant variant) throws ResourceException
 	{
-
-//		Long jobId = null;
-
 		if (!ServiceUtils.isValid(sJobId))
 		{
 			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);

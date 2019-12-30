@@ -172,7 +172,6 @@ public class LogicalFileNotificationTest extends BaseTestCase
 
 	/**
 	 * Flushes the messaging tube of any and all existing logicalFiles.
-	 * @param queueName
 	 */
 	protected void drainQueue() 
 	{
@@ -263,7 +262,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
 	/**
 	 * Creates a bare bones LogicalFile object.
 	 * @return LogicalFile with minimal set of attributes.
-	 * @throws LogicalFileProcessingException
+	 * @throws LogicalFileException
 	 */
 	private LogicalFile createLogicalFile() throws LogicalFileException
 	{
@@ -271,7 +270,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
 		try 
 		{
 		    StorageSystem storageSystem = new SystemManager().getDefaultStorageSystem();
-		    file = new LogicalFile(username, storageSystem, URI.create("agave://" + storageSystem.getSystemId() + "/" + SOURCE_FILENAME), storageSystem.getRemoteDataClient().resolvePath(SOURCE_FILENAME + ".copy"));
+		    file = new LogicalFile(SYSTEM_OWNER, storageSystem, URI.create("agave://" + storageSystem.getSystemId() + "/" + LOCAL_TXT_FILE_NAME), storageSystem.getRemoteDataClient().resolvePath(LOCAL_TXT_FILE_NAME + ".copy"));
 	        file.setStatus(StagingTaskStatus.STAGING_QUEUED);
 	        file.setOwner(SYSTEM_OWNER);
 	        
@@ -367,7 +366,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
 	 * Performs the actual notification invocation and check with notifications
 	 * individually specified.
 	 * 
-	 * @param testStatus
+	 * @param eventType
 	 * @param notificationUri
 	 * @param persistent
 	 * @throws Exception
@@ -405,7 +404,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
 	 * Executes a nofication event processing.
 	 * 
 	 * @param logicalFile
-	 * @param testStatus
+	 * @param eventType
 	 * @throws Exception
 	 */
 	private void processNotification(LogicalFile logicalFile, FileEventType eventType)

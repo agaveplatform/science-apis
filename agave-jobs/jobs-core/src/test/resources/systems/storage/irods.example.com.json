@@ -6,7 +6,7 @@
 	"description": "My example storage system using GRIDFTP to store data for testing",
 	"site": "example.com",
 	"storage": {
-		"host": "docker.example.com",
+		"host": "irod3",
 		"port": 1247,
 		"protocol": "IRODS",
 		"homeDir": "/testuser",

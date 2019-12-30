@@ -3,16 +3,9 @@
  */
 package org.iplantc.service.jobs.dao;
 
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_OWNER;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_SOFTWARE_SYSTEM_FILE;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE;
-
-import java.io.File;
-import java.net.URI;
-import java.util.Date;
-import java.util.Iterator;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.math.RandomUtils;
 import org.apache.log4j.Logger;
@@ -30,7 +23,9 @@ import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.model.JSONTestDataUtil;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
+import org.iplantc.service.jobs.model.JobPermission;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
+import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
@@ -47,9 +42,11 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.net.URI;
+import java.util.Date;
+
+import static org.iplantc.service.jobs.model.JSONTestDataUtil.*;
 
 /**
  * @author dooley
@@ -65,7 +62,7 @@ public class AbstractDaoTest
     public static final BatchQueue longQueue = new BatchQueue("long", (long)10, (long)4, (long)1, 16.0, (long)16, "48:00:00", null, false);
     public static final BatchQueue dedicatedQueue = new BatchQueue("dedicated", (long)1, (long)1, (long)1, 16.0, (long)16, "144:00:00", null, false);
     public static final BatchQueue unlimitedQueue = new BatchQueue("dedicated", (long)-1, 2048.0);
-    
+    public String thingToPrint = null;
     
 	public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/execution";
 	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage";
@@ -145,7 +142,7 @@ public class AbstractDaoTest
             throw new SoftwareException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction();} catch (Throwable e) {}
+            try { HibernateUtil.commitTransaction();} catch (Throwable ignored) {}
         }	
 	}
 	
@@ -188,12 +185,12 @@ public class AbstractDaoTest
 			throw new SoftwareException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Throwable e) {}
+			try { HibernateUtil.commitTransaction();} catch (Throwable ignored) {}
 		}
 	}
 	
 	/**
-     * Delete all {@link JobEvent}, {@link TransferTask}, {@link JobPermission}, {@link Notification}, 
+     * Delete all {@link JobEvent}, {@link TransferTask}, {@link JobPermission}, {@link Notification},
      * and {@link Job}s from the database.
      * @throws Exception
      */
@@ -219,7 +216,7 @@ public class AbstractDaoTest
 			throw new JobException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Throwable e) {}
+			try { HibernateUtil.commitTransaction();} catch (Throwable ignored) {}
 		}
 	}
 	
@@ -243,7 +240,7 @@ public class AbstractDaoTest
             throw new JobException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction();} catch (Throwable e) {}
+            try { HibernateUtil.commitTransaction();} catch (Throwable ignored) {}
         }
 	}
 
@@ -276,10 +273,10 @@ public class AbstractDaoTest
 	public Job createJob(JobStatusType status, ExecutionSystem exeSystem, BatchQueue queue, String username)
     throws Exception 
 	{
+        ObjectMapper mapper = new ObjectMapper();
+        Job job = new Job();
 	    try {
-            ObjectMapper mapper = new ObjectMapper();
-            
-            Job job = new Job();
+
             job.setName("test-" + exeSystem.getName() + "_" + queue.getName());
             job.setOutputPath(exeSystem.getScratchDir() + username + "job-" + Slug.toSlug(job.getName()));
             job.setOwner(username);
@@ -288,7 +285,7 @@ public class AbstractDaoTest
             job.setArchiveOutput(true);
             job.setArchiveSystem(privateStorageSystem);
             job.setArchivePath(username + "/archive/test-job-999");
-            
+
             job.setSoftwareName(software.getUniqueName());
             job.setSystem(exeSystem.getSystemId());
             job.setBatchQueue(queue.getName());
@@ -299,13 +296,13 @@ public class AbstractDaoTest
             
             ObjectNode inputs = mapper.createObjectNode();
             for(SoftwareInput swInput: this.software.getInputs()) {
-                inputs.put(swInput.getKey(), swInput.getDefaultValueAsJsonArray());
+                inputs.set(swInput.getKey(), swInput.getDefaultValueAsJsonArray());
             }
             job.setInputsAsJsonObject(inputs);
             
             ObjectNode parameters = mapper.createObjectNode();
             for(SoftwareParameter swParameter: software.getParameters()) {
-                parameters.put(swParameter.getKey(), swParameter.getDefaultValueAsJsonArray());
+                parameters.set(swParameter.getKey(), swParameter.getDefaultValueAsJsonArray());
             }
             job.setParametersAsJsonObject(parameters);
             int minutesAgoJobWasCreated = RandomUtils.nextInt(360)+1;
@@ -345,29 +342,28 @@ public class AbstractDaoTest
                 
                 for(SoftwareInput input: this.software.getInputs()) 
                 {
-                    for (Iterator<JsonNode> iter = input.getDefaultValueAsJsonArray().iterator(); iter.hasNext();)
-                    {
-                        String val = iter.next().asText();
-                        
+                    for (JsonNode jsonNode : input.getDefaultValueAsJsonArray()) {
+                        String val = jsonNode.asText();
+
                         TransferTask stagingTransferTask = new TransferTask(
-                                val, 
-                                "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()), 
-                                job.getOwner(), 
-                                null, 
+                                val,
+                                "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()),
+                                job.getOwner(),
+                                null,
                                 null);
                         stagingTransferTask.setStatus(TransferStatusType.TRANSFERRING);
                         stagingTransferTask.setCreated(stagingTime.toDate());
                         stagingTransferTask.setLastUpdated(stagingTime.toDate());
-                        
+
                         TransferTaskDao.persist(stagingTransferTask);
-                        
+
                         JobEvent event = new JobEvent(
-                                JobStatusType.STAGING_INPUTS, 
-                                "Copy in progress", 
-                                stagingTransferTask, 
+                                JobStatusType.STAGING_INPUTS,
+                                "Copy in progress",
+                                stagingTransferTask,
                                 job.getOwner());
                         event.setCreated(stagingTime.toDate());
-                        
+
                         job.setStatus(JobStatusType.STAGING_INPUTS, event);
                     }
                 }
@@ -386,32 +382,31 @@ public class AbstractDaoTest
                 
                 for(SoftwareInput input: this.software.getInputs()) 
                 {
-                    for (Iterator<JsonNode> iter = input.getDefaultValueAsJsonArray().iterator(); iter.hasNext();)
-                    {
-                        String val = iter.next().asText();
-                        
+                    for (JsonNode jsonNode : input.getDefaultValueAsJsonArray()) {
+                        String val = jsonNode.asText();
+
                         TransferTask stagingTransferTask = new TransferTask(
-                                val, 
-                                "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()), 
-                                job.getOwner(), 
-                                null, 
+                                val,
+                                "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()),
+                                job.getOwner(),
+                                null,
                                 null);
-                        
+
                         stagingTransferTask.setStatus(TransferStatusType.COMPLETED);
                         stagingTransferTask.setCreated(stagingTime.toDate());
                         stagingTransferTask.setStartTime(stagingTime.toDate());
                         stagingTransferTask.setEndTime(stagingEnded.toDate());
                         stagingTransferTask.setLastUpdated(stagingEnded.toDate());
-                        
+
                         TransferTaskDao.persist(stagingTransferTask);
-                        
+
                         JobEvent event = new JobEvent(
-                                JobStatusType.STAGING_INPUTS, 
-                                "Staging completed", 
-                                stagingTransferTask, 
+                                JobStatusType.STAGING_INPUTS,
+                                "Staging completed",
+                                stagingTransferTask,
                                 job.getOwner());
                         event.setCreated(stagingTime.toDate());
-                        
+
                         job.setStatus(JobStatusType.STAGING_INPUTS, event);
                     }
                 }
@@ -516,7 +511,11 @@ public class AbstractDaoTest
             }
         }
         finally {
-            try {storageDataClient.disconnect();} catch (Exception e) {}
+            try {
+                if (storageDataClient != null) {
+                    storageDataClient.disconnect();
+                }
+            } catch (Exception ignored) {}
         }
         
     }
@@ -532,7 +531,11 @@ public class AbstractDaoTest
             storageDataClient.delete(software.getDeploymentPath());
         }
         finally {
-            try {storageDataClient.disconnect();} catch (Exception e) {}
+            try {
+                if (storageDataClient != null) {
+                    storageDataClient.disconnect();
+                }
+            } catch (Exception ignored) {}
         }
         
     }

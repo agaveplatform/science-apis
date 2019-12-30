@@ -31,7 +31,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 @Test(singleThreaded=true, groups={"integration"})
-public class StagingJobTest extends BaseTestCase {
+public class StagingJobIT extends BaseTestCase {
 	
 	private StagingJob stagingJob;
 	private LogicalFile file;
@@ -92,22 +92,22 @@ public class StagingJobTest extends BaseTestCase {
 			// delete the remote file after each test so we don't get a false positive 
 			remoteClient.delete(file.getAgaveRelativePathFromAbsolutePath());
 			remoteClient.disconnect();
-		} catch (Exception e) {}
+		} catch (Exception ignored) {}
 		finally {
-			try { clearLogicalFiles(); } catch (Exception e) {}
+			try { clearLogicalFiles(); } catch (Exception ignored) {}
 		}
 	}
 	
 	@AfterMethod
 	protected void afterMethod() 
 	{
-	    try { clearLogicalFiles(); } catch (Exception e) {}	
+	    try { clearLogicalFiles(); } catch (Exception ignored) {}
 	}
 	
 	private StagingTask createStagingTaskForUrl(URI sourceUri, RemoteSystem destSystem, String destPath) 
 	throws FileNotFoundException, Exception 
 	{
-		file = new LogicalFile(username, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
+		file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
 		file.setStatus(StagingTaskStatus.STAGING_QUEUED);
 		file.setOwner(SYSTEM_OWNER);
 		
@@ -286,8 +286,8 @@ public class StagingJobTest extends BaseTestCase {
 			Assert.fail("File staging should not throw an exception", e);
 		}
 		finally {
-			try { destClient.delete(""); } catch (Exception e) {}
-			try { destClient.disconnect(); } catch (Exception e) {}
+			try { destClient.delete(""); } catch (Exception ignored) {}
+			try { destClient.disconnect(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -385,10 +385,10 @@ public class StagingJobTest extends BaseTestCase {
 			Assert.fail("File staging should not throw an exception", e);
 		} 
 		finally {
-			try { srcClient.delete(""); } catch (Exception e) {}
-			try { srcClient.disconnect(); } catch (Exception e) {}
-			try { destClient.delete(""); } catch (Exception e) {}
-			try { destClient.disconnect(); } catch (Exception e) {}
+			try { srcClient.delete(""); } catch (Exception ignored) {}
+			try { srcClient.disconnect(); } catch (Exception ignored) {}
+			try { destClient.delete(""); } catch (Exception ignored) {}
+			try { destClient.disconnect(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -472,10 +472,10 @@ public class StagingJobTest extends BaseTestCase {
 			Assert.fail("File staging should not throw an exception", e);
 		} 
 		finally {
-			try { srcClient.delete(""); } catch (Exception e) {}
-			try { srcClient.disconnect(); } catch (Exception e) {}
-			try { destClient.delete(""); } catch (Exception e) {}
-			try { destClient.disconnect(); } catch (Exception e) {}
+			try { srcClient.delete(""); } catch (Exception ignored) {}
+			try { srcClient.disconnect(); } catch (Exception ignored) {}
+			try { destClient.delete(""); } catch (Exception ignored) {}
+			try { destClient.disconnect(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -576,10 +576,10 @@ public class StagingJobTest extends BaseTestCase {
 			Assert.fail("File staging should not throw an exception", e);
 		} 
 		finally {
-			try { srcClient.delete(""); } catch (Exception e) {}
-			try { srcClient.disconnect(); } catch (Exception e) {}
-			try { destClient.delete(""); } catch (Exception e) {}
-			try { destClient.disconnect(); } catch (Exception e) {}
+			try { srcClient.delete(""); } catch (Exception ignored) {}
+			try { srcClient.disconnect(); } catch (Exception ignored) {}
+			try { destClient.delete(""); } catch (Exception ignored) {}
+			try { destClient.disconnect(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -653,10 +653,10 @@ public class StagingJobTest extends BaseTestCase {
 			Assert.fail("File staging should not throw an exception", e);
 		} 
 		finally {
-			try { srcClient.delete(""); } catch (Exception e) {}
-			try { srcClient.disconnect(); } catch (Exception e) {}
-			try { destClient.delete(""); } catch (Exception e) {}
-			try { destClient.disconnect(); } catch (Exception e) {}
+			try { srcClient.delete(""); } catch (Exception ignored) {}
+			try { srcClient.disconnect(); } catch (Exception ignored) {}
+			try { destClient.delete(""); } catch (Exception ignored) {}
+			try { destClient.disconnect(); } catch (Exception ignored) {}
 		}
 	}
 			
@@ -721,10 +721,10 @@ public class StagingJobTest extends BaseTestCase {
 			Assert.fail("File staging should not throw an exception", e);
 		} 
 		finally {
-			try { srcClient.delete(""); } catch (Exception e) {}
-			try { srcClient.disconnect(); } catch (Exception e) {}
-			try { destClient.delete(""); } catch (Exception e) {}
-			try { destClient.disconnect(); } catch (Exception e) {}
+			try { srcClient.delete(""); } catch (Exception ignored) {}
+			try { srcClient.disconnect(); } catch (Exception ignored) {}
+			try { destClient.delete(""); } catch (Exception ignored) {}
+			try { destClient.disconnect(); } catch (Exception ignored) {}
 		}
 	}
 				
@@ -768,8 +768,8 @@ public class StagingJobTest extends BaseTestCase {
 			Assert.fail("File staging should not throw an exception", e);
 		} 
 		finally {
-			try { destClient.delete(""); } catch (Exception e) {}
-			try { destClient.disconnect(); } catch (Exception e) {}
+			try { destClient.delete(""); } catch (Exception ignored) {}
+			try { destClient.disconnect(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -829,10 +829,10 @@ public class StagingJobTest extends BaseTestCase {
 			Assert.fail("File staging should not throw an exception", e);
 		} 
 		finally {
-			try { srcClient.delete(""); } catch (Exception e) {}
-			try { srcClient.disconnect(); } catch (Exception e) {}
-			try { destClient.delete(""); } catch (Exception e) {}
-			try { destClient.disconnect(); } catch (Exception e) {}
+			try { srcClient.delete(""); } catch (Exception ignored) {}
+			try { srcClient.disconnect(); } catch (Exception ignored) {}
+			try { destClient.delete(""); } catch (Exception ignored) {}
+			try { destClient.disconnect(); } catch (Exception ignored) {}
 		}
 	}
 	

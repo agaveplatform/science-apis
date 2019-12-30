@@ -1,6 +1,8 @@
 package org.iplantc.service.io.dao;
 
+import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
@@ -32,6 +34,8 @@ public class LogicalFileDaoCaseSensitivityTest extends BaseTestCase
 	private StorageSystem system;
 	private String basePath;
 	private String otherPath;
+	private String destPath;
+	private URI httpUri;
 	
 	@BeforeClass
 	protected void beforeClass() throws Exception 
@@ -48,16 +52,18 @@ public class LogicalFileDaoCaseSensitivityTest extends BaseTestCase
 		
 		systemDao.persist(system);
 		
-		basePath = "/var/home/" + username + "/some";
-		otherPath = "/var/home/" + username + "/other";
-		
-		file = new LogicalFile(username, system, httpUri.toString().toLowerCase(), destPath.toLowerCase(), "originalFilename");
+		basePath = "/var/home/" + SYSTEM_OWNER + "/some";
+		otherPath = "/var/home/" + SYSTEM_OWNER + "/other";
+		destPath = String.format("/home/%s/%s/%s", SYSTEM_OWNER, UUID.randomUUID().toString(), LOCAL_TXT_FILE_NAME);
+		httpUri = new URI("http://example.com/foo/bar/baz");
+
+		file = new LogicalFile(SYSTEM_OWNER, system, httpUri.toString().toLowerCase(), destPath.toLowerCase(), "originalFilename");
 	}
 	
 	@BeforeMethod
 	protected void setUp() throws Exception 
 	{	
-		file = new LogicalFile(username, system, httpUri.toString().toLowerCase(), destPath.toLowerCase(), "originalFilename");
+		file = new LogicalFile(SYSTEM_OWNER, system, httpUri.toString().toLowerCase(), destPath.toLowerCase(), "originalFilename");
 		
 		//LogicalFileDao.persist(file);
 	}
@@ -91,7 +97,7 @@ public class LogicalFileDaoCaseSensitivityTest extends BaseTestCase
 			file.setPath(originalPath);
 			LogicalFileDao.save(file);
 			
-			LogicalFile caseInsensitiveFile = new LogicalFile(username, system, file.getSourceUri(), caseInsensitivePath, "originalFilename");
+			LogicalFile caseInsensitiveFile = new LogicalFile(SYSTEM_OWNER, system, file.getSourceUri(), caseInsensitivePath, "originalFilename");
 			LogicalFileDao.save(caseInsensitiveFile);
 			
 			LogicalFile f = LogicalFileDao.findBySystemAndPath(file.getSystem(), originalPath);
@@ -122,7 +128,7 @@ public class LogicalFileDaoCaseSensitivityTest extends BaseTestCase
 			file.setSourceUri(originalUri);
 			LogicalFileDao.save(file);
 			
-			LogicalFile caseInsensitiveFile = new LogicalFile(username, system, caseInsensitiveUri, file.getPath(), "originalFilename");
+			LogicalFile caseInsensitiveFile = new LogicalFile(SYSTEM_OWNER, system, caseInsensitiveUri, file.getPath(), "originalFilename");
 			LogicalFileDao.save(caseInsensitiveFile);
 			
 			LogicalFile f = LogicalFileDao.findBySourceUrl(originalUri);

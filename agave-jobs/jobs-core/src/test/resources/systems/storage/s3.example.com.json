@@ -4,10 +4,10 @@
 	"status": "UP",
 	"type": "STORAGE",
 	"description": "Example storage system accessible via Amazon S3 API.",
-	"site": "amazon.com",
+	"site": "aws",
 	"storage": {
-		"host": "docker.example.com",
-		"port": 9000,
+		"host": "${s3.host}",
+		"port": ${s3.port},
 		"protocol": "S3",
 		"homeDir": "/",
 		"rootDir": "/",
@@ -17,7 +17,6 @@
 			"type": "APIKEYS"
 		},
 		"container": "${s3.bucket}"
-		
 	},
 	"default": false
 }

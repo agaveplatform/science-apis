@@ -19,14 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.POJONode;
 
-/**
- * Created by IntelliJ IDEA.
- * User: steve
- * Date: 3/19/12
- * Time: 2:31 PM
- * To change this template use File | Settings | File Templates.
- */
-public class JSONTestDataUtil 
+public class JSONTestDataUtil
 {
 	public static String TEST_SOFTWARE_FOLDER = "target/test-classes/software/";
 	public static String TEST_SOFTWARE_FILE = TEST_SOFTWARE_FOLDER + "head-lonestar.tacc.teragrid.org.json";
@@ -34,12 +27,12 @@ public class JSONTestDataUtil
 	public static String TEST_SOFTWARE_SYSTEM_FILE = TEST_SOFTWARE_FOLDER + "system-software.json";
 	public static String TEST_EXECUTION_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "execution/execute.example.com.json";
 	public static String TEST_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/storage.example.com.json";
-	public static String TEST_IRODS_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/data.iplantcollaborative.org.json";
-	public static String TEST_AUTHENTICATION_SYSTEM_FILE = "test/authentication-system.json";
+//	public static String TEST_IRODS_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/data.iplantcollaborative.org.json";
+//	public static String TEST_AUTHENTICATION_SYSTEM_FILE = "test/authentication-system.json";
     
 	public static JSONTestDataUtil jsonTestData;
-	public static String TEST_OWNER = "api_sample_user";
-	public static String TEST_SHARED_OWNER = "ipctestshare";
+	public static String TEST_OWNER = "testuser";
+	public static String TEST_SHARED_OWNER = "testshareuser";
 	public static String TEST_PUBLIC_OWNER = "guest";
 	
     /**
@@ -77,7 +70,11 @@ public class JSONTestDataUtil
 	    	return new JSONObject(json);
     	} 
     	finally {
-    		try { in.close(); } catch (Exception e) {}
+    		try {
+				if (in != null) {
+					in.close();
+				}
+			} catch (Exception ignored) {}
     	}
     }
 
@@ -117,17 +114,11 @@ public class JSONTestDataUtil
      */
     public JSONObject getTestDataObject(File pfile) throws JSONException, IOException
     {
-        InputStream in = null;
-        try
-        {
-            in = new FileInputStream(pfile.getAbsoluteFile());
-            String json = IOUtils.toString(in, "UTF-8");
+		try (InputStream in = new FileInputStream(pfile.getAbsoluteFile())) {
+			String json = IOUtils.toString(in, "UTF-8");
 
-            return new JSONObject(json);
-        }
-        finally {
-            try { in.close(); } catch (Exception e) {}
-        }
+			return new JSONObject(json);
+		}
     }
 
     /**
@@ -214,31 +205,31 @@ public class JSONTestDataUtil
     };
     
     protected Object[][] dataTestSoftwareFieldsArray = {
-            {"name",Arrays.asList(new Object()),"set name to array with empty object",true},
-            {"parallelism",Arrays.asList(new Object()),"set parallelism to array with empty object",true},
-            {"version",Arrays.asList(new Object()),"set version to array with empty object",true},
-            {"helpURI",Arrays.asList(new Object()),"set helpURI to array with empty object",true},
-            {"label",Arrays.asList(new Object()),"set label to array with empty object",true},
-            {"shortDescription",Arrays.asList(new Object()),"set shortDescription to array with empty object",true},
-            {"longDescription",Arrays.asList(new Object()),"set longDescription to array with empty object",true},
-            {"tags",Arrays.asList(new Object()),"set tags to array with empty object",true},
-            {"ontology",Arrays.asList(new Object()),"set ontology to array with empty object",true},
-            {"executionSystem",Arrays.asList(new Object()),"set executionSystem to array with empty object",true},
-            {"executionType",Arrays.asList(new Object()),"set executionType to array with empty object",true},
-            {"deploymentPath",Arrays.asList(new Object()),"set deploymentPath to array with empty object",true},
-            {"templatePath",Arrays.asList(new Object()),"set templatePath to array with empty object",true},
-            {"testPath",Arrays.asList(new Object()),"set testPath to array with empty object",true},             // requires a string larger than empty
-            {"checkpointable",Arrays.asList(new Object()),"set checkpointable to array with empty object",true},
-            {"modules",Arrays.asList(new Object()),"set modules to array with empty object",true},
-            {"inputs",Arrays.asList(new Object()),"set inputs to array with empty object",true},
-            {"parameters",Arrays.asList(new Object()),"set parameters to array with empty object",true},
-            {"outputs",Arrays.asList(new Object()),"set outputs to array with empty object",true}
+            {"name", Collections.singletonList(new Object()),"set name to array with empty object",true},
+            {"parallelism", Collections.singletonList(new Object()),"set parallelism to array with empty object",true},
+            {"version", Collections.singletonList(new Object()),"set version to array with empty object",true},
+            {"helpURI", Collections.singletonList(new Object()),"set helpURI to array with empty object",true},
+            {"label", Collections.singletonList(new Object()),"set label to array with empty object",true},
+            {"shortDescription", Collections.singletonList(new Object()),"set shortDescription to array with empty object",true},
+            {"longDescription", Collections.singletonList(new Object()),"set longDescription to array with empty object",true},
+            {"tags", Collections.singletonList(new Object()),"set tags to array with empty object",true},
+            {"ontology", Collections.singletonList(new Object()),"set ontology to array with empty object",true},
+            {"executionSystem", Collections.singletonList(new Object()),"set executionSystem to array with empty object",true},
+            {"executionType", Collections.singletonList(new Object()),"set executionType to array with empty object",true},
+            {"deploymentPath", Collections.singletonList(new Object()),"set deploymentPath to array with empty object",true},
+            {"templatePath", Collections.singletonList(new Object()),"set templatePath to array with empty object",true},
+            {"testPath", Collections.singletonList(new Object()),"set testPath to array with empty object",true},             // requires a string larger than empty
+            {"checkpointable", Collections.singletonList(new Object()),"set checkpointable to array with empty object",true},
+            {"modules", Collections.singletonList(new Object()),"set modules to array with empty object",true},
+            {"inputs", Collections.singletonList(new Object()),"set inputs to array with empty object",true},
+            {"parameters", Collections.singletonList(new Object()),"set parameters to array with empty object",true},
+            {"outputs", Collections.singletonList(new Object()),"set outputs to array with empty object",true}
     };
     
     protected Object[][] dataTestSoftwareFieldsInvalid = {
             {"parallelism",Boolean.TRUE,"set parallelism to TRUE",true},
             {"parallelism",Boolean.FALSE,"set parallelism to FALSE",true},
-            {"parallelism",new Integer(4),"set parallelism to 4",true},
+            {"parallelism", 4,"set parallelism to 4",true},
             {"parallelism","concurrent","set parallelism to invalid string",true},
             {"version","1-1-1","set version to invalid dash notation, 1-1-1",true},
             {"version","1-1-1","set version to invalid underscore notation, 1_1_1",true},
@@ -250,13 +241,13 @@ public class JSONTestDataUtil
             //{"ontology",Arrays.asList("abcd","abcd"),"set ontology to array with duplicate entries",true},
             {"executionSystem",Boolean.TRUE,"set executionSystem to TRUE",true},
             {"executionSystem",Boolean.FALSE,"set executionSystem to FALSE",true},
-            {"executionSystem",new Integer(4),"set executionSystem to 4",true},
+            {"executionSystem", 4,"set executionSystem to 4",true},
             {"executionSystem","ranch","set executionSystem to invalid system",true},
             {"executionType",Boolean.TRUE,"set executionType to TRUE",true},
             {"executionType",Boolean.FALSE,"set executionType to FALSE",true},
-            {"executionType",new Integer(4),"set executionType to 4",true},
+            {"executionType", 4,"set executionType to 4",true},
             {"executionType","ranch","set executionType to invalid system",true},
-            {"checkpointable",new Integer(1),"set checkpointable to 1",true},
+            {"checkpointable", 1,"set checkpointable to 1",true},
             {"checkpointable","yes","set checkpointable to yes",true},
             {"checkpointable","no","set checkpointable to no",true},
             //{"modules",Arrays.asList("abcd","abcd"),"set modules to array with duplicate modules",true},
@@ -344,7 +335,7 @@ public class JSONTestDataUtil
             {"default",Arrays.asList(new Object(),new Object(),new Object()),"set input.value.default to array of empty objects",false},
             {"default", null,"set value.default to null",false},
 			{"default","abracadabra","set value.default to null on hidden input",false},
-			{"default",new Integer(25),"set input.value.default to 25 on hidden input",false},
+			{"default", 25,"set input.value.default to 25 on hidden input",false},
             {"validator","","set input.value.validator to empty string",false},
             {"validator",new Object(),"set input.value.validator to empty object",false},
             {"validator",Arrays.asList(new Object(),new Object(),new Object()),"set input.value.validator to array of empty objects",true},
@@ -366,12 +357,12 @@ public class JSONTestDataUtil
 	public Object[][] dataTestInputsDetails = {
             {"label","","set input.details.label to empty string",false},
             {"label",new Object(),"set input.details.label to empty object",false},
-            {"label",Arrays.asList(new Object()),"set input.details.label to list of empty objects",false},
+            {"label", Collections.singletonList(new Object()),"set input.details.label to list of empty objects",false},
             {"label",null,"set input.details.label to null",false},
             {"label","Sample label","set input.details.label to valid string",false},
             {"description","","set input.details.description to empty string",false},
             {"description",new Object(),"set input.details.description to empty object",false},
-            {"description",Arrays.asList(new Object()),"set input.details.description to list of empty objects",false},
+            {"description", Collections.singletonList(new Object()),"set input.details.description to list of empty objects",false},
             {"description",null,"set input.details.description to null",false},
             {"description","Sample description","set input.details.description to valid string",false},
     };
@@ -380,13 +371,13 @@ public class JSONTestDataUtil
 			{"default","","set input.value.default to empty string on hidden input",true},
 			{"default",null,"set input.value.default to null on hidden input",true},
 			{"default","abracadabra","set input.value.default to random string on hidden input",false},
-			{"default",new Integer(25),"set input.value.default to null on hidden input",true},
+			{"default", 25,"set input.value.default to null on hidden input",true},
 	};
 
 	public Object[][] dataTestInputsSemantics = {
 			{"ontology","","set input.semantics.ontology to empty object",true},
 			{"ontology",new Object(),"set input.semantics.ontology to empty object",true},
-            {"ontology",Arrays.asList(new Object()),"set input.semantics.ontology to empty list of objects",true},
+            {"ontology", Collections.singletonList(new Object()),"set input.semantics.ontology to empty list of objects",true},
             {"ontology","abcdef","set input.semantics.ontology to valid string",true},
             {"ontology",Arrays.asList("abcdef","abcdef","abcdef"),"set input.semantics.ontology to valid list of strings",true},
             {"ontology",null,"set input.semantics.ontology to null",true},
@@ -394,18 +385,18 @@ public class JSONTestDataUtil
             {"minCardinality",null,"set input.semantics.minCardinality to null",false},
 			{"minCardinality","abc","set input.semantics.minCardinality to non-numeric",true},
 			{"minCardinality","1","set input.semantics.minCardinality to numeric string",false},
-			{"minCardinality",new Integer(1),"set input.semantics.minCardinality to non-numeric",false},
+			{"minCardinality", 1,"set input.semantics.minCardinality to non-numeric",false},
 			{"maxCardinality","","set input.semantics.maxCardinality to empty string",false},
             {"maxCardinality",null,"set input.semantics.maxCardinality to null",false},
 			{"maxCardinality","abc","set input.semantics.maxCardinality to non-numeric",false},
 			{"maxCardinality","1","set input.semantics.maxCardinality to numeric string",false},
-			{"maxCardinality",new Integer(1),"set input.semantics.maxCardinality to non-numeric",false},
+			{"maxCardinality", 1,"set input.semantics.maxCardinality to non-numeric",false},
 			{"fileTypes",new Object(),"set input.semantics.fileTypes to empty object",true},
             {"fileTypes",null,"set input.semantics.fileTypes to null",false},
             {"fileTypes","","set input.semantics.fileTypes to empty string",true},
             {"fileTypes","abcdf","set input.semantics.fileTypes to valid string",true},
             {"fileTypes",Arrays.asList("abcdef","abcdef","abcdef"),"set input.semantics.fileTypes to list of strings",true},
-            {"fileTypes",Arrays.asList(new Object()),"set input.semantics.fileTypes to list of objects",true},
+            {"fileTypes", Collections.singletonList(new Object()),"set input.semantics.fileTypes to list of objects",true},
     };
 
 	/************************************************************************
@@ -418,14 +409,14 @@ public class JSONTestDataUtil
             {1,"set SoftwareArgument defaultValue to int 1",true},
             {"test","set SoftwareArgument defaultValue to string test",true},
             {new Object(),"set SoftwareArgument defaultValue to empty object",true},
-            {Arrays.asList(new Object()),"set SoftwareArgument defaultValue to empty list of objects",true},
+            {Collections.singletonList(new Object()),"set SoftwareArgument defaultValue to empty list of objects",true},
     };
 
     protected Object[][] softwareArgumentIdData = {
             {"","set default to empty string",true},
             {null,"set default to null",true},
             {"test","set default to string test",false},
-            {Integer.valueOf(25),"set default to 25",false},
+            {25,"set default to 25",false},
     };
 	
 	
@@ -433,13 +424,13 @@ public class JSONTestDataUtil
             {"","set value to empty string",true},
             {null,"set default to null",true},
             {"test","set default to string test",true},
-            {Integer.valueOf(25),"set default to 25",true},
+            {25,"set default to 25",true},
     };
 	
     protected Object[][] softwareArgumentSemanticsData = {
 			{"","set semantics to empty string",true},
 			{new Object(),"set semantics to empty object",false},
-            {Arrays.asList(new Object()),"set semantics.ontology to empty list of objects",true},
+            {Collections.singletonList(new Object()),"set semantics.ontology to empty list of objects",true},
             {"abcdef","set semantics to valid string",true},
             {Arrays.asList("abcdef","abcdef","abcdef"),"set semantics to valid list of strings",true},
             {null,"set semantics to null",false},
@@ -496,12 +487,12 @@ public class JSONTestDataUtil
 	public Object[][] dataTestParameterDetails = {
             {"label","","set parameter.details.label to empty string",true},
             {"label",new Object(),"set parameter.details.label to empty object",false},
-            {"label",Arrays.asList(new Object()),"set parameter.details.label to list of empty objects",false},
+            {"label", Collections.singletonList(new Object()),"set parameter.details.label to list of empty objects",false},
             {"label",null,"set parameter.details.label to null",false},
             {"label","Sample label","set parameter.details.label to valid string",false},
             {"description","","set parameter.details.description to empty string",false},
             {"description",new Object(),"set parameter.details.description to empty object",false},
-            {"description",Arrays.asList(new Object()),"set parameter.details.description to list of empty objects",false},
+            {"description", Collections.singletonList(new Object()),"set parameter.details.description to list of empty objects",false},
             {"description",null,"set parameter.details.description to null",false},
             {"description","Sample description","set parameter.details.description to valid string",false},
     };
@@ -510,13 +501,13 @@ public class JSONTestDataUtil
 			{"default","","set parameter.value.default to empty string on hidden input",true},
 			{"default",null,"set parameter.value.default to null on hidden input",true},
 			{"default","abracadabra","set parameter.value.default to random string on hidden input",false},
-			{"default",new Integer(25),"set parameter.value.default to null on hidden input",true},
+			{"default", 25,"set parameter.value.default to null on hidden input",true},
 	};
 
 	public Object[][] dataTestParameterSemanticsOntology = {
 			{"ontology","","set parameter.semantics.ontology to empty object",true},
 			{"ontology",new Object(),"set parameter.semantics.ontology to empty object",true},
-            {"ontology",Arrays.asList(new Object()),"set parameter.semantics.ontology to empty list of objects",true},
+            {"ontology", Collections.singletonList(new Object()),"set parameter.semantics.ontology to empty list of objects",true},
             {"ontology","abcdef","set parameter.semantics.ontology to valid string",true},
             {"ontology",Arrays.asList("abcdef","abcdef","abcdef"),"set parameter.semantics.ontology to valid list of strings",true},
             {"ontology",null,"set parameter.semantics.ontology to null",false},
@@ -527,7 +518,7 @@ public class JSONTestDataUtil
             {"fileTypes","","set parameter.semantics.fileTypes to empty string",true},
             {"fileTypes","abcdf","set parameter.semantics.fileTypes to valid string",true},
             {"fileTypes",Arrays.asList("abcdef","abcdef","abcdef"),"set parameter.semantics.fileTypes to list of strings",true},
-            {"fileTypes",Arrays.asList(new Object()),"set parameter.semantics.fileTypes to list of objects",true},
+            {"fileTypes", Collections.singletonList(new Object()),"set parameter.semantics.fileTypes to list of objects",true},
     };
 
     public Object[][] dataTestParameterSemanticsMaxCardinality  = {
@@ -535,7 +526,7 @@ public class JSONTestDataUtil
             {"maxCardinality",null,"set parameter.semantics.maxCardinality to null",true},
 			{"maxCardinality","abc","set parameter.semantics.maxCardinality to non-numeric",true},
 			{"maxCardinality","1","set parameter.semantics.maxCardinality to numeric string",true},
-			{"maxCardinality",new Integer(1),"set parameter.semantics.maxCardinality to non-numeric",true},
+			{"maxCardinality", 1,"set parameter.semantics.maxCardinality to non-numeric",true},
 	};
 
     public Object[][] dataTestParameterSemanticsMinCardinality  = {
@@ -543,7 +534,7 @@ public class JSONTestDataUtil
             {"minCardinality",null,"set parameter.semantics.minCardinality to null",true},
 			{"minCardinality","abc","set parameter.semantics.minCardinality to non-numeric",true},
 			{"minCardinality","1","set parameter.semantics.minCardinality to numeric string",true},
-			{"minCardinality",new Integer(1),"set parameter.semantics.minCardinality to non-numeric",true},
+			{"minCardinality", 1,"set parameter.semantics.minCardinality to non-numeric",true},
 	};
     
     /************************************************************************
@@ -587,7 +578,7 @@ public class JSONTestDataUtil
             {"visible",true,"set output.details.visible to true",false},
             {"visible",false,"set output.details.visible to false",false},
             {"visible","alpha","set output.details.visible to 'alpha'",false},
-            {"visible",new Integer(1),"set output.details.visible to 1",false},
+            {"visible", 1,"set output.details.visible to 1",false},
     };
 
     public Object[][] dataTestOutputSemantics = {
@@ -648,8 +639,7 @@ public class JSONTestDataUtil
         Collections.addAll(holder, dataTestSoftwareFieldsNull);
         Collections.addAll(holder, dataTestSoftwareFieldsArray);
 
-        Object[][] result = holder.toArray(new Object[holder.size()][]);
-        return result;
+		return holder.toArray(new Object[holder.size()][]);
     }
 
 

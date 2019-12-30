@@ -117,6 +117,7 @@ public class JobSearchFilterTest extends AbstractDaoTest
 		JobSearchFilter jobSearchFilter = new JobSearchFilter();
 		for (String key: jobSearchFilter.getSearchTermMappings().keySet())
 		{
+			if (!key.equals("status")) continue;
 		    // handle sets and ranges independently
 		    if (StringUtils.endsWithIgnoreCase(key, "between") 
                     || StringUtils.endsWithIgnoreCase(key, "in") 
@@ -170,7 +171,8 @@ public class JobSearchFilterTest extends AbstractDaoTest
 		Object filteredList = searchTerms.get(filteredSearchTerm);
 		if (filteredSearchTerm.getOperator().isSetOperator()) {
 			Assert.assertTrue(filteredList instanceof List, "Comma separated list of values was not filtered into a list when the set operation was provided");
-		
+			Assert.assertEquals(((List)filteredList).size(), value.split(",").length, "Invalid number of search values returned after filtering");
+
 			for(Object o: (List)filteredList) {
 			    if (StringUtils.startsWithIgnoreCase(filteredSearchTerm.getSearchField(), "maxruntime")) {
 			        Assert.assertEquals(o.getClass(), Integer.class, "filtered maxruntime list did not resolve to integer values");
@@ -183,7 +185,7 @@ public class JobSearchFilterTest extends AbstractDaoTest
 		}
 	}
 	
-	public void _filterInvalidSearchCriteria(String testField, boolean shouldExistAfterFiltering, String message) throws Exception
+	protected void _filterInvalidSearchCriteria(String testField, boolean shouldExistAfterFiltering, String message) throws Exception
 	{
 		JobSearchFilter jobSearchFilter = new JobSearchFilter();
 		Map<String, String> searchCriteria = new HashMap<String, String>();

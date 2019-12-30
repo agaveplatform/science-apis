@@ -4,10 +4,7 @@
 package org.iplantc.service.jobs.dao;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.BooleanUtils;
@@ -1701,6 +1698,7 @@ public class JobDao
 		
 		try
 		{
+			Map<String, Class> searchTypeMappings = new JobSearchFilter().getSearchTypeMappings();
 			Session session = getSession();
 			session.clear();
 			String sql = "SELECT j.archive_output, \n" + 
@@ -1833,6 +1831,18 @@ public class JobDao
 				{
 					query.setParameterList(searchTerm.getSearchField(), (List<Object>)searchCriteria.get(searchTerm));
 					q = StringUtils.replace(q, ":" + searchTerm.getSearchField(), "('" + StringUtils.join((List<String>)searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)), "','") + "')" );
+				}
+				else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Date.class ) {
+					query.setDate(searchTerm.getSafeSearchField(), (java.util.Date)searchCriteria.get(searchTerm));
+
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+							"'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+				}
+				else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Integer.class) {
+					query.setInteger(searchTerm.getSafeSearchField(), (Integer)searchCriteria.get(searchTerm));
+
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+							"'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
 				}
 				else 
 				{

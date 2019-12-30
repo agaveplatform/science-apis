@@ -21,8 +21,8 @@
 		"port": 22,
 		"protocol": "GSISSH",
 		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
+			"username": "testuser",
+			"password": "testuser",
 			"type": "X509",
 			"server": {
 				"id": "myproxy.teragrid.org",
@@ -40,8 +40,8 @@
 		"protocol": "GRIDFTP",
 		"rootDir": "/",
 		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
+			"username": "testuser",
+			"password": "testuser",
 			"credential": "",
 			"type": "X509",
 			"server": {

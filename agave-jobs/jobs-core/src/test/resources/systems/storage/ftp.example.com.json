@@ -6,7 +6,7 @@
 	"description": "My example system using ftp to move data.",
 	"site": "example.com",
 	"storage": {
-		"host": "docker.example.com",
+		"host": "ftp",
 		"port": 10021,
 		"protocol": "FTP",
 		"rootDir": "/home/testuser",

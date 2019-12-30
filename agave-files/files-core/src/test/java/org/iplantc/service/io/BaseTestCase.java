@@ -53,40 +53,36 @@ public class BaseTestCase {
 	public static final String SYSTEM_INTERNAL_USERNAME = "test_internal_user";
 
 	public static final String SHARED_SYSTEM_USER = "testshareuser";
-	public static final String TEST_PROPERTIES_FILE = "test.properties";
 	public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "systems/execution";
 	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "systems/storage";
 	public static String SOFTWARE_SYSTEM_TEMPLATE_DIR = "software";
-	public static String INTERNAL_USER_TEMPLATE_DIR = "internal_users";
-	public static String CREDENTIALS_TEMPLATE_DIR = "credentials";
 
 	// standard directories and files for io tests
-	protected static String MISSING_DIRECTORY = "I/Do/Not/Exist/unless/some/evil/person/has/deliberately/created/a/ludicrous/directory/structure/just/to/break/this/test";
-	protected static String MISSING_FILE = "I/Do/Not/Exist/unless/some/evil/person/has/deliberately/created/a/ludicrous/directory/structure/just/to/break/this/test.txt";
-	protected static String LOCAL_DIR = "target/test-classes/transfer";
-	protected static String LOCAL_DOWNLOAD_DIR = "target/test-classes/download";
-	protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
-	protected static String LOCAL_BINARY_FILE = "target/test-classes/transfer/test_upload.bin";
+    protected static String MISSING_DIRECTORY = "I/Do/Not/Exist/unless/some/evil/person/has/this/test";
+    protected static String MISSING_FILE = "I/Do/Not/Exist/unless/some/evil/person/this/test.txt";
+    protected static String LOCAL_DIR = "target/test-classes/transfer";
+    protected static String LOCAL_DOWNLOAD_DIR = "target/test-classes/download";
+    protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
+    protected static String LOCAL_BINARY_FILE = "target/test-classes/transfer/test_upload.bin";
 
-	protected static String SOURCE_DIRNAME = "transfer";
-    protected static String DEST_DIRNAME = "transfer.copy";
-    protected static String SOURCE_FILENAME = "test_upload.bin";
-    protected static String DEST_FILENAME = "test_upload.bin.copy";
+    protected static String LOCAL_DIR_NAME = "transfer";
+    protected static String LOCAL_TXT_FILE_NAME = "test_upload.txt";
+    protected static String LOCAL_BINARY_FILE_NAME = "test_upload.bin";
 
 	protected JSONTestDataUtil jtd;
 	protected JSONObject jsonTree;
 
-	protected String username;
-	protected String password;
-	protected String uploadFilePath;
-	protected File testFileAnalysisDirectory;
-	protected String destPath;
-	protected URI ftpUri;
-	protected URI gridFtpUri;
-	protected URI httpUri = URI.create("http://docker.example.com:10080/public/" + SOURCE_FILENAME);
-	protected URI httpsUri = URI.create("https://docker.example.com:10443/public/" + SOURCE_FILENAME);
-	protected URI s3Uri;
-	protected URI sftpUri;
+//	protected String username;
+//	protected String password;
+//	protected String uploadFilePath;
+//	protected File testFileAnalysisDirectory;
+//	protected String destPath;
+//	protected URI ftpUri;
+//	protected URI gridFtpUri;
+//	protected URI httpUri = URI.create("http://requestbin:5101/public/" + LOCAL_TXT_FILE_NAME);
+//	protected URI httpsUri = URI.create("https://requestbin:5101/public/" + LOCAL_TXT_FILE_NAME);
+//	protected URI s3Uri;
+//	protected URI sftpUri;
 
 	protected SystemDao systemDao = new SystemDao();
 
@@ -98,29 +94,29 @@ public class BaseTestCase {
 	{
 		jtd = JSONTestDataUtil.getInstance();
 
-		Properties props = new Properties();
-		props.load(getClass().getClassLoader().getResourceAsStream(TEST_PROPERTIES_FILE));
-		username = (String)props.getProperty("test.iplant.username");
-		password = (String)props.getProperty("test.iplant.password");
-		String urlencodedcredentials = URLEncoder.encode(username, "utf-8") + ":" + URLEncoder.encode(password, "utf-8");
+//		Properties props = new Properties();
+//		props.load(getClass().getClassLoader().getResourceAsStream(TEST_PROPERTIES_FILE));
+//		username = (String)props.getProperty("test.iplant.username");
+//		password = (String)props.getProperty("test.iplant.password");
+//		String urlencodedcredentials = URLEncoder.encode(username, "utf-8") + ":" + URLEncoder.encode(password, "utf-8");
+//
+//		uploadFilePath = (String)props.getProperty("test.file.path");
+//		testFileAnalysisDirectory = new File((String)props.getProperty("test.file.analysis.dir.path"));
+//		//ftpUri = new URI("ftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.ftp.uri")));
+//		gridFtpUri = new URI("gsiftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.gridftp.uri"));
+//		httpUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.http.uri"));
+//		httpsUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.https.uri"));
+//		s3Uri = new URI((String)props.getProperty("test.s3.uri"));
+//		sftpUri = new URI("sftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.sftp.uri"));
+//
+//		destPath = "/testparentparentparent/testparentparent/testparent/test.dat";
 
-		uploadFilePath = (String)props.getProperty("test.file.path");
-		testFileAnalysisDirectory = new File((String)props.getProperty("test.file.analysis.dir.path"));
-		//ftpUri = new URI("ftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.ftp.uri")));
-		gridFtpUri = new URI("gsiftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.gridftp.uri"));
-		httpUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.http.uri"));
-		httpsUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.https.uri"));
-		s3Uri = new URI((String)props.getProperty("test.s3.uri"));
-		sftpUri = new URI("sftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.sftp.uri"));
-
-		destPath = "/testparentparentparent/testparentparent/testparent/test.dat";
-
-		TenantDao tenantDao = new TenantDao();
-		Tenant tenant = tenantDao.findByTenantId("iplantc.org");
-		if (tenant == null) {
-			tenant = new Tenant("iplantc.org", "https://agave.iplantc.org", "xxx@tacc.utexas.edu", "Test Admin");
-			tenantDao.persist(tenant);
-		}
+//		TenantDao tenantDao = new TenantDao();
+//		Tenant tenant = tenantDao.findByTenantId("agave.dev");
+//		if (tenant == null) {
+//			tenant = new Tenant("iplantc.org", "https://agave.iplantc.org", "xxx@tacc.utexas.edu", "Test Admin");
+//			tenantDao.persist(tenant);
+//		}
 	}
 
 	@AfterClass
@@ -325,7 +321,7 @@ public class BaseTestCase {
     }
 
     /**
-     * Returns a new, unsaved {@link StorageProtocolType#SSH} {@link ExecutionSystem}.
+     * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link ExecutionSystem}.
      * @return
      * @throws Exception
      */

@@ -583,7 +583,7 @@ public class Job {
 	 * defaults to false. 
 	 * 
 	 * @param event String notification event that will trigger the callback
-	 * @param callbackUrl A URL or email address that will be triggered by the event
+	 * @param callback A URL or email address that will be triggered by the event
 	 */
 	public void addNotification(String event, String callback) throws NotificationException 
 	{
@@ -594,7 +594,7 @@ public class Job {
 	 * Convenience endpoint to add a notification to this job. 
 	 * 
 	 * @param event String notification event that will trigger the callback
-	 * @param callbackUrl A URL or email address that will be triggered by the event
+	 * @param callback A URL or email address that will be triggered by the event
 	 * @param persistent Whether this notification should expire after the first successful trigger
 	 */
 	@Transient
@@ -660,7 +660,7 @@ public class Job {
 	 * the job;
 	 * 
 	 * @param status
-	 * @param message
+	 * @param event
 	 */
 	@Transient
 	public void setStatus(JobStatusType status, JobEvent event) throws JobException

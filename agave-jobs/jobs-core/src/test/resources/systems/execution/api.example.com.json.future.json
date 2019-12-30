@@ -4,7 +4,7 @@
 	"status": "UP",
 	"type": "EXECUTION",
 	"description": "Sample api (oauth2) execution system.",
-	"site": "tacc.xsede.org",
+	"site": "example.com",
 	"executionType": "HPC",
 	"default": false,
 	"queues": [
@@ -21,8 +21,8 @@
 		"port": 22,
 		"protocol": "API",
 		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
+			"username": "testuser",
+			"password": "testuser",
 			"credential": "sadasdfasdfasdfasdfasdfa",
 			"type": "TOKEN",
 			"server": {
@@ -38,10 +38,13 @@
 	"storage": {
 		"host": "login1.ls4.tacc.utexas.edu",
 		"port": 2811,
-		"protocol": "SFTP",
+		"protocol":"SFTP",
+		"rootDir":"/",
+		"homeDir":"/home/testuser",
+		"publicAppsDir": "/tmp",
 		"auth": {
-			"username": "${iplant.community.username}",
-			"password": "${iplant.community.password}",
+			"username": "testuser",
+			"password": "testuser",
 			"credential": "",
 			"type": "PASSWORD"
 		}

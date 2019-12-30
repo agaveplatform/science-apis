@@ -1,9 +1,13 @@
 package sftprelay
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/connectionpool"
+	"github.com/minio/highwayhash"
+	"math/rand"
 	"path/filepath"
 	"sort"
 
@@ -34,6 +38,9 @@ var (
 
 	// The path to the unix socket on which the ssh-agent is listen
 	AgentSocket string
+
+	// key used to hash the ssh configs in the pool
+	sshKeyHash []byte
 
 	// Get request counter.
 	getCounterMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -89,7 +96,7 @@ var (
 
 
 // generates a new SSHConfig from the *agaveproto.RemoteSystemConfig included in every server request
-func NewSSHConfig(systemConfig *agaveproto.RemoteSystemConfig) *connectionpool.SSHConfig {
+func NewSSHConfig(systemConfig *agaveproto.RemoteSystemConfig) (*connectionpool.SSHConfig, error) {
 
 	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
 	if !ok {
@@ -97,11 +104,12 @@ func NewSSHConfig(systemConfig *agaveproto.RemoteSystemConfig) *connectionpool.S
 	}
 	log.Debugf("SSH_AUTH_SOCK = %v", AgentSocket)
 
-	return &connectionpool.SSHConfig{
+	var sshConfig connectionpool.SSHConfig
+
+	sshConfig = connectionpool.SSHConfig{
 		User:               systemConfig.Username,
 		Host:               systemConfig.Host,
 		Port:               int(systemConfig.Port),
-		Auth:               []ssh.AuthMethod{ssh.Password(systemConfig.Password)},
 		Timeout:            60 * time.Second,
 		TCPKeepAlive:       true,
 		TCPKeepAlivePeriod: 60 * time.Second,
@@ -109,6 +117,57 @@ func NewSSHConfig(systemConfig *agaveproto.RemoteSystemConfig) *connectionpool.S
 		ForwardAgent:       false,
 		HostKeyCallback:    ssh.InsecureIgnoreHostKey(),
 	}
+
+	// We don't have access to the auth info from within the SSHConfig, so we need to assign a hash
+	// to the config to guarantee uniqueness of different auth types to the same host within the pool.
+	// Since this has to be recalculated per request, we use a particularly fast hash to encode the
+	// credentials and auth type as the salt. This only exists in memory, so exposure is minimal here.
+	hh, err := highwayhash.New(sshKeyHash)
+	if err != nil {
+		// fallback to md5 if highwayhash cannot run on the given host
+		log.Errorf("Failed to create HighwayHash instance. Falling back to MD5: %v", err) // add error handling
+		hh = md5.New()
+	}
+
+	if systemConfig.PrivateKey == "" {
+		io.WriteString(hh, "password")
+		io.WriteString(hh, systemConfig.Password)
+
+		sshConfig.Auth = []ssh.AuthMethod{ssh.Password(systemConfig.Password)}
+	} else {
+		var keySigner ssh.Signer
+		var err error
+
+		// passwordless keys
+		if systemConfig.Password == "" {
+			io.WriteString(hh, "publickey")
+			io.WriteString(hh, systemConfig.PrivateKey)
+
+			keySigner, err = ssh.ParsePrivateKey([]byte(systemConfig.PrivateKey))
+			if err != nil {
+				log.Errorf("Unable to parse ssh keys. Authentication will fail: %v", err)
+				return nil, err
+
+			}
+		} else {
+			io.WriteString(hh, "publickeypass")
+			io.WriteString(hh, systemConfig.PrivateKey)
+
+			keySigner, err = ssh.ParsePrivateKeyWithPassphrase([]byte(systemConfig.PrivateKey), []byte(systemConfig.Password))
+			if err != nil {
+				log.Errorf("Unable to parse ssh keys. Authentication will fail: %v", err)
+				return nil, err
+			}
+		}
+
+		sshConfig.Auth = []ssh.AuthMethod{ssh.PublicKeys(keySigner)}
+	}
+
+	// create a salt to hash the config. Without this, we can't track authentication to the same host/account/port
+	// with different auth mechanisms, which is critical for accounting.
+	sshConfig.HashSalt = hex.EncodeToString(hh.Sum(nil))
+
+	return &sshConfig, nil
 }
 
 func NewRemoteFileInfo(path string, fileInfo os.FileInfo) agaveproto.RemoteFileInfo {
@@ -151,6 +210,27 @@ func newConnectionPool() *connectionpool.SSHPool {
 	return connectionpool.NewPool(poolCfg)
 }
 
+// generates a random n digit byte array
+func RandString(n int) string {
+	return string(RandBytes(n))
+}
+
+func RandBytes(length int) []byte {
+	all := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	digits := "0123456789"
+	rand.Seed(time.Now().UnixNano())
+
+	buf := make([]byte, length)
+	buf[0] = digits[rand.Intn(len(digits))]
+	for i := 1; i < length; i++ {
+		buf[i] = all[rand.Intn(len(all))]
+	}
+	rand.Shuffle(len(buf), func(i, j int) {
+		buf[i], buf[j] = buf[j], buf[i]
+	})
+	return buf
+}
+
 func (s *Server) InitMetrics() {
 	Pool = newConnectionPool()
 
@@ -166,21 +246,18 @@ func (s *Server) InitMetrics() {
 		mkdirsCounterMetric,
 		authCounterMetric)
 
-	//s.Registry.MustRegister(&s.GrpcMetrics, getCounterMetric)
-	//reg.MustRegister(grpcMetrics, getTotalBytesTransferredMetric)
-	//reg.MustRegister(grpcMetrics, putCounterMetric)
-	//reg.MustRegister(grpcMetrics, putTotalBytesTransferredMetric)
-	//reg.MustRegister(grpcMetrics, removeCounterMetric)
-	//reg.MustRegister(grpcMetrics, connectionpoolCounterMetric)
-	//reg.MustRegister(grpcMetrics, statCounterMetric)
-	//reg.MustRegister(grpcMetrics, mkdirsCounterMetric)
-	//reg.MustRegister(grpcMetrics, authCounterMetric)
+	// generate a unique hash key to encrypt the ssh configs in the pool
+	sshKeyHash = RandBytes(64)
 }
+
 // Performs a basic authentication handshake to the remote system
 func (*Server) AuthCheck(ctx context.Context, req *agaveproto.AuthenticationCheckRequest) (*agaveproto.EmptyResponse, error) {
 	log.Tracef("Invoking Auth service")
 
-	sshCfg := NewSSHConfig(req.SystemConfig)
+	sshCfg, err := NewSSHConfig(req.SystemConfig)
+	if err != nil {
+		return &agaveproto.EmptyResponse{Error:  err.Error()}, nil
+	}
 
 	log.Debugf(sshCfg.String())
 
@@ -208,7 +285,10 @@ func (*Server) AuthCheck(ctx context.Context, req *agaveproto.AuthenticationChec
 func (*Server) Mkdir(ctx context.Context, req *agaveproto.SrvMkdirRequest) (*agaveproto.FileInfoResponse, error) {
 	log.Printf("Invoking Mkdirs service")
 
-	sshCfg := NewSSHConfig(req.SystemConfig)
+	sshCfg, err := NewSSHConfig(req.SystemConfig)
+	if err != nil {
+		return &agaveproto.FileInfoResponse{Error:  err.Error()}, nil
+	}
 
 	log.Debugf(sshCfg.String())
 
@@ -240,7 +320,10 @@ func (*Server) Mkdir(ctx context.Context, req *agaveproto.SrvMkdirRequest) (*aga
 func (*Server) Stat(ctx context.Context, req *agaveproto.SrvStatRequest) (*agaveproto.FileInfoResponse, error) {
 	log.Printf("Invoking Stat service")
 
-	sshCfg := NewSSHConfig(req.SystemConfig)
+	sshCfg, err := NewSSHConfig(req.SystemConfig)
+	if err != nil {
+		return &agaveproto.FileInfoResponse{Error:  err.Error()}, nil
+	}
 
 	log.Debugf(sshCfg.String())
 
@@ -272,7 +355,10 @@ func (*Server) Stat(ctx context.Context, req *agaveproto.SrvStatRequest) (*agave
 func (*Server) Remove(ctx context.Context, req *agaveproto.SrvRemoveRequest) (*agaveproto.EmptyResponse, error) {
 	log.Printf("Invoking Remove service")
 
-	sshCfg := NewSSHConfig(req.SystemConfig)
+	sshCfg, err := NewSSHConfig(req.SystemConfig)
+	if err != nil {
+		return &agaveproto.EmptyResponse{Error:  err.Error()}, nil
+	}
 
 	log.Debugf(sshCfg.String())
 
@@ -304,7 +390,10 @@ func (*Server) Remove(ctx context.Context, req *agaveproto.SrvRemoveRequest) (*a
 func (*Server) Get(ctx context.Context, req *agaveproto.SrvGetRequest) (*agaveproto.TransferResponse, error) {
 	log.Trace("Invoking Get service")
 
-	sshCfg := NewSSHConfig(req.SystemConfig)
+	sshCfg, err := NewSSHConfig(req.SystemConfig)
+	if err != nil {
+		return &agaveproto.TransferResponse{Error:  err.Error()}, nil
+	}
 
 	log.Debugf(sshCfg.String())
 
@@ -340,7 +429,10 @@ func (*Server) Get(ctx context.Context, req *agaveproto.SrvGetRequest) (*agavepr
 func (*Server) Put(ctx context.Context, req *agaveproto.SrvPutRequest) (*agaveproto.TransferResponse, error) {
 	log.Trace("Invoking Put service")
 
-	sshCfg := NewSSHConfig(req.SystemConfig)
+	sshCfg, err := NewSSHConfig(req.SystemConfig)
+	if err != nil {
+		return &agaveproto.TransferResponse{Error:  err.Error()}, nil
+	}
 
 	log.Debugf(sshCfg.String())
 
@@ -376,7 +468,10 @@ func (*Server) Put(ctx context.Context, req *agaveproto.SrvPutRequest) (*agavepr
 func (*Server) List(ctx context.Context, req *agaveproto.SrvListRequest) (*agaveproto.FileInfoListResponse, error) {
 	log.Trace("Invoking list service")
 
-	sshCfg := NewSSHConfig(req.SystemConfig)
+	sshCfg, err := NewSSHConfig(req.SystemConfig)
+	if err != nil {
+		return &agaveproto.FileInfoListResponse{Error:  err.Error()}, nil
+	}
 
 	log.Debugf(sshCfg.String())
 
@@ -403,6 +498,42 @@ func (*Server) List(ctx context.Context, req *agaveproto.SrvListRequest) (*agave
 	return &response, nil
 }
 
+// Fetches file info for a remote path
+func (*Server) Rename(ctx context.Context, req *agaveproto.SrvRenameRequest) (*agaveproto.FileInfoResponse, error) {
+	log.Printf("Invoking Rename service")
+
+	sshCfg, err := NewSSHConfig(req.SystemConfig)
+	if err != nil {
+		return &agaveproto.FileInfoResponse{Error:  err.Error()}, nil
+	}
+
+	log.Debugf(sshCfg.String())
+
+	sftpClient, sessionCount, err := Pool.ClaimClient(sshCfg, sftp.MaxPacket(MAX_PACKET_SIZE))
+	// verify we have a valid connection to use
+	if err != nil {
+		log.Errorf("Error obtaining connection to %s:%d. Nil client returned from pool", req.SystemConfig.Host, req.SystemConfig.Port)
+		return &agaveproto.FileInfoResponse{Error: "nil client returned from pool"}, nil
+	}
+	defer Pool.ReleaseClient(sshCfg)
+	defer sftpClient.Close()
+
+	log.Debugf("Number of active connections: %d", sessionCount)
+
+	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s => sftp://%s@%s:%d/%s",
+		req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath,
+		req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.NewName))
+
+	// increment the request metric
+	statCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
+
+	var response agaveproto.FileInfoResponse
+
+	// invoke the internal action
+	response = rename(sftpClient, req.RemotePath, req.NewName)
+
+	return &response, nil
+}
 //*****************************************************************************************
 
 /*
@@ -671,7 +802,7 @@ func stat(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoRespons
 	// Stat the remote path
 	remoteFileInfo, err := sftpClient.Stat(remotePath)
 	if err != nil {
-		log.Infof("Unable to stat file %v", remotePath)
+		log.Errorf("Unable to stat file %v", remotePath)
 		return agaveproto.FileInfoResponse{Error: err.Error()}
 	}
 
@@ -773,14 +904,14 @@ func remove(sftpClient *sftp.Client, remotePath string) agaveproto.EmptyResponse
 }
 
 func list(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoListResponse {
-	log.Trace("List (Stat) sFTP Service function was invoked ")
+	log.Trace("List (List) sFTP Service function was invoked ")
 
 	defer sftpClient.Close()
 
 	// Stat the remote path
 	remoteFileInfo, err := sftpClient.Stat(remotePath)
 	if err != nil {
-		log.Infof("Unable to stat file %v", remotePath)
+		log.Infof("Unable to stat file %s", remotePath)
 		return agaveproto.FileInfoListResponse{Error: err.Error()}
 	}
 	var remoteFileInfoList []*agaveproto.RemoteFileInfo
@@ -812,6 +943,41 @@ func list(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoListRes
 
 	return agaveproto.FileInfoListResponse{
 		Listing: remoteFileInfoList,
+	}
+}
+
+func rename(sftpClient *sftp.Client, oldRemotePath string, newRemotePath string) agaveproto.FileInfoResponse {
+	log.Trace("Rename (Rename) sFTP Service function was invoked ")
+
+	defer sftpClient.Close()
+
+	// stat the renamed path to catch permission and existence checks ahead of time
+	remoteRenamedFileInfo, err := sftpClient.Stat(newRemotePath)
+	if err != nil && ! os.IsNotExist(err) {
+		log.Errorf("Unable to stat renamed file, %s: %v", newRemotePath, err)
+		return agaveproto.FileInfoResponse{Error: err.Error()}
+	} else if err == nil {
+		log.Errorf("file or dir exists")
+		return agaveproto.FileInfoResponse{Error: "file or dir exists"}
+	}
+
+	// Stat the remote path
+	err = sftpClient.Rename(oldRemotePath, newRemotePath)
+	if err != nil {
+		log.Errorf("Unable to rename file %s to %s: %v", oldRemotePath, newRemotePath, err)
+		return agaveproto.FileInfoResponse{Error: err.Error()}
+	}
+
+	// stat the remoete file to return the fileinfo data
+	remoteRenamedFileInfo, err = sftpClient.Stat(newRemotePath)
+	if err != nil {
+		log.Errorf("Unable to stat renamed file, %s: %v", newRemotePath, err)
+		return agaveproto.FileInfoResponse{Error: err.Error()}
+	}
+
+	rfi := NewRemoteFileInfo(newRemotePath, remoteRenamedFileInfo)
+	return agaveproto.FileInfoResponse{
+		RemoteFileInfo: &rfi,
 	}
 }
 

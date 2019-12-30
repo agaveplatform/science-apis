@@ -200,12 +200,48 @@ func _createRemoteSystemConfig() *agaveproto.RemoteSystemConfig {
 	}
 }
 
+func _createRemoteSshKeySystemConfig() *agaveproto.RemoteSystemConfig {
+	return &agaveproto.RemoteSystemConfig{
+		Username: "testuser",
+		PrivateKey: `-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAxJLvcXKxxTCzm5q4EIyKC82x4lW3Fv9OQS/VkxMVFaf/uy4T
+Qjn3Qx6l1WInA+rH+FHUfKP3PBVjI7Uga4xK6qFIeCGl0XsQ+NA5IVxxFysvgGZy
+wwSvxGwO16X4NUk3+7GSMLYRL+4M4Oq2yv7vuVnDhh1/hzfDMERLUvF7eoQQACV1
+4LxPBmlBJf3qE0A9VTr+I23BYEtqJEEcWOewFfZSwsvRW5tlQsYVeHx/ToXjucki
+W3Gqhd9j+UqX4MWOsN8HVBMTxmIEn38HbaByQaHtmqlusKGMcWuT9aFeTNPMyAa0
+UKzd6qe4ZlOn8jz5P/jZw0oegL9aR6HQuouftQIDAQABAoIBAQCL6Jy9nUmDtO8Q
+4CUDulOCpStnkWRX3OygnuAe5uUJ3eG5IskYSNOBFS4o2sw0EIW1auCWucj9HafL
+QV5KzbaAmrxOrHwtxa7FuMYAxZ/EQrtzYvdpcEt9vP8vY3Ru0Kck4DTRsLQ47fCC
+oOvrPVn4DTiJmzMqVXj6QJFv/mnJPzbeFcgAdmQs1t5YgUnOKgGRutdPuQzjasct
+9jpywQIU/Lokw/9HXAxQ8wYh8LltmLkIAM70LZ219X+jW0M3pH9mPoR+qe8P8DD+
+voYND904st6I9RWNpfFaC0yVo9bMaQUi1GvZ5m18uZnmR8vCz1YeiGVKVkNRg3sb
+q1GQBA2dAoGBAPVGKa0XNPyXDKvKZviFecpLe4qsYGHR6pvrI1hox8QMsk213G3V
+W3DLs+yN6oXAl8ueRQueNel5UShQDUuu8WVr+8bh0eMHnPUdp1W72SSR0LUbAoc2
+aogZjYefGOF6l2rg9u+3u1wz9q++dwlxfV0ONOgwnvRzLNKmNetf7N07AoGBAM0r
+k3aETvh0JEXY5k7AxIZCaXMh9dHc9f7GEa73qb6BbqhGNFDL57HJycTqNAqLWCEj
+Hjt+gUN4DZRUi4028Jy0g5C43UGSqim4MKHtz0KIE4XqweuNGOiKLiEk9JIuIHi8
+DXFT5646ZJQyB8zyXxaky+tHg8myYtEiT5uu5mfPAoGBAIz9D+fXdzXa/gWiCx7A
+WwnV6eYEwEJ6kAmgWGjxkiM3ySaya0sXYcCs13ga+7x2wMri532OLB9RBT3PBlWC
+8nACanAgTq3aKncb3JyDpoZG61mvdPyUYxho19olsf+qoG9ncYrKaoDNvfe33GUp
+P47GI9N0X2rU6ecMc+Ig+d8RAoGAIHB1XlXJDqt+WLTUpTsBV6EEfzmtXkMred7j
+SODLq91XG7AN8YBr38Zh6oqFM+2YP5UH4Kw9z+cZbox3jBpVrNE1xBoWkZmY4gPH
+XLL3BDPzskbN5mpmt82xQXhQWxSD+dLx5Ss5BGkjIfNPHG5t7myb+VVTVv6ndR2R
+rLHYqC0CgYAl+ZtbVyEe3BLlI/+CMv5xSz23RiHS7Gtq8W9DuDEa93c2gm1AeXS2
+v+XY/WvLin8V5NyIkDMLwhOdPgWHoi27Tkr73MtQit7AIK66UxydjTF4mXEthpSF
+/ZRodeQLTBOzfsczG/xqbYodaitvTym3SqbCnR0I6+xGp2HY9KUpEQ==
+-----END RSA PRIVATE KEY-----
+`,
+		Host:     "sftp",
+		Port:     10022,
+	}
+}
+
 func bufDialer(string, time.Duration) (net.Conn, error) {
 	return lis.Dial()
 }
 
-//helper  net.Conn
-func TestAuthenticate(t *testing.T) {
+
+func TestAuthenticateWithPasswordSucceeds(t *testing.T) {
 	beforeTest(t)
 
 	conn := _getConnection(t)
@@ -226,6 +262,80 @@ func TestAuthenticate(t *testing.T) {
 
 	afterTest(t)
 }
+
+
+func TestAuthenticateWithInvalidPasswordReturnsError(t *testing.T) {
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	systemConfig := _createRemoteSystemConfig()
+	systemConfig.Password = "foo"
+
+	req := &agaveproto.AuthenticationCheckRequest{
+		SystemConfig: systemConfig,
+	}
+
+	grpcResponse, err := client.AuthCheck(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while calling RPC Auth: %v", err)
+	} else {
+		assert.Contains(t, grpcResponse.Error, "handshake failed", "AuthCheck with invalid password should return error message stating handshake failed")
+	}
+
+	afterTest(t)
+}
+
+func TestAuthenticateWithWithInvalidRSAKeyReturnsError(t *testing.T) {
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	systemConfig := _createRemoteSshKeySystemConfig()
+	systemConfig.PrivateKey = "foo"
+
+	req := &agaveproto.AuthenticationCheckRequest{
+		SystemConfig: systemConfig,
+	}
+
+	grpcResponse, err := client.AuthCheck(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while calling RPC Auth: %v", err)
+	} else {
+		assert.Contains(t, grpcResponse.Error, "no key found", "AuthCheck with invalid ssh key should return error stating no key found")
+	}
+
+	afterTest(t)
+}
+
+func TestAuthenticateWithRSAKeySucceeds(t *testing.T) {
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	req := &agaveproto.AuthenticationCheckRequest{
+		SystemConfig: _createRemoteSshKeySystemConfig(),
+	}
+
+	grpcResponse, err := client.AuthCheck(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while calling RPC Auth: %v", err)
+	} else {
+		assert.Equal(t, "", grpcResponse.Error, "AuthCheck with valid config should return empty error")
+	}
+
+	afterTest(t)
+}
+
 
 func TestStatReturnsFileInfo(t *testing.T) {
 	beforeTest(t)
@@ -336,7 +446,6 @@ func TestStatReturnsErrIfPathDoesNotExist(t *testing.T) {
 	afterTest(t)
 }
 
-
 func TestMkdir(t *testing.T) {
 
 	beforeTest(t)
@@ -353,7 +462,7 @@ func TestMkdir(t *testing.T) {
 	remoteTestDirectoryPath := _resolveTestPath(testDirectoryPath, SFTP_SHARED_TEST_DIR)
 
 	req := &agaveproto.SrvMkdirRequest{
-		SystemConfig: _createRemoteSystemConfig(),
+		SystemConfig: _createRemoteSshKeySystemConfig(),
 		RemotePath:   remoteTestDirectoryPath,
 		Recursive: false,
 	}
@@ -1357,4 +1466,270 @@ func TestListDirectory(t *testing.T) {
 	}
 
 	afterTest(t)
+}
+
+func TestRenameFile(t *testing.T) {
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	tmpTestFilePath, err := _createTempFile("", ".txt")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %s", err.Error())
+	}
+
+	tmpTestFileInfo, err := os.Stat(_resolveTestPath(tmpTestFilePath, LocalSharedTestDir))
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to open temp test file: %s", err.Error())
+	}
+
+	tmpRenamedFilePath := tmpTestFilePath + "-renamed"
+	renamedRemoteFilePath := _resolveTestPath(tmpRenamedFilePath, SFTP_SHARED_TEST_DIR)
+
+	remoteTestFilePath := _resolveTestPath(tmpTestFilePath, SFTP_SHARED_TEST_DIR)
+
+	req := &agaveproto.SrvRenameRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   remoteTestFilePath,
+		NewName: renamedRemoteFilePath,
+	}
+
+	grpcResponse, err := client.Rename(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while calling RPC Stat: %v", err)
+	} else {
+		_, err := os.Stat(_resolveTestPath(tmpTestFilePath, LocalSharedTestDir))
+		if (! os.IsNotExist(err)) {
+			assert.FailNowf(t, err.Error(), "Original temp file should not be present after rename operation: %s", err.Error())
+		} else if grpcResponse.RemoteFileInfo == nil {
+			assert.FailNow(t, "Returned file info should not be nil on successful rename")
+		} else {
+			assert.Equal(t, "", grpcResponse.Error, "Rename on existing file should return empty error")
+			assert.Equal(t, tmpTestFileInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test file size")
+			assert.Equal(t, tmpTestFileInfo.Name() + "-renamed", grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test file")
+			assert.Equal(t, renamedRemoteFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test file")
+			assert.Equal(t, tmpTestFileInfo.IsDir(), grpcResponse.RemoteFileInfo.IsDirectory, "Returned directory flag should match the flag of the test file")
+			assert.Equal(t, tmpTestFileInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned mode should match the mode of the test file")
+			assert.Equal(t, tmpTestFileInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned last updated timestamp should match the test file")
+		}
+	}
+
+	afterTest(t)
+}
+
+func TestRenameEmptyDirectory(t *testing.T) {
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	tmpTestDirPath, err := _createTempDirectory("")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %s", err.Error())
+	}
+
+	tmpTestDirInfo, err := os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to open temp test file: %s", err.Error())
+	}
+
+	tmpRenamedDirPath := tmpTestDirPath + "-renamed"
+	renamedRemoteDirPath := _resolveTestPath(tmpRenamedDirPath, SFTP_SHARED_TEST_DIR)
+
+	remoteTestDirPath := _resolveTestPath(tmpTestDirPath, SFTP_SHARED_TEST_DIR)
+
+	req := &agaveproto.SrvRenameRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   remoteTestDirPath,
+		NewName: renamedRemoteDirPath,
+	}
+
+	grpcResponse, err := client.Rename(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while calling RPC Stat: %v", err)
+	} else {
+		_, err := os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
+		if (! os.IsNotExist(err)) {
+			assert.FailNowf(t, err.Error(), "Original temp dir should not be present after rename operation: %s", err.Error())
+		} else if grpcResponse.RemoteFileInfo == nil {
+			assert.FailNow(t, "Returned file info should not be nil on successful rename")
+		} else {
+			assert.Equal(t, "", grpcResponse.Error, "Rename on existing dir should return empty error")
+			assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test dir size")
+			assert.Equal(t, tmpTestDirInfo.Name() + "-renamed", grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test dir")
+			assert.Equal(t, renamedRemoteDirPath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test dir")
+			assert.Equal(t, tmpTestDirInfo.IsDir(), grpcResponse.RemoteFileInfo.IsDirectory, "Returned directory flag should match the flag of the test dir")
+			assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned mode should match the mode of the test dir")
+			assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned last updated timestamp should match the test dir")
+		}
+	}
+
+	afterTest(t)
+}
+
+func TestRenameDirectoryTree(t *testing.T) {
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	tmpTestDirPath, err := _createTempDirectory("")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test dir: %s", err.Error())
+	}
+
+	_createTempFileInDirectory(tmpTestDirPath, "tmp1", ".txt")
+	_createTempFileInDirectory(tmpTestDirPath, "tmp2", ".txt")
+	_createTempFileInDirectory(tmpTestDirPath, "tmp3", ".txt")
+
+	tmpNestedTestDirPath, err := _createTempDirectoryInDirectory(tmpTestDirPath, "")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test subdirectory: %s", err.Error())
+	}
+	_createTempFileInDirectory(tmpNestedTestDirPath, "tmp3", ".txt")
+	_createTempFileInDirectory(tmpNestedTestDirPath, "tmp4", ".txt")
+
+	tmpTestDirInfo, err := os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to open temp test file: %s", err.Error())
+	}
+
+	tmpRenamedDirPath := tmpTestDirPath + "-renamed"
+	renamedRemoteDirPath := _resolveTestPath(tmpRenamedDirPath, SFTP_SHARED_TEST_DIR)
+
+	remoteTestDirPath := _resolveTestPath(tmpTestDirPath, SFTP_SHARED_TEST_DIR)
+
+	req := &agaveproto.SrvRenameRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   remoteTestDirPath,
+		NewName: renamedRemoteDirPath,
+	}
+
+	grpcResponse, err := client.Rename(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while calling RPC Stat: %v", err)
+	} else {
+		_, err := os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
+		if (! os.IsNotExist(err)) {
+			assert.FailNowf(t, err.Error(), "Original temp dir should not be present after rename operation: %s", err.Error())
+		} else if grpcResponse.RemoteFileInfo == nil {
+			assert.FailNow(t, "Returned file info should not be nil on successful rename")
+		} else {
+			assert.Equal(t, "", grpcResponse.Error, "Rename on existing dir should return empty error")
+			assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test dir size")
+			assert.Equal(t, tmpTestDirInfo.Name() + "-renamed", grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test dir")
+			assert.Equal(t, renamedRemoteDirPath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test dir")
+			assert.Equal(t, tmpTestDirInfo.IsDir(), grpcResponse.RemoteFileInfo.IsDirectory, "Returned directory flag should match the flag of the test dir")
+			assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned mode should match the mode of the test dir")
+			assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned last updated timestamp should match the test dir")
+		}
+	}
+
+	afterTest(t)
+}
+
+func TestRenameDirToExistingPthReturnsError(t *testing.T) {
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	tmpTestDirPath, err := _createTempDirectory("")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %v", err)
+	}
+
+	forbiddenPath := "/root/" + uuid.New().String()
+	_doTestRenamePathReturnsErr(t, client, tmpTestDirPath, forbiddenPath, "Permission denied")
+
+	dirExistsOutsideOriginalParentDir := "/tmp"
+	_doTestRenamePathReturnsErr(t, client, tmpTestDirPath, dirExistsOutsideOriginalParentDir, "file or dir exists")
+
+	_doTestRenamePathReturnsErr(t, client, tmpTestDirPath, _resolveTestPath(tmpTestDirPath, SFTP_SHARED_TEST_DIR), "file or dir exists")
+
+	_doTestRenamePathReturnsErr(t, client, tmpTestDirPath, "", "file does not exist")
+
+	fileExistsInOriginalParentDir, err := _createTempFile("","")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %v", err)
+	}
+	_doTestRenamePathReturnsErr(t, client, tmpTestDirPath, _resolveTestPath(fileExistsInOriginalParentDir, SFTP_SHARED_TEST_DIR), "file or dir exists")
+
+	dirExistsInOriginalParentDir, err := _createTempDirectory("")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test dir: %v", err)
+	}
+	_doTestRenamePathReturnsErr(t, client, tmpTestDirPath, _resolveTestPath(dirExistsInOriginalParentDir, SFTP_SHARED_TEST_DIR), "file or dir exists")
+
+
+	afterTest(t)
+}
+
+func TestRenameFileToExistingPathReturnsError(t *testing.T) {
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	client := agaveproto.NewSftpRelayClient(conn)
+
+	tmpTestFilePath, err := _createTempFile("","")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %v", err)
+	}
+
+	forbiddenPath := "/root/" + uuid.New().String()
+	_doTestRenamePathReturnsErr(t, client, tmpTestFilePath, forbiddenPath, "Permission denied")
+
+	dirExistsOutsideOriginalParentDir := "/tmp"
+	_doTestRenamePathReturnsErr(t, client, tmpTestFilePath, dirExistsOutsideOriginalParentDir, "file or dir exists")
+
+	_doTestRenamePathReturnsErr(t, client, tmpTestFilePath, _resolveTestPath(tmpTestFilePath, SFTP_SHARED_TEST_DIR), "file or dir exists")
+
+	_doTestRenamePathReturnsErr(t, client, tmpTestFilePath, "", "file does not exist")
+
+	fileExistsInOriginalParentDir, err := _createTempFile("","")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %v", err)
+	}
+	_doTestRenamePathReturnsErr(t, client, tmpTestFilePath, _resolveTestPath(fileExistsInOriginalParentDir, SFTP_SHARED_TEST_DIR), "file or dir exists")
+
+	dirExistsInOriginalParentDir, err := _createTempDirectory("")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test dir: %v", err)
+	}
+	_doTestRenamePathReturnsErr(t, client, tmpTestFilePath, _resolveTestPath(dirExistsInOriginalParentDir, SFTP_SHARED_TEST_DIR), "file or dir exists")
+
+	afterTest(t)
+}
+
+func _doTestRenamePathReturnsErr(t *testing.T, client agaveproto.SftpRelayClient, tmpTestPath string, remoteRenamedPath string, expectedError string) {
+
+	req := &agaveproto.SrvRenameRequest{
+		SystemConfig: _createRemoteSystemConfig(),
+		RemotePath:   _resolveTestPath(tmpTestPath, SFTP_SHARED_TEST_DIR),
+		NewName: remoteRenamedPath,
+	}
+
+	grpcResponse, err := client.Rename(context.Background(), req)
+	if err != nil {
+		assert.Nilf(t, err, "Error while calling RPC Stat: %v", err)
+	} else {
+		_, err := os.Stat(_resolveTestPath(tmpTestPath, LocalSharedTestDir))
+		if err != nil {
+			assert.FailNowf(t, err.Error(), "Original temp path should be present after failed rename operation: %s", err.Error())
+		} else {
+			assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
+			assert.Contains(t, grpcResponse.Error, expectedError, "Rename to a forbidden path should return error " + expectedError)
+		}
+	}
 }

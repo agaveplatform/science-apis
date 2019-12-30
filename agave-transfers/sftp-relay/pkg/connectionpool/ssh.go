@@ -17,6 +17,7 @@ type SSHConfig struct {
 	Host string
 	Port int
 	Auth []ssh.AuthMethod
+	HashSalt string
 
 	// Timeout is the maximum amount of time for the TCP connection to establish.
 	Timeout time.Duration
@@ -39,10 +40,11 @@ type SSHConfig struct {
 // String returns a hash string generated from the SSH config parameters.
 func (c *SSHConfig) String() string {
 	return fmt.Sprintf(
-		"%s@%s:%d?ForwardAgent=%s",
+		"%s@%s:%d?salt=%s&ForwardAgent=%s",
 		c.User,
 		c.Host,
 		c.Port,
+		c.HashSalt,
 		fmt.Sprint(c.ForwardAgent),
 	)
 }

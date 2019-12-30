@@ -8,6 +8,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/minio/highwayhash v1.0.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/sftp v1.10.2-0.20191111234405-8488d36edee7
 	github.com/prometheus/client_golang v1.3.0

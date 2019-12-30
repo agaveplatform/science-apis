@@ -17,15 +17,20 @@ package cmd
 
 import (
 	"fmt"
-	homedir "github.com/mitchellh/go-homedir"
-	"github.com/sirupsen/logrus"
+	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"io"
 	"os"
 )
 
-var log = logrus.New()
+//var log = logrus.Logger{
+//	Out:          os.Stderr,
+//	Formatter:    new(logrus.TextFormatter),
+//	Hooks:        make(logrus.LevelHooks),
+//	Level:        logrus.ErrorLevel,
+//	ExitFunc:     os.Exit,
+//	ReportCaller: false,
+//}
 
 const (
 	DefaultUsername   = "testuser"
@@ -54,6 +59,7 @@ var (
 	localPath   string
 	force       bool
 	append		bool
+	verbose		bool
 	byteRange   string
 )
 
@@ -65,7 +71,9 @@ var rootCmd = &cobra.Command{
 	Long:  `CLI client written in Go for the Agave sftp-server application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	Run: func(cmd *cobra.Command, args []string) {},
+	Run: func(cmd *cobra.Command, args []string) {
+
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -81,12 +89,12 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// log to console and file
-	f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("Error opening file: %v", err)
-	}
-	wrt := io.MultiWriter(os.Stdout, f)
-	log.SetOutput(wrt)
+	//f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	//if err != nil {
+	//	//log.Fatalf("Error opening file: %v", err)
+	//}
+	//wrt := io.MultiWriter(os.Stdout, f)
+	////log.SetOutput(wrt)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -101,6 +109,7 @@ func init() {
 	pflags.IntVarP(&port, "port", "P", DefaultPort, "Port of the remote host.")
 	pflags.StringVarP(&grpcservice, "grpcservice", "g", GrpcService, "Address of the grpc server. (default is [::1]:50051")
 	pflags.StringVarP(&remotePath, "remotePath", "d", DefaultRemotePath, "Remote path.  Defaults to /tmp/100K.txt")
+	pflags.BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 	//pflags.StringVarP(&localPath, "localPath", "s", DefaultLocalPath, "Local path.  Defaults to /tmp/100K.txt")
 	//pflags.BoolVarP(&force, "force", "f", DefaultForce, "Force true = overwrite the existing dest file.")
 	//pflags.BoolVarP(&append, "append", "a", DefaultAppend, "Force true = append the contents to the remote path.")

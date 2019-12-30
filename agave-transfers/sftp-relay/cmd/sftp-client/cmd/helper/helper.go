@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc"
-	"log"
 )
 
 
@@ -15,9 +14,9 @@ func GetSftpRelay() agaveproto.SftpRelayClient {
 
 	conn, err := grpc.Dial("0.0.0.0:50051", grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("could not connect: %v", err)
+		//log.Fatalf("could not connect: %v", err)
 	}
-	log.Printf("Got a connection to the grpc server on %v", conn.Target())
+	//log.Printf("Got a connection to the grpc server on %v", conn.Target())
 	defer conn.Close()
 
 	return agaveproto.NewSftpRelayClient(conn)

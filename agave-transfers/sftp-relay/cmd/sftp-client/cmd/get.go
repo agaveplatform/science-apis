@@ -17,15 +17,13 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-	"io"
 	"os"
-	"strconv"
-	"time"
 )
 
 // getCmd represents the get command
@@ -39,29 +37,21 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Debugf("Get Command =====================================")
-		log.Debugf("localPath = %v", localPath)
-		log.Debugf("remotePath = %v", remotePath)
-
-		// log to console and file
-		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			log.Fatalf("Error opening file: %v", err)
-		}
-		wrt := io.MultiWriter(os.Stdout, f)
-		log.SetOutput(wrt)
+		//log.Debugf("Get Command =====================================")
+		//log.Debugf("localPath = %v", localPath)
+		//log.Debugf("remotePath = %v", remotePath)
 
 		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("Could not connect: %v", err)
+			//log.Fatalf("Could not connect: %v", err)
 		}
 		defer conn.Close()
 
 		sftpRelay := agaveproto.NewSftpRelayClient(conn)
 
-		log.Tracef("Starting Push rpc client: ")
-		startPushtime := time.Now()
-		log.Debugf("Start Time = %v", startPushtime)
+		//log.Tracef("Starting Push rpc client: ")
+		//startPushtime := time.Now()
+		//log.Debugf("Start Time = %v", startPushtime)
 
 		req := &agaveproto.SrvGetRequest{
 			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
@@ -70,28 +60,25 @@ to quickly create a Cobra application.`,
 			Force: force,
 			Range: byteRange,
 		}
-		log.Tracef("Connecting to grpc service at: %s:%d", host, port)
+		//log.Tracef("Connecting to grpc service at: %s:%d", host, port)
 
 		res, err := sftpRelay.Get(context.Background(), req)
-		secs := time.Since(startPushtime).Seconds()
+		//secs := time.Since(startPushtime).Seconds()
 		if err != nil {
-			log.Errorf("Error while calling gRPC Put: %v", err)
-			log.Exit(1)
-		}
-		if res == nil {
-			log.Error("Empty response received from gRPC server")
-			log.Exit(1)
-		}
-		log.Infof("End Time %f", time.Since(startPushtime).Seconds())
-		if res.Error != "" {
-			log.Errorf("Error response: %s", res.Error)
-			//log.Exit(1)
+			fmt.Printf("Error while calling gRPC Remove: %s\n", err.Error())
+			os.Exit(1)
+		} else if res == nil {
+			fmt.Println("Empty response received from gRPC server")
 		} else {
-			log.Printf("Transfer complete: %s (%d bytes)", res.RemoteFileInfo.Path, res.BytesTransferred)
-			log.Debugf("%v", res)
+			if res.Error != "" {
+				fmt.Println(res.Error)
+			} else {
+				fmt.Printf("Transfer complete: %s (%d bytes)", res.RemoteFileInfo.Path, res.BytesTransferred)
+			}
 		}
-		log.Debugf("%v", res)
-		log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+		//log.Debugf("%v", res)
+		//log.Infof("End Time %f", time.Since(startPushtime).Seconds())
+		//log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 
@@ -103,7 +90,7 @@ func init() {
 	getCmd.Flags().StringVarP(&byteRange, "byteRange", "b", DefaultByteRange, "Byte range to fetch.  Defaults to the entire file")
 
 
-	viper.BindPFlag("localPath", putCmd.Flags().Lookup("localPath"))
-	viper.BindPFlag("force", putCmd.Flags().Lookup("force"))
-	viper.BindPFlag("byteRange", putCmd.Flags().Lookup("byteRange"))
+	viper.BindPFlag("localPath", getCmd.Flags().Lookup("localPath"))
+	viper.BindPFlag("force", getCmd.Flags().Lookup("force"))
+	viper.BindPFlag("byteRange", getCmd.Flags().Lookup("byteRange"))
 }

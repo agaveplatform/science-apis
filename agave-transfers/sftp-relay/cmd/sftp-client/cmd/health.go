@@ -17,57 +17,50 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	hpb "google.golang.org/grpc/health/grpc_health_v1"
-	"io"
 	"os"
-	"strconv"
-	"time"
 )
 
 // healthCmd represents the health command
 var healthCmd = &cobra.Command{
 	Use:   "health",
+	Aliases: []string{"status"},
 	Short: "Health check on grpc server",
 	Long: `Performs a synchronous health check on the grpc server 
 by calling its "Check" method.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Debugf("Put Command =====================================")
-		log.Debugf("localPath = %v", localPath)
-		log.Debugf("remotePath = %v", remotePath)
+		//log.Debugf("Put Command =====================================")
+		//log.Debugf("localPath = %v", localPath)
+		//log.Debugf("remotePath = %v", remotePath)
 
-		// log to console and file
-		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			log.Fatalf("Error opening file: %v", err)
-		}
-		wrt := io.MultiWriter(os.Stdout, f)
-		log.SetOutput(wrt)
-
-		log.Tracef("Connecting to %v...", grpcservice)
+		//log.Tracef("Connecting to %v...", grpcservice)
 
 		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("could not connect: %v", err)
+			//log.Fatalf("could not connect: %v", err)
 		}
-		log.Tracef("Connected to %s", conn.Target())
+		//log.Tracef("Connected to %s", conn.Target())
 		defer conn.Close()
 
 		hclient := hpb.NewHealthClient(conn)
-		startPushtime := time.Now()
-		log.Debugf("Start Time = %v", startPushtime)
+		//startPushtime := time.Now()
+		//log.Debugf("Start Time = %v", startPushtime)
 
 		resp, err := hclient.Check(context.Background(),&hpb.HealthCheckRequest{})
-		secs := time.Since(startPushtime).Seconds()
+		//secs := time.Since(startPushtime).Seconds()
 
 		if err != nil {
-			log.Errorf("Error while calling gRPC Health: %v", err)
+			fmt.Printf("Error while calling gRPC Health: %s\n", err.Error())
+			os.Exit(1)
 		} else {
-			log.Printf(resp.Status.String())
+			fmt.Printf("%s\n", resp.Status.String())
 		}
-
-		log.Debugf("gRPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+		//log.Debugf("%v", resp)
+		//log.Infof("End Time %f", time.Since(startPushtime).Seconds())
+		//log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 

@@ -17,69 +17,61 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"io"
 	"os"
-	"strconv"
-	"time"
 )
 
 // getCmd represents the get command
 var removeCmd = &cobra.Command{
 	Use:   "remove",
+	Aliases: []string{"rm","del","delete"},
 	Short: "Deletes the given file or folder at the given path on the remote host",
 	Long: `Deletes the file or folder on the remote host. Equivalent to the rm -rf 
 command in linux.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Infof("Remove Command =====================================")
-		log.Infof("remotePath = %v", remotePath)
-
-		// log to console and file
-		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			log.Fatalf("Error opening file: %v", err)
-		}
-		wrt := io.MultiWriter(os.Stdout, f)
-		log.SetOutput(wrt)
+		//log.Info("Remove Command =====================================")
+		//log.Infof("remotePath = %v", remotePath)
 
 		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("could not connect: %v", err)
+			//log.Fatalf("could not connect: %v", err)
 		}
 		defer conn.Close()
 
 		sftpRelay := agaveproto.NewSftpRelayClient(conn)
 
-		log.Println("Starting Remove rpc client: ")
-		startPushtime := time.Now()
-		log.Printf("Start Time = %v", startPushtime)
+		//log.Println("Starting Remove rpc client: ")
+		//startPushtime := time.Now()
+		//log.Printf("Start Time = %v", startPushtime)
 
 		req := &agaveproto.SrvRemoveRequest{
 			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
 			RemotePath: remotePath,
 		}
-		log.Debugf("Connecting to grpc service at: %s:%d", host, port)
+		//log.Debugf("Connecting to grpc service at: %s:%d", host, port)
 
 
 		res, err := sftpRelay.Remove(context.Background(), req)
+		//secs := time.Since(startPushtime).Seconds()
 		if err != nil {
-			log.Errorf("Error while calling gRPC Remove: %v", err)
-		}
-		if res == nil {
-			log.Error("Empty response received from gRPC server")
-		}
-		log.Println("End Time %f", time.Since(startPushtime).Seconds())
-		secs := time.Since(startPushtime).Seconds()
-		if res.Error != "" {
-			log.Errorf("Error message: %s \n", res.Error)
+			fmt.Printf("Error while calling gRPC Remove: %s\n", err.Error())
+			os.Exit(1)
+		} else if res == nil {
+			fmt.Println("Empty response received from gRPC server")
 		} else {
-			log.Printf("Deletion complete: %s", remotePath)
+			if res.Error != "" {
+				fmt.Printf("%s\n", res.Error)
+			} else {
+				fmt.Printf("Removed %s\n", remotePath)
+			}
 		}
-		log.Debugf("%v", res)
-		log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+		//log.Debugf("%v", res)
+		//log.Infof("End Time %f", time.Since(startPushtime).Seconds())
+		//log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 

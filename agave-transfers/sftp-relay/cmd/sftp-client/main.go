@@ -17,10 +17,7 @@ package main
 
 import (
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd"
-	"github.com/sirupsen/logrus"
 )
-
-var log = logrus.New()
 
 func main() {
 	cmd.Execute()

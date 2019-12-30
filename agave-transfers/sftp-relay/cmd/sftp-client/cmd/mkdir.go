@@ -17,72 +17,70 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-	"io"
 	"os"
-	"strconv"
-	"time"
 )
 
+var recursive = false
+
 // getCmd represents the get command
-var mkdirsCmd = &cobra.Command{
-	Use:   "mkdirs",
+var mkdirCmd = &cobra.Command{
+	Use:   "mkdir",
 	Short: "Creates the given directory path on the remote host",
-	Long: `Creates the full directory path on the remote host. Equivalent to the mkdir -p 
+	Long: `Creates the full directory path on the remote host. Equivalent to the mkdir 
 command in linux.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Infof("Mkdirs Command =====================================")
-		log.Infof("remotePath = %s", remotePath)
-
-		// log to console and file
-		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			log.Fatalf("Error opening file: %v", err)
-		}
-		wrt := io.MultiWriter(os.Stdout, f)
-		log.SetOutput(wrt)
+		//log.Infof("Mkdir Command =====================================")
+		//log.Infof("remotePath = %s", remotePath)
 
 		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("could not connect: %v", err)
+			//log.Fatalf("could not connect: %v", err)
 		}
 		defer conn.Close()
 
 		sftpRelay := sftppb.NewSftpRelayClient(conn)
 
-		log.Println("Starting Mkdirs rpc client: ")
-		startPushtime := time.Now()
-		log.Printf("Start Time = %v", startPushtime)
+		//log.Println("Starting Mkdirs rpc client: ")
+		//startPushtime := time.Now()
+		//log.Printf("Start Time = %v", startPushtime)
 
-		req := &sftppb.SrvMkdirsRequest{
+		req := &sftppb.SrvMkdirRequest{
 			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
 			RemotePath: remotePath,
+			Recursive: recursive,
 		}
-		log.Debugf("Connecting to grpc service at: %s:%d", host, port)
+		//log.Debugf("Connecting to grpc service at: %s:%d", host, port)
 
-		res, err := sftpRelay.Mkdirs(context.Background(), req)
-		secs := time.Since(startPushtime).Seconds()
+		res, err := sftpRelay.Mkdir(context.Background(), req)
+		//secs := time.Since(startPushtime).Seconds()
 		if err != nil {
-			log.Errorf("Error while calling gRPC Mkdirs: %v", err)
-		}
-		if res == nil {
-			log.Error("Empty response received from gRPC server")
-		}
-		log.Infof("End Time %f", time.Since(startPushtime).Seconds())
-		if res.Error != "" {
-			log.Errorf("Error response: %s", res.Error)
+			fmt.Printf("Error while calling gRPC Remove: %s\n", err.Error())
+			os.Exit(1)
+		} else if res == nil {
+			fmt.Println("Empty response received from gRPC server")
 		} else {
-			log.Printf("Directory created: %s", res.RemoteFileInfo.Path)
+			if res.Error != "" {
+				fmt.Println(res.Error)
+			} else {
+				fmt.Printf("%s\n", res.RemoteFileInfo.Path)
+			}
 		}
-		log.Debugf("%v", res)
-		log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
+		//log.Debugf("%v", res)
+		//log.Infof("End Time %f", time.Since(startPushtime).Seconds())
+		//log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(mkdirsCmd)
+	rootCmd.AddCommand(mkdirCmd)
 
+	mkdirCmd.Flags().BoolVarP(&recursive, "recursive", "p", false, " Create intermediate directories as required.  If this option is not specified, the full path prefix of each operand must already exist.  On the other hand, with this option specified, no error will be reported if a directory given as an operand already exists.")
+
+	viper.BindPFlag("recursive", mkdirCmd.Flags().Lookup("recursive"))
 }

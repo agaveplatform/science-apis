@@ -17,79 +17,68 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-	"io"
 	"os"
-	"strconv"
-	"time"
 )
 
-// getCmd represents the get command
-var statCmd = &cobra.Command{
-	Use:   "stat",
-	Short: "Makes a remote stat on a file or folder",
-	Long: `Fetches the file metadata for a remote file or directory. Equivalent 
- to the rm -rf command in linux.`,
+var newName string
+var renameCmd = &cobra.Command{
+	Use:   "rename",
+	Short: "Makes a remote rename on a file or folder",
+	Long: `Renames the remote file or directory. The newPath must have the same parent directory as the original.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Infof("Stat Command =====================================")
-		log.Infof("remotePath = %v", remotePath)
-
-		// log to console and file
-		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			log.Fatalf("Error opening file: %v", err)
-		}
-		wrt := io.MultiWriter(os.Stdout, f)
-		log.SetOutput(wrt)
+		//log.Infof("Rename Command =====================================")
+		//log.Infof("remotePath = %v", remotePath)
+		//log.Infof("newName = %v", newName)
 
 		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("could not connect: %v", err)
+			//log.Fatalf("could not connect: %v", err)
 		}
 		defer conn.Close()
 
 		sftpRelay := agaveproto.NewSftpRelayClient(conn)
 
-		log.Println("Starting Remove rpc client: ")
-		startPushtime := time.Now()
-		log.Printf("Start Time = %v", startPushtime)
+		//log.Println("Starting Remove rpc client: ")
+		//startPushtime := time.Now()
+		//log.Printf("Start Time = %v", startPushtime)
 
 		req := &agaveproto.SrvStatRequest{
 			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
 			RemotePath: remotePath,
 		}
-		log.Debugf("Connecting to grpc service at: %s:%d", host, port)
+		//log.Debugf("Connecting to grpc service at: %s:%d", host, port)
 
 		res, err := sftpRelay.Stat(context.Background(), req)
-		secs := time.Since(startPushtime).Seconds()
+		//secs := time.Since(startPushtime).Seconds()
 		if err != nil {
-			log.Errorf("Error while calling gRPC Remove: %v", err)
-		}
-		if res == nil {
-			log.Error("Empty response received from gRPC server")
-		}
-		log.Infof("End Time %f", time.Since(startPushtime).Seconds())
-
-		if res.Error != "" {
-			log.Errorf("Error message: %s", res.Error)
+			fmt.Printf("Error while calling gRPC Remove: %s\n", err.Error())
+			os.Exit(1)
+		} else if res == nil {
+			fmt.Println("Empty response received from gRPC server")
 		} else {
-			log.Printf("Name: %s", res.RemoteFileInfo.Name)
-			log.Printf("Path: %s", res.RemoteFileInfo.Path)
-			log.Printf("Mode: %s", res.RemoteFileInfo.Mode)
-			log.Printf("Size: %d", res.RemoteFileInfo.Size)
-			log.Printf("LastUpdated: %s", time.Unix(res.RemoteFileInfo.LastUpdated, 0).String())
-			log.Printf("IsDirector: %b", res.RemoteFileInfo.IsDirectory)
-			log.Printf("IsLink: %b", res.RemoteFileInfo.IsLink)
-			log.Println("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
-			log.Debugf("%v", res)
+			if res.Error != "" {
+				fmt.Printf("%s\n", res.Error)
+			} else {
+				fmt.Printf("%s\n", res.RemoteFileInfo.Path)
+			}
 		}
+		//log.Debugf("%v", res)
+		//log.Infof("End Time %f", time.Since(startPushtime).Seconds())
+		//log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(statCmd)
+	rootCmd.AddCommand(renameCmd)
+
+	renameCmd.Flags().StringVarP(&newName, "newName", "n", "", "New name for the remotePath.")
+
+	viper.BindPFlag("newName", renameCmd.Flags().Lookup("newName"))
 
 }

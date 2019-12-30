@@ -17,15 +17,13 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
-	"io"
 	"os"
-	"strconv"
-	"time"
 )
 
 //var log = logrus.New()
@@ -36,32 +34,24 @@ var putCmd = &cobra.Command{
 	Short: "Perform a PUT operations",
 	Long:  `Performs a put operation copying a file on the relay server to a remote server`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Infof("Put Command =====================================")
-		log.Infof("localPath = %v", localPath)
-		log.Infof("remotePath = %v", remotePath)
+		//log.Infof("Put Command =====================================")
+		//log.Infof("localPath = %v", localPath)
+		//log.Infof("remotePath = %v", remotePath)
 
-		// log to console and file
-		f, err := os.OpenFile("sftp-client.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-		if err != nil {
-			log.Fatalf("Error opening file: %v", err)
-		}
-		wrt := io.MultiWriter(os.Stdout, f)
-		log.SetOutput(wrt)
-
-		log.Infof("connecting to %v...", grpcservice)
+		//log.Infof("connecting to %v...", grpcservice)
 
 		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
 		if err != nil {
-			log.Fatalf("could not connect: %v", err)
+			//log.Fatalf("could not connect: %v", err)
 		}
-		log.Infof("Connected to %s", conn.Target())
+		//log.Infof("Connected to %s", conn.Target())
 		defer conn.Close()
 
 		sftpRelay := sftppb.NewSftpRelayClient(conn)
 
-		log.Infof("Starting Push rpc client: ")
-		startPushtime := time.Now()
-		log.Infof("Start Time = %v", startPushtime)
+		//log.Infof("Starting Push rpc client: ")
+		//startPushtime := time.Now()
+		//log.Infof("Start Time = %v", startPushtime)
 
 		req := &sftppb.SrvPutRequest{
 			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
@@ -70,26 +60,26 @@ var putCmd = &cobra.Command{
 			Force: force,
 			Append: append,
 		}
-		log.Debugf("Connecting to grpc service at: %s:%d", host, port)
+		//log.Debugf("Connecting to grpc service at: %s:%d", host, port)
 
 		res, err := sftpRelay.Put(context.Background(), req)
-		secs := time.Since(startPushtime).Seconds()
+		//secs := time.Since(startPushtime).Seconds()
 		if err != nil {
-			log.Errorf("Error while calling gRPC Put: %v", err)
-			//log.Exit(1)
+			fmt.Printf("Error while calling gRPC Remove: %s\n", err.Error())
+			os.Exit(1)
 		} else if res == nil {
-			log.Error("Empty response received from gRPC server")
-			//log.Exit(1)
+			fmt.Println("Empty response received from gRPC server")
 		} else {
 			if res.Error != "" {
-				log.Errorf("Error response: %v", res.Error)
-				//log.Exit(1)
+				fmt.Printf("%s\n", res.Error)
 			} else {
-				log.Printf("Transfer complete: %s (%d bytes)", res.RemoteFileInfo.Path, res.BytesTransferred)
+				fmt.Printf("%s (%d bytes)\n", res.RemoteFileInfo.Path, res.BytesTransferred)
 			}
-			log.Debugf("%v", res)
-			log.Info("gRPC Put Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 		}
+
+		//log.Debugf("%v", res)
+		//log.Infof("End Time %f", time.Since(startPushtime).Seconds())
+		//log.Info("RPC Get Time: " + strconv.FormatFloat(secs, 'f', -1, 64))
 	},
 }
 

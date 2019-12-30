@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"sftp", "sanitization", "broken", "integration"})
+@Test(singleThreaded=true, groups= {"sftp", "sanitization", "broken"})
 public class SpecialCharacterFilenameTest extends BaseTransferTestCase {
 
 private static final Logger log = Logger.getLogger(SpecialCharacterFilenameTest.class);

@@ -13,7 +13,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups={"irods3-pam.operations"})
+@Test(groups={"irods3","irods3-pam.operations"})
 public class IrodsPamPasswordRemoteDataClientTest extends IrodsPasswordRemoteDataClientIT {
 
 	/* (non-Javadoc)

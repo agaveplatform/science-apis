@@ -230,7 +230,7 @@ public class FTP extends FTPClient implements RemoteDataClient
                 } else {
                     pathBuilder = (StringUtils.startsWith(remotepath, "/") ? "/" : "") + token;
                 }
-                
+
                 if (doesExist(pathBuilder)) {
                     continue;
                 } else if (mkdir(pathBuilder)) {
@@ -248,13 +248,14 @@ public class FTP extends FTPClient implements RemoteDataClient
 	@Override
 	public boolean mkdir(String dir) throws IOException, RemoteDataException
 	{
-	    fileInfoCache.remove(resolvePath(dir));
+		String resolvedPath = resolvePath(dir);
+	    fileInfoCache.remove(resolvedPath);
         
 	    if (doesExist(dir)) {
 			return false;
 		} else {
 			try {
-				super.makeDir(resolvePath(dir));
+				super.makeDir(resolvedPath);
 				return true;
 			} catch (ServerException e) {
 				if (e.toString().contains("Permission denied")) {
@@ -263,6 +264,7 @@ public class FTP extends FTPClient implements RemoteDataClient
 					throw new RemoteDataException("Failed to create " + dir, e);
 				}
 			} catch (Exception e) {
+				log.error("Failed to create directory " + dir, e);
 				return false;
 			}
 		}

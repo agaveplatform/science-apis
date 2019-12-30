@@ -26,7 +26,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"s3.rename","integration"})
+@Test(enabled = false, groups={"external","s3","s3.rename"})
 public class S3RenameIT extends BaseTransferTestCase {
 	private final Logger log = Logger.getLogger(S3RenameIT.class);
 
@@ -74,7 +74,7 @@ public class S3RenameIT extends BaseTransferTestCase {
 			Assert.assertFalse(getClient().doesExist(""), "Failed to clean up home directory after test.");
 		}
 		catch (Exception e) {
-			Assert.fail("Failed to clean up test home directory " + getClient().resolvePath("") + " after test method.", e);
+			log.error("Failed to clean up test home directory " + getClient().resolvePath("") + " after test method.", e);
 		}
 		finally {
 			try { getClient().disconnect(); } catch (Exception ignored) {}

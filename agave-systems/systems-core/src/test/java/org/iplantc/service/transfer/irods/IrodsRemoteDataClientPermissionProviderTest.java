@@ -6,10 +6,13 @@ package org.iplantc.service.transfer.irods;
 import java.io.IOException;
 import java.lang.reflect.Method;
 
+import org.iplantc.service.transfer.IRemoteDataClientPermissionProviderTest;
 import org.iplantc.service.transfer.RemoteDataClientPermissionProviderTest;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -20,8 +23,8 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups= {"irods3.permissions"})
-public class IrodsRemoteDataClientPermissionProviderTest extends RemoteDataClientPermissionProviderTest {
+@Test(groups={"irods3","irods3.permissions"})
+public class IrodsRemoteDataClientPermissionProviderTest extends RemoteDataClientPermissionProviderTest implements IRemoteDataClientPermissionProviderTest {
 
     /* (non-Javadoc)
      * @see org.iplantc.service.transfer.RemoteDataClientPermissionProviderTest#getSystemJson()
@@ -73,13 +76,13 @@ public class IrodsRemoteDataClientPermissionProviderTest extends RemoteDataClien
 			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME, PermissionType.READ_WRITE, false, false, false, "Owner should not be able to change their ownership toREAD_WRITE permission on folder root"},
 			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME, PermissionType.WRITE_EXECUTE, false, false, true, "Owner should not be able to change their ownership toWRITE_EXECUTE permission on folder root"},
 			
-//			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.ALL, false, true, false, "Owner should not be able to change their ownership toALL permission on file"},
-//			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.EXECUTE, false, false, true, "Owner should not be able to change their ownership to EXECUTE permission on file"},
-//			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.READ, false, false, false, "Owner should not be able to change their ownership to READ permission on file"},
-//			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.WRITE, false, false, false, "Owner should not be able to change their ownership to WRITE permission on file"},
-//			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.READ_EXECUTE, false, false, true, "Owner should not be able to change their ownership to READ_EXECUTE permission on file"},
-//			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.READ_WRITE, false, false, false, "Owner should not be able to change their ownership to READ_WRITE permission on file"},
-//			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.WRITE_EXECUTE, false, false, true, "Owner should not be able to change their ownership to WRITE_EXECUTE permission on file"},
+			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.ALL, false, true, false, "Owner should not be able to change their ownership toALL permission on file"},
+			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.EXECUTE, false, false, true, "Owner should not be able to change their ownership to EXECUTE permission on file"},
+			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.READ, false, false, false, "Owner should not be able to change their ownership to READ permission on file"},
+			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.WRITE, false, false, false, "Owner should not be able to change their ownership to WRITE permission on file"},
+			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.READ_EXECUTE, false, false, true, "Owner should not be able to change their ownership to READ_EXECUTE permission on file"},
+			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.READ_WRITE, false, false, false, "Owner should not be able to change their ownership to READ_WRITE permission on file"},
+			{SYSTEM_USER, m.getName() + "/" + LOCAL_DIR_NAME + "/" + LOCAL_BINARY_FILE_NAME, PermissionType.WRITE_EXECUTE, false, false, true, "Owner should not be able to change their ownership to WRITE_EXECUTE permission on file"},
 			
 		};
 	}
@@ -101,13 +104,6 @@ public class IrodsRemoteDataClientPermissionProviderTest extends RemoteDataClien
 		};
 	}
 	
-//	@Override
-//	@Test(dataProvider="setIrodsPermissionForUserProvider")//, dependsOnMethods={"setPermissionForSharedUser"})
-//	public void setPermissionForUser(String username, String path, PermissionType type, boolean recursive, boolean shouldSetPermission, boolean shouldThrowException, String errorMessage) 
-//	{
-//		super.setPermissionForUser(username, path, type, recursive, shouldSetPermission, shouldThrowException, errorMessage);
-//	}
-	
 	@DataProvider(name="setExecutePermissionProvider")
 	public Object[][] setExecutePermissionProvider(Method m)
 	{
@@ -122,47 +118,7 @@ public class IrodsRemoteDataClientPermissionProviderTest extends RemoteDataClien
 			
 		};
 	}
-	
-//	@Test(dataProvider="setExecutePermissionProvider", dependsOnMethods={"setPermissionForUser"})
-//	public void setExecutePermission(String username, String path, boolean recursive, boolean shouldThrowException, String errorMessage) 
-//	throws Exception
-//	{
-//		try {
-//			getClient().setExecutePermission(username, path, recursive);
-//			Assert.fail("Execute permissions should not be supported by irods.");
-//		} catch (RemoteDataException e) {
-//			if (!shouldThrowException) {
-//				Assert.fail("Adding execute permission should thrown an exception.");
-//			}
-//		}
-//	}
-	
-//	@Override
-//	@Test(dataProvider="basePermissionProvider", dependsOnMethods={"setExecutePermission"})
-//	public void removeExecutePermission(String username, String path, boolean recursive, boolean shouldRemovePermission, String errorMessage)
-//	{
-//		try
-//		{
-//			getClient().removeExecutePermission(username, path, recursive);
-//			
-//			Assert.assertNotEquals(getClient().hasExecutePermission(path, username), 
-//					shouldRemovePermission, errorMessage);
-//			
-//			if (recursive && !shouldRemovePermission)
-//			{
-//				for (RemoteFileInfo fileInfo: getClient().ls(path)) {
-//					String childPath = path + "/" + fileInfo.getName();
-//					Assert.assertNotEquals(getClient().hasExecutePermission(childPath, username), 
-//							shouldRemovePermission, errorMessage);
-//				}
-//			}
-//		}
-//		catch (Exception e)
-//		{
-//			Assert.fail("Failed to remove EXECUTE permissions for " + username + " on path " + path, e);
-//		}
-//	}
-//
+
 	@DataProvider(name="removeReadPermissionProvider")
     public Object[][] removeReadPermissionProvider(Method m)
     {
@@ -229,4 +185,102 @@ public class IrodsRemoteDataClientPermissionProviderTest extends RemoteDataClien
 
         };
     }
+
+	@Test(groups= {"mirroring"})
+	public void isPermissionMirroringRequired() {
+		_isPermissionMirroringRequired();
+	}
+
+	@Test(groups= {"permissions", "all", "get"}, dataProvider="getAllPermissionsProvider", dependsOnGroups= {"mirroring"})
+	public void getAllPermissions(String path, String errorMessage) {
+    	_getAllPermissions(path, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "all", "get"}, dataProvider="getAllPermissionsProvider", dependsOnMethods={"getAllPermissions"})
+	public void getAllPermissionsWithUserFirst(String path, String errorMessage){
+    	_getAllPermissionsWithUserFirst(path, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "get"}, dataProvider="getPermissionForUserProvider", dependsOnGroups={"all"})
+	public void getPermissionForUser(String username, String path, boolean shouldHavePermission, String errorMessage) {
+    	_getPermissionForUser(username, path, shouldHavePermission, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "get"}, dataProvider="getPermissionForUserProvider", dependsOnMethods={"getPermissionForUser"})
+	public void hasExecutePermission(String username, String path, boolean shouldHavePermission, String errorMessage) {
+		_hasExecutePermission(username, path, shouldHavePermission, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "get"}, dataProvider="getPermissionForUserProvider", dependsOnMethods={"hasExecutePermission"})
+	public void hasReadPermission(String username, String path, boolean shouldHavePermission, String errorMessage) {
+    	_hasReadPermission(username, path, shouldHavePermission, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "get"}, dataProvider="getPermissionForUserProvider", dependsOnMethods={"hasReadPermission"})
+	public void hasWritePermission(String username, String path, boolean shouldHavePermission, String errorMessage) {
+    	_hasWritePermission(username, path, shouldHavePermission, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "set"}, dataProvider="setPermissionForSharedUserProvider", dependsOnGroups={"get"})
+	public void setPermissionForSharedUser(String username, String path, PermissionType type, boolean recursive, boolean shouldSetPermission, boolean shouldThrowException, String errorMessage) {
+    	_setPermissionForSharedUser(username, path, type, recursive, shouldSetPermission, shouldThrowException, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "set"}, dataProvider="setPermissionForUserProvider", dependsOnMethods={"setPermissionForSharedUser"})
+	public void setPermissionForUser(String username, String path, PermissionType type, boolean recursive, boolean shouldSetPermission, boolean shouldThrowException, String errorMessage) {
+    	_setPermissionForUser(username, path, type, recursive, shouldSetPermission, shouldThrowException, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "set"}, dataProvider="setExecutePermissionProvider", dependsOnMethods={"setPermissionForUser"},
+			expectedExceptions = RemoteDataException.class,
+			expectedExceptionsMessageRegExp = "Execute permissions are not supported on IRODS systems.")
+	public void setExecutePermission(String username, String path, boolean recursive, boolean shouldSetPermission, String errorMessage)
+			throws RemoteDataException, IOException {
+    	getClient().setExecutePermission(username, path, recursive);
+	}
+
+	@Test(groups= {"permissions", "set"}, dataProvider="setOwnerPermissionProvider", dependsOnMethods={"setExecutePermission"})
+	public void setOwnerPermission(String username, String path, boolean recursive, boolean shouldSetPermission, String errorMessage)
+			throws Exception {
+		_setOwnerPermission(username, path, recursive, shouldSetPermission, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "set"}, dataProvider="setReadPermissionProvider")
+	public void setReadPermission(String username, String path, boolean recursive, boolean shouldSetPermission, String errorMessage)
+			throws Exception {
+		_setReadPermission(username, path, recursive, shouldSetPermission, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "set"}, dataProvider="setWritePermissionProvider")
+	public void setWritePermission(String username, String path, boolean recursive, boolean shouldSetPermission, String errorMessage)
+			throws Exception {
+		_setWritePermission(username, path, recursive, shouldSetPermission, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "delete"}, dataProvider="removeExecutePermissionProvider", dependsOnGroups={"set"},
+			expectedExceptions = RemoteDataException.class,
+			expectedExceptionsMessageRegExp = "Execute permissions are not supported on IRODS systems.")
+	public void removeExecutePermission(String username, String path, boolean recursive, boolean shouldRemovePermission, String errorMessage) throws RemoteDataException {
+		try {
+			getClient().removeExecutePermission(username, path, recursive);
+		} catch (IOException e) {
+			Assert.fail("Removing execution permissions from an irods system should throw a RemoteDataException", e);
+		}
+	}
+
+	@Test(groups= {"permissions", "delete"}, dataProvider="removeReadPermissionProvider", dependsOnMethods={"removeExecutePermission"})
+	public void removeReadPermission(String username, String path, boolean recursive, boolean shouldRemovePermission, String errorMessage) {
+		_removeReadPermission(username, path, recursive, shouldRemovePermission, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "delete"}, dataProvider="removeWritePermissionProvider", dependsOnMethods={"removeReadPermission"})
+	public void removeWritePermission(String username, String path, boolean recursive, boolean shouldRemovePermission, String errorMessage) {
+		_removeWritePermission(username, path, recursive, shouldRemovePermission, errorMessage);
+	}
+
+	@Test(groups= {"permissions", "delete"}, dataProvider="clearPermissionProvider", dependsOnMethods={"removeWritePermission"})
+	public void clearPermissions(String username, String path, PermissionType initialPermission, boolean recursive, boolean shouldClearPermission, String errorMessage)
+			throws Exception {
+		_clearPermissions(username, path, initialPermission, recursive, shouldClearPermission, errorMessage);
+	}
 }

@@ -26,7 +26,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups= {"performance","integration"})
+@Test(groups= {"performance"})
 public class PerformanceTest extends PersistedSystemsModelTestCommon {
 
 	private SystemDao dao;

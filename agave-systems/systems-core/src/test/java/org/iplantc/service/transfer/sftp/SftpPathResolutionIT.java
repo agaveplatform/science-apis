@@ -8,7 +8,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;
 
-@Test(groups={"sftp.path.resolution"})
+@Test(groups={"sftp","sftp.path.resolution"})
 public class SftpPathResolutionIT extends AbstractPathResolutionTests
 {
 	@Override

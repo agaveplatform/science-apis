@@ -27,7 +27,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups= {"transfer","performance","integration"})
+@Test(groups= {"transfer","performance"})
 public class URLCopyTest extends BaseTransferTestCase
 {
 	protected static String LOCAL_DIR = "src/test/resources/transfer";

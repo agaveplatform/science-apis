@@ -10,7 +10,7 @@ import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-@Test(groups={"ssh.run","integration"})
+@Test(groups={"ssh.run"})
 public class MaverickSSHSubmissionClientIT extends AbstractRemoteSubmissionClientTest {
 
 	@Override

@@ -31,7 +31,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups={"irods3.operations"})
+@Test(groups={"irods3","irods3.operations"})
 public class IrodsPasswordRemoteDataClientIT  extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
 
 	/* (non-Javadoc)

@@ -18,7 +18,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"doesexist","integration"})
+@Test(singleThreaded=true, groups= {"doesexist"})
 public class DoesExistOperationTest extends BaseRemoteDataClientOperationTest {
 
     private static final Logger log = Logger.getLogger(DoesExistOperationTest.class);

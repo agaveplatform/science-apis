@@ -17,7 +17,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"rename","integration"})
+@Test(singleThreaded=true, groups= {"rename"})
 public class DoRenameOperationTest extends BaseRemoteDataClientOperationTest {
 
     private static final Logger log = Logger.getLogger(DoRenameOperationTest.class);

@@ -63,7 +63,7 @@ public class RemoteSystemEventProcessor {
 	}
 
 	/**
-	 * @param dao the historyDao to set
+	 * @param entityEventDao the entityEventDao to set
 	 */
 	public void setEntityEventDao(SystemHistoryEventDao entityEventDao) {
 		this.entityEventDao = entityEventDao;
@@ -74,8 +74,9 @@ public class RemoteSystemEventProcessor {
 	 * {@link RemoteSystem}. This could be a CRUD operation or a change
 	 * to the credentials.
 	 * 
-	 * @param system
-	 * @param event
+	 * @param system the system being updated
+	 * @param eventType the type of event
+	 * @param createdBy the owner of the event action
 	 * @return the {@link SystemHistoryEvent} updated with the association to the {@link RemoteSystem}
 	 */
 	public SystemHistoryEvent processSystemUpdateEvent(RemoteSystem system, SystemEventType eventType, String createdBy) {
@@ -123,12 +124,10 @@ public class RemoteSystemEventProcessor {
 	 * {@link RemoteSystem}. Permission changes are not propagated to the associated
 	 * resources.
 	 * 
-	 * @param system
-	 * @param permission
-	 * @param event
+	 * @param system the system receiving the role update
+	 * @param systemRole the role being applied
+	 * @param createdBy the owner of the permission event
 	 * @return the {@link RemoteSystemEvent}
-	 * 
-	 * @throws RemoteSystemEventProcessingException
 	 */
 	public SystemHistoryEvent processPermissionEvent(RemoteSystem system, SystemRole systemRole, String createdBy) 
 	{
@@ -136,7 +135,7 @@ public class RemoteSystemEventProcessor {
 		
 		try {
 			if (system == null) {
-				throw new EntityEventProcessingException("Validsysteme must be provided to process event.");
+				throw new EntityEventProcessingException("Valid system must be provided to process event.");
 			}
 			
 			if (systemRole == null) {
@@ -204,10 +203,10 @@ public class RemoteSystemEventProcessor {
 	 * are rather broad since taking a system offline may impact active
 	 * transfers, jobs, apps, monitors, scheduled tasks, files, etc. 
 	 *
-	 * @param system
-	 * @param eventType
-	 * @param createdBy
-	 * @return
+	 * @param system the system receiving the event
+	 * @param eventType the type of the event
+	 * @param createdBy the owner of the permission event
+	 * @return a SystemHistoryEvent recording the event
 	 */
 	public SystemHistoryEvent processPublishEvent(RemoteSystem system, SystemEventType eventType, String createdBy) {
 		SystemHistoryEvent event = null;
@@ -236,22 +235,21 @@ public class RemoteSystemEventProcessor {
 			entityEventDao.persist(event);
 			
 			// process the primary object event
-			fireNotification(system.getUuid(), eventType.name(), createdBy, json.toString());
-			
+			fireNotification(system.getUuid(), eventType.name(), createdBy, json);
+
 			// process software tied to the system. we don't take action here. we simply give users the info they need
-			// to decide what they want their policy to be. 
+			// to decide what they want their policy to be.
 			// TODO: a separate process should disable public apps when the system is unpublished
 			doSoftwareEvents(system, eventType.name(), createdBy, json);
-			
+
 			// process the content change events tied to the status field changing. Queues should know when a system goes down
-//			processBatchQueueEvents(system, systemStatus, createdBy);
-			
-			// process jobs tied to the system. 
-//			doJobEvents(system, systemStatus, createdBy, json);
-			
-			// process transfers tied to the system. 
-//			doTransferEvents(system, systemStatus, createdBy, json);
-			
+			//			processBatchQueueEvents(system, systemStatus, createdBy);
+
+			// process jobs tied to the system.
+			//			doJobEvents(system, systemStatus, createdBy, json);
+
+			// process transfers tied to the system.
+			//			doTransferEvents(system, systemStatus, createdBy, json);
 		}
 		catch (EntityEventProcessingException e) {
 			log.error(e.getMessage());
@@ -269,10 +267,11 @@ public class RemoteSystemEventProcessor {
 	 * are rather broad since taking a system offline may impact active
 	 * transfers, jobs, apps, monitors, scheduled tasks, files, etc. 
 	 * 
-	 * @param system
-	 * @param oldStatus
-	 * @param newStatus
-	 * @param createdBy
+	 * @param system system the system receiving the event
+	 * @param oldStatus the previous system status
+	 * @param newStatus the new system status
+	 * @param createdBy the owner responsible for changing the system status
+	 * @return a SystemHistoryEvent recording the event
 	 */
 	public SystemHistoryEvent processStatusChangeEvent(RemoteSystem system, SystemStatusType oldStatus, SystemStatusType newStatus, String createdBy) {
 		
@@ -337,14 +336,14 @@ public class RemoteSystemEventProcessor {
 	}
 	
 	/**
-	 * Looks up {@link Software} for a given {@link RemoteSystem#getSystemId()} and
+	 * Looks up {@link org.iplantc.service.apps.model.Software} for a given {@link RemoteSystem#getSystemId()} and
 	 * processes system events for all apps.
 	 * 
-	 * @param system
-	 * @param eventName
-	 * @param createdBy
-	 * @param jsonNode
-	 * @return
+	 * @param system the system receiving the event
+	 * @param eventName the name of the event
+	 * @param createdBy the username responsible for the event
+	 * @param jsonNode json object representing the software being updated
+	 * @return the number of notifications sent.
 	 */
 	public int doSoftwareEvents(RemoteSystem system, String eventName, String createdBy, ObjectNode jsonNode) {
 		int sentEvents = 0;
@@ -368,8 +367,10 @@ public class RemoteSystemEventProcessor {
 	 * Writes one or more notification events to the queue for publication to all 
 	 * subscribers of those events on this {@link RemoteSystem}.
 	 * 
-	 * @param associatedUuid
-	 * @param json
+	 * @param associatedUuid the uuid of for which to send a notification.
+	 * @param eventStatus the name of the event
+	 * @param createdBy the username of the user responsible for the event
+	 * @param json the json object representing the notification message payload
 	 * @return the number of events sent.
 	 */
 	protected int fireNotification(String associatedUuid, String eventStatus, String createdBy, ObjectNode json) {
@@ -388,14 +389,16 @@ public class RemoteSystemEventProcessor {
 	/**
 	 * Writes one or more notification events to the queue for publication to all 
 	 * subscribers of those events on this {@link RemoteSystem}.
-	 * 
-	 * @param associatedUuid
-	 * @param json
+	 *
+	 * @param associatedUuid the uuid of for which to send a notification.
+	 * @param eventStatus the name of the event
+	 * @param createdBy the username of the user responsible for the event
+	 * @param json the serialized json representation of the notification message payload
 	 * @return the number of events sent.
 	 */
 	private int fireNotification(String associatedUuid, String eventStatus, String createdBy, String json) {
 		try {
-            return NotificationManager.process(associatedUuid, eventStatus, createdBy, json == null ? null : json.toString());
+            return NotificationManager.process(associatedUuid, eventStatus, createdBy, json);
         }
         catch (Throwable e) {
             log.error(String.format("Failed to send content system change notification "

@@ -27,7 +27,7 @@ import org.testng.annotations.Test;
 /**
  * Runs streaming downloads using several buffer sizes to find the best one.
  */
-@Test(groups= {"streaming","performance","integration"})
+@Test(groups= {"streaming","performance"})
 public class RemoteDataClientStreamingBufferSizeTest extends BaseTransferTestCase {
 
 	protected static String LOCAL_BINARY_FILE = "src/test/resources/bufferdata.bin";

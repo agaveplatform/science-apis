@@ -147,9 +147,9 @@ public abstract class RemoteSystem implements LastUpdatable, Comparable<RemoteSy
 
 	/**
 	 * @param description the description to set
-	 * @throws SystemException
+	 * @throws SystemException if description is too long
 	 */
-	public void setDescription(String description)
+	public void setDescription(String description) throws SystemException
 	{
 		if (StringUtils.length(description) > 4096) {
 			throw new SystemException("'system.description' must be less than 4096 characters.");
@@ -169,9 +169,9 @@ public abstract class RemoteSystem implements LastUpdatable, Comparable<RemoteSy
 
 	/**
 	 * @param owner the owner to set
-	 * @throws SystemException
+	 * @throws SystemException if length is too long
 	 */
-	public void setOwner(String owner)
+	public void setOwner(String owner) throws SystemException
 	{
 		if (StringUtils.length(owner) > 32) {
 			throw new SystemException("'system.owner' must be less than 32 characters.");
@@ -213,9 +213,9 @@ public abstract class RemoteSystem implements LastUpdatable, Comparable<RemoteSy
 
 	/**
 	 * @param name the name to set
-	 * @throws SystemException
+	 * @throws SystemException if name is too long
 	 */
-	public void setName(String name)
+	public void setName(String name) throws SystemException
 	{
 		if (StringUtils.length(name) > 64) {
 			throw new SystemException("'system.name' must be less than 64 characters.");
@@ -235,7 +235,7 @@ public abstract class RemoteSystem implements LastUpdatable, Comparable<RemoteSy
 
 	/**
 	 * @param systemId the systemId to set
-	 * @throws SystemArgumentException
+	 * @throws SystemArgumentException if systemId does not pass validation requirements
 	 */
 	public void setSystemId(String systemId) throws SystemArgumentException
 	{
@@ -351,12 +351,12 @@ public abstract class RemoteSystem implements LastUpdatable, Comparable<RemoteSy
 
 	/**
 	 * @param username the username to set
-	 * @throws SystemException
+	 * @throws SystemException if username is too long
 	 */
 	public void addUserUsingAsDefault(String username)
 	{
 		if (!StringUtils.isEmpty(username) && username.length() > 64) {
-			throw new SystemException("default username must be less than 32 characters.");
+			throw new SystemException("default username must be less than 64 characters.");
 		}
 
 		this.usersUsingAsDefault.add(username);
@@ -380,7 +380,15 @@ public abstract class RemoteSystem implements LastUpdatable, Comparable<RemoteSy
 	{
 		return roles;
 	}
-	
+
+	/**
+	 * Removes role if present for the existing system.
+	 * <br>
+	 * The role is not deleted from the db. System must be persisted for the changes to take
+	 * @see org.iplantc.service.systems.dao.SystemRoleDao
+	 * @param role the role to remove
+	 * @return true if the role was removed, false otherwise
+	 */
 	@Transient
 	public boolean removeRole(SystemRole role)
 	{

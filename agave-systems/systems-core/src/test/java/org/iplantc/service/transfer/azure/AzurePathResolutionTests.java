@@ -8,7 +8,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;
 
-@Test(enabled = false, groups= {"azure","path-resolution", "integration", "broken", "notReady"})
+@Test(enabled = false, groups= {"azure","path-resolution", "broken", "notReady"})
 public class AzurePathResolutionTests extends AbstractPathResolutionTests
 {
 	@Override

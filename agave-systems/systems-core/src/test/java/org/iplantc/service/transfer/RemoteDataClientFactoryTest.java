@@ -12,7 +12,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"broken","integration"})
+@Test(groups={"broken"})
 public class RemoteDataClientFactoryTest {
     
     private RemoteDataClientFactory factory = new RemoteDataClientFactory();

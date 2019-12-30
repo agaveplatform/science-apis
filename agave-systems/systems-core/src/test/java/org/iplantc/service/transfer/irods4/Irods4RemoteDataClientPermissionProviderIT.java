@@ -17,7 +17,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups= {"irods4.permissions"})
+@Test(groups= {"irods4","irods4.permissions"})
 public class Irods4RemoteDataClientPermissionProviderIT extends IrodsRemoteDataClientPermissionProviderTest
 {
     /* (non-Javadoc)

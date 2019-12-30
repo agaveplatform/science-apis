@@ -40,7 +40,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(singleThreaded=true, groups= {"transfer", "irods.filesystem.init", "integration", "sftp", "s3"})
+@Test(singleThreaded=true, groups= {"transfer", "irods.filesystem.init", "sftp", "s3"})
 public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase 
 {
     protected File tmpFile = null;

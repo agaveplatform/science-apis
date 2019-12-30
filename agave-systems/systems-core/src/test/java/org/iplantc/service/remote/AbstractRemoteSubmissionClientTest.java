@@ -27,7 +27,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"transfer", "irods.filesystem.init","broken","integration"})
+@Test(singleThreaded=true, groups= {"transfer", "irods.filesystem.init","broken"})
 public abstract class AbstractRemoteSubmissionClientTest {
 
 	protected ThreadLocal<RemoteSubmissionClient> threadClient = new ThreadLocal<RemoteSubmissionClient>();

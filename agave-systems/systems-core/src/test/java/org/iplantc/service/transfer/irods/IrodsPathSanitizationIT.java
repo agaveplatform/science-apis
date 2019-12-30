@@ -22,7 +22,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded = true, groups={"irods3.path.sanitization"}, threadPoolSize = 2)
+@Test(singleThreaded = true, groups={"irods3","irods3.path.sanitization"}, threadPoolSize = 2)
 public class IrodsPathSanitizationIT extends AbstractPathSanitizationTest implements IPathSanitizationTest {
 
     /* (non-Javadoc)

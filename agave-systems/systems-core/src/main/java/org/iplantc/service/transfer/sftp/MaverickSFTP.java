@@ -649,7 +649,6 @@ public final class MaverickSFTP implements RemoteDataClient {
         return MAX_BUFFER_SIZE;
     }
 
-
     /**
      * Returns the currently authenticated SftpClient object or creates a new one on demand.
      *
@@ -1420,19 +1419,18 @@ public final class MaverickSFTP implements RemoteDataClient {
     @Override
     public String checksum(String remotepath)
     throws IOException, FileNotFoundException, RemoteDataException, NotImplementedException {
-        //TODO: What does this do?  It looks like nothing is being done.
-        // it most likely needs a checksum if it is not a DIR.
+        // Checksums are not calculated or guaranteed to be available via sftp.
+        // we could calculate them on the fly, but that could be extremely expensive
+        // and we would have to do it over and over again to guarantee correctness
+        // upon subsequent requests. We punt here until assumptions and/or requirements
+        // change for checksums via sftp.
         try {
             if (isDirectory(remotepath)) {
                 throw new RemoteDataException("Directory cannot be checksummed.");
             } else {
                 throw new NotImplementedException();
             }
-        } catch (RemoteDataException e) {
-            throw e;
-        } catch (NotImplementedException e) {
-            throw e;
-        } catch (IOException e) {
+        } catch (RemoteDataException | NotImplementedException | IOException e) {
             throw e;
         }
     }
@@ -1538,7 +1536,7 @@ public final class MaverickSFTP implements RemoteDataClient {
                 } finally {
                     try {
                         proxySubmissionClient.close();
-                    } catch (Exception e) {
+                    } catch (Exception ignored) {
                     }
                 }
 
@@ -1705,7 +1703,7 @@ public final class MaverickSFTP implements RemoteDataClient {
             } else if (e.getMessage().toLowerCase().contains("file already exists")) {
                 return false;
             } else if (e.getMessage().toLowerCase().contains("permission denied")) {
-                throw new RemoteDataException("Cannot create directory " + resolvedPath + ": Permisison denied");
+                throw new RemoteDataException("Cannot create directory " + remotedir + ": Permisison denied");
             } else {
                 throw new RemoteDataException("Failed to create " + remotedir, e);
             }
@@ -1931,9 +1929,7 @@ public final class MaverickSFTP implements RemoteDataClient {
     }
 
     public String escapeResolvedPath(String resolvedPath) {
-        String escapedPath = StringUtils.replaceEach(resolvedPath, new String[]{" ", "$"}, new String[]{"\\ ", "\\$"});
-
-        return escapedPath;
+        return StringUtils.replaceEach(resolvedPath, new String[]{" ", "$"}, new String[]{"\\ ", "\\$"});
     }
 
     @Override

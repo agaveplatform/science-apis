@@ -21,7 +21,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups= {"s3.path.sanitization"})
+@Test(groups={"external","s3","s3.path.sanitization"})
 public class S3PathSanitizationIT extends AbstractPathSanitizationTest implements IPathSanitizationTest {
 
     /* (non-Javadoc)

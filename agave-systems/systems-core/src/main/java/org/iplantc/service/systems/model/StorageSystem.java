@@ -46,24 +46,6 @@ public class StorageSystem extends RemoteSystem implements SerializableSystem {
 		type = RemoteSystemType.STORAGE;
 	}
 
-//	/**
-//	 * @return the protocol
-//	 */
-//	@Enumerated(EnumType.STRING)
-//	@Column(name = "protocol", nullable = false, length = 16)
-//	public StorageProtocolType getProtocol()
-//	{
-//		return protocol;
-//	}
-//
-//	/**
-//	 * @param protocol the protocol to set
-//	 */
-//	public void setProtocol(StorageProtocolType protocol)
-//	{
-//		this.protocol = protocol;
-//	}
-	
 	@Override
 	@Enumerated(EnumType.STRING)
 	@Column(name = "type", nullable = false, length = 16)
@@ -183,12 +165,25 @@ public class StorageSystem extends RemoteSystem implements SerializableSystem {
 
 		return output;
 	}
-	
-	public static StorageSystem fromJSON(JSONObject jsonConfig) throws SystemArgumentException
+
+	/**
+	 * Instantiates a {@link StorageSystem} object from its json representation
+	 * @param jsonSystem the json representation of the system
+	 * @return a new StorageSystem
+	 * @throws SystemException if the JSONObject is an invalid representation of the system
+	 */
+	public static StorageSystem fromJSON(JSONObject jsonSystem) throws SystemException
 	{
-		return fromJSON(jsonConfig, null);
+		return fromJSON(jsonSystem, null);
 	}
 
+	/**
+	 * Updates the given StorageSystem with the json representation provided
+	 * @param jsonSystem the json representation of the system
+	 * @param system the original storage system to update
+	 * @return a new StorageSystem
+	 * @throws SystemException if the JSONObject is an invalid representation of the system
+	 */
 	public static StorageSystem fromJSON(JSONObject jsonSystem, StorageSystem system) throws SystemException
 	{
 		if (system == null) {

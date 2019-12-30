@@ -4,6 +4,7 @@
 package org.iplantc.service.transfer.s3;
 
 import java.io.*;
+import java.lang.reflect.Method;
 import java.nio.file.Path;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -21,7 +22,7 @@ import org.testng.annotations.*;
  * @author dooley
  *
  */
-@Test(singleThreaded = false, groups={"s3.operations"})
+@Test(singleThreaded = false, groups={"external","s3","s3.operations"})
 public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
 
 	protected String containerName;
@@ -41,7 +42,7 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 
 	@Override
 	@BeforeMethod
-    public void beforeMethod() throws FileNotFoundException, RemoteDataException {
+    public void beforeMethod(Method m) throws FileNotFoundException, RemoteDataException {
 
 		String resolvedPath = StringUtils.strip(getClient().resolvePath(""), "/");
 
@@ -67,14 +68,14 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 		blobStore.createDirectory(containerName, resolvedPath);
     }
 	
-//	/* (non-Javadoc)
-//	 * @see org.iplantc.service.transfer.AbstractRemoteDataClientTest#afterMethod()
-//	 */
-//	@AfterMethod
-//	public void afterMethod() throws Exception
-//	{
-//		_cleanupTestBucket();
-//	}
+	/* (non-Javadoc)
+	 * @see org.iplantc.service.transfer.AbstractRemoteDataClientTest#afterMethod()
+	 */
+	@AfterMethod
+	public void afterClass() throws Exception
+	{
+		try { getClient().disconnect(); } catch (Exception ignored) {}
+	}
 //
 //	/**
 //	 * Deletes the contents of the test bucket so the environment is clean for hte next test.

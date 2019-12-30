@@ -4,17 +4,12 @@
 package org.iplantc.service.transfer.sftp;
 
 import org.iplantc.service.systems.exceptions.EncryptionException;
-import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.AuthConfig;
 import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.enumerations.AuthConfigType;
-import org.iplantc.service.transfer.IRemoteDataClientIT;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteDataClientTestUtils;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -24,7 +19,7 @@ import java.io.IOException;
  *
  */
 @Test(groups={"sftp-sshkeys.operations"})
-public class SftpRelaySshKeysRemoteDataClientTest extends SftpRelayPasswordRemoteDataClientTest {
+public class SftpRelaySshKeysRemoteDataClientTest extends SftpRelayPasswordRemoteDataClientIT {
 
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {
@@ -83,24 +78,4 @@ public class SftpRelaySshKeysRemoteDataClientTest extends SftpRelayPasswordRemot
 		}
 	}
 
-	/**
-	 * Gets getClient() from current thread
-	 * @return SftpRelay instance to the test server
-	 */
-	protected RemoteDataClient getClient()
-	{
-		RemoteDataClient client;
-		try {
-			if (threadClient.get() == null) {
-
-				client = _getRemoteDataClient();
-				client.updateSystemRoots(client.getRootDir(), system.getStorageConfig().getHomeDir() + "/thread-" + Thread.currentThread().getId());
-				threadClient.set(client);
-			}
-		} catch (EncryptionException e) {
-			Assert.fail("Failed to get client", e);
-		}
-
-		return threadClient.get();
-	}
 }

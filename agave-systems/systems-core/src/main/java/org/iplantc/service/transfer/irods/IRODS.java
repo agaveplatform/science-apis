@@ -251,6 +251,9 @@ public class IRODS implements RemoteDataClient
 			log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " open connection for thread");
 			stat("/", false); // Avoid an infinite loop.
 		}
+		catch (FileNotFoundException ignored) {
+			// Ignore this exception. A FileNotFoundException implies a connection was made, so auth was a success.
+		}
 		catch (AuthenticationException e) {
 			disconnect();
 			throw new RemoteDataException("Failed to authenticate to remote server. " + e.getMessage(), e);
@@ -1215,8 +1218,13 @@ public class IRODS implements RemoteDataClient
                 msg = "Unable to validate SSL certificate on the IRODS server used for PAM authentication.";
             } else if (e.getMessage().toLowerCase().contains("connection refused")) {
                 msg = "Connection refused: Unable to contact IRODS server at " + host + ":" + port;
-            }
-            log.error(msg, e);
+			} else if (e.getMessage().toLowerCase().contains("read length is set to zero")) {
+				msg = "No such file or directory: " + remotepath;
+				throw new java.io.FileNotFoundException(msg);
+			} else {
+				log.error(msg, e);
+			}
+
             throw new RemoteDataException(msg, e);
         }
         catch (Throwable e) {

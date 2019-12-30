@@ -24,7 +24,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"instream", "download", "integration"})
+@Test(singleThreaded=true, groups= {"instream", "download"})
 public class GetInputStreamOperationTest extends BaseRemoteDataClientOperationTest {
 
     public GetInputStreamOperationTest(String systemJsonFilePath,

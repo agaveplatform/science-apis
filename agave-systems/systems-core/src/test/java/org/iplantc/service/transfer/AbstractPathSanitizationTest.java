@@ -72,19 +72,23 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
     
     @AfterClass(alwaysRun=true)
     protected void afterClass() throws Exception {
-        try
-        {
+        try {
             getClient().authenticate();
+        } catch (RemoteDataException e) {
+            log.error(e.getMessage());
+        }
+
+        try {
             // remove test directory
             getClient().delete("..");
             Assert.assertFalse(getClient().doesExist(""), "Failed to clean up home directory " + getClient().resolvePath("") + "after test.");
-        }
-        catch (FileNotFoundException ignore) {
+        } catch (FileNotFoundException ignore) {
             // ignore if already gone
+        } catch (AssertionError e) {
+            throw e;
         } catch (Exception e) {
             Assert.fail("Failed to clean up test home directory " + getClient().resolvePath("") + " after test method.", e);
-        }
-        finally {
+        } finally {
             try { getClient().disconnect(); } catch (Exception ignored) {}
         }
     }
@@ -167,7 +171,7 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
         return tests.toArray(new Object[][] {});
     }
     
-    @DataProvider(parallel=true)
+    @DataProvider(parallel=false)
     protected Object[][] mkDirSanitizesRepeatedSpecialCharacterProvider() throws Exception {
         List<Object[]> tests = new ArrayList<Object[]>();
         for (char c: getSpecialCharArray()) {

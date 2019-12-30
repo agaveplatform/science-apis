@@ -8,7 +8,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;
 
-@Test(groups= {"s3.path.resolution"})
+@Test(groups={"external","s3","s3.path.resolution"})
 public class S3PathResolutionIT extends AbstractPathResolutionTests
 {
 	@Override

@@ -20,7 +20,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"ls","integration"})
+@Test(singleThreaded=true, groups= {"ls"})
 public class ListingOperationTest extends BaseRemoteDataClientOperationTest {
 
     private static final Logger log = Logger.getLogger(ListingOperationTest.class);

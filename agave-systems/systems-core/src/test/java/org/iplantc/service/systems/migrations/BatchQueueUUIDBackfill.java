@@ -17,7 +17,7 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups={"broken", "integration"})
+@Test(groups={"broken"})
 public class BatchQueueUUIDBackfill {
 
     /**

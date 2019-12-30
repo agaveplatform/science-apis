@@ -24,7 +24,7 @@ import com.google.common.io.Files;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"local.filesystem", "integration"})
+@Test(singleThreaded=true, groups= {"local.filesystem"})
 public class LocalRemoteDataClientTest extends AbstractRemoteDataClientTest 
 {
     @BeforeClass

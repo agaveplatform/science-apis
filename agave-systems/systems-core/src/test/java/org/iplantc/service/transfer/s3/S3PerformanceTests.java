@@ -32,7 +32,7 @@ import java.util.Iterator;
 
 import static org.jclouds.blobstore.options.PutOptions.Builder.multipart;
 
-@Test(groups = {"s3.performance","broken"})
+@Test(groups = {"external","s3.performance","performance","broken"})
 public class S3PerformanceTests extends BaseTransferTestCase {
     private static final Logger log = Logger.getLogger(S3PerformanceTests.class);
     private S3Jcloud s3 = null;

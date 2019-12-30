@@ -22,6 +22,7 @@ import org.testng.annotations.Test;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.UUID;
 
 /**
  * @author dooley
@@ -45,7 +46,7 @@ public class SftpPasswordRemoteDataClientIT extends RemoteDataClientTestUtils im
 		if (shouldExist) {
 			return "/root";
 		} else {
-			return "/root/helloworld";
+			return "/root/" + UUID.randomUUID().toString();
 		}
 	}
 

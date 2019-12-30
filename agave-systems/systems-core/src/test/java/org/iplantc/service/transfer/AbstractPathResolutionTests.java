@@ -1,6 +1,7 @@
 package org.iplantc.service.transfer;
 
 import java.io.IOException;
+import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -25,8 +26,17 @@ public abstract class AbstractPathResolutionTests extends BaseTransferTestCase
     	JSONObject json = getSystemJson();
     	system = (StorageSystem)StorageSystem.fromJSON(json);
     	system.setOwner(SYSTEM_USER);
-    	system.getStorageConfig().setHomeDir(system.getStorageConfig() + "/unittests-" + System.currentTimeMillis());
-        storageConfig = system.getStorageConfig();
+
+		String originalHomeDir = system.getStorageConfig().getHomeDir();
+		originalHomeDir = StringUtils.isEmpty(originalHomeDir) ? "" : originalHomeDir;
+		String threadHomeDir = String.format("%s/%s/thread-%s-%d",
+				originalHomeDir,
+				getClass().getSimpleName(),
+				UUID.randomUUID().toString(),
+				Thread.currentThread().getId());
+
+		system.getStorageConfig().setHomeDir(threadHomeDir);
+		storageConfig = system.getStorageConfig();
         String oldSalt = system.getSystemId() + storageConfig.getHost() + 
         		storageConfig.getDefaultAuthConfig().getUsername();
         

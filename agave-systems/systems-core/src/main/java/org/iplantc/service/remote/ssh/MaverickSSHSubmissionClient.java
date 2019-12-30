@@ -462,7 +462,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
                     final ForwardingClient fwd = new ForwardingClient(ssh2);
 
                     fwd.allowX11Forwarding("localhost:0");
-                    boolean remoteForwardingResponse = fwd.requestRemoteForwarding("127.0.0.1", 0,
+                    boolean remoteForwardingResponse = fwd.requestRemoteForwarding("127.0.0.1", 22,
                             hostname, port);
 
                     if (remoteForwardingResponse) {
@@ -505,7 +505,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
                     /*
                      * Start local forwarding after starting the users session.
                      */
-                    int randomlyChosenTunnelPort = fwd.startLocalForwardingOnRandomPort("127.0.0.1", 10, hostname, port);
+                    int randomlyChosenTunnelPort = fwd.startLocalForwardingOnRandomPort("127.0.0.1", 10, proxyHost, proxyPort);
 
                     /*
                      * Now that the local proxy tunnel is running, make the call to

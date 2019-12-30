@@ -10,7 +10,7 @@ import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-@Test(groups={"gsissh","integration","broken"})
+@Test(groups={"gsissh","broken"})
 public class GSISSHSubmissionClientIT extends AbstractRemoteSubmissionClientTest {
 
 	@Override

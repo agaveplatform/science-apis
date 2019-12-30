@@ -33,8 +33,8 @@ import java.security.cert.X509Certificate;
 public class RequestBin
 {
 	private static final Logger log = Logger.getLogger(RequestBin.class);
-	private static final String BASE_URL = "http://requestbin/api/v1/bins";
-	private static final String PUBLIC_URL = "http://requestbin";
+	private static final String BASE_URL = "http://requestbin:5101/api/v1/bins";
+	private static final String PUBLIC_URL = "http://requestbin:5101";
 	private ObjectMapper mapper = new ObjectMapper();
 	
 	private String binId;

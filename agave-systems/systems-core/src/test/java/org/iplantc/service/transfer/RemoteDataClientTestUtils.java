@@ -1168,14 +1168,15 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
         }
     }
 
-    protected void _getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath()
+    protected void _getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath() throws FileNotFoundException
     {
-        File missingPath = null;
+        Path tempDir = null;
         String remoteBaseDir = null;
         try
         {
-            // create temp directory for download
-            missingPath = new File("/tmp/" + getRemoteTestDirPath() + "/" + MISSING_FILE);
+            // create temp directory for the test
+            tempDir = _createTempDirectory("_getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath");
+            Path missingPath = tempDir.resolve(MISSING_DIRECTORY);
 
             // set up a remote test dir
             remoteBaseDir = createRemoteTestDir();
@@ -1183,23 +1184,17 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
             // upload a test file to the remote test dir
             getClient().put(LOCAL_BINARY_FILE, remoteBaseDir);
 
-            // delete the tmp directory to ensure it does not exist.
-            if (missingPath.exists()) {
-                FileUtils.deleteQuietly(missingPath);
-            }
-
-            getClient().get(remoteBaseDir, missingPath.getAbsolutePath());
-
-            Assert.fail("Getting remote folder to a local directory that does not exist should throw IOException.");
+            // try to download to a missing path
+            getClient().get(remoteBaseDir, missingPath.toString());
         }
-        catch (IOException e) {
-            // This is expected
+        catch (FileNotFoundException e) {
+            throw e;
         }
         catch (Exception e) {
             Assert.fail("Getting remote folder to a local directory that does not exist should throw IOException.", e);
         }
         finally {
-            try { if (missingPath != null) FileUtils.deleteQuietly(missingPath); } catch(Exception ignore) {}
+            try { if (tempDir != null) FileUtils.deleteQuietly(tempDir.toFile()); } catch(Exception ignore) {}
             try { getClient().delete(remoteBaseDir); } catch (Exception ignore) {}
         }
     }
@@ -1393,7 +1388,7 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
         }
         finally {
             try { getClient().delete(remoteBaseDir); } catch (Exception ignore) {}
-            try { if (tmpFile != null) Files.delete(tmpFile); } catch(Throwable ignore) {}
+            try { if (tmpFile != null) FileUtils.deleteQuietly(tmpFile.toFile()); } catch(Throwable ignore) {}
             try { if (downloadFilePath != null) Files.delete(downloadFilePath); } catch(Throwable ignore) {}
         }
     }
@@ -1661,14 +1656,14 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
         }
     }
 
-    protected void _getInputStreamOnRemoteDirectoryThrowsException(String remotedir, String message)
+    protected void _getInputStreamOnRemoteDirectoryThrowsException(String remotePath, String message)
     {
         InputStream in = null;
         try
         {
-            getClient().mkdirs(remotedir);
+            getClient().mkdirs(remotePath);
 
-            in = getClient().getInputStream(remotedir, true);
+            in = getClient().getInputStream(remotePath, true);
 
             Assert.fail(message);
         }
@@ -1689,8 +1684,8 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
             catch (Exception ignore) {}
 
             try {
-                if (StringUtils.isNotBlank(remotedir)) {
-                    getClient().delete(remotedir);
+                if (StringUtils.isNotBlank(remotePath)) {
+                    getClient().delete(remotePath);
                 }
             } catch (Exception ignore) {}
         }
@@ -2368,4 +2363,95 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
             } catch (Exception ignore) {}
         }
     }
+
+    protected void _getFileInfoReturnsRemoteFileInfoForFile() {
+        String remoteBaseDir = null;
+        try
+        {
+            remoteBaseDir = createRemoteTestDir();
+            String remotePath = remoteBaseDir + "/" + LOCAL_TXT_FILE_NAME;
+            getClient().put(LOCAL_TXT_FILE, remoteBaseDir);
+
+            RemoteFileInfo remoteFileInfo = getClient().getFileInfo(remotePath);
+
+            Assert.assertNotNull(remoteFileInfo,
+                    "RemoteFileInfo for valid file should not be null");
+
+            Path testFile = Paths.get(LOCAL_TXT_FILE);
+            Assert.assertTrue(remoteFileInfo.isFile(),
+                    "RemoteFileInfo should report that the file item is a file");
+            Assert.assertFalse(remoteFileInfo.isDirectory(),
+                    "RemoteFileInfo should report that the file item is not a directory");
+            Assert.assertEquals(remoteFileInfo.getName(), LOCAL_TXT_FILE_NAME,
+                    "RemoteFileInfo should report the same name as the remote file name.");
+            Assert.assertEquals(remoteFileInfo.getSize(), Files.size(testFile),
+                    "RemoteFileInfo should report the actual size as the remote file.");
+        }
+        catch (Exception e) {
+            Assert.fail("getFileInfo should not throw an exception for a valid remote file path", e);
+        }
+        finally {
+            try { getClient().delete(remoteBaseDir); } catch (Exception ignore) {}
+        }
+    }
+
+    protected void _getFileInfoReturnsRemoteFileInfoForDirectory() {
+        String remoteBaseDir = null;
+        try
+        {
+            remoteBaseDir = createRemoteTestDir();
+
+
+            RemoteFileInfo remoteFileInfo = getClient().getFileInfo(remoteBaseDir);
+
+            Assert.assertNotNull(remoteFileInfo,
+                    "RemoteFileInfo for valid file should not be null");
+
+            Assert.assertTrue(remoteFileInfo.isDirectory(),
+                    "RemoteFileInfo should report that the file item is a directory");
+            Assert.assertFalse(remoteFileInfo.isFile(),
+                    "RemoteFileInfo should report that the file item is not a file");
+            Assert.assertEquals(remoteFileInfo.getName(), remoteBaseDir,
+                    "RemoteFileInfo should report the same name as the remote file name.");
+        }
+        catch (Exception e) {
+            Assert.fail("getFileInfo should not throw an exception for a valid remote directory path", e);
+        }
+        finally {
+            try { getClient().delete(remoteBaseDir); } catch (Exception ignore) {}
+        }
+    }
+
+    protected void _getFileInfoReturnsErrorOnMissingPath() throws FileNotFoundException {
+        String remoteBaseDir = null;
+        try
+        {
+            remoteBaseDir = createRemoteTestDir();
+            String remotePath = String.format("%s/%s/%s", remoteBaseDir, UUID.randomUUID().toString(), MISSING_DIRECTORY);
+
+            RemoteFileInfo remoteFileInfo = getClient().getFileInfo(remotePath);
+
+
+            Assert.assertNotNull(remoteFileInfo,
+                    "RemoteFileInfo for valid file should not be null");
+
+            Assert.assertTrue(remoteFileInfo.isDirectory(),
+                    "RemoteFileInfo should report that the file item is a directory");
+            Assert.assertFalse(remoteFileInfo.isFile(),
+                    "RemoteFileInfo should report that the file item is not a file");
+            Assert.assertEquals(remoteFileInfo.getName(), remoteBaseDir,
+                    "RemoteFileInfo should report the same name as the remote file name.");
+        }
+        catch (FileNotFoundException e) {
+            throw e;
+        }
+        catch (Exception e) {
+            Assert.fail("getFileInfo should throw a FileNotFoundException on missing path", e);
+        }
+        finally {
+            try { getClient().delete(remoteBaseDir); } catch (Exception ignore) {}
+        }
+    }
+
+
 }

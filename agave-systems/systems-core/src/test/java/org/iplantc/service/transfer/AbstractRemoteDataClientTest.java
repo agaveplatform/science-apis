@@ -1190,7 +1190,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
     }
     
     @Test(groups={"get", "download"}, dependsOnMethods={"getThrowsExceptionWhenDownloadingFolderToLocalFilePath"})
-    public void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath() 
+    public void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath()
     {
         _getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath();
     }

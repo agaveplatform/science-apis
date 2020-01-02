@@ -3,6 +3,7 @@
  */
 package org.iplantc.service.transfer.ftp;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -50,6 +51,24 @@ public class FTPRemoteDataClientTest extends RemoteDataClientTestUtils implement
 	public void isThirdPartyTransferSupported()
 	{
 		_isThirdPartyTransferSupported();
+	}
+
+	@Override
+	@Test(groups={"stat"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getFileInfoReturnsRemoteFileInfoForFile() {
+		_getFileInfoReturnsRemoteFileInfoForFile();
+	}
+
+	@Override
+	@Test(groups={"stat"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getFileInfoReturnsRemoteFileInfoForDirectory() {
+		_getFileInfoReturnsRemoteFileInfoForDirectory();
+	}
+
+	@Override
+	@Test(groups={"stat"}, expectedExceptions = FileNotFoundException.class, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getFileInfoReturnsErrorOnMissingPath() throws FileNotFoundException {
+		_getFileInfoReturnsErrorOnMissingPath();
 	}
 
 	@Override
@@ -277,8 +296,8 @@ public class FTPRemoteDataClientTest extends RemoteDataClientTestUtils implement
 	}
 
 	@Override
-	@Test(groups={"get"}, retryAnalyzer=TransferTestRetryAnalyzer.class, singleThreaded = true)
-	public void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath() {
+	@Test(groups={"get"}, expectedExceptions = IOException.class, retryAnalyzer=TransferTestRetryAnalyzer.class, singleThreaded = true)
+	public void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath() throws FileNotFoundException {
 		_getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath();
 	}
 

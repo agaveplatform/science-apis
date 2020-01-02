@@ -4,6 +4,7 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
 import org.testng.annotations.Test;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
 
@@ -13,6 +14,15 @@ public interface IRemoteDataClientIT {
 
     @Test(groups={"proxy"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
     void isThirdPartyTransferSupported();
+
+    @Test(groups={"stat"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
+    void getFileInfoReturnsRemoteFileInfoForFile();
+
+    @Test(groups={"stat"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
+    void getFileInfoReturnsRemoteFileInfoForDirectory();
+
+    @Test(groups={"stat"}, expectedExceptions = FileNotFoundException.class, retryAnalyzer=TransferTestRetryAnalyzer.class)
+    void getFileInfoReturnsErrorOnMissingPath() throws FileNotFoundException;
 
     @Test(groups={"exists"}, dataProvider="doesExistProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
     void doesExist(String remotedir, boolean shouldExist, String message);
@@ -117,7 +127,7 @@ public interface IRemoteDataClientIT {
     void getThrowsExceptionWhenDownloadingFolderToLocalFilePath();
 
     @Test(groups={"get"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-    void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath();
+    void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath() throws FileNotFoundException;
 
     @Test(groups={"get"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
     void getThrowsExceptionWhenDownloadingFileToNonExistentLocalPath();

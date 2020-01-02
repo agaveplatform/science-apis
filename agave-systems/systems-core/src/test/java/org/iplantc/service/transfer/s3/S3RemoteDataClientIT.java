@@ -72,8 +72,7 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 	 * @see org.iplantc.service.transfer.AbstractRemoteDataClientTest#afterMethod()
 	 */
 	@AfterMethod
-	public void afterClass() throws Exception
-	{
+	public void afterClass() throws Exception {
 		try { getClient().disconnect(); } catch (Exception ignored) {}
 	}
 //
@@ -112,8 +111,7 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 	}
 	
 	@Override
-    protected void _isPermissionMirroringRequired()
-	{
+    protected void _isPermissionMirroringRequired() {
 		Assert.assertFalse(getClient().isPermissionMirroringRequired(),
 				"S3 permission mirroring should not be enabled.");
 
@@ -135,8 +133,7 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 	}
 
 	@Override
-	protected void _copyThrowsRemoteDataExceptionToRestrictedSource()
-    {
+	protected void _copyThrowsRemoteDataExceptionToRestrictedSource() {
         try
         {
             getClient().copy(MISSING_DIRECTORY, "foo");
@@ -165,9 +162,26 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 	}
 
 	@Override
+	@Test(groups={"stat"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getFileInfoReturnsRemoteFileInfoForFile() {
+		_getFileInfoReturnsRemoteFileInfoForFile();
+	}
+
+	@Override
+	@Test(groups={"stat"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getFileInfoReturnsRemoteFileInfoForDirectory() {
+		_getFileInfoReturnsRemoteFileInfoForDirectory();
+	}
+
+	@Override
+	@Test(groups={"stat"}, expectedExceptions = FileNotFoundException.class, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getFileInfoReturnsErrorOnMissingPath() throws FileNotFoundException {
+		_getFileInfoReturnsErrorOnMissingPath();
+	}
+
+	@Override
 	@Test(groups={"exists"}, dataProvider="doesExistProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void doesExist(String remotedir, boolean shouldExist, String message)
-	{
+	public void doesExist(String remotedir, boolean shouldExist, String message) {
 		_doesExist(remotedir, shouldExist, message);
 	}
 
@@ -180,64 +194,55 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 
 	@Override
 	@Test(groups={"mkdir"}, dataProvider="mkdirProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void mkdir(String remotedir, boolean shouldReturnFalse, boolean shouldThrowException, String message)
-	{
+	public void mkdir(String remotedir, boolean shouldReturnFalse, boolean shouldThrowException, String message) {
 		_mkdir(remotedir, shouldReturnFalse, shouldThrowException, message);
 	}
 
 	@Override
 	@Test(groups={"mkdir"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void mkdirWithoutRemotePermissionThrowsRemoteDataException()
-	{
+	public void mkdirWithoutRemotePermissionThrowsRemoteDataException() {
 		_mkdirWithoutRemotePermissionThrowsRemoteDataException();
 	}
 
 	@Override
 	@Test(groups={"mkdir"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void mkdirThrowsRemoteDataExceptionIfDirectoryAlreadyExists()
-	{
+	public void mkdirThrowsRemoteDataExceptionIfDirectoryAlreadyExists() {
 		_mkdirThrowsRemoteDataExceptionIfDirectoryAlreadyExists();
 	}
 
 	@Override
 	@Test(groups={"mkdir"}, dataProvider="mkdirsProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void mkdirs(String remotedir, boolean shouldThrowException, String message)
-	{
+	public void mkdirs(String remotedir, boolean shouldThrowException, String message) {
 		_mkdirs(remotedir, shouldThrowException, message);
 	}
 
 	@Override
 	@Test(groups={"mkdir"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void mkdirsWithoutRemotePermissionThrowsRemoteDataException()
-	{
+	public void mkdirsWithoutRemotePermissionThrowsRemoteDataException() {
 		_mkdirsWithoutRemotePermissionThrowsRemoteDataException();
 	}
 
 	@Override
 	@Test(groups={"put"}, dataProvider = "putFileProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void putFile(String remotePath, String expectedRemoteFilename, boolean shouldThrowException, String message)
-	{
+	public void putFile(String remotePath, String expectedRemoteFilename, boolean shouldThrowException, String message) {
 		_putFile(remotePath, expectedRemoteFilename, shouldThrowException, message);
 	}
 
 	@Override
 	@Test(groups={"put"}, dataProvider="putFileOutsideHomeProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void putFileOutsideHome(String remoteFilename, String expectedRemoteFilename, boolean shouldThrowException, String message)
-	{
+	public void putFileOutsideHome(String remoteFilename, String expectedRemoteFilename, boolean shouldThrowException, String message) {
 		_putFileOutsideHome(remoteFilename, expectedRemoteFilename, shouldThrowException, message);
 	}
 
 	@Override
 	@Test(groups={"put"}, dataProvider="putFolderProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void putFolderCreatesRemoteFolder(String remotePath, String expectedRemoteFilename, boolean shouldThrowException, String message)
-	{
+	public void putFolderCreatesRemoteFolder(String remotePath, String expectedRemoteFilename, boolean shouldThrowException, String message) {
 		_putFolderCreatesRemoteFolder(remotePath, expectedRemoteFilename, shouldThrowException, message);
 	}
 
 	@Override
 	@Test(groups={"put"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void putFolderCreatesRemoteSubFolderWhenNamedRemotePathExists()
-	{
+	public void putFolderCreatesRemoteSubFolderWhenNamedRemotePathExists() {
 		_putFolderCreatesRemoteSubFolderWhenNamedRemotePathExists();
 	}
 
@@ -257,22 +262,19 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 
 	@Override
 	@Test(groups={"put"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void putFileWithoutRemotePermissionThrowsRemoteDataException()
-	{
+	public void putFileWithoutRemotePermissionThrowsRemoteDataException() {
 		_putFileWithoutRemotePermissionThrowsRemoteDataException();
 	}
 
 	@Override
 	@Test(groups={"put"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void putFolderWithoutRemotePermissionThrowsRemoteDataException()
-	{
+	public void putFolderWithoutRemotePermissionThrowsRemoteDataException() {
 		_putFolderWithoutRemotePermissionThrowsRemoteDataException();
 	}
 
 	@Override
 	@Test(groups={"put"}, dataProvider="putFolderProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void putFolderOutsideHome(String remoteFilename, String expectedRemoteFilename, boolean shouldThrowException, String message)
-	{
+	public void putFolderOutsideHome(String remoteFilename, String expectedRemoteFilename, boolean shouldThrowException, String message) {
 		_putFolderOutsideHome(remoteFilename, expectedRemoteFilename, shouldThrowException, message);
 	}
 
@@ -397,15 +399,13 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 
 	@Override
 	@Test(groups={"get"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void getThrowsExceptionWhenDownloadingFolderToLocalFilePath()
-	{
+	public void getThrowsExceptionWhenDownloadingFolderToLocalFilePath() {
 		_getThrowsExceptionWhenDownloadingFolderToLocalFilePath();
 	}
 
 	@Override
-	@Test(groups={"get"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath()
-	{
+	@Test(groups={"get"}, expectedExceptions = FileNotFoundException.class, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath() throws FileNotFoundException {
 		_getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath();
 	}
 
@@ -482,8 +482,7 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 
 	@Override
 	@Test(groups={"getstream"}, dataProvider="getInputStreamOnRemoteDirectoryThrowsExceptionProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void getInputStreamOnRemoteDirectoryThrowsException(String remotedir, String message)
-	{
+	public void getInputStreamOnRemoteDirectoryThrowsException(String remotedir, String message) {
 		_getInputStreamOnRemoteDirectoryThrowsException(remotedir, message);
 	}
 
@@ -517,36 +516,31 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 
 	@Override
 	@Test(groups={"rename"}, dataProvider="doRenameProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void doRename(String oldpath, String newpath, boolean shouldThrowException, String message)
-	{
+	public void doRename(String oldpath, String newpath, boolean shouldThrowException, String message) {
 		_doRename(oldpath, newpath, shouldThrowException, message);
 	}
 
 	@Override
 	@Test(groups={"rename"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void doRenameThrowsRemotePermissionExceptionToRestrictedSource()
-	{
+	public void doRenameThrowsRemotePermissionExceptionToRestrictedSource() {
 		_doRenameThrowsRemotePermissionExceptionToRestrictedSource();
 	}
 
 	@Override
 	@Test(groups={"rename"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void doRenameThrowsRemotePermissionExceptionToRestrictedDest()
-	{
+	public void doRenameThrowsRemotePermissionExceptionToRestrictedDest() {
 		_doRenameThrowsRemotePermissionExceptionToRestrictedDest();
 	}
 
 	@Override
 	@Test(groups={"rename"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void doRenameThrowsFileNotFoundExceptionOnMissingDestPath()
-	{
+	public void doRenameThrowsFileNotFoundExceptionOnMissingDestPath() {
 		_doRenameThrowsFileNotFoundExceptionOnMissingDestPath();
 	}
 
 	@Override
 	@Test(groups={"rename"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void doRenameThrowsFileNotFoundExceptionOnMissingSourcePath()
-	{
+	public void doRenameThrowsFileNotFoundExceptionOnMissingSourcePath() {
 		_doRenameThrowsFileNotFoundExceptionOnMissingSourcePath();
 	}
 
@@ -566,8 +560,7 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 
 	@Override
 	@Test(groups={"copy"}, dataProvider="copyIgnoreSlashesProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void copyDir(String src, String dest, boolean createDest, String expectedPath, boolean shouldThrowException, String message)
-	{
+	public void copyDir(String src, String dest, boolean createDest, String expectedPath, boolean shouldThrowException, String message) {
 		_copyDir(src, dest, createDest, expectedPath, shouldThrowException, message);
 	}
 
@@ -580,16 +573,14 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 
 	@Override
 	@Test(groups={"copy"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void copyThrowsFileNotFoundExceptionOnMissingDestPath()
-	{
+	public void copyThrowsFileNotFoundExceptionOnMissingDestPath() {
 		_copyThrowsFileNotFoundExceptionOnMissingDestPath();
 
 	}
 
 	@Override
 	@Test(groups={"copy"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void copyThrowsFileNotFoundExceptionOnMissingSourcePath()
-	{
+	public void copyThrowsFileNotFoundExceptionOnMissingSourcePath() {
 		_copyThrowsFileNotFoundExceptionOnMissingSourcePath();
 	}
 
@@ -630,8 +621,7 @@ public class S3RemoteDataClientIT extends RemoteDataClientTestUtils implements I
 
 	@Override
 	@Test(groups={"sync"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void syncToRemoteFolderReplacesOverlappingFilesAndFolders()
-	{
+	public void syncToRemoteFolderReplacesOverlappingFilesAndFolders() {
 		_syncToRemoteFolderReplacesOverlappingFilesAndFolders();
 	}
 	

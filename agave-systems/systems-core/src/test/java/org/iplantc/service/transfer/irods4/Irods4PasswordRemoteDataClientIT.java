@@ -91,6 +91,24 @@ public class Irods4PasswordRemoteDataClientIT extends RemoteDataClientTestUtils 
     }
 
     @Override
+    @Test(groups={"stat"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
+    public void getFileInfoReturnsRemoteFileInfoForFile() {
+        _getFileInfoReturnsRemoteFileInfoForFile();
+    }
+
+    @Override
+    @Test(groups={"stat"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
+    public void getFileInfoReturnsRemoteFileInfoForDirectory() {
+        _getFileInfoReturnsRemoteFileInfoForDirectory();
+    }
+
+    @Override
+    @Test(groups={"stat"}, expectedExceptions = FileNotFoundException.class, retryAnalyzer=TransferTestRetryAnalyzer.class)
+    public void getFileInfoReturnsErrorOnMissingPath() throws FileNotFoundException {
+        _getFileInfoReturnsErrorOnMissingPath();
+    }
+
+    @Override
     @Test(groups={"exists"}, dataProvider="doesExistProvider", retryAnalyzer=TransferTestRetryAnalyzer.class)
     public void doesExist(String remotedir, boolean shouldExist, String message)
     {
@@ -329,9 +347,8 @@ public class Irods4PasswordRemoteDataClientIT extends RemoteDataClientTestUtils 
     }
 
     @Override
-    @Test(groups={"get"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-    public void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath()
-    {
+    @Test(groups={"get"}, expectedExceptions = FileNotFoundException.class, retryAnalyzer=TransferTestRetryAnalyzer.class)
+    public void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath() throws FileNotFoundException {
         _getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath();
     }
 

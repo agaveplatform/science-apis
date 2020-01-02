@@ -19,6 +19,7 @@ import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -169,6 +170,24 @@ public class SftpRelayPasswordRemoteDataClientIT extends RemoteDataClientTestUti
 	public void isThirdPartyTransferSupported()
 	{
 		_isThirdPartyTransferSupported();
+	}
+
+	@Override
+	@Test(groups={"stat"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getFileInfoReturnsRemoteFileInfoForFile() {
+		_getFileInfoReturnsRemoteFileInfoForFile();
+	}
+
+	@Override
+	@Test(groups={"stat"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getFileInfoReturnsRemoteFileInfoForDirectory() {
+		_getFileInfoReturnsRemoteFileInfoForDirectory();
+	}
+
+	@Override
+	@Test(groups={"stat"}, expectedExceptions = FileNotFoundException.class, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getFileInfoReturnsErrorOnMissingPath() throws FileNotFoundException {
+		_getFileInfoReturnsErrorOnMissingPath();
 	}
 
 	@Override
@@ -396,8 +415,8 @@ public class SftpRelayPasswordRemoteDataClientIT extends RemoteDataClientTestUti
 	}
 
 	@Override
-	@Test(groups={"get"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
-	public void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath() {
+	@Test(groups={"get"}, expectedExceptions = FileNotFoundException.class, retryAnalyzer=TransferTestRetryAnalyzer.class)
+	public void getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath() throws FileNotFoundException {
 		_getDirectoryThrowsExceptionWhenDownloadingFolderToNonExistentLocalPath();
 	}
 

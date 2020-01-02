@@ -83,7 +83,7 @@ public class JobEventProcessorTest extends AbstractDaoTest {
 			throws NotificationException, IOException {
 		Notification notification = new Notification(job.getUuid(),
 				job.getOwner(), job.getStatus().name(),
-				"http://httpbin.agaveplatform.org/post", true);
+				"http://httpbin:8000/post", true);
 
 		ndao.persist(notification);
 

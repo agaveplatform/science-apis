@@ -65,7 +65,7 @@ public class JobNotificationTest extends AbstractDaoTest
 	private static final Logger log = Logger.getLogger(JobNotificationTest.class);
 	
 	private static String TEST_NOTIFICATION_EMAIL = "foo@example.com";
-	private String TEST_NOTIFICATION_URL = "http://httpbin.org/status/200";
+	private String TEST_NOTIFICATION_URL = "http://httpbin:8000/status/200";
 	private JSONTestDataUtil util;
 	private NotificationDao notificationDao = new NotificationDao();
 	private JobDao jobDao = new JobDao();

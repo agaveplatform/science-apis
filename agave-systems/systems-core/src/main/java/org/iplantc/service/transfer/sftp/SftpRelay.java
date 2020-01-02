@@ -31,10 +31,7 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
-import org.iplantc.service.transfer.exceptions.AuthenticationException;
-import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
+import org.iplantc.service.transfer.exceptions.*;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
@@ -976,7 +973,6 @@ public final class SftpRelay implements RemoteDataClient {
                 isRemoteDir = isDirectory(remoteSource);
             } catch (Exception e) {
                 String msg = getMsgPrefix() + "Failure to access remote path " + remoteSource + ": " + e.getMessage();
-                log.error(msg, e);
                 throw e;
             }
 
@@ -990,16 +986,14 @@ public final class SftpRelay implements RemoteDataClient {
                     if (!localDirectory.getParentFile().exists()) {
                         String msg = getMsgPrefix() + "Parent directory doesn't exist for local directory " +
                                 localDirectory.getPath() + ".";
-                        log.error(msg);
                         throw new FileNotFoundException("No such file or directory");
                     }
                 }
                 // can't download folder to an existing file
                 else if (!localDirectory.isDirectory()) {
-                    String msg = getMsgPrefix() + "Local target " + localDirectory.getPath() +
-                            " is not a directory to receive content from remote directory " + remoteSource + ".";
-                    log.error(msg);
-                    throw new RemoteDataException(msg);
+                    String msg = getMsgPrefix() + "Cannot overwrite non-directory " + localDirectory.getPath() +
+                            " with directory " + remoteSource;
+                    throw new InvalidTransferException(msg);
                 } else {
                     // downloading to existing directory and keeping name
                     localDirectory = new File(localDirectory, FilenameUtils.getName(remoteSource));
@@ -1185,8 +1179,7 @@ public final class SftpRelay implements RemoteDataClient {
 
         File localFile = new File(localdir);
         if (!localFile.exists()) {
-            String msg = getMsgPrefix() + "Local path " + localFile.getAbsolutePath() + " does not exist.";
-            log.error(msg);
+            String msg = getMsgPrefix() + "Local path " + localdir + " does not exist.";
             throw new FileNotFoundException("No such file or directory");
         }
 
@@ -1205,7 +1198,8 @@ public final class SftpRelay implements RemoteDataClient {
                 if (remoteExists) {
                     // can't put dir to file
                     if (!isDirectory(remotedir)) {
-                        String msg = getMsgPrefix() + "Cannot overwrite non-directory " + remotedir + " with directory " + localFile.getAbsolutePath();
+                        String msg = getMsgPrefix() + "Cannot overwrite non-directory " + remotedir +
+                                " with directory " + localdir;
                         log.error(msg);
                         throw new RemoteDataException(msg);
                     } else {
@@ -1472,7 +1466,7 @@ public final class SftpRelay implements RemoteDataClient {
                 // this has to be valid or the whole relay is busted
                 RemoteFileInfo grpcFileInfo = new RemoteFileInfo();
 
-                grpcFileInfo.setName(FilenameUtils.getName(fileInfoResponse.getRemoteFileInfo().getName()));
+                grpcFileInfo.setName(fileInfoResponse.getRemoteFileInfo().getName());
                 grpcFileInfo.setFileType(fileInfoResponse.getRemoteFileInfo().getIsDirectory() ?
                         RemoteFileInfo.DIRECTORY_TYPE : RemoteFileInfo.FILE_TYPE);
                 grpcFileInfo.setSize(fileInfoResponse.getRemoteFileInfo().getSize());

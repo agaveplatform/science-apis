@@ -71,19 +71,6 @@ public class BaseTestCase {
 
 	protected JSONTestDataUtil jtd;
 	protected JSONObject jsonTree;
-
-//	protected String username;
-//	protected String password;
-//	protected String uploadFilePath;
-//	protected File testFileAnalysisDirectory;
-//	protected String destPath;
-//	protected URI ftpUri;
-//	protected URI gridFtpUri;
-//	protected URI httpUri = URI.create("http://requestbin:5101/public/" + LOCAL_TXT_FILE_NAME);
-//	protected URI httpsUri = URI.create("https://requestbin:5101/public/" + LOCAL_TXT_FILE_NAME);
-//	protected URI s3Uri;
-//	protected URI sftpUri;
-
 	protected SystemDao systemDao = new SystemDao();
 
 	/* (non-Javadoc)
@@ -93,6 +80,9 @@ public class BaseTestCase {
 	protected void beforeClass() throws Exception
 	{
 		jtd = JSONTestDataUtil.getInstance();
+
+        clearSystems();
+        clearLogicalFiles();
 
 //		Properties props = new Properties();
 //		props.load(getClass().getClassLoader().getResourceAsStream(TEST_PROPERTIES_FILE));
@@ -126,25 +116,37 @@ public class BaseTestCase {
 		clearLogicalFiles();
 	}
 
-	protected void clearSystems()
-    {
-	    Session session = null;
-        try
-        {
+    /**
+     * Clears all systems and related entity tables from db
+     * @throws Exception if something goes wrong
+     */
+    protected void clearSystems() throws Exception {
+        Session session = null;
+        try {
             HibernateUtil.beginTransaction();
             session = HibernateUtil.getSession();
             session.clear();
             HibernateUtil.disableAllFilters();
 
-            session.createQuery("DELETE RemoteSystem").executeUpdate();
+            session.createQuery("delete RemoteSystem").executeUpdate();
+            session.createQuery("delete BatchQueue").executeUpdate();
+            session.createQuery("delete StorageConfig").executeUpdate();
+            session.createQuery("delete LoginConfig").executeUpdate();
+            session.createQuery("delete AuthConfig").executeUpdate();
+            session.createQuery("delete SystemRole").executeUpdate();
+            session.createQuery("delete CredentialServer").executeUpdate();
             session.flush();
-        }
-        finally
-        {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+        } catch (Throwable t) {
+            t.printStackTrace();
+        } finally {
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
     }
 
+    /**
+     * Clears all logical files and related entity tables from db
+     * @throws Exception if something goes wrong
+     */
 	protected void clearLogicalFiles() throws Exception {
 		Session session = null;
 		try
@@ -155,10 +157,11 @@ public class BaseTestCase {
 			HibernateUtil.disableAllFilters();
 
 			session.createQuery("DELETE LogicalFile").executeUpdate();
-			session.createQuery("DELETE EncodingTask").executeUpdate();
+//			session.createQuery("DELETE EncodingTask").executeUpdate();
 //			session.createQuery("DELETE FROM DecodingTask s WHERE 1=1").executeUpdate();
 			session.createQuery("DELETE StagingTask").executeUpdate();
 			session.createQuery("DELETE RemoteFilePermission").executeUpdate();
+			session.createQuery("DELETE TransferTaskPermission").executeUpdate();
 			session.createQuery("DELETE TransferTask").executeUpdate();
 			session.createQuery("DELETE Notification").executeUpdate();
 		}
@@ -168,7 +171,11 @@ public class BaseTestCase {
 		}
 		finally
 		{
-			try { session.close(); } catch (Exception e) {}
+			try {
+                if (session != null) {
+                    session.close();
+                }
+            } catch (Exception ignored) {}
 		}
 	}
 
@@ -254,7 +261,7 @@ public class BaseTestCase {
      * from one of the test templates. The returned {@link RemoteSystem} is unsaved and
      * unaltered from the original template.
      *
-     * @param type
+     * @param type the system type (storage or execution).
      * @param protocol valid {@link StorageProtocolType} or {@link LoginProtocolType} value
      * @return unaltered test template {@link RemoteSystem}
      * @throws Exception
@@ -270,7 +277,7 @@ public class BaseTestCase {
      * from one of the test templates. The returned {@link RemoteSystem} is unsaved and
      * unaltered from the original template.
      *
-     * @param type
+     * @param type the system type (storage or execution).
      * @param protocol valid {@link StorageProtocolType} or {@link LoginProtocolType} value
      * @param systemId custom systemid to assign to the new system
      * @return unaltered test template {@link RemoteSystem}
@@ -282,8 +289,9 @@ public class BaseTestCase {
         SystemManager systemManager = new SystemManager();
         JSONObject json = null;
         if (type == RemoteSystemType.STORAGE) {
-            json = jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR +
-                    File.separator + protocol.toLowerCase() + ".example.com.json");
+            String filename = protocol.equalsIgnoreCase("irods") ? "irods3" : protocol.toLowerCase() ;
+            json = jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + File.separator +
+                    filename + ".example.com.json");
         }
         else {
             json = jtd.getTestDataObject(EXECUTION_SYSTEM_TEMPLATE_DIR +
@@ -299,7 +307,7 @@ public class BaseTestCase {
 
     /**
      * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link StorageSystem}.
-     * @return
+     * @return a new default sftp storage system
      * @throws Exception
      */
     protected StorageSystem getNewInstanceOfStorageSystem()
@@ -311,7 +319,7 @@ public class BaseTestCase {
     /**
      * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link StorageSystem}.
      * @param systemId the custom systemId to assign to the new system
-     * @return
+     * @return a new persisted storage system with the systemId
      * @throws Exception
      */
     protected StorageSystem getNewInstanceOfStorageSystem(String systemId)
@@ -322,7 +330,7 @@ public class BaseTestCase {
 
     /**
      * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link ExecutionSystem}.
-     * @return
+     * @return a new default ssh execution system
      * @throws Exception
      */
     protected ExecutionSystem getNewInstanceOfExecutionSystem()
@@ -334,7 +342,7 @@ public class BaseTestCase {
     /**
      * Returns a new, unsaved {@link StorageProtocolType#SFTP} {@link ExecutionSystem}.
      * @param systemId the custom systemId to assign to the new system
-     * @return
+     * @return a new persisted execution system with the systemId
      * @throws Exception
      */
     protected ExecutionSystem getNewInstanceOfExecutionSystem(String systemId)

@@ -170,11 +170,11 @@ public class LogicalFileUUIDEntityLookupTest extends AbstractUUIDEntityLookupTes
 				Assert.fail("Resolving logical file url from uuid should never throw exception", e);
 			}
 		}
-		catch (JSONException | SystemArgumentException | IOException e) {
+		catch (JSONException | IOException e) {
 			Assert.fail("Failed to create test storage system with null home directory", e);
 		}
 		finally {
-			try { dao.remove(nullHomeSystem); } catch (Exception e){};
+			try { dao.remove(nullHomeSystem); } catch (Exception ignored){};
 			
 		}
 	}
@@ -207,11 +207,11 @@ public class LogicalFileUUIDEntityLookupTest extends AbstractUUIDEntityLookupTes
 				Assert.fail("Resolving logical file url from uuid should never throw exception", e);
 			}
 		}
-		catch (JSONException | SystemArgumentException | IOException e) {
+		catch (JSONException | IOException e) {
 			Assert.fail("Failed to create test storage system with empty home directory", e);
 		}
 		finally {
-			try { dao.remove(emtpyHomeSystem); } catch (Exception e){};
+			try { dao.remove(emtpyHomeSystem); } catch (Exception ignored){};
 			
 		}
 	}

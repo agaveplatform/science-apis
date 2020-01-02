@@ -54,6 +54,7 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientPermissionProvider;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
@@ -899,8 +900,8 @@ public class GridFTP extends GridFTPClient implements RemoteDataClient, RemoteDa
 		{
 			// can't put dir to file
 			if (localFile.isDirectory() && !isDirectory(dest)) {
-				throw new RemoteDataException("cannot overwrite non-directory: " + 
-						remotedir + " with directory " + localFile.getName());
+				String msg = "Cannot overwrite non-directory " + remotedir + " with directory " + localFile.getPath();
+				throw new InvalidTransferException(msg);
 			} 
 //			else if (!localFile.isDirectory())
 //			{
@@ -1550,7 +1551,8 @@ public class GridFTP extends GridFTPClient implements RemoteDataClient, RemoteDa
 				} 
 				else if (localDir.isFile()) 
 				{
-					throw new RemoteDataException("cannot overwrite non-directory: " + localDir.getName() + " with directory " + remotedir);
+					String msg = "Cannot overwrite non-directory " + localdir + " with directory " + remotedir;
+					throw new InvalidTransferException(msg);
 				}
 				else {
 					localDir = new File(localDir, remoteFileInfo.getName());

@@ -184,7 +184,7 @@ irods4:
    - '1247'
 
 http:
-  image: agaveapi/apache-dev
+  image: agaveplatform/apache-dev:latest
   #hostname: docker.example.com
   labels:
     agaveapi.test: "utest"

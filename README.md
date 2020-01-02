@@ -7,13 +7,13 @@ The Agave Science APIs are a set of REST APIs that provide the core Science-as-a
 For ease of deployment, and easier scaling from demo to heavy utilization scenarios, we build and deploy the entire Agave Platform as a collection of [Docker](http://docker.com) images. This README will walk you through the process of running a development instance of Agave for yourself. For more information about the use cases satisfied by the APIs as well as functional documentation about their design, use, and performance, please see the [Agave Developer’s Website](https://agaveplatform.org). To get started using the APIs right away, pull down the Agave CLI as [source](https://github.com/agaveplatform/agave-cli) or a [Docker image](https://hub.docker.com/u/agaveapi/cli) and take it for a spin.
 
 
-## Installation
+## Installations
 
-The Agave Developer APIs are distributed as multiple Docker images. This repository serves as a aggregation point for all the different services and a common configuration point used to propagate various configuration options when compiling from source. One of the things we love about Docker is that it simplifies our deployment environments. Each API is built into its own image and that exact same image is used in development, staging, and production. Because of this, we make all our images available publicly in the [Docker Public Registry](http://hub.docker.com/u/agaveapi/). 
+The Agave Developer APIs are distributed as multiple Docker images. This repository serves as a aggregation point for all the different services and a common configuration point used to propagate various configuration options when compiling from source. One of the things we love about Docker is that it simplifies our deployment environments. Each API is built into its own image and that exact same image is used in development, staging, and production. Because of this, we make all our images available publicly in the [Docker Public Registry](http://hub.docker.com/u/agaveplatform/). 
 
-One of the other great things about Docker is the ecosystem of tooling around the container technology itself. The Agave core services are currently comprised of over a dozen different containers. Starting, stopping, monitoring, etc all those containers would be challenging on its own. Thankfully, [Docker Compose](https://docs.docker.com/compose/) is available. Compose is an orchestration tool for managing Docker containers and their dependencies. Included in this repository you will find a `docker-compose.yml.SAMPLE` file which you can use to stand up, configure, and scale the entire stack, dependencies and all. 
+The Agave core services are currently comprised of over a dozen different containers. With their third-party dependencies and support containers, the total container count can surpass 30. Starting, stopping, monitoring, etc all those containers would be challenging on its own. We support [Docker Compose](https://docs.docker.com/compose/) as our development container orchestration solution for managing the bundled containers and their dependencies. Included in this repository you will find a `compose` directory where you will find example docker-compose.yml files to deploy the platform in various configurations.  
 
-In the following sections we walk you through what it takes to stand up and interact with the stack. For more information, including lots of useful tutorials and examples on using Agave to power your own digital lab, pleas visit the [Agave Developer's Site](https://agaveplatform.org).
+In the following sections we walk you through what it takes to stand up and interact with the stack. For more information on how you can leverage the Agave Platform to power your own digital lab, pleas visit the [Agave Platform Website](https://agaveplatform.org.).
 
 ## Requirements
 
@@ -24,15 +24,15 @@ You will need to have the Docker Engine installed to run the API containers and 
 
 If you intend on building the APIs from scratch, you will also need the following: 
 
-* [Java 7]
+* [Java 9]
 * [PHP 5.5+]
-* [Maven 3.2+]
+* [Maven 3.6+]
 
 ### Port ranges
 
-When you start up the APIs, each API will be assigned a dynamic port. This is purely for development purposes. In order to access the APIs, you will always point your requests to the proxy container which serves as the web root of the APIs. The proxy image handles URL rewriting, load balancing, and port mapping so you do not have to worry about runtime changes if you restart or scale a running API.
+When you start up the APIs, each API will be assigned a dynamic port. This is purely for development purposes. In order to access the APIs, you will always point your requests to the [Traefik](https://traefik.io) reverse proxy container which load balances traffic to the APIs. The proxy image handles URL rewriting, load balancing, and port mapping so you do not have to worry about runtime changes if you restart or scale a running API.
 
-The proxy container exposes ports `80`, and `443`. By default, SSL is disabled and all SSL traffic is redirected to port 80. This is **NOT** recommended for production or public use. We default to port 80 here so you do not need to deal with hostname validation, creating and reassigning SSL certs, and importing public keys to the Agave API Manager if you bring it up. It short, we use port 80 because it makes things easier for you to stand up and kick around quickly. 
+The proxy container exposes ports `80`, `443`, and `28443`. By default, SSL is enabled and all HTTP traffic is redirected to port 443.  
 
 In the event you will be interacting with an FTP or GridFTP server, you will also need to make sure that the Docker host on which the APIs are running has the standard FTP and GridFTP port ranges installed. Subsets of these port ranges are exposed by default in both the API and worker containers and are necessary to avoid performance penalties when interacting with remote servers over these protocols.
 
@@ -44,7 +44,7 @@ In the event you will be interacting with an FTP or GridFTP server, you will als
 
 ### DNS
 
-Finally, to make networking a little simpler, and to avoid diving into the rabbit hole that is overlay networking, please add `docker.example.com` to your `/etc/hosts` file. This hostname will be used throughout the documentation to avoid problems with service discovery, firewalls, NAT, and philosophical differences in the way different operating system differences handle networking.
+Finally, to make networking a little simpler, and to avoid diving into the rabbit hole that is overlay networking, please edit your Docker host's `/etc/hosts` file  add the following hostnames as aliases to the host ip address in  to your docker host's ip address  file. This hostname will be used throughout the documentation to avoid problems with service discovery, firewalls, NAT, and philosophical differences in the way different operating systems handle networking.
 
 ### Third-party services
 

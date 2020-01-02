@@ -78,7 +78,7 @@ irods4:
    - '1257:1247'
 
 http:
-  image: agaveapi/apache-dev
+  image: agaveplatform/apache-dev:latest
   hostname: docker.example.com
   ports:
     - '10077:22'

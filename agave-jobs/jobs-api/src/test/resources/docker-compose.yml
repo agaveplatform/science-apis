@@ -93,7 +93,7 @@ services:
       - '5101:5000'
 
   httpd:
-    image: agaveapi/apache-dev
+    image: agaveplatform/apache-dev:latest
     hostname: docker.example.com
     ports:
       - '10080:80'

@@ -58,7 +58,7 @@ services:
         - "traefik.http.routers.httpbin-secure.tls=true"
 
   httpd:
-    image: agaveapi/apache-dev
+    image: agaveplatform/apache-dev:latest
     hostname: docker.example.com
     restart: on-failure
     ports:

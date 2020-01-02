@@ -71,7 +71,7 @@ services:
           memory: 2G
 
   http:
-    image: agaveapi/apache-dev
+    image: agaveplatform/apache-dev:latest
     hostname: docker.example.com
     ports:
       - '10077:22'

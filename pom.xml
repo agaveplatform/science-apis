@@ -350,6 +350,7 @@
                     <configuration>
                         <skip>${skip.integration.tests}</skip>
                         <detachedMode>true</detachedMode>
+                        <removeVolumes>true</removeVolumes>
                         <projectName>${project.artifactId}</projectName>
                         <composeFiles>
                             <composeFile>${project.basedir}/target/test-classes/docker-compose.yml</composeFile>
@@ -563,6 +564,7 @@
         <module>agave-metadata</module>
         <module>agave-systems</module>
         <module>agave-monitors</module>
+
         <module>agave-files</module>
         <module>agave-apps</module>
         <module>agave-jobs</module>

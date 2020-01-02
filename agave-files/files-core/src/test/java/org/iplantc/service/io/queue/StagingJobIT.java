@@ -523,8 +523,6 @@ public class StagingJobIT extends BaseTestCase {
 	@DataProvider(parallel = false)
 	private Object[][] testStageNextAgaveFolderProvider(Method m) throws Exception
 	{
-		String localDirectoryName = FilenameUtils.getName(LOCAL_DIR);
-		
 		List<Object[]> testCases = new ArrayList<Object[]>();
         
         for (StorageSystem srcSystem: testSystems) {//,ftpSystem, gridftpSystem)) {
@@ -533,10 +531,10 @@ public class StagingJobIT extends BaseTestCase {
                 
                 if (!srcSystem.equals(destSystem)) {
                     // copy file to home directory
-                    testCases.add(new Object[] { srcSystem, destSystem, localDirectoryName, "", localDirectoryName });
-                    
+                    testCases.add(new Object[] { srcSystem, destSystem, "", "" });
+
                     // copy file to named file in remote home directory that does not exist
-                    testCases.add(new Object[] { srcSystem, destSystem, localDirectoryName, localDirectoryName, localDirectoryName });
+                    testCases.add(new Object[] { srcSystem, destSystem, LOCAL_DIR_NAME, LOCAL_DIR_NAME });
                     
                 }
             }
@@ -546,8 +544,10 @@ public class StagingJobIT extends BaseTestCase {
 	}
 	
 	@Test(dataProvider="testStageNextAgaveFolderProvider")//, dependsOnMethods={"testStageNextAgaveSourceFolderToDestFileFails"})
-	public void testStageNextFolder(RemoteSystem sourceSystem, RemoteSystem destSystem, String srcPath, String destPath, String expectedPath) 
+	public void testStageNextFolder(RemoteSystem sourceSystem, RemoteSystem destSystem, String destPath, String expectedPath)
 	{
+        org.iplantc.service.transfer.Settings.ALLOW_RELAY_TRANSFERS = true;
+
 		String remoteSrcBaseDir = null;
 		String remoteSrcPath = null;
 		String remoteDestBaseDir = null;
@@ -557,7 +557,7 @@ public class StagingJobIT extends BaseTestCase {
 		{
 			/// create a test src directory to stage source data
 			remoteSrcBaseDir = createRemoteTestDir(sourceSystem);
-			remoteSrcPath = remoteSrcBaseDir + "/" + LOCAL_BINARY_FILE_NAME;
+			remoteSrcPath = remoteSrcBaseDir + "/" + LOCAL_DIR_NAME;
 			getClient(sourceSystem).put(LOCAL_DIR, remoteSrcPath);
 
 			// create a test directory and adjust expectedPath to show up there.
@@ -567,7 +567,10 @@ public class StagingJobIT extends BaseTestCase {
 				remoteDestPath += "/" + destPath;
 			}
 			// adjust the expected path for the remote directory
-			remoteExpectedPath = remoteDestBaseDir + "/" + expectedPath;
+            remoteExpectedPath = remoteDestBaseDir;
+            if (StringUtils.isNotEmpty(expectedPath)) {
+                remoteExpectedPath +=  "/" + expectedPath;
+            }
 
 			StagingTask task = createStagingTaskForUrl(new URI("agave://" + sourceSystem.getSystemId() + "/" + remoteSrcPath), destSystem, remoteDestPath);
 
@@ -585,7 +588,7 @@ public class StagingJobIT extends BaseTestCase {
 			Assert.assertTrue(getClient(destSystem).doesExist(remoteExpectedPath),
 					"Staged directory is not present on the remote system.");
 
-			Assert.assertEquals(remoteExpectedPath, file.getAgaveRelativePathFromAbsolutePath(),
+			Assert.assertEquals(file.getAgaveRelativePathFromAbsolutePath(), remoteExpectedPath,
 					"Expected path of " + remoteExpectedPath + " differed from the relative logical file path of " + file.getAgaveRelativePathFromAbsolutePath());
 
 			Assert.assertTrue(getClient(destSystem).isDirectory(remoteExpectedPath),

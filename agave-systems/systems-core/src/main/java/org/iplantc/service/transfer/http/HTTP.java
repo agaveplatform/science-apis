@@ -12,19 +12,13 @@ import java.net.URISyntaxException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.NameValuePair;
-import org.apache.http.StatusLine;
+import org.apache.http.*;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.AuthCache;
@@ -53,6 +47,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.client.LaxRedirectStrategy;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.log4j.Logger;
+import org.iplantc.service.systems.Settings;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteOutputStream;
@@ -69,6 +65,7 @@ import com.fasterxml.jackson.databind.JsonNode;
  */
 public class HTTP implements RemoteDataClient {
 
+	private static final Logger log = Logger.getLogger(HTTP.class);
 	private URI uri;
 	private String host;
 	private String username;
@@ -80,28 +77,6 @@ public class HTTP implements RemoteDataClient {
 	
     protected static final int MAX_BUFFER_SIZE = 1048576;
 
-//    static {
-//    	try { 
-//			
-//			HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier(){ 
-//                    public boolean verify(String hostname, SSLSession session) { 
-//                            return true; 
-//                    }}); 
-//            SSLContext context = SSLContext.getInstance("TLS"); 
-//            context.init(null, new X509TrustManager[]{new X509TrustManager(){ 
-//                    public void checkClientTrusted(X509Certificate[] chain, 
-//                                    String authType) throws CertificateException {} 
-//                    public void checkServerTrusted(X509Certificate[] chain, 
-//                                    String authType) throws CertificateException {} 
-//                    public X509Certificate[] getAcceptedIssuers() { 
-//                            return new X509Certificate[0]; 
-//                    }}}, new SecureRandom()); 
-//            HttpsURLConnection.setDefaultSSLSocketFactory( 
-//                            context.getSocketFactory()); 
-//	    } catch (Exception e) { // should never happen 
-//	            e.printStackTrace(); 
-//	    }
-//    }
 	public HTTP() {}
 	
 	public HTTP(URI uri)
@@ -162,7 +137,8 @@ public class HTTP implements RemoteDataClient {
 	 * @param remotepath
 	 * @param length
 	 */
-	public void setLength(String remotepath, Long length) {
+	public void setLength(String remotepath, Long length)
+	{
 		if (lengthCache.containsKey(remotepath)) {
 			lengthCache.remove(remotepath);
 		}
@@ -315,39 +291,8 @@ public class HTTP implements RemoteDataClient {
 	public HTTPInputStream getInputStream(String path, boolean passive)
 			throws IOException, RemoteDataException
 	{
-		
 		return new HTTPInputStream(this, path, passive);
 	}
-	
-//	/**
-//	 * Returns the input stream from a HTTP GET on the path. Auth and ssl are honored.
-//	 * 
-//	 * @param path
-//	 * @return input stream from http get response
-//	 * @throws IOException
-//	 * @throws RemoteDataException
-//	 */
-//	protected InputStream getRawInputStream(String path)
-//	throws IOException, RemoteDataException
-//	{	
-//		try 
-//		{
-//			CloseableHttpResponse response = doGet(path);
-//			
-//		    StatusLine statusLine = response.getStatusLine();
-//	    	if (statusLine.getStatusCode() >= 200 && statusLine.getStatusCode() < 300) {
-//	    		return response.getEntity().getContent();
-//	    	} else {
-//	    		throw new IOException(statusLine.getReasonPhrase());
-//	    	}
-//		}
-//		catch (IOException e) {
-//			throw e;
-//		}
-//		catch (Exception e) {
-//			throw new RemoteDataException("Failed to establish output stream to " + path, e);
-//		}
-//	}
 
 	@Override
 	public RemoteOutputStream<HTTP> getOutputStream(String path, boolean passive,
@@ -437,17 +382,11 @@ public class HTTP implements RemoteDataClient {
 			if (listener != null) listener.completed();
 			// we could do a size check here...meah
 		}
-		catch (IOException e) 
+		catch (IOException | RemoteDataException e)
 		{
 			if (listener != null) listener.failed();
 			throw e;
-		}
-		catch (RemoteDataException e) 
-		{
-			if (listener != null) listener.failed();
-			throw e;
-		}
-		catch (Exception e) 
+		} catch (Exception e)
 		{
 			if (listener != null) listener.failed();
 			String url = null;
@@ -460,10 +399,10 @@ public class HTTP implements RemoteDataClient {
 		}
 		finally 
 		{
-			try { in.close(); } catch(Exception e) {}
-			try { out.close(); } catch(Exception e) {}
-			try { bout.close(); } catch(Exception e) {}
-			try { response.close(); } catch (Exception e) {}
+			try { in.close(); } catch(Exception ignored) {}
+			try { out.close(); } catch(Exception ignored) {}
+			try { bout.close(); } catch(Exception ignored) {}
+			try { response.close(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -514,7 +453,7 @@ public class HTTP implements RemoteDataClient {
 	 * @throws KeyStoreException
 	 * @throws KeyManagementException 
 	 */
-	private CloseableHttpResponse doRequest(URI escapedUri, HttpUriRequest httpUriRequest)
+	public CloseableHttpResponse doRequest(URI escapedUri, HttpUriRequest httpUriRequest)
 	throws IOException, RemoteDataException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException
 	{
 		CloseableHttpClient httpclient = initClient(escapedUri);
@@ -1073,14 +1012,8 @@ public class HTTP implements RemoteDataClient {
 			throw new FileNotFoundException("Unable to parse path into a URI");
 		}
 	}
-	
-	/* (non-Javadoc)
-	 * @see org.iplantc.service.transfer.RemoteDataClient#getUriForPath(java.lang.String)
-	 */
-	@Override
-	public URI getUriForPath(String path) 
-	throws IOException, RemoteDataException
-	{
+
+	protected String _buildUrlStringForPath(String path) {
 		StringBuilder builder = new StringBuilder();
 		builder.append(useSSL ? "https://" : "http://");
 		builder.append(host);
@@ -1097,8 +1030,21 @@ public class HTTP implements RemoteDataClient {
 			path = "/" + path;
 		}
 		builder.append(path.replaceAll(" ", "%20"));
+
+		return builder.toString();
+	}
+
+	/* (non-Javadoc)
+	 * @see org.iplantc.service.transfer.RemoteDataClient#getUriForPath(java.lang.String)
+	 */
+	@Override
+	public URI getUriForPath(String path) 
+	throws IOException, RemoteDataException
+	{
+		String urlForPath = _buildUrlStringForPath(path);
+
 		try {
-			return new URI(builder.toString());
+			return new URI(urlForPath);
 		} catch (URISyntaxException e) {
 			throw new IOException(e);
 		}
@@ -1121,10 +1067,87 @@ public class HTTP implements RemoteDataClient {
 	public void disconnect() {}
 
 	@Override
-	public boolean doesExist(String string) throws IOException,
+	public boolean doesExist(String remotepath) throws IOException,
 			RemoteDataException
 	{
-		throw new NotImplementedException();
+		// attempt options request to get file size
+		if (StringUtils.isEmpty(remotepath)) {
+			throw new IOException("No path to the remote file provided.");
+		}
+
+		// otherwise fall back on a HEAD request, which will fail for
+		// many CDN and cloud providers.
+		try
+		{
+			URI escapedUri = getUriForPath(remotepath);
+
+			HttpHead httpHead = new HttpHead(escapedUri);
+
+			CloseableHttpResponse response = doRequest(escapedUri, httpHead);
+
+			StatusLine statusLine = response.getStatusLine();
+			switch (statusLine.getStatusCode()) {
+				case HttpStatus.SC_CONTINUE: //100
+				case HttpStatus.SC_SWITCHING_PROTOCOLS: //101
+				case HttpStatus.SC_PROCESSING: //102
+					throw new IOException(statusLine.getReasonPhrase());
+				case HttpStatus.SC_OK: //200
+				case HttpStatus.SC_CREATED: //201
+				case HttpStatus.SC_ACCEPTED: //202
+				case HttpStatus.SC_NON_AUTHORITATIVE_INFORMATION: //203
+				case HttpStatus.SC_NO_CONTENT: //204
+				case HttpStatus.SC_RESET_CONTENT: //205
+				case HttpStatus.SC_PARTIAL_CONTENT: //206
+				case HttpStatus.SC_MULTI_STATUS: //207
+				case HttpStatus.SC_MULTIPLE_CHOICES: //300
+				case HttpStatus.SC_MOVED_PERMANENTLY: //301
+				case HttpStatus.SC_MOVED_TEMPORARILY: //302
+				case HttpStatus.SC_SEE_OTHER: //303
+				case HttpStatus.SC_NOT_MODIFIED: //304
+				case HttpStatus.SC_USE_PROXY: //305
+				case HttpStatus.SC_TEMPORARY_REDIRECT: //307
+					return true;
+				case HttpStatus.SC_BAD_REQUEST: //400
+				case HttpStatus.SC_UNAUTHORIZED: //401
+				case HttpStatus.SC_PAYMENT_REQUIRED: //402
+				case HttpStatus.SC_FORBIDDEN: //403
+				case HttpStatus.SC_NOT_FOUND: //404
+				case HttpStatus.SC_METHOD_NOT_ALLOWED: //405
+				case HttpStatus.SC_NOT_ACCEPTABLE: //406
+				case HttpStatus.SC_PROXY_AUTHENTICATION_REQUIRED: //407
+				case HttpStatus.SC_REQUEST_TIMEOUT: //408
+				case HttpStatus.SC_CONFLICT: //409
+				case HttpStatus.SC_GONE: //410
+				case HttpStatus.SC_LENGTH_REQUIRED: //411
+				case HttpStatus.SC_PRECONDITION_FAILED: //412
+				case HttpStatus.SC_REQUEST_TOO_LONG: //413
+				case HttpStatus.SC_REQUEST_URI_TOO_LONG: //414
+				case HttpStatus.SC_UNSUPPORTED_MEDIA_TYPE: //415
+				case HttpStatus.SC_REQUESTED_RANGE_NOT_SATISFIABLE: //416
+				case HttpStatus.SC_EXPECTATION_FAILED: //417
+				case HttpStatus.SC_INSUFFICIENT_SPACE_ON_RESOURCE: //419
+				case HttpStatus.SC_METHOD_FAILURE: //420
+				case HttpStatus.SC_UNPROCESSABLE_ENTITY: //422
+				case HttpStatus.SC_LOCKED: //423
+				case HttpStatus.SC_FAILED_DEPENDENCY: //424
+				case HttpStatus.SC_INTERNAL_SERVER_ERROR: //500
+				case HttpStatus.SC_NOT_IMPLEMENTED: //501
+				case HttpStatus.SC_BAD_GATEWAY: //502
+				case HttpStatus.SC_SERVICE_UNAVAILABLE: //503
+				case HttpStatus.SC_GATEWAY_TIMEOUT: //504
+				case HttpStatus.SC_HTTP_VERSION_NOT_SUPPORTED: //505
+				case HttpStatus.SC_INSUFFICIENT_STORAGE: //507
+					return false;
+				default:
+					throw new IOException(statusLine.getReasonPhrase());
+			}
+		}
+		catch (IOException|RemoteDataException e) {
+			throw e;
+		}
+		catch (Exception e) {
+			throw new RemoteDataException("HEAD request failed to " + _buildUrlStringForPath(remotepath), e);
+		}
 	}
 
 	@Override
@@ -1143,7 +1166,35 @@ public class HTTP implements RemoteDataClient {
 	public RemoteFileInfo getFileInfo(String path) throws RemoteDataException,
 			IOException
 	{
-		throw new NotImplementedException();
+		// we can only get minimal info about the file via the HTTP headers.
+		// length is not guaranteed, so we build a generic stub and, if
+		// possible, add the file size. In the event of a 404, we
+		// throw a FileNotFoundException.
+		RemoteFileInfo remoteFileInfo = new RemoteFileInfo();
+		remoteFileInfo.setFileType(RemoteFileInfo.FILE_TYPE);
+		remoteFileInfo.setLastModified(new Date());
+		remoteFileInfo.setOwner(Settings.WORLD_USER_USERNAME);
+		remoteFileInfo.setSize(-1);
+
+		try {
+			long len = length(path);
+			URI uri = _getUriForPath(path);
+			remoteFileInfo.setName(FilenameUtils.getName(uri.getPath()));
+			remoteFileInfo.setSize(len);
+		}
+		catch (RemoteDataException e) {
+			log.error("Error querying for the lenght of " + path, e);
+			String name = StringUtils.isBlank(path) ? "/" : FilenameUtils.getName(path);
+			if (name.contains("?")) {
+				name = name.substring(0, name.indexOf("?"));
+			}
+			remoteFileInfo.setName(name);
+		}
+		catch (FileNotFoundException e) {
+			throw e;
+		}
+
+		return remoteFileInfo;
 	}
 
 	@Override

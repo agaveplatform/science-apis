@@ -17,6 +17,7 @@ import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
+import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
@@ -173,7 +174,7 @@ public class DomainSetup extends ApplicationManagerPermissionIT {
                 String key = (String)json.get("id");
 //                System.out.println(key);
                 storageSystemMap.put(key, StorageSystem.fromJSON(json));
-            } catch (SystemArgumentException | JSONException e) {
+            } catch (JSONException e) {
                 e.printStackTrace();
             }
         }
@@ -271,7 +272,7 @@ public class DomainSetup extends ApplicationManagerPermissionIT {
         StorageSystem storageSystem = null;
         try{
             storageSystem = StorageSystem.fromJSON(json);
-        } catch (SystemArgumentException e) {
+        } catch (SystemException e) {
             e.printStackTrace();
         }
         return storageSystem;
@@ -304,7 +305,7 @@ public class DomainSetup extends ApplicationManagerPermissionIT {
                 RemoteSystem system = (RemoteSystem)StorageSystem.fromJSON(storageJson);
                 system.setOwner(SYSTEM_OWNER);         // default system owner
                 dao.persist(system);
-            } catch (SystemArgumentException e) {
+            } catch (SystemException e) {
                 e.printStackTrace();
             }
         }

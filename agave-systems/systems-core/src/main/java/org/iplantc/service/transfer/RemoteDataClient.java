@@ -7,6 +7,7 @@ import java.util.List;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
+import org.iplantc.service.transfer.exceptions.AuthenticationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.gridftp.GridFTP;
@@ -24,7 +25,7 @@ public interface RemoteDataClient extends RemoteDataClientPermissionProvider {
 	/**
 	 * Creates the directory specified by <code>remotePath</code>. If the parent
 	 * does not exist, this will throw a {@link FileNotFoundException}. Use the
-	 * {@link #mkdirs(remotePath)} method in this situation. Note that depending
+	 * {@link #mkdirs(String)} method in this situation. Note that depending
 	 * on the underlying implementation and remote system protocol, the directory
 	 * may or may not be available for writing immediately. In the case of Azure,
 	 * bucket creation can take up to 30 minutes.
@@ -71,8 +72,9 @@ public interface RemoteDataClient extends RemoteDataClientPermissionProvider {
 	 * Authenticates to the remote system using the system credentials. Note
 	 * that the authentication credentials used in this call will often be 
 	 * different than the actual API user's platform credentials.
-	 * 
-	 * @throws RemoteAuthenticationException
+	 *
+	 * @throws IOException
+	 * @throws RemoteDataException
 	 */
 	public abstract void authenticate() throws IOException, RemoteDataException;
 
@@ -92,7 +94,6 @@ public interface RemoteDataClient extends RemoteDataClientPermissionProvider {
 	 *  
 	 * @param remotePath the virtual path to which to write content 
 	 * @param passive should the connection be obtained actively or passively
-	 * @param append should the contents be appended to the end of the file
 	 * @return a pre-authenticated output stream to the remote file item
 	 * @throws IOException
 	 * @throws RemoteDataException
@@ -122,7 +123,7 @@ public interface RemoteDataClient extends RemoteDataClientPermissionProvider {
 	 * including "." and ".." entries in directory listings will not be present.
 	 * 
 	 * @param remotePath the virtual path to list. 
-	 * @return a collection of {@link RemoteFileItem} representing the contents of the folder or file info
+	 * @return a collection of {@link RemoteFileInfo} representing the contents of the folder or file info
 	 * @throws IOException
 	 * @throws RemoteDataException
 	 */
@@ -132,53 +133,54 @@ public interface RemoteDataClient extends RemoteDataClientPermissionProvider {
 	 * Fetches a remote file or folder at <code>remotePath</code> to the local file system at the 
 	 * given <code>localPath</code>. If the destination is a folder, the contents will be placed 
 	 * inside. If the destination is a file, the file will be overwritten. The method delegates its 
-	 * behavior to {@link #get(remotePath, localPath, null)}
+	 * behavior to {@link #get(String, String, RemoteTransferListener)}
 	 * 
+	 * @param remotePath the virtual path to write the file item on the remote system
 	 * @param localPath path on local file system of the file item to transfer
-	 * @param remotePath the virtual path to write the file item on the remote system 
 	 * @throws IOException
 	 * @throws RemoteDataException
 	 */
-	public abstract void get(String remotedir, String localdir) throws IOException, RemoteDataException;
+	public abstract void get(String remotePath, String localPath) throws IOException, RemoteDataException;
 	
 	/**
 	 * Fetches a remote file or folder at <code>remotePath</code> to the local file system at the 
 	 * given <code>localPath</code>. If the destination is a folder, the contents will be placed 
 	 * inside. If the destination is a file, the file will be overwritten. 
 	 * 
+	 * @param remotePath the virtual path to write the file item on the remote system
 	 * @param localPath path on local file system of the file item to transfer
-	 * @param remotePath the virtual path to write the file item on the remote system 
 	 * @param listener callback receiving status events about the file action
 	 * @throws IOException
 	 * @throws RemoteDataException
 	 */
-	public void get(String remotedir, String localdir, RemoteTransferListener listener) 
+	public void get(String remotePath, String localPath, RemoteTransferListener listener)
 			throws IOException, RemoteDataException;
 	
 	/**
 	 * Transfers a local file or folder to the remote system at the given <code>remotePath</code>.
 	 * If the destination is a folder, the contents will be placed inside. If the destination is
-	 * a file, the file will be overwritten. The delegates its behavior to {@link #put(localPath, remotePath, null)}
-	 * 
+	 * a file, the file will be overwritten. The delegates its behavior to
+	 * {@link #put(String, String, RemoteTransferListener)}
+	 *
 	 * @param localPath path on local file system of the file item to transfer
-	 * @param remotePath the virtual path to write the file item on the remote system 
+	 * @param remotePath the virtual path to write the file item on the remote system
 	 * @throws IOException
 	 * @throws RemoteDataException
 	 */
-	public abstract void put(String localdir, String remotePath) throws IOException, RemoteDataException;
+	public abstract void put(String localPath, String remotePath) throws IOException, RemoteDataException;
 	
 	/**
 	 * Transfers a local file or folder to the remote system at the given <code>remotePath</code>.
 	 * If the destination is a folder, the contents will be placed inside. If the destination is
-	 * a file, the file will be overwritten. The delegates its behavior to {@link #put(localPath, remotePath, null)}
-	 * 
+	 * a file, the file will be overwritten.
+	 *
 	 * @param localPath path on local file system of the file item to transfer
-	 * @param remotePath the virtual path to write the file item on the remote system 
+	 * @param remotePath the virtual path to write the file item on the remote system
 	 * @param listener callback receiving status events about the file action
 	 * @throws IOException
 	 * @throws RemoteDataException
 	 */
-	public abstract void put(String localdir, String remotePath, RemoteTransferListener listener) 
+	public abstract void put(String localPath, String remotePath, RemoteTransferListener listener)
 			throws IOException, RemoteDataException;
 	
 	/**
@@ -189,7 +191,7 @@ public interface RemoteDataClient extends RemoteDataClientPermissionProvider {
 	 *  
 	 * @param remotePath the virtual path to check
 	 * @return true if the file item is directory-ish, false otherwise 
-	 @ @throws FileNotFoundException
+	 * @throws FileNotFoundException
 	 * @throws IOException
 	 * @throws RemoteDataException
 	 */
@@ -203,7 +205,7 @@ public interface RemoteDataClient extends RemoteDataClientPermissionProvider {
 	 *  
 	 * @param remotePath the virtual path to check
 	 * @return true if the file item is file-ish, false otherwise 
-	 @ @throws FileNotFoundException
+	 * @throws FileNotFoundException
 	 * @throws IOException
 	 * @throws RemoteDataException
 	 */
@@ -247,7 +249,8 @@ public interface RemoteDataClient extends RemoteDataClientPermissionProvider {
 	
 	/**
 	 * Copy a file item from one place to another on the same system, overwriting 
-	 * anything in the destination. This method defaults to {@link #copy(sourcePath, destPath, null)}
+	 * anything in the destination. This method defaults to
+	 * {@link #copy(String, String, RemoteTransferListener)}
 	 * 
 	 * @param sourcePath the virtual source path to copy
 	 * @param remoteDestPath the virtual destination for the sourcePath
@@ -293,8 +296,9 @@ public interface RemoteDataClient extends RemoteDataClientPermissionProvider {
 	 * Used to determine when a direct third-party transfer can be made between two 
 	 * systems. Only possible when both {@link RemoteDataClient#isThirdPartyTransferSupported()}
 	 * calls return true
+	 *
 	 * @return true if possible, false otherwise.
-	 * @see {@link GridFTP}, {@link MaverickSFTP}
+	 * @see {@link GridFTP}
 	 */
 	public abstract boolean isThirdPartyTransferSupported();
 	
@@ -384,7 +388,7 @@ public interface RemoteDataClient extends RemoteDataClientPermissionProvider {
 
 	/**
      * Appends the current file to the remote file via the delegated streaming api. This
-     * method delegates its call to {@link #append(String, String, null).
+     * method delegates its call to {@link #append(String, String, RemoteTransferListener).
      * 
      * @param localpath absolute path to local file
      * @param remotepath Agave relative path to remote file

@@ -323,8 +323,8 @@ public class PublishAction extends AbstractWorkerAction<Software> {
      * Reliably transfers the zipped {@link Software} archive to the remote {@link StorageSystem} and
      * sets the checksum of the file for future reference.
      * 
-     * @param publishedSoftwareDataClient
-     * @param zippedFile
+     * @param publishedSoftwareDataClient the {@link RemoteDataClient} pointing to the system where the archive is published
+     * @param zippedFile the file to archive
      * @throws FileNotFoundException
      * @throws IOException
      * @throws RemoteDataException

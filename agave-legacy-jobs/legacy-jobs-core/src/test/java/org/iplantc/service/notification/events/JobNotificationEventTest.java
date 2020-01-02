@@ -86,7 +86,7 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 		Notification notification = new Notification(job.getUuid(), 
 													job.getOwner(), 
 													job.getStatus().name(), 
-													"https://httpbin.agaveplatform.org/post",
+													"http://httpbin:8000/post",
 													true);
 		
 		ndao.persist(notification);
@@ -100,7 +100,7 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 		Notification notification = new Notification(software.getUuid(), 
 													job.getOwner(), 
 													"JOBS_" + job.getStatus().name(), 
-													"https://httpbin.agaveplatform.org/post",
+													"http://httpbin:8000/post",
 													true);
 		
 		ndao.persist(notification);
@@ -115,7 +115,7 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 		Notification notification = new Notification(system.getUuid(), 
 													job.getOwner(), 
 													"JOB_" + job.getStatus().name(), 
-													"https://httpbin.agaveplatform.org/post",
+													"http://httpbin:8000/post",
 													true);
 		
 		ndao.persist(notification);

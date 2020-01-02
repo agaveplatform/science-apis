@@ -118,7 +118,7 @@ public class NotificationAttemptProcessorTest extends AbstractNotificationTest {
   public void fireSavesNotificationWhenItFails() throws DisabledNotificationException, NotificationException, MissingNotificationException, IOException, UUIDException {
 		 
 	    Notification notification = createWebhookNotification();
-	    notification.setCallbackUrl("http://httpbin.agaveplatform.org/status/500");
+	    notification.setCallbackUrl("http://httpbin:8000/status/500");
 	    notification.getPolicy().setRetryStrategyType(RetryStrategyType.DELAYED);
 	    notification.getPolicy().setRetryDelay(5);
 	    notification.getPolicy().setRetryRate(10);

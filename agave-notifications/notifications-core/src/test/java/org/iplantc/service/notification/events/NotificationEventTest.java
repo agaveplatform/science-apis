@@ -131,12 +131,12 @@ public class NotificationEventTest extends AbstractNotificationTest {
 		List<Object[]> testCases = new ArrayList<Object[]>();
 		
 		Notification timeoutUrl = createWebhookNotification();
-		timeoutUrl.setCallbackUrl("http://httpbin.org/delay/45");
+		timeoutUrl.setCallbackUrl("http://httpbin:8000/delay/45");
 		testCases.add(new Object[]{ timeoutUrl, "URL that times out should fail within 30 seconds.", true });
 		
 		for (int i=300; i<527; i++) {
 			Notification errorCallbackUrl = createWebhookNotification();
-			errorCallbackUrl.setCallbackUrl("http://httpbin.org/status/" + i);
+			errorCallbackUrl.setCallbackUrl("http://httpbin:8000/status/" + i);
 			
 			testCases.add(new Object[] { errorCallbackUrl, "Webhook response of " + i + " should fail immediately", true });
 		}
@@ -176,7 +176,7 @@ public class NotificationEventTest extends AbstractNotificationTest {
 	
 		try {
 			notification = createWebhookNotification();
-			notification.setCallbackUrl("https://httpbin.org/status/500");
+			notification.setCallbackUrl("http://httpbin:8000/status/500");
 			notification.getPolicy().setRetryStrategyType(RetryStrategyType.NONE);
 			notification.getPolicy().setSaveOnFailure(true);
 			dao.persist(notification);

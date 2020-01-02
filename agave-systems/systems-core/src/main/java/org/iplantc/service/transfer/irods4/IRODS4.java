@@ -32,6 +32,7 @@ import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.Settings;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.irods.AgaveJargonProperties;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
@@ -258,9 +259,10 @@ public class IRODS4 implements RemoteDataClient
 			this.irodsAccount = getIRODSAccount();
 
 			log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " open connection for thread");
+
 			stat("/", false); // Avoid an infinite loop.
 		}
-        catch (FileNotFoundException ignored) {
+        catch (java.io.FileNotFoundException | FileNotFoundException ignored) {
         	// Ignore this exception. A FileNotFoundException implies a connection was made, so auth was a success.
 		}
 		catch (AuthenticationException e) {
@@ -708,6 +710,10 @@ public class IRODS4 implements RemoteDataClient
 							}
 						}
 					}
+					else if (localDir.isFile()) {
+						String msg = "Cannot overwrite non-directory " + localdir + " with directory " + remotedir;
+						throw new InvalidTransferException(msg);
+					}
 					else
 					{
 						getDataTransferOperations().getOperation(
@@ -946,7 +952,8 @@ public class IRODS4 implements RemoteDataClient
 			{
 				// can't put dir to file
 				if (sourceFile.isDirectory() && !destFile.isDirectory()) {
-					throw new RemoteDataException("cannot overwrite non-directory: " + remotedir + " with directory " + sourceFile.getName());
+					String msg = "Cannot overwrite non-directory " + remotedir + " with directory " + localdir;
+					throw new InvalidTransferException(msg);
 				}
 				else if (!sourceFile.isDirectory())
 				{
@@ -1207,8 +1214,7 @@ public class IRODS4 implements RemoteDataClient
             }
             catch (JargonException e) {
                 String emsg = "IRODS4 stat failed for " + remotepath + ".";
-                log.error(emsg, e);
-                
+
             	// catch the wrapped socket exception from a dropped connection
             	// clean up the connection, and retry.
             	if (e.getCause() instanceof java.net.SocketException) {
@@ -1229,12 +1235,12 @@ public class IRODS4 implements RemoteDataClient
                     // retry the stat with the fresh connection
                     return getIRODSFileSystemAO().getObjStat(resolvedPath);
             	} else {
-            	    String msg = "IRODS stat command failed, connection maintained.";
-            	    log.error(msg, e);
+//            	    String msg = "IRODS stat command failed, connection maintained.";
+//            	    log.error(msg, e);
             		throw e;
             	}
             }
-            catch (Throwable e) {
+        	catch (Throwable e) {
                 String emsg = "IRODS4 stat failed for " + remotepath + ", disconnecting from IROD4.";
                 log.error(emsg, e);
                 
@@ -1753,7 +1759,9 @@ public class IRODS4 implements RemoteDataClient
             {
                 IRODSFileFactory irodsFileFactory = getIRODSFileFactory();
                 irodsFile = irodsFileFactory.instanceIRODSFile(resolvedPath);
-                fileInfoCache.put(resolvedPath, irodsFile);
+                if (irodsFile != null && irodsFile.exists()) {
+					fileInfoCache.put(resolvedPath, irodsFile);
+				}
             }
 
             return irodsFile;
@@ -1768,7 +1776,12 @@ public class IRODS4 implements RemoteDataClient
 	public RemoteFileInfo getFileInfo(String path) throws RemoteDataException, IOException
 	{
     	try {
-		    return new RemoteFileInfo(getFile(path));
+    		IRODSFile irodsFile = getFile(path);
+    		if (!irodsFile.exists()) {
+				throw new java.io.FileNotFoundException("No such file or dir");
+			} else {
+				return new RemoteFileInfo(irodsFile);
+			}
 		} catch (JargonException e) {
 			throw new RemoteDataException("Failed to retrieve file info for " + path, e);
 		}

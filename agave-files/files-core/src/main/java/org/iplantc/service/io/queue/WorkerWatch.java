@@ -29,7 +29,7 @@ public interface WorkerWatch<T extends QueueTask> extends InterruptableJob {
     public abstract boolean isStopped();
 
     /**
-     * @param stopped the stopped to set
+     * @param killed the stopped to set
      * @throws UnableToInterruptJobException 
      */
     public abstract void setStopped(boolean killed) throws UnableToInterruptJobException;
@@ -40,7 +40,7 @@ public interface WorkerWatch<T extends QueueTask> extends InterruptableJob {
     public abstract boolean isTaskComplete();
 
     /**
-     * @param taskComplete the taskComplete to set
+     * @param complete the taskComplete to set
      */
     public abstract void setTaskComplete(boolean complete);
 

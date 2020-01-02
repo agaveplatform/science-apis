@@ -36,6 +36,7 @@ import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteInputStream;
 import org.iplantc.service.transfer.RemoteOutputStream;
 import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
@@ -655,7 +656,8 @@ public class S3Jcloud implements RemoteDataClient
 				// can't download folder to an existing file
 				else if (localDir.isFile()) 
 				{
-					throw new RemoteDataException("Cannot download file to " + localpath + ". Local path is a file.");
+					String msg = "Cannot overwrite non-directory " + localpath + " with directory " + remotepath;
+					throw new InvalidTransferException(msg);
 				}
 				// target directory already exists, so we will copy the remote folder into a folder of the same name
 				// within the target directory.
@@ -848,7 +850,8 @@ public class S3Jcloud implements RemoteDataClient
 			{
 				// can't put dir to file
 				if (localFile.isDirectory() && destFileInfo.isFile()) {
-					throw new RemoteDataException("cannot overwrite non-directory: " + remotedir + " with directory " + localFile.getName());
+					String msg = "Cannot overwrite non-directory " + remotedir + " with directory " + localdir;
+					throw new InvalidTransferException(msg);
 				} 
 				else 
 				{

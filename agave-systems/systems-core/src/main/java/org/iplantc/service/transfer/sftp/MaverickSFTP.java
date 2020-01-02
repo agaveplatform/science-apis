@@ -28,10 +28,7 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
-import org.iplantc.service.transfer.exceptions.AuthenticationException;
-import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
+import org.iplantc.service.transfer.exceptions.*;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
@@ -912,10 +909,8 @@ public final class MaverickSFTP implements RemoteDataClient {
                 }
                 // can't download folder to an existing file
                 else if (!localDirectory.isDirectory()) {
-                    String msg = getMsgPrefix() + "Local target " + localDirectory.getAbsolutePath() +
-                            " is not a directory to receive content from remote directory " + remoteSource + ".";
-                    log.error(msg);
-                    throw new RemoteDataException(msg);
+                    String msg = "Cannot overwrite non-directory " + localdir + " with directory " + remoteSource;
+                    throw new InvalidTransferException(msg);
                 } else {
                     // downloading to existing directory and keeping name
                     localDirectory = new File(localDirectory, FilenameUtils.getName(remoteSource));
@@ -1094,9 +1089,9 @@ public final class MaverickSFTP implements RemoteDataClient {
                 if (remoteExists) {
                     // can't put dir to file
                     if (!isDirectory(remotedir)) {
-                        String msg = getMsgPrefix() + "Cannot overwrite non-directory " + remotedir + " with directory " + localFile.getAbsolutePath();
+                        String msg = getMsgPrefix() + "Cannot overwrite non-directory " + remotedir + " with directory " + localFile.getPath();
                         log.error(msg);
-                        throw new RemoteDataException(msg);
+                        throw new InvalidTransferException(msg);
                     } else {
                         remotedir += (StringUtils.isEmpty(remotedir) ? "" : "/") + localFile.getName();
                     }
@@ -1972,7 +1967,7 @@ public final class MaverickSFTP implements RemoteDataClient {
 
         try {
             SftpFileAttributes atts = stat(resolvedPath);
-            return new RemoteFileInfo(resolvedPath, atts);
+            return new RemoteFileInfo(FilenameUtils.getName(resolvedPath), atts);
         } catch (SftpStatusException e) {
             if (e.getMessage().toLowerCase().contains("no such file")) {
                 log.error("Failed to stat " + remotepath + " => " + resolvedPath, e);

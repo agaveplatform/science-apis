@@ -61,13 +61,9 @@ public class HTTPInputStream extends RemoteInputStream<HTTP>
 	    		throw new IOException(statusLine.getReasonPhrase());
 	    	}
 		}
-		catch (IOException e) {
+		catch (IOException | RemoteDataException e) {
 			throw e;
-		}
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteDataException("Failed to establish input stream to " + remotepath, e);
 		}
 	}

@@ -193,7 +193,7 @@ public class TransferTask {
 	}
 
 	/**
-	 * @param parentTaskId the parentTaskId to set
+	 * @param parentTask the parentTaskId to set
 	 */
 	public void setParentTask(TransferTask parentTask)
 	{

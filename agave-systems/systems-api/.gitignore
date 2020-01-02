@@ -38,3 +38,4 @@ fabfile.pyc
 test-output
 /target
 src/test/scripts/pid.current
+!/src/test/resources/docker-compose.yml

@@ -1,66 +1,36 @@
 version: '3.7'
 
-volumes: {}
-#  scratch:
-#  etcceph:
-#  varlibceph:
+volumes:
+  scratch:
+  etcceph:
+  varlibceph:
 
-#networks:
-#  ceph_net:
-#    ipam:
-#      driver: default
-#      config:
-#        - subnet: 172.41.0.0/16
+networks:
+  ceph_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.41.0.0/16
 services:
-
-  traefik:
-    image: traefik:v2.1
-    command:
-      - "--log.level=DEBUG"
-      - "--api.insecure=true"
-      - "--api.dashboard=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entryPoints.web.address=:80"
-      - "--entryPoints.websecure.address=:443"
-      - "--entryPoints.grpc.address=:50052"
-    ports:
-      - 8000:80
-      - 8443:443
-      - 50052:50052
-      - 28443:8080
-    restart: on-failure
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-    labels:
-      - "traefik.enable=true"
 
   sftp-relay:
     image: sftp-relay:develop
     ports:
       - 50051:50051
-      - 9092
-    restart: on-failure
+    restart: always
     volumes:
-      - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
-      - "traefik.http.routers.sftp-relay.entrypoints=grpc"
-      - "traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c"
-      - "traefik.http.services.sftp-relay.loadbalancer.server.port=50051"
+      - scratch:/scratch
 
   sftp:
     image: agaveplatform/sshd:latest
     command: "-p 10022"
-    restart: on-failure
+    hostname: docker.example.com
     ports:
       - '10022:10022'
 
   sftptunnel:
    image: agaveplatform/sshd:latest
    command: "-p 10033"
-   restart: on-failure
    links:
      - sftphidden
    ports:
@@ -69,7 +39,6 @@ services:
   sftphidden:
     image: agaveplatform/sshd:latest
     command: "-p 10044"
-    restart: on-failure
     ports:
       - '10044:10044'
 
@@ -77,7 +46,6 @@ services:
     image: agaveapi/irods:4.0.3
     command: changeit
     hostname: docker.example.com
-    restart: on-failure
     environment:
       - 'DOCKER_HOSTNAME=docker.example.com'
       - 'IRODS_ZONE=iplant'
@@ -94,7 +62,6 @@ services:
   irods3:
     image: agaveapi/irods:3.3.1
     hostname: docker.example.com
-    restart: on-failure
     ports:
       - '10055:22'
       - '1247:1247'
@@ -109,7 +76,6 @@ services:
   irods3-pam:
     image: agaveapi/irods-pam:latest
     hostname: docker.example.com
-    restart: on-failure
     ports:
       - '10066:22'
       - '1248:1247'
@@ -123,38 +89,12 @@ services:
   requestbin:
     image: agaveplatform/requestbin:2.0.0
     hostname: requestbin
-    restart: on-failure
     ports:
       - '5101:5000'
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.requestbin.rule=Host(`requestbin`)"
-      - "traefik.http.routers.requestbin.entrypoints=web"
-      - "traefik.http.routers.requestbin.tls=false"
-      - "traefik.http.routers.requestbin-secure.rule=Host(`requestbin`)"
-      - "traefik.http.routers.requestbin-secure.entrypoints=websecure"
-      - "traefik.http.routers.requestbin-secure.tls=true"
-
-
-  httpbin:
-      image: agaveplatform/httpbin:latest
-      hostname: httpbin
-      restart: on-failure
-      ports:
-        - '8200:8000'
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.httpbin.rule=Host(`httpbin`)"
-        - "traefik.http.routers.httpbin.entrypoints=web"
-        - "traefik.http.routers.httpbin.tls=false"
-        - "traefik.http.routers.httpbin-secure.rule=Host(`httpbin`)"
-        - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
-        - "traefik.http.routers.httpbin-secure.tls=true"
 
   httpd:
     image: agaveapi/apache-dev
     hostname: docker.example.com
-    restart: on-failure
     ports:
       - '10080:80'
       - '10443:443'
@@ -162,25 +102,12 @@ services:
       - type: bind
         source: ./transfer
         target: /var/www/html/public
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.httpd.rule=Host(`httpd`)"
-      - "traefik.http.routers.httpd.entrypoints=web"
-      - "traefik.http.routers.httpd.tls=false"
-      - "traefik.http.routers.httpd.service=httpd"
-      - "traefik.http.routers.httpd-secure.rule=Host(`httpd`)"
-      - "traefik.http.routers.httpd-secure.entrypoints=websecure"
-      - "traefik.http.routers.httpd-secure.service=httpd"
-      - "traefik.http.routers.httpd-secure.tls=true"
-      - "traefik.http.services.httpd.loadbalancer.server.port=80"
-
-#  ftp:
-#    image: agaveapi/pure-ftpd:latest
-#    hostname: docker.example.com
-#    privileged: true
-#    ports:
-#      - '10021:21'
-#      - '30000-30010:30000-30010'
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 512M
 
 #  cephrgw:
 #    image: ceph/daemon:latest-nautilus

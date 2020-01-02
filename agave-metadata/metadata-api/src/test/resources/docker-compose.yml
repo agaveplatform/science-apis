@@ -1,0 +1,7 @@
+version: '3.7'
+
+volumes: {}
+
+networks: {}
+
+services: {}

@@ -40,3 +40,4 @@ test-output
 # cache files
 *.dat
 rebel.xml
+!*/src/test/resources/docker-compose.yml

@@ -1,0 +1,18 @@
+version: '3.7'
+
+volumes: {}
+
+services:
+
+  sftp:
+    image: agaveplatform/sshd:latest
+    command: "-p 10022"
+    hostname: docker.example.com
+    ports:
+      - '10022:10022'
+
+  requestbin:
+    image: agaveplatform/requestbin:2.0.0
+    hostname: requestbin
+    ports:
+      - '5101:5000'

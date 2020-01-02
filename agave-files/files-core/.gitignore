@@ -39,3 +39,4 @@ test-output
 /target
 /src/test/resources/logicalfiles/pathhash.t*
 /src/test/resources/logicalfiles/pathhash2.txt
+!/src/test/resources/docker-compose.yml

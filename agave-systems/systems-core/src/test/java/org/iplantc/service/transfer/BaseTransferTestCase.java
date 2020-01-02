@@ -58,36 +58,10 @@ public abstract class BaseTransferTestCase {
 	protected JSONTestDataUtil jtd;
 	protected JSONObject jsonTree;
 
-//	protected String username;
-//	protected String password;
-//	protected String uploadFilePath;
-//	protected File testFileAnalysisDirectory;
-//	protected String destPath;
-//	protected URI ftpUri;
-//	protected URI gridFtpUri;
-//	protected URI httpUri;
-//	protected URI httpsUri;
-//	protected URI s3Uri;
-//	protected URI sftpUri;
-
 	@BeforeClass
 	protected void beforeClass() throws Exception
 	{
 		jtd = JSONTestDataUtil.getInstance();
-//
-//		String urlencodedcredentials = URLEncoder.encode(username, "utf-8") + ":" + URLEncoder.encode(password, "utf-8");
-//
-//		uploadFilePath = (String)props.getProperty("test.file.path");
-//		testFileAnalysisDirectory = new File((String)props.getProperty("test.file.analysis.dir.path"));
-//		//ftpUri = new URI("ftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.ftp.uri")));
-//		gridFtpUri = new URI("gsiftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.gridftp.uri"));
-//		httpUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.http.uri"));
-//		httpsUri = new URI("https://" + urlencodedcredentials + "@" + (String)props.getProperty("test.https.uri"));
-//		s3Uri = new URI((String)props.getProperty("test.s3.uri"));
-//		sftpUri = new URI("sftp://" + urlencodedcredentials + "@" + (String)props.getProperty("test.sftp.uri"));
-//
-//		destPath = username + "/test.dat";
-
 	}
 
 	protected void clearSystems() throws Exception {

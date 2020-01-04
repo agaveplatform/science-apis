@@ -20,6 +20,7 @@ import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
+import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
@@ -78,9 +79,7 @@ public class DomainSetup extends AbstractDaoTest
         try {
             String contents = FileUtils.readFileToString(new File(pathToFile));
             json = new JSONObject(contents);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
         return json;
@@ -175,9 +174,7 @@ public class DomainSetup extends AbstractDaoTest
             try {
                 String key = (String)json.get("id");
                 storageSystemMap.put(key, StorageSystem.fromJSON(json));
-            } catch (SystemArgumentException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
+            } catch (SystemException | JSONException e) {
                 e.printStackTrace();
             }
         }
@@ -186,9 +183,7 @@ public class DomainSetup extends AbstractDaoTest
             try {
                 String key = (String)json.get("id");
                 executionSystemMap.put(key, ExecutionSystem.fromJSON(json));
-            } catch (SystemArgumentException e) {
-                e.printStackTrace();
-            } catch (JSONException e) {
+            } catch (SystemException | JSONException | SystemArgumentException e) {
                 e.printStackTrace();
             }
         }
@@ -207,9 +202,7 @@ public class DomainSetup extends AbstractDaoTest
             jsonStorageList = collectFiles(STORAGE_SYSTEM_TEMPLATE_DIR);
             jsonExecutionList = collectFiles(EXECUTION_SYSTEM_TEMPLATE_DIR);
             jsonSoftwareList = collectFiles(SOFTWARE_SYSTEM_TEMPLATE_DIR);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
+        } catch (IOException | JSONException e) {
             e.printStackTrace();
         }
         fillSystemMaps();
@@ -264,7 +257,7 @@ public class DomainSetup extends AbstractDaoTest
         ExecutionSystem executionSystem = null;
         try {
             executionSystem = ExecutionSystem.fromJSON(json);
-        } catch (SystemArgumentException e) {
+        } catch (SystemException | SystemArgumentException e) {
             e.printStackTrace();
         }
         return executionSystem;
@@ -279,7 +272,7 @@ public class DomainSetup extends AbstractDaoTest
         StorageSystem storageSystem = null;
         try{
             storageSystem = StorageSystem.fromJSON(json);
-        } catch (SystemArgumentException e) {
+        } catch (SystemException e) {
             e.printStackTrace();
         }
         return storageSystem;
@@ -313,7 +306,7 @@ public class DomainSetup extends AbstractDaoTest
                 System.out.println("Storage system "+system.getName());
                 system.setOwner(SYSTEM_OWNER);         // default system owner
                 systemDao.persist(system);
-            } catch (SystemArgumentException e) {
+            } catch (SystemException e) {
                 e.printStackTrace();
             }
         }
@@ -324,7 +317,7 @@ public class DomainSetup extends AbstractDaoTest
                 System.out.println("Execution system "+system.getName());
                 system.setOwner(SYSTEM_OWNER);         // default system owner
                 systemDao.persist(system);
-            } catch (SystemArgumentException e) {
+            } catch (SystemException | SystemArgumentException e) {
                 e.printStackTrace();
             }catch (ConstraintViolationException ce){
                 System.out.println("Continue with loading data if possible");
@@ -441,7 +434,7 @@ public class DomainSetup extends AbstractDaoTest
             storageSystem.setOwner(SYSTEM_OWNER);         // default system owner
             executionSystem = (RemoteSystem)ExecutionSystem.fromJSON(executeJ);
             executionSystem.setOwner(SYSTEM_OWNER);
-        } catch (SystemArgumentException e) {
+        } catch (SystemException | SystemArgumentException e) {
             e.printStackTrace();
         }
     }

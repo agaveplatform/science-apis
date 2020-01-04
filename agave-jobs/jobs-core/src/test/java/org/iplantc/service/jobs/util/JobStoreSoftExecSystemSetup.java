@@ -66,10 +66,8 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
             e.printStackTrace();  
         } catch (IOException e) {
             e.printStackTrace();  
-        } catch (SystemArgumentException e) {
-            e.printStackTrace();  
         }
-            
+
     }
 
     public void insertSoftware(String testDataPath){
@@ -78,9 +76,7 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
             Software software = Software.fromJSON(jsonTree, "testuser");
             software.setOwner("testuser");
             SoftwareDao.persist(software);
-        } catch (JSONException e) {
-            e.printStackTrace();  
-        } catch (IOException e) {
+        } catch (JSONException | IOException e) {
             e.printStackTrace();  
         }
 

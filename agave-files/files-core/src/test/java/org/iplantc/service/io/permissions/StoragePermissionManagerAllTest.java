@@ -80,7 +80,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllRootProvider")
 	public void testCanAllRoot(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -129,13 +129,13 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllSystemHomeProvider")
 	public void testCanAllImplicitSystemHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@Test(dataProvider="testCanAllSystemHomeProvider")
 	public void testCanAllExplicitSystemHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, system.getStorageConfig().getHomeDir(), owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, system.getStorageConfig().getHomeDir(), owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -220,13 +220,13 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllUserHomeProvider")
 	public void testCanAllImplicitUserHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@Test(dataProvider="testCanAllUserHomeProvider")
 	public void testCanAllExplicitUserHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, system.getStorageConfig().getHomeDir() + "/" + path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, system.getStorageConfig().getHomeDir() + "/" + path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -313,7 +313,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllUnSharedDataProvider")
 	public void testCanAllUnSharedDirectory(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -417,7 +417,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllUnSharedDataInUserHomeProvider")
 	public void testCanAllUnSharedDataInUserHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -521,7 +521,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllUnSharedDataInOwnHomeProvider")
 	public void testCanAllUnSharedDataInOwnHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -613,7 +613,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllDataSharedWithSelfProvider")
 	public void testCanAllDataSharedWithSelf(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -831,7 +831,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllDataSharedWithUserProvider")
 	public void testCanAllDataSharedWithUser(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -903,7 +903,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllHomeDirectorySharedWithUserProvider")
 	public void testCanAllHomeDirectorySharedWithUser(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -1121,7 +1121,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllHomeDirectoryDataSharedWithUserProvider")
 	public void testCanAllHomeDirectoryDataSharedWithUser(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -1340,7 +1340,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllPublicDirectoryInRootDirectoryProvider")
 	public void testCanAllPublicDirectoryInRootDirectory(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -1559,7 +1559,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllWorldDirectoryInRootDirectoryProvider")
 	public void testCanAllWorldDirectoryInRootDirectory(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -1778,7 +1778,7 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllPublicDirectoryInUserHomeProvider")
 	public void testCanAllPublicDirectoryInUserHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -1997,6 +1997,6 @@ public class StoragePermissionManagerAllTest extends AbstractPermissionManagerTe
 	@Test(dataProvider="testCanAllWorldDirectoryInUserHomeProvider")
 	public void testCanAllWorldDirectoryInUserHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanAll(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 }

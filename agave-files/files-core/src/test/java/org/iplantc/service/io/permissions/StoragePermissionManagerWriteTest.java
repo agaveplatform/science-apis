@@ -80,7 +80,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteRootProvider")
 	public void testCanWriteRoot(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -129,13 +129,13 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteSystemHomeProvider")
 	public void testCanWriteImplicitSystemHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@Test(dataProvider="testCanWriteSystemHomeProvider")
 	public void testCanWriteExplicitSystemHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, system.getStorageConfig().getHomeDir(), owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, system.getStorageConfig().getHomeDir(), owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -220,13 +220,13 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteUserHomeProvider")
 	public void testCanWriteImplicitUserHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@Test(dataProvider="testCanWriteUserHomeProvider")
 	public void testCanWriteExplicitUserHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, system.getStorageConfig().getHomeDir() + "/" + path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, system.getStorageConfig().getHomeDir() + "/" + path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -313,7 +313,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteUnSharedDataProvider")
 	public void testCanWriteUnSharedDirectory(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -417,7 +417,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteUnSharedDataInUserHomeProvider")
 	public void testCanWriteUnSharedDataInUserHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -521,7 +521,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteUnSharedDataInOwnHomeProvider")
 	public void testCanWriteUnSharedDataInOwnHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -613,7 +613,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteDataSharedWithSelfProvider")
 	public void testCanWriteDataSharedWithSelf(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -831,7 +831,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteDataSharedWithUserProvider")
 	public void testCanWriteDataSharedWithUser(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -903,7 +903,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteHomeDirectorySharedWithUserProvider")
 	public void testCanWriteHomeDirectorySharedWithUser(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -1121,7 +1121,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteHomeDirectoryDataSharedWithUserProvider")
 	public void testCanWriteHomeDirectoryDataSharedWithUser(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -1340,7 +1340,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWritePublicDirectoryInRootDirectoryProvider")
 	public void testCanWritePublicDirectoryInRootDirectory(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -1559,7 +1559,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteWorldDirectoryInRootDirectoryProvider")
 	public void testCanWriteWorldDirectoryInRootDirectory(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -1778,7 +1778,7 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWritePublicDirectoryInUserHomeProvider")
 	public void testCanWritePublicDirectoryInUserHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 	
 	@DataProvider
@@ -1997,6 +1997,6 @@ public class StoragePermissionManagerWriteTest extends AbstractPermissionManager
 	@Test(dataProvider="testCanWriteWorldDirectoryInUserHomeProvider")
 	public void testCanWriteWorldDirectoryInUserHome(RemoteSystem system, String path, String owner, String internalUsername, boolean expectedResult, boolean shouldThrowException)
 	{
-		abstractTestCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
+		_testCanWrite(system, path, owner, internalUsername, expectedResult, shouldThrowException);
 	}
 }

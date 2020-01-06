@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.dao.LogicalFileDao;
@@ -30,8 +31,8 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
-public class PermissionManagerSetPermissionsTest extends BaseTestCase 
+@Test(singleThreaded = true, groups={"integration"})
+public class PermissionManagerSetPermissionsIT extends BaseTestCase
 {
 	private SystemDao dao = new SystemDao();
 	private RemoteSystem publicStorageSystem;
@@ -47,6 +48,8 @@ public class PermissionManagerSetPermissionsTest extends BaseTestCase
 	@BeforeClass
 	protected void beforeClass() throws Exception 
 	{
+		TenancyHelper.setCurrentTenantId("agave.dev");
+		TenancyHelper.setCurrentEndUser(ADMIN_USER);
 		super.beforeClass();
 		
 		publicStorageSystem = getPublicSystem(RemoteSystemType.STORAGE);
@@ -406,13 +409,13 @@ public class PermissionManagerSetPermissionsTest extends BaseTestCase
 	@Test(dataProvider="setReadPermissionFolderProvider")
 	public void testSetReadPermissionFolder(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{
-		setReadPermission(system, path, permissionUsername, testUsername, expectedPermission, false);
+		_setReadPermission(system, path, permissionUsername, testUsername, expectedPermission, false);
 	}
 	
 	@Test(dataProvider="setReadPermissionFolderProvider")
 	public void testSetReadPermissionFolderRecursive(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{
-		setReadPermission(system, path, permissionUsername, testUsername, expectedPermission, true);
+		_setReadPermission(system, path, permissionUsername, testUsername, expectedPermission, true);
 	}
 	
 	@DataProvider
@@ -424,15 +427,16 @@ public class PermissionManagerSetPermissionsTest extends BaseTestCase
 	@Test(dataProvider="setReadPermissionFileProvider")
 	public void testSetReadPermissionFile(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{
-		setReadPermission(system, path, permissionUsername, testUsername, expectedPermission, false);
+		_setReadPermission(system, path, permissionUsername, testUsername, expectedPermission, false);
 	}
 	
 	@Test(dataProvider="setReadPermissionFileProvider")
 	public void testSetReadPermissionFileRecursive(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{		
-		setReadPermission(system, path, permissionUsername, testUsername, expectedPermission, true);
+		_setReadPermission(system, path, permissionUsername, testUsername, expectedPermission, true);
 	}
 
+	@Test(enabled=false,dataProvider="setReadPermissionFileProvider")
 	public void testSetReadPermissionSubsequentFile(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{
 		@SuppressWarnings("unused")
@@ -474,7 +478,7 @@ public class PermissionManagerSetPermissionsTest extends BaseTestCase
 		}
 	}
 	
-	public void setReadPermission(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception 
+	protected void _setReadPermission(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{
 		@SuppressWarnings("unused")
 		List<LogicalFile> testLogicalFiles = initTestFiles(publicStorageSystem, getSystemRoot(publicStorageSystem) + "unittest");
@@ -522,36 +526,36 @@ public class PermissionManagerSetPermissionsTest extends BaseTestCase
 	@Test(dataProvider="setReadPermissionFileProvider")
 	public void testRemoveReadPermissionFile(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{
-		removeReadPermission(system, path, permissionUsername, testUsername, expectedPermission, false);
+		_removeReadPermission(system, path, permissionUsername, testUsername, expectedPermission, false);
 	}
 	
 	@Test(dataProvider="setReadPermissionFileProvider")
 	public void testRemoveReadPermissionFileRecursive(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{	
-		removeReadPermission(system, path, permissionUsername, testUsername, expectedPermission, true);
+		_removeReadPermission(system, path, permissionUsername, testUsername, expectedPermission, true);
 	}
 	
 	@Test(dataProvider="setReadPermissionFolderProvider")
 	public void testRemoveReadPermissionFolder(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{
-		removeReadPermission(system, path, permissionUsername, testUsername, expectedPermission, false);
+		_removeReadPermission(system, path, permissionUsername, testUsername, expectedPermission, false);
 	}
 	
 	@Test(dataProvider="setReadPermissionFolderProvider")
 	public void testRemoveReadPermissionFolderRecursive(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{	
-		removeReadPermission(system, path, permissionUsername, testUsername, expectedPermission, true);
+		_removeReadPermission(system, path, permissionUsername, testUsername, expectedPermission, true);
 	}
 	
-	public void removeReadPermission(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception 
+	protected void _removeReadPermission(RemoteSystem system, String path, String permissionUsername, String testUsername, PermissionType expectedPermission, boolean recursive) throws Exception
 	{
 		
 		@SuppressWarnings("unused")
 		List<LogicalFile> testLogicalFiles = initTestFiles(publicStorageSystem, getSystemRoot(publicStorageSystem) + "unittest");
 		
-		RemoteDataClient remoteDataClient = system.getRemoteDataClient();//internalUsername);
+		RemoteDataClient remoteDataClient = system.getRemoteDataClient();
 		LogicalFile logicalFile = LogicalFileDao.findBySystemAndPath(system, path);
-		
+
 		PermissionManager pm = new PermissionManager(system, remoteDataClient, logicalFile, permissionUsername);
 		
 		pm.addReadPermission(path, recursive);
@@ -1041,7 +1045,8 @@ public class PermissionManagerSetPermissionsTest extends BaseTestCase
 //		}
 //	}
 //	
-	public void testSetOwnerPermissionRecursive(RemoteSystem system, 
+	@Test(enabled=false, dataProvider="missingTestSetOwnerPermissionRecursiveProvider")
+	protected void testSetOwnerPermissionRecursive(RemoteSystem system,
 			String path, 
 			String owner, 
 			String internalUsername, 

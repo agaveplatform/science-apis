@@ -292,9 +292,9 @@ public final class MaverickSFTP implements RemoteDataClient {
         // which at least in the case of the performance preferences caused them
         // to be ignored.
         // Timeouts may get adjusted on retries.
-        if (log.isDebugEnabled()) {
-            log.debug("Setting connect timeout to " + connectTimeout + "ms.");
-            log.debug("Setting socket timeout to " + socketTimeout + "ms.");
+        if (log.isTraceEnabled()) {
+            log.trace("Setting connect timeout to " + connectTimeout + "ms.");
+            log.trace("Setting socket timeout to " + socketTimeout + "ms.");
         }
         try {
             retSock.setTcpNoDelay(true);
@@ -802,12 +802,12 @@ public final class MaverickSFTP implements RemoteDataClient {
                     log.error(msg, e);
                     throw new FileNotFoundException(msg);
                 } else {
-                    String msg = getMsgPrefix() + "Failue to put file: " + path + ": " + e.getMessage();
+                    String msg = getMsgPrefix() + "Failure to put file: " + path + ": " + e.getMessage();
                     log.error(msg, e);
                     throw new RemoteDataException(msg, e);
                 }
             } catch (Exception e) {
-                String msg = getMsgPrefix() + "Failue to put file: " + path + ": " + e.getMessage();
+                String msg = getMsgPrefix() + "Failure to put file: " + path + ": " + e.getMessage();
                 log.error(msg, e);
                 throw new RemoteDataException(msg, e);
             }
@@ -836,7 +836,6 @@ public final class MaverickSFTP implements RemoteDataClient {
             throw e;
         }
 
-
         List<RemoteFileInfo> fileList = new ArrayList<RemoteFileInfo>();
 
         try {
@@ -861,16 +860,35 @@ public final class MaverickSFTP implements RemoteDataClient {
                     throw e;
                 }
             }
+            // always return sorted listings
             Collections.sort(fileList);
+
             return fileList;
+
         } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to list directory " + remotedir, e);
+            switch (e.getStatus()) {
+                case SftpStatusException.SSH_FX_PERMISSION_DENIED:
+                    throw new RemotePermissionException(e);
+                case SftpStatusException.SSH_FX_NO_SUCH_FILE:
+                case SftpStatusException.SSH_FX_NO_SUCH_PATH:
+                    throw new FileNotFoundException("No such file or directory");
+                default:
+                    String msg = String.format("Failed to list %s. %s", remotedir, e.getMessage());
+                    throw new RemoteDataException(msg, e);
             }
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to list directory " + remotedir, e);
+        } catch (SshException e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains(CONN_TIMEDOUT)) {
+                throw new RemoteConnectionException(e);
+            } else {
+                msg = String.format("Failed to list %s. %s", remotedir, e.getMessage());
+                throw new RemoteDataException(msg, e);
+            }
+        } catch (RemoteDataException e) {
+            throw e;
+        } catch (Throwable t) {
+            String msg = String.format("Failed to list %s. %s", remotedir, t.getMessage());
+            throw new RemoteDataException(msg, t);
         }
     }
 
@@ -1046,15 +1064,29 @@ public final class MaverickSFTP implements RemoteDataClient {
                 getClient().put(new FileInputStream(localFile), resolvedPath, listener, position);
             }
         } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to append data to " + remotepath, e);
+            switch (e.getStatus()) {
+                case SftpStatusException.SSH_FX_PERMISSION_DENIED:
+                    throw new RemotePermissionException(e);
+                case SftpStatusException.SSH_FX_NO_SUCH_FILE:
+                case SftpStatusException.SSH_FX_NO_SUCH_PATH:
+                    throw new FileNotFoundException(e.getMessage());
+                default:
+                    String msg = String.format("Failed to append data to %s. %s", remotepath, e.getMessage());
+                    throw new RemoteDataException(msg, e);
             }
-        } catch (IOException e) {
+        } catch (SshException e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains(CONN_TIMEDOUT)) {
+                throw new RemoteConnectionException(e);
+            } else {
+                msg = String.format("Failed to append data to %s. %s", remotepath, e.getMessage());
+                throw new RemoteDataException(msg, e);
+            }
+        } catch (RemotePermissionException|RemoteConnectionException|IOException e) {
             throw e;
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to append data to " + remotepath, e);
+        } catch (Throwable t) {
+            String msg = String.format("Failed to append data to %s. %s", remotepath, t.getMessage());
+            throw new RemoteDataException(msg, t);
         }
     }
 
@@ -1158,15 +1190,29 @@ public final class MaverickSFTP implements RemoteDataClient {
                 }
             }
         } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to put data to " + remotedir, e);
+            switch (e.getStatus()) {
+                case SftpStatusException.SSH_FX_PERMISSION_DENIED:
+                    throw new RemotePermissionException(e);
+                case SftpStatusException.SSH_FX_NO_SUCH_FILE:
+                case SftpStatusException.SSH_FX_NO_SUCH_PATH:
+                    throw new FileNotFoundException(e.getMessage());
+                default:
+                    String msg = String.format("Failed to put data to %s. %s", remotedir, e.getMessage());
+                    throw new RemoteDataException(msg, e);
             }
-        } catch (IOException e) {
+        } catch (SshException e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains(CONN_TIMEDOUT)) {
+                throw new RemoteConnectionException(e);
+            } else {
+                msg = String.format("Failed to put data to %s. %s", remotedir, e.getMessage());
+                throw new RemoteDataException(msg, e);
+            }
+        } catch (RemotePermissionException|RemoteConnectionException|IOException e) {
             throw e;
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to put data to " + remotedir, e);
+        } catch (Throwable t) {
+            String msg = String.format("Failed to put data to %s. %s", remotedir, t.getMessage());
+            throw new RemoteDataException(msg, t);
         }
     }
 
@@ -1218,8 +1264,7 @@ public final class MaverickSFTP implements RemoteDataClient {
                             if (isFile(childRemotePath)) {
                                 delete(childRemotePath);
                             }
-                        } catch (FileNotFoundException e) {
-                        }
+                        } catch (FileNotFoundException ignored) {}
 
                         // now create the remote directory
                         mkdir(childRemotePath);
@@ -1300,15 +1345,29 @@ public final class MaverickSFTP implements RemoteDataClient {
                 }
             }
         } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to put data to " + remotedir, e);
+            switch (e.getStatus()) {
+                case SftpStatusException.SSH_FX_PERMISSION_DENIED:
+                    throw new RemotePermissionException(e);
+                case SftpStatusException.SSH_FX_NO_SUCH_FILE:
+                case SftpStatusException.SSH_FX_NO_SUCH_PATH:
+                    throw new FileNotFoundException(e.getMessage());
+                default:
+                    String msg = String.format("Failed to sync data to %s. %s", remotedir, e.getMessage());
+                    throw new RemoteDataException(msg, e);
             }
-        } catch (IOException e) {
+        } catch (SshException e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains(CONN_TIMEDOUT)) {
+                throw new RemoteConnectionException(e);
+            } else {
+                msg = String.format("Failed to sync data to %s. %s", remotedir, e.getMessage());
+                throw new RemoteDataException(msg, e);
+            }
+        } catch (RemotePermissionException|RemoteConnectionException|IOException e) {
             throw e;
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to put data to " + remotedir, e);
+        } catch (Throwable t) {
+            String msg = String.format("Failed to sync data to %s. %s", remotedir, t.getMessage());
+            throw new RemoteDataException(msg, t);
         }
     }
 
@@ -1319,17 +1378,39 @@ public final class MaverickSFTP implements RemoteDataClient {
      *
      * @param resolvedPath the remote absolute path to stat
      * @return file attributes for the remote file item
-     * @throws SftpStatusException
-     * @throws SshException
-     * @throws IOException
+     * @throws FileNotFoundException
      * @throws RemoteDataException
      */
-    protected SftpFileAttributes stat(String resolvedPath)
-    throws SftpStatusException, SshException, IOException, RemoteDataException, RemoteConnectionException {
-//	    String resolvedPath = resolvePath(remotepath);
+    protected SftpFileAttributes stat(String resolvedPath) throws FileNotFoundException, RemoteDataException {
+        SftpFileAttributes atts = fileInfoCache.get(resolvedPath);
+        if (atts == null) {
+            atts = stat(resolvedPath, false);
+        }
+        return atts;
+    }
 
+    /**
+     * Internal method to fetch and cache metadata for a remote file/folder.
+     * This speeds up most operations as the logic of this adaptor heavily
+     * relies on explicit metadata checking for each operation. Cached data
+     * can by ignored by setting skipCache to true. Doing so will result in a
+     * remote stat call every time. If unsure, use the {@link #stat(String)}
+     * method.
+     *
+     * @param resolvedPath the remote absolute path to stat
+     * @param skipCache if true, the local cache will not be checked prior to the request
+     * @return file attributes for the remote file item
+     * @throws FileNotFoundException if the remote path does not exist
+     * @throws RemoteDataException if something went wrong with the request, permissions prevented the check, etc
+     */
+    protected SftpFileAttributes stat(String resolvedPath, boolean skipCache)
+    throws FileNotFoundException, RemoteDataException {
+        SftpFileAttributes atts = null;
         try {
-            SftpFileAttributes atts = fileInfoCache.get(resolvedPath);
+            if (!skipCache) {
+                atts = fileInfoCache.get(resolvedPath);
+            }
+
             if (atts == null) {
                 atts = getClient().stat(StringUtils.removeEnd(resolvedPath, "/"));
 
@@ -1342,72 +1423,77 @@ public final class MaverickSFTP implements RemoteDataClient {
                     fileInfoCache.put(resolvedPath, atts);
                 }
             }
+
             return atts;
-        } catch (SftpStatusException | SshException | RemoteDataException e) {
+        } catch (SftpStatusException e) {
+            fileInfoCache.remove(resolvedPath);
+            switch (e.getStatus()) {
+                case SftpStatusException.SSH_FX_PERMISSION_DENIED:
+                    throw new RemotePermissionException(e);
+                case SftpStatusException.SSH_FX_NO_SUCH_FILE:
+                case SftpStatusException.SSH_FX_NO_SUCH_PATH:
+                    throw new FileNotFoundException(e.getMessage());
+                default:
+                    throw new RemoteDataException(e);
+            }
+        } catch (SshException e) {
             fileInfoCache.remove(resolvedPath);
             String msg = e.getMessage();
-            if (e instanceof SshException && msg != null && msg.indexOf(CONN_TIMEDOUT) > -1)
-                throw new RemoteConnectionException(e.getMessage(), e);
-            else
-                throw e;
+            if (msg != null && msg.contains(CONN_TIMEDOUT)) {
+                throw new RemoteConnectionException(e);
+            } else {
+                msg = String.format("Failed to retrieve information about %s. %s", resolvedPath, msg);
+                throw new RemoteDataException(e);
+            }
+        } catch (Throwable t) {
+            String msg = String.format("Failed to retrieve information about %s. %s",
+                    resolvedPath, t.getMessage());
+            throw new RemoteDataException(t);
         }
     }
 
     @Override
-    public boolean isDirectory(String remotepath)
-            throws IOException, FileNotFoundException, RemoteDataException {
+    public boolean isDirectory(String remotepath) throws IOException, RemoteDataException {
         try {
             return stat(resolvePath(remotepath)).isDirectory();
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve information about " + remotepath, e);
-            }
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to retrieve information about " + remotepath, e);
+        } catch (RemotePermissionException|RemoteConnectionException|FileNotFoundException e) {
+            throw e;
+        } catch (RemoteDataException e) {
+            String msg = String.format("Failed to retrieve information about %s for %s: %s",
+                    remotepath, getMsgPrefix(), e.getMessage());
+            throw new RemoteDataException(msg, e);
         }
     }
 
     @Override
-    public boolean isFile(String remotepath)
-            throws IOException, FileNotFoundException, RemoteDataException {
+    public boolean isFile(String remotepath) throws IOException, RemoteDataException {
         try {
             return stat(resolvePath(remotepath)).isFile();
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve information about " + remotepath, e);
-            }
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to retrieve information about " + remotepath, e);
+        } catch (RemotePermissionException|RemoteConnectionException|FileNotFoundException e) {
+            throw e;
+        } catch (RemoteDataException e) {
+            String msg = String.format("Failed to retrieve information about %s for %s: %s",
+                    remotepath, getMsgPrefix(), e.getMessage());
+            throw new RemoteDataException(msg, e);
         }
     }
 
     @Override
     public long length(String remotepath)
-    throws IOException, FileNotFoundException, RemoteDataException {
+    throws IOException, RemoteDataException {
         try {
-            return stat(resolvePath(remotepath)).getSize().longValue();
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                String msg = "No such file or directory: " +
-                        remotepath + " for " + getMsgPrefix() + e.getMessage();
-                log.error(msg, e);
-                throw new FileNotFoundException(msg);
+            SftpFileAttributes atts = stat(resolvePath(remotepath));
+            if (atts != null) {
+                return atts.getSize().longValue();
             } else {
-                String msg = "Failed to retrieve length of " + remotepath + " for " + getMsgPrefix() + e.getMessage();
-                log.error(msg, e);
-                throw new RemoteDataException(msg, e);
+                throw new FileNotFoundException("No such file or directory");
             }
-        } catch (Exception e) {
-            String msg = "Failed to access remote data " + remotepath + " for " + getMsgPrefix() + e.getMessage();
-            log.error(msg, e);
-            // throw AuthenticationException, RemoteConnectionException, RemoteDataException
-//            if (e instanceof AuthenticationException) throw e;
-            if (e instanceof RemoteConnectionException) throw (RemoteConnectionException) e;
-            else throw new RemoteDataException(msg, e);
+        } catch (RemotePermissionException|RemoteConnectionException|FileNotFoundException e) {
+            throw e;
+        } catch (RemoteDataException e) {
+            String msg = String.format("Failed to retrieve the length of %s for %s: %s",
+                    remotepath, getMsgPrefix(), e.getMessage());
+            throw new RemoteDataException(msg, e);
         }
     }
 
@@ -1433,31 +1519,45 @@ public final class MaverickSFTP implements RemoteDataClient {
     @Override
     public void doRename(String oldpath, String newpath)
             throws IOException, FileNotFoundException, RemoteDataException, RemoteDataSyntaxException {
+
         String resolvedSourcePath = null;
         String resolvedDestPath = null;
         try {
             resolvedSourcePath = resolvePath(oldpath);
-            resolvedDestPath = resolvePath(newpath);
-
-//			if (StringUtils.startsWith(resolvedDestPath, resolvedSourcePath)) {
-//				throw new RemoteDataException("Cannot rename a file or director into its own subtree");
-//			}
             resolvedSourcePath = StringUtils.removeEnd(resolvedSourcePath, "/");
+
+            resolvedDestPath = resolvePath(newpath);
             resolvedDestPath = StringUtils.removeEnd(resolvedDestPath, "/");
 
             getClient().rename(resolvedSourcePath, resolvedDestPath);
+
+        } catch (SftpStatusException e) {
+            switch (e.getStatus()) {
+                case SftpStatusException.SSH_FX_PERMISSION_DENIED:
+                    throw new RemotePermissionException(e);
+                case SftpStatusException.SSH_FX_NO_SUCH_FILE:
+                case SftpStatusException.SSH_FX_NO_SUCH_PATH:
+                    throw new FileNotFoundException(e.getMessage());
+                default:
+                    if (doesExistSafe(resolvedDestPath)) {
+                        throw new RemoteDataException("Destination already exists: " + newpath);
+                    } else {
+                        throw new RemoteDataException("Failed to rename " + oldpath + " to " + newpath, e);
+                    }
+            }
+        } catch (SshException e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains(CONN_TIMEDOUT)) {
+                throw new RemoteConnectionException(e);
+            } else {
+                msg = String.format("Failed to rename %s to %s. %s", oldpath, newpath, msg);
+                throw new RemoteDataException(msg, e);
+            }
         } catch (RemoteDataException e) {
             throw e;
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else if (doesExistSafe(resolvedDestPath)) {
-                throw new RemoteDataException("Destination already exists: " + newpath);
-            } else {
-                throw new RemoteDataException("Failed to rename " + oldpath + " to " + newpath, e);
-            }
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to rename " + oldpath + " to " + newpath, e);
+        } catch (Throwable t) {
+            String msg = String.format("Failed to rename %s to %s. %s", oldpath, newpath, t.getMessage());
+            throw new RemoteDataException(msg, t);
         }
     }
 
@@ -1501,7 +1601,6 @@ public final class MaverickSFTP implements RemoteDataClient {
         String resolvedSrc = resolvePath(remotesrc);
         String resolvedDest = resolvePath(remotedest);
 
-        Shell shell = null;
         try {
             if (ssh2.isAuthenticated()) {
                 long remoteDestLength = length(remotesrc);
@@ -1530,9 +1629,8 @@ public final class MaverickSFTP implements RemoteDataClient {
                     throw new RemoteDataException("Failed to connect to destination server " + getHost() + ":" + port, e);
                 } finally {
                     try {
-                        proxySubmissionClient.close();
-                    } catch (Exception ignored) {
-                    }
+                        if (proxySubmissionClient != null) proxySubmissionClient.close();
+                    } catch (Exception ignored) {}
                 }
 
                 if (proxyResponse.length() > 0) {
@@ -1541,6 +1639,8 @@ public final class MaverickSFTP implements RemoteDataClient {
                     }
                     if (StringUtils.containsIgnoreCase(proxyResponse, "No such file or directory")) {
                         throw new FileNotFoundException("No such file or directory");
+                    } else if (StringUtils.containsIgnoreCase(proxyResponse, "permission denied")) {
+                        throw new RemotePermissionException(proxyResponse);
                     } else if (StringUtils.startsWithIgnoreCase(proxyResponse, "cp:")) {
                         // We use the heuristic that a copy failure due to invalid
                         // user input produces a message that begins with 'cp:'.
@@ -1563,12 +1663,6 @@ public final class MaverickSFTP implements RemoteDataClient {
             throw e;
         } catch (Throwable t) {
             throw new RemoteDataException("Failed to perform a remote copy command on " + host, t);
-        } finally {
-//			try { ssh2.disconnect(); } catch (Throwable t) {}
-            try {
-                shell.close();
-            } catch (Throwable t) {
-            }
         }
     }
 
@@ -1601,16 +1695,30 @@ public final class MaverickSFTP implements RemoteDataClient {
 
             getClient().rm(resolvedPath, true, true);
         } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("permission denied")) {
-                throw new RemoteDataException("The specified path " + remotepath +
-                        " does not exist or the user does not have permission to view it.", e);
-            } else if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to delete " + remotepath, e);
+            switch (e.getStatus()) {
+                case SftpStatusException.SSH_FX_PERMISSION_DENIED:
+                    throw new RemotePermissionException("The specified path " + remotepath +
+                            " does not exist or the user does not have permission to delete it.", e);
+                case SftpStatusException.SSH_FX_NO_SUCH_FILE:
+                case SftpStatusException.SSH_FX_NO_SUCH_PATH:
+                    throw new FileNotFoundException(e.getMessage());
+                default:
+                    String msg = String.format("Failed to delete %s. %s", remotepath, e.getMessage());
+                    throw new RemoteDataException(msg, e);
             }
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to delete " + remotepath, e);
+        } catch (SshException e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains(CONN_TIMEDOUT)) {
+                throw new RemoteConnectionException(e);
+            } else {
+                msg = String.format("Failed to delete %s. %s", remotepath, e.getMessage());
+                throw new RemoteDataException(msg, e);
+            }
+        } catch (RemoteDataException e) {
+            throw e;
+        } catch (Throwable t) {
+            String msg = String.format("Failed to delete %s. %s", remotepath, t.getMessage());
+            throw new RemoteDataException(msg, t);
         }
     }
 
@@ -1632,19 +1740,35 @@ public final class MaverickSFTP implements RemoteDataClient {
 
             return client.stat(resolvedPath).isDirectory();
         } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else if (e.getMessage().toLowerCase().contains("directory already exists")) {
-                return false;
-            } else if (e.getMessage().toLowerCase().contains("file already exists")) {
-                return false;
-            } else if (e.getMessage().toLowerCase().contains("permission denied")) {
-                throw new RemoteDataException("Cannot create directory " + resolvedPath + ": Permisison denied");
-            } else {
-                throw new RemoteDataException("Failed to create " + remotedir, e);
+            switch (e.getStatus()) {
+                case SftpStatusException.SSH_FX_PERMISSION_DENIED:
+                    throw new RemotePermissionException(e);
+                case SftpStatusException.SSH_FX_NO_SUCH_FILE:
+                case SftpStatusException.SSH_FX_NO_SUCH_PATH:
+                    throw new FileNotFoundException(e.getMessage());
+                case SftpStatusException.SSH_FX_FILE_ALREADY_EXISTS:
+                    return false;
+                default:
+                    if (StringUtils.containsIgnoreCase(e.getMessage(), "file already exists")) {
+                        return false;
+                    } else {
+                        String msg = String.format("Failed to create directory %s. %s", remotedir, e.getMessage());
+                        throw new RemoteDataException(msg, e);
+                    }
             }
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to create " + remotedir, e);
+        } catch (SshException e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains(CONN_TIMEDOUT)) {
+                throw new RemoteConnectionException(e);
+            } else {
+                msg = String.format("Failed to create directory %s. %s", remotedir, e.getMessage());
+                throw new RemoteDataException(msg, e);
+            }
+        } catch (RemoteDataException|IOException e) {
+            throw e;
+        } catch (Throwable t) {
+            String msg = String.format("Failed to create directory %s. %s", remotedir, t.getMessage());
+            throw new RemoteDataException(msg, t);
         }
     }
 
@@ -1689,22 +1813,40 @@ public final class MaverickSFTP implements RemoteDataClient {
             SftpClient client = getClient();
             client.mkdir(resolvedPath);
 
-            return client.stat(resolvedPath).isDirectory();
+            SftpFileAttributes atts = stat(resolvedPath, true);
+            return (atts != null && atts.isDirectory());
         } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else if (e.getMessage().toLowerCase().contains("directory already exists")) {
-                return false;
-            } else if (e.getMessage().toLowerCase().contains("file already exists")) {
-                return false;
-            } else if (e.getMessage().toLowerCase().contains("permission denied")) {
-                throw new RemoteDataException("Cannot create directory " + remotedir + ": Permisison denied");
-            } else {
-                throw new RemoteDataException("Failed to create " + remotedir, e);
+            switch (e.getStatus()) {
+                case SftpStatusException.SSH_FX_PERMISSION_DENIED:
+                    throw new RemotePermissionException(e);
+                case SftpStatusException.SSH_FX_NO_SUCH_FILE:
+                case SftpStatusException.SSH_FX_NO_SUCH_PATH:
+                    throw new FileNotFoundException(e.getMessage());
+                case SftpStatusException.SSH_FX_FILE_ALREADY_EXISTS:
+                    return false;
+                default:
+                    if (StringUtils.containsIgnoreCase(e.getMessage(), "file already exists")) {
+                        return false;
+                    } else {
+                        String msg = String.format("Failed to create directory %s. %s", remotedir, e.getMessage());
+                        throw new RemoteDataException(msg, e);
+                    }
             }
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to create " + remotedir, e);
+        } catch (SshException e) {
+            String msg = e.getMessage();
+            if (msg != null && msg.contains(CONN_TIMEDOUT)) {
+                throw new RemoteConnectionException(e);
+            } else {
+                msg = String.format("Failed to create directory %s. %s", remotedir, e.getMessage());
+                throw new RemoteDataException(msg, e);
+            }
+        } catch (RemoteDataException|IOException e) {
+            throw e;
+        } catch (Throwable t) {
+            String msg = String.format("Failed to create directory %s. %s", remotedir, t.getMessage());
+            throw new RemoteDataException(msg, t);
         }
+
     }
 
     @Override
@@ -1734,10 +1876,9 @@ public final class MaverickSFTP implements RemoteDataClient {
         SftpFileAttributes atts = null;
         try {
             atts = stat(resolvedPath);
-        } catch (Exception ignore) {
-        }
-        if (atts == null) return false;
-        else return true;  // object found
+        } catch (Exception ignore) {}
+
+        return (atts != null);
     }
 
     @Override
@@ -1747,27 +1888,18 @@ public final class MaverickSFTP implements RemoteDataClient {
             resolvedPath = resolvePath(path);
         } catch (Exception e) {
             String msg = getMsgPrefix() + "Failure to resolve path: " + path + ": " + e.getMessage();
-            log.error(msg, e);
             throw e;
         }
 
         try {
             SftpFileAttributes atts = stat(resolvedPath);
             return atts != null;
-        } catch (IOException e) {
+        } catch (IOException|RemoteConnectionException e) {
             return false;
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                return false;
-            } else {
-                String msg = getMsgPrefix() + "stat command failure on path: " + resolvedPath + ": " + e.getMessage();
-                log.error(msg, e);
-                throw new RemoteDataException(msg, e);
-            }
-        } catch (SshException e) {
-            String msg = getMsgPrefix() + "stat command exception on path: " + resolvedPath + ": " + e.getMessage();
+        } catch (RemoteDataException e) {
+            String msg = getMsgPrefix() + " stat command failure on path: " + resolvedPath + ": " + e.getMessage();
             log.error(msg, e);
-            return false;
+            throw e;
         }
     }
 
@@ -1790,28 +1922,27 @@ public final class MaverickSFTP implements RemoteDataClient {
             throws IOException, FileNotFoundException, RemoteDataException {
         int mode;
         try {
-            mode = stat(resolvePath(path)).getPermissions().intValue();
-            Integer pem = Integer.parseInt(Integer.toString(mode, 8), 10);
-            pem = pem % 1000;
-            pem = pem / 100;
+            SftpFileAttributes atts = stat(resolvePath(path));
+            if (atts != null) {
+                mode = atts.getPermissions().intValue();
+                Integer pem = Integer.parseInt(Integer.toString(mode, 8), 10);
+                pem = pem % 1000;
+                pem = pem / 100;
 
-            for (PermissionType type : PermissionType.values()) {
-                if (type.getUnixValue() == pem) {
-                    return type;
+                for (PermissionType type : PermissionType.values()) {
+                    if (type.getUnixValue() == pem) {
+                        return type;
+                    }
                 }
             }
 
             return PermissionType.NONE;
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve permissions for user.", e);
-            }
-        } catch (IOException e) {
+        } catch (RemotePermissionException e) {
+            return PermissionType.NONE;
+        } catch (FileNotFoundException|RemoteConnectionException e) {
             throw e;
         } catch (Exception e) {
-            throw new RemoteDataException("Failed to retrieve permissions for user.", e);
+            throw new RemoteDataException("Failed to retrieve permissions for user", e);
         }
     }
 
@@ -1821,19 +1952,15 @@ public final class MaverickSFTP implements RemoteDataClient {
             throws FileNotFoundException, RemoteDataException {
         // If the file is located under the root direectory and exists on the server, return true
         try {
-            path = resolvePath(path);
-
-            // check file exists
-            SftpFileAttributes attrs = stat(path);
-            return true;
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve permissions for user.", e);
-            }
-        } catch (Exception e) {
+            SftpFileAttributes atts = stat(resolvePath(path));
+            return (atts != null);
+        } catch (RemotePermissionException e) {
             return false;
+        } catch (FileNotFoundException|RemoteConnectionException e) {
+            throw e;
+        } catch (Exception e) {
+            // Was returning false here, which seems incorrect
+            throw new RemoteDataException("Failed to retrieve permissions for user", e);
         }
     }
 
@@ -1845,10 +1972,13 @@ public final class MaverickSFTP implements RemoteDataClient {
             // check file exists
             RemoteFileInfo fileInfo = getFileInfo(path);
             return fileInfo.userCanWrite();
-        } catch (IOException e) {
+        } catch (RemotePermissionException e) {
+            return false;
+        } catch (FileNotFoundException|RemoteConnectionException e) {
             throw e;
         } catch (Exception e) {
-            return false;
+            // Was returning false here, which seems incorrect
+            throw new RemoteDataException("Failed to retrieve permissions for user", e);
         }
     }
 
@@ -1860,9 +1990,13 @@ public final class MaverickSFTP implements RemoteDataClient {
             // check file exists
             RemoteFileInfo fileInfo = getFileInfo(path);
             return fileInfo.userCanExecute();
-
-        } catch (Exception e) {
+        } catch (RemotePermissionException e) {
             return false;
+        } catch (FileNotFoundException|RemoteConnectionException e) {
+            throw e;
+        } catch (Exception e) {
+            // Was returning false here, which seems incorrect
+            throw new RemoteDataException("Failed to retrieve permissions for user", e);
         }
     }
 
@@ -1963,20 +2097,13 @@ public final class MaverickSFTP implements RemoteDataClient {
     @Override
     public RemoteFileInfo getFileInfo(String remotepath)
             throws RemoteDataException, FileNotFoundException, IOException {
-        String resolvedPath = resolvePath(remotepath);
 
-        try {
-            SftpFileAttributes atts = stat(resolvedPath);
+        String resolvedPath = resolvePath(remotepath);
+        SftpFileAttributes atts = stat(resolvedPath);
+        if (atts == null) {
+            throw new FileNotFoundException("No such file or directory");
+        } else {
             return new RemoteFileInfo(FilenameUtils.getName(resolvedPath), atts);
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                log.error("Failed to stat " + remotepath + " => " + resolvedPath, e);
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to retrieve information for " + remotepath, e);
-            }
-        } catch (Exception e) {
-            throw new RemoteDataException("Failed to retrieve information for " + remotepath, e);
         }
     }
 

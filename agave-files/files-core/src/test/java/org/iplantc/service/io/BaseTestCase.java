@@ -46,7 +46,9 @@ public class BaseTestCase {
     public static final BatchQueue dedicatedQueue = new BatchQueue("dedicated", (long)1,        (long)1,        (long)1,        16.0,   (long)16,       "144:00:00", null, false);
     public static final BatchQueue unlimitedQueue = new BatchQueue("unlimited", (long)10000000, (long)10000000, (long)10000000, 2048.0, (long)10000000, "999:00:00", null, false);
 
-	public static final String SYSTEM_OWNER = "testuser";
+    public static final String ADMIN_USER = "testadmin";
+    public static final String TENANT_ADMIN = "testtenantadmin";
+    public static final String SYSTEM_OWNER = "testuser";
 	public static final String SYSTEM_SHARE_USER = "testshareuser";
 	public static final String SYSTEM_PUBLIC_USER = "public";
 	public static final String SYSTEM_UNSHARED_USER = "testotheruser";
@@ -157,8 +159,6 @@ public class BaseTestCase {
 			HibernateUtil.disableAllFilters();
 
 			session.createQuery("DELETE LogicalFile").executeUpdate();
-//			session.createQuery("DELETE EncodingTask").executeUpdate();
-//			session.createQuery("DELETE FROM DecodingTask s WHERE 1=1").executeUpdate();
 			session.createQuery("DELETE StagingTask").executeUpdate();
 			session.createQuery("DELETE RemoteFilePermission").executeUpdate();
 			session.createQuery("DELETE TransferTaskPermission").executeUpdate();

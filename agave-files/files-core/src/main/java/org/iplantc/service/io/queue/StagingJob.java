@@ -35,10 +35,7 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
-import org.iplantc.service.transfer.exceptions.AuthenticationException;
-import org.iplantc.service.transfer.exceptions.InvalidTransferException;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.exceptions.TransferException;
+import org.iplantc.service.transfer.exceptions.*;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.JobExecutionException;
 import org.quartz.UnableToInterruptJobException;
@@ -159,7 +156,7 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                         String appendedPath = StringUtils.replace(rootTask.getDest(), destUri, "");
                         file.setPath(file.getPath() + appendedPath);
                     }
-                } catch (InvalidTransferException e) {
+                } catch (RemotePermissionException|InvalidTransferException e) {
                     // hard fail the transfer task if it cannot be retried
                     this.queueTask.setRetryCount(Settings.MAX_STAGING_RETRIES);
                     throw e;
@@ -205,7 +202,7 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                     log.error(msg, e);
                     throw e;
                 }
-            } catch (InvalidTransferException e ) {
+            } catch (RemotePermissionException|InvalidTransferException e ) {
                 String message = "Unable to complete transfer of " + this.queueTask.getLogicalFile().getSourceUri() +
                         " to agave://" + this.queueTask.getLogicalFile().getSystem().getSystemId() + "//" +
                         this.queueTask.getLogicalFile().getPath() + ". " + e.getMessage();
@@ -217,14 +214,15 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                         "Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() +
                                 " failed with the following error message: " + e.getMessage() +
                                 ". Please check the source url, " + sourceUri + " and make sure it is a " +
-                                " valid URI or path on your default system. If you feel there was an error and this problem persists, please " +
-                                "contact your api administrator for assistance.",
+                                " valid URI or path on your default system to which you have permissions. " +
+                                "If you feel there was an error and this problem persists, please " +
+                                "contact your platform administrator for assistance.",
                         queueTask.getOwner()));
 
                 try {
                     LogicalFileDao.persist(file);
                 } catch (Exception e1) {
-                    String msg = "After exhausting retries, unable to persist status and changes for logical file " +
+                    String msg = "Unable to persist status and changes for logical file " +
                             file.getAgaveRelativePathFromAbsolutePath() +
                             " (" + file.getUuid() + ").";
                     log.error(msg, e1);
@@ -260,8 +258,9 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                                     " failed after " + Settings.MAX_STAGING_RETRIES +
                                     " attempts with the following error message: " + e.getMessage() +
                                     ". Please check the source url, " + sourceUri + " and make sure it is a " +
-                                    " valid URI or path on your default system. If you feel there was an error and this problem persists, please " +
-                                    "contact your api administrator for assistance.",
+                                    " valid URI or path on your default system to which you have permissions. " +
+                                    "If you feel there was an error and this problem persists, please " +
+                                    "contact your platform administrator for assistance.",
                             queueTask.getOwner()));
 
                     try {
@@ -294,8 +293,9 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                     "Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() +
                             " failed to because an unrecognized protocol " +
                             " was provided. Please check the source url, " + this.queueTask.getLogicalFile().getPath() +
-                            " and make sure it is a valid URI or path on your default system. If you feel there was an error and this problem persists, please " +
-                            "contact your api administrator for assistance.",
+                            " and make sure it is a valid URI or path on your default system" +
+                            " to which you have permissions. If you feel there was an error and this " +
+                            "problem persists, please contact your platform administrator for assistance.",
                     queueTask.getOwner()));
             try {
                 LogicalFileDao.persist(file);
@@ -399,7 +399,7 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                                     "Your scheduled transfer of " + file.getSourceUri() +
                                             " failed after " + Settings.MAX_STAGING_RETRIES + " attempts with the following message: " +
                                             e.getMessage() + ". If you feel there was an error and this problem persists, please " +
-                                            "contact your api administrator for assistance.",
+                                            "contact your platform administrator for assistance.",
                                     queueTask.getOwner());
                             FileEventProcessor.processAndSaveContentEvent(file, event);
                         } catch (LogicalFileException | FileEventProcessingException e1) {

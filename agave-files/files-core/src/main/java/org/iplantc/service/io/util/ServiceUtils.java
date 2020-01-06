@@ -555,8 +555,7 @@ public class ServiceUtils {
         
 	    return adjustedPath;
 	}
-	
-	
+
 	/*
 	 * This function generates a MD5 hash from a string, takes the first 8 bytes out of it and generates a signed integer value out of the byte array 
 	 * assuming the array to be in BigEndian formatted.
@@ -567,41 +566,5 @@ public class ServiceUtils {
 			md.update(str.getBytes());
 			return ByteBuffer.wrap(Arrays.copyOf(md.digest(), 8)).asLongBuffer().get();
 	}
-	
-	public static void main(String [] args) throws NoSuchAlgorithmException {
-		
-		String csvFile = "/Users/udeshpande/output.csv";
-        String line = "";
-        String cvsSplitBy = "\t";
 
-        try (BufferedReader br = new BufferedReader(new FileReader(csvFile))) {
-
-        	    boolean matched = true;
-            while ((line = br.readLine()) != null) {
-
-                // use comma as separator
-                String[] logicalfile = line.split(cvsSplitBy);
-                
-                long hashFromJava = getMD5LongHash(logicalfile[0]);
-                long hashFromsql = Long.valueOf(logicalfile[1].trim());
-
-                if(hashFromJava != hashFromsql)
-                {
-                	      matched = false;
-                      System.out.println("Path =" + logicalfile[0] + " , hashfromJava=" + hashFromJava + " hashfrmsql=" + hashFromsql);
-                }
-                
-            }
-            
-            if(!matched) {
-            		System.out.println("Some values did not match");
-            }
-            else
-            		System.out.println("Everything matched perfectly");
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-	}
-	
 }

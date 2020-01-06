@@ -1870,7 +1870,7 @@ public class PermissionManager {
 					} else {
 						system = new SystemDao().findBySystemId(inputUri.getHost());
 						if (system == null) {
-							throw new PermissionException("No system was found matchin the hostname in the "
+							throw new PermissionException("No system was found matching the hostname in the "
 									+ "URL for the file or directory at " + inputUri);
 						}
 					}
@@ -1889,7 +1889,7 @@ public class PermissionManager {
 				    } catch (PermissionException e) {
 				        throw e;
 				    } catch (SystemException e) {
-				        throw new PermissionException("No storage system was found matchin the "
+				        throw new PermissionException("No storage system was found matching the "
 				                + "one associated with the job output in " + inputUri);
 				    }
 				}
@@ -1916,7 +1916,7 @@ public class PermissionManager {
 					{
 						system = new SystemDao().findBySystemId(systemId);
 						if (system == null) {
-							throw new PermissionException("No system was found matchin the hostname in the "
+							throw new PermissionException("No system was found matching the hostname in the "
 									+ "URL for the file or directory at " + inputUri);
 						}
 					}

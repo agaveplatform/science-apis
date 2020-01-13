@@ -1,5 +1,8 @@
 package org.iplantc.service.systems.model.enumerations;
 
+/**
+ * Enumerated listing of all possible events that can be thrown by a system.
+ */
 public enum SystemEventType {
     CREATED("This system was created"),
     UPDATED("This system was updated"),
@@ -61,6 +64,10 @@ public enum SystemEventType {
         this.description = description;
     }
 
+    /**
+     * Private constructor. We do not support custom events.
+     * @param description the human readable description of the event.
+     */
     private SystemEventType(String description) {
         this.description = description;
     }

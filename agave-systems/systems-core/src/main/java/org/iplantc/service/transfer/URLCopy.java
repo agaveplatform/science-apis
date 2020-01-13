@@ -900,22 +900,10 @@ public class URLCopy {
                         getProtocolForClass(destClient.getClass())));
             }
 
-            try {
-                if (bis != null) bis.close();
-            } catch (Throwable ignored) {
-            }
-            try {
-                if (bos != null) bos.close();
-            } catch (Throwable ignored) {
-            }
-            try {
-                if (in != null) in.close();
-            } catch (Throwable ignored) {
-            }
-            try {
-                if (out != null) out.close();
-            } catch (Throwable ignored) {
-            }
+            try { if (bis != null) bis.close(); } catch (Throwable ignored) {}
+            try { if (bos != null) bos.close(); } catch (Throwable ignored) {}
+            try { if (in != null) in.close(); } catch (Throwable ignored) {}
+            try { if (out != null) out.close(); } catch (Throwable ignored) {}
         }
     }
 

@@ -5,15 +5,18 @@ import java.io.IOException;
 import java.util.List;
 
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.irods.IRODS;
+import org.iplantc.service.transfer.irods4.IRODS4;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
 /**
- * Created with IntelliJ IDEA.
- * User: wcs
- * Date: 3/1/13
- * Time: 9:42 AM
- * To change this template use File | Settings | File Templates.
+ * Interface for {@link RemoteDataClient} that support permission mirroring from Agave to the remote system. This is
+ * not supported by every supported {@link org.iplantc.service.systems.model.RemoteSystem} as some permissions models are not sufficiently robust to
+ * enable the granularity that Agave provides. Thus, we provide this interface as a baseline for mapping Agave's
+ * {@link RemoteFilePermission} to the remote system permissions when possible.
+ * @see IRODS4
+ * @see IRODS
  */
 public interface RemoteDataClientPermissionProvider
 {

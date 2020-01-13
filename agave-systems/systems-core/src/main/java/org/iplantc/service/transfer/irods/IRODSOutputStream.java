@@ -23,32 +23,17 @@ public class IRODSOutputStream extends RemoteOutputStream<IRODS> {
 			log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " opening output stream connection for thread");
 			this.output = client.getRawOutputStream(remotePath);
 		}
-		catch (IOException e) {
+		catch (IOException | RemoteDataException e) {
 			throw e;
-		}
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteDataException("Failed to obtain remote output stream for " + remotePath, e);
 		}
 	}
 
-//	public IRODSOutputStream(IRODS client, String file, boolean passive,
-//			int type, boolean append) throws IOException, RemoteDataException
-//	{
-//		this.outFile = file;
-//		try {
-//			this.output = client.getRawOutputStream(file);
-//		}
-//		catch (JargonException e) {
-//			throw new RemoteDataException("Failed to obtain remote output stream for " + file);
-//		}
-//	}
-
+	@Override
 	public void abort()
 	{
-		try { output.close(); } catch (Exception e) {}
+		try { output.close(); } catch (Exception ignored) {}
 		log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  
 				+ " aborting output stream connection for thread");
 		// We need to explicity give the user who just created this file 
@@ -60,10 +45,11 @@ public class IRODSOutputStream extends RemoteOutputStream<IRODS> {
 			log.error("Failed to set permissions on " + outFile + " after stream was closed", e);
 		}
 		
-		try { client.disconnect(); } catch (Exception e) {}
+		try { client.disconnect(); } catch (Exception ignored) {}
 		
 	}
 
+	@Override
 	public void close() throws IOException
 	{	
 		abort();
@@ -71,21 +57,26 @@ public class IRODSOutputStream extends RemoteOutputStream<IRODS> {
 				+ " closing output stream connection for thread");
 	}
 
-	public void write(byte[] msg) throws IOException
+
+	@Override
+	public void write(byte[] b) throws IOException
 	{
-		this.output.write(msg);
+		this.output.write(b);
 	}
 
-	public void write(byte[] msg, int from, int length) throws IOException
+	@Override
+	public void write(byte[] b, int from, int length) throws IOException
 	{
-		this.output.write(msg, from, length);
+		this.output.write(b, from, length);
 	}
 
+	@Override
 	public void write(int b) throws IOException
 	{
 		this.output.write(b);
 	}
 
+	@Override
 	public void flush() throws IOException
 	{
 		this.output.flush();

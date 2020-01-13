@@ -1,5 +1,22 @@
 package org.iplantc.service.systems.model.enumerations;
 
+import org.iplantc.service.systems.model.StorageConfig;
+import org.iplantc.service.systems.model.StorageSystem;
+
+/**
+ * Represents the supported ways to connect to an {@link StorageSystem} to orchestrate the execution of job. While
+ * the {@link ExecutionType} determines the taxonomy of execution and the {@link SchedulerType} determines how the
+ * job will eventually be run, the {@link StorageProtocolType} defines the communication mechanism to be used between
+ * Agave and the remote {@link StorageSystem}.
+ * <p>
+ * Because there are multiple ways to communicate with a remote system to invoke tasks, there is a many-to-many
+ * relationship between a {@link StorageProtocolType} and {@link ExecutionType}. Likewise, there are frequently multiple
+ * ways in which to authenticate communication. Thus, there is also a many to many relationship between
+ * {@link LoginProtocolType} and {@link AuthConfigType}.
+ *
+ * @author dooley
+ * @see StorageConfig
+ */
 public enum StorageProtocolType implements ProtocolType {
 	GRIDFTP, FTP, SFTP, IRODS, IRODS4, LOCAL, AZURE, S3, SWIFT, HTTP, HTTPS;
 

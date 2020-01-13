@@ -3,17 +3,26 @@
  */
 package org.iplantc.service.transfer;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 
+import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 
 /**
- * @author dooley
+ * Interface to establish a random access {@link OutputStream} to a path on a {@link RemoteSystem} with a
+ * {@link RemoteDataClient}.
  *
+ * @param <T> Concrete implementation of {@link RemoteDataClient}
+ *
+ * @see org.iplantc.service.transfer.ftp.FTPOutputStream
+ * @see org.iplantc.service.transfer.gridftp.GridFTPOutputStream
+ * @see org.iplantc.service.transfer.irods.IRODSOutputStream
+ * @see org.iplantc.service.transfer.irods4.IRODS4OutputStream
+ * @see org.iplantc.service.transfer.sftp.MaverickSFTPOutputStream
+ * @see org.iplantc.service.transfer.s3.S3OutputStream
  */
+
 public abstract class RemoteOutputStream<T> extends OutputStream {
 	
 	protected OutputStream		output;
@@ -35,16 +44,17 @@ public abstract class RemoteOutputStream<T> extends OutputStream {
 		this.client = client;
 		this.outFile = file;
 	}
-	
-    /**
-     * Aborts transfer. Usually makes sure to
-     * release all resources (sockets, file descriptors)
-     * <BR><i>Does nothing by default.</i>
-     */
-    public void abort() {
-        // FIXME: is this still used/needed?
-    }
 
+	/**
+	 * Aborts transfer. When the underlying {@link StorageProtocolType} involves a stateful protocol and more
+	 * is needed to abort a transfer than close a socket, this method gives us an out to both close the socket
+	 * and cleanup.
+	 * <p>
+	 * <i>Does nothing by default.</i>
+	 */
+    public void abort() {}
+
+	@Override
     public void write(int b) throws IOException {
     	throw new IOException("Not implemented.");
     }

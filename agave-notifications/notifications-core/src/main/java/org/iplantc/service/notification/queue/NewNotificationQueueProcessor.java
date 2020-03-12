@@ -1,5 +1,10 @@
 package org.iplantc.service.notification.queue;
 
+import io.cloudevents.CloudEvent;
+import io.cloudevents.json.Json;
+import io.cloudevents.v1.AttributesImpl;
+import io.cloudevents.v1.CloudEventImpl;
+import io.cloudevents.v1.http.Unmarshallers;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.dao.TenantDao;
@@ -137,6 +142,14 @@ public class NewNotificationQueueProcessor implements InterruptableJob, MessageQ
     {
         try 
         {
+			Json.decodeValue(body.getBytes(), CloudEventImpl<NotificationMessageContext>.class);
+
+			CloudEvent<AttributesImpl, NotificationMessageContext> event =
+					Unmarshallers.structured(NotificationMessageContext.class)
+							.withHeaders(null)
+							.withPayload(() -> body)
+							.unmarshal();
+
             ObjectMapper mapper = new ObjectMapper();
             JsonNode jsonBody = mapper.readTree(body);
             

@@ -53,7 +53,7 @@ public class MonitorNotificationEvent extends AbstractEventFilter {
                 "Last successful check: ${LAST_SUCCESS}\n" +
                 "Next check: ${NEXT_CHECK}\n" +
                 "Last updated: ${LAST_UPDATED}\n" + 
-                "Created: ${CREATED}\n";        
+                "Created: ${CREATED}\n";
         
 		if (StringUtils.equalsIgnoreCase(event, "created")) {
 			body = "The following monitor was created: \n\n" + body;

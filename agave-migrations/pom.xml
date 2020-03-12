@@ -244,7 +244,6 @@
                         <location>filesystem:src/main/resources/db/migration</location>
                         <location>classpath:org/iplantc/service/common/migration</location>
                     </locations>
-                    <skip>${skip.migrations}</skip>
                 </configuration>
             </plugin>
         </plugins>

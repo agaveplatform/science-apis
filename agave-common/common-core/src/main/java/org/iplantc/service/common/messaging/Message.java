@@ -1,16 +1,21 @@
 package org.iplantc.service.common.messaging;
 
+import io.cloudevents.v1.CloudEventImpl;
+
+import java.util.Date;
+
 /**
  * Wrapper class to hold messages and their id.
  * 
  * @author dooley
  *
  */
+@Deprecated
 public class Message {
 
 	private Object id;
 	private String message;
-	
+
 	public Message(Object id, String message)
 	{
 		this.id = id;
@@ -44,6 +49,6 @@ public class Message {
 	{
 		this.message = message;
 	}
-	
+
 
 }

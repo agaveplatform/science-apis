@@ -158,11 +158,11 @@ public class BaseTestCase {
 			session.clear();
 			HibernateUtil.disableAllFilters();
 
-			session.createQuery("DELETE LogicalFile").executeUpdate();
-			session.createQuery("DELETE StagingTask").executeUpdate();
-			session.createQuery("DELETE RemoteFilePermission").executeUpdate();
-			session.createQuery("DELETE TransferTaskPermission").executeUpdate();
-			session.createQuery("DELETE TransferTask").executeUpdate();
+            session.createQuery("DELETE RemoteFilePermission").executeUpdate();
+            session.createQuery("DELETE FileEvent").executeUpdate();
+            session.createQuery("DELETE TransferTask").executeUpdate();
+            session.createQuery("DELETE StagingTask").executeUpdate();
+            session.createQuery("DELETE LogicalFile").executeUpdate();
 			session.createQuery("DELETE Notification").executeUpdate();
 		}
 		catch (HibernateException ex)

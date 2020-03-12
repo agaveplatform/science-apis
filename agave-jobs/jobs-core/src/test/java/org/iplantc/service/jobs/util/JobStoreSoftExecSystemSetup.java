@@ -46,11 +46,7 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
             executionSystem.setOwner("testuser");
             //System.out.println(jsonTree.get("name").toString());
             systemDao.persist(executionSystem);
-        } catch (JSONException e) {
-            e.printStackTrace();  
-        } catch (IOException e) {
-            e.printStackTrace();  
-        } catch (SystemArgumentException e) {
+        } catch (JSONException | SystemArgumentException | IOException e) {
             e.printStackTrace();  
         }
     }
@@ -62,9 +58,7 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
             system.setOwner("testuser");
             // System.out.println(testDataPath);
             systemDao.persist(system);
-        } catch (JSONException e) {
-            e.printStackTrace();  
-        } catch (IOException e) {
+        } catch (JSONException | IOException e) {
             e.printStackTrace();  
         }
 

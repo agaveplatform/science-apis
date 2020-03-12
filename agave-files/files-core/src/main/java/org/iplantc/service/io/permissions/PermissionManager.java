@@ -6,12 +6,7 @@ package org.iplantc.service.io.permissions;
 import java.io.FileNotFoundException;
 import java.math.BigInteger;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
@@ -37,6 +32,7 @@ import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.SystemRole;
+import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.systems.util.ApiUriUtil;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
@@ -54,12 +50,11 @@ import org.iplantc.service.transfer.model.enumerations.PermissionType;
  *
  */
 public class PermissionManager {
+	private static final Logger log = Logger.getLogger(PermissionManager.class);
 
 	private String remoteUsername;
 	private String apiUsername;
 	private RemoteSystem remoteSystem;
-	
-	//private IrodsClient irodsClient;
 
     private RemoteDataClient remoteDataClient = null;
     private LogicalFile logicalFile = null;
@@ -106,6 +101,42 @@ public class PermissionManager {
 	        }
 		}
 	}
+
+	/**
+	 * Generates a map of {@link RemoteFilePermission} for each user with a role on the remote remoteSystem plus
+	 * an implicit role for the {@link RemoteSystem} owner.
+	 * @param remoteSystem the system for which to translate user roles into permissions
+	 * @return one permission per user based on system level access control
+	 */
+	protected Map<String, RemoteFilePermission> getAllPermissionsFromSystemRoles(RemoteSystem remoteSystem)  {
+		Map<String, RemoteFilePermission> pemMap = new TreeMap<String, RemoteFilePermission>();
+
+		// We always add implicit file permissions from remoteSystem ownership
+		pemMap.put(remoteSystem.getOwner(), new RemoteFilePermission(remoteSystem.getOwner(), null, PermissionType.ALL, true));
+
+		// now iterate through the other remoteSystem roles and decide on a case-by-case basis.
+		for (SystemRole role: remoteSystem.getRoles()) {
+			// we automatically add remoteSystem admins to the ownership permissions
+			if (role.canAdmin()) {
+				pemMap.put(role.getUsername(),
+						new RemoteFilePermission(role.getUsername(), null, PermissionType.ALL, true));
+			}
+			// we add user remoteSystem roles for private systems because these reflect effective file permission
+			else if (!remoteSystem.isPubliclyAvailable()) {
+				pemMap.put(role.getUsername(),
+						new RemoteFilePermission(role.getUsername(), null, PermissionType.ALL, true));
+			}
+			else {
+				// on public systems, we don't present the implied remoteSystem ownership over the data because the remoteSystem user
+				// roles do not retain elevated permissions after they are made public
+
+				// TODO: add remoteSystem and tenant admin groups to this list when the group api launches
+
+			}
+		}
+
+		return pemMap;
+	}
 	
 	/**
 	 * Returns all permissions for a given path. This method handles the merge of permissions
@@ -123,34 +154,13 @@ public class PermissionManager {
 		
 		LogicalFile logicalFile = this.logicalFile;
 		RemoteDataClient remoteDataClient = this.remoteDataClient;
-		boolean addedImpliedSystemOwnerPermission = false;
-		boolean isUserSystemOwner = StringUtils.equals(apiUsername, remoteSystem.getOwner());
+//		boolean addedImpliedSystemOwnerPermission = false;
+//		boolean isUserSystemOwner = StringUtils.equals(apiUsername, remoteSystem.getOwner());
 		
 		try 
 		{
-			// We always add implicit file permissions from system ownership
-			pemMap.put(remoteSystem.getOwner(), new RemoteFilePermission(remoteSystem.getOwner(), null, PermissionType.ALL, true));
-			
-			// now iterate through the other system roles and decide on a case-by-case basis.
-			for (SystemRole role: remoteSystem.getRoles()) {
-				// we automatically add system admins to the ownership permissions
-				if (role.canAdmin()) {
-					pemMap.put(role.getUsername(), 
-						new RemoteFilePermission(role.getUsername(), null, PermissionType.ALL, true));
-				}
-				// we add user system roles for private systems because these reflect effective file permission
-				else if (!remoteSystem.isPubliclyAvailable()) {
-					pemMap.put(role.getUsername(), 
-							new RemoteFilePermission(role.getUsername(), null, PermissionType.ALL, true));
-				}
-				else {
-					// on public systems, we don't present the implied system ownership over the data because the system user
-					// roles do not retain elevated permissions after they are made public
-					
-					// TODO: add system and tenant admin groups to this list when the group api launches
-				}
-			} 
-			
+			pemMap.putAll(getAllPermissionsFromSystemRoles(this.remoteSystem));
+
 			if (logicalFile == null) 
 	        {	
 				// add the remote permissions
@@ -159,17 +169,23 @@ public class PermissionManager {
 					logicalFile = new LogicalFile(apiUsername, remoteSystem, remoteDataClient.resolvePath(agavePath));
 					
 					// determine and add the permission of the calling user
-					pemMap.put(apiUsername, getUserPermission(logicalFile.getPath()));
-					
+					RemoteFilePermission implicitUserFilePermission = getUserPermission(logicalFile.getPath());
+					pemMap.put(apiUsername, mergeRemoteFilePermissions(pemMap.get(apiUsername), implicitUserFilePermission));
+
 					if (remoteDataClient.isPermissionMirroringRequired())  
 					{	
 						for (RemoteFilePermission agavePem: remoteDataClient.getAllPermissionsWithUserFirst(agavePath, apiUsername)) {
-							pemMap.put(agavePem.getUsername(), agavePem);
+							// ensure we don't overwrite a grant at the system or admin level by merging values.
+							pemMap.put(agavePem.getUsername(), mergeRemoteFilePermissions(pemMap.get(agavePem.getUsername()), agavePem));
 						}
-						
-						pemMap.put(apiUsername, new RemoteFilePermission(apiUsername, null, remoteDataClient.getPermissionForUser(apiUsername, agavePath), false));
+						// TODO: Why must this be queried directly? Is it not returned in the previous response?
+						pemMap.put(apiUsername,
+								mergeRemoteFilePermissions(pemMap.get(apiUsername),
+										new RemoteFilePermission(apiUsername, null, remoteDataClient.getPermissionForUser(apiUsername, agavePath), false)));
+
 					}
 				}
+				// no logiccal file is present for the given path, so we look for implicit pems in the path ancestry
 				else
 				{
 					try {
@@ -177,11 +193,14 @@ public class PermissionManager {
 						logicalFile = new LogicalFile(apiUsername, remoteSystem, remoteDataClient.resolvePath(agavePath));
 						
 						// determine and add the permission of the calling user
-						pemMap.put(apiUsername, getUserPermission(logicalFile.getPath()));
+						RemoteFilePermission existingLogicalFileUserPermission = getUserPermission(logicalFile.getPath());
+						pemMap.put(apiUsername, mergeRemoteFilePermissions(pemMap.get(apiUsername), existingLogicalFileUserPermission));
 					} 
 					finally {
 						// clean up so we don't leave open connections
-						remoteDataClient.disconnect();
+						if (remoteDataClient != null) {
+							remoteDataClient.disconnect();
+						}
 					}
 				}
 				
@@ -192,16 +211,19 @@ public class PermissionManager {
 					String publicUserFromPath = PathResolver.getImpliedOwnerFromSystemPath(agavePath, remoteSystem, remoteDataClient);
 					
 					if (StringUtils.isNotEmpty(publicUserFromPath) && !pemMap.containsKey(publicUserFromPath)){
-						pemMap.put(publicUserFromPath, new RemoteFilePermission(publicUserFromPath, null, PermissionType.ALL, true));
+						pemMap.put(publicUserFromPath,
+								mergeRemoteFilePermissions(pemMap.get(publicUserFromPath),
+										new RemoteFilePermission(publicUserFromPath, null, PermissionType.ALL, true)));
 					}
 				}
 				
 				
 				// if we created a RemoteDataClient just for this check, disconnect here to clean up threads
-				if (this.remoteDataClient == null && remoteDataClient != null) {
-					try { remoteDataClient.disconnect(); } catch (Exception e) {}
+				if (this.remoteDataClient == null) {
+					try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
 				}
 	        }
+			// logical file was present, so check the permissions associated with it
 			else
 			{
 				// determine and add the permission of the calling user
@@ -210,7 +232,8 @@ public class PermissionManager {
 				// add all agave pems
 				for (RemoteFilePermission agavePem: RemoteFilePermissionDao.getBylogicalFileId(logicalFile.getId()))
 				{
-					pemMap.put(agavePem.getUsername(), agavePem);
+					pemMap.put(agavePem.getUsername(),
+							mergeRemoteFilePermissions(pemMap.get(agavePem.getUsername()), agavePem));
 				}
 				
 //				String resolvedPath = logicalFile.getAgaveRelativePathFromAbsolutePath();
@@ -222,7 +245,9 @@ public class PermissionManager {
 					String publicUserFromPath = PathResolver.getImpliedOwnerFromSystemPath(agavePath, remoteSystem, remoteDataClient == null ?  remoteSystem.getRemoteDataClient() : remoteDataClient);
 					
 					if (StringUtils.isNotEmpty(publicUserFromPath) && !pemMap.containsKey(publicUserFromPath)){
-						pemMap.put(publicUserFromPath, new RemoteFilePermission(publicUserFromPath, null, PermissionType.ALL, true));
+						pemMap.put(publicUserFromPath,
+								mergeRemoteFilePermissions(pemMap.get(publicUserFromPath),
+										new RemoteFilePermission(publicUserFromPath, null, PermissionType.ALL, true)));
 					}
 				}
 				
@@ -232,11 +257,16 @@ public class PermissionManager {
 					// preseetn, skip as this can cause issues with irods groups and all users have read permission anyway.
 					if (!pemMap.containsKey(Settings.PUBLIC_USER_USERNAME))
 					{
+						// fetches mirrored permissions by querying the remote system directly
 						for (RemoteFilePermission remotePem: remoteDataClient.getAllPermissionsWithUserFirst(agavePath, apiUsername)) {
-							pemMap.put(remotePem.getUsername(), remotePem);
+							pemMap.put(remotePem.getUsername(),
+									mergeRemoteFilePermissions(pemMap.get(remotePem.getUsername()), remotePem));
 						}
-						
-						pemMap.put(apiUsername, new RemoteFilePermission(apiUsername, null, remoteDataClient.getPermissionForUser(apiUsername, agavePath), false));
+
+						// TODO: Why must this be queried directly? Is it not returned in the previous response?
+						pemMap.put(apiUsername,
+								mergeRemoteFilePermissions(pemMap.get(apiUsername),
+										new RemoteFilePermission(apiUsername, null, remoteDataClient.getPermissionForUser(apiUsername, agavePath), false)));
 					}
 				}
 			}
@@ -248,7 +278,26 @@ public class PermissionManager {
 			throw new PermissionException(e);
 		}
 	}
-	
+
+	/**
+	 * Adds the permissions of original with those of additional to determine the highest grant available.
+	 * @param original the original permission to which the second will be added
+	 * @param additional the permission to add to the original
+	 * @return permission additive value of both permissions
+	 */
+	protected RemoteFilePermission mergeRemoteFilePermissions(RemoteFilePermission original, RemoteFilePermission additional) {
+		if (original == null && additional == null) {
+			return null;
+		} else if (original == null) {
+			return additional;
+		} else if (additional == null) {
+			return original;
+		} else {
+			original.getPermission().add(additional.getPermission());
+			return original;
+		}
+	}
+
 	/**
 	 * Returns the calculated user permission for a given path on the
 	 * system assigned to this PermissionManager. There is no guarantee
@@ -261,9 +310,6 @@ public class PermissionManager {
 	 * @return RemoteFilePermission
 	 * @throws PermissionException
 	 */
-	
-	private static final Logger log = Logger.getLogger(PermissionManager.class);
-	
 	public RemoteFilePermission getUserPermission(String systemAbsolutePath) throws PermissionException
 	{
 		//variable for timer object used for profiling throughout the code.
@@ -750,18 +796,23 @@ public class PermissionManager {
     		// no logical file found
     		else 
     		{
-    			   if (log.isDebugEnabled()) st = SimpleTimer.start("Marker8");
+    			if (log.isDebugEnabled()) st = SimpleTimer.start("Marker8");
     			// find the closest known parent and check for recursive permisisons
 				LogicalFile parent = LogicalFileDao.findClosestParent(remoteSystem, systemAbsolutePath);
 				if (parent == null)
 				{
-					// no parent found and no pems for the file. we just need to check for 
-					// guest role at this point
-					if (userRole.isGuest()) 
+					// no parent found and no pems for the file.
+					// no explicit system role means no permission to the file item
+					if (userRole.getRole() == RoleType.NONE) {
+						if (st != null) log.debug(st.getShortStopMsg());
+						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
+					}
+					// guest system role means readonly access
+					else if (userRole.isGuest())
 					{
 						if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.READ, true);
-					} 
+					}
 					// no known parent or path. user has at least user access to the system. grant all pems on the path
 					else 
 					{
@@ -781,7 +832,13 @@ public class PermissionManager {
 					{
 						if (st != null) log.debug(st.getShortStopMsg());
 						return parentPem;
-					} 
+					}
+					// no explicit system role means no permission to the file item
+					else if (userRole.getRole() == RoleType.NONE)
+					{
+						if (st != null) log.debug(st.getShortStopMsg());
+						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
+					}
 					// parent should have recursive guest pems, but if for whatever reason they 
 					// do not, we give read access if the user has the guest role
 					else if (userRole.isGuest()) 
@@ -795,6 +852,12 @@ public class PermissionManager {
 						if (st != null) log.debug(st.getShortStopMsg());
 						return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.ALL, false);
 					}
+				}
+				// no explicit system role means no permission to the file item
+				else if (userRole.getRole() == RoleType.NONE)
+				{
+					if (st != null) log.debug(st.getShortStopMsg());
+					return new RemoteFilePermission(logicalFileId, apiUsername, internalUsername, PermissionType.NONE, false);
 				}
 				// we give read access if the user has the guest role
 				else if (userRole.isGuest()) 
@@ -1839,7 +1902,7 @@ public class PermissionManager {
 	public static boolean canUserReadUri(String username, String internalUsername, URI inputUri) throws PermissionException 
 	{
 		RemoteDataClient remoteDataClient = null;
-		try 
+		try
 		{
 			String scheme = inputUri.getScheme();
 			RemoteSystem system = null;
@@ -1865,7 +1928,8 @@ public class PermissionManager {
 						system = new SystemManager().getUserDefaultStorageSystem(username);
 						if (system == null) {
 							throw new PermissionException("No system was specified in the URL for the file "
-									+ "or directory at " + inputUri + " and no default system is defined.");
+									+ "or directory at " + inputUri + " and no default system is defined for user "
+									+ username);
 						}
 					} else {
 						system = new SystemDao().findBySystemId(inputUri.getHost());
@@ -1904,7 +1968,8 @@ public class PermissionManager {
 						system = new SystemManager().getUserDefaultStorageSystem(username);
 						if (system == null) {
 							throw new PermissionException("No system was specified in the URL for the file "
-									+ "or directory at " + inputUri + " and no default system is defined.");
+									+ "or directory at " + inputUri + " and no default system is defined for user "
+									+ username);
 						}
 					}
 					else if (StringUtils.isEmpty(systemId))
@@ -1926,7 +1991,7 @@ public class PermissionManager {
 				
 				remoteDataClient = system.getRemoteDataClient(internalUsername);
 				LogicalFile lf = LogicalFileDao.findBySystemAndPath(system, remoteDataClient.resolvePath(path));
-				
+
 				PermissionManager pm = new PermissionManager(system, remoteDataClient, lf, username);
 				return pm.canRead(remoteDataClient.resolvePath(path));
 			}

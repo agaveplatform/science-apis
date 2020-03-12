@@ -4,4 +4,71 @@ volumes: {}
 
 networks: {}
 
-services: {}
+services: {
+docker service create --network nats-streaming-example \
+                             --name nats-cluster-node-$i nats:1.1.0 \
+                             -cluster nats://0.0.0.0:6222 \
+                             -routes nats://nats-cluster-node-1:6222,nats://nats-cluster-node-2:6222,nats://nats-cluster-node-3:6222
+
+
+   nats-streaming-node-0:
+    image: nats-streaming:0.9.2
+    command:
+      - -store=file
+      - -dir=store
+      - -clustered
+      - -cluster_id=testing
+      - -cluster_node_id=node-0
+      - -cluster_peers=node-0,node-1,node-2
+      - -nats_server=nats://nats-cluster-node-0:4222,nats://nats-cluster-node-1:4222,nats://nats-cluster-node-2:4222
+
+  nats-streaming-node-1:
+    image: nats-streaming:0.9.2
+    command:
+      - -store=file
+      - -dir=store
+      - -clustered
+      - -cluster_id=testing
+      - -cluster_node_id=node-1
+      - -cluster_peers=node-0,node-1,node-2
+      - -nats_server=nats://nats-cluster-node-0:4222,nats://nats-cluster-node-1:4222,nats://nats-cluster-node-2:4222
+
+  nats-streaming-node-0:
+    image: nats-streaming:0.9.2
+    command:
+      - -store=file
+      - -dir=store
+      - -clustered
+      - -cluster_id=testing
+      - -cluster_node_id=node-2
+      - -cluster_peers=node-0,node-1,node-2
+      - -nats_server=nats://nats-cluster-node-0:4222,nats://nats-cluster-node-1:4222,nats://nats-cluster-node-2:4222
+
+  nats-cluster-node-0:
+    image: nats:1.1.0
+    command:
+      - cluster
+      - nats://0.0.0.0:6222
+      - routes
+      - nats://nats-cluster-node-0:6222,nats://nats-cluster-node-1:6222,nats://nats-cluster-node-2:6222
+
+  nats-cluster-node-1:
+      image: nats:1.1.0
+      command:
+        - cluster
+        - nats://0.0.0.0:6222
+        - routes
+        - nats://nats-cluster-node-0:6222,nats://nats-cluster-node-1:6222,nats://nats-cluster-node-2:6222
+
+  nats-cluster-node-3:
+      image: nats:1.1.0
+      command:
+        - cluster
+        - nats://0.0.0.0:6222
+        - routes
+        - nats://nats-cluster-node-0:6222,nats://nats-cluster-node-1:6222,nats://nats-cluster-node-2:6222
+
+  networks:
+    default:
+      external:
+        name: nats

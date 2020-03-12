@@ -2,7 +2,6 @@ package org.iplantc.service.metadata.model.enumerations;
 
 public enum PermissionType
 {
-
 	NONE, READ, WRITE, EXECUTE, READ_WRITE, READ_EXECUTE, WRITE_EXECUTE, ALL, READ_PERMISSION, WRITE_PERMISSION, READ_WRITE_PERMISSION;
 
 	public boolean canRead() {

@@ -106,9 +106,9 @@ public class ImplicitFilePermissionsFromSystemRolesTest extends AbstractPermissi
 			} else {
 				testList.add(new Object[]{ system, "/", 				 SYSTEM_UNSHARED_USER, 			null, true, 	false });
 				testList.add(new Object[]{ system, "/", 				 SYSTEM_OWNER, 					null, true, 	false });
-				testList.add(new Object[]{ system, "/", 				 SYSTEM_OWNER, 					null, true, 	false });
+//				testList.add(new Object[]{ system, "/", 				 SYSTEM_OWNER, 					null, true, 	false });
 				testList.add(new Object[]{ system, "", 				 	 SYSTEM_OWNER, 					null, true, 	false });
-				testList.add(new Object[]{ system, "", 				 	 SYSTEM_OWNER, 					null, true, 	false });
+//				testList.add(new Object[]{ system, "", 				 	 SYSTEM_OWNER, 					null, true, 	false });
 			}
 		}
 		
@@ -120,9 +120,9 @@ public class ImplicitFilePermissionsFromSystemRolesTest extends AbstractPermissi
 	 * 
 	 * @param system
 	 * @param path
-	 * @param owner
+	 * @param userForWhomToCheckPermissions
 	 * @param internalUsername
-	 * @param expectedResult
+	 * @param systemOwnerPermissionShouldBePresent
 	 * @param shouldThrowException
 	 */
 	@Test(dataProvider="getAllPermissionsReturnsSystemOwnerProvider")

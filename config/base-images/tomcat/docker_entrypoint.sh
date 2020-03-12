@@ -80,47 +80,47 @@ done
 #   fi
 # fi
 
-#################################################################
-# Configure ssl certs to use mounted files or the container defaults
-#################################################################
-
-echo "=> Creating SSL keys for secure communcation..."
-if [[ -z "$SSL_KEY" ]]; then
-	export KEY=/etc/ssl/private/server.key
-	export DOMAIN=$(hostname)
-	export PASSPHRASE=$(cat /dev/urandom | tr -cd 'a-f0-9' | head -c 16)
-	export SUBJ="
-C=US
-ST=Texas
-O=University of Texas
-localityName=Austin
-commonName=$DOMAIN
-organizationalUnitName=TACC
-emailAddress=admin@$DOMAIN"
-	openssl genrsa -des3 -out /etc/ssl/private/server.key -passout env:PASSPHRASE 2048
-	openssl req -new -batch -subj "$(echo -n "$SUBJ" | tr "\n" "/")" -key $KEY -out /etc/ssl/certs/$DOMAIN.csr -passin env:PASSPHRASE
-	cp $KEY $KEY.orig
-	openssl rsa -in $KEY.orig -out $KEY -passin env:PASSPHRASE
-	openssl x509 -req -days 365 -in /etc/ssl/certs/$DOMAIN.csr -signkey $KEY -out /etc/ssl/certs/server.crt
-fi
-
-if [[ -n "$SSL_CERT" ]]; then
-  sed -i 's#SSLCertificateFile=".*#SSLCertificateFile="'$SSL_CERT'"#g' /opt/tomcat/conf/server.xml
-fi
-
-if [[ -n "$SSL_KEY" ]]; then
-  sed -i 's#SSLCertificateKeyFile=".*#SSLCertificateKeyFile="'$SSL_KEY'"#g' /opt/tomcat/conf/server.xml
-fi
-
-# # export SSL_CA_CHAIN=we_done_switched_the_cert_chain
-# if [[ -n "$SSL_CA_CHAIN" ]]; then
-#   sed -i 's#\#SSLCertificateChainFile=".*#SSLCertificateChainFile="'$SSL_CA_CHAIN'"#g' /opt/tomcat/conf/server.xml
-# fi
-# grep "we_done_switched_the_cert_chain" /etc/apache2/conf.d/ssl.conf
-
-if [[ -n "$SSL_CA_CERT" ]]; then
-  sed -i 's#SSLCACertificatePath=".*#SSLCACertificatePath="'$SSL_CA_CERT'"#g' /opt/tomcat/conf/server.xml
-fi
+##################################################################
+## Configure ssl certs to use mounted files or the container defaults
+##################################################################
+#
+#echo "=> Creating SSL keys for secure communcation..."
+#if [[ -z "$SSL_KEY" ]]; then
+#	export KEY=/etc/ssl/private/server.key
+#	export DOMAIN=$(hostname)
+#	export PASSPHRASE=$(cat /dev/urandom | tr -cd 'a-f0-9' | head -c 16)
+#	export SUBJ="
+#C=US
+#ST=Texas
+#O=University of Texas
+#localityName=Austin
+#commonName=$DOMAIN
+#organizationalUnitName=TACC
+#emailAddress=admin@$DOMAIN"
+#	openssl genrsa -des3 -out /etc/ssl/private/server.key -passout env:PASSPHRASE 2048
+#	openssl req -new -batch -subj "$(echo -n "$SUBJ" | tr "\n" "/")" -key $KEY -out /etc/ssl/certs/$DOMAIN.csr -passin env:PASSPHRASE
+#	cp $KEY $KEY.orig
+#	openssl rsa -in $KEY.orig -out $KEY -passin env:PASSPHRASE
+#	openssl x509 -req -days 365 -in /etc/ssl/certs/$DOMAIN.csr -signkey $KEY -out /etc/ssl/certs/server.crt
+#fi
+#
+#if [[ -n "$SSL_CERT" ]]; then
+#  sed -i 's#SSLCertificateFile=".*#SSLCertificateFile="'$SSL_CERT'"#g' /opt/tomcat/conf/server.xml
+#fi
+#
+#if [[ -n "$SSL_KEY" ]]; then
+#  sed -i 's#SSLCertificateKeyFile=".*#SSLCertificateKeyFile="'$SSL_KEY'"#g' /opt/tomcat/conf/server.xml
+#fi
+#
+## # export SSL_CA_CHAIN=we_done_switched_the_cert_chain
+## if [[ -n "$SSL_CA_CHAIN" ]]; then
+##   sed -i 's#\#SSLCertificateChainFile=".*#SSLCertificateChainFile="'$SSL_CA_CHAIN'"#g' /opt/tomcat/conf/server.xml
+## fi
+## grep "we_done_switched_the_cert_chain" /etc/apache2/conf.d/ssl.conf
+#
+#if [[ -n "$SSL_CA_CERT" ]]; then
+#  sed -i 's#SSLCACertificatePath=".*#SSLCACertificatePath="'$SSL_CA_CERT'"#g' /opt/tomcat/conf/server.xml
+#fi
 
 #################################################################
 # Scratch directory init

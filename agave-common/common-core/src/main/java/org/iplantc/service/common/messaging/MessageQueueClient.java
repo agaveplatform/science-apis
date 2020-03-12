@@ -137,20 +137,20 @@ public interface MessageQueueClient {
 	
 	/**
 	 * Checks for the existence of a given message.
-	 * 
-	 * @param queue name of queue
+	 *
+	 * @param  exchange of tunnel/exchange/tube
 	 * @param messageId unique message id
 	 * @return true if a message with the given ID exists. False otherwise.
 	 * @throws MessagingException
 	 */
-	public boolean messageExist(String queue, Object messageId) throws MessagingException;
+	public boolean messageExist(String exchange, Object messageId) throws MessagingException;
 
 	/**
 	 * Identical to {@link #pop(String, String)}, but waits <code>timeout</code> to
 	 * recieve a reserved message. 
 	 * 
+	 * @param exchange name of tunnel/exchange/tube
 	 * @param queue name of queue
-	 * @param messageId unique message id
 	 * @param timeout the timeout of the message in seconds.
 	 * @return true if a message with the given ID exists. False otherwise.
 	 * @throws MessagingException if a message is not received during timeout or the operation fails

@@ -1,6 +1,8 @@
 package org.iplantc.service.io.permissions;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -217,6 +219,11 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 		system.setPubliclyAvailable(true);
 		system.setGlobalDefault(true);
 		system.getStorageConfig().setMirrorPermissions(true);
+		Path homeDir = Paths.get(system.getStorageConfig().getHomeDir());
+		if (homeDir.endsWith(SYSTEM_OWNER)) {
+			homeDir = homeDir.getParent();
+		}
+		system.getStorageConfig().setHomeDir(homeDir.toString());
 		dao.persist(system);
         return system;
 	}
@@ -229,7 +236,12 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
     	system.setPubliclyAvailable(true);
     	system.setGlobalDefault(true);
     	system.getStorageConfig().setMirrorPermissions(false);
-    	dao.persist(system);
+		Path homeDir = Paths.get(system.getStorageConfig().getHomeDir());
+		if (homeDir.endsWith(SYSTEM_OWNER)) {
+			homeDir = homeDir.getParent();
+		}
+		system.getStorageConfig().setHomeDir(homeDir.toString());
+		dao.persist(system);
     	return system;
 	}
 
@@ -238,11 +250,18 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 		// public readonly system
 		RemoteSystem system = getBaseStorageSystem("public-guest-" + type.name().toLowerCase() + "-system");
 		system.setOwner(SYSTEM_OWNER);
-        system.addRole(new SystemRole(Settings.WORLD_USER_USERNAME, RoleType.GUEST));
         system.setPubliclyAvailable(true);
         system.setGlobalDefault(false);
-        dao.persist(system);
-        return system;
+		Path homeDir = Paths.get(system.getStorageConfig().getHomeDir());
+		if (homeDir.endsWith(SYSTEM_OWNER)) {
+			homeDir = homeDir.getParent();
+		}
+		system.getStorageConfig().setHomeDir(homeDir.toString());
+		dao.persist(system);
+		system.addRole(new SystemRole(Settings.WORLD_USER_USERNAME, RoleType.GUEST));
+		dao.persist(system);
+
+		return system;
 	}
 
 	protected RemoteSystem getPrivateSystem(RemoteSystemType type) throws Exception
@@ -260,9 +279,10 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
         // private shared readonly system
 		RemoteSystem system = getBaseStorageSystem("private-guest-" + type.name().toLowerCase() + "-system");
 		system.setOwner(SYSTEM_OWNER);
+		dao.persist(system);
 		system.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.GUEST));
 		dao.persist(system);
-        return system;
+		return system;
 	}
 
 	protected RemoteSystem getPrivateSharedUserSystem(RemoteSystemType type) throws Exception
@@ -272,7 +292,9 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 		system.setOwner(SYSTEM_OWNER);
 		system.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.USER));
 		dao.persist(system);
-        return system;
+		system.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.USER));
+		dao.persist(system);
+		return system;
 	}
 
 	protected RemoteSystem getPrivateSharedPublisherSystem(RemoteSystemType type) throws Exception
@@ -282,7 +304,9 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 		system.setOwner(SYSTEM_OWNER);
 		system.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.PUBLISHER));
 		dao.persist(system);
-        return system;
+		system.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.PUBLISHER));
+		dao.persist(system);
+		return system;
 	}
 
 	protected RemoteSystem getPrivateSharedAdminSystem(RemoteSystemType type) throws Exception
@@ -292,12 +316,14 @@ public abstract class AbstractPermissionManagerTest extends BaseTestCase
 		system.setOwner(SYSTEM_OWNER);
 		system.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.ADMIN));
 		dao.persist(system);
-        return system;
+		system.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.ADMIN));
+		dao.persist(system);
+		return system;
 	}
 
-	/************************************************************************
-	/*						ABSTRACT PERMISSION TESTS      					*
-	/************************************************************************/
+	//************************************************************************
+	//*						ABSTRACT PERMISSION TESTS      					*
+	//************************************************************************/
 
 	/**
 	 * Generic test whether the given user can read to the given path on the given system

@@ -140,29 +140,29 @@ public class PublicFileDownloadResource extends AbstractFileResource {
             }
         }
         catch (SystemUnavailableException e) {
-        	try { remoteDataClient.disconnect(); } catch (Exception e1) {}
+        	try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
 			log.error("Failed to download published data.", e);
 			throw new ResourceException(Status.SERVER_ERROR_SERVICE_UNAVAILABLE, e.getMessage(), e);
 		}
         catch (SystemUnknownException e) {
-        	try { remoteDataClient.disconnect(); } catch (Exception e1) {}
+        	try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
         	log.error("Failed to download published data.", e);
         	throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, e.getMessage(), e);
         } 
         catch (RemoteDataException e) {
-        	try { remoteDataClient.disconnect(); } catch (Exception e1) {}
+        	try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
 			String message = "Unable to connect to the system containing the published data, " + systemId;
         	log.error(message, e);
         	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, message, e);
         }
         catch (RemoteCredentialException e) {
-        	try { remoteDataClient.disconnect(); } catch (Exception e1) {}
+        	try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
         	String message = "Failed to authenticate to the system containing the published data, " + systemId;
         	log.error(message, e);
         	throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, message, e);
         }
         catch (Throwable e) {
-        	try { remoteDataClient.disconnect(); } catch (Exception e1) {}
+        	try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
         	String message = "An unexpected error occurred while fetching the published data from " + systemId 
             		+ ". If this error continues, please contact your tenant admin.";
             log.error(message, e);
@@ -443,9 +443,9 @@ public class PublicFileDownloadResource extends AbstractFileResource {
 						bout.flush();
 //						out.close();
 					} finally {
-						try { client.disconnect(); } catch (Exception e) {}
-						try { remoteDataClient.disconnect(); } catch (Exception e) {}
-						try { in.close(); } catch (Exception e) {}
+						try { client.disconnect(); } catch (Exception ignored) {}
+						try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
+						try { in.close(); } catch (Exception ignored) {}
 //						try { out.close(); } catch (Exception e) {}
 					}
 				}
@@ -506,9 +506,9 @@ public class PublicFileDownloadResource extends AbstractFileResource {
 						}
 						writer.flush();
 					} finally {
-						try { in.close(); } catch (Exception e) {}
-						try { client.disconnect(); } catch (Exception e) {}
-						try { remoteDataClient.disconnect(); } catch (Exception e) {}
+						try { in.close(); } catch (Exception ignored) {}
+						try { client.disconnect(); } catch (Exception ignored) {}
+						try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
 					}
 				}
 			};
@@ -541,7 +541,7 @@ public class PublicFileDownloadResource extends AbstractFileResource {
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, e);
         } 
 		finally {
-        	try {remoteDataClient.disconnect();} catch (Exception e) {}
+        	try {remoteDataClient.disconnect();} catch (Exception ignored) {}
         }
 		
     }	
@@ -673,7 +673,7 @@ public class PublicFileDownloadResource extends AbstractFileResource {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL, e.getMessage());
         } 
 		finally {
-        	try {remoteDataClient.disconnect();} catch (Exception e) {}
+        	try {remoteDataClient.disconnect();} catch (Exception ignored) {}
         }
     }
 }

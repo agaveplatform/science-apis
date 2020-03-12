@@ -37,7 +37,7 @@ public interface MessageBody<T>
 	 * Sets the tenant used to establish the 
 	 * context of this message.
 	 * 
-	 * @param textual tenantId 
+	 * @param tenantId
 	 */
 	public void setTenant(String tenantId);
 	
@@ -52,7 +52,7 @@ public interface MessageBody<T>
 	 * Sets the username of the user associated with 
 	 * this message.
 	 * 
-	 * @param a valid username in the given tenant
+	 * @param owner a valid username in the given tenant
 	 */
 	public void setOwner(String owner);
 	
@@ -76,7 +76,7 @@ public interface MessageBody<T>
 	 * the message size within the single message 
 	 * capacity of the underlying message queue.
 	 * 
-	 * @param optional custom context
+	 * @param customContext custom context
 	 */
 	public void setContext(T customContext);
 	

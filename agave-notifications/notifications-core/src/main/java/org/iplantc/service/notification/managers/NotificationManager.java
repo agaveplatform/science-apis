@@ -1,9 +1,14 @@
 package org.iplantc.service.notification.managers;
 
+import io.cloudevents.json.Json;
+import io.cloudevents.v1.CloudEventBuilder;
+import io.cloudevents.v1.CloudEventImpl;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.MessageClientFactory;
 import org.iplantc.service.common.messaging.MessageQueueClient;
+import org.iplantc.service.common.uuid.UUIDEntityLookup;
+import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
@@ -11,6 +16,10 @@ import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.notification.model.enumerations.NotificationStatusType;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
+
+import java.net.URI;
+import java.net.URL;
+import java.util.UUID;
 
 /**
  * Helper class to queue up all the registered notifications for a given
@@ -47,7 +56,7 @@ public class NotificationManager {
 	 * @param customData serialized custom data to be included in the message
 	 * @return number of messages published for the given event
 	 */
-	public static int process(String associatedUuid, String notificationEvent, String affectedUser, String customData) 
+	public static int process(String associatedUuid, final String eventType, String affectedUser, String customData)
 	{
 		MessageQueueClient queue = null;
 		int totalProcessed = 0;
@@ -57,17 +66,35 @@ public class NotificationManager {
 			
 			// find all messages that match the given event and uuid and throw
 			// them into queue
-			for (Notification n : dao.getActiveForAssociatedUuidAndEvent(associatedUuid, notificationEvent)) {
+			for (Notification n : dao.getActiveForAssociatedUuidAndEvent(associatedUuid, eventType)) {
 				try {
-					NotificationMessageContext messageBodyContext = new NotificationMessageContext(
-							notificationEvent, customData, associatedUuid);
+					NotificationMessageContext payload = new NotificationMessageContext(
+							eventType, customData, associatedUuid);
 
-					NotificationMessageBody messageBody = new NotificationMessageBody(
-							n.getUuid(), affectedUser, n.getTenantId(),
-							messageBodyContext);
+					// given
+					final String eventId = UUID.randomUUID().toString();
+					final URI src = URI.create("/trigger");
+
+					UUIDType uuidType = UUIDType.getInstance(associatedUuid);
+					String source = UUIDEntityLookup.getResourceUrl(uuidType, associatedUuid);
+					URI sourceUrl = new URI(source);
+
+					// passing in the given attributes
+					final CloudEventImpl<NotificationMessageContext> cloudEvent =
+							CloudEventBuilder.<NotificationMessageContext>builder()
+									.withType(eventType)
+									.withId(eventId)
+									.withSource(sourceUrl)
+									.withSubject(affectedUser)
+									.withDataContentType("application/json")
+									.withData(payload)
+									.build();
+
+					// marshalling as json
+					final String json = Json.encode(cloudEvent);
 
 					queue.push(Settings.NOTIFICATION_TOPIC,
-							Settings.NOTIFICATION_QUEUE, messageBody.toJSON());
+							Settings.NOTIFICATION_QUEUE, json);
 					totalProcessed++;
 				} catch (Exception e) {
 					log.error("Failed to queue up notification " + n.getUuid());
@@ -76,15 +103,15 @@ public class NotificationManager {
 		} catch (MessagingException e) {
 			log.error(
 					"Failed to connect to the messaging queue. No notifications will be sent for "
-							+ associatedUuid + " on event " + notificationEvent,
+							+ associatedUuid + " on event " + eventType,
 					e);
 		} catch (NotificationException e) {
 			log.error("Failed to process notifications for " + associatedUuid
-					+ " on event " + notificationEvent, e);
+					+ " on event " + eventType, e);
 		} catch (Throwable e) {
 			log.error(
 					"Unknown messaging exception occurred. Failed to process notifications for "
-							+ associatedUuid + " on event " + notificationEvent,
+							+ associatedUuid + " on event " + eventType,
 					e);
 		} finally {
 			if (queue != null) {

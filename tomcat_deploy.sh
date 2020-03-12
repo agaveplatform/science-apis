@@ -26,7 +26,7 @@ for i in auth postits logging tenants usage; do
 done
 
 # deploy java webapps to tomcat
-for i in apps jobs files metadata monitors notifications profiles systems transforms; do
+for i in apps files jobs metadata monitors notifications systems transforms; do
 	rm -rf $CATALINA_HOME/webapps/$i* $CATALINA_HOME/webapps/work/Catalina/localhost/$i
 	cp $DIR/agave-$i/$i-api/target/*.war $CATALINA_HOME/webapps/;
 done

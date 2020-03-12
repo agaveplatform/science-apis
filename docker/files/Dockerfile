@@ -1,4 +1,4 @@
-FROM agaveapi/java-api-base:8.0.43-java8
+FROM agaveplatform/tomcat:8.5
 
 MAINTAINER Agave Platform <help@agaveplatform.org>
 

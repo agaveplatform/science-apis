@@ -24,8 +24,9 @@ set -e
 set -u
 set -o pipefail
 
-export javamodules="apps files jobs legacy-jobs metadata monitors notifications profiles realtime systems tags uuids"
+export javamodules="apps files jobs metadata monitors notifications profiles systems tags uuids"
 export phpmodules="postits logging tenants usage apidocs"
+export gomodules="sftp-relay"
 
 delete_docker_image_if_exists()
 {
@@ -67,18 +68,25 @@ create_agave_migrations_image() {
   
  image=$1/agave-migrations:$2
 
- if [[ "$(docker images -q ${image} 2> /dev/null)" == "" || "${overwrite}" = true ]]; then
-
-  cp -f agave-migrations/target/classes/flyway.conf docker/migrations/conf
-  rsync -av --exclude='mysql*.jar' --exclude='flyway*.jar' agave-migrations/target/dependency/* docker/migrations/lib
-  cp -rf agave-migrations/target/classes/db/migration/*.sql  docker/migrations/sql
-  cp -rf agave-migrations/target/dependency/mysql*.jar docker/migrations/drivers
-  cp -rf agave-migrations/target/classes/docker-entrypoint.sh  docker/migrations/
-  cp -rf agave-migrations/target/agave-migrations*.jar  docker/migrations/lib
-  cp -f agave-migrations/target/classes/Dockerfile docker/migrations/
+ if [[ "$(docker images -q ${image} 2> /dev/null)" == "" || "$(docker images -q "$1/agave-mariadb:$2" 2> /dev/null)" == "" ||  "${overwrite}" = true ]]; then
 
   echo "Building image for migrations"
-  docker build docker/migrations -t ${image}
+  mvn -P agave,dev,integration-test -Dskip.migrations=false verify -pl agave-migrations
+
+  docker tag agave-migrations:$2 $image
+  docker tag agave-mariadb:$2 $1/agave-mariadb:$2
+
+#
+#  cp -f agave-migrations/target/classes/flyway.conf docker/migrations/conf
+#  rsync -av --exclude='mysql*.jar' --exclude='flyway*.jar' agave-migrations/target/dependency/* docker/migrations/lib
+#  cp -rf agave-migrations/target/classes/db/migration/*.sql  docker/migrations/sql
+#  cp -rf agave-migrations/target/dependency/mysql*.jar docker/migrations/drivers
+#  cp -rf agave-migrations/target/classes/docker-entrypoint.sh  docker/migrations/
+#  cp -rf agave-migrations/target/agave-migrations*.jar  docker/migrations/lib
+#  cp -f agave-migrations/target/classes/Dockerfile docker/migrations/
+#
+#  echo "Building image for migrations"
+#  docker build docker/migrations -t ${image}
  else
   echo "Already ${image} exists not rebuilding"
  fi
@@ -111,6 +119,22 @@ build()
    echo "Building image for ${phpmodule}"
    cp -rf agave-${phpmodule}/${phpmodule}-api/target/html docker/${phpmodule}
    docker build docker/${phpmodule} -t ${image}
+  else
+   echo "Already ${image} exists not rebuilding"
+  fi
+
+ done
+
+ for gomodule in ${gomodules}; do
+
+  image=$1/${gomodule}:$2
+
+  if [[ "$(docker images -q ${image} 2> /dev/null)" == "" || "${overwrite}" = true ]]; then
+   echo "Building image for ${gomodule}"
+   pushd agave-transfers/${gomodule} >> /dev/null
+   make image
+   docker tag ${gomodule}:develop ${image}
+   popd >> /dev/null
   else
    echo "Already ${image} exists not rebuilding"
   fi
@@ -154,6 +178,10 @@ publish()
   push_if_exists $1/${phpmodule}-api:$2
  done
 
+ for gomodule in ${gomodules}; do
+  push_if_exists $1/${gomodule}:$2
+ done
+
  #finally agave migrations
  push_if_exists $1/agave-migrations:$2
 
@@ -171,6 +199,10 @@ retag()
    docker tag $1/${phpmodule}-api:$2 $3/${phpmodule}-api:$4
  done
 
+ for gomodule in ${gomodules}; do
+   docker tag $1/${gomodule}:$2 $3/${gomodule}:$4
+ done
+
  #finally agave migrations
  docker tag $1/agave-migrations:$2 $3/agave-migrations:$4
 }
@@ -185,6 +217,10 @@ pull()
 
  for phpmodule in ${phpmodules}; do
   pull_image $1/${phpmodule}-api:$2
+ done
+
+ for gomodule in ${gomodules}; do
+  pull_image $1/${gomodule}-api:$2
  done
 
  #finally agave migrations

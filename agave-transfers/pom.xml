@@ -13,11 +13,12 @@
     <artifactId>transfers</artifactId>
     <version>2.2.24</version>
     <name>Agave Platform Transfer Service Parent POM</name>
-    <description>Agave grpc data transfer services</description>
+    <description>Agave data transfer services</description>
     <packaging>pom</packaging>
 
     <modules>
         <module>sftp-relay</module>
+        <module>transfers-api</module>
     </modules>
 
 </project>

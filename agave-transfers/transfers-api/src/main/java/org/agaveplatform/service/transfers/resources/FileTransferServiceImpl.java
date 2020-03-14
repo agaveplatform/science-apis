@@ -1,20 +1,19 @@
-package main.java.org.agaveplatform.service.transfers.streaming;
+package org.agaveplatform.service.transfers.resources;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.iplantc.vertx.fileTransfer.FileTrasferService;
 
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
-public class StramingFileTaskImpl  implements FileTrasferService {
+public class FileTransferServiceImpl  implements FileTransferService {
 
 	private final HashMap<String, Double> lastValues = new HashMap<>();
 
-	public StramingFileTaskImpl(Vertx vertx) {
+	public FileTransferServiceImpl(Vertx vertx) {
 		vertx.eventBus().<JsonObject>consumer("filetransfer.sftp", message -> {
 			JsonObject json = message.body();
 			lastValues.put(json.getString("id"), json.getDouble("temp"));

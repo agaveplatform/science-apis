@@ -1,24 +1,14 @@
-package main.java.org.agaveplatform.service.transfers.listener;
+package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.eventbus.EventBus;
-import io.vertx.core.json.JsonObject;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.vertx.codegen.annotations.ProxyGen;
+import io.vertx.core.Vertx;
 
-import java.text.DecimalFormat;
-
-public class TransferCompleteTaskListener extends AbstractVerticle {
-	private final Logger logger = LoggerFactory.getLogger(TransferCompleteTaskListener.class);
-	private final DecimalFormat format = new DecimalFormat("#.##");
-	@Override
-	public void start() {
-		EventBus bus = vertx.eventBus();
-		bus.<JsonObject>consumer("sensor.updates", msg -> {
-			JsonObject body = msg.body();
-			String id = body.getString("id");
-			String temp = format.format(body.getDouble("temp"));
-			logger.info("{} reports a temperature ~{}C", id, temp);
-		});
+@ProxyGen
+public interface TransferCompleteTaskListener {
+	static TransferCompleteTaskListener getSystem(Vertx vertx){
+		return new TransferCompleteTaskListenerImpl(vertx);
+	}
+	static TransferCompleteTaskListener createProxy(Vertx vertx, String address) {
+		return new TransferCompleteTaskListenerImpl(vertx, address);
 	}
 }

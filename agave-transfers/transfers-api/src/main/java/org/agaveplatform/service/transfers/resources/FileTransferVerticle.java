@@ -1,4 +1,4 @@
-package main.java.org.agaveplatform.service.transfers.fileTransfer;
+package org.agaveplatform.service.transfers.resources;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;

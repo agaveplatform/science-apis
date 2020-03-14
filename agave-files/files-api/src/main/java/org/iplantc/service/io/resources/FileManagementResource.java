@@ -7,12 +7,6 @@ import static org.iplantc.service.io.model.enumerations.FileOperationType.RENAME
 import static org.quartz.JobBuilder.newJob;
 import static org.quartz.TriggerBuilder.newTrigger;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.vertx.core.*;
-import io.vertx.core.eventbus.EventBus;
-
-import org.agaveplatform.service.transfers.process.*;
-
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -117,15 +111,11 @@ public class FileManagementResource extends AbstractFileResource
 
     private RemoteDataClient remoteDataClient;
     private SystemDao systemDao;
-	private Vertx vertx;
-	private JsonNode jsonVertx;
 
     @Override
 	public void doInit() {
     	
     	try {
-			this.vertx = Vertx.vertx();
-
     		this.sysManager = new SystemManager();
 	    	this.systemDao = new SystemDao();
 	        
@@ -1597,55 +1587,21 @@ public class FileManagementResource extends AbstractFileResource
 					logicalFile.setStatus(StagingTaskStatus.STAGING_COMPLETED);
 				}
 
-
-				ObjectMapper objectMapper = new ObjectMapper();
-				String json = objectMapper.writeValueAsString( logicalFile);
-				JsonNode jsonNode = objectMapper.readTree(json);
-				EventBus bus = vertx.eventBus();
-
 				if (operation == MKDIR)
 				{
-					LogicalFile finalLogicalFile = logicalFile;
-					vertx.executeBlocking(promise -> {
-						Representation result = doMkdirOperation(jsonInput, finalLogicalFile, pm);
-						return promise.complete(result);
-					}, res -> {
-						System.out.println("res " +res.result());
-					});
+					return doMkdirOperation(jsonInput, logicalFile, pm);
 				}
 				else if (operation == RENAME)
 				{
-					LogicalFile finalLogicalFile = logicalFile;
-					vertx.executeBlocking(promise -> {
-						Representation result = doRenameOperation(jsonInput, finalLogicalFile, pm);
-						return promise.complete(result);
-					}, res -> {
-						System.out.println("res " +res.result());
-					});
-
-					//return doRenameOperation(jsonInput, absolutePath, logicalFile, pm);
+					return doRenameOperation(jsonInput, absolutePath, logicalFile, pm);
 				}
 				else if (operation == COPY)
 				{
-					LogicalFile finalLogicalFile = logicalFile;
-					vertx.executeBlocking(promise -> {
-						Representation result = doCopyOperation(jsonInput, finalLogicalFile, pm);
-						return promise.complete(result);
-					}, res -> {
-						System.out.println("res " +res.result());
-					});
-
+					return doCopyOperation(jsonInput, absolutePath, logicalFile, pm);
 				}
 				else if (operation == MOVE)
 				{
-					LogicalFile finalLogicalFile = logicalFile;
-					vertx.executeBlocking(promise -> {
-						Representation result = doMoveOperation(jsonInput, finalLogicalFile, pm);
-						return promise.complete(result);
-					}, res -> {
-						System.out.println("res " +res.result());
-					});
-					//return doMoveOperation(jsonInput, logicalFile, pm);
+					return doMoveOperation(jsonInput, logicalFile, pm);
 				}
 				else
 				{

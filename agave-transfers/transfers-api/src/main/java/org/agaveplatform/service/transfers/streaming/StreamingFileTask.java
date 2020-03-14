@@ -1,6 +1,9 @@
-package main.java.org.agaveplatform.service.transfers.streaming;
+package org.agaveplatform.service.transfers.streaming;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
@@ -8,23 +11,13 @@ import io.vertx.core.json.JsonObject;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
-public class StreamingFileTask extends AbstractVerticle {
-	private final HashMap<String, Double> lastValues = new HashMap<>();
-	@Override
-	public void start() {
-		EventBus bus = vertx.eventBus();
-		bus.consumer("sensor.updates", this::update);
-		bus.consumer("sensor.average", this::average);
+public interface StreamingFileTask {
+	static StreamingFileTask getSystem(Vertx vertx){
+		return new StreamingFileTaskImpl(vertx);
 	}
-	private void update(Message<JsonObject> message) {
-		JsonObject json = message.body();
-		lastValues.put(json.getString("id"), json.getDouble("temp"));
+	static StreamingFileTask createProxy(Vertx vertx, String address) {
+		return new StreamingFileTaskImpl(vertx, address);
 	}
-	private void average(Message<JsonObject> message) {
-		double avg = lastValues.values().stream()
-				.collect(Collectors.averagingDouble(Double::doubleValue));
-		JsonObject json = new JsonObject().put("average", avg);
-		message.reply(json);
-	}
-
+	void createDir(JsonObject jsonObject, Handler<AsyncResult<JsonObject>> handler);
+	void createFile(JsonObject jsonObject, Handler<AsyncResult<JsonObject>> handler);
 }

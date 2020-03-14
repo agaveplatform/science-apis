@@ -18,7 +18,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
-import org.agaveplatform.service.transfers.AgaveJWTAuthHandler;
+import java.util.stream.Collectors;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,15 +114,26 @@ public class TransferServiceVertical extends AbstractVerticle {
 
     private Future<TransferTask> insert(SQLConnection connection, TransferTask transferTask, boolean closeConnection) {
         Future<TransferTask> future = Future.future();
-        String sql = "INSERT INTO TransferTasks (title, url) VALUES (?, ?)";
+        String sql = "INSERT INTO TransferTasks (source, dest, owner, tenant_id, created, last_updated, uuid) VALUES (?, ?, ?, ?, ?, ?, ?)";
         connection.updateWithParams(sql,
-                new JsonArray().add(transferTask.getTitle()).add(transferTask.getUrl()),
+                new JsonArray()
+                        .add(transferTask.getSource())
+                        .add(transferTask.getDest())
+                        .add(transferTask.getOwner())
+                        .add(transferTask.getTenantId())
+                        .add(transferTask.getCreated())
+                        .add(transferTask.getLastUpdated())
+                        .add(transferTask.getUuid()),
                 ar -> {
                     if (closeConnection) {
                         connection.close();
                     }
                     future.handle(
-                            ar.map(res -> new TransferTask(res.getKeys().getLong(0), transferTask.getTitle(), transferTask.getUrl()))
+                            ar.map(res -> {
+                                TransferTask t = new TransferTask(transferTask.getSource(), transferTask.getDest());
+                                t.setId(res.getKeys().getLong(0));
+                                return t;
+                            })
                     );
                 }
         );

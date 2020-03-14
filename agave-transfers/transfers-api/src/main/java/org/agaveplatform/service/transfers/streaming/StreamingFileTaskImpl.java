@@ -19,6 +19,7 @@ public class StreamingFileTaskImpl extends AbstractVerticle implements Streaming
 		super();
 		setVertx(vertx);
 		setAddress(address);
+
 	}
 
 	public void start() {

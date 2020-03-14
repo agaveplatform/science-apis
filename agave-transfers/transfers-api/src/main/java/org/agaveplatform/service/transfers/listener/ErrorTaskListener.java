@@ -1,4 +1,4 @@
-package main.java.org.agaveplatform.service.transfers.listener;
+package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.eventbus.EventBus;
@@ -19,8 +19,8 @@ public class ErrorTaskListener extends AbstractVerticle {
 			String err = body.getString("error");
 			logger.info("Error %v,  %s", systemId, err);
 
-			if (err == "retry"){
-				bus.publish(msg);
+			if (err.equals("retry")){
+				bus.publish(msg.address(), body);
 			}
 		});
 

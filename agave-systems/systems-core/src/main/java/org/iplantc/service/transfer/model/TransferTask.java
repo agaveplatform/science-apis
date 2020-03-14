@@ -377,7 +377,7 @@ public class TransferTask {
 	
 	/**
 	 * Convenience method to calculate and save the transfer rate.
-	 * calls out to {@ #calculateTransferRate()}
+	 * calls out to {link@ #calculateTransferRate()}
 	 */
 	public void updateTransferRate()
 	{
@@ -479,7 +479,7 @@ public class TransferTask {
 	}
 
 	/**
-	 * @param skippedFiles the skippedFiles to set
+	 * @param totalSkippedFiles the skippedFiles to set
 	 */
 	public void setTotalSkippedFiles(long totalSkippedFiles)
 	{
@@ -631,7 +631,7 @@ public class TransferTask {
      * Converts an Agave URL to standard HTTP URL for reference in the hypermedia links 
      * included in the JSON response. If the link is not an Agave url, it is returned as is.
      * 
-     * @param String url to resolve. Can be of the form agave:// or http(s)://
+     * @param endpoint to resolve. Can be of the form agave:// or http(s)://
      * @return String resolved url
      */
     public String resolveEndpointToUrl(String endpoint) 

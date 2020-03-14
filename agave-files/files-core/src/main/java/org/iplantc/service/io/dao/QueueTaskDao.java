@@ -21,6 +21,7 @@ import org.iplantc.service.io.model.QueueTask;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.transfer.exceptions.TransferException;
+import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.SchedulerException;
 
 /**
@@ -183,11 +184,11 @@ public class QueueTaskDao
 		try 
 		{
 			StagingTask task = new StagingTask(file, createdBy);
-			
+//			TransferTask tt = FileTransferService.getInstance().submit(task);
+//			return tt;
 			QueueTaskDao.persist(task);
-			
+
 			LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_QUEUED, createdBy);
-			
 		} 
 		catch (Exception e) 
 		{

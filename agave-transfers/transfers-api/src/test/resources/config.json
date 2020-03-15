@@ -1,5 +1,6 @@
 {
   "HTTP_PORT": 8085,
+  "JWT_AUTH": false,
   "dbname": "${foundation.db.database}",
   "driver_class": "${foundation.db.driver}",
   "url": "${foundation.db.url}",

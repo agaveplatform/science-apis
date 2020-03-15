@@ -66,15 +66,18 @@ public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements
         HttpServerRequest request = ctx.request();
         List<Map.Entry<String,String>> headers = request.headers().entries();
         String authHeader = AuthHelper.getAuthHeader(headers);
-        String authorization = request.headers().get(authHeader);
+        if (authHeader == null) {
+            handler.handle(Future.failedFuture(FORBIDDEN));
+            return;
+        }
 
+        String authorization = request.headers().get(authHeader);
         if (authorization == null) {
             if (optional) {
                 handler.handle(Future.succeededFuture());
             } else {
                 handler.handle(Future.failedFuture(UNAUTHORIZED));
             }
-
         } else {
             try {
                 int idx = authorization.indexOf(32);

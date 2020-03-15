@@ -1,9 +1,8 @@
 {
   "HTTP_PORT": 8085,
+  "JWT_AUTH": false,
   "dbname": "${foundation.db.database}",
-  "driver_class": "${foundation.db.driver}",
-  "url": "${foundation.db.url}",
-  "user": "${foundation.db.username}",
-  "password": "${foundation.db.password}",
+  "driver_class": "org.hsqldb.jdbcDriver",
+  "url": "jdbc:hsqldb:mem:test?shutdown=true",
   "max_pool_size": 10
 }

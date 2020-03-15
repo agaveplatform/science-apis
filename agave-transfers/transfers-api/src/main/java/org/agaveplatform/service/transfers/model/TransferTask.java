@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
 import org.apache.log4j.Logger;
@@ -26,6 +27,7 @@ import static javax.persistence.GenerationType.IDENTITY;
  * @author dooley
  *
  */
+@JsonSerialize(using = AgaveResourceSerializer.class)
 public class TransferTask {
     
     private static final Logger log = Logger.getLogger(TransferTask.class);
@@ -59,24 +61,24 @@ public class TransferTask {
 	public TransferTask(JsonObject json) {
 		this();
 		this.setAttempts(json.getInteger("attempts"));
-		this.setBytesTransferred(json.getInteger("bytesTransferred"));
+		this.setBytesTransferred(json.getInteger("bytes_transferred"));
 		this.setCreated(json.getInstant("created"));
 		this.setDest(json.getString("dest"));
-		this.setEndTime(json.getInstant("endTime"));
-		this.setEventId(json.getString("eventId"));
-		this.setLastUpdated(json.getInstant("lastUpdated"));
+		this.setEndTime(json.getInstant("end_time"));
+		this.setEventId(json.getString("event_id"));
+		this.setLastUpdated(json.getInstant("last_updated"));
 		this.setOwner(json.getString("owner"));
 		this.setSource(json.getString("source"));
-		this.setStartTime(json.getInstant("startTime"));
+		this.setStartTime(json.getInstant("start_time"));
 		this.setStatus(TransferStatusType.valueOf(json.getString("status")));
-		this.setTenantId(json.getString("tenantId"));
-		this.setTotalSize(json.getLong("totalSize", 0L));
-		this.setTransferRate(json.getDouble("transferRate", 0D));
-		this.setParentTaskId(json.getString("parentTask"));
-		this.setRootTaskId(json.getString("rootTask"));
+		this.setTenantId(json.getString("tenant_id"));
+		this.setTotalSize(json.getLong("total_size", 0L));
+		this.setTransferRate(json.getDouble("transfer_rate", 0D));
+		this.setParentTaskId(json.getString("parent_task"));
+		this.setRootTaskId(json.getString("root_task"));
 		this.setUuid(json.getString("uuid"));
-		this.setTotalFiles(json.getInteger("totalFiles", 0));
-		this.setTotalSkippedFiles(json.getInteger("totalSkippedFiles", 0));
+		this.setTotalFiles(json.getInteger("total_files", 0));
+		this.setTotalSkippedFiles(json.getInteger("total_skipped", 0));
 	}
 
 	public TransferTask(String source, String dest)
@@ -457,24 +459,24 @@ public class TransferTask {
                 .put("status", getStatus().name())
                 .put("totalFiles", getTotalFiles())
                 .put("totalSize", getTotalSize())
-                .put("totalSkippedFiles", getTotalSkippedFiles())
-				.put("_links", new JsonObject()
-						.put("self", new JsonObject()
-                    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid()))
-                		.put("source", new JsonObject()
-                        	.put("href", TransferRateHelper.resolveEndpointToUrl(getSource())))
-						.put("dest", new JsonObject()
-							.put("href", TransferRateHelper.resolveEndpointToUrl(getDest())))
-                    	.put("parentTask", new JsonObject()
-                        	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getParentTaskId()))
-                		.put("rootTask", new JsonObject()
-                        	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getRootTaskId()))
-                    	.put("childTasks", new JsonObject()
-                        	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid() + "/subtasks"))
-						.put("notifications", new JsonObject()
-                        	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + "?associatedUuid=" + getUuid()))
-                		.put("owner", new JsonObject()
-                        	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + getOwner())));
+                .put("totalSkippedFiles", getTotalSkippedFiles());
+//				.put("_links", new JsonObject()
+//						.put("self", new JsonObject()
+//                    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid()))
+//                		.put("source", new JsonObject()
+//                        	.put("href", TransferRateHelper.resolveEndpointToUrl(getSource())))
+//						.put("dest", new JsonObject()
+//							.put("href", TransferRateHelper.resolveEndpointToUrl(getDest())))
+//                    	.put("parentTask", new JsonObject()
+//                        	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getParentTaskId()))
+//                		.put("rootTask", new JsonObject()
+//                        	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getRootTaskId()))
+//                    	.put("childTasks", new JsonObject()
+//                        	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid() + "/subtasks"))
+//						.put("notifications", new JsonObject()
+//                        	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + "?associatedUuid=" + getUuid()))
+//                		.put("owner", new JsonObject()
+//                        	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + getOwner())));
         }
         catch (Exception e) {
         	log.error("Error producing JSON output for transfer task " + getUuid());

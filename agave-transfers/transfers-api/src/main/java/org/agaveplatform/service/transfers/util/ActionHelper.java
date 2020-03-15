@@ -39,9 +39,11 @@ public class ActionHelper {
     public static <T> Handler<AsyncResult<T>> forbidden(RoutingContext rc) {
         return writeJsonResponse(rc,403);
     }
+
     public static <T> Handler<AsyncResult<T>> permissionDenied(RoutingContext rc) {
         return writeJsonResponse(rc,401);
     }
+
     public static <T> Handler<AsyncResult<T>> ok(RoutingContext rc) {
         return writeJsonResponse(rc,200);
     }

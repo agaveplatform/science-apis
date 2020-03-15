@@ -53,6 +53,8 @@
                 </executions>
                 <configuration>
                     <redeploy>true</redeploy>
+                    <vertx.verticle>org.agaveplatform.service.transfers.resources.TransferServiceVertical</vertx.verticle>
+                    <vertx.launcher>org.agaveplatform.service.transfers.TransferApplication</vertx.launcher>
                 </configuration>
             </plugin>
             <plugin>
@@ -124,7 +126,6 @@
             <groupId>org.hsqldb</groupId>
             <artifactId>hsqldb</artifactId>
             <version>2.4.0</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>

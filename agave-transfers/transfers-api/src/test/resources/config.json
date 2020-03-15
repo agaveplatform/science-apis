@@ -1,0 +1,9 @@
+{
+  "HTTP_PORT": 8085,
+  "dbname": "${foundation.db.database}",
+  "driver_class": "${foundation.db.driver}",
+  "url": "${foundation.db.url}",
+  "user": "${foundation.db.username}",
+  "password": "${foundation.db.password}",
+  "max_pool_size": 10
+}

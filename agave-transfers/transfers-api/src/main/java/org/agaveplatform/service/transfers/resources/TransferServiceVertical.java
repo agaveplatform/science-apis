@@ -19,7 +19,8 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
 import java.util.stream.Collectors;
-import org.iplantc.service.transfer.model.TransferTask;
+
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +48,7 @@ public class TransferServiceVertical extends AbstractVerticle {
         // Bind "/" to our hello message - so we are still compatible.
         router.route("/").handler(routingContext -> {
             HttpServerResponse response = routingContext.response();
-            JsonObject message = new JsonObject();
+            JsonObject message = new JsonObject().put("message", "Hello");
             response
                     .putHeader("content-type", "application/json")
                     .end(message.encodePrettily());
@@ -114,16 +115,28 @@ public class TransferServiceVertical extends AbstractVerticle {
 
     private Future<TransferTask> insert(SQLConnection connection, TransferTask transferTask, boolean closeConnection) {
         Future<TransferTask> future = Future.future();
-        String sql = "INSERT INTO TransferTasks (source, dest, owner, tenant_id, created, last_updated, uuid) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO TransferTasks (attempts, bytes_transferred, created, dest, end_time, event_id, last_updated, owner, source, start_time, status, tenant_id, total_size, transfer_rate, parent_task, root_task, uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         connection.updateWithParams(sql,
                 new JsonArray()
-                        .add(transferTask.getSource())
-                        .add(transferTask.getDest())
-                        .add(transferTask.getOwner())
-                        .add(transferTask.getTenantId())
+                        .add(transferTask.getAttempts())
+                        .add(transferTask.getBytesTransferred())
                         .add(transferTask.getCreated())
+                        .add(transferTask.getDest())
+                        .add(transferTask.getEndTime())
+                        .add(transferTask.getEventId())
                         .add(transferTask.getLastUpdated())
-                        .add(transferTask.getUuid()),
+                        .add(transferTask.getOwner())
+                        .add(transferTask.getSource())
+                        .add(transferTask.getStartTime())
+                        .add(transferTask.getStatus())
+                        .add(transferTask.getTenantId())
+                        .add(transferTask.getTotalSize())
+                        .add(transferTask.getTransferRate())
+                        .add(transferTask.getParentTaskId())
+                        .add(transferTask.getRootTaskId())
+                        .add(transferTask.getUuid())
+                        .add(transferTask.getTotalFiles())
+                        .add(transferTask.getTotalSkippedFiles()),
                 ar -> {
                     if (closeConnection) {
                         connection.close();
@@ -142,7 +155,7 @@ public class TransferServiceVertical extends AbstractVerticle {
 
     private Future<List<TransferTask>> query(SQLConnection connection) {
         Future<List<TransferTask>> future = Future.future();
-        connection.query("SELECT * FROM transferTasks", result -> {
+        connection.query("SELECT * FROM transfertasks", result -> {
                     connection.close();
                     future.handle(
                             result.map(rs -> rs.getRows().stream().map(TransferTask::new).collect(Collectors.toList()))
@@ -154,7 +167,7 @@ public class TransferServiceVertical extends AbstractVerticle {
 
     private Future<TransferTask> queryOne(SQLConnection connection, String id) {
         Future<TransferTask> future = Future.future();
-        String sql = "SELECT * FROM transferTasks WHERE id = ?";
+        String sql = "SELECT * FROM transfertasks WHERE id = ?";
         connection.queryWithParams(sql, new JsonArray().add(Integer.valueOf(id)), result -> {
             connection.close();
             future.handle(
@@ -174,15 +187,27 @@ public class TransferServiceVertical extends AbstractVerticle {
 
     private Future<Void> update(SQLConnection connection, String id, TransferTask transferTask) {
         Future<Void> future = Future.future();
-        String sql = "UPDATE transferTasks SET title = ?, url = ? WHERE id = ?";
+        String sql = "UPDATE transfertasks SET attempts = ?, bytes_transferred = ?, created = ?, dest = ?, end_time = ?, event_id = ?, last_updated = ?, owner = ?, source = ?, start_time = ?, status = ?, tenant_id = ?, total_size = ?, transfer_rate = ?, parent_task = ?, root_task = ?, uuid WHERE id = ?";
         connection.updateWithParams(sql, new JsonArray()
-                        .add(transferTask.getStatus())
                         .add(transferTask.getAttempts())
+                        .add(transferTask.getBytesTransferred())
+                        .add(transferTask.getCreated())
+                        .add(transferTask.getDest())
+                        .add(transferTask.getEndTime())
+                        .add(transferTask.getEventId())
+                        .add(transferTask.getLastUpdated())
+                        .add(transferTask.getOwner())
+                        .add(transferTask.getSource())
+                        .add(transferTask.getStartTime())
+                        .add(transferTask.getStatus())
+                        .add(transferTask.getTenantId())
                         .add(transferTask.getTotalSize())
+                        .add(transferTask.getTransferRate())
+                        .add(transferTask.getParentTaskId())
+                        .add(transferTask.getRootTaskId())
+                        .add(transferTask.getUuid())
                         .add(transferTask.getTotalFiles())
                         .add(transferTask.getTotalSkippedFiles())
-                        .add(transferTask.getBytesTransferred())
-                        .add(transferTask.getLastUpdated())
                         .add(Integer.valueOf(id)),
                 ar -> {
                     connection.close();
@@ -202,7 +227,7 @@ public class TransferServiceVertical extends AbstractVerticle {
 
     private Future<Void> delete(SQLConnection connection, String id) {
         Future<Void> future = Future.future();
-        String sql = "DELETE FROM TransferTasks WHERE id = ?";
+        String sql = "DELETE FROM transfertasks WHERE id = ?";
         connection.updateWithParams(sql,
                 new JsonArray().add(Integer.valueOf(id)),
                 ar -> {
@@ -211,7 +236,7 @@ public class TransferServiceVertical extends AbstractVerticle {
                         future.fail(ar.cause());
                     } else {
                         if (ar.result().getUpdated() == 0) {
-                            future.fail(new NoSuchElementException("Unknown transferTask " + id));
+                            future.fail(new NoSuchElementException("Unknown transfer task " + id));
                         } else {
                             future.complete();
                         }
@@ -237,7 +262,7 @@ public class TransferServiceVertical extends AbstractVerticle {
 
     private Future<SQLConnection> createSomeDataIfNone(SQLConnection connection) {
         Future<SQLConnection> future = Future.future();
-        connection.query("SELECT * FROM TransferTasks", select -> {
+        connection.query("SELECT * FROM transfertasks", select -> {
             if (select.failed()) {
                 future.fail(select.cause());
             } else {
@@ -261,10 +286,6 @@ public class TransferServiceVertical extends AbstractVerticle {
     // ---- HTTP Actions ----
 
     private void getAll(RoutingContext rc) {
-        if ( ! authenticate(rc.request()) ) {
-
-        }
-
         connect()
                 .compose(this::query)
                 .setHandler(ok(rc));
@@ -309,7 +330,7 @@ public class TransferServiceVertical extends AbstractVerticle {
             JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
                     .addPubSecKey(new PubSecKeyOptions()
                             .setAlgorithm("HS256")
-                            .setPublicKey(config.getString("conf/publickey")));
+                            .setPublicKey(config.getString("resources/publickey")));
 
             authProvider = JWTAuth.create(vertx, jwtAuthOptions);
         }

@@ -21,7 +21,7 @@ public class TransferApplication {
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
                 .setType("file")
                 .setOptional(true)
-                .setConfig(new JsonObject().put("path", "conf/config.json"));
+                .setConfig(new JsonObject().put("path", "resources/config.json"));
 
         ConfigStoreOptions sysPropsStore = new ConfigStoreOptions().setType("sys");
 
@@ -34,7 +34,18 @@ public class TransferApplication {
         retriever.getConfig(json -> {
             if (json.succeeded()) {
                 JsonObject config = json.result();
-                log.debug("Starting the app with config: ${json}");
+                log.debug("Starting the app with config: " + config.encodePrettily());
+
+                vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferServiceVertical",
+                        new DeploymentOptions(),
+                        res -> {
+                            if (res.succeeded()) {
+                                System.out.println("TransferServiceVertical Deployment id is " + res.result());
+                            } else {
+                                System.out.println("TransferServiceVertical Deployment failed !");
+                            }
+                        });
+
                 vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TaskAssignerVerticle",
                         new DeploymentOptions()
                                 .setWorkerPoolName("transfer-task-assigner-pool")
@@ -117,8 +128,6 @@ public class TransferApplication {
                                 System.out.println("FileTransferServiceImpl Deployment failed !");
                             }
                         });
-
-
             } else {
                 log.error("Error retrieving configuration.");
             }

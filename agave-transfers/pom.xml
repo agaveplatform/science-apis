@@ -16,6 +16,10 @@
     <description>Agave data transfer services</description>
     <packaging>pom</packaging>
 
+    <properties>
+        <main.basedir>${project.basedir}/..</main.basedir>
+    </properties>
+
     <modules>
         <module>sftp-relay</module>
         <module>transfers-api</module>

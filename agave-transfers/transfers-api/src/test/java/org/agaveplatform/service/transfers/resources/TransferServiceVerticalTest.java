@@ -8,24 +8,24 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-//import org.testng.annotations.AfterMethod;
-//import org.testng.annotations.BeforeMethod;
-//import org.testng.annotations.Test;
+//import org.junit.After;
+//import org.junit.Before;
+//import org.junit.Test;
+//import org.junit.runner.RunWith;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
 import java.io.IOException;
 import java.net.ServerSocket;
 
-//@Test(groups={"unit"})
-@RunWith(VertxUnitRunner.class)
+@Test(groups={"unit"})
+//@RunWith(VertxUnitRunner.class)
 public class TransferServiceVerticalTest {
 
     private Vertx vertx;
     private int port = 8081;
 
-    @Before
+    @BeforeMethod
     public void setUp(TestContext context) throws IOException {
         vertx = Vertx.vertx();
 
@@ -43,7 +43,7 @@ public class TransferServiceVerticalTest {
         vertx.deployVerticle(TransferServiceVertical.class.getName(), options, context.asyncAssertSuccess());
     }
 
-    @After
+    @AfterMethod
     public void tearDown(TestContext context) {
         vertx.close(context.asyncAssertSuccess());
     }

@@ -1,0 +1,19 @@
+<configuration>
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%yellow(%d) %highlight(%level) %green([%thread]) %cyan(%logger{50}) - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="io.netty" level="warn"/>
+  <logger name="io.vertx" level="info"/>
+  <logger name="c.m.v2.c3p0" level="warn"/>
+  <logger name="com.mchange" level="warn"/>
+  <logger name="org.agaveplatform.service.transfers" level="debug"/>
+
+  <root level="info">
+    <appender-ref ref="STDOUT"/>
+  </root>
+
+</configuration>

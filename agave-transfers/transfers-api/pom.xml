@@ -21,6 +21,10 @@
         <vertx.version>3.8.5</vertx.version>
         <vertx-testsuite>2.1.6</vertx-testsuite>
         <vertx-maven-plugin.version>1.0.13</vertx-maven-plugin.version>
+        <junit5.version>5.5.1</junit5.version>
+        <rest-assured.version>4.0.0</rest-assured.version>
+        <assertj.version>3.13.2</assertj.version>
+        <logback-classic.version>1.2.3</logback-classic.version>
     </properties>
 
     <build>
@@ -38,25 +42,26 @@
             </testResource>
         </testResources>
         <plugins>
-            <plugin>
-                <groupId>io.fabric8</groupId>
-                <artifactId>vertx-maven-plugin</artifactId>
-                <version>${vertx-maven-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>vmp</id>
-                        <goals>
-                            <goal>initialize</goal>
-                            <goal>package</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <redeploy>true</redeploy>
-                    <vertx.verticle>org.agaveplatform.service.transfers.resources.TransferServiceVertical</vertx.verticle>
-                    <vertx.launcher>org.agaveplatform.service.transfers.TransferApplication</vertx.launcher>
-                </configuration>
-            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>io.fabric8</groupId>-->
+<!--                <artifactId>vertx-maven-plugin</artifactId>-->
+<!--                <version>${vertx-maven-plugin.version}</version>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>vmp</id>-->
+<!--                        <goals>-->
+<!--                            <goal>initialize</goal>-->
+<!--                            <goal>package</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--                <configuration>-->
+<!--                    <skip>true</skip>-->
+<!--                    <redeploy>true</redeploy>-->
+<!--&lt;!&ndash;                    <vertx.verticle>org.agaveplatform.service.transfers.resources.TransferServiceVertical</vertx.verticle>&ndash;&gt;-->
+<!--&lt;!&ndash;                    <vertx.launcher>org.agaveplatform.service.transfers.TransferApplication</vertx.launcher>&ndash;&gt;-->
+<!--                </configuration>-->
+<!--            </plugin>-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -70,17 +75,18 @@
     </build>
 
     <dependencies>
-        <dependency>
-            <groupId>io.nats</groupId>
-            <artifactId>jnats</artifactId>
-            <version>2.6.6</version>
-        </dependency>
-        <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <version>1.2.17</version>
-            <scope>compile</scope>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>io.nats</groupId>-->
+<!--            <artifactId>jnats</artifactId>-->
+<!--            <version>2.6.6</version>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>log4j</groupId>-->
+<!--            <artifactId>log4j</artifactId>-->
+<!--            <version>1.2.17</version>-->
+<!--            <scope>compile</scope>-->
+<!--        </dependency>-->
+        <!-- Vertx dependencies -->
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-core</artifactId>
@@ -98,6 +104,16 @@
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>
+            <artifactId>vertx-auth-jwt</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-web-api-contract</artifactId>
+            <version>${vertx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
             <artifactId>vertx-jdbc-client</artifactId>
             <version>${vertx.version}</version>
         </dependency>
@@ -106,52 +122,72 @@
             <artifactId>vertx-service-proxy</artifactId>
             <version>${vertx.version}</version>
         </dependency>
+
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-maven-service-factory</artifactId>
             <version>${vertx.version}</version>
         </dependency>
-        <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-codegen</artifactId>
-            <version>${vertx.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-unit</artifactId>
-            <version>3.8.5</version>
-            <scope>test</scope>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>io.vertx</groupId>-->
+<!--            <artifactId>vertx-codegen</artifactId>-->
+<!--            <version>${vertx.version}</version>-->
+<!--        </dependency>-->
+
+
+        <!-- Persistence dependencies -->
         <dependency>
             <groupId>org.hsqldb</groupId>
             <artifactId>hsqldb</artifactId>
             <version>2.4.0</version>
         </dependency>
         <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-auth-jwt</artifactId>
-            <version>${vertx.version}</version>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback-classic.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>1.7.28</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>2.5</version>
-        </dependency>
+
+        <!-- Agave dependencies -->
+
         <dependency>
             <groupId>org.agaveplatform</groupId>
             <artifactId>systems-core</artifactId>
             <version>2.2.24</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+<!--                <exclusion>-->
+<!--                    <groupId>log4j</groupId>-->
+<!--                    <artifactId>log4j</artifactId>-->
+<!--                </exclusion>-->
+            </exclusions>
+
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit5.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-junit5</artifactId>
+            <version>${vertx.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>${rest-assured.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

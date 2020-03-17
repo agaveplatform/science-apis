@@ -1,12 +1,12 @@
 package org.agaveplatform.service.transfers.resources;
 
-import io.vertx.codegen.annotations.ProxyGen;
+//import io.vertx.codegen.annotations.ProxyGen;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 
-@ProxyGen
+//@ProxyGen
 public interface FileTransferService {
 
 	static FileTransferService getSystem(Vertx vertx){

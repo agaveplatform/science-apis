@@ -1,9 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.codegen.annotations.ProxyGen;
+//import io.vertx.codegen.annotations.ProxyGen;
 import io.vertx.core.Vertx;
 
-@ProxyGen
+//@ProxyGen
 public interface TransferCompleteTaskListener {
 	static TransferCompleteTaskListener getSystem(Vertx vertx){
 		return new TransferCompleteTaskListenerImpl(vertx);

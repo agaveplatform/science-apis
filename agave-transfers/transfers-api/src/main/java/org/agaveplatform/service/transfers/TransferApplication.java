@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 public class TransferApplication {
 
     public static void main(String[] args) {
+        System.setProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory");
         Logger log = LoggerFactory.getLogger(TransferApplication.class);
         Vertx vertx = Vertx.vertx();
 
@@ -23,11 +24,11 @@ public class TransferApplication {
                 .setOptional(true)
                 .setConfig(new JsonObject().put("path", "config.json"));
 
-        ConfigStoreOptions sysPropsStore = new ConfigStoreOptions().setType("env");
+        ConfigStoreOptions envPropsStore = new ConfigStoreOptions().setType("env");
 
         ConfigRetrieverOptions options = new ConfigRetrieverOptions()
                 .addStore(fileStore)
-                .addStore(sysPropsStore);
+                .addStore(envPropsStore);
 
         ConfigRetriever retriever = ConfigRetriever.create(vertx, options);
 
@@ -40,9 +41,9 @@ public class TransferApplication {
                         new DeploymentOptions().setConfig(config),
                         res -> {
                             if (res.succeeded()) {
-                                System.out.println("TransferServiceVertical Deployment id is " + res.result());
+                                log.info("TransferServiceVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
                             } else {
-                                System.out.println("TransferServiceVertical Deployment failed !\n" + res.cause());
+                                System.out.println("TransferServiceVertical deployment failed !\n" + res.cause());
                                 res.cause().printStackTrace();
                             }
                         });

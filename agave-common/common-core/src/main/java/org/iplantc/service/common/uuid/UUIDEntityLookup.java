@@ -87,8 +87,9 @@ public class UUIDEntityLookup {
 			return Settings.IPLANT_NOTIFICATION_SERVICE + uuid;
 		} else if (entityType.equals(UUIDType.MONITOR)) {
 			return Settings.IPLANT_MONITOR_SERVICE + uuid;
-		} else if (entityType.equals(UUIDType.TRANSFER)) {
-			return Settings.IPLANT_TRANSFER_SERVICE + uuid;
+//		} else if (entityType.equals(UUIDType.TRANSFER_UPDATE)) {
+//			Object transferUuid = getEntityFieldByUuid("transferupdate", "entity_uuid", uuid);
+//			return Settings.IPLANT_TRANSFER_SERVICE + transferUuid.toString() + "/updates/" + uuid;
 		} else if (entityType.equals(UUIDType.TAG)) {
 			return Settings.IPLANT_TAGS_SERVICE + uuid;
 		} else if (entityType.equals(UUIDType.REALTIME_CHANNEL)) {
@@ -97,8 +98,8 @@ public class UUIDEntityLookup {
 			return Settings.IPLANT_GROUPS_SERVICE + uuid;
 		} else if (entityType.equals(UUIDType.CLIENTS)) {
 			return Settings.IPLANT_CLIENTS_SERVICE + uuid;
-		} else if (entityType.equals(UUIDType.CLIENTS)) {
-			return Settings.IPLANT_CLIENTS_SERVICE + uuid;
+//		} else if (entityType.equals(UUIDType.CLIENTS)) {
+//			return Settings.IPLANT_CLIENTS_SERVICE + uuid;
 		} else if (entityType.equals(UUIDType.ROLE)) {
 			return Settings.IPLANT_ROLES_SERVICE + uuid;
 		} else if (entityType.equals(UUIDType.TENANT)) {

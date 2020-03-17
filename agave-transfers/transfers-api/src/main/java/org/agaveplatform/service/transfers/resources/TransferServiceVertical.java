@@ -16,11 +16,18 @@ import io.vertx.ext.sql.SQLOptions;
 import io.vertx.ext.sql.UpdateResult;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.api.validation.HTTPRequestValidationHandler;
+import io.vertx.ext.web.api.validation.ValidationException;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
+
+import java.nio.file.Paths;
 import java.util.stream.Collectors;
 
+import org.agaveplatform.service.transfers.model.TransferUpdate;
+import org.agaveplatform.service.transfers.util.AgaveSchemaFactory;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.agaveplatform.service.transfers.util.TransferRateHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +37,12 @@ import java.util.NoSuchElementException;
 import static org.agaveplatform.service.transfers.util.ActionHelper.*;
 import static org.agaveplatform.service.transfers.util.AuthHelper.authenticate;
 
+/**
+ * This is the user-facing vertical providing the http interface to internal services.
+ * It provides crud functionality and basic jwt authorization.
+ */
 public class TransferServiceVertical extends AbstractVerticle {
+
     private static Logger log = LoggerFactory.getLogger(TransferServiceVertical.class);
 
     private HttpServer server;
@@ -45,6 +57,8 @@ public class TransferServiceVertical extends AbstractVerticle {
 
         // define our routes
         Router router = Router.router(vertx);
+        router.route().handler(BodyHandler.create());
+
         // Bind "/" to our hello message - so we are still compatible.
         router.route("/").handler(routingContext -> {
             HttpServerResponse response = routingContext.response();
@@ -61,11 +75,18 @@ public class TransferServiceVertical extends AbstractVerticle {
 
         // define the service routes
         router.get("/api/transfers").handler(this::getAll);
-        router.get("/api/transfers/:id").handler(this::getOne);
-        router.route("/api/transfers*").handler(BodyHandler.create());
-        router.post("/api/transfers").handler(this::addOne);
-        router.delete("/api/transfers/:id").handler(this::deleteOne);
-        router.put("/api/transfers/:id").handler(this::updateOne);
+        router.get("/api/transfers/:uuid").handler(this::getOne);
+        router.delete("/api/transfers/:uuid").handler(this::deleteOne);
+        router.post("/api/transfers")
+                // Mount validation handler to ensure the posted json is valid prior to adding
+                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTask.class)))
+                // Mount primary handler
+                .handler(this::addOne);
+        router.put("/api/transfers/:uuid")
+                // Mount validation handler to ensure the posted json is valid prior to adding
+                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferUpdate.class)))
+                // Mount primary handler
+                .handler(this::updateOne);
 
 
         // init our db connection from the pool
@@ -89,8 +110,6 @@ public class TransferServiceVertical extends AbstractVerticle {
         Future<Void> future = Future.future();
         int port = config.getInteger("HTTP_PORT", 8085);
 
-        log.info("Starting TransferServiceVertical on port " + port);
-
         vertx
             .createHttpServer()
             .requestHandler(router::accept)
@@ -112,7 +131,6 @@ public class TransferServiceVertical extends AbstractVerticle {
         );
         return future;
     }
-
 
     private Future<TransferTask> insert(SQLConnection connection, TransferTask transferTask, boolean closeConnection) {
         Future<TransferTask> future = Future.future();
@@ -169,16 +187,16 @@ public class TransferServiceVertical extends AbstractVerticle {
         return future;
     }
 
-    private Future<TransferTask> queryOne(SQLConnection connection, String id) {
+    private Future<TransferTask> queryOne(SQLConnection connection, String uuid) {
         Future<TransferTask> future = Future.future();
         String sql = "SELECT * FROM transfertasks WHERE \"uuid\" = ?";
-        connection.queryWithParams(sql, new JsonArray().add(Integer.valueOf(id)), result -> {
+        connection.queryWithParams(sql, new JsonArray().add(uuid), result -> {
             connection.close();
             future.handle(
                     result.map(rs -> {
                         List<JsonObject> rows = rs.getRows();
                         if (rows.size() == 0) {
-                            throw new NoSuchElementException("No transferTask with id " + id);
+                            throw new NoSuchElementException("No transferTask with id " + uuid);
                         } else {
                             JsonObject row = rows.get(0);
                             return new TransferTask(row);
@@ -189,74 +207,77 @@ public class TransferServiceVertical extends AbstractVerticle {
         return future;
     }
 
-    private Future<Void> update(SQLConnection connection, String id, TransferTask transferTask) {
-        Future<Void> future = Future.future();
-        String sql = "UPDATE transfertasks " +
-                "SET \"attempts\" = ?, " +
-                "    \"bytes_transferred\" = ?, " +
-                "    \"dest\" = ?, " +
-                "    \"end_time\" = ?, " +
-                "    \"event_id\" = ?, " +
-                "    \"last_updated\" = ?, " +
-                "    \"owner\" = ?, " +
-                "    \"source\" = ?, " +
-                "    \"start_time\" = ?, " +
-                "    \"status\" = ?, " +
-                "    \"tenant_id\" = ?, " +
-                "    \"total_size\" = ?, " +
-                "    \"transfer_rate\" = ?, " +
-                "    \"parent_task\" = ?, " +
-                "    \"root_task\" = ?, " +
-                "    \"total_files\" = ? " +
-                "    \"total_sipped\" = ? " +
-                "WHERE \"uuid\" = ?";
-        connection.updateWithParams(sql, new JsonArray()
-                        .add(transferTask.getAttempts())
-                        .add(transferTask.getBytesTransferred())
-                        .add(transferTask.getDest())
-                        .add(transferTask.getEndTime())
-                        .add(transferTask.getEventId())
-                        .add(transferTask.getLastUpdated())
-                        .add(transferTask.getOwner())
-                        .add(transferTask.getSource())
-                        .add(transferTask.getStartTime())
-                        .add(transferTask.getStatus())
-                        .add(transferTask.getTenantId())
-                        .add(transferTask.getTotalSize())
-                        .add(transferTask.getTransferRate())
-                        .add(transferTask.getParentTaskId())
-                        .add(transferTask.getRootTaskId())
-                        .add(transferTask.getTotalFiles())
-                        .add(transferTask.getTotalSkippedFiles())
-                        .add(Integer.valueOf(id)),
-                ar -> {
-                    connection.close();
-                    if (ar.failed()) {
-                        future.fail(ar.cause());
-                    } else {
-                        UpdateResult ur = ar.result();
-                        if (ur.getUpdated() == 0) {
-                            future.fail(new NoSuchElementException("No transferTask with id " + id));
-                        } else {
-                            future.complete();
-                        }
-                    }
-                });
+    private Future<TransferTask> update(SQLConnection connection, String uuid, TransferUpdate transferUpdate) {
+        Future<TransferTask> future = Future.future();
+        String sql = "SELECT * FROM transfertasks WHERE \"uuid\" = ?";
+        connection.queryWithParams(sql, new JsonArray().add(uuid), result -> {
+//            connection.close();
+            List<JsonObject> rows = result.result().getRows();
+            if (rows.size() == 0) {
+                throw new NoSuchElementException("No transferTask with id " + uuid);
+            } else {
+                JsonObject row = rows.get(0);
+                final TransferTask transferTask =
+                        TransferRateHelper.updateSummaryStats(new TransferTask(row), transferUpdate);
+
+                String updateSql = "UPDATE transfertasks " +
+                        "SET \"attempts\" = ?, " +
+                        "    \"bytes_transferred\" = ?, " +
+                        "    \"end_time\" = ?, " +
+                        "    \"start_time\" = ?, " +
+                        "    \"status\" = ?, " +
+                        "    \"tenant_id\" = ?, " +
+                        "    \"total_size\" = ?, " +
+                        "    \"transfer_rate\" = ?, " +
+                        "    \"total_files\" = ? " +
+                        "    \"total_skipped\" = ? " +
+                        "WHERE \"uuid\" = ?";
+
+                connection.updateWithParams(updateSql, new JsonArray()
+                                .add(transferTask.getAttempts())
+                                .add(transferTask.getBytesTransferred())
+                                .add(transferTask.getEndTime())
+                                .add(transferTask.getOwner())
+                                .add(transferTask.getStartTime())
+                                .add(transferTask.getStatus())
+                                .add(transferTask.getTenantId())
+                                .add(transferTask.getTotalSize())
+                                .add(transferTask.getTransferRate())
+                                .add(transferTask.getTotalFiles())
+                                .add(transferTask.getTotalSkippedFiles())
+                                .add(uuid),
+                        ar -> {
+                            connection.close();
+                            if (ar.failed()) {
+                                future.fail(ar.cause());
+                            } else {
+                                UpdateResult ur = ar.result();
+                                if (ur.getUpdated() == 0) {
+                                    future.fail(new NoSuchElementException("No transferTask with id " + uuid));
+                                } else {
+                                    future.complete(transferTask);
+                                }
+                            }
+                        });
+            }
+
+        });
+
         return future;
     }
 
-    private Future<Void> delete(SQLConnection connection, String id) {
+    private Future<Void> delete(SQLConnection connection, String uuid) {
         Future<Void> future = Future.future();
         String sql = "DELETE FROM transfertasks WHERE \"uuid\" = ?";
         connection.updateWithParams(sql,
-                new JsonArray().add(Integer.valueOf(id)),
+                new JsonArray().add(Integer.valueOf(uuid)),
                 ar -> {
                     connection.close();
                     if (ar.failed()) {
                         future.fail(ar.cause());
                     } else {
                         if (ar.result().getUpdated() == 0) {
-                            future.fail(new NoSuchElementException("Unknown transfer task " + id));
+                            future.fail(new NoSuchElementException("Unknown transfer task " + uuid));
                         } else {
                             future.complete();
                         }
@@ -266,6 +287,11 @@ public class TransferServiceVertical extends AbstractVerticle {
         return future;
     }
 
+    /**
+     * Runs initial migration on the db
+     * @param connection the active db connection
+     * @return empty future for the sqlconnection
+     */
     private Future<SQLConnection> createTableIfNeeded(SQLConnection connection) {
         Future<SQLConnection> future = Future.future();
         vertx.fileSystem().readFile("tables.sql", ar -> {
@@ -280,6 +306,11 @@ public class TransferServiceVertical extends AbstractVerticle {
         return future;
     }
 
+    /**
+     * Populates the db with some sample data
+     * @param connection the active db connection
+     * @return empty future for the sqlconnection
+     */
     private Future<SQLConnection> createSomeDataIfNone(SQLConnection connection) {
         Future<SQLConnection> future = Future.future();
         connection.query("SELECT * FROM transfertasks", select -> {
@@ -305,43 +336,78 @@ public class TransferServiceVertical extends AbstractVerticle {
 
     // ---- HTTP Actions ----
 
-    private void getAll(RoutingContext rc) {
+    /**
+     * Fetches all {@link TransferTask} from the db. Results are added to the routing context.
+     * TODO: add pagination and querying.
+     *
+     * @param routingContext the current rounting context for the request
+     */
+    private void getAll(RoutingContext routingContext) {
         connect()
                 .compose(this::query)
-                .setHandler(ok(rc));
+                .setHandler(ok(routingContext));
     }
 
-    private void addOne(RoutingContext rc) {
-        TransferTask transferTask = rc.getBodyAsJson().mapTo(TransferTask.class);
+    /**
+     * Inserts a new {@link TransferTask} into the db. Validation happens in a previous handler,
+     * so this method only needs to worry about running the insertion.
+     *
+     * @param routingContext the current rounting context for the request
+     */
+    private void addOne(RoutingContext routingContext) {
+        TransferTask transferTask = routingContext.getBodyAsJson().mapTo(TransferTask.class);
         connect()
                 .compose(connection -> insert(connection, transferTask, true))
-                .setHandler(created(rc));
+                .setHandler(created(routingContext));
     }
 
+    /**
+     * Delete a {@link TransferTask} from the db.
+     *
+     * @param routingContext the current rounting context for the request
+     */
+    private void deleteOne(RoutingContext routingContext) {
 
-    private void deleteOne(RoutingContext rc) {
-
-        String id = rc.pathParam("id");
+        String uuid = routingContext.pathParam("uuid");
         connect()
-                .compose(connection -> delete(connection, id))
-                .setHandler(noContent(rc));
+                .compose(connection -> delete(connection, uuid))
+                .setHandler(noContent(routingContext));
     }
 
-
-    private void getOne(RoutingContext rc) {
-        String id = rc.pathParam("id");
+    /**
+     * Fetches a single {@link TransferTask} from the db.
+     *
+     * @param routingContext the current rounting context for the request
+     */
+    private void getOne(RoutingContext routingContext) {
+        String uuid = routingContext.pathParam("uuid");
         connect()
-                .compose(connection -> queryOne(connection, id))
-                .setHandler(ok(rc));
+                .compose(connection -> queryOne(connection, uuid))
+                .setHandler(ok(routingContext));
     }
 
-    private void updateOne(RoutingContext rc) {
-        String id = rc.request().getParam("id");
-        TransferTask transferTask = rc.getBodyAsJson().mapTo(TransferTask.class);
+    /**
+     * Update an existing {@link TransferTask}. Validation is performed in a prior handler, so this
+     * method needs only to update the db.
+     *
+     * @param routingContext the current rounting context for the request
+     */
+    private void updateOne(RoutingContext routingContext) {
+        String uuid = routingContext.request().getParam("uuid");
+        TransferUpdate transferUpdate = routingContext.getBodyAsJson().mapTo(TransferUpdate.class);
+
         connect()
-                .compose(connection -> update(connection, id, transferTask))
-                .setHandler(noContent(rc));
+            .compose(connection ->
+                queryOne(connection, uuid)
+                    .compose(transferTask -> {
+                        TransferTask tt = TransferRateHelper.updateSummaryStats(transferTask, transferUpdate);
+                        return update(connection, uuid, transferUpdate);
+                    })
+
+            )
+            .setHandler(ok(routingContext));
     }
+
 
     // --------- Getters and Setters --------------
 

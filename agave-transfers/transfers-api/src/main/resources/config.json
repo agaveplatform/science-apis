@@ -1,6 +1,8 @@
 {
   "HTTP_PORT": 8085,
-  "JWT_AUTH": false,
+  "JWT_AUTH": true,
+  "JWT_PRIVATE_KEY": "private_key.pem",
+  "JWT_PUBLIC_KEY": "public_key.pem",
   "dbname": "${foundation.db.database}",
   "driver_class": "org.hsqldb.jdbcDriver",
   "url": "jdbc:hsqldb:mem:test?shutdown=true",

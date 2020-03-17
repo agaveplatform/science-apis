@@ -1,10 +1,10 @@
 {
   "HTTP_PORT": 8085,
-  "JWT_AUTH": false,
+  "JWT_AUTH": true,
+  "JWT_PRIVATE_KEY": "private_key.pem",
+  "JWT_PUBLIC_KEY": "public_key.pem",
   "dbname": "${foundation.db.database}",
-  "driver_class": "${foundation.db.driver}",
-  "url": "${foundation.db.url}",
-  "user": "${foundation.db.username}",
-  "password": "${foundation.db.password}",
+  "driver_class": "org.hsqldb.jdbcDriver",
+  "url": "jdbc:hsqldb:mem:test?shutdown=true",
   "max_pool_size": 10
 }

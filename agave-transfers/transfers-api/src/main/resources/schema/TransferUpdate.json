@@ -1,0 +1,97 @@
+{
+  "type": "object",
+  "title": "TransferUpdate",
+  "description": "Transfer update validation schema.",
+  "required": [
+    "transferTaskId",
+    "attempts",
+    "bytesTransferred",
+    "created",
+    "status",
+    "totalFiles",
+    "totalBytes",
+    "totalSkippedFiles"
+  ],
+  "properties": {
+    "id": {
+      "$id": "#/properties/transferTaskId",
+      "type": "string",
+      "title": "Transfer Task ID",
+      "description": "The ID of the updated transfer task.",
+      "default": ""
+    },
+    "attempts": {
+      "$id": "#/properties/attempts",
+      "type": "integer",
+      "title": "The Attempts Schema",
+      "description": "An explanation about the purpose of this instance.",
+      "default": 0
+    },
+    "bytesTransferred": {
+      "$id": "#/properties/bytesTransferred",
+      "type": "integer",
+      "title": "Bytes Transferred",
+      "description": "Total bytes transferred to date for this transfer task.",
+      "default": 0
+    },
+    "created": {
+      "$id": "#/properties/created",
+      "type": "string",
+      "format": "datetime",
+      "title": "Created",
+      "description": "Timestamp when this transfer task was created.",
+      "default": ""
+    },
+    "endTime": {
+      "$id": "#/properties/endTime",
+      "type": "string",
+      "format": "datetime",
+      "title": "End Time",
+      "description": "Timestamp of the end of the transfer task",
+      "default": ""
+    },
+    "owner": {
+      "$id": "#/properties/owner",
+      "type": "string",
+      "title": "Owner",
+      "description": "The username of the user who created this transfer task",
+      "default": ""
+    },
+    "startTime": {
+      "$id": "#/properties/startTime",
+      "type": "string",
+      "format": "datetime",
+      "title": "Start Time",
+      "description": "Timestamp of the start of the transfer task.",
+      "default": ""
+    },
+    "status": {
+      "$id": "#/properties/status",
+      "type": "string",
+      "title": "Status",
+      "description": "The status of the transfer task.",
+      "default": ""
+    },
+    "totalFiles": {
+      "$id": "#/properties/totalFiles",
+      "type": "integer",
+      "title": "Total Files",
+      "description": "The total files to transfer during the execution of this transfer task.",
+      "default": 0
+    },
+    "totalBytes": {
+      "$id": "#/properties/totalSize",
+      "type": "integer",
+      "title": "Total Bytes",
+      "description": "The total bytes to transfer in this transfer task.",
+      "default": 0
+    },
+    "totalSkippedFiles": {
+      "$id": "#/properties/totalSkippedFiles",
+      "type": "integer",
+      "title": "Total Skipped Files",
+      "description": "The total files skipped during the execution of this transfer task.",
+      "default": 0
+    }
+  }
+}

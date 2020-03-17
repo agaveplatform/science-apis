@@ -3,12 +3,13 @@ package org.agaveplatform.service.transfers.model;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
-import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.transfer.Settings;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.persistence.*;
 import java.time.Instant;
@@ -30,7 +31,7 @@ import static javax.persistence.GenerationType.IDENTITY;
 @JsonSerialize(using = AgaveResourceSerializer.class)
 public class TransferTask {
     
-    private static final Logger log = Logger.getLogger(TransferTask.class);
+    private static final Logger log = LoggerFactory.getLogger(TransferTask.class);
     
 	private Long id;
 	private String source;

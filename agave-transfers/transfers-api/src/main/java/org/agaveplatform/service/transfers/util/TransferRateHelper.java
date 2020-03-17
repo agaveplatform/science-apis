@@ -1,6 +1,6 @@
 package org.agaveplatform.service.transfers.util;
 
-import org.agaveplatform.service.transfers.model.TransferProgress;
+import org.agaveplatform.service.transfers.model.TransferUpdate;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
@@ -10,7 +10,6 @@ import org.iplantc.service.common.uri.AgaveUriUtil;
 import org.iplantc.service.transfer.Settings;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 
-import javax.persistence.Transient;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
@@ -112,18 +111,18 @@ public class TransferRateHelper {
     }
 
     /**
-     * Updates the summary stats of the transfer task with the values of the {@link TransferProgress}
+     * Updates the summary stats of the transfer task with the values of the {@link TransferUpdate}
      * @param oldTransferTask the existing transfer task
-     * @param transferProgress the transfer progress to date
+     * @param transferUpdate the transfer progress to date
      * @return the updated transfer task
      */
-    public static TransferTask updateSummaryStats(TransferTask oldTransferTask, TransferProgress transferProgress) {
+    public static TransferTask updateSummaryStats(TransferTask oldTransferTask, TransferUpdate transferUpdate) {
 
-        if (oldTransferTask != null && transferProgress != null) {
-            oldTransferTask.setBytesTransferred(oldTransferTask.getBytesTransferred() + transferProgress.getBytesTransferred());
-            oldTransferTask.setTotalFiles(oldTransferTask.getTotalFiles() + transferProgress.getTotalTransfers());
-            oldTransferTask.setTotalSize(oldTransferTask.getTotalSize() + transferProgress.getTotalBytes());
-            oldTransferTask.setTotalSkippedFiles(oldTransferTask.getTotalSkippedFiles() + transferProgress.getSkippedTransfers());
+        if (oldTransferTask != null && transferUpdate != null) {
+            oldTransferTask.setBytesTransferred(oldTransferTask.getBytesTransferred() + transferUpdate.getBytesTransferred());
+            oldTransferTask.setTotalFiles(oldTransferTask.getTotalFiles() + transferUpdate.getTotalFiles());
+            oldTransferTask.setTotalSize(oldTransferTask.getTotalSize() + transferUpdate.getBytesTransferred());
+            oldTransferTask.setTotalSkippedFiles(oldTransferTask.getTotalSkippedFiles() + transferUpdate.getTotalSkippedFiles());
             oldTransferTask.setLastUpdated(Instant.now());
         }
 

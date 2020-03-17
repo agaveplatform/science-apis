@@ -24,6 +24,7 @@ import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
 import java.nio.file.Paths;
 import java.util.stream.Collectors;
 
+import org.agaveplatform.service.transfers.model.SqlQuery;
 import org.agaveplatform.service.transfers.model.TransferUpdate;
 import org.agaveplatform.service.transfers.util.AgaveSchemaFactory;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -77,6 +78,8 @@ public class TransferServiceVertical extends AbstractVerticle {
         router.get("/api/transfers").handler(this::getAll);
         router.get("/api/transfers/:uuid").handler(this::getOne);
         router.delete("/api/transfers/:uuid").handler(this::deleteOne);
+
+        // Accept post of a TransferTask, validates the request, and inserts into the db.
         router.post("/api/transfers")
                 // Mount validation handler to ensure the posted json is valid prior to adding
                 .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTask.class)))
@@ -189,8 +192,8 @@ public class TransferServiceVertical extends AbstractVerticle {
 
     private Future<TransferTask> queryOne(SQLConnection connection, String uuid) {
         Future<TransferTask> future = Future.future();
-        String sql = "SELECT * FROM transfertasks WHERE \"uuid\" = ?";
-        connection.queryWithParams(sql, new JsonArray().add(uuid), result -> {
+
+        connection.queryWithParams(SqlQuery.GET_ONE, new JsonArray().add(uuid), result -> {
             connection.close();
             future.handle(
                     result.map(rs -> {
@@ -358,6 +361,11 @@ public class TransferServiceVertical extends AbstractVerticle {
         TransferTask transferTask = routingContext.getBodyAsJson().mapTo(TransferTask.class);
         connect()
                 .compose(connection -> insert(connection, transferTask, true))
+                .setHandler(tt -> {
+                    if (tt.succeeded()) {
+                        vertx.eventBus().publish("transfertask.created", tt.result().toJSON());
+                    }
+                })
                 .setHandler(created(routingContext));
     }
 

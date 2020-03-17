@@ -13,15 +13,17 @@ public class ErrorTaskListener extends AbstractVerticle {
 	public void start() {
 		EventBus bus = vertx.eventBus();
 		//final String err ;
-		bus.<JsonObject>consumer("error", msg -> {
+		bus.<JsonObject>consumer("transfertask.error", msg -> {
 			JsonObject body = msg.body();
-			String systemId = body.getString("systemId");
-			String err = body.getString("error");
-			logger.info("Error %v,  %s", systemId, err);
 
-			if (err.equals("retry")){
-				bus.publish(msg.address(), body);
-			}
+			logger.error("Transfer task {} failed: {}: {}",
+					body.getString("id"), body.getString("cause"), body.getString("message"));
+
+			bus.publish("notification.transfertask", body);
+
+//			if (err.equals("retry")){
+//				bus.publish(msg.address(), body);
+//			}
 		});
 
 	}

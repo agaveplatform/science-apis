@@ -1,4 +1,4 @@
-package main.java.org.agaveplatform.service.transfers.listener;
+package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.Handler;
 import io.vertx.ext.web.RoutingContext;

@@ -6,6 +6,8 @@ package org.iplantc.service.io.dao;
 import java.math.BigInteger;
 import java.util.Date;
 
+import org.agaveplatform.service.transfers.resources.FileTransferService;
+import org.agaveplatform.service.transfers.resources.FileTransferVerticle;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.CacheMode;
@@ -184,8 +186,8 @@ public class QueueTaskDao
 		try 
 		{
 			StagingTask task = new StagingTask(file, createdBy);
-//			TransferTask tt = FileTransferService.getInstance().submit(task);
-//			return tt;
+			TransferTask tt = FileTransferVerticle.getInstance().submit(task);
+			return tt;
 			QueueTaskDao.persist(task);
 
 			LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_QUEUED, createdBy);

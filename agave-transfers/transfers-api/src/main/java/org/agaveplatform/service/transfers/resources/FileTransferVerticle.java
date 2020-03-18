@@ -105,4 +105,6 @@ public class FileTransferVerticle extends AbstractVerticle {
 				});
 	}
 
+//	public static org.iplantc.service.jobs.queue.SubmissionWatchTest getInstance() {
+//	}
 }

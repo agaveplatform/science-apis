@@ -26,9 +26,12 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 		EventBus bus = vertx.eventBus();
 		bus.<JsonObject>consumer(getAddress(), msg -> {
 			JsonObject body = msg.body();
-			String transferTaskId = body.getString("id");
-			String transferTaskStatus = body.getString("status");
-			logger.info("{} transfer task {} completed with status {}", transferTaskId, transferTaskStatus);
+			String uuid = body.getString("id");
+			String status = body.getString("status");
+			logger.info("{} transfer task {} completed with status {}", uuid, status);
+			// TODO: udpate transfer task status to completed
+			// TODO: check parent for outstanding tasks, update to completed if completed
+			// TODO: send notification events? or should listeners listen to the existing events?
 		});
 	}
 

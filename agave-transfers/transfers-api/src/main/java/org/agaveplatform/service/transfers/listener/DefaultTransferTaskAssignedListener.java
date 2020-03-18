@@ -81,38 +81,44 @@ public class DefaultTransferTaskAssignedListener extends AbstractVerticle {
                     if (fileInfo.isFile()) {
                         // write to the protocol event channel. the uri is all they should need for this....
                         // might need tenant id. not sure yet.
-                        vertx.eventBus().publish("transfertask." + srcSystem.getType() + ".get",
-                                "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath());
+                        if (interruptEvent(uuid, source, username, tenantId)) {
+                            vertx.eventBus().publish("transfertask." + srcSystem.getType() + ".get",
+                                    "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath());
+                        }
                     } else {
-                        // path is a directory, so walk the first level of the directory
-                        client.ls(srcUri.getPath())
-                                .forEach(childFileItem -> {
-                                    // if it's a file, we can process this as we would if the original path were a file
-                                    if (childFileItem.isFile()) {
-                                        vertx.eventBus().publish("transfertask." + srcSystem.getType() + ".get",
-                                                "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath() + "/" + childFileItem.getName());
-                                    }
-                                    // if a directory, then create a new transfer task to repeat this process,
-                                    // keep the association between this transfer task, the original, and the children
-                                    // in place for traversal in queries later on.
-                                    else {
-                                        // build the child paths
-                                        String childSource = body.getString("source") + "/" + childFileItem.getName();
-                                        String childDest = body.getString("dest") + "/" + childFileItem.getName();
-
-                                        TransferTask transferTask = new TransferTask(childSource, childDest);
-                                        transferTask.setTenantId(tenantId);
-                                        transferTask.setOwner(username);
-                                        transferTask.setParentTaskId(uuid);
-                                        if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
-                                            transferTask.setRootTaskId(body.getString("rootTaskId"));
+                        if (interruptEvent(uuid, source, username, tenantId)) {
+                            // path is a directory, so walk the first level of the directory
+                            client.ls(srcUri.getPath())
+                                    .forEach(childFileItem -> {
+                                        // if it's a file, we can process this as we would if the original path were a file
+                                        if (childFileItem.isFile()) {
+                                            vertx.eventBus().publish("transfertask." + srcSystem.getType() + ".get",
+                                                    "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath() + "/" + childFileItem.getName());
                                         }
-                                        vertx.eventBus().publish("transfertask.created", transferTask.toJSON());
-                                    }
-                                });
+                                        // if a directory, then create a new transfer task to repeat this process,
+                                        // keep the association between this transfer task, the original, and the children
+                                        // in place for traversal in queries later on.
+                                        else {
+                                            // build the child paths
+                                            String childSource = body.getString("source") + "/" + childFileItem.getName();
+                                            String childDest = body.getString("dest") + "/" + childFileItem.getName();
+
+                                            TransferTask transferTask = new TransferTask(childSource, childDest);
+                                            transferTask.setTenantId(tenantId);
+                                            transferTask.setOwner(username);
+                                            transferTask.setParentTaskId(uuid);
+                                            if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
+                                                transferTask.setRootTaskId(body.getString("rootTaskId"));
+                                            }
+                                            vertx.eventBus().publish("transfertask.created", transferTask.toJSON());
+                                        }
+                                    });
+                        }
                     }
                 } else {
-                    vertx.eventBus().publish("transfertask." + srcUri.getScheme() + ".get", source);
+                    if (interruptEvent(uuid, source, username, tenantId)) {
+                        vertx.eventBus().publish("transfertask." + srcUri.getScheme() + ".get", source);
+                    }
                 }
             } else {
                 String msg = String.format("Unknown source schema %s for the transfertask %s",
@@ -130,6 +136,16 @@ public class DefaultTransferTaskAssignedListener extends AbstractVerticle {
         }
 
         return protocol;
+    }
+
+    public boolean interruptEvent( String uuid, String source, String username, String tenantId ){
+        EventBus bus = vertx.eventBus();
+        bus.consumer(getEventChannel());
+        if ( bus.consumer("paused." + tenantId +"." + username + "." + uuid ).isRegistered()) {
+            logger.info("Transfer task paused {} created: {} -> {}", tenantId, uuid, source);
+            return true;
+        }
+        return false;
     }
 
     /**

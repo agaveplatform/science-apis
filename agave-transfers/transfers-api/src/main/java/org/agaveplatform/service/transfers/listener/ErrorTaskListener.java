@@ -21,9 +21,6 @@ public class ErrorTaskListener extends AbstractVerticle {
 
 			bus.publish("notification.transfertask", body);
 
-//			if (err.equals("retry")){
-//				bus.publish(msg.address(), body);
-//			}
 		});
 
 	}

@@ -357,7 +357,7 @@ public class Job {
 	}
 
 	/**
-	 * @param processorCount
+	 * @param processorsPerNode
 	 *            the processorCount to set
 	 */
 	public void setProcessorsPerNode(Long processorsPerNode) throws JobException

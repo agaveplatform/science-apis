@@ -119,7 +119,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 			}
 
 			// TODO: send notification events? or should listeners listen to the existing events?
-
+			getVertx().eventBus().publish("transfertask.nofication", body.toString());
 
 		});
 	}

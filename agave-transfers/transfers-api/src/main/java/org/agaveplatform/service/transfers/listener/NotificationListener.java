@@ -17,15 +17,14 @@ public class NotificationListener extends AbstractVerticle {
 		bus.<JsonObject>consumer("transfertask.notification.*", msg -> {
 			JsonObject body = msg.body();
 
-			logger.error("Transfer task {} failed: {}: {}",
-					body.getString("id"), body.getString("cause"), body.getString("message"));
-
-			bus.publish("notification.transfertask", body);
-
+			logger.info("Transfer task {} notification: {}",
+					body.getString("id"), body.getString("message"));
+			TransferTask bodyTask = new TransferTask(body);
+			notification(bodyTask);
 		});
 	}
 
 	public void notification(TransferTask transferTask){
-
+		//TODO:  Write the nofication call here
 	}
 }

@@ -60,47 +60,4 @@ public class NotificationListener extends AbstractVerticle {
 
 	}
 
-//	public void notification( String event, String callback, boolean persistent, String owner, String uuid){
-//		//TODO:  Write the nofication call here
-//		try {
-//			addNotification(event, callback, persistent, owner, uuid);
-//		}
-//		catch (Exception e){
-//			logger.error(e.toString());
-//		}
-//	}
-//
-//
-//
-////	/**
-//	 * Convenience endpoint to add a notification.
-//	 *
-//	 * @param event String notification event that will trigger the callback
-//	 * @param callback A URL or email address that will be triggered by the event
-//	 * @param persistent Whether this notification should expire after the first successful trigger
-//	 */
-//	@Transient
-//	public void addNotification(String event, String callback, boolean persistent, String owner, String uuid)
-//			throws NotificationException
-//	{
-//		Notification notification = new Notification(event, callback);
-//		notification.setOwner(owner);
-//		notification.setAssociatedUuid(uuid);
-//		notification.setPersistent(persistent);
-//
-//		addNotification(notification, owner, uuid);
-//	}
-//	/**
-//	 * Convenience endpoint to add a notification.
-//	 *
-//	 * @param notification A notification event to associate with this job. The current
-//	 * jobs owner and uuid will be added to the notification.
-//	 */
-//	@Transient
-//	public void addNotification(Notification notification, String owner, String uuid) throws NotificationException
-//	{
-//		notification.setOwner(owner);
-//		notification.setAssociatedUuid(uuid);
-//		new NotificationDao().persist(notification);
-//	}
 }

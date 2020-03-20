@@ -62,6 +62,23 @@ public class DefaultTransferTaskAssignedListener extends AbstractVerticle {
             logger.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
             this.interruptedTasks.remove(uuid);
         });
+
+        // paused tasks
+        bus.<JsonObject>consumer("transfertask.paused.sync", msg -> {
+            JsonObject body = msg.body();
+            String uuid = body.getString("id");
+
+            logger.info("Transfer task {} paused detected", uuid);
+            this.interruptedTasks.add(uuid);
+        });
+
+        bus.<JsonObject>consumer("transfertask.paused.complete", msg -> {
+            JsonObject body = msg.body();
+            String uuid = body.getString("id");
+
+            logger.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
+            this.interruptedTasks.remove(uuid);
+        });
     }
 
     protected String processTransferTask(JsonObject body) {

@@ -10,7 +10,6 @@ import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.notification.model.Notification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import javax.persistence.Transient;
 
 public class NotificationListener extends AbstractVerticle {

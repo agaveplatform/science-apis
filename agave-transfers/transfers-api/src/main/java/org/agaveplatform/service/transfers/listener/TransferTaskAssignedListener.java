@@ -20,16 +20,16 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-public class DefaultTransferTaskAssignedListener extends AbstractVerticle {
-    private final Logger logger = LoggerFactory.getLogger(DefaultTransferTaskAssignedListener.class);
+public class TransferTaskAssignedListener extends AbstractVerticle {
+    private final Logger logger = LoggerFactory.getLogger(TransferTaskAssignedListener.class);
     private String eventChannel = "transfertask.assigned.*.*.*.*";
     private HashSet<String> interruptedTasks = new HashSet<String>();
 
-    public DefaultTransferTaskAssignedListener(Vertx vertx) {
+    public TransferTaskAssignedListener(Vertx vertx) {
         this(vertx, null);
     }
 
-    public DefaultTransferTaskAssignedListener(Vertx vertx, String eventChannel) {
+    public TransferTaskAssignedListener(Vertx vertx, String eventChannel) {
         super();
         setVertx(vertx);
         setEventChannel(eventChannel);

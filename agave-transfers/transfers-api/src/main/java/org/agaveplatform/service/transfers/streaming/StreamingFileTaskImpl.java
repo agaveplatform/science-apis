@@ -42,19 +42,6 @@ public class StreamingFileTaskImpl extends AbstractVerticle implements Streaming
 		double avg = lastValues.values().stream()
 				.collect(Collectors.averagingDouble(Double::doubleValue));
 		// todo
-//		Long logicalFileId = dataMap.getLong("logicalFileId");
-//		cachedFile = dataMap.getString("cachedFile");
-//		owner = dataMap.getString("owner");
-//		createdBy = dataMap.getString("createdBy");
-//		String tenantCode = dataMap.getString("tenantId");
-//
-//		String uploadSource = dataMap.getString("sourceUrl");
-//		String uploadDest = dataMap.getString("destUrl");
-//		boolean isRangeCopyOperation = dataMap.getBooleanFromString("isRangeCopyOperation");
-//		long rangeIndex = dataMap.getLong("rangeIndex");
-//		long rangeSize = dataMap.getLong("rangeSize");
-
-
 
 		//=========================================================
 		JsonObject data = new JsonObject().put("average", avg);

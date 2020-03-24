@@ -22,6 +22,8 @@ import java.util.List;
 
 public class TransferTaskAssignedListener extends AbstractVerticle {
     private final Logger logger = LoggerFactory.getLogger(TransferTaskAssignedListener.class);
+    // "transfertask.assigned." + tenantId + "." + protocol + "." + srcUri.getHost() + "." + username
+
     private String eventChannel = "transfertask.assigned.*.*.*.*";
     private HashSet<String> interruptedTasks = new HashSet<String>();
 
@@ -34,6 +36,8 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
         setVertx(vertx);
         setEventChannel(eventChannel);
     }
+
+    public TransferTaskAssignedListener() {}
 
     @Override
     public void start() {

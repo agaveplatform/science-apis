@@ -22,34 +22,13 @@ public class FileTransferServiceImpl  implements FileTransferService {
 
 	@Override
 	public void createDir(JsonObject jsonObject, Handler<AsyncResult<JsonObject>> handler) {
-		double avg = lastValues.values().stream()
-				.collect(Collectors.averagingDouble(Double::doubleValue));
-		jsonObject = new JsonObject().put("average", avg);
-		handler.handle(Future.succeededFuture(jsonObject));
+		//TODO put create dir commands here
 	}
 
 	@Override
 	public void createFile(JsonObject jsonObject, Handler<AsyncResult<JsonObject>> handler) {
-		double avg = lastValues.values().stream()
-				.collect(Collectors.averagingDouble(Double::doubleValue));
-		// todo
-//		Long logicalFileId = dataMap.getLong("logicalFileId");
-//		cachedFile = dataMap.getString("cachedFile");
-//		owner = dataMap.getString("owner");
-//		createdBy = dataMap.getString("createdBy");
-//		String tenantCode = dataMap.getString("tenantId");
-//
-//		String uploadSource = dataMap.getString("sourceUrl");
-//		String uploadDest = dataMap.getString("destUrl");
-//		boolean isRangeCopyOperation = dataMap.getBooleanFromString("isRangeCopyOperation");
-//		long rangeIndex = dataMap.getLong("rangeIndex");
-//		long rangeSize = dataMap.getLong("rangeSize");
 
-
-
-		//=========================================================
-		JsonObject data = new JsonObject().put("average", avg);
-		handler.handle(Future.succeededFuture(data));
+		// TODO put creat file command here and copy file
 	}
 
 }

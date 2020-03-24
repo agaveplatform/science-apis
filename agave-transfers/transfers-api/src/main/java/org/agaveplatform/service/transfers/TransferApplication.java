@@ -4,6 +4,7 @@ import io.vertx.config.ConfigRetriever;
 import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.config.ConfigStoreOptions;
 import org.slf4j.Logger;
@@ -52,5 +53,69 @@ public class TransferApplication {
                 log.error("Error retrieving configuration.");
             }
         });
+
+//        VertxOptions vertxOptions = new VertxOptions(); //.setMetricsOptions(metricsOptions);
+
+//        DeploymentOptions deploymentOptions = new DeploymentOptions()
+//                .setWorker(true)
+//                .setInstances(instanceSize);
+        //.setWorkerPoolName("the-specific-pool")
+        //.setWorkerPoolSize(poolSize);
+
+        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.StreamingFileTaskImpl",
+                new DeploymentOptions()
+                        .setWorkerPoolName("streaming-task-worker-pool")
+                        .setWorkerPoolSize(poolSize)
+                        .setInstances(instanceSize)
+                        .setWorker(true),
+                res -> {
+                    if (res.succeeded()){
+                        System.out.println("StreamingTask Deployment id is " + res.result());
+                    }else{
+                        System.out.println("StreamingTask Deployment failed !");
+                    }
+                });
+
+        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferCompleteTaskListenerImpl",
+                new DeploymentOptions()
+                        .setWorkerPoolName("transfer-task-complete-pool")
+                        .setWorkerPoolSize(poolSize)
+                        .setInstances(instanceSize)
+                        .setWorker(true),
+                res -> {
+                    if (res.succeeded()){
+                        System.out.println("TransferComplete Deployment id is " + res.result());
+                    }else{
+                        System.out.println("TransferComplete Deployment failed !");
+                    }
+                });
+
+        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.ErrorTaskListener",
+                new DeploymentOptions()
+                        .setWorkerPoolName("transfer-task-error-pool")
+                        .setWorkerPoolSize(poolSize)
+                        .setInstances(instanceSize)
+                        .setWorker(true),
+                res -> {
+                    if (res.succeeded()){
+                        System.out.println("ErrorTask Deployment id is " + res.result());
+                    }else{
+                        System.out.println("ErrorTask Deployment failed !");
+                    }
+                });
+
+        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.FileTransferServiceImpl",
+                new DeploymentOptions()
+                        .setWorkerPoolName("sftp-transfer-task-worker-pool")
+                        .setWorkerPoolSize(poolSize)
+                        .setInstances(instanceSize)
+                        .setWorker(true),
+                res -> {
+                    if (res.succeeded()){
+                        System.out.println("FileTransferServiceImpl Deployment id is " + res.result());
+                    }else{
+                        System.out.println("FileTransferServiceImpl Deployment failed !");
+                    }
+                });
     }
 }

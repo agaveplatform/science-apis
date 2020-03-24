@@ -209,13 +209,6 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
         return !(this.interruptedTasks.contains(transferTask.getUuid()) ||
                 this.interruptedTasks.contains(transferTask.getParentTaskId()) ||
                 this.interruptedTasks.contains(transferTask.getRootTaskId()));
-//        EventBus bus = vertx.eventBus();
-//        bus.consumer(getEventChannel());
-//        if ( bus.consumer("paused." + tenantId +"." + username + "." + uuid ).isRegistered()) {
-//            logger.info("Transfer task paused {} created: {} -> {}", tenantId, uuid, source);
-//            return true;
-//        }
-//        return false;
     }
 
     /**

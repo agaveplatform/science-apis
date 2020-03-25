@@ -2,12 +2,11 @@ package org.agaveplatform.service.transfers.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.util.TransferRateHelper;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.transfer.Settings;
-import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
+
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

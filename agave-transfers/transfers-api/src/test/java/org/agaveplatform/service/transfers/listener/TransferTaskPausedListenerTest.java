@@ -2,16 +2,25 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.junit.jupiter.api.Test;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import io.vertx.junit5.*;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
+@ExtendWith(VertxExtension.class)
+@DisplayName("Transfers processPausedRequest tests")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TransferTaskPausedListenerTest {
 
 	Vertx vertx;
 
 	@Test
-	void processCancelRequest() {
+	public void processCancelRequest() {
 		JsonObject body = new JsonObject();
 		body.put("id", "1");  // uuid
 		body.put("owner", "dooley");
@@ -34,10 +43,10 @@ class TransferTaskPausedListenerTest {
 	}
 
 	@Test
-	void getTransferTaskTree() {
+	public void getTransferTaskTree() {
 	}
 
 	@Test
-	void getTransferTask() {
+	public void getTransferTask() {
 	}
 }

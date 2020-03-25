@@ -7,17 +7,19 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-
 import static org.junit.jupiter.api.Assertions.*;
 
+
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
-@DisplayName("Transfers Task Cancel test")
+@DisplayName("Transfers Task Canceled test")
 class TransferTaskCancelListenerTest {
 
 	private EventBus eventBus;
 
 	@Test
-	void taskAssigned(Vertx vertx, VertxTestContext ctx){
+	public void taskAssigned(Vertx vertx, VertxTestContext ctx){
 		eventBus = vertx.eventBus();
 
 		vertx.deployVerticle(new TransferTaskAssignedListener(), ctx.succeeding(id -> {

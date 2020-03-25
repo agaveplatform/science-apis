@@ -1,4 +1,4 @@
-package org.agaveplatform.service.model.enumerations;
+package org.agaveplatform.service.transfers.enumerations;
 
 
 import java.util.Arrays;
@@ -14,14 +14,14 @@ public enum TransferStatusType
 				PAUSED + ", " + QUEUED + ", " + RETRYING + ", " + TRANSFERRING;
 	}
 
-	public static List<org.agaveplatform.service.model.enumerations.TransferStatusType> getActiveStatusValues()
+	public static List<TransferStatusType> getActiveStatusValues()
 	{
 		return Arrays.asList(PAUSED, QUEUED, RETRYING, TRANSFERRING);
 	}
 
 	public boolean isCancelled()
 	{
-		return (this.equals(org.iplantc.service.transfer.model.enumerations.TransferStatusType.CANCELLED) ||
-				this.equals(org.iplantc.service.transfer.model.enumerations.TransferStatusType.FAILED) );
+		return (this.equals(TransferStatusType.CANCELLED) ||
+				this.equals(TransferStatusType.FAILED) );
 	}
 }

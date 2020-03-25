@@ -2,15 +2,22 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.junit.jupiter.api.Test;
+import io.vertx.junit5.VertxExtension;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(VertxExtension.class)
+@DisplayName("Transfers Task transfertask.nofication test")
 class TransferCompleteTaskListenerImplTest {
 
 	Vertx vertx;
 	@Test
-	void start() {
+	public void start() {
 		String address = "*.transfer.complete";
 		TransferCompleteTaskListenerImpl ttl = new TransferCompleteTaskListenerImpl(vertx, address);
 
@@ -24,3 +31,4 @@ class TransferCompleteTaskListenerImplTest {
 		ttl.start();
 	}
 }
+

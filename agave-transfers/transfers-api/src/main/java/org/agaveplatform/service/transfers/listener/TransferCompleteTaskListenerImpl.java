@@ -9,17 +9,16 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.web.RoutingContext;
-import org.agaveplatform.service.transfers.model.SqlQuery;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
-import org.agaveplatform.service.transfers.model.TransferTask;
-
 import io.vertx.ext.jdbc.JDBCClient;
-import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.sql.SQLOptions;
-import io.vertx.ext.sql.UpdateResult;
 
-import org.iplantc.service.transfer.exceptions.TransferException;
-import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.model.SqlQuery;
+import org.agaveplatform.service.transfers.model.TransferTask;
+import org.agaveplatform.service.transfers.exception.TransferException;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.dao.TransferTaskDao;
+
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +27,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
-import static org.agaveplatform.service.transfers.util.ActionHelper.created;
 import static org.agaveplatform.service.transfers.util.ActionHelper.ok;
 
 public class TransferCompleteTaskListenerImpl extends AbstractVerticle implements TransferCompleteTaskListener {
@@ -82,7 +80,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 			TransferTask bodyTask = new TransferTask(body);
 			body.put("status", TransferStatusType.COMPLETED);
 
-			org.iplantc.service.transfer.model.TransferTask tt = new org.iplantc.service.transfer.model.TransferTask();
+			TransferTask tt = new TransferTask();
 			tt.setId(bodyTask.getId());
 			tt.setStatus(TransferStatusType.COMPLETED);
 			try {
@@ -100,7 +98,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 			SQLConnection connection = (SQLConnection) connect();
 
 			parentTask = (TransferTask) queryParent(connection, parentId);
-			org.iplantc.service.transfer.model.TransferTask transferTaskParent = new org.iplantc.service.transfer.model.TransferTask();
+			TransferTask transferTaskParent = new TransferTask();
 
 			if (! parentTask.getStatus().toString().isEmpty() ||
 				parentTask.getStatus() != TransferStatusType.CANCELLED ||

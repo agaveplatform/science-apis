@@ -1,4 +1,4 @@
-package org.agaveplatform.service.model.enumerations;
+package org.agaveplatform.service.transfers.enumerations;
 
 /**
  * @author dooley

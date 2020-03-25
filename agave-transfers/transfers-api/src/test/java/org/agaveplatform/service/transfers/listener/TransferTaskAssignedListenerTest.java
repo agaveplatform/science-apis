@@ -8,10 +8,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.testng.Assert;
 
@@ -19,8 +16,11 @@ import javax.validation.constraints.AssertFalse;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("👋 TransferTaskAssignedListener test")
+
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
+@DisplayName("👋 TransferTaskAssignedListener test")
 class TransferTaskAssignedListenerTest {
 
 	private EventBus eventBus;
@@ -50,7 +50,7 @@ class TransferTaskAssignedListenerTest {
 //	}
 
 	@Test
-	void processTransferTask(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTask(Vertx vertx, VertxTestContext ctx) {
 		JsonObject body = new JsonObject();
 		body.put("id", "1");  // uuid
 		body.put("owner", "dooley");

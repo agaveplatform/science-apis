@@ -5,19 +5,12 @@ import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.apache.commons.lang3.StringUtils;
-import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteDataClientFactory;
-import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
-import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
-import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package org.agaveplatform.service.trasfers;
+package org.agaveplatform.service.transfers.protocol;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
@@ -6,18 +6,8 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 //import org.agaveplatform.service.transfers.listener.DefaultTransferTaskAssignedListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
-import org.iplantc.service.transfer.exceptions.TransferException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.iplantc.service.transfer.URLCopy;
-
-import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 
 public class TransferSftpVertical extends AbstractVerticle {
 	private final Logger logger = LoggerFactory.getLogger(TransferSftpVertical.class);

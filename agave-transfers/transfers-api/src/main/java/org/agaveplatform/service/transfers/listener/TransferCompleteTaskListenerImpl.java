@@ -18,7 +18,6 @@ import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.dao.TransferTaskDao;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

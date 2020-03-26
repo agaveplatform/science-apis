@@ -8,7 +8,7 @@ import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uri.AgaveUriUtil;
 import org.iplantc.service.transfer.Settings;
-import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 
 import java.math.BigDecimal;
 import java.net.URI;

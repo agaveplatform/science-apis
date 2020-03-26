@@ -11,9 +11,10 @@ import io.vertx.core.AbstractVerticle;
 		import org.iplantc.service.transfer.RemoteDataClient;
 		import org.iplantc.service.transfer.RemoteDataClientFactory;
 		import org.iplantc.service.transfer.RemoteFileInfo;
-		import org.iplantc.service.transfer.dao.TransferTaskDao;
-		import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
-		import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
+
+		//import org.agaveplatform.service.transfers.dao.TransferTaskDao;
+
+		import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 		import org.slf4j.Logger;
 		import org.slf4j.LoggerFactory;
 

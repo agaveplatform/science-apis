@@ -155,7 +155,7 @@ public class FilesApplication extends Application
         secureEndpoint(router, "/quartz", QuartzResource.class);
         secureEndpoint(router, "/quartz/", QuartzResource.class);
         
-    		// Define authenticated I/O routes
+    	// Define authenticated I/O routes
         if (!Settings.SLAVE_MODE) {
 	        router.attach("/download/{username}/system/{systemId}/", PublicFileDownloadResource.class);
 //	        router.attach("/download/{systemId}/", PublicFileDownloadResource.class);

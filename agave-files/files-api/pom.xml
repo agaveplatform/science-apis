@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.agaveplatform</groupId>
 		<artifactId>files</artifactId>
-		<version>2.2.24</version>
+		<version>2.2.27</version>
 	</parent>
 	<artifactId>files-api</artifactId>
 	<name>Agave Platform Files Service API Endpoints</name>
@@ -14,7 +14,7 @@
 	<properties>
 		<force.check.update>false</force.check.update>
 		<service.war.name>files</service.war.name>
-		<hibernate.hbm2ddl>update</hibernate.hbm2ddl>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>
@@ -33,6 +33,19 @@
 			</testResource>
 		</testResources>
 		<plugins>
+			<!-- Starts and stops integration test containers with Docker Compose -->
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+			</plugin>
+
+			<!-- iRODS containers take a while to startup, so we use a custom await config here
+			     to wait for them to start up completely. -->
+			<plugin>
+				<groupId>org.agaveplatform.ops</groupId>
+				<artifactId>await-maven-plugin</artifactId>
+			</plugin>
+
 			<!-- ************************************ -->
 			<!-- *** WAR BUILDER ** -->
 			<!-- ************************************ -->

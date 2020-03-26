@@ -175,7 +175,9 @@ public class FileListingResource extends AbstractFileResource {
 			}
 	        
 			LogicalFile logicalFile = null;
-            try {logicalFile=LogicalFileDao.findBySystemAndPath(remoteSystem, remoteDataClient.resolvePath(path));} catch(Exception e) {}
+            try {
+            	logicalFile=LogicalFileDao.findBySystemAndPath(remoteSystem, remoteDataClient.resolvePath(path));
+            } catch(Exception ignore) {}
             
             //End Profile LogicalFileRead
             if (st != null) log.debug(st.getShortStopMsg());	
@@ -193,10 +195,7 @@ public class FileListingResource extends AbstractFileResource {
 			RemoteFileInfo remoteFileInfo = null;
 			
 			try {
-				
-				
-				
-				
+
 				//Profile RemoteDataAuthenticate
 				if (log.isDebugEnabled()) st2 = SimpleTimer.start("RemoteDataAuthenticate");
                 remoteDataClient.authenticate();

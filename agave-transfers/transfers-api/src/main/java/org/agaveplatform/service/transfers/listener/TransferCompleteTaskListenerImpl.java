@@ -8,16 +8,19 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.sql.UpdateResult;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.SQLOptions;
 
 import org.agaveplatform.service.transfers.model.SqlQuery;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.exception.TransferException;
+//import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
-import org.agaveplatform.service.transfers.dao.TransferTaskDao;
-
+//import org.agaveplatform.service.transfers.dao.TransferTaskDao;
+//import org.agaveplatform.service.transfers.model.TransferUpdate;
+//import org.agaveplatform.service.transfers.util.TransferRateHelper;
+//
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +29,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 
+import static org.agaveplatform.service.transfers.util.ActionHelper.created;
 import static org.agaveplatform.service.transfers.util.ActionHelper.ok;
 
 public class TransferCompleteTaskListenerImpl extends AbstractVerticle implements TransferCompleteTaskListener {
@@ -79,14 +83,23 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 			TransferTask bodyTask = new TransferTask(body);
 			body.put("status", TransferStatusType.COMPLETED);
 
-			TransferTask tt = new TransferTask();
-			tt.setId(bodyTask.getId());
-			tt.setStatus(TransferStatusType.COMPLETED);
+//			TransferTask tt = new TransferTask();
+//			tt.setId(bodyTask.getId());
+//			tt.setStatus(TransferStatusType.COMPLETED);
 			try {
-				TransferTaskDao.updateProgress(tt);
-			}catch (TransferException e){
-				logger.error(e.toString());
-			} catch (Exception e) {
+				TransferTask tt = new TransferTask();
+				tt.setId(bodyTask.getId());
+				tt.setStatus(TransferStatusType.COMPLETED);
+				//updateProgress(tt);
+
+				connect()
+						.compose(connection -> updateProgress(connection, tt.getUuid().toString(), tt.getStatus().toString(), true))
+						.setHandler(tt_var -> {
+							if (tt_var.succeeded()) {
+								vertx.eventBus().publish("transfertask.created", tt_var.result().toJSON());
+							}
+						});
+			}catch (Exception e) {
 				logger.error(e.toString());
 			}
 
@@ -107,10 +120,9 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 				transferTaskParent.setId(bodyTask.getId());
 				transferTaskParent.setStatus(TransferStatusType.COMPLETED);
 				try {
-					TransferTaskDao.updateProgress(transferTaskParent);
-				}catch (TransferException e){
-					logger.error(e.toString());
-				} catch (Exception e) {
+
+					updateProgress(connection, transferTaskParent.getUuid().toString(), transferTaskParent.getStatus().toString(), true);
+				}catch (Exception e) {
 					logger.error(e.toString());
 				}
 			}
@@ -121,6 +133,43 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 		});
 	}
 
+	private Future<TransferTask> updateProgress(SQLConnection connection, String uuid, String status , boolean transferUpdate) {
+		Future<TransferTask> future = Future.future();
+		String sql = "SELECT * FROM transfertasks WHERE \"uuid\" = ?";
+		connection.queryWithParams(sql, new JsonArray().add(uuid), result -> {
+//            connection.close();
+			List<JsonObject> rows = result.result().getRows();
+			if (rows.size() == 0) {
+				throw new NoSuchElementException("No transferTask with id " + uuid);
+			} else {
+				JsonObject row = rows.get(0);
+				final TransferTask transferTask = new TransferTask(row);
+
+				String updateSql = "UPDATE transfertasks " +
+						"SET \"transfer_status\" = ?, " +
+						"WHERE \"uuid\" = ?";
+
+				connection.updateWithParams(updateSql, new JsonArray()
+								.add(status)
+								.add(uuid),
+						ar -> {
+							connection.close();
+							if (ar.failed()) {
+								future.fail(ar.cause());
+							} else {
+								UpdateResult ur = ar.result();
+								if (ur.getUpdated() == 0) {
+									future.fail(new NoSuchElementException("No transferTask with id " + uuid));
+								} else {
+									future.complete(transferTask);
+								}
+							}
+						});
+			}
+		});
+
+		return future;
+	}
 
 
 	private Future<TransferTask> queryParent(SQLConnection connection, String uuid) {

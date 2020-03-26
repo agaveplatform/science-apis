@@ -25,30 +25,6 @@ class TransferTaskAssignedListenerTest {
 
 	private EventBus eventBus;
 
-//	@Test
-//	void taskAssigned(Vertx vertx, VertxTestContext ctx){
-//		eventBus = vertx.eventBus();
-//		vertx.deployVerticle(new TransferTaskAssignedListener(), ctx.succeeding(id -> {
-//			JsonObject body = new JsonObject();
-//			body.put("id", "1");  // uuid
-//			body.put("owner", "dooley");
-//			body.put("tenantId", "agave.dev");
-//			body.put("protocol","sftp");
-//
-//			eventBus.consumer("transfertask.created", msg -> {
-//				JsonObject bodyRec = (JsonObject) msg.body();
-//				assertEquals("1", bodyRec.getString("id"));
-//				assertEquals("dooley", bodyRec.getString("owner"));
-//				assertEquals("agave.dev", bodyRec.getString("tenantId"));
-//				assertEquals("sftp", bodyRec.getString("protocol"));
-//
-//			});
-//
-//			eventBus.publish("transfertask.assigned.agave.dev.sftp.*.*", body );
-//
-//		}));
-//	}
-
 	@Test
 	public void processTransferTask(Vertx vertx, VertxTestContext ctx) {
 		JsonObject body = new JsonObject();

@@ -17,11 +17,10 @@ import io.vertx.ext.sql.UpdateResult;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.api.validation.HTTPRequestValidationHandler;
-import io.vertx.ext.web.api.validation.ValidationException;
+
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
 
-import java.nio.file.Paths;
 import java.util.stream.Collectors;
 
 import org.agaveplatform.service.transfers.model.SqlQuery;

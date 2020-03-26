@@ -4,7 +4,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
-//import org.agaveplatform.service.transfers.listener.DefaultTransferTaskAssignedListener;
+
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -2,7 +2,6 @@ package org.agaveplatform.service.transfers.streaming;
 
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.resources.FileTransferService;
 
 import java.util.HashMap;
 import java.util.stream.Collectors;

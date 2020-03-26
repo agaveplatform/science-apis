@@ -4,10 +4,6 @@
 package org.agaveplatform.service.transfers.model;
 
 import org.codehaus.plexus.util.StringUtils;
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.Filters;
-import org.hibernate.annotations.ParamDef;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.systems.model.LastUpdatable;
 import org.iplantc.service.transfer.Settings;

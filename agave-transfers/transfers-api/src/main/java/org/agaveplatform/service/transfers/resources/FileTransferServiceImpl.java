@@ -1,13 +1,11 @@
 package org.agaveplatform.service.transfers.resources;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 
 import java.util.HashMap;
-import java.util.stream.Collectors;
 
 public class FileTransferServiceImpl  implements FileTransferService {
 

@@ -3,14 +3,11 @@ package org.agaveplatform.service.transfers.listener;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.notification.dao.NotificationDao;
-import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.managers.NotificationManager;
-import org.iplantc.service.notification.model.Notification;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import javax.persistence.Transient;
+
 
 public class NotificationListener extends AbstractVerticle {
 	private final Logger logger = LoggerFactory.getLogger(NotificationListener.class);

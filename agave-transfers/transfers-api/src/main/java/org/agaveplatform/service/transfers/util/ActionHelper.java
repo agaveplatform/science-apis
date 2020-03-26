@@ -5,7 +5,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.json.Json;
 import io.vertx.ext.web.RoutingContext;
 
-import java.util.List;
 import java.util.NoSuchElementException;
 
 /**

@@ -35,7 +35,7 @@ import org.agaveplatform.service.transfers.util.ServiceUtils;
  * @author dooley
  *
  */
-public class TransferTaskDao
+public class TransferTaskDao_old
 {
 	private static final Logger log = Logger.getLogger(org.iplantc.service.transfer.dao.TransferTaskDao.class);
 
@@ -167,7 +167,7 @@ public class TransferTaskDao
 			String hql =  "FROM TransferTask t left join TransferTaskPermission p on t.id = p.transferTaskId "
 					+ "WHERE t.owner = :owner "
 					+ "          or (p.username = :owner and p.permission like 'READ%') "
-					+ "      and status in ('" + StringUtils.join(TransferStatusType.getActiveStatusValues(), "','") + "')";
+					+ "      and t.status in ('" + StringUtils.join(TransferStatusType.getActiveStatusValues(), "','") + "')";
 
 			List<TransferTask> tasks = (List<TransferTask>)session.createQuery(hql)
 					.setString("owner",username)

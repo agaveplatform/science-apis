@@ -6,19 +6,11 @@ import io.vertx.core.AbstractVerticle;
 		import io.vertx.core.json.JsonObject;
 		import org.agaveplatform.service.transfers.model.TransferTask;
 		import org.apache.commons.lang3.StringUtils;
-		import org.iplantc.service.systems.dao.SystemDao;
-		import org.iplantc.service.systems.model.RemoteSystem;
-		import org.iplantc.service.transfer.RemoteDataClient;
-		import org.iplantc.service.transfer.RemoteDataClientFactory;
-		import org.iplantc.service.transfer.RemoteFileInfo;
-
-		//import org.agaveplatform.service.transfers.dao.TransferTaskDao;
 
 		import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 		import org.slf4j.Logger;
 		import org.slf4j.LoggerFactory;
 
-		import java.net.URI;
 		import java.util.ArrayList;
 		import java.util.List;
 

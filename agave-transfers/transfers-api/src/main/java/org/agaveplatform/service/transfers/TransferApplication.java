@@ -3,10 +3,12 @@ package org.agaveplatform.service.transfers;
 import io.vertx.config.ConfigRetriever;
 import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
 import io.vertx.config.ConfigStoreOptions;
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,16 +40,35 @@ public class TransferApplication {
                 JsonObject config = json.result();
                 log.debug("Starting the app with config: " + config.encodePrettily());
 
-                vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferServiceVertical",
-                        new DeploymentOptions().setConfig(config),
-                        res -> {
-                            if (res.succeeded()) {
-                                log.info("TransferServiceVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
-                            } else {
-                                System.out.println("TransferServiceVertical deployment failed !\n" + res.cause());
-                                res.cause().printStackTrace();
-                            }
-                        });
+                Promise<String> dbVerticleDeployment = Promise.promise();
+                vertx.deployVerticle(new TransferTaskDatabaseVerticle(), dbVerticleDeployment);
+
+                dbVerticleDeployment.future().compose(id -> {
+
+                    Promise<String> httpVerticleDeployment = Promise.promise();
+                    vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferServiceVertical",
+                            new DeploymentOptions().setConfig(config),
+                            res -> {
+                                if (res.succeeded()) {
+                                    log.info("TransferServiceVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
+                                } else {
+                                    System.out.println("TransferServiceVertical deployment failed !\n" + res.cause());
+                                    res.cause().printStackTrace();
+                                }
+                            });
+
+                    return httpVerticleDeployment.future();
+
+                }).setHandler(ar -> {
+                    if (ar.succeeded()) {
+                        log.info("TransferServiceVertical ({}) started on port {}", ar.result(), config.getInteger("HTTP_PORT"));
+                    } else {
+                        System.out.println("TransferServiceVertical deployment failed !\n" + ar.cause());
+                        ar.cause().printStackTrace();
+                    }
+                });
+
+
 
             } else {
                 log.error("Error retrieving configuration.");

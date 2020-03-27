@@ -201,8 +201,6 @@ public class TenancyHelper
 			log.error("Failed to resolve current tenant " + TenancyHelper.getCurrentTenantId() + " from db", e);
 			return url;
 		}
-		
-			
 	}
 	
 	/**

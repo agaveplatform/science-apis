@@ -22,7 +22,7 @@
         <vertx.version>3.8.5</vertx.version>
         <vertx-testsuite>2.1.6</vertx-testsuite>
         <vertx-maven-plugin.version>1.0.13</vertx-maven-plugin.version>
-        <junit5.version>5.5.1</junit5.version>
+        <junit5.version>5.4.0</junit5.version>
         <rest-assured.version>4.0.0</rest-assured.version>
         <assertj.version>3.13.2</assertj.version>
         <logback-classic.version>1.2.3</logback-classic.version>
@@ -46,11 +46,63 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>1.9</source>
+                    <target>1.9</target>
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
+
+                    <annotationProcessors>
+                        <annotationProcessor>io.vertx.codegen.CodeGenProcessor</annotationProcessor>
+                    </annotationProcessors>
+                    <generatedSourcesDirectory>${project.basedir}/src/main/generated</generatedSourcesDirectory>
+                    <compilerArgs>
+                        <arg>-AoutputDirectory=${project.basedir}/src/main</arg>
+                    </compilerArgs>
+
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>${project.basedir}/src/main/generated</directory>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <argLine>
+                        --illegal-access=permit
+                    </argLine>
+                </configuration>
+<!--                <dependencies>-->
+<!--                    <dependency>-->
+<!--                        <groupId>org.junit.jupiter</groupId>-->
+<!--                        <artifactId>junit-jupiter-engine</artifactId>-->
+<!--                        <version>5.3.2</version>-->
+<!--                    </dependency>-->
+<!--                </dependencies>-->
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${maven-failsafe-plugin.version}</version>
+<!--                <dependencies>-->
+<!--                    <dependency>-->
+<!--                        <groupId>org.junit.jupiter</groupId>-->
+<!--                        <artifactId>junit-jupiter-engine</artifactId>-->
+<!--                        <version>5.4.2</version>-->
+<!--                    </dependency>-->
+
+<!--                </dependencies>-->
+
             </plugin>
         </plugins>
     </build>
@@ -96,18 +148,19 @@
             <artifactId>vertx-maven-service-factory</artifactId>
             <version>${vertx.version}</version>
         </dependency>
+        <!-- Persistence dependencies -->
         <dependency>
             <groupId>io.vertx</groupId>
             <artifactId>vertx-codegen</artifactId>
-            <version>4.0.0-milestone4</version>
-            <scope>compile</scope>
+            <version>${vertx.version}</version>
         </dependency>
+
         <!-- Persistence dependencies -->
-<!--        <dependency>-->
-<!--            <groupId>org.hsqldb</groupId>-->
-<!--            <artifactId>hsqldb</artifactId>-->
-<!--            <version>2.4.0</version>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.hsqldb</groupId>
+            <artifactId>hsqldb</artifactId>
+            <version>2.4.0</version>
+        </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
@@ -115,7 +168,6 @@
         </dependency>
 
         <!-- Agave dependencies -->
-
         <dependency>
             <groupId>org.agaveplatform</groupId>
             <artifactId>systems-core</artifactId>
@@ -125,15 +177,40 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.testng</groupId>
+                    <artifactId>testng</artifactId>
+                </exclusion>
+<!--                <exclusion>-->
+<!--                    <groupId>log4j</groupId>-->
+<!--                    <artifactId>log4j</artifactId>-->
+<!--                </exclusion>-->
             </exclusions>
-
         </dependency>
 
         <!-- Test dependencies -->
+<!--        <dependency> &lt;!&ndash; (1) &ndash;&gt;-->
+<!--            <groupId>com.github.testng-team</groupId>-->
+<!--            <artifactId>testng-junit5</artifactId>-->
+<!--            <version>0.0.1</version>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
+<!--        <dependency> &lt;!&ndash; (1) &ndash;&gt;-->
+<!--            <groupId>com.github.testng-team</groupId>-->
+<!--            <artifactId>testng-junit5</artifactId>-->
+<!--            <version>0.0.1</version>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.4.0</version>
+            <scope>test</scope>
+        </dependency>
 <!--        <dependency>-->
 <!--            <groupId>org.junit.jupiter</groupId>-->
-<!--            <artifactId>junit-jupiter-api</artifactId>-->
-<!--            <version>${junit5.version}</version>-->
+<!--            <artifactId>junit-jupiter-engine</artifactId>-->
+<!--            <version>5.6.0</version>-->
 <!--            <scope>test</scope>-->
 <!--        </dependency>-->
         <dependency>
@@ -146,6 +223,7 @@
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
             <version>${rest-assured.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.assertj</groupId>
@@ -153,14 +231,12 @@
             <version>${assertj.version}</version>
             <scope>test</scope>
         </dependency>
-
 <!--        <dependency>-->
 <!--            <groupId>io.nats</groupId>-->
 <!--            <artifactId>jnats</artifactId>-->
 <!--            <version>2.6.6</version>-->
 <!--            <scope>compile</scope>-->
 <!--        </dependency>-->
-
     </dependencies>
 
 

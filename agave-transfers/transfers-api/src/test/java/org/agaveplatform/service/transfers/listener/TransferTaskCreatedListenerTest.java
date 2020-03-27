@@ -12,8 +12,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers assignTransferTask tests")
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+//@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Disabled
 class TransferTaskCreatedListenerTest {
 
 	Vertx vertx;

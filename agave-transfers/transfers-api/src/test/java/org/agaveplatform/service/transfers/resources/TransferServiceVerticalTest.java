@@ -34,13 +34,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers API integration tests")
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+//@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TransferServiceVerticalTest {
 
     private static final Logger log = LoggerFactory.getLogger(TransferServiceVerticalTest.class);
     private Vertx vertx;
-    private int port;
+    private int port = 32331;
     private JWTAuth jwtAuth;
     private JsonObject config;
 
@@ -118,13 +118,15 @@ public class TransferServiceVerticalTest {
     public void setUpService(Vertx vertx, VertxTestContext ctx) throws IOException {
         vertx = Vertx.vertx();
 
-        // Pick an available and random
-        ServerSocket socket = new ServerSocket(0);
-        port = socket.getLocalPort();
-        socket.close();
-
         // read in config options
         intiConfig();
+
+        // Pick an available and random
+//        ServerSocket socket = new ServerSocket(0);
+//        port = socket.getLocalPort();
+//        socket.close();
+
+        config.put( "HTTP_PORT", port);
 
         // init the jwt auth used in the api calls
         initAuth();
@@ -147,7 +149,6 @@ public class TransferServiceVerticalTest {
     }
 
     @Test
-    @Order(1)
     @DisplayName("List web root says hello")
     void register() {
         String response = given()

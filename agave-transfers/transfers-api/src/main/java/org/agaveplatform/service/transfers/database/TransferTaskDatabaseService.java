@@ -60,20 +60,15 @@ public interface TransferTaskDatabaseService {
   @Fluent
   TransferTaskDatabaseService delete(String tenantId, String uuid, Handler<AsyncResult<Void>> resultHandler);
 
-  // (...)
-  // end::interface[]
 
-  // tag::create[]
   @GenIgnore
   static TransferTaskDatabaseService create(JDBCClient dbClient, HashMap<SqlQuery, String> sqlQueries, Handler<AsyncResult<TransferTaskDatabaseService>> readyHandler) {
     return new TransferTaskDatabaseServiceImpl(dbClient, sqlQueries, readyHandler);
   }
-  // end::create[]
 
-  // tag::proxy[]
   @GenIgnore
   static TransferTaskDatabaseService createProxy(Vertx vertx, String address) {
     return new TransferTaskDatabaseServiceVertxEBProxy(vertx, address);
   }
-  // end::proxy[]
+
 }

@@ -16,8 +16,7 @@ public class UnaryFileTaskImpl extends AbstractVerticle implements UnaryFileTask
 		this(vertx, null);
 	}
 
-	public Unary
-	FileTaskImpl(Vertx vertx, String address) {
+	public UnaryFileTaskImpl(Vertx vertx, String address) {
 		super();
 		setVertx(vertx);
 		setAddress(address);

@@ -1,9 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -83,6 +80,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 		String status = body.getString("status");
 		String parentTaskId = body.getString("parentTaskId");
 		try {
+//			dbService.updateStatus(tenantId, uuid, status, reply -> this.handleUpdateStatus(reply, tenantId, parentTaskId));
 			dbService.updateStatus(tenantId, uuid, status, reply -> {
 				if (reply.succeeded()) {
 					vertx.eventBus().publish("transfertask.completed", reply.result());
@@ -101,6 +99,20 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 		}
 		return future;
 	}
+
+//	protected void handleUpdateStatus(AsyncResult<JsonObject> reply, String tenantId, String parentTaskId) {
+//		if (reply.succeeded()) {
+//			vertx.eventBus().publish("transfertask.completed", reply.result());
+//			processParentEvent(tenantId, parentTaskId).setHandler(tt -> {
+//				// TODO: send notification events? or should listeners listen to the existing events?
+//				getVertx().eventBus().publish("transfertask.notification", body.toString());
+//				handler.handle(reply);
+//			} );
+//		}
+//		else {
+//			logger.error("Failed to set status of transfertask {} to completed. error: {}", uuid, reply.cause());
+//		}
+//	}
 
 	protected Future<JsonObject> processParentEvent(String tenantId, String parentTaskId) {
 		Future<JsonObject> future = Future.future();

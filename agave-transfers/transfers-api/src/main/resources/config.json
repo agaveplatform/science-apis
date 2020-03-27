@@ -7,6 +7,6 @@
   "transfertask.jdbc.driver_class": "org.hsqldb.jdbcDriver",
   "transfertask.jdbc.url": "jdbc:hsqldb:mem:test?shutdown=true",
   "transfertask.jdbc.max_pool_size": 10,
-  "transfertask.db.queue": 10,
+  "transfertask.db.queue": "transfertaskdb.queue",
   "transfertasks.sqlqueries.resource.file": "db-query.yml"
 }

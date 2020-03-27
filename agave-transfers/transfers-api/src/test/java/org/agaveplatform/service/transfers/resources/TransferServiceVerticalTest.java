@@ -126,7 +126,7 @@ public class TransferServiceVerticalTest {
 //        port = socket.getLocalPort();
 //        socket.close();
 
-        config.put( "HTTP_PORT", port);
+        config.put( "transfertask.http.port", port);
 
         // init the jwt auth used in the api calls
         initAuth();

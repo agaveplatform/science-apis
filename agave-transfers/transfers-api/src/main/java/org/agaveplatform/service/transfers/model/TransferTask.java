@@ -1,6 +1,7 @@
 package org.agaveplatform.service.transfers.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import io.vertx.codegen.annotations.DataObject;
 import io.vertx.core.json.JsonObject;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -28,6 +29,7 @@ import static javax.persistence.GenerationType.IDENTITY;
  *
  */
 @JsonSerialize(using = AgaveResourceSerializer.class)
+@DataObject
 public class TransferTask {
     
     private static final Logger log = LoggerFactory.getLogger(TransferTask.class);
@@ -54,7 +56,6 @@ public class TransferTask {
 	private String uuid;
 	
 	public TransferTask() {
-		tenantId = TenancyHelper.getCurrentTenantId();
 		setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
 	}
 
@@ -81,19 +82,21 @@ public class TransferTask {
 		this.setTotalSkippedFiles(json.getInteger("total_skipped", 0));
 	}
 
-	public TransferTask(String source, String dest)
+	public TransferTask(String source, String dest, String tenantId)
 	{
 		this();
 		this.source = source;
 		this.dest = dest;
+		setTenantId(tenantId);
 	}
 	
-	public TransferTask(String source, String dest, String owner, String parentTaskId, String rootTaskId)
+	public TransferTask(String source, String dest, String owner, String tenantId, String parentTaskId, String rootTaskId)
 	{
-		this(source, dest);
+		this(source, dest, tenantId);
 		this.parentTaskId = parentTaskId;
 		this.rootTaskId = rootTaskId;
 		this.owner = owner;
+		setTenantId(tenantId);
 	}
 
 	/**
@@ -351,6 +354,9 @@ public class TransferTask {
 	 */
 	public void setTenantId(String tenantId)
 	{
+		if (tenantId == null || tenantId.trim().equals("")) {
+			throw new IllegalArgumentException("tenantId must be defined");
+		}
 		this.tenantId = tenantId;
 	}
 
@@ -439,8 +445,12 @@ public class TransferTask {
 		this.totalSkippedFiles = totalSkippedFiles;
 	}
 
-
 	public String toJSON() {
+		return toJSON().toString();
+	}
+
+
+	public JsonObject toJson() {
         JsonObject json = new JsonObject();
         try
         {   
@@ -482,7 +492,7 @@ public class TransferTask {
         	log.error("Error producing JSON output for transfer task " + getUuid());
         }
 
-        return json.toString();
+        return json;
         
     }
 

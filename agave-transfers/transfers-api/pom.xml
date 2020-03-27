@@ -59,7 +59,6 @@
                     <compilerArgs>
                         <arg>-AoutputDirectory=${project.basedir}/src/main</arg>
                     </compilerArgs>
-
                 </configuration>
             </plugin>
             <plugin>

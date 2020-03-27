@@ -58,7 +58,7 @@ public class TransferServiceVertical extends AbstractVerticle {
     @Override
     public void start(Promise<Void> promise) {
         // set the config from the main vertical
-//        setConfig(config());
+        setConfig(config());
 
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, "transfertask.db.queue"); // <1>
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
@@ -101,6 +101,7 @@ public class TransferServiceVertical extends AbstractVerticle {
 
 
         int portNumber = config().getInteger(CONFIG_TRANSFERTASK_HTTP_PORT, 8080);
+        server = vertx.createHttpServer();
         server
             .requestHandler(router)
             .listen(portNumber, ar -> {

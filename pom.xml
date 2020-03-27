@@ -300,7 +300,7 @@
                         </execution>
                     </executions>
                     <configuration>
-                        <proc>none</proc>
+<!--                        <proc>none</proc>-->
                         <debug>true</debug>
                         <source>${java-source.version}</source>
                         <target>${java-target.version}</target>

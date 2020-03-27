@@ -55,7 +55,7 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
       if (ready.succeeded()) {
         ServiceBinder binder = new ServiceBinder(vertx);
         binder
-          .setAddress(CONFIG_TRANSFERTASK_DB_QUEUE)
+          .setAddress(config().getString(CONFIG_TRANSFERTASK_DB_QUEUE))
           .register(TransferTaskDatabaseService.class, ready.result());
         promise.complete();
       } else {

@@ -147,7 +147,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                                             String childSource = body.getString("source") + "/" + childFileItem.getName();
                                             String childDest = body.getString("dest") + "/" + childFileItem.getName();
 
-                                            TransferTask transferTask = new TransferTask(childSource, childDest);
+                                            TransferTask transferTask = new TransferTask(childSource, childDest, tenantId);
                                             transferTask.setTenantId(tenantId);
                                             transferTask.setOwner(username);
                                             transferTask.setParentTaskId(uuid);

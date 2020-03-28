@@ -26,11 +26,18 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.serviceproxy.ServiceBinder;
 import org.apache.commons.io.IOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Properties;
 
@@ -40,7 +47,7 @@ import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*
  */
 // tag::dbverticle[]
 public class TransferTaskDatabaseVerticle extends AbstractVerticle {
-
+  private static final Logger log = LoggerFactory.getLogger(TransferTaskDatabaseVerticle.class);
   @Override
   public void start(Promise<Void> promise) throws Exception {
 
@@ -71,28 +78,34 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
 
     String queriesFile = config().getString(CONFIG_TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE);
 
-    InputStream queriesInputStream;
-    if (queriesFile != null) {
-      queriesInputStream = new FileInputStream(queriesFile);
+    if (queriesFile != null && Files.exists(Paths.get(queriesFile))) {
+      log.info("Loading sql queries from: {}", queriesFile);
     } else {
-      queriesInputStream = getClass().getResourceAsStream("/db-queries.yml");
+      URL queriesFileUri = getClass().getClassLoader().getResource("db-queries.yml");
+      if (queriesFileUri == null) {
+        throw new FileNotFoundException("No sql queries file not found");
+      } else {
+        queriesFile = queriesFileUri.getPath();
+      }
     }
 
-    String content = IOUtils.toString(queriesInputStream);
-    ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-    JsonNode node = mapper.readTree(content);
+    try (InputStream queriesInputStream = new FileInputStream(queriesFile)) {
+      ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+      JsonNode node = mapper.readTree(queriesInputStream);
 
-    HashMap<SqlQuery, String> sqlQueries = new HashMap<>();
-    sqlQueries.put(SqlQuery.CREATE_TRANSFERTASKS_TABLE, node.get("create-transfertasks-table").textValue());
-    sqlQueries.put(SqlQuery.ALL_TRANSFERTASKS, node.get("all-transfertasks").textValue());
-    sqlQueries.put(SqlQuery.GET_TRANSFERTASK, node.get("get-transfertask").textValue());
-    sqlQueries.put(SqlQuery.CREATE_TRANSFERTASK, node.get("create-transfertask").textValue());
-    sqlQueries.put(SqlQuery.SAVE_TRANSFERTASK, node.get("save-transfertask").textValue());
-    sqlQueries.put(SqlQuery.DELETE_TRANSFERTASK, node.get("delete-transfertask").textValue());
-    sqlQueries.put(SqlQuery.UPDATE_TRANSFERTASK_STATUS, node.get("update-transfertask-status").textValue());
-    sqlQueries.put(SqlQuery.UPDATE_TRANSFERTASK_PROGRESS, node.get("update-transfertask-progress").textValue());
-    sqlQueries.put(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED, node.get("all-transfertask-children-cancelled-or-completed").textValue());
-    return sqlQueries;
+      HashMap<SqlQuery, String> sqlQueries = new HashMap<>();
+      sqlQueries.put(SqlQuery.CREATE_TRANSFERTASKS_TABLE, node.get("create-transfertasks-table").textValue());
+      sqlQueries.put(SqlQuery.ALL_TRANSFERTASKS, node.get("all-transfertasks").textValue());
+      sqlQueries.put(SqlQuery.GET_TRANSFERTASK, node.get("get-transfertask").textValue());
+      sqlQueries.put(SqlQuery.CREATE_TRANSFERTASK, node.get("create-transfertask").textValue());
+      sqlQueries.put(SqlQuery.SAVE_TRANSFERTASK, node.get("save-transfertask").textValue());
+      sqlQueries.put(SqlQuery.DELETE_TRANSFERTASK, node.get("delete-transfertask").textValue());
+      sqlQueries.put(SqlQuery.UPDATE_TRANSFERTASK_STATUS, node.get("update-transfertask-status").textValue());
+//      sqlQueries.put(SqlQuery.UPDATE_TRANSFERTASK_PROGRESS, node.get("update-transfertask-progress").textValue());
+      sqlQueries.put(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED, node.get("all-transfertask-children-cancelled-or-completed").textValue());
+
+      return sqlQueries;
+    }
   }
 }
 // end::dbverticle[]

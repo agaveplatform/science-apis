@@ -5,8 +5,8 @@
   "transfertask.jwt.public_key": "public_key.pem",
   "transfertask.jdbc.database": "${foundation.db.database}",
   "transfertask.jdbc.driver_class": "org.hsqldb.jdbcDriver",
-  "transfertask.jdbc.url": "jdbc:hsqldb:mem:test?shutdown=true",
+  "transfertask.jdbc.url": "jdbc:hsqldb:mem:dev?shutdown=true",
   "transfertask.jdbc.max_pool_size": 10,
   "transfertask.db.queue": "transfertaskdb.queue",
-  "transfertasks.sqlqueries.resource.file": "db-query.yml"
+  "transfertasks.sqlqueries.resource.file": "db-queries.yml"
 }

@@ -31,7 +31,6 @@ public class TransferSftpVertical extends AbstractVerticle {
 			String uuid = body.getString("id");
 			String source = body.getString("source");
 			String dest = body.getString("dest");
-
 			TransferTask tt = new TransferTask(body);
 
 //			logger.info("Transfer task SFTP {} for source {} and dest {}", uuid, source, dest);

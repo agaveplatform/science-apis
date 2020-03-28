@@ -94,7 +94,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 					logger.error("Failed to set status of transfertask {} to completed. error: {}", uuid, reply.cause());
 				}
 			});
-		}catch (Exception e) {
+		} catch (Exception e) {
 			logger.error(e.toString());
 		}
 		return future;

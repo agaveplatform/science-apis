@@ -61,25 +61,93 @@ public class TransferTask {
 
 	public TransferTask(JsonObject json) {
 		this();
-		this.setAttempts(json.getInteger("attempts"));
-		this.setBytesTransferred(json.getInteger("bytes_transferred"));
-		this.setCreated(json.getInstant("created"));
+
+		this.setId(json.getLong("id", 0L));
+
+		this.setAttempts(json.getInteger("attempts", 0));
+
+		if (json.containsKey("bytes_transferred")) {
+			this.setBytesTransferred(json.getLong("bytes_transferred", 0L));
+		} else {
+			this.setBytesTransferred(json.getLong("bytesTransferred", 0L));
+		}
+
+		this.setCreated(json.getInstant("created", Instant.now()));
+
 		this.setDest(json.getString("dest"));
-		this.setEndTime(json.getInstant("end_time"));
-		this.setEventId(json.getString("event_id"));
-		this.setLastUpdated(json.getInstant("last_updated"));
-		this.setOwner(json.getString("owner"));
+
+		if (json.containsKey("end_time")) {
+			this.setEndTime(json.getInstant("end_time", null));
+		} else {
+			this.setEndTime(json.getInstant("endTime", null));
+		}
+		if (json.containsKey("event_id")) {
+			this.setEventId(json.getString("event_id", null));
+		} else {
+			this.setEventId(json.getString("eventId", null));
+		}
+		if (json.containsKey("last_updated")) {
+			this.setLastUpdated(json.getInstant("last_updated"));
+		} else {
+			this.setLastUpdated(json.getInstant("lastUpdated"));
+		}
+
+		this.setOwner(json.getString("owner", null));
+
 		this.setSource(json.getString("source"));
-		this.setStartTime(json.getInstant("start_time"));
+
+		if (json.containsKey("start_time")) {
+			this.setStartTime(json.getInstant("start_time"));
+		} else {
+			this.setStartTime(json.getInstant("startTime"));
+		}
+
 		this.setStatus(TransferStatusType.valueOf(json.getString("status")));
-		this.setTenantId(json.getString("tenant_id"));
-		this.setTotalSize(json.getLong("total_size", 0L));
-		this.setTransferRate(json.getDouble("transfer_rate", 0D));
-		this.setParentTaskId(json.getString("parent_task"));
-		this.setRootTaskId(json.getString("root_task"));
+
+		if (json.containsKey("tenant_id")) {
+			this.setTenantId(json.getString("tenant_id"));
+		} else {
+			this.setTenantId(json.getString("tenantId"));
+		}
+
+		if (json.containsKey("total_size")) {
+			this.setTotalSize(json.getLong("total_size", 0L));
+		} else {
+			this.setTotalSize(json.getLong("totalSize", 0L));
+		}
+
+		if (json.containsKey("transfer_rate")) {
+			this.setTransferRate(json.getDouble("transfer_rate", 0D));
+		} else {
+			this.setTransferRate(json.getDouble("transferRate", 0D));
+		}
+
+		if (json.containsKey("parent_task")) {
+			this.setParentTaskId(json.getString("parent_task", null));
+		} else {
+			this.setParentTaskId(json.getString("parentTask", null));
+		}
+
+		if (json.containsKey("root_task")) {
+			this.setRootTaskId(json.getString("root_task", null));
+		} else {
+			this.setRootTaskId(json.getString("rootTask", null));
+		}
+
 		this.setUuid(json.getString("uuid"));
-		this.setTotalFiles(json.getInteger("total_files", 0));
-		this.setTotalSkippedFiles(json.getInteger("total_skipped", 0));
+
+		if (json.containsKey("total_files")) {
+			this.setTotalFiles(json.getLong("total_files", 0L));
+		} else {
+			this.setTotalFiles(json.getLong("totalFiles", 0L));
+		}
+
+		if (json.containsKey("total_skipped")) {
+			this.setTotalSkippedFiles(json.getLong("total_skipped", 0L));
+		} else {
+			this.setTotalSkippedFiles(json.getLong("totalSkipped", 0L));
+		}
+
 	}
 
 	public TransferTask(String source, String dest, String tenantId)
@@ -354,9 +422,9 @@ public class TransferTask {
 	 */
 	public void setTenantId(String tenantId)
 	{
-		if (tenantId == null || tenantId.trim().equals("")) {
-			throw new IllegalArgumentException("tenantId must be defined");
-		}
+//		if (tenantId == null || tenantId.trim().equals("")) {
+//			throw new IllegalArgumentException("tenantId must be defined");
+//		}
 		this.tenantId = tenantId;
 	}
 
@@ -454,7 +522,7 @@ public class TransferTask {
         JsonObject json = new JsonObject();
         try
         {   
-            json.put("id", getUuid())
+            json.put("id", getId())
                 .put("attempts", getAttempts())
                 .put("bytesTransferred", getBytesTransferred())
                 .put("created", getCreated())
@@ -468,8 +536,10 @@ public class TransferTask {
                 .put("startTime", getStartTime())
                 .put("status", getStatus().name())
                 .put("totalFiles", getTotalFiles())
+				.put("transferRate", getTransferRate())
                 .put("totalSize", getTotalSize())
-                .put("totalSkippedFiles", getTotalSkippedFiles());
+                .put("totalSkippedFiles", getTotalSkippedFiles())
+            	.put("uuid", getUuid());
 //				.put("_links", new JsonObject()
 //						.put("self", new JsonObject()
 //                    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid()))

@@ -25,6 +25,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
+import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,13 +70,11 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
 
   @Override
   public TransferTaskDatabaseService getAll(String tenantId, Handler<AsyncResult<JsonArray>> resultHandler) {
-    dbClient.query(sqlQueries.get(SqlQuery.ALL_TRANSFERTASKS), res -> {
+    JsonArray data = new JsonArray()
+            .add(tenantId);
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASKS), data, res -> {
       if (res.succeeded()) {
-        JsonArray response = new JsonArray(res.result()
-          .getRows()
-          .stream()
-          .map(TransferTask::new)
-          .collect(Collectors.toList()));
+        JsonArray response = new JsonArray(res.result().getRows());
         resultHandler.handle(Future.succeededFuture(response));
       } else {
         LOGGER.error("Database query error", res.cause());
@@ -95,14 +94,10 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonObject response = new JsonObject();
         ResultSet resultSet = fetch.result();
         if (resultSet.getNumRows() == 0) {
-          response.put("found", false);
+          resultHandler.handle(Future.failedFuture(new ObjectNotFoundException("No transfer task found")));
         } else {
-          List<JsonObject> rows = resultSet.getRows();
-          response.put("found", true);
-          JsonObject row = rows.get(0);
-          response.put("transfertask", row);
+          resultHandler.handle(Future.succeededFuture(resultSet.getRows().get(0)));
         }
-        resultHandler.handle(Future.succeededFuture(response));
       } else {
         LOGGER.error("Database query error", fetch.cause());
         resultHandler.handle(Future.failedFuture(fetch.cause()));
@@ -156,8 +151,17 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(transferTask.getTotalSkippedFiles());
     dbClient.updateWithParams(sqlQueries.get(SqlQuery.CREATE_TRANSFERTASK), data, res -> {
       if (res.succeeded()) {
-        JsonObject response = new JsonObject().put("transfertask", res.result().toJson());
-        resultHandler.handle(Future.succeededFuture(response));
+        int transferTaskId = res.result().getKeys().getInteger(0);
+        JsonArray params = new JsonArray().add(transferTask.getUuid()).add(tenantId);
+        dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
+          if (ar.succeeded()) {
+            resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+          } else {
+            LOGGER.error("Database query error", ar.cause());
+            resultHandler.handle(Future.failedFuture(ar.cause()));
+          }
+        });
+
       } else {
         LOGGER.error("Database query error", res.cause());
         resultHandler.handle(Future.failedFuture(res.cause()));
@@ -172,7 +176,6 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(transferTask.getAttempts())
             .add(transferTask.getBytesTransferred())
             .add(transferTask.getEndTime())
-            .add(transferTask.getOwner())
             .add(transferTask.getStartTime())
             .add(transferTask.getStatus())
             .add(transferTask.getTotalSize())
@@ -181,14 +184,43 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(transferTask.getTotalSkippedFiles())
             .add(uuid)
             .add(tenantId);
-    dbClient.updateWithParams(sqlQueries.get(SqlQuery.SAVE_TRANSFERTASK), data, res -> {
-      if (res.succeeded()) {
-        JsonObject response = new JsonObject().put("transfertask", res.result().toJson());
-        resultHandler.handle(Future.succeededFuture(response));
-      } else {
-        LOGGER.error("Database query error", res.cause());
-        resultHandler.handle(Future.failedFuture(res.cause()));
-      }
+    dbClient.getConnection(conn -> {
+      conn.result().setAutoCommit(false, res -> {
+        if (res.failed()) {
+          throw new RuntimeException(res.cause());
+        }
+
+        conn.result().updateWithParams(sqlQueries.get(SqlQuery.SAVE_TRANSFERTASK), data, update -> {
+          if (update.succeeded()) {
+            conn.result().commit(commit -> {
+              if (commit.failed()) {
+                conn.result().rollback(rollback -> {
+                  if (res.failed()) {
+                    LOGGER.error("Database query error", rollback.cause());
+                    resultHandler.handle(Future.failedFuture(rollback.cause()));
+                  } else {
+                    LOGGER.error("Database query error", commit.cause());
+                    resultHandler.handle(Future.failedFuture(commit.cause()));
+                  }
+                });
+              } else {
+                JsonArray params = new JsonArray().add(uuid).add(tenantId);
+                conn.result().queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
+                  if (ar.succeeded()) {
+                    resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                  } else {
+                    LOGGER.error("Database query error", ar.cause());
+                    resultHandler.handle(Future.failedFuture(ar.cause()));
+                  }
+                });
+              }
+            });
+          } else {
+            LOGGER.error("Database query error", update.cause());
+            resultHandler.handle(Future.failedFuture(update.cause()));
+          }
+        });
+      });
     });
     return this;
   }
@@ -199,10 +231,17 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(status)
             .add(uuid)
             .add(tenantId);
-    dbClient.updateWithParams(sqlQueries.get(SqlQuery.SAVE_TRANSFERTASK), data, res -> {
+    dbClient.updateWithParams(sqlQueries.get(SqlQuery.UPDATE_TRANSFERTASK_STATUS), data, res -> {
       if (res.succeeded()) {
-        JsonObject response = new JsonObject().put("transfertask", res.result().toJson());
-        resultHandler.handle(Future.succeededFuture(response));
+        JsonArray params = new JsonArray().add(uuid).add(tenantId);
+        dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
+          if (ar.succeeded()) {
+            resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+          } else {
+            LOGGER.error("Database query error", res.cause());
+            resultHandler.handle(Future.failedFuture(res.cause()));
+          }
+        });
       } else {
         LOGGER.error("Database query error", res.cause());
         resultHandler.handle(Future.failedFuture(res.cause()));

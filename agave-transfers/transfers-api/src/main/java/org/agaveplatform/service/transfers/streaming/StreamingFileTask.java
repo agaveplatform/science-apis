@@ -18,6 +18,6 @@ public interface StreamingFileTask {
 	static StreamingFileTask createProxy(Vertx vertx, String address) {
 		return new StreamingFileTaskImpl(vertx, address);
 	}
-	void createDir(JsonObject jsonObject, Handler<AsyncResult<JsonObject>> handler);
+	//void createDir(JsonObject jsonObject, Handler<AsyncResult<JsonObject>> handler);
 	void createFile(JsonObject jsonObject, Handler<AsyncResult<JsonObject>> handler);
 }

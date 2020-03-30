@@ -7,11 +7,11 @@ import io.vertx.core.json.JsonObject;
 
 import java.util.HashMap;
 
-public class FileTransferServiceImpl  implements FileTransferService {
+public class FileTransferCreateServiceImpl implements FileTransferService {
 
 	private final HashMap<String, Double> lastValues = new HashMap<>();
 
-	public FileTransferServiceImpl(Vertx vertx) {
+	public FileTransferCreateServiceImpl(Vertx vertx) {
 		vertx.eventBus().<JsonObject>consumer("filetransfer.sftp", message -> {
 			JsonObject json = message.body();
 			lastValues.put(json.getString("id"), json.getDouble("temp"));

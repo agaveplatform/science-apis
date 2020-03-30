@@ -22,18 +22,10 @@ public class StreamingFileTaskImpl extends AbstractVerticle implements Streaming
 	}
 
 	public void start() {
-		vertx.eventBus().<JsonObject>consumer("filetransfer.sftp", message -> {
+		vertx.eventBus().<JsonObject>consumer(getAddress(), message -> {
 			JsonObject json = message.body();
 			lastValues.put(json.getString("id"), json.getDouble("temp"));
 		});
-	}
-
-	@Override
-	public void createDir(JsonObject jsonObject, Handler<AsyncResult<JsonObject>> handler) {
-		double avg = lastValues.values().stream()
-				.collect(Collectors.averagingDouble(Double::doubleValue));
-		jsonObject = new JsonObject().put("average", avg);
-		handler.handle(Future.succeededFuture(jsonObject));
 	}
 
 	@Override

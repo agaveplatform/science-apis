@@ -1,20 +1,13 @@
 package org.agaveplatform.service.transfers.resources;
 
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
-import io.vertx.ext.jdbc.JDBCClient;
-import io.vertx.ext.sql.SQLConnection;
-import io.vertx.ext.sql.SQLOptions;
-import io.vertx.ext.sql.UpdateResult;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.api.validation.HTTPRequestValidationHandler;
@@ -22,10 +15,7 @@ import io.vertx.ext.web.api.validation.HTTPRequestValidationHandler;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
 
-import java.util.stream.Collectors;
-
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.model.SqlQuery;
 import org.agaveplatform.service.transfers.model.TransferUpdate;
 import org.agaveplatform.service.transfers.util.AgaveSchemaFactory;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -33,22 +23,15 @@ import org.agaveplatform.service.transfers.util.TransferRateHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.NoSuchElementException;
-
-import static org.agaveplatform.service.transfers.util.ActionHelper.*;
-import static org.agaveplatform.service.transfers.util.AuthHelper.authenticate;
-
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 /**
  * This is the user-facing vertical providing the http interface to internal services.
  * It provides crud functionality and basic jwt authorization.
  */
-public class TransferServiceVertical extends AbstractVerticle {
+public class TransferServiceUIVertical extends AbstractVerticle {
 
-    private static Logger log = LoggerFactory.getLogger(TransferServiceVertical.class);
+    private static Logger log = LoggerFactory.getLogger(TransferServiceUIVertical.class);
 
     private HttpServer server;
     private JWTAuth authProvider;
@@ -215,7 +198,6 @@ public class TransferServiceVertical extends AbstractVerticle {
                             routingContext.fail(reply2.cause());
                         }
                     });
-
                 }
             } else {
                 routingContext.fail(reply.cause());

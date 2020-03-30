@@ -10,7 +10,7 @@ import io.vertx.core.json.JsonObject;
 public interface FileTransferService {
 
 	static FileTransferService getSystem(Vertx vertx){
-		return new FileTransferServiceImpl(vertx);
+		return new FileTransferCreateServiceImpl(vertx);
 	}
 //	static FileTransferService createProxy(Vertx vertx, String address) {
 //		return new FileTransferServiceVertxEBProxy(vertx, address);

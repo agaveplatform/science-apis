@@ -3,7 +3,6 @@ package org.agaveplatform.service.transfers.resources;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
@@ -23,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -132,7 +130,7 @@ public class TransferServiceVerticalTest {
         initAuth();
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
-        vertx.deployVerticle(TransferServiceVertical.class.getName(), options, ctx.completing());
+        vertx.deployVerticle(TransferServiceUIVertical.class.getName(), options, ctx.completing());
     }
 
     @BeforeAll

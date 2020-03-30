@@ -12,18 +12,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.util.HashSet;
 
-public class TransferProcessFileImpl extends AbstractVerticle {
+public class TransferTaskUnaryImpl extends AbstractVerticle {
 
 	private final Logger logger = LoggerFactory.getLogger(TransferSftpVertical.class);
 	private String eventChannel = "transfertask.process.unary.*";
 
-	public TransferProcessFileImpl(Vertx vertx) {
+	public TransferTaskUnaryImpl(Vertx vertx) {
 		this(vertx, null);
 	}
 
-	public TransferProcessFileImpl(Vertx vertx, String eventChannel) {
+	public TransferTaskUnaryImpl(Vertx vertx, String eventChannel) {
 		super();
 		setVertx(vertx);
 		setEventChannel(eventChannel);

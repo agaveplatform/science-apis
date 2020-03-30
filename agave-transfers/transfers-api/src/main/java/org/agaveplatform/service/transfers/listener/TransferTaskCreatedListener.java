@@ -37,8 +37,7 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
             String dest = body.getString("dest");
             logger.info("Transfer task {} created: {} -> {}", uuid, source, dest);
             this.assignTransferTask(body);
-        })
-        ;
+        });
     }
 
     protected String assignTransferTask(JsonObject body) {

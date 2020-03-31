@@ -23,7 +23,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
     private final Logger logger = LoggerFactory.getLogger(TransferTaskAssignedListener.class);
     // "transfertask.assigned." + tenantId + "." + protocol + "." + srcUri.getHost() + "." + username
 
-    private String eventChannel = "transfertask.assigned.*.*.*.*";
+    private String eventChannel = "transfertask.assigned";
     private HashSet<String> interruptedTasks = new HashSet<String>();
 
     public TransferTaskAssignedListener(Vertx vertx) {
@@ -123,7 +123,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                         if (fileInfo.isFile()) {
                             // write to the protocol event channel. the uri is all they should need for this....
                             // might need tenant id. not sure yet.
-                            vertx.eventBus().publish("transfertask." + srcSystem.getType() + ".get",
+                            vertx.eventBus().publish("transfertask." + srcSystem.getType(),
                                         "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath());
                         } else {
                             // path is a directory, so walk the first level of the directory
@@ -136,7 +136,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                                     .forEach(childFileItem -> {
                                         // if it's a file, we can process this as we would if the original path were a file
                                         if (childFileItem.isFile()) {
-                                            vertx.eventBus().publish("transfertask." + srcSystem.getType() + ".get",
+                                            vertx.eventBus().publish("transfertask." + srcSystem.getType(),
                                                     "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath() + "/" + childFileItem.getName());
                                         }
                                         // if a directory, then create a new transfer task to repeat this process,
@@ -162,7 +162,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                     // it's not an agave uri, so we forward on the raw uri as we know that we can
                     // handle it from the wrapping if statement check
                     else {
-                        vertx.eventBus().publish("transfertask." + srcUri.getScheme() + ".get", source);
+                        vertx.eventBus().publish("transfertask." + srcUri.getScheme(), source);
                     }
                 } else {
                     // tell everyone else that you killed this task

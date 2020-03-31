@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS transfertasks (
     "root_task" BIGINT,
     "uuid" VARCHAR(64) NOT NULL,
     "total_files" INTEGER DEFAULT 0 NOT NULL,
-    "total_skipped" BIGINT DEFAULT 0 NOT NULL,
+    "total_skipped_files" BIGINT DEFAULT 0 NOT NULL,
     CONSTRAINT "fk_parent_task" FOREIGN KEY ("parent_task") REFERENCES transfertasks,
     CONSTRAINT "fk_root_task" FOREIGN KEY ("root_task") REFERENCES transfertasks,
     CONSTRAINT "uuid" UNIQUE ("uuid")

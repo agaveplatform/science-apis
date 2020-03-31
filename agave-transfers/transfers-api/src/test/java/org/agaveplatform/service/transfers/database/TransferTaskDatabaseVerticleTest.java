@@ -112,7 +112,7 @@ public class TransferTaskDatabaseVerticleTest {
 
                         JsonObject updatedJsonObject = new JsonObject()
                                 .put("attempts", 1) // attempts
-                                .put("bytesTransferred", Math.pow(2, 19)) // getBytesTransferred())
+                                .put("bytesTransferred", (long)Math.pow(2, 19)) // getBytesTransferred())
 //                                .add("created should not update") // getCreated())
 //                                .add("dest should not update") // getDest())
                                 .put("endTime", Instant.now()) // getEndTime())
@@ -123,13 +123,13 @@ public class TransferTaskDatabaseVerticleTest {
                                 .put("startTime", Instant.now()) // getStartTime())
                                 .put("status", TransferStatusType.PAUSED.name()) // getStatus())
 //                                .add("tenant_id should not update")
-                                .put("totalSize", Math.pow(2, 20)) // getTotalSize())
-                                .put("transferRate", 9999) // getTransferRate())
+                                .put("totalSize", (long)Math.pow(2, 20)) // getTotalSize())
+                                .put("transferRate", 9999.0) // getTransferRate())
 //                                .addNull() // getParentTaskId())
 //                                .addNull() // getRootTaskId())
 //                                .add("this should not change") // getUuid())
-                                .put("totalFiles", 10) // getTotalFiles())
-                                .put("totalSkippedFiles", 9); // getTotalSkippedFiles());
+                                .put("totalFiles", 10L) // getTotalFiles())
+                                .put("totalSkippedFiles", 9L); // getTotalSkippedFiles());
 
                         TransferTask updatedTransferTask = new TransferTask(updatedJsonObject);
 

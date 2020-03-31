@@ -46,7 +46,7 @@ public class TransferUpdate {
 		this.setTotalSize(json.getLong("total_size", 0L));
 		this.setTransferTaskId(json.getString("transfer_task"));
 		this.setTotalFiles(json.getInteger("total_files", 0));
-		this.setTotalSkippedFiles(json.getInteger("total_skipped", 0));
+		this.setTotalSkippedFiles(json.getInteger("total_skipped_files", 0));
 	}
 
 	/**
@@ -260,7 +260,7 @@ public class TransferUpdate {
 	/**
 	 * @return the totalSkippedFiles
 	 */
-	@Column(name = "total_skipped", nullable=false)
+	@Column(name = "total_skipped_files", nullable=false)
 	public long getTotalSkippedFiles()
 	{
 		return totalSkippedFiles;

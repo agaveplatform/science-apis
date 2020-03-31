@@ -142,10 +142,10 @@ public class TransferTask {
 			this.setTotalFiles(json.getLong("totalFiles", 0L));
 		}
 
-		if (json.containsKey("total_skipped")) {
-			this.setTotalSkippedFiles(json.getLong("total_skipped", 0L));
+		if (json.containsKey("total_skipped_files")) {
+			this.setTotalSkippedFiles(json.getLong("total_skipped_files", 0L));
 		} else {
-			this.setTotalSkippedFiles(json.getLong("totalSkipped", 0L));
+			this.setTotalSkippedFiles(json.getLong("totalSkippedFiles", 0L));
 		}
 
 	}
@@ -499,7 +499,7 @@ public class TransferTask {
 	/**
 	 * @return the totalSkippedFiles
 	 */
-	@Column(name = "total_skipped", nullable=false)
+	@Column(name = "total_skipped_files", nullable=false)
 	public long getTotalSkippedFiles()
 	{
 		return totalSkippedFiles;
@@ -514,7 +514,7 @@ public class TransferTask {
 	}
 
 	public String toJSON() {
-		return toJSON().toString();
+		return toJson().toString();
 	}
 
 
@@ -524,22 +524,24 @@ public class TransferTask {
         {   
             json.put("id", getId())
                 .put("attempts", getAttempts())
-                .put("bytesTransferred", getBytesTransferred())
                 .put("created", getCreated())
                 .put("dest", getDest())
-                .put("endTime", getEndTime())
+				.put("source", getSource())
+				.put("endTime", getEndTime())
                 .put("lastUpdated", getLastUpdated())
                 .put("owner", getOwner())
                 .put("parentTask", getParentTaskId())
                 .put("rootTask", getRootTaskId())
-                .put("source", getSource())
-                .put("startTime", getStartTime())
-                .put("status", getStatus().name())
-                .put("totalFiles", getTotalFiles())
-				.put("transferRate", getTransferRate())
-                .put("totalSize", getTotalSize())
-                .put("totalSkippedFiles", getTotalSkippedFiles())
-            	.put("uuid", getUuid());
+				.put("status", getStatus().name())
+				.put("uuid", getUuid())
+//				.put("details", new JsonObject()
+					.put("bytesTransferred", getBytesTransferred())
+					.put("startTime", getStartTime())
+					.put("totalFiles", getTotalFiles())
+					.put("transferRate", getTransferRate())
+					.put("totalSize", getTotalSize())
+					.put("totalSkippedFiles", getTotalSkippedFiles());
+
 //				.put("_links", new JsonObject()
 //						.put("self", new JsonObject()
 //                    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid()))

@@ -6,8 +6,8 @@ create-transfertasks-table: |
 
   CREATE TABLE IF NOT EXISTS transfertasks (
       "id" BIGINT IDENTITY PRIMARY KEY,
-      "attempts" INTEGER,
-      "bytes_transferred" DOUBLE,
+      "attempts" INTEGER DEFAULT 0 NOT NULL,
+      "bytes_transferred" BIGINT DEFAULT 0 NOT NULL,
       "created" TIMESTAMP,
       "dest" VARCHAR(2048) NOT NULL,
       "end_time" TIMESTAMP,
@@ -18,13 +18,13 @@ create-transfertasks-table: |
       "start_time" TIMESTAMP,
       "status" VARCHAR(16),
       "tenant_id" VARCHAR(128) NOT NULL,
-      "total_size" DOUBLE,
-      "transfer_rate" DOUBLE,
+      "total_size" BIGINT DEFAULT 0 NOT NULL,
+      "transfer_rate" DOUBLE DEFAULT 0.0 NOT NULL,
       "parent_task" BIGINT,
       "root_task" BIGINT,
       "uuid" VARCHAR(64) NOT NULL,
-      "total_files" INTEGER DEFAULT 0 NOT NULL,
-      "total_skipped" BIGINT DEFAULT 0 NOT NULL,
+      "total_files" BIGINT DEFAULT 0 NOT NULL,
+      "total_skipped_files" BIGINT DEFAULT 0 NOT NULL,
       CONSTRAINT "fk_parent_task" FOREIGN KEY ("parent_task") REFERENCES transfertasks,
       CONSTRAINT "fk_root_task" FOREIGN KEY ("root_task") REFERENCES transfertasks,
       CONSTRAINT "uuid" UNIQUE ("uuid")
@@ -33,7 +33,7 @@ get-transfertask: |
   SELECT * FROM transfertasks WHERE "uuid" = ? and "tenant_id" = ?
 create-transfertask: |
   INSERT INTO TransferTasks
-    ("attempts", "bytes_transferred", "created", "dest", "end_time", "event_id", "last_updated", "owner", "source", "start_time", "status", "tenant_id", "total_size", "transfer_rate", "parent_task", "root_task", "uuid", "total_files", "total_skipped")
+    ("attempts", "bytes_transferred", "created", "dest", "end_time", "event_id", "last_updated", "owner", "source", "start_time", "status", "tenant_id", "total_size", "transfer_rate", "parent_task", "root_task", "uuid", "total_files", "total_skipped_files")
   VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 save-transfertask: |
@@ -46,7 +46,7 @@ save-transfertask: |
     "total_size" = ?,
     "transfer_rate" = ?,
     "total_files" = ?,
-    "total_skipped" = ?,
+    "total_skipped_files" = ?,
     "last_updated" = NOW()
   WHERE "uuid" = ? AND "tenant_id" = ?
 all-transfertasks: |

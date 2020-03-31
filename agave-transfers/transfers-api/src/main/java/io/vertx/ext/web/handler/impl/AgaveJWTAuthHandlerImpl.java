@@ -51,7 +51,7 @@ public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements
                         .put("tenantId", map.get("tenantId"))
                         .put("bearer", map.get("bearer"))
                         .put("options", this.options);
-                handler.handle(Future.succeededFuture((new JsonObject())));
+                handler.handle(Future.succeededFuture(futureResponse));
             }
         });
     }
@@ -81,19 +81,14 @@ public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements
         } else {
             try {
                 int idx = authorization.indexOf(32);
-                if (idx <= 0) {
+                if (idx < 0) {
                     handler.handle(Future.failedFuture(BAD_REQUEST));
-                    return;
-                }
-
-                if (!this.type.is(authorization.substring(0, idx))) {
-                    handler.handle(Future.failedFuture(UNAUTHORIZED));
                     return;
                 }
 
                 Map<String,String> map = Map.of(
                         "bearer", request.headers().get(HttpHeaders.AUTHORIZATION),
-                        "jwt", authorization.substring(idx + 1),
+                        "jwt", authorization,
                         "tenantId", AuthHelper.getTenantIdFromAuthHeader(authHeader));
 
                 handler.handle(Future.succeededFuture(map));

@@ -128,6 +128,7 @@ public class TransferServiceUIVertical extends AbstractVerticle {
         TransferTask transferTask = routingContext.getBodyAsJson().mapTo(TransferTask.class);
         dbService.create(routingContext.get("tenantId"), transferTask, reply -> {
             if (reply.succeeded()) {
+                vertx.eventBus().publish("transfertask.created", reply.result());
                 routingContext.response().end(reply.result().encodePrettily());
             } else {
                 routingContext.fail(reply.cause());
@@ -145,6 +146,7 @@ public class TransferServiceUIVertical extends AbstractVerticle {
         String uuid = routingContext.pathParam("uuid");
         dbService.delete(tenantId, uuid, reply -> {
             if (reply.succeeded()) {
+                vertx.eventBus().publish("transfertask.deleted", reply.result());
                 routingContext.response().setStatusCode(203).end();
             } else {
                 routingContext.fail(reply.cause());
@@ -193,6 +195,7 @@ public class TransferServiceUIVertical extends AbstractVerticle {
 
                     dbService.update(tenantId, uuid, tt, reply2 -> {
                         if (reply2.succeeded()) {
+                            vertx.eventBus().publish("transfertask.updated", reply2.result());
                             routingContext.response().end(reply2.result().encodePrettily());
                         } else {
                             routingContext.fail(reply2.cause());

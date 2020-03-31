@@ -3,10 +3,12 @@ package org.agaveplatform.service.transfers.resources;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
+import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
@@ -14,6 +16,9 @@ import io.vertx.ext.auth.jwt.JWTAuthOptions;
 import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.*;
@@ -28,6 +33,7 @@ import java.nio.file.Paths;
 
 import static io.restassured.RestAssured.given;
 import static java.util.Arrays.asList;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(VertxExtension.class)
@@ -45,6 +51,17 @@ public class TransferServiceVerticalTest {
     private static RequestSpecification requestSpecification;
 
     private final String TEST_USERNAME = "testuser";
+    public static final String TENANT_ID = "agave.dev";
+    public static final String TRANSFER_SRC = "http://foo.bar/cat";
+    public static final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
+    public static final String TEST_USER = "testuser";
+
+    private TransferTaskDatabaseService dbService;
+
+    private TransferTask _createTestTransferTask() {
+        TransferTask transferTask = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USER, TENANT_ID, null, null);
+        return transferTask;
+    }
 
     /**
      * Reads config file synchronously to ensure completion prior to setup.
@@ -114,8 +131,6 @@ public class TransferServiceVerticalTest {
 
     @BeforeAll
     public void setUpService(Vertx vertx, VertxTestContext ctx) throws IOException {
-        vertx = Vertx.vertx();
-
         // read in config options
         intiConfig();
 
@@ -130,15 +145,23 @@ public class TransferServiceVerticalTest {
         initAuth();
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
-        vertx.deployVerticle(TransferServiceUIVertical.class.getName(), options, ctx.completing());
-    }
 
-    @BeforeAll
-    public void setUpClient() {
-        requestSpecification = new RequestSpecBuilder()
-                .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
-                .setBaseUri("http://localhost:" + port + "/")
-                .build();
+
+        vertx.deployVerticle(new TransferTaskDatabaseVerticle(),
+            new DeploymentOptions().setConfig(config).setWorker(true).setMaxWorkerExecuteTime(3600),
+            ctx.succeeding(id -> {
+                vertx.deployVerticle(TransferServiceUIVertical.class.getName(), options, res -> {
+                    if (res.succeeded()) {
+                        requestSpecification = new RequestSpecBuilder()
+                                .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+                                .setBaseUri("http://localhost:" + port + "/")
+                                .build();
+                        ctx.completeNow();
+                    } else {
+                        log.error("Failed to deploy test api vertical: {} ", res.cause());
+                    }
+                });
+            }));
     }
 
     @AfterAll
@@ -147,11 +170,12 @@ public class TransferServiceVerticalTest {
     }
 
     @Test
+    @Disabled
     @DisplayName("List web root says hello")
     void register() {
         String response = given()
                 .spec(requestSpecification)
-                .header("X-JWT-AUTH-SANDBOX", this.makeJwtToken(TEST_USERNAME))
+                .header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
 //                .contentType(ContentType.JSON)
 //                .accept(ContentType.JSON)
 //                .body(basicUser().encode())
@@ -164,6 +188,29 @@ public class TransferServiceVerticalTest {
                 .asString();
         assertThat(response).contains("Hello");
     }
+
+    @Test
+    @DisplayName("Create new transfer task")
+    void create() {
+        TransferTask tt = _createTestTransferTask();
+        String response = given()
+                .spec(requestSpecification)
+                .header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
+                .contentType(ContentType.JSON)
+                .body(tt.toJSON())
+                .when()
+                .post("api/transfers")
+                .then()
+                .assertThat()
+                .statusCode(201)
+                .extract()
+                .asString();
+        TransferTask respTask = Json.decodeValue(response, TransferTask.class);
+        assertThat(respTask).isNotNull();
+        assertThat(respTask.getSource()).isEqualTo(tt.getSource());
+        assertThat(respTask.getDest()).isEqualTo(tt.getDest());
+    }
+
 
 //    @Test
 //    @DisplayName("Register a user")

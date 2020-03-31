@@ -268,7 +268,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 //	private Future<TransferTask> insert(SQLConnection connection, TransferTask transferTask, boolean closeConnection) {
 //		Future<TransferTask> future = Future.future();
 //		String sql = "INSERT INTO TransferTasks " +
-//				"(\"attempts\", \"bytes_transferred\", \"created\", \"dest\", \"end_time\", \"event_id\", \"last_updated\", \"owner\", \"source\", \"start_time\", \"status\", \"tenant_id\", \"total_size\", \"transfer_rate\", \"parent_task\", \"root_task\", \"uuid\", \"total_files\", \"total_skipped\") " +
+//				"(\"attempts\", \"bytes_transferred\", \"created\", \"dest\", \"end_time\", \"event_id\", \"last_updated\", \"owner\", \"source\", \"start_time\", \"status\", \"tenant_id\", \"total_size\", \"transfer_rate\", \"parent_task\", \"root_task\", \"uuid\", \"total_files\", \"total_skipped_files\") " +
 //				"VALUES " +
 //				"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 //		connection.updateWithParams(sql,

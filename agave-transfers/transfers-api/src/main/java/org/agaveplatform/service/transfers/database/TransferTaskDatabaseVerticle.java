@@ -53,14 +53,14 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
 
     HashMap<SqlQuery, String> sqlQueries = loadSqlQueries();
 
-    JDBCClient dbClient = JDBCClient.createShared(vertx, new JsonObject()
-      .put("url", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:hsqldb:mem:db/wiki"))
+    JDBCClient dbClient = JDBCClient.createShared(getVertx(), new JsonObject()
+      .put("url", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:hsqldb:mem:db/dev"))
       .put("driver_class", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "org.hsqldb.jdbcDriver"))
       .put("max_pool_size", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)), "agave-io");
 
     TransferTaskDatabaseService.create(dbClient, sqlQueries, ready -> {
       if (ready.succeeded()) {
-        ServiceBinder binder = new ServiceBinder(vertx);
+        ServiceBinder binder = new ServiceBinder(getVertx());
         binder
           .setAddress(config().getString(CONFIG_TRANSFERTASK_DB_QUEUE))
           .register(TransferTaskDatabaseService.class, ready.result());

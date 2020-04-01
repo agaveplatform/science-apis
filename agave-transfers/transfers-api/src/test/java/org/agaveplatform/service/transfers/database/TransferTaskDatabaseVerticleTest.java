@@ -35,7 +35,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers completed task listener integration tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Disabled
+//@Disabled
 public class TransferTaskDatabaseVerticleTest {
     public static final String TENANT_ID = "agave.dev";
     public static final String TRANSFER_SRC = "http://foo.bar/cat";
@@ -67,16 +67,14 @@ public class TransferTaskDatabaseVerticleTest {
                     ctx.completeNow();
                 }));
     }
-    // end::prepare[]
 
-    // tag::finish[]
+
     @AfterAll
     public void finish(Vertx vertx, VertxTestContext ctx) {
         vertx.close(ctx.completing());
     }
-    // end::finish[]
 
-    // tag::crud[]
+
     @Test
     @Timeout(value = 10, timeUnit = TimeUnit.SECONDS)
     public void crudTest(Vertx vertx, VertxTestContext context) {

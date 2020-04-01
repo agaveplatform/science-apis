@@ -33,7 +33,7 @@ import static org.agaveplatform.service.transfers.util.ActionHelper.ok;
 
 public class TransferCompleteTaskListenerImpl extends AbstractVerticle implements TransferCompleteTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(TransferCompleteTaskListenerImpl.class);
-	private String address = "*.transfer.complete";
+	private String address = "transfer.complete";
 
 	protected List<String>  parrentList = new ArrayList<String>();
 

@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 public class UnaryFileTaskImpl extends AbstractVerticle implements UnaryFileTask {
 	private final HashMap<String, Double> lastValues = new HashMap<>();
-	private String address = "*.transfer.unary";
+	private String address = "transfer.unary";
 
 	public UnaryFileTaskImpl (Vertx vertx) {
 		this(vertx, null);

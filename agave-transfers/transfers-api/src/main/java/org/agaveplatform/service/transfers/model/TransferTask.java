@@ -54,7 +54,17 @@ public class TransferTask {
 	private Instant created = Instant.now();
 	private Instant lastUpdated = Instant.now();
 	private String uuid;
-	
+	private String protocol;
+
+
+	public String getProtocol() {
+		return protocol;
+	}
+
+	public void setProtocol(String protocol) {
+		this.protocol = protocol;
+	}
+
 	public TransferTask() {
 		setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
 	}
@@ -540,8 +550,8 @@ public class TransferTask {
 					.put("totalFiles", getTotalFiles())
 					.put("transferRate", getTransferRate())
 					.put("totalSize", getTotalSize())
-					.put("totalSkippedFiles", getTotalSkippedFiles());
-
+					.put("totalSkippedFiles", getTotalSkippedFiles())
+					.put("protocol", getProtocol());
 //				.put("_links", new JsonObject()
 //						.put("self", new JsonObject()
 //                    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid()))

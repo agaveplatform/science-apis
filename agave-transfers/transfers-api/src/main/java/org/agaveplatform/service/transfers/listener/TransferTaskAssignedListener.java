@@ -41,9 +41,9 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
     @Override
     public void start() {
         EventBus bus = vertx.eventBus();
-        bus.<JsonObject>consumer(getEventChannel(), msg -> {
+        bus.<JsonObject>consumer("transfertask.assigned", msg -> {
             JsonObject body = msg.body();
-            String uuid = body.getString("id");
+            String uuid = body.getString("uuid");
             String source = body.getString("source");
             String dest = body.getString("dest");
             logger.info("Transfer task {} created: {} -> {}", uuid, source, dest);

@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 
 public class StreamingFileTaskImpl extends AbstractVerticle implements StreamingFileTask {
 	private final HashMap<String, Double> lastValues = new HashMap<>();
-	private String address = "*.transfer.streaming";
+	private String address = "transfer.streaming";
 
 	public StreamingFileTaskImpl (Vertx vertx) {
 		this(vertx, null);

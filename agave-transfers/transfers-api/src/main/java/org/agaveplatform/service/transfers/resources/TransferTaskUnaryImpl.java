@@ -16,7 +16,7 @@ import java.net.URI;
 public class TransferTaskUnaryImpl extends AbstractVerticle {
 
 	private final Logger logger = LoggerFactory.getLogger(TransferSftpVertical.class);
-	private String eventChannel = "transfertask.process.unary.*";
+	private String eventChannel = "transfertask.process.unary";
 
 	public TransferTaskUnaryImpl(Vertx vertx) {
 		this(vertx, null);
@@ -73,7 +73,7 @@ public class TransferTaskUnaryImpl extends AbstractVerticle {
 			System.out.println(e.toString());
 		}
 
-		vertx.eventBus().publish("transfertask.sftp.get.*.*", bodyTask.toJSON());
+		vertx.eventBus().publish("transfertask.sftp", bodyTask.toJSON());
 	}
 	/**
 	 * Sets the vertx instance for this listener

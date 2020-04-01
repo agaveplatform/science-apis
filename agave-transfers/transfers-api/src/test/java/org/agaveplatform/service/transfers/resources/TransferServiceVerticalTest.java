@@ -40,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Transfers API integration tests")
 //@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+//@Disabled
 public class TransferServiceVerticalTest {
 
     private static final Logger log = LoggerFactory.getLogger(TransferServiceVerticalTest.class);

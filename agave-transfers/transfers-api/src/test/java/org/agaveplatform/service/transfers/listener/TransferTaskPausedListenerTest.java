@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @DisplayName("Transfers processPausedRequest tests")
 //@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-//@Disabled
+@Disabled
 class TransferTaskPausedListenerTest {
 
 	protected Vertx vertx;

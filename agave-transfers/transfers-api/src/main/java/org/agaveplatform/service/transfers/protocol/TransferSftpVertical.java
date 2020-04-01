@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 public class TransferSftpVertical extends AbstractVerticle {
 	private final Logger logger = LoggerFactory.getLogger(TransferSftpVertical.class);
-	private String eventChannel = "transfertask.sftp.get.*.*";
+	private String eventChannel = "transfertask.sftp";
 
 	public TransferSftpVertical(Vertx vertx) {
 		this(vertx, null);

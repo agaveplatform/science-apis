@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.resources;
 
+import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -7,7 +8,7 @@ import io.vertx.core.json.JsonObject;
 
 import java.util.HashMap;
 
-public class FileTransferCreateServiceImpl implements FileTransferService {
+public class FileTransferCreateServiceImpl extends AbstractVerticle implements FileTransferService {
 
 	private final HashMap<String, Double> lastValues = new HashMap<>();
 
@@ -18,6 +19,10 @@ public class FileTransferCreateServiceImpl implements FileTransferService {
 		});
 	}
 
+	@Override
+	public void start() {
+		System.out.println("hi");
+	}
 	@Override
 	public void createDir(JsonObject jsonObject, Handler<AsyncResult<JsonObject>> handler) {
 		//TODO put create dir commands here

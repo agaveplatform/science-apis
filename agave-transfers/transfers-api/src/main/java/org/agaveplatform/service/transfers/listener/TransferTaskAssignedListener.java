@@ -23,8 +23,8 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
     private final Logger logger = LoggerFactory.getLogger(TransferTaskAssignedListener.class);
     // "transfertask.assigned." + tenantId + "." + protocol + "." + srcUri.getHost() + "." + username
 
-    private String eventChannel = "transfertask.assigned";
-    private HashSet<String> interruptedTasks = new HashSet<String>();
+    protected String eventChannel = "transfertask.assigned";
+    protected HashSet<String> interruptedTasks = new HashSet<String>();
 
     public TransferTaskAssignedListener(Vertx vertx) {
         this(vertx, null);
@@ -123,7 +123,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                         if (fileInfo.isFile()) {
                             // write to the protocol event channel. the uri is all they should need for this....
                             // might need tenant id. not sure yet.
-                            vertx.eventBus().publish("transfertask." + srcSystem.getType(),
+                            vertx.eventBus().publish("transfertask." + srcSystem.getStorageConfig().getProtocol().name().toLowerCase(),
                                         "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath());
                         } else {
                             // path is a directory, so walk the first level of the directory
@@ -154,7 +154,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                                             if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
                                                 transferTask.setRootTaskId(body.getString("rootTaskId"));
                                             }
-                                            vertx.eventBus().publish("transfertask.created", transferTask.toJSON());
+                                            vertx.eventBus().publish("transfertask.created", transferTask.toJson());
                                         }
                                     });
                         }
@@ -205,9 +205,9 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
      * @return true if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #isTaskInterrupted(TransferTask)} list
      */
     public boolean isTaskInterrupted( TransferTask transferTask ){
-        return !(this.interruptedTasks.contains(transferTask.getUuid()) ||
+        return this.interruptedTasks.contains(transferTask.getUuid()) ||
                 this.interruptedTasks.contains(transferTask.getParentTaskId()) ||
-                this.interruptedTasks.contains(transferTask.getRootTaskId()));
+                this.interruptedTasks.contains(transferTask.getRootTaskId());
     }
 
     /**

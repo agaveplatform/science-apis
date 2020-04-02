@@ -19,6 +19,8 @@ import org.agaveplatform.service.transfers.resources.TransferTaskUnaryImpl;
 import org.agaveplatform.service.transfers.streaming.StreamingFileTaskImpl;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.systems.model.StorageConfig;
+import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -38,37 +40,44 @@ import static org.junit.jupiter.api.Assertions.*;
 //@Disabled
 class TransferTaskAssignedListenerTest {
 
+	private final String TEST_USERNAME = "testuser";
+	public static final String TENANT_ID = "agave.dev";
+	public static final String TRANSFER_SRC = "http://foo.bar/cat";
+	public static final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
+	public static final String TEST_USER = "testuser";
+
 	private EventBus eventBus;
 	private TransferTaskDatabaseService service;
 
-	@BeforeAll
-	public void prepare(Vertx vertx, VertxTestContext ctx) throws InterruptedException, IOException {
-		Path configPath = Paths.get(TransferServiceVerticalTest.class.getClassLoader().getResource("config.json").getPath());
-		String json = new String(Files.readAllBytes(configPath));
-		JsonObject conf = new JsonObject(json);
-
-		vertx.deployVerticle(new TransferTaskDatabaseVerticle(),
-				new DeploymentOptions().setConfig(conf).setWorker(true).setMaxWorkerExecuteTime(3600),
-				ctx.succeeding(id -> {
-					service = TransferTaskDatabaseService.createProxy(vertx, conf.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
-					ctx.completeNow();
-				}));
-
-		vertx.deployVerticle(new TransferTaskCreatedListener(vertx,"transfertask.created"));
-		vertx.deployVerticle(new TransferTaskAssignedListener(vertx));
-		vertx.deployVerticle(new TransferTaskCancelListener(vertx));
-		vertx.deployVerticle(new TransferSftpVertical(vertx));
-		vertx.deployVerticle(new TransferCompleteTaskListenerImpl(vertx));
-		vertx.deployVerticle(new ErrorTaskListener());
-		vertx.deployVerticle(new InteruptEventListener(vertx));
-		vertx.deployVerticle(new NotificationListener());
-		vertx.deployVerticle(new TransferTaskPausedListener(vertx));
-		vertx.deployVerticle(new FileTransferCreateServiceImpl(vertx));
-		vertx.deployVerticle(new TransferServiceUIVertical());
-		vertx.deployVerticle(new TransferTaskUnaryImpl(vertx));
-		vertx.deployVerticle(new StreamingFileTaskImpl(vertx));
-
-	}
+//	@BeforeAll
+//	public void prepare(Vertx vertx, VertxTestContext ctx) throws InterruptedException, IOException {
+//		Path configPath = Paths.get(TransferServiceVerticalTest.class.getClassLoader().getResource("config.json").getPath());
+//		String json = new String(Files.readAllBytes(configPath));
+//		JsonObject conf = new JsonObject(json);
+//
+//		ctx.completeNow();
+////		vertx.deployVerticle(new TransferTaskDatabaseVerticle(),
+////				new DeploymentOptions().setConfig(conf).setWorker(true).setMaxWorkerExecuteTime(3600),
+////				ctx.succeeding(id -> {
+////					service = TransferTaskDatabaseService.createProxy(vertx, conf.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
+////					ctx.completeNow();
+////				}));
+////
+////		vertx.deployVerticle(new TransferTaskCreatedListener(vertx,"transfertask.created"));
+////		vertx.deployVerticle(new TransferTaskAssignedListener(vertx));
+////		vertx.deployVerticle(new TransferTaskCancelListener(vertx));
+////		vertx.deployVerticle(new TransferSftpVertical(vertx));
+////		vertx.deployVerticle(new TransferCompleteTaskListenerImpl(vertx));
+////		vertx.deployVerticle(new ErrorTaskListener());
+////		vertx.deployVerticle(new InteruptEventListener(vertx));
+////		vertx.deployVerticle(new NotificationListener());
+////		vertx.deployVerticle(new TransferTaskPausedListener(vertx));
+////		vertx.deployVerticle(new FileTransferCreateServiceImpl(vertx));
+////		vertx.deployVerticle(new TransferServiceUIVertical());
+////		vertx.deployVerticle(new TransferTaskUnaryImpl(vertx));
+////		vertx.deployVerticle(new StreamingFileTaskImpl(vertx));
+//
+//	}
 
 	@AfterAll
 	public void finish(Vertx vertx, VertxTestContext ctx) {
@@ -78,54 +87,117 @@ class TransferTaskAssignedListenerTest {
 
 
 	@Test
-	public void processTransferTask(Vertx vertx, VertxTestContext ctx) {
+	@Disabled
+	public void processTransferTaskPublishesProtocolEvent(Vertx vertx, VertxTestContext ctx) {
 		//JsonObject body = new JsonObject();
-		TransferTask tt = new TransferTask();
-		tt.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
-		tt.setOwner("dooley");
-		tt.setTenantId("agave.dev");
-		tt.setProtocol("sftp");
-		tt.setSource("");
+		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
-		JsonObject body = new JsonObject(tt.toJSON());
-		body.put("uuid", new AgaveUUID(UUIDType.TRANSFER).toString());  // uuid
-		body.put("owner", "dooley");
-		body.put("tenantId", "agave.dev");
-		body.put("protocol","sftp");
-		body.put("source", "");
+		JsonObject body = tt.toJson();
 
-		vertx.eventBus().consumer("transfertask.created", msg -> {
+		vertx.eventBus().consumer("transfertask.sftp", msg -> {
 			JsonObject bodyRec = (JsonObject) msg.body();
-			assertEquals("1", bodyRec.getString("id"));
+			assertEquals(tt.getUuid(), bodyRec.getString("uuid"));
+			ctx.completeNow();
+		});
+		vertx.eventBus().consumer("transfertask.error", msg -> {
+			JsonObject bodyRec = (JsonObject) msg.body();
+			ctx.failNow(new Exception(bodyRec.getString("message")));
+		});
+
+		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
+		String protocolSelected = ta.processTransferTask(body);
+
+		assertEquals(StorageProtocolType.SFTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
+	}
+
+	@Test
+	@Disabled
+	public void processTransferTaskPublishesChildTasksForDirectory(Vertx vertx, VertxTestContext ctx) {
+		//JsonObject body = new JsonObject();
+		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
+
+		JsonObject body = tt.toJson();
+
+		vertx.eventBus().consumer("transfertask.sftp", msg -> {
+			JsonObject bodyRec = (JsonObject) msg.body();
+			assertEquals(tt.getUuid(), bodyRec.getString("uuid"));
 			ctx.completeNow();
 		});
 
-//		vertx.eventBus().consumer("transfertask.cancel.ack", msg -> {
-//			JsonObject bodyRec = (JsonObject) msg.body();
-//			assertEquals("1", bodyRec.getString("uuid"));
-//		});
-
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
 		try {
-			String ret = ta.processTransferTask(body);
-			System.out.println(ret);
+			String protocolSelected = ta.processTransferTask(body);
+			assertEquals(StorageProtocolType.SFTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
 		} catch (Exception e){
 			fail();
 		}
 	}
 
 	@Test
+	@Disabled
+	public void processTransferTaskPublishesErrorOnSystemUnavailble(Vertx vertx, VertxTestContext ctx) {
+		//JsonObject body = new JsonObject();
+		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
+
+		JsonObject body = tt.toJson();
+
+		vertx.eventBus().consumer("transfertask.error", msg -> {
+			JsonObject bodyRec = (JsonObject) msg.body();
+			assertEquals(tt.getUuid(), bodyRec.getString("uuid"));
+			ctx.completeNow();
+		});
+
+		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
+		try {
+			String protocolSelected = ta.processTransferTask(body);
+			assertEquals(StorageProtocolType.SFTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
+		} catch (Exception e){
+			fail();
+		}
+	}
+
+	@Test
+	@Disabled
+	public void processTransferTaskPublishesErrorOnSystemUnknown(Vertx vertx, VertxTestContext ctx) {
+		//JsonObject body = new JsonObject();
+		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
+
+		JsonObject body = tt.toJson();
+
+		vertx.eventBus().consumer("transfertask.error", msg -> {
+			JsonObject bodyRec = (JsonObject) msg.body();
+			assertEquals(tt.getUuid(), bodyRec.getString("uuid"));
+			ctx.completeNow();
+		});
+
+		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
+		try {
+			String protocolSelected = ta.processTransferTask(body);
+			assertEquals(StorageProtocolType.SFTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
+		} catch (Exception e){
+			fail();
+		}
+	}
+
+	@Test
+	@Disabled
 	void isTaskInterrupted(){
-		TransferTask tt = new TransferTask();
-		tt.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
-		tt.setOwner("dooley");
-		tt.setTenantId("agave.dev");
-		tt.setProtocol("sftp");
-		tt.setSource("");
+		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
+		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
+		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(Vertx.vertx(), "transfertask.assigned");
-		boolean result = ta.isTaskInterrupted(tt);
-		assertTrue(result);
+		ta.interruptedTasks.add(tt.getUuid());
+		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt present in interruptedTasks list should return true");
+		ta.interruptedTasks.remove(tt.getUuid());
+
+		ta.interruptedTasks.add(tt.getParentTaskId());
+		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt parent present in interruptedTasks list should return true");
+		ta.interruptedTasks.remove(tt.getParentTaskId());
+
+		ta.interruptedTasks.add(tt.getRootTaskId());
+		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt root present in interruptedTasks list should return true");
+		ta.interruptedTasks.remove(tt.getRootTaskId());
 	}
 
 }

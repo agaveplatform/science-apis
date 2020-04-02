@@ -61,7 +61,7 @@ public class TransferServiceUIVertical extends AbstractVerticle {
         });
 
         // create a jwt auth provider and apply it as the first handler for all routes
-        if (config.getBoolean(CONFIG_TRANSFERTASK_JWT_AUTH)) {
+        if (config().getBoolean(CONFIG_TRANSFERTASK_JWT_AUTH)) {
             router.route("/api/transfers*").handler(new AgaveJWTAuthHandlerImpl(getAuthProvider(), (String) null));
         }
 

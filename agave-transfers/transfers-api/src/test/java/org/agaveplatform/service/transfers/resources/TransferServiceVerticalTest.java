@@ -147,7 +147,6 @@ public class TransferServiceVerticalTest {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
 
-
         vertx.deployVerticle(new TransferTaskDatabaseVerticle(),
             new DeploymentOptions().setConfig(config).setWorker(true).setMaxWorkerExecuteTime(3600),
             ctx.succeeding(id -> {

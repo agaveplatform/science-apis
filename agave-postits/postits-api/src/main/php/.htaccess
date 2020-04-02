@@ -2,6 +2,7 @@
 RewriteEngine On
 RewriteBase /
 RewriteRule ^index\.php$ - [L]
+RewriteRule ^postits/(.+) index.php?postit_key=$1 [QSA]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*) index.php?postit_key=$1 [QSA]

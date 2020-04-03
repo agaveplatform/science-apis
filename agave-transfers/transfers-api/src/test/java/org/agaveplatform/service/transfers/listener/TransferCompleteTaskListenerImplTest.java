@@ -11,6 +11,8 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseServiceVertxEBProxy;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.uuid.AgaveUUID;
+import org.iplantc.service.common.uuid.UUIDType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -65,6 +67,7 @@ class TransferCompleteTaskListenerImplTest {
 //    }
 
     @Test
+    @Disabled
     void testProcessEvent(Vertx vertx, VertxTestContext ctx) {
         when(dbService.getById(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
         when(dbService.allChildrenCancelledOrCompleted(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
@@ -81,16 +84,19 @@ class TransferCompleteTaskListenerImplTest {
         Future<JsonObject> result = transferCompleteTaskListenerImpl.processEvent(transferTask);
         Assertions.assertEquals(TransferStatusType.COMPLETED.name(), result.result().getString("status"),
                 "TransferTask status should be completed after processing transfertask.completed event for the task");
+        ctx.completeNow();
     }
 
     @Test
+    @Disabled
     void testProcessParentEvent(Vertx vertx, VertxTestContext ctx) {
         when(dbService.getById(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
         when(dbService.allChildrenCancelledOrCompleted(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
 
-        Future<JsonObject> result = transferCompleteTaskListenerImpl.processParentEvent("tenantId", "parentTaskId");
+        Future<JsonObject> result = transferCompleteTaskListenerImpl.processParentEvent(TENANT_ID, new AgaveUUID(UUIDType.TRANSFER).toString());
 
         Assertions.assertEquals(null, result);
+        ctx.completeNow();
     }
 }
 

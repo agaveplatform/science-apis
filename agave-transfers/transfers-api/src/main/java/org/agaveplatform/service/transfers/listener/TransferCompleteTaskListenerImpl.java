@@ -73,6 +73,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 	public Future<JsonObject> processEvent(JsonObject body) {
 		Future<JsonObject> future = Future.future();
 		// udpate transfer task status to completed
+
 		TransferTask bodyTask = new TransferTask(body);
 		body.put("status", TransferStatusType.COMPLETED);
 		String tenantId = body.getString("tenantId");

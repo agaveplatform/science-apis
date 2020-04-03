@@ -51,7 +51,7 @@ public class TransferTask {
 	private String rootTaskId;
 	private Instant startTime;
 	private Instant endTime;
-	private Instant created = Instant.now();
+	private Instant created;// = Instant.now();
 	private Instant lastUpdated = Instant.now();
 	private String uuid;
 

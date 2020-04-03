@@ -16,7 +16,7 @@ import io.vertx.core.AbstractVerticle;
 
 public class TransferTaskPausedListener extends AbstractVerticle {
 	private final Logger logger = LoggerFactory.getLogger(TransferTaskCancelListener.class);
-	private String eventChannel = "transfertask.cancelled";
+	private String eventChannel = "transfertask.paused";
 
 	public TransferTaskPausedListener(Vertx vertx) {
 		this(vertx, null);
@@ -35,7 +35,8 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 			JsonObject body = msg.body();
 			String uuid = body.getString("id");
 			logger.info("Transfer task {} cancel detected.", uuid);
-			this.processCancelRequest(body);
+
+			this.processPauseRequest(body);
 		});
 
 		bus.<JsonObject>consumer("transfertask.paused.ack", msg -> {
@@ -56,7 +57,7 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 
 				// this task and all its children are done, so we can send a complete event
 				// to safely clear out the uuid from all listener verticals' caches
-				getVertx().eventBus().publish("transfertask.cancel.complete", body);
+				getVertx().eventBus().publish("transfertask.paused.complete", body);
 
 				// we can now also check the parent, if present, for completion of its tree.
 				// if the parent is empty, the root will be as well. For children of the root
@@ -67,7 +68,7 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 					if (allChildrenCancelledOrCompleted(parentTaskId)) {
 						setTransferTaskCancelledIfNotCompleted(parentTaskId);
 						TransferTask parentTask = getTransferTask(parentTaskId);
-						getVertx().eventBus().publish("transfertask.cancel.ack", parentTask.toJSON());
+						getVertx().eventBus().publish("transfertask.paused.ack", parentTask.toJSON());
 					}
 				}
 			}
@@ -84,9 +85,9 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 		//TODO: "update transfertasks set status = CANCELLED, lastUpdated = now() where uuid = {} and status not in ('COMPLETED', 'CANCELLED','FAILED')"
 	}
 
-	protected void processCancelRequest(JsonObject body) {
-		String uuid = body.getString("id");
-		Long id = 0L;
+	protected void processPauseRequest(JsonObject body) {
+		String uuid = body.getString("uuid");
+
 		try {
 			// lookup the transfer task from the db
 			TransferTask tt = getTransferTask(uuid);
@@ -97,7 +98,7 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 
 				// push the event transfer task onto the queue. this will cause all listening verticals
 				// actively processing any of its children to cancel their existing work and ack
-				getVertx().eventBus().publish("transfertask.cancel.sync", uuid);
+				getVertx().eventBus().publish("transfertask.paused.sync", body);
 			}
 		} catch (Exception e) {
 			logger.error(e.getMessage());

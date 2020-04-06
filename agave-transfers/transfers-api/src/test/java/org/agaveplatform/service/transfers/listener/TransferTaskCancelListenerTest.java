@@ -10,11 +10,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import static org.junit.jupiter.api.Assertions.*;
 
 
-//@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers Task Canceled test")
-@Disabled
+//@Disabled
 class TransferTaskCancelListenerTest {
 
 	private EventBus eventBus;

@@ -65,8 +65,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 			String status = body.getString("status");
 			logger.info("{} transfer task {} completed with status {}", uuid, status);
 
-			processEvent(body);
-
+			this.processEvent(body);
 		});
 	}
 
@@ -74,12 +73,13 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 		Future<JsonObject> future = Future.future();
 		// udpate transfer task status to completed
 
-		TransferTask bodyTask = new TransferTask(body);
+		//TransferTask bodyTask = new TransferTask(body);
 		body.put("status", TransferStatusType.COMPLETED);
 		String tenantId = body.getString("tenantId");
-		String uuid = body.getString("id");
+		String uuid = body.getString("uuid");
 		String status = body.getString("status");
 		String parentTaskId = body.getString("parentTaskId");
+
 		try {
 //			dbService.updateStatus(tenantId, uuid, status, reply -> this.handleUpdateStatus(reply, tenantId, parentTaskId));
 			dbService.updateStatus(tenantId, uuid, status, reply -> {

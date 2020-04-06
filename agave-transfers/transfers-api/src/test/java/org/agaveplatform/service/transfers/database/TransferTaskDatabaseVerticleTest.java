@@ -35,7 +35,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers completed task listener integration tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-//@Disabled
+@Disabled
 public class TransferTaskDatabaseVerticleTest {
     public static final String TENANT_ID = "agave.dev";
     public static final String TRANSFER_SRC = "http://foo.bar/cat";

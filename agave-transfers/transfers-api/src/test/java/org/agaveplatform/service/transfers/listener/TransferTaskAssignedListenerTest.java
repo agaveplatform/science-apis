@@ -37,7 +37,7 @@ import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.C
 import static org.junit.jupiter.api.Assertions.*;
 
 
-//@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("👋 TransferTaskAssignedListener test")

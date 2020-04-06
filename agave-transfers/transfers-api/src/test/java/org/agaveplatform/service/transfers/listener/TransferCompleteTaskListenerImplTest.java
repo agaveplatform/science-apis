@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers completed task listener integration tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Disabled
+//@Disabled
 class TransferCompleteTaskListenerImplTest {
     public static final String TENANT_ID = "agave.dev";
     public static final String TRANSFER_SRC = "http://foo.bar/cat";
@@ -67,7 +67,7 @@ class TransferCompleteTaskListenerImplTest {
 //    }
 
     @Test
-    @Disabled
+   //@Disabled
     void testProcessEvent(Vertx vertx, VertxTestContext ctx) {
         when(dbService.getById(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
         when(dbService.allChildrenCancelledOrCompleted(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
@@ -80,7 +80,6 @@ class TransferCompleteTaskListenerImplTest {
                 .put("start_time", Instant.now().toEpochMilli())
                 .put("tenant_id", "agave.dev");
 
-
         Future<JsonObject> result = transferCompleteTaskListenerImpl.processEvent(transferTask);
         Assertions.assertEquals(TransferStatusType.COMPLETED.name(), result.result().getString("status"),
                 "TransferTask status should be completed after processing transfertask.completed event for the task");
@@ -88,7 +87,7 @@ class TransferCompleteTaskListenerImplTest {
     }
 
     @Test
-    @Disabled
+    //@Disabled
     void testProcessParentEvent(Vertx vertx, VertxTestContext ctx) {
         when(dbService.getById(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
         when(dbService.allChildrenCancelledOrCompleted(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));

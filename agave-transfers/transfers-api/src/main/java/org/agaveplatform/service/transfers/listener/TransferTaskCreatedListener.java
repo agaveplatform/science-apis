@@ -78,7 +78,13 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
             } else {
                 String msg = String.format("Unknown source schema %s for the transfertask %s",
 											srcUri.getScheme(), uuid);
-                throw new RemoteDataSyntaxException(msg);
+                //throw new RemoteDataSyntaxException(msg);
+                logger.error(msg);
+                JsonObject json = new JsonObject()
+                        .put("cause", new RemoteDataSyntaxException(msg).getClass().getName())
+                        .put("message", msg)
+                        .mergeIn(body);
+                getVertx().eventBus().publish("transfertask.error", json);
             }
         } catch (Exception e) {
             logger.error(e.getMessage());

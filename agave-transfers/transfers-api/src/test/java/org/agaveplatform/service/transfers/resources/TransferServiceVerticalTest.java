@@ -170,7 +170,7 @@ public class TransferServiceVerticalTest {
     }
 
     @Test
-    @Disabled
+   // @Disabled
     @DisplayName("List web root says hello")
     void register() {
         String response = given()

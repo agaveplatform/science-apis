@@ -1,9 +1,11 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import io.vertx.rxjava.ext.unit.Async;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -13,11 +15,13 @@ import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 
 import java.net.URI;
 
 import static io.vertx.core.Vertx.vertx;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers assignTransferTask tests")
@@ -44,22 +48,12 @@ class TransferTaskCreatedListenerTest {
 	@DisplayName("Transfer Task Created Listener - assignTransferTask")
 	public void assignTransferTask(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
-		JsonObject body = tt.toJson();
-		TransferTaskCreatedListener ttc = new TransferTaskCreatedListener(vertx, "transfertask.created");
+		JsonObject body = tt.toJson().put("tenantId", tt.getTenantId());
 
-//		String assignmentChannel = "transfertask.assigned." +
-//				tenantId +
-//				"." + protocol +
-//				"." + srcUri.getHost() +
-//				"." + username;
-
-//		new AgaveUUID(UUIDType.TRANSFER).toString();
-//		StorageProtocolType.SFTP.name().toLowerCase();
-//
-//		URI srcUri;
-//		srcUri = URI.create(body.getString("source"));
-//		RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
-//		String protocol = srcSystem.getStorageConfig().getProtocol().toString();
+		TransferTaskCreatedListener ttc = Mockito.mock(TransferTaskCreatedListener.class);
+		Mockito.when(ttc.getEventChannel()).thenReturn("transfertask.created");
+		Mockito.when(ttc.getVertx()).thenReturn(vertx);
+		Mockito.when(ttc.assignTransferTask(Mockito.any())).thenCallRealMethod();
 
 		String assignmentChannel = "transfertask.assigned." +
 				TENANT_ID +
@@ -67,23 +61,11 @@ class TransferTaskCreatedListenerTest {
 				"." + HOST +
 				"." + TEST_USERNAME;
 
-		System.out.println(assignmentChannel);
-
-		vertx().eventBus().consumer(assignmentChannel, msg -> {
-			JsonObject bodyRec = (JsonObject) msg.body();
-			assertEquals(tt.getUuid(), bodyRec.getString("uuid"), "uuid does not match.");
-			ctx.completeNow();
-		});
-
-		vertx().eventBus().consumer("transfertask.error", msg -> {
-			JsonObject bodyRec = (JsonObject) msg.body();
-			assertEquals(tt.getUuid(), bodyRec.getString("uuid"), "error! ");
-			ctx.completeNow();
-		});
-
-
 		String result = ttc.assignTransferTask(body);
-		assertEquals(result, "http", "result should have been http");
+		assertEquals("http", result, "result should have been http");
+		verify(ttc)._doPublish(assignmentChannel, body);
+		ctx.completeNow();
+
 
 	}
 }

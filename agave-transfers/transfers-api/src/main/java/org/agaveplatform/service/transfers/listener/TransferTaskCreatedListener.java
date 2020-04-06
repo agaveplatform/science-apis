@@ -53,6 +53,8 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
             URI srcUri;
             try {
                 srcUri = URI.create(source);
+
+                protocol = srcUri.getScheme();
             } catch (Exception e) {
                 String msg = String.format("Unable to parse source uri %s for transfertask %s: %s",
 											source, uuid, e.getMessage());
@@ -64,8 +66,6 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
                 if (srcUri.getScheme().equalsIgnoreCase("agave")) {
                     RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
                     protocol = srcSystem.getStorageConfig().getProtocol().toString();
-                } else {
-                    protocol = srcUri.getScheme();
                 }
 
                 String assignmentChannel = "transfertask.assigned." +
@@ -73,7 +73,7 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
                         "." + protocol +
                         "." + srcUri.getHost() +
                         "." + username;
-                getVertx().eventBus().publish(assignmentChannel, body);
+                _doPublish(assignmentChannel, body);
 
             } else {
                 String msg = String.format("Unknown source schema %s for the transfertask %s",
@@ -81,10 +81,10 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
                 //throw new RemoteDataSyntaxException(msg);
                 logger.error(msg);
                 JsonObject json = new JsonObject()
-                        .put("cause", new RemoteDataSyntaxException(msg).getClass().getName())
+                        .put("cause", RemoteDataSyntaxException.class.getName())
                         .put("message", msg)
                         .mergeIn(body);
-                getVertx().eventBus().publish("transfertask.error", json);
+                _doPublish("transfertask.error", json);
             }
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -93,10 +93,14 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
                     .put("message", e.getMessage())
                     .mergeIn(body);
 
-            getVertx().eventBus().publish("transfertask.error", json);
+            _doPublish("transfertask.error", json);
         }
 
         return protocol;
+    }
+
+    protected void _doPublish(String event, Object body) {
+        getVertx().eventBus().publish(event, body);
     }
 
     /**

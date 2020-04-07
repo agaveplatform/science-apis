@@ -41,37 +41,48 @@ public class TransferTaskCancelListener extends AbstractVerticle {
         bus.<JsonObject>consumer("transfertask.cancel.ack", msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("id");
-            String parentTaskId = body.getString("parentTaskId");
-            String rootTaskId = body.getString("rootTaskId");
+//            String parentTaskId = body.getString("parentTaskId");
+//            String rootTaskId = body.getString("rootTaskId");
 
             logger.info("Transfer task {} ackowledged cancellation", uuid);
+            String done = this.processCancelAck(body);
+            System.out.println(done);
+        });
+    }
+    protected String processCancelAck(JsonObject body){
+        String parentTaskId = body.getString("parentTaskId");
+        String uuid = body.getString("id");
+        // if this task has children and all are cancelled or completed, then we can
+        // mark this task as cancelled.
+        if (allChildrenCancelledOrCompleted(uuid)) {
+            // update the status of the transfertask since the verticle handling it has
+            // reported back that it completed the cancel request since this tree is
+            // done cancelling
+            setTransferTaskCancelledIfNotCompleted(uuid);
 
-            // if this task has children and all are cancelled or completed, then we can
-            // mark this task as cancelled.
-            if (allChildrenCancelledOrCompleted(uuid)) {
-                // update the status of the transfertask since the verticle handling it has
-                // reported back that it completed the cancel request since this tree is
-                // done cancelling
-                setTransferTaskCancelledIfNotCompleted(uuid);
+            // this task and all its children are done, so we can send a complete event
+            // to safely clear out the uuid from all listener verticals' caches
+            _doPublish("transfertask.cancel.complete", body);
 
-                // this task and all its children are done, so we can send a complete event
-                // to safely clear out the uuid from all listener verticals' caches
-                getVertx().eventBus().publish("transfertask.cancel.complete", body);
-
-                // we can now also check the parent, if present, for completion of its tree.
-                // if the parent is empty, the root will be as well. For children of the root
-                // transfer task, the root == parent
-                if (!StringUtils.isEmpty(parentTaskId)) {
-                    // once all tasks in the parents tree are complete, we can update the status of the parent
-                    // and send out the completed event to clear its uuid out of any caches that may have it.
-                    if (allChildrenCancelledOrCompleted(parentTaskId)) {
-                        setTransferTaskCancelledIfNotCompleted(parentTaskId);
-                        TransferTask parentTask = getTransferTask(parentTaskId);
-                        getVertx().eventBus().publish("transfertask.cancel.ack", parentTask.toJSON());
-                    }
+            // we can now also check the parent, if present, for completion of its tree.
+            // if the parent is empty, the root will be as well. For children of the root
+            // transfer task, the root == parent
+            if (!StringUtils.isEmpty(parentTaskId)) {
+                // once all tasks in the parents tree are complete, we can update the status of the parent
+                // and send out the completed event to clear its uuid out of any caches that may have it.
+                if (allChildrenCancelledOrCompleted(parentTaskId)) {
+                    setTransferTaskCancelledIfNotCompleted(parentTaskId);
+                    TransferTask parentTask = getTransferTask(parentTaskId);
+                    _doPublish("transfertask.cancel.ack", parentTask.toJSON());
+                    return parentTask.getUuid();
                 }
             }
-        });
+            return uuid;
+        }
+        return uuid;
+    }
+    protected void _doPublish(String event, Object body) {
+        getVertx().eventBus().publish(event, body);
     }
 
     private boolean allChildrenCancelledOrCompleted(String parentTaskId) {
@@ -97,7 +108,7 @@ public class TransferTaskCancelListener extends AbstractVerticle {
 
                 // push the event transfer task onto the queue. this will cause all listening verticals
                 // actively processing any of its children to cancel their existing work and ack
-                getVertx().eventBus().publish("transfertask.cancel.sync", uuid);
+                _doPublish("transfertask.cancel.sync", uuid);
             }
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -106,7 +117,7 @@ public class TransferTaskCancelListener extends AbstractVerticle {
                     .put("message", e.getMessage())
                     .mergeIn(body);
 
-            getVertx().eventBus().publish("transfertask.error", json);
+            _doPublish("transfertask.error", json);
         }
     }
 

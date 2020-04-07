@@ -17,6 +17,7 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 
@@ -56,22 +57,17 @@ class TransferCompleteTaskListenerImplTest {
         MockitoAnnotations.initMocks(this);
     }
 
-//    @Test
-//    void testStart() {
-//        when(dbService.getById(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(null, "address", null));
-//        when(dbService.allChildrenCancelledOrCompleted(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(null, "address", null));
-//        when(dbService.updateStatus(anyString(), anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(null, "address", null));
-//        when(dbService.createProxy(any(), anyString())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(null, "address", null));
-//
-//        transferCompleteTaskListenerImpl.start();
-//    }
-
     @Test
    //@Disabled
     void testProcessEvent(Vertx vertx, VertxTestContext ctx) {
         when(dbService.getById(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
         when(dbService.allChildrenCancelledOrCompleted(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
         when(dbService.updateStatus(anyString(), anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
+
+        TransferCompleteTaskListenerImpl ttc = Mockito.mock(TransferCompleteTaskListenerImpl.class);
+        Mockito.when(ttc.getEventChannel()).thenReturn("transfertask.created");
+        Mockito.when(ttc.getVertx()).thenReturn(vertx);
+        Mockito.when(ttc.processEvent(Mockito.any())).thenCallRealMethod();
 
         JsonObject transferTask = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TENANT_ID)
                 .toJson()
@@ -80,23 +76,29 @@ class TransferCompleteTaskListenerImplTest {
                 .put("start_time", Instant.now().toEpochMilli())
                 .put("tenant_id", "agave.dev");
 
-        Future<JsonObject> result = transferCompleteTaskListenerImpl.processEvent(transferTask);
+        Future<JsonObject> result = ttc.processEvent(transferTask);
+
         Assertions.assertEquals(TransferStatusType.COMPLETED.name(), result.result().getString("status"),
                 "TransferTask status should be completed after processing transfertask.completed event for the task");
+
         ctx.completeNow();
     }
 
     @Test
     //@Disabled
     void testProcessParentEvent(Vertx vertx, VertxTestContext ctx) {
+        TransferCompleteTaskListenerImpl ttc = Mockito.mock(TransferCompleteTaskListenerImpl.class);
+        Mockito.when(ttc.getEventChannel()).thenReturn("transfertask.created");
+        Mockito.when(ttc.getVertx()).thenReturn(vertx);
+        Mockito.when(ttc.processEvent(Mockito.any())).thenCallRealMethod();
+
         when(dbService.getById(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
         when(dbService.allChildrenCancelledOrCompleted(anyString(), anyString(), any())).thenReturn(new TransferTaskDatabaseServiceVertxEBProxy(vertx, "address", null));
 
-        Future<JsonObject> result = transferCompleteTaskListenerImpl.processParentEvent(TENANT_ID, new AgaveUUID(UUIDType.TRANSFER).toString());
+        Future<JsonObject> result = (Future<JsonObject>) when(ttc.processParentEvent(TENANT_ID, new AgaveUUID(UUIDType.TRANSFER).toString())).thenCallRealMethod();
 
         Assertions.assertEquals(null, result);
         ctx.completeNow();
     }
 }
 
-//Generated with love by TestMe :) Please report issues and submit feature requests at: http://weirddev.com/forum#!/testme

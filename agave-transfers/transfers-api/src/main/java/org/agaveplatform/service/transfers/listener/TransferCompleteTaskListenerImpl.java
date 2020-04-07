@@ -35,13 +35,15 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 	private final Logger logger = LoggerFactory.getLogger(TransferCompleteTaskListenerImpl.class);
 	private String address = "transfer.complete";
 
+	private String eventChannel = "transfertask.db.queue";
+
 	protected List<String>  parrentList = new ArrayList<String>();
 
 	public TransferCompleteTaskListenerImpl(Vertx vertx) {
 		this(vertx,null);
 	}
 
-	public TransferCompleteTaskListenerImpl(Vertx vertx, String address) {
+	public TransferCompleteTaskListenerImpl(Vertx vertx, String eventChannel) {
 		super();
 		setVertx(vertx);
 		setAddress(address);
@@ -84,10 +86,13 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 //			dbService.updateStatus(tenantId, uuid, status, reply -> this.handleUpdateStatus(reply, tenantId, parentTaskId));
 			dbService.updateStatus(tenantId, uuid, status, reply -> {
 				if (reply.succeeded()) {
-					vertx.eventBus().publish("transfertask.completed", reply.result());
+
+					_doProcessEvent("transfertask.completed", body);
+
 					processParentEvent(tenantId, parentTaskId).setHandler(tt -> {
 						// TODO: send notification events? or should listeners listen to the existing events?
-						getVertx().eventBus().publish("transfertask.notification", body.toString());
+						//getVertx().eventBus().publish("transfertask.notification", body.toString());
+						_doProcessEvent("transfertask.notification", body);
 						future.complete(reply.result());
 					} );
 				}
@@ -97,23 +102,15 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 			});
 		} catch (Exception e) {
 			logger.error(e.toString());
+		} finally {
+			System.out.println("got to  finally");
+			return future;
 		}
-		return future;
 	}
 
-//	protected void handleUpdateStatus(AsyncResult<JsonObject> reply, String tenantId, String parentTaskId) {
-//		if (reply.succeeded()) {
-//			vertx.eventBus().publish("transfertask.completed", reply.result());
-//			processParentEvent(tenantId, parentTaskId).setHandler(tt -> {
-//				// TODO: send notification events? or should listeners listen to the existing events?
-//				getVertx().eventBus().publish("transfertask.notification", body.toString());
-//				handler.handle(reply);
-//			} );
-//		}
-//		else {
-//			logger.error("Failed to set status of transfertask {} to completed. error: {}", uuid, reply.cause());
-//		}
-//	}
+	protected void _doProcessEvent(String event, Object body) {
+		getVertx().eventBus().publish(event, body);
+	}
 
 	protected Future<JsonObject> processParentEvent(String tenantId, String parentTaskId) {
 		Future<JsonObject> future = Future.future();
@@ -128,7 +125,8 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 					dbService.allChildrenCancelledOrCompleted(tenantId, parentTaskId, reply2 -> {
 						if (reply2.succeeded()) {
 							if (reply2.result()) {
-								getVertx().eventBus().publish("transfertask.completed", reply.result());
+								_doProcessEvent("transfertask.completed", reply.result());
+								//getVertx().eventBus().publish("transfertask.completed", reply.result());
 								future.complete(reply.result());
 							} else {
 								// parent has active children. let it run
@@ -148,188 +146,6 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 
 		return future;
 	}
-
-//	private Future<TransferTask> updateProgress(SQLConnection connection, String uuid, String status , boolean transferUpdate) {
-//		Future<TransferTask> future = Future.future();
-//		String sql = "SELECT * FROM transfertasks WHERE \"uuid\" = ?";
-//		connection.queryWithParams(sql, new JsonArray().add(uuid), result -> {
-////            connection.close();
-//			List<JsonObject> rows = result.result().getRows();
-//			if (rows.size() == 0) {
-//				throw new NoSuchElementException("No transferTask with id " + uuid);
-//			} else {
-//				JsonObject row = rows.get(0);
-//				final TransferTask transferTask = new TransferTask(row);
-//
-//				String updateSql = "UPDATE transfertasks " +
-//						"SET \"transfer_status\" = ?, " +
-//						"WHERE \"uuid\" = ?";
-//
-//				connection.updateWithParams(updateSql, new JsonArray()
-//								.add(status)
-//								.add(uuid),
-//						ar -> {
-//							connection.close();
-//							if (ar.failed()) {
-//								future.fail(ar.cause());
-//							} else {
-//								UpdateResult ur = ar.result();
-//								if (ur.getUpdated() == 0) {
-//									future.fail(new NoSuchElementException("No transferTask with id " + uuid));
-//								} else {
-//									future.complete(transferTask);
-//								}
-//							}
-//						});
-//			}
-//		});
-//
-//		return future;
-//	}
-//
-//
-//	private Future<TransferTask> queryParent(SQLConnection connection, String uuid) {
-//		Future<TransferTask> future = Future.future();
-//
-//		connection.queryWithParams(SqlQuery.GET_PARENT, new JsonArray().add(uuid), result -> {
-//			connection.close();
-//			future.handle(
-//					result.map(rs -> {
-//						List<JsonObject> rows = rs.getRows();
-//						if (rows.size() == 0) {
-//							throw new NoSuchElementException("No transferTask with id " + uuid);
-//						} else {
-//							JsonObject row = rows.get(0);
-//							return new TransferTask(row);
-//						}
-//					})
-//			);
-//		});
-//		return future;
-//	}
-//
-//	private Future<SQLConnection> connect() {
-//		Future<SQLConnection> future = Future.future();
-//		jdbc.getConnection(ar ->
-//				future.handle(ar.map(c ->
-//								c.setOptions(new SQLOptions().setAutoGeneratedKeys(true))
-//						)
-//				)
-//		);
-//		return future;
-//	}
-//
-//	/**
-//	 * Runs initial migration on the db
-//	 * @param connection the active db connection
-//	 * @return empty future for the sqlconnection
-//	 */
-//	private Future<SQLConnection> createTableIfNeeded(SQLConnection connection) {
-//		Future<SQLConnection> future = Future.future();
-//		vertx.fileSystem().readFile("tables.sql", ar -> {
-//			if (ar.failed()) {
-//				future.fail(ar.cause());
-//			} else {
-//				connection.execute(ar.result().toString(),
-//						ar2 -> future.handle(ar2.map(connection))
-//				);
-//			}
-//		});
-//		return future;
-//	}
-//
-//	/**
-//	 * Populates the db with some sample data
-//	 * @param connection the active db connection
-//	 * @return empty future for the sqlconnection
-//	 */
-//	private Future<SQLConnection> createSomeDataIfNone(SQLConnection connection) {
-//		Future<SQLConnection> future = Future.future();
-//		connection.query("SELECT * FROM transfertasks", select -> {
-//			if (select.failed()) {
-//				future.fail(select.cause());
-//			} else {
-//				if (select.result().getResults().isEmpty()) {
-//					TransferTask transferTask1= new TransferTask("agave://sftp//etc/hosts", "agave://sftp//tmp/hosts1", "testuser", null, null);
-//					TransferTask transferTask2 = new TransferTask("agave://sftp//etc/hosts", "agave://sftp//tmp/hosts2", "testuser", null, null);
-//					TransferTask transferTask3 = new TransferTask("agave://sftp//etc/hosts", "agave://sftp//tmp/hosts3", "testuser", null, null);
-//					Future<TransferTask> insertion1 = insert(connection, transferTask1, false);
-//					Future<TransferTask> insertion2 = insert(connection, transferTask2, false);
-//					Future<TransferTask> insertion3 = insert(connection, transferTask3, false);
-//					CompositeFuture.all(insertion1, insertion2)
-//							.setHandler(r -> future.handle(r.map(connection)));
-//				} else {
-//					future.complete(connection);
-//				}
-//			}
-//		});
-//		return future;
-//	}
-//
-//	private Future<TransferTask> insert(SQLConnection connection, TransferTask transferTask, boolean closeConnection) {
-//		Future<TransferTask> future = Future.future();
-//		String sql = "INSERT INTO TransferTasks " +
-//				"(\"attempts\", \"bytes_transferred\", \"created\", \"dest\", \"end_time\", \"event_id\", \"last_updated\", \"owner\", \"source\", \"start_time\", \"status\", \"tenant_id\", \"total_size\", \"transfer_rate\", \"parent_task\", \"root_task\", \"uuid\", \"total_files\", \"total_skipped_files\") " +
-//				"VALUES " +
-//				"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-//		connection.updateWithParams(sql,
-//				new JsonArray()
-//						.add(transferTask.getAttempts())
-//						.add(transferTask.getBytesTransferred())
-//						.add(transferTask.getCreated())
-//						.add(transferTask.getDest())
-//						.add(transferTask.getEndTime())
-//						.add(transferTask.getEventId())
-//						.add(transferTask.getLastUpdated())
-//						.add(transferTask.getOwner())
-//						.add(transferTask.getSource())
-//						.add(transferTask.getStartTime())
-//						.add(transferTask.getStatus())
-//						.add(transferTask.getTenantId())
-//						.add(transferTask.getTotalSize())
-//						.add(transferTask.getTransferRate())
-//						.add(transferTask.getParentTaskId())
-//						.add(transferTask.getRootTaskId())
-//						.add(transferTask.getUuid())
-//						.add(transferTask.getTotalFiles())
-//						.add(transferTask.getTotalSkippedFiles()),
-//				ar -> {
-//					if (closeConnection) {
-//						connection.close();
-//					}
-//					future.handle(
-//							ar.map(res -> {
-//								TransferTask t = new TransferTask(transferTask.getSource(), transferTask.getDest());
-//								t.setId(res.getKeys().getLong(0));
-//								return t;
-//							})
-//					);
-//				}
-//		);
-//		return future;
-//	}
-//	/**
-//	 * Fetches all {@link TransferTask} from the db. Results are added to the routing context.
-//	 * TODO: add pagination and querying.
-//	 *
-//	 * @param routingContext the current rounting context for the request
-//	 */
-//	private void getAll(RoutingContext routingContext) {
-//		connect()
-//				.compose(this::query)
-//				.setHandler(ok(routingContext));
-//	}
-//	private Future<List<TransferTask>> query(SQLConnection connection) {
-//		Future<List<TransferTask>> future = Future.future();
-//		connection.query("SELECT * FROM transfertasks", result -> {
-//					connection.close();
-//					future.handle(
-//							result.map(rs -> rs.getRows().stream().map(TransferTask::new).collect(Collectors.toList()))
-//					);
-//				}
-//		);
-//		return future;
-//	}
 
 	/**
 	 * Sets the vertx instance for this listener
@@ -354,4 +170,10 @@ public class TransferCompleteTaskListenerImpl extends AbstractVerticle implement
 		this.address = address;
 	}
 
+	/**
+	 * @return the message type to listen to
+	 */
+	public String getEventChannel() {
+		return eventChannel;
+	}
 }

@@ -5,10 +5,15 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import static org.junit.jupiter.api.Assertions.*;
+import org.mockito.Mockito;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
+//import static org.mockito.Matchers.anyString;
+//import static org.mockito.ArgumentMatchers.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -18,40 +23,60 @@ import static org.junit.jupiter.api.Assertions.*;
 class TransferTaskCancelListenerTest {
 
 	private EventBus eventBus;
+	private final String TEST_USERNAME = "testuser";
+	public static final String TENANT_ID = "agave.dev";
+	public static final String TRANSFER_SRC = "http://foo.bar/cat";
+	public static final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
+	public static final String HOST = "foo.bar";
+	public static final String PROTOCOL = "http";
+
 
 	@Test
-	public void taskAssigned(Vertx vertx, VertxTestContext ctx){
+	@DisplayName("Transfer Task Cancel Listener - processCancelAck")
+	public void processCancelAck(Vertx vertx, VertxTestContext ctx){
 		eventBus = vertx.eventBus();
 
-		vertx.deployVerticle(new TransferTaskAssignedListener(), ctx.succeeding(id -> {
-			JsonObject body = new JsonObject();
-			body.put("id", "1");  // uuid
-			body.put("owner", "dooley");
-			body.put("tenantId", "agave.dev");
-			body.put("protocol", "sftp");
+		TransferTaskCancelListener ttc = Mockito.mock(TransferTaskCancelListener.class);
+		Mockito.when(ttc.getEventChannel()).thenReturn("transfertask.cancelled");
+		Mockito.when(ttc.getVertx()).thenReturn(vertx);
+		Mockito.when(ttc.processCancelAck(Mockito.any())).thenCallRealMethod();
 
-			eventBus.consumer("transfertask.cancel.ack", msg -> {
-				JsonObject bodyRec = (JsonObject) msg.body();
-				assertEquals("1", bodyRec.getString("id"));
-				assertEquals("dooley", bodyRec.getString("owner"));
-				assertEquals("agave.dev", bodyRec.getString("tenantId"));
-				assertEquals("sftp", bodyRec.getString("protocol"));
-			});
+		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
+		JsonObject body = tt.toJson();
+		String uuid = body.getString("uuid");
 
-			eventBus.consumer("transfertask.cancel.sync", msg -> {
-				JsonObject bodySync = (JsonObject) msg.body();
-				String uuid = bodySync.getString("id");
-				assertEquals("1", bodySync.getString("id"));
-			});
+		String result = ttc.processCancelAck(body);
 
-			eventBus.consumer("transfertask.cancel.ack", msg -> {
-				JsonObject bodyAck = (JsonObject) msg.body();
-				String uuid = bodyAck.getString("id");
-				assertEquals("1", bodyAck.getString("id"));
-			});
+//		assertEquals(uuid, result, "result should have been uuid: " + uuid);
+		assertEquals(body.getString("parentTaskId"), result, "Parent result was not verified");
 
-			eventBus.publish("transfertask.cancelled", body);
-		}));
+//		verify(ttc)._doPublish("transfertask.cancel.ack", body);
+		ctx.completeNow();
+
+//		vertx.deployVerticle(new TransferTaskAssignedListener(), ctx.succeeding(id -> {
+//
+//			eventBus.consumer("transfertask.cancel.ack", msg -> {
+//				JsonObject bodyRec = (JsonObject) msg.body();
+//				assertEquals("1", bodyRec.getString("id"));
+//				assertEquals("dooley", bodyRec.getString("owner"));
+//				assertEquals("agave.dev", bodyRec.getString("tenantId"));
+//				assertEquals("sftp", bodyRec.getString("protocol"));
+//			});
+//
+//			eventBus.consumer("transfertask.cancel.sync", msg -> {
+//				JsonObject bodySync = (JsonObject) msg.body();
+//				String uuid = bodySync.getString("id");
+//				assertEquals("1", bodySync.getString("id"));
+//			});
+//
+//			eventBus.consumer("transfertask.cancel.ack", msg -> {
+//				JsonObject bodyAck = (JsonObject) msg.body();
+//				String uuid = bodyAck.getString("id");
+//				assertEquals("1", bodyAck.getString("id"));
+//			});
+//
+//			eventBus.publish("transfertask.cancelled", body);
+//		}));
 
 	}
 }

@@ -43,7 +43,7 @@ public class BaseTestCase {
     /**
      * Reads config file synchronously to ensure completion prior to setup.
      */
-    protected void intiConfig() {
+    protected void initConfig() {
         Path configPath = Paths.get(getClass().getClassLoader().getResource("config.json").getPath());
         try {
             String json = new String(Files.readAllBytes(configPath));
@@ -59,7 +59,7 @@ public class BaseTestCase {
     @BeforeAll
     public void setUpService() throws IOException {
         // read in config options
-        intiConfig();
+        initConfig();
     }
 
     @AfterAll

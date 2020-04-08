@@ -11,6 +11,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.resources.TransferServiceVerticalTest;
@@ -35,45 +36,21 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers completed task listener integration tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Disabled
-public class TransferTaskDatabaseVerticleTest {
-    public static final String TENANT_ID = "agave.dev";
-    public static final String TRANSFER_SRC = "http://foo.bar/cat";
-    public static final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
-    public static final String TEST_USER = "testuser";
+public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
 
     private TransferTaskDatabaseService service;
 
-    private TransferTask _createTestTransferTask() {
-        TransferTask transferTask = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USER, TENANT_ID, null, null);
-        return transferTask;
-
-//                .put("status", TransferStatusType.TRANSFERRING)
-//                .put("created", Instant.now().toEpochMilli())
-//                .put("start_time", Instant.now().toEpochMilli())
-//                .put("tenant_id", "agave.dev");
-    }
-
     @BeforeAll
     public void prepare(Vertx vertx, VertxTestContext ctx) throws InterruptedException, IOException {
-        Path configPath = Paths.get(TransferServiceVerticalTest.class.getClassLoader().getResource("config.json").getPath());
-        String json = new String(Files.readAllBytes(configPath));
-        JsonObject conf = new JsonObject(json);
+        initConfig();
 
         vertx.deployVerticle(new TransferTaskDatabaseVerticle(),
-                new DeploymentOptions().setConfig(conf).setWorker(true).setMaxWorkerExecuteTime(3600),
+                new DeploymentOptions().setConfig(config).setWorker(true).setMaxWorkerExecuteTime(3600),
                 ctx.succeeding(id -> {
-                    service = TransferTaskDatabaseService.createProxy(vertx, conf.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
+                    service = TransferTaskDatabaseService.createProxy(vertx, config.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
                     ctx.completeNow();
                 }));
     }
-
-
-    @AfterAll
-    public void finish(Vertx vertx, VertxTestContext ctx) {
-        vertx.close(ctx.completing());
-    }
-
 
     @Test
     @Timeout(value = 10, timeUnit = TimeUnit.SECONDS)
@@ -169,13 +146,13 @@ public class TransferTaskDatabaseVerticleTest {
 //                                    Assertions.assertEquals(testTransferTask.getDest(), getByIdJsonTransferTask2.getString("dest"),"Object returned from create should have same dest value as original");
 
 
-                                    service.delete(TENANT_ID, testTransferTask.getUuid(), v3 -> {
+                                    service.delete(TENANT_ID, testTransferTask.getUuid(), context.succeeding(v3 -> {
 
                                         service.getAll(TENANT_ID, context.succeeding( getAllJsonTransferTaskArray3 -> {
                                             Assertions.assertTrue(getAllJsonTransferTaskArray3.isEmpty(), "No records should be returned from getAll after deleting the test object");
                                             context.completeNow();
                                         }));
-                                    });
+                                    }));
                                 }));
                             }));
                         }));

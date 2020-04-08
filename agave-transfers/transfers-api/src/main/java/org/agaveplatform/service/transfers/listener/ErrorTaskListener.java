@@ -23,5 +23,14 @@ public class ErrorTaskListener extends AbstractVerticle {
 
 		});
 
+		bus.<JsonObject>consumer("transfertask.parent.error", msg -> {
+			JsonObject body = msg.body();
+
+			logger.error("Transfer task {} failed to check it's parent task {} for copmletion: {}: {}",
+					body.getString("id"), body.getString("parentTaskId"), body.getString("cause"), body.getString("message"));
+
+//			bus.publish("notification.transfertask", body);
+
+		});
 	}
 }

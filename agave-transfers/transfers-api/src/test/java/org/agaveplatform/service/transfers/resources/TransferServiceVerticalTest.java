@@ -7,15 +7,16 @@ import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
 import io.vertx.ext.jwt.JWTOptions;
+import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -27,13 +28,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 import static io.restassured.RestAssured.given;
 import static java.util.Arrays.asList;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(VertxExtension.class)
@@ -41,43 +38,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 //@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 //@Disabled
-public class TransferServiceVerticalTest {
+public class TransferServiceVerticalTest extends BaseTestCase {
 
     private static final Logger log = LoggerFactory.getLogger(TransferServiceVerticalTest.class);
     private Vertx vertx;
-    private int port = 32331;
     private JWTAuth jwtAuth;
-    private JsonObject config;
 
     private static RequestSpecification requestSpecification;
 
-    private final String TEST_USERNAME = "testuser";
-    public static final String TENANT_ID = "agave.dev";
-    public static final String TRANSFER_SRC = "http://foo.bar/cat";
-    public static final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
-    public static final String TEST_USER = "testuser";
-
     private TransferTaskDatabaseService dbService;
-
-    private TransferTask _createTestTransferTask() {
-        TransferTask transferTask = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USER, TENANT_ID, null, null);
-        return transferTask;
-    }
-
-    /**
-     * Reads config file synchronously to ensure completion prior to setup.
-     */
-    private void intiConfig() {
-        Path configPath = Paths.get(TransferServiceVerticalTest.class.getClassLoader().getResource("config.json").getPath());
-        try {
-            String json = new String(Files.readAllBytes(configPath));
-            config = new JsonObject(json);
-        } catch (IOException e) {
-            log.error("Unable to read config options file", e);
-        } catch (DecodeException e) {
-            log.error("Error parsing config options file", e);
-        }
-    }
 
     /**
      * Initializes the jwt auth options and the
@@ -131,84 +100,92 @@ public class TransferServiceVerticalTest {
     }
 
     @BeforeAll
-    public void setUpService(Vertx vertx, VertxTestContext ctx) throws IOException {
+    public void setUpService() throws IOException {
         // read in config options
         intiConfig();
 
-        // Pick an available and random
-//        ServerSocket socket = new ServerSocket(0);
-//        port = socket.getLocalPort();
-//        socket.close();
-
-        config.put( "transfertask.http.port", port);
-
         // init the jwt auth used in the api calls
         initAuth();
-
-        DeploymentOptions options = new DeploymentOptions().setConfig(config);
-
-        vertx.deployVerticle(new TransferTaskDatabaseVerticle(),
-            new DeploymentOptions().setConfig(config).setWorker(true).setMaxWorkerExecuteTime(3600),
-            ctx.succeeding(id -> {
-                vertx.deployVerticle(TransferServiceUIVertical.class.getName(), options, res -> {
-                    if (res.succeeded()) {
-                        requestSpecification = new RequestSpecBuilder()
-                                .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
-                                .setBaseUri("http://localhost:" + port + "/")
-                                .build();
-                        ctx.completeNow();
-                    } else {
-                        log.error("Failed to deploy test api vertical: {} ", res.cause());
-                    }
-                });
-            }));
     }
 
-    @AfterAll
-    public void tearDown(Vertx vertx, VertxTestContext ctx) {
-        vertx.close(ctx.completing());
-    }
 
     @Test
    // @Disabled
     @DisplayName("List web root says hello")
-    void register() {
-        String response = given()
-                .spec(requestSpecification)
-                .header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
-//                .contentType(ContentType.JSON)
-//                .accept(ContentType.JSON)
-//                .body(basicUser().encode())
-//                .when()
-                .get("/")
-                .then()
-                .assertThat()
-                .statusCode(200)
-                .extract()
-                .asString();
-        assertThat(response).contains("Hello");
+    void register(Vertx vertx, VertxTestContext ctx) {
+        DeploymentOptions options = new DeploymentOptions().setConfig(config);
+//        Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();
+        Checkpoint apiDeploymentCheckpoint = ctx.checkpoint();
+        Checkpoint requestCheckpoint = ctx.checkpoint();
+
+        vertx.deployVerticle(TransferServiceUIVertical.class.getName(), options, ctx.succeeding(apiId -> {
+
+            apiDeploymentCheckpoint.flag();
+
+            RequestSpecification requestSpecification = new RequestSpecBuilder()
+                    .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+                    .setBaseUri("http://localhost:" + port + "/")
+                    .build();
+            ctx.verify(() -> {
+                String response = given()
+                        .spec(requestSpecification)
+                        .header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
+                        .get("/")
+                        .then()
+                        .assertThat()
+                        .statusCode(200)
+                        .extract()
+                        .asString();
+
+
+
+                assertThat(response).contains("Hello");
+                requestCheckpoint.flag();
+            });
+        }));
     }
 
     @Test
     @DisplayName("Create new transfer task")
-    void create() {
+//    @Disabled
+    void create(Vertx vertx, VertxTestContext ctx) {
         TransferTask tt = _createTestTransferTask();
-        String response = given()
-                .spec(requestSpecification)
-                .header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
-                .contentType(ContentType.JSON)
-                .body(tt.toJSON())
-                .when()
-                .post("api/transfers")
-                .then()
-                .assertThat()
-                .statusCode(201)
-                .extract()
-                .asString();
-        TransferTask respTask = Json.decodeValue(response, TransferTask.class);
-        assertThat(respTask).isNotNull();
-        assertThat(respTask.getSource()).isEqualTo(tt.getSource());
-        assertThat(respTask.getDest()).isEqualTo(tt.getDest());
+        DeploymentOptions options = new DeploymentOptions().setConfig(config);
+        Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();
+        Checkpoint apiDeploymentCheckpoint = ctx.checkpoint();
+        Checkpoint requestCheckpoint = ctx.checkpoint();
+
+        vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, ctx.succeeding(dbId -> {
+            dbDeploymentCheckpoint.flag();
+
+            vertx.deployVerticle(TransferServiceUIVertical.class.getName(), options, ctx.succeeding(apiId -> {
+                apiDeploymentCheckpoint.flag();
+
+                RequestSpecification requestSpecification = new RequestSpecBuilder()
+                        .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+                        .setBaseUri("http://localhost:" + port + "/")
+                        .build();
+                ctx.verify(() -> {
+                    String response = given()
+                            .spec(requestSpecification)
+                            .header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
+                            .contentType(ContentType.JSON)
+                            .body(tt.toJSON())
+                            .when()
+                            .post("api/transfers")
+                            .then()
+                            .assertThat()
+                            .statusCode(201)
+                            .extract()
+                            .asString();
+                    TransferTask respTask = Json.decodeValue(response, TransferTask.class);
+                    assertThat(respTask).isNotNull();
+                    assertThat(respTask.getSource()).isEqualTo(tt.getSource());
+                    assertThat(respTask.getDest()).isEqualTo(tt.getDest());
+                    requestCheckpoint.flag();
+                });
+            }));
+        }));
     }
 
 

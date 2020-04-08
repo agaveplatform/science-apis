@@ -51,7 +51,7 @@ public class TransferTask {
 	private String rootTaskId;
 	private Instant startTime;
 	private Instant endTime;
-	private Instant created;// = Instant.now();
+	private Instant created = Instant.now();
 	private Instant lastUpdated = Instant.now();
 	private String uuid;
 
@@ -540,6 +540,7 @@ public class TransferTask {
 					.put("totalFiles", getTotalFiles())
 					.put("transferRate", getTransferRate())
 					.put("totalSize", getTotalSize())
+					.put("tenantId", getTenantId())
 					.put("totalSkippedFiles", getTotalSkippedFiles());
 //				.put("_links", new JsonObject()
 //						.put("self", new JsonObject()

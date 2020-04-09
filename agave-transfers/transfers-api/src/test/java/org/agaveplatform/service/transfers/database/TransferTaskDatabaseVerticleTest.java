@@ -161,5 +161,5 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
             }));
         }));
     }
-    // end::crud[]
+
 }

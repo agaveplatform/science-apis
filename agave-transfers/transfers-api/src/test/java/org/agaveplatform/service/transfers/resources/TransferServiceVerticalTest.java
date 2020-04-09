@@ -102,7 +102,7 @@ public class TransferServiceVerticalTest extends BaseTestCase {
     @BeforeAll
     public void setUpService() throws IOException {
         // read in config options
-        intiConfig();
+        initConfig();
 
         // init the jwt auth used in the api calls
         initAuth();

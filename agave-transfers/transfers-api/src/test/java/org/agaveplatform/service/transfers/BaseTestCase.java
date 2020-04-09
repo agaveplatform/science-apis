@@ -24,7 +24,7 @@ import java.nio.file.Paths;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class BaseTestCase {
+public abstract class BaseTestCase {
     private static final Logger log = LoggerFactory.getLogger(BaseTestCase.class);
 
     public final String TEST_USERNAME = "testuser";

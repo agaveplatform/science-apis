@@ -4,19 +4,24 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.web.RoutingContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class FailureHandler extends AbstractVerticle implements Handler<RoutingContext> {
-
-	protected String eventChannel = "transfertask.error";
+public class FailureHandler extends AbstractTransferTaskListener implements Handler<RoutingContext> {
+	private final Logger logger = LoggerFactory.getLogger(FailureHandler.class);
 
 	public FailureHandler(Vertx vertx) {
-		this(vertx, null);
+		super(vertx);
 	}
 
 	public FailureHandler(Vertx vertx, String eventChannel) {
-		super();
-		setVertx(vertx);
-		setEventChannel(eventChannel);
+		super(vertx, eventChannel);
+	}
+
+	protected static final String EVENT_CHANNEL = "transfertask.failed";
+
+	public String getDefaultEventChannel() {
+		return EVENT_CHANNEL;
 	}
 
 	public void handle(RoutingContext context){
@@ -26,33 +31,7 @@ public class FailureHandler extends AbstractVerticle implements Handler<RoutingC
 	}
 
 	private void recordError(Throwable throwable){
-		System.out.println("error");
-	}
-
-
-	/**
-	 * Sets the vertx instance for this listener
-	 *
-	 * @param vertx the current instance of vertx
-	 */
-	private void setVertx(Vertx vertx) {
-		this.vertx = vertx;
-	}
-
-	/**
-	 * @return the message type to listen to
-	 */
-	public String getEventChannel() {
-		return eventChannel;
-	}
-
-	/**
-	 * Sets the message type for which to listen
-	 *
-	 * @param eventChannel
-	 */
-	public void setEventChannel(String eventChannel) {
-		this.eventChannel = eventChannel;
+		logger.info("failed: {}", throwable.getMessage());
 	}
 
 }

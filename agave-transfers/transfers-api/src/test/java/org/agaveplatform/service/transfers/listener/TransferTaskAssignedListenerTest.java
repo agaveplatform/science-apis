@@ -1,9 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.DeploymentOptions;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
-import org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
@@ -11,29 +8,12 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.protocol.TransferSftpVertical;
-import org.agaveplatform.service.transfers.resources.FileTransferCreateServiceImpl;
-import org.agaveplatform.service.transfers.resources.TransferServiceUIVertical;
-import org.agaveplatform.service.transfers.resources.TransferServiceVerticalTest;
-import org.agaveplatform.service.transfers.resources.TransferTaskUnaryImpl;
-import org.agaveplatform.service.transfers.streaming.StreamingFileTaskImpl;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.junit.jupiter.api.Assertions.*;
 
 

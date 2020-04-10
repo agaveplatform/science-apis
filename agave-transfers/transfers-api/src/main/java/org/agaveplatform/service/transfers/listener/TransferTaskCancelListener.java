@@ -14,44 +14,46 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TransferTaskCancelListener extends AbstractVerticle {
+public class TransferTaskCancelListener extends AbstractTransferTaskListener {
     private final Logger logger = LoggerFactory.getLogger(TransferTaskCancelListener.class);
-    private String eventChannel = "transfertask.cancelled";
 
     public TransferTaskCancelListener(Vertx vertx) {
-        this(vertx, null);
+        super(vertx);
     }
 
     public TransferTaskCancelListener(Vertx vertx, String eventChannel) {
-        super();
-        setVertx(vertx);
-        setEventChannel(eventChannel);
+        super(vertx, eventChannel);
+    }
+
+    protected static final String EVENT_CHANNEL = "transfertask.cancelled";
+
+    public String getDefaultEventChannel() {
+        return EVENT_CHANNEL;
     }
 
     @Override
     public void start() {
         EventBus bus = vertx.eventBus();
-        bus.<JsonObject>consumer("transfertask.cancelled", msg -> {
+        bus.<JsonObject>consumer(getEventChannel(), msg -> {
             JsonObject body = msg.body();
-            String uuid = body.getString("id");
+            String uuid = body.getString("uuid");
             logger.info("Transfer task {} cancel detected.", uuid);
             this.processCancelRequest(body);
         });
 
         bus.<JsonObject>consumer("transfertask.cancel.ack", msg -> {
             JsonObject body = msg.body();
-            String uuid = body.getString("id");
-//            String parentTaskId = body.getString("parentTaskId");
-//            String rootTaskId = body.getString("rootTaskId");
+            String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} ackowledged cancellation", uuid);
             String done = this.processCancelAck(body);
             System.out.println(done);
         });
     }
-    protected String processCancelAck(JsonObject body){
+
+    protected String processCancelAck(JsonObject body) {
         String parentTaskId = body.getString("parentTaskId");
-        String uuid = body.getString("id");
+        String uuid = body.getString("uuid");
         // if this task has children and all are cancelled or completed, then we can
         // mark this task as cancelled.
         if (allChildrenCancelledOrCompleted(uuid)) {
@@ -62,7 +64,7 @@ public class TransferTaskCancelListener extends AbstractVerticle {
 
             // this task and all its children are done, so we can send a complete event
             // to safely clear out the uuid from all listener verticals' caches
-            _doPublish("transfertask.cancel.complete", body);
+            _doPublishEvent("transfertask.cancel.complete", body);
 
             // we can now also check the parent, if present, for completion of its tree.
             // if the parent is empty, the root will be as well. For children of the root
@@ -73,16 +75,13 @@ public class TransferTaskCancelListener extends AbstractVerticle {
                 if (allChildrenCancelledOrCompleted(parentTaskId)) {
                     setTransferTaskCancelledIfNotCompleted(parentTaskId);
                     TransferTask parentTask = getTransferTask(parentTaskId);
-                    _doPublish("transfertask.cancel.ack", parentTask.toJSON());
+                    _doPublishEvent("transfertask.cancel.ack", parentTask.toJSON());
                     return parentTask.getUuid();
                 }
             }
             return uuid;
         }
         return uuid;
-    }
-    protected void _doPublish(String event, Object body) {
-        getVertx().eventBus().publish(event, body);
     }
 
     private boolean allChildrenCancelledOrCompleted(String parentTaskId) {
@@ -96,7 +95,7 @@ public class TransferTaskCancelListener extends AbstractVerticle {
     }
 
     protected void processCancelRequest(JsonObject body) {
-        String uuid = body.getString("id");
+        String uuid = body.getString("uuid");
         Long id = 0L;
         try {
             // lookup the transfer task from the db
@@ -108,7 +107,7 @@ public class TransferTaskCancelListener extends AbstractVerticle {
 
                 // push the event transfer task onto the queue. this will cause all listening verticals
                 // actively processing any of its children to cancel their existing work and ack
-                _doPublish("transfertask.cancel.sync", uuid);
+                _doPublishEvent("transfertask.cancel.sync", uuid);
             }
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -117,7 +116,7 @@ public class TransferTaskCancelListener extends AbstractVerticle {
                     .put("message", e.getMessage())
                     .mergeIn(body);
 
-            _doPublish("transfertask.error", json);
+            _doPublishEvent("transfertask.error", json);
         }
     }
 
@@ -129,30 +128,5 @@ public class TransferTaskCancelListener extends AbstractVerticle {
     protected TransferTask getTransferTask(String uuid) {
         // TODO: make db or api call to service
         return new TransferTask();
-    }
-
-    /**
-     * Sets the vertx instance for this listener
-     *
-     * @param vertx the current instance of vertx
-     */
-    private void setVertx(Vertx vertx) {
-        this.vertx = vertx;
-    }
-
-    /**
-     * @return the message type to listen to
-     */
-    public String getEventChannel() {
-        return eventChannel;
-    }
-
-    /**
-     * Sets the message type for which to listen
-     *
-     * @param eventChannel
-     */
-    public void setEventChannel(String eventChannel) {
-        this.eventChannel = eventChannel;
     }
 }

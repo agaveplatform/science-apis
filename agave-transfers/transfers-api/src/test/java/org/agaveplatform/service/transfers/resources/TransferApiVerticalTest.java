@@ -19,13 +19,11 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
-import org.agaveplatform.service.transfers.listener.TransferCompleteTaskListenerImpl;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,16 +33,15 @@ import static io.restassured.RestAssured.given;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers API integration tests")
 //@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 //@Disabled
-public class TransferServiceVerticalTest extends BaseTestCase {
+public class TransferApiVerticalTest extends BaseTestCase {
 
-    private static final Logger log = LoggerFactory.getLogger(TransferServiceVerticalTest.class);
+    private static final Logger log = LoggerFactory.getLogger(TransferApiVerticalTest.class);
     private Vertx vertx;
     private JWTAuth jwtAuth;
 
@@ -123,7 +120,8 @@ public class TransferServiceVerticalTest extends BaseTestCase {
         Checkpoint apiDeploymentCheckpoint = ctx.checkpoint();
         Checkpoint requestCheckpoint = ctx.checkpoint();
 
-        vertx.deployVerticle(TransferServiceUIVertical.class.getName(), options, ctx.succeeding(apiId -> {
+        TransferAPIVertical apiVert = new TransferAPIVertical(vertx);
+        vertx.deployVerticle(apiVert, options, ctx.succeeding(apiId -> {
 
             apiDeploymentCheckpoint.flag();
 
@@ -162,8 +160,8 @@ public class TransferServiceVerticalTest extends BaseTestCase {
 
         vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, ctx.succeeding(dbId -> {
             dbDeploymentCheckpoint.flag();
-
-            vertx.deployVerticle(TransferServiceUIVertical.class.getName(), options, ctx.succeeding(apiId -> {
+            TransferAPIVertical apiVert = new TransferAPIVertical(vertx);
+            vertx.deployVerticle(apiVert, options, ctx.succeeding(apiId -> {
                 apiDeploymentCheckpoint.flag();
 
                 RequestSpecification requestSpecification = new RequestSpecBuilder()
@@ -183,7 +181,7 @@ public class TransferServiceVerticalTest extends BaseTestCase {
                             .statusCode(201)
                             .extract()
                             .asString();
-                    TransferTask respTask = Json.decodeValue(response, TransferTask.class);
+                    TransferTask respTask = new TransferTask(new JsonObject(response));
                     assertThat(respTask).isNotNull();
                     assertThat(respTask.getSource()).isEqualTo(tt.getSource());
                     assertThat(respTask.getDest()).isEqualTo(tt.getDest());

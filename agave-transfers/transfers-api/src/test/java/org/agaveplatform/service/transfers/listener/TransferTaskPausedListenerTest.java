@@ -10,9 +10,13 @@ import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers processPausedRequest tests")
@@ -45,33 +49,45 @@ class TransferTaskPausedListenerTest {
 //		vertx.deployVerticle(new TransferTaskCancelListener(vertx));
 //	}
 
+	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) {
+		TransferTaskPausedListener listener = Mockito.mock(TransferTaskPausedListener.class);
+		when(listener.getEventChannel()).thenReturn("transfertask.created");
+		when(listener.getVertx()).thenReturn(vertx);
+		doCallRealMethod().when(listener).processPauseRequest(any());
+
+		return listener;
+	}
+
 	@AfterAll
 	public void finish(Vertx vertx, VertxTestContext ctx) {
 		vertx.close(ctx.completing());
 	}
 
 	@Test
-	@DisplayName("Transfer Task Puased Listener - processCancelRequest")
+	@DisplayName("Transfer Task Paused Listener - processCancelRequest")
 	public void processPauseRequest(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 		JsonObject body = tt.toJson();
 
-		TransferTaskPausedListener tpl = new TransferTaskPausedListener(vertx,"transfertask.paused");
-
-		vertx.eventBus().consumer("transfertask.paused.sync", msg -> {
-			JsonObject bodyRec = (JsonObject) msg.body();
-			assertEquals(tt.getUuid(), bodyRec.getString("uuid"), "uuid should match and didn't");
-			ctx.completeNow();
-		});
-
-		vertx.eventBus().consumer("transfertask.error", msg -> {
-			JsonObject bodyErr = (JsonObject) msg.body();
-			fail(bodyErr.getString("cause"));
-			ctx.failNow(new Exception(bodyErr.getString("message")));
-		});
+		TransferTaskPausedListener tpl = getMockListenerInstance(vertx);
+//
+//
+//		vertx.eventBus().consumer("transfertask.paused.sync", msg -> {
+//			JsonObject bodyRec = (JsonObject) msg.body();
+//			assertEquals(tt.getUuid(), bodyRec.getString("uuid"), "uuid should match and didn't");
+//			ctx.completeNow();
+//		});
+//
+//		vertx.eventBus().consumer("transfertask.error", msg -> {
+//			JsonObject bodyErr = (JsonObject) msg.body();
+//			fail(bodyErr.getString("cause"));
+//			ctx.failNow(new Exception(bodyErr.getString("message")));
+//		});
 
 		tpl.processPauseRequest(body);
+		Mockito.verify(tpl)._doPublishEvent("transfertask.paused.sync", body);
+		ctx.completeNow();
 	}
 
 

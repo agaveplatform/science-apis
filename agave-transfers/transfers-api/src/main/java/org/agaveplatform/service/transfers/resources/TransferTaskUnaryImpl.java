@@ -6,6 +6,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.protocol.TransferSftpVertical;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -21,19 +22,22 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.time.Instant;
 
-public class TransferTaskUnaryImpl extends AbstractVerticle {
+public class TransferTaskUnaryImpl extends AbstractTransferTaskListener {
 
 	private final Logger logger = LoggerFactory.getLogger(TransferSftpVertical.class);
-	private String eventChannel = "transfertask.process.unary";
 
 	public TransferTaskUnaryImpl(Vertx vertx) {
-		this(vertx, null);
+		super(vertx);
 	}
 
 	public TransferTaskUnaryImpl(Vertx vertx, String eventChannel) {
-		super();
-		setVertx(vertx);
-		setEventChannel(eventChannel);
+		super(vertx, eventChannel);
+	}
+
+	protected static final String EVENT_CHANNEL = "transfertask.process.unary";
+
+	public String getDefaultEventChannel() {
+		return EVENT_CHANNEL;
 	}
 
 	@Override
@@ -61,7 +65,7 @@ public class TransferTaskUnaryImpl extends AbstractVerticle {
 
 	}
 	protected void processFileTask(JsonObject body){
-		String uuid = body.getString("id");
+		String uuid = body.getString("uuid");
 		String source = body.getString("source");
 		String dest =  body.getString("dest");
 		String username = body.getString("owner");
@@ -107,30 +111,5 @@ public class TransferTaskUnaryImpl extends AbstractVerticle {
 			vertx.eventBus().publish("transfertask.error", json);
 		}
 	}
-	/**
-	 * Sets the vertx instance for this listener
-	 *
-	 * @param vertx the current instance of vertx
-	 */
-	private void setVertx(Vertx vertx) {
-		this.vertx = vertx;
-	}
-
-	/**
-	 * @return the message type to listen to
-	 */
-	public String getEventChannel() {
-		return eventChannel;
-	}
-
-	/**
-	 * Sets the message type for which to listen
-	 *
-	 * @param eventChannel
-	 */
-	public void setEventChannel(String eventChannel) {
-		this.eventChannel = eventChannel;
-	}
-
 
 }

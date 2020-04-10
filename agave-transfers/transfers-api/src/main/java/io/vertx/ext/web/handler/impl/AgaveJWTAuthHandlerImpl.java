@@ -7,6 +7,7 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.JWTAuthHandler;
@@ -18,6 +19,11 @@ import java.util.Map;
 public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements JWTAuthHandler {
     private final String skip;
     private final JsonObject options;
+
+    @Override
+    public void authorize(User user, Handler<AsyncResult<Void>> handler) {
+        super.authorize(user, handler);
+    }
 
     public AgaveJWTAuthHandlerImpl(JWTAuth authProvider, String skip) {
         super(authProvider, AuthorizationAuthHandler.Type.BEARER);
@@ -81,13 +87,13 @@ public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements
         } else {
             try {
                 int idx = authorization.indexOf(32);
-                if (idx < 0) {
+                if (idx > 0) {
                     handler.handle(Future.failedFuture(BAD_REQUEST));
                     return;
                 }
 
                 Map<String,String> map = Map.of(
-                        "bearer", request.headers().get(HttpHeaders.AUTHORIZATION),
+                        "bearer", request.headers().contains(HttpHeaders.AUTHORIZATION) ? request.headers().get(HttpHeaders.AUTHORIZATION) : "",
                         "jwt", authorization,
                         "tenantId", AuthHelper.getTenantIdFromAuthHeader(authHeader));
 

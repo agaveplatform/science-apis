@@ -1,27 +1,25 @@
 package org.agaveplatform.service.transfers.protocol;
 
-import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
-
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TransferSftpVertical extends AbstractTransferTaskListener {
-	private final Logger logger = LoggerFactory.getLogger(TransferSftpVertical.class);
+public class TransferHttpVertical extends AbstractTransferTaskListener {
+	private final Logger logger = LoggerFactory.getLogger(TransferHttpVertical.class);
 
-	public TransferSftpVertical(Vertx vertx) {
+	public TransferHttpVertical(Vertx vertx) {
 		super(vertx);
 	}
 
-	public TransferSftpVertical(Vertx vertx, String eventChannel) {
+	public TransferHttpVertical(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = "transfer.sftp";
+	protected static final String EVENT_CHANNEL = "transfer.http";
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -38,13 +36,14 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 			String dest = body.getString("dest");
 			TransferTask tt = new TransferTask(body);
 
-			logger.info("Transfer task SFTP {} for source {} and dest {}", uuid, source, dest);
+			logger.info("Transfer task HTTP {} for source {} and dest {}", uuid, source, dest);
 //			bytesTrasfered = this.sftp(tt, source, dest );
 //			if (bytesTrasfered > 1) {
 //				body.put("total_size", bytesTrasfered);
 //				TransferTask bodyTask = new TransferTask(body);
 //				vertx.eventBus().publish("transfertask.sftp.complete", bodyTask);
 //			}
+			processEvent(body);
 
 			});
 	}

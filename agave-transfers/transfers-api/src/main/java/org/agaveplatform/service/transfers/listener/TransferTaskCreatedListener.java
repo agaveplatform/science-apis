@@ -13,9 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 
-public class TransferTaskCreatedListener extends AbstractVerticle {
+public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
     private final Logger logger = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
-    private String eventChannel = "transfertask.created";
 
     public TransferTaskCreatedListener(Vertx vertx) {
         this(vertx, null);
@@ -27,12 +26,18 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
         setEventChannel(eventChannel);
     }
 
+    protected static final String EVENT_CHANNEL = "transfertask.created";
+
+    public String getDefaultEventChannel() {
+        return EVENT_CHANNEL;
+    }
+
     @Override
     public void start() {
         EventBus bus = vertx.eventBus();
         bus.<JsonObject>consumer(getEventChannel(), msg -> {
             JsonObject body = msg.body();
-            String uuid = body.getString("id");
+            String uuid = body.getString("uuid");
             String source = body.getString("source");
             String dest = body.getString("dest");
             logger.info("Transfer task {} created: {} -> {}", uuid, source, dest);
@@ -41,7 +46,7 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
     }
 
     public String assignTransferTask(JsonObject body) {
-        String uuid = body.getString("id");
+        String uuid = body.getString("uuid");
         String source = body.getString("source");
 //		String dest =  body.getString("dest");
         String username = body.getString("owner");
@@ -68,12 +73,12 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
                     protocol = srcSystem.getStorageConfig().getProtocol().toString();
                 }
 
-                String assignmentChannel = "transfertask.assigned." +
-                        tenantId +
-                        "." + protocol +
-                        "." + srcUri.getHost() +
-                        "." + username;
-                _doPublish(assignmentChannel, body);
+                String assignmentChannel = "transfertask.assigned";//." +
+//                        tenantId +
+//                        "." + protocol +
+//                        "." + srcUri.getHost() +
+//                        "." + username;
+                _doPublishEvent(assignmentChannel, body);
 
             } else {
                 String msg = String.format("Unknown source schema %s for the transfertask %s",
@@ -84,7 +89,7 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
                         .put("cause", RemoteDataSyntaxException.class.getName())
                         .put("message", msg)
                         .mergeIn(body);
-                _doPublish("transfertask.error", json);
+                _doPublishEvent("transfertask.error", json);
             }
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -93,38 +98,9 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
                     .put("message", e.getMessage())
                     .mergeIn(body);
 
-            _doPublish("transfertask.error", json);
+            _doPublishEvent("transfertask.error", json);
         }
 
         return protocol;
-    }
-
-    public void _doPublish(String event, Object body) {
-        getVertx().eventBus().publish(event, body);
-    }
-
-    /**
-     * Sets the vertx instance for this listener
-     *
-     * @param vertx the current instance of vertx
-     */
-    private void setVertx(Vertx vertx) {
-        this.vertx = vertx;
-    }
-
-    /**
-     * @return the message type to listen to
-     */
-    public String getEventChannel() {
-        return eventChannel;
-    }
-
-    /**
-     * Sets the message type for which to listen
-     *
-     * @param eventChannel
-     */
-    public void setEventChannel(String eventChannel) {
-        this.eventChannel = eventChannel;
     }
 }

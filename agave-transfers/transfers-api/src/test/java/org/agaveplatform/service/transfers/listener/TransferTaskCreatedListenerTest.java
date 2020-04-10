@@ -1,29 +1,18 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.rxjava.ext.unit.Async;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
-import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.URI;
-
-import static io.vertx.core.Vertx.vertx;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(VertxExtension.class)
@@ -74,7 +63,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		String result = ttc.assignTransferTask(json);
 		assertEquals("http", result, "result should have been http");
-		verify(ttc)._doPublish(assignmentChannel, json);
+		verify(ttc)._doPublishEvent(assignmentChannel, json);
 		ctx.completeNow();
 
 	}

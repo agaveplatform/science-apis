@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
+import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.api.validation.HTTPRequestValidationHandler;
@@ -21,6 +22,7 @@ import org.agaveplatform.service.transfers.model.TransferUpdate;
 import org.agaveplatform.service.transfers.util.AgaveSchemaFactory;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,22 +32,22 @@ import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*
  * This is the user-facing vertical providing the http interface to internal services.
  * It provides crud functionality and basic jwt authorization.
  */
-public class TransferServiceUIVertical extends AbstractVerticle {
+public class TransferAPIVertical extends AbstractVerticle {
 
-    private static Logger log = LoggerFactory.getLogger(TransferServiceUIVertical.class);
+    private static Logger log = LoggerFactory.getLogger(TransferAPIVertical.class);
 
     private HttpServer server;
     private JWTAuth authProvider;
-    private JsonObject config;
+//    private JsonObject config;
     private TransferTaskDatabaseService dbService;
     protected String eventChannel = "transfertask.db.queue";
 
 
-    public TransferServiceUIVertical(Vertx vertx) {
+    public TransferAPIVertical(Vertx vertx) {
         this(vertx, null);
     }
 
-    public TransferServiceUIVertical(Vertx vertx, String eventChannel) {
+    public TransferAPIVertical(Vertx vertx, String eventChannel) {
         super();
         setVertx(vertx);
         setEventChannel(eventChannel);
@@ -55,7 +57,7 @@ public class TransferServiceUIVertical extends AbstractVerticle {
     @Override
     public void start(Promise<Void> promise) {
         // set the config from the main vertical
-        setConfig(config());
+//        setConfig(config());
 
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, "transfertask.db.queue"); // <1>
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
@@ -87,7 +89,7 @@ public class TransferServiceUIVertical extends AbstractVerticle {
         // Accept post of a TransferTask, validates the request, and inserts into the db.
         router.post("/api/transfers")
                 // Mount validation handler to ensure the posted json is valid prior to adding
-                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTask.class)))
+//                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTask.class)))
                 // Mount primary handler
                 .handler(this::addOne);
         router.put("/api/transfers/:uuid")
@@ -139,11 +141,13 @@ public class TransferServiceUIVertical extends AbstractVerticle {
      * @param routingContext the current rounting context for the request
      */
     private void addOne(RoutingContext routingContext) {
-        TransferTask transferTask = routingContext.getBodyAsJson().mapTo(TransferTask.class);
-        dbService.create(routingContext.get("tenantId"), transferTask, reply -> {
+        String tenantId = routingContext.get("tenantId");
+        if (StringUtils.isBlank(tenantId)) tenantId = "agave.dev";
+        TransferTask transferTask = new TransferTask(routingContext.getBodyAsJson());
+        dbService.create(tenantId, transferTask, reply -> {
             if (reply.succeeded()) {
-                vertx.eventBus().publish("transfertask.created", reply.result());
-                routingContext.response().end(reply.result().encodePrettily());
+                _doPublishEvent("transfertask.created", reply.result());
+                routingContext.response().setStatusCode(201).end(reply.result().encodePrettily());
             } else {
                 routingContext.fail(reply.cause());
             }
@@ -160,7 +164,7 @@ public class TransferServiceUIVertical extends AbstractVerticle {
         String uuid = routingContext.pathParam("uuid");
         dbService.delete(tenantId, uuid, reply -> {
             if (reply.succeeded()) {
-                vertx.eventBus().publish("transfertask.deleted", reply.result());
+                _doPublishEvent("transfertask.deleted", reply.result());
                 routingContext.response().setStatusCode(203).end();
             } else {
                 routingContext.fail(reply.cause());
@@ -209,7 +213,7 @@ public class TransferServiceUIVertical extends AbstractVerticle {
 
                     dbService.update(tenantId, uuid, tt, reply2 -> {
                         if (reply2.succeeded()) {
-                            vertx.eventBus().publish("transfertask.updated", reply2.result());
+                            _doPublishEvent("transfertask.updated", reply2.result());
                             routingContext.response().end(reply2.result().encodePrettily());
                         } else {
                             routingContext.fail(reply2.cause());
@@ -228,9 +232,13 @@ public class TransferServiceUIVertical extends AbstractVerticle {
     public JWTAuth getAuthProvider() {
         if (authProvider == null) {
             JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
+                    .setJWTOptions(new JWTOptions()
+                            .setLeeway(30)
+                            .setAlgorithm("RS256"))
+                    .setPermissionsClaimKey("http://wso2.org/claims/role")
                     .addPubSecKey(new PubSecKeyOptions()
                             .setAlgorithm("RS256")
-                            .setPublicKey(config.getString("publickey")));
+                            .setPublicKey(config().getString("publickey")));
 
             authProvider = JWTAuth.create(vertx, jwtAuthOptions);
         }
@@ -242,10 +250,11 @@ public class TransferServiceUIVertical extends AbstractVerticle {
         this.authProvider = authProvider;
     }
 
-    public void setConfig(JsonObject config) {
-        this.config = config;
+    public void _doPublishEvent(String event, Object body) {
+        log.debug("Publishing {} event: {}", event, body);
+        getVertx().eventBus().publish(event, body);
     }
-
+    
     /**
      * Sets the vertx instance for this listener
      *

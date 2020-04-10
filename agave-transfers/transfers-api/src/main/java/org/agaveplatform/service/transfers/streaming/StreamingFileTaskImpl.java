@@ -2,27 +2,30 @@ package org.agaveplatform.service.transfers.streaming;
 
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
-public class StreamingFileTaskImpl extends AbstractVerticle implements StreamingFileTask {
+public class StreamingFileTaskImpl extends AbstractTransferTaskListener implements StreamingFileTask {
 	private final HashMap<String, Double> lastValues = new HashMap<>();
-	private String address = "transfer.streaming";
 
-	public StreamingFileTaskImpl (Vertx vertx) {
-		this(vertx, null);
+	public StreamingFileTaskImpl(Vertx vertx) {
+		super(vertx);
 	}
 
-	public StreamingFileTaskImpl(Vertx vertx, String address) {
-		super();
-		setVertx(vertx);
-		setAddress(address);
+	public StreamingFileTaskImpl(Vertx vertx, String eventChannel) {
+		super(vertx, eventChannel);
+	}
 
+	protected static final String EVENT_CHANNEL = "transfer.streaming";
+
+	public String getDefaultEventChannel() {
+		return EVENT_CHANNEL;
 	}
 
 	public void start() {
-		vertx.eventBus().<JsonObject>consumer(getAddress(), message -> {
+		vertx.eventBus().<JsonObject>consumer(getEventChannel(), message -> {
 			JsonObject json = message.body();
 			lastValues.put(json.getString("id"), json.getDouble("temp"));
 		});
@@ -37,29 +40,6 @@ public class StreamingFileTaskImpl extends AbstractVerticle implements Streaming
 		//=========================================================
 		JsonObject data = new JsonObject().put("average", avg);
 		handler.handle(Future.succeededFuture(data));
-	}
-
-	/**
-	 * Sets the vertx instance for this listener
-	 * @param vertx the current instance of vertx
-	 */
-	private void setVertx(Vertx vertx) {
-		this.vertx = vertx;
-	}
-
-	/**
-	 * @return the message type to listen to
-	 */
-	public String getAddress() {
-		return address;
-	}
-
-	/**
-	 * Sets the message type for which to listen
-	 * @param address
-	 */
-	public void setAddress(String address) {
-		this.address = address;
 	}
 
 }

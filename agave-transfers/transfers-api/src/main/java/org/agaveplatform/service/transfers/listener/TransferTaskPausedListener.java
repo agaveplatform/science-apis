@@ -14,9 +14,8 @@ import io.vertx.core.AbstractVerticle;
 		import java.util.ArrayList;
 		import java.util.List;
 
-public class TransferTaskPausedListener extends AbstractVerticle {
-	private final Logger logger = LoggerFactory.getLogger(TransferTaskCancelListener.class);
-	private String eventChannel = "transfertask.paused";
+public class TransferTaskPausedListener extends AbstractTransferTaskListener {
+	private final Logger logger = LoggerFactory.getLogger(TransferTaskPausedListener.class);
 
 	public TransferTaskPausedListener(Vertx vertx) {
 		this(vertx, null);
@@ -28,12 +27,18 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 		setEventChannel(eventChannel);
 	}
 
+	protected static final String EVENT_CHANNEL = "transfertask.paused";
+
+	public String getDefaultEventChannel() {
+		return EVENT_CHANNEL;
+	}
+
 	@Override
 	public void start() {
 		EventBus bus = vertx.eventBus();
-		bus.<JsonObject>consumer("transfertask.paused", msg -> {
+		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
-			String uuid = body.getString("id");
+			String uuid = body.getString("uuid");
 			logger.info("Transfer task {} cancel detected.", uuid);
 
 			this.processPauseRequest(body);
@@ -41,7 +46,7 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 
 		bus.<JsonObject>consumer("transfertask.paused.ack", msg -> {
 			JsonObject body = msg.body();
-			String uuid = body.getString("id");
+			String uuid = body.getString("uuid");
 			String parentTaskId = body.getString("parentTaskId");
 			String rootTaskId = body.getString("rootTaskId");
 
@@ -57,7 +62,7 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 
 				// this task and all its children are done, so we can send a complete event
 				// to safely clear out the uuid from all listener verticals' caches
-				getVertx().eventBus().publish("transfertask.paused.complete", body);
+				_doPublishEvent("transfertask.paused.complete", body);
 
 				// we can now also check the parent, if present, for completion of its tree.
 				// if the parent is empty, the root will be as well. For children of the root
@@ -68,7 +73,7 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 					if (allChildrenCancelledOrCompleted(parentTaskId)) {
 						setTransferTaskCancelledIfNotCompleted(parentTaskId);
 						TransferTask parentTask = getTransferTask(parentTaskId);
-						getVertx().eventBus().publish("transfertask.paused.ack", parentTask.toJSON());
+						_doPublishEvent("transfertask.paused.ack", parentTask.toJSON());
 					}
 				}
 			}
@@ -98,7 +103,7 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 
 				// push the event transfer task onto the queue. this will cause all listening verticals
 				// actively processing any of its children to cancel their existing work and ack
-				getVertx().eventBus().publish("transfertask.paused.sync", body);
+				_doPublishEvent("transfertask.paused.sync", body);
 			}
 		} catch (Exception e) {
 			logger.error(e.getMessage());
@@ -107,7 +112,7 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 
-			getVertx().eventBus().publish("transfertask.error", json);
+			_doPublishEvent("transfertask.error", json);
 		}
 	}
 
@@ -119,30 +124,5 @@ public class TransferTaskPausedListener extends AbstractVerticle {
 	protected TransferTask getTransferTask(String uuid) {
 		// TODO: make db or api call to service
 		return new TransferTask();
-	}
-
-	/**
-	 * Sets the vertx instance for this listener
-	 *
-	 * @param vertx the current instance of vertx
-	 */
-	private void setVertx(Vertx vertx) {
-		this.vertx = vertx;
-	}
-
-	/**
-	 * @return the message type to listen to
-	 */
-	public String getEventChannel() {
-		return eventChannel;
-	}
-
-	/**
-	 * Sets the message type for which to listen
-	 *
-	 * @param eventChannel
-	 */
-	public void setEventChannel(String eventChannel) {
-		this.eventChannel = eventChannel;
 	}
 }

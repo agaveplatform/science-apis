@@ -5,8 +5,11 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
+import io.vertx.ext.auth.jwt.impl.JWTAuthProviderImpl;
 import io.vertx.ext.jwt.JWTOptions;
+import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
 import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.*;
@@ -74,6 +77,7 @@ class AgaveJWTAuthHandlerImplTest extends BaseTestCase {
 				.setExpiresInMinutes(10_080) // 7 days
 				.setIssuer("transfers-api-integration-tests")
 				.setSubject(username);
+
 		return jwtAuth.generateToken(claims, jwtOptions);
 	}
 
@@ -88,9 +92,10 @@ class AgaveJWTAuthHandlerImplTest extends BaseTestCase {
 
 	@Test
 	@Disabled
-	void parseCredentials() {
-		//System.out.println(this.makeJwtToken(TEST_USERNAME));
-		assertEquals(this.makeJwtToken(TEST_USERNAME),"testuser");
+	void testsomethingparseCredentials(Vertx vertx, VertxTestContext ctx) {
+		String token = this.makeJwtToken(TEST_USERNAME);
+		AgaveJWTAuthHandlerImpl authHandler = new AgaveJWTAuthHandlerImpl(jwtAuth, "false");
+//		assertEquals(authHandler.parseCredentials();,"testuser");
 
 	}
 

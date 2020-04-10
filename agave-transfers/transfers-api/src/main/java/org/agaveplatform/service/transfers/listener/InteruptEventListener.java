@@ -3,30 +3,46 @@ package org.agaveplatform.service.transfers.listener;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class InteruptEventListener extends AbstractVerticle {
+public class InteruptEventListener extends AbstractTransferTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(InteruptEventListener.class);
-	private String eventChannel = "transfertask.interupt.*.*.*.*";
+
 
 	public InteruptEventListener(Vertx vertx) {
-		this(vertx, null);
+		super(vertx);
 	}
 
 	public InteruptEventListener(Vertx vertx, String eventChannel) {
-		super();
-		setVertx(vertx);
-		setEventChannel(eventChannel);
+		super(vertx, eventChannel);
+	}
+
+	protected static final String EVENT_CHANNEL = "transfertask.interupt.*.*.*.*";
+
+	public String getDefaultEventChannel() {
+		return EVENT_CHANNEL;
 	}
 
 	@Override
 	public void start() {
 		EventBus bus = vertx.eventBus();
+		bus.<JsonObject>consumer(getEventChannel(), msg -> {
+			JsonObject body = msg.body();
+			String uuid = body.getString("uuid");
+			String tenantId = body.getString("tenantId");
+			String source = body.getString("source");
+			logger.info("Transfer task paused {} created: {} -> {}",tenantId, uuid, source);
+
+//			this.processEvent(body);
+		});
+//
+//		bus.<JsonObject>consumer("paused." + tenantId +"." + username + "." + uuid ).isRegistered()) {
+//			logger.info("Transfer task paused {} created: {} -> {}", tenantId, uuid, source);
+//			return true;
+//		}
 	}
-
-
-
 
 
 	public boolean interruptEvent( String uuid, String source, String username, String tenantId ){
@@ -37,30 +53,5 @@ public class InteruptEventListener extends AbstractVerticle {
 			return true;
 		}
 		return false;
-	}
-
-	/**
-	 * Sets the vertx instance for this listener
-	 *
-	 * @param vertx the current instance of vertx
-	 */
-	private void setVertx(Vertx vertx) {
-		this.vertx = vertx;
-	}
-
-	/**
-	 * @return the message type to listen to
-	 */
-	public String getEventChannel() {
-		return eventChannel;
-	}
-
-	/**
-	 * Sets the message type for which to listen
-	 *
-	 * @param eventChannel
-	 */
-	public void setEventChannel(String eventChannel) {
-		this.eventChannel = eventChannel;
 	}
 }

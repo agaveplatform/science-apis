@@ -19,40 +19,40 @@ import java.net.URI;
 import java.util.HashSet;
 
 
-public class TransferTaskAssignedListener extends AbstractVerticle {
+public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
     private final Logger logger = LoggerFactory.getLogger(TransferTaskAssignedListener.class);
-    // "transfertask.assigned." + tenantId + "." + protocol + "." + srcUri.getHost() + "." + username
 
-    protected String eventChannel = "transfertask.assigned";
     protected HashSet<String> interruptedTasks = new HashSet<String>();
 
+    protected static final String EVENT_CHANNEL = "transfertask.assigned";
+
+    public String getDefaultEventChannel() {
+        return EVENT_CHANNEL;
+    }
+
     public TransferTaskAssignedListener(Vertx vertx) {
-        this(vertx, null);
+        super(vertx);
     }
 
     public TransferTaskAssignedListener(Vertx vertx, String eventChannel) {
-        super();
-        setVertx(vertx);
-        setEventChannel(eventChannel);
+        super(vertx, eventChannel);
     }
-
-    public TransferTaskAssignedListener() {}
 
     @Override
     public void start() {
         EventBus bus = vertx.eventBus();
-        bus.<JsonObject>consumer("transfertask.assigned", msg -> {
+        bus.<JsonObject>consumer(getEventChannel(), msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
             String source = body.getString("source");
             String dest = body.getString("dest");
-            logger.info("Transfer task {} created: {} -> {}", uuid, source, dest);
+            logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
             this.processTransferTask(body);
         });
 
         bus.<JsonObject>consumer("transfertask.cancel.sync", msg -> {
             JsonObject body = msg.body();
-            String uuid = body.getString("id");
+            String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} cancel detected", uuid);
             this.interruptedTasks.add(uuid);
@@ -60,7 +60,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
 
         bus.<JsonObject>consumer("transfertask.cancel.complete", msg -> {
             JsonObject body = msg.body();
-            String uuid = body.getString("id");
+            String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
             this.interruptedTasks.remove(uuid);
@@ -69,7 +69,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
         // paused tasks
         bus.<JsonObject>consumer("transfertask.paused.sync", msg -> {
             JsonObject body = msg.body();
-            String uuid = body.getString("id");
+            String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} paused detected", uuid);
             this.interruptedTasks.add(uuid);
@@ -77,7 +77,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
 
         bus.<JsonObject>consumer("transfertask.paused.complete", msg -> {
             JsonObject body = msg.body();
-            String uuid = body.getString("id");
+            String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
             this.interruptedTasks.remove(uuid);
@@ -85,11 +85,11 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
     }
 
     protected String processTransferTask(JsonObject body) {
-        String uuid = body.getString("id");
+        String uuid = body.getString("uuid");
         String source = body.getString("source");
 //		String dest =  body.getString("dest");
         String username = body.getString("owner");
-        String tenantId = body.getString("tenantId");
+        String tenantId = body.getString("tenant_id");
         String protocol = null;
         TransferTask bodyTask = new TransferTask(body);
 
@@ -123,8 +123,8 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                         if (fileInfo.isFile()) {
                             // write to the protocol event channel. the uri is all they should need for this....
                             // might need tenant id. not sure yet.
-                            vertx.eventBus().publish("transfertask." + srcSystem.getStorageConfig().getProtocol().name().toLowerCase(),
-                                        "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath());
+                            _doPublishEvent("transfer." + srcSystem.getStorageConfig().getProtocol().name().toLowerCase(),
+                                        body);//"agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath());
                         } else {
                             // path is a directory, so walk the first level of the directory
                             client.ls(srcUri.getPath())
@@ -136,8 +136,21 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                                     .forEach(childFileItem -> {
                                         // if it's a file, we can process this as we would if the original path were a file
                                         if (childFileItem.isFile()) {
-                                            vertx.eventBus().publish("transfertask." + srcSystem.getType(),
-                                                    "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath() + "/" + childFileItem.getName());
+                                            // build the child paths
+                                            String childSource = body.getString("source") + "/" + childFileItem.getName();
+                                            String childDest = body.getString("dest") + "/" + childFileItem.getName();
+
+                                            TransferTask transferTask = new TransferTask(childSource, childDest, tenantId);
+                                            transferTask.setTenantId(tenantId);
+                                            transferTask.setOwner(username);
+                                            transferTask.setParentTaskId(uuid);
+                                            if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
+                                                transferTask.setRootTaskId(body.getString("rootTaskId"));
+                                            }
+                                            _doPublishEvent("transfertask.created", transferTask.toJson());
+
+//                                            _doPublishEvent("transfertask." + srcSystem.getType(),
+//                                                    "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath() + "/" + childFileItem.getName());
                                         }
                                         // if a directory, then create a new transfer task to repeat this process,
                                         // keep the association between this transfer task, the original, and the children
@@ -154,7 +167,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                                             if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
                                                 transferTask.setRootTaskId(body.getString("rootTaskId"));
                                             }
-                                            vertx.eventBus().publish("transfertask.created", transferTask.toJson());
+                                            _doPublishEvent("transfertask.created", transferTask.toJson());
                                         }
                                     });
                         }
@@ -162,7 +175,7 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                     // it's not an agave uri, so we forward on the raw uri as we know that we can
                     // handle it from the wrapping if statement check
                     else {
-                        vertx.eventBus().publish("transfertask." + srcUri.getScheme(), source);
+                        _doPublishEvent("transfer." + srcUri.getScheme(), body);
                     }
                 } else {
                     // tell everyone else that you killed this task
@@ -184,13 +197,13 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                     .put("message", e.getMessage())
                     .mergeIn(body);
 
-            getVertx().eventBus().publish("transfertask.error", json);
+            _doPublishEvent("transfertask.error", json);
         }
         finally {
             // any interrupt involving this task will be processeda t this point, so acknowledge
             // the task has been processed
             if (isTaskInterrupted(bodyTask)) {
-                getVertx().eventBus().publish("transfertask.cancel.ack", body);
+                _doPublishEvent("transfertask.cancel.ack", body);
             }
         }
 
@@ -210,28 +223,4 @@ public class TransferTaskAssignedListener extends AbstractVerticle {
                 this.interruptedTasks.contains(transferTask.getRootTaskId());
     }
 
-    /**
-     * Sets the vertx instance for this listener
-     *
-     * @param vertx the current instance of vertx
-     */
-    private void setVertx(Vertx vertx) {
-        this.vertx = vertx;
-    }
-
-    /**
-     * @return the message type to listen to
-     */
-    public String getEventChannel() {
-        return eventChannel;
-    }
-
-    /**
-     * Sets the message type for which to listen
-     *
-     * @param eventChannel
-     */
-    public void setEventChannel(String eventChannel) {
-        this.eventChannel = eventChannel;
-    }
 }

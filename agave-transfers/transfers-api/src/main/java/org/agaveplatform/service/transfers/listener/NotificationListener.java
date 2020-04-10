@@ -10,28 +10,31 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class NotificationListener extends AbstractVerticle {
+public class NotificationListener extends AbstractTransferTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(NotificationListener.class);
 
 	protected String eventChannel = "notification.*";
 
 	public NotificationListener(Vertx vertx) {
-		this(vertx, null);
+		super(vertx);
 	}
 
 	public NotificationListener(Vertx vertx, String eventChannel) {
-		super();
-		setVertx(vertx);
-		setEventChannel(eventChannel);
+		super(vertx, eventChannel);
 	}
 
+	protected static final String EVENT_CHANNEL = "notification.*";
+
+	public String getDefaultEventChannel() {
+		return EVENT_CHANNEL;
+	}
 
 	@Override
 	public void start() {
 		EventBus bus = vertx.eventBus();
 
 		// poc listener to show propagated notifications that woudl be sent to users
-		bus.<JsonObject>consumer("notification.*", msg -> {
+		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
 
 			logger.info("{} notification event raised for {} {}: {}",
@@ -68,29 +71,5 @@ public class NotificationListener extends AbstractVerticle {
 
 
 
-	}
-	/**
-	 * Sets the vertx instance for this listener
-	 *
-	 * @param vertx the current instance of vertx
-	 */
-	private void setVertx(Vertx vertx) {
-		this.vertx = vertx;
-	}
-
-	/**
-	 * @return the message type to listen to
-	 */
-	public String getEventChannel() {
-		return eventChannel;
-	}
-
-	/**
-	 * Sets the message type for which to listen
-	 *
-	 * @param eventChannel
-	 */
-	public void setEventChannel(String eventChannel) {
-		this.eventChannel = eventChannel;
 	}
 }

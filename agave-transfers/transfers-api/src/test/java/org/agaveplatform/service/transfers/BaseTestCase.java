@@ -4,13 +4,8 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.PubSecKeyOptions;
-import io.vertx.ext.auth.jwt.JWTAuth;
-import io.vertx.ext.auth.jwt.JWTAuthOptions;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.resources.TransferServiceVerticalTest;
-import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
@@ -48,7 +43,8 @@ public abstract class BaseTestCase {
         try {
             String json = new String(Files.readAllBytes(configPath));
             config = new JsonObject(json)
-                    .put( "transfertask.http.port", port);
+                    .put( "transfertask.http.port", port)
+                    .put("transfertask.jwt.auth", false);
         } catch (IOException e) {
             log.error("Unable to read config options file", e);
         } catch (DecodeException e) {

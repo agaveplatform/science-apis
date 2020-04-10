@@ -127,7 +127,12 @@ public class TransferTest extends BaseTestCase {
 		return fileTranCreateServImp;
 	}
 
-
+	TransferServiceUIVertical getMockTransServUIVertInstance(Vertx vertx) {
+		TransferServiceUIVertical tranServUIVerticl = Mockito.mock(TransferServiceUIVertical.class);
+		when(tranServUIVerticl.getEventChannel()).thenReturn("filetransfer.sftp");
+		when(tranServUIVerticl.getVertx()).thenReturn(vertx);
+		return tranServUIVerticl;
+	}
 
 
 
@@ -192,49 +197,61 @@ public class TransferTest extends BaseTestCase {
 	@BeforeAll
 	public void prepare( Vertx vertx, VertxTestContext ctx)  {
 		initConfig();
-		initConfig();
-
-
+		try {
+			initAuth();
+		}catch (IOException e){
+			log.error(e.toString());
+		}
+		// call the _createTestTransferTask in the BaseTestCase to build the TransferTask with the varaibles for the test.
 		TransferTask tt = _createTestTransferTask();
+
+
+//		vertx.deployVerticle(new TransferTaskDatabaseVerticle(),
+//				new DeploymentOptions().setConfig(config).setWorker(true).setMaxWorkerExecuteTime(3600),
+//				ctx.succeeding(id -> {
+//					dbService = TransferTaskDatabaseService.createProxy(vertx, config.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
+//					ctx.completeNow();
+//				}));
+
 		DeploymentOptions options = new DeploymentOptions().setConfig(config);
 		Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();
 		Checkpoint apiDeploymentCheckpoint = ctx.checkpoint();
 		Checkpoint requestCheckpoint = ctx.checkpoint();
 
-//		vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, ctx.succeeding(dbId -> {
-//			dbDeploymentCheckpoint.flag();
-//
-//			vertx.deployVerticle(TransferServiceUIVertical.class.getName(), options, ctx.succeeding(apiId -> {
-//				apiDeploymentCheckpoint.flag();
-//
-//				RequestSpecification requestSpecification = new RequestSpecBuilder()
-//						.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
-//						.setBaseUri("http://localhost:" + port + "/")
-//						.build();
-//				ctx.verify(() -> {
-//					String response = given()
-//							.spec(requestSpecification)
-//							.header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
-//							.contentType(ContentType.JSON)
-//							.body(tt.toJSON())
-//							.when()
-//							.post("api/transfers")
-//							.then()
-//							.assertThat()
-//							.statusCode(201)
-//							.extract()
-//							.asString();
-//					TransferTask respTask = Json.decodeValue(response, TransferTask.class);
-//					assertThat(respTask).isNotNull();
-//					assertThat(respTask.getSource()).isEqualTo(tt.getSource());
-//					assertThat(respTask.getDest()).isEqualTo(tt.getDest());
-//					requestCheckpoint.flag();
-//				});
-//			}));
-//		}));
+		vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, ctx.succeeding(dbId -> {
+			dbDeploymentCheckpoint.flag();
+
+			vertx.deployVerticle(TransferServiceUIVertical.class.getName(), options, ctx.succeeding(apiId -> {
+				apiDeploymentCheckpoint.flag();
+
+				RequestSpecification requestSpecification = new RequestSpecBuilder()
+						.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+						.setBaseUri("http://localhost:" + port + "/")
+						.build();
+				ctx.verify(() -> {
+					String response = given()
+							.spec(requestSpecification)
+							.header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
+							.contentType(ContentType.JSON)
+							.body(tt.toJSON())
+							.when()
+							.post("api/transfers")
+							.then()
+							.assertThat()
+							.statusCode(201)
+							.extract()
+							.asString();
+					TransferTask respTask = Json.decodeValue(response, TransferTask.class);
+					assertThat(respTask).isNotNull();
+					assertThat(respTask.getSource()).isEqualTo(tt.getSource());
+					assertThat(respTask.getDest()).isEqualTo(tt.getDest());
+					requestCheckpoint.flag();
+				});
+			}));
+		}));
 
 //		vertx.deployVerticle(getMockTTAListenerInstance(vertx));
-		vertx.deployVerticle(getMockTTCListenerInstance(vertx));
+//		vertx.deployVerticle(getMockTTCListenerInstance(vertx));
 //		vertx.deployVerticle(getMockTCTListenerInstance(vertx));
 //
 //		vertx.deployVerticle(new TransferTaskAssignedListener(vertx));
@@ -249,8 +266,8 @@ public class TransferTest extends BaseTestCase {
 //		vertx.deployVerticle(new TransferServiceUIVertical());
 //		vertx.deployVerticle(new TransferTaskUnaryImpl(vertx));
 //		vertx.deployVerticle(new StreamingFileTaskImpl(vertx));
+//		vertx.deployVerticle(new StreamingFileTaskImpl(vertx));
 	}
-
 
 	@Test
 	//@Disabled

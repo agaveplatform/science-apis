@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.resources;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
@@ -37,6 +38,19 @@ public class TransferServiceUIVertical extends AbstractVerticle {
     private JWTAuth authProvider;
     private JsonObject config;
     private TransferTaskDatabaseService dbService;
+    protected String eventChannel = "transfertask.db.queue";
+
+
+    public TransferServiceUIVertical(Vertx vertx) {
+        this(vertx, null);
+    }
+
+    public TransferServiceUIVertical(Vertx vertx, String eventChannel) {
+        super();
+        setVertx(vertx);
+        setEventChannel(eventChannel);
+    }
+
 
     @Override
     public void start(Promise<Void> promise) {
@@ -231,4 +245,30 @@ public class TransferServiceUIVertical extends AbstractVerticle {
     public void setConfig(JsonObject config) {
         this.config = config;
     }
+
+    /**
+     * Sets the vertx instance for this listener
+     *
+     * @param vertx the current instance of vertx
+     */
+    private void setVertx(Vertx vertx) {
+        this.vertx = vertx;
+    }
+
+    /**
+     * @return the message type to listen to
+     */
+    public String getEventChannel() {
+        return eventChannel;
+    }
+
+    /**
+     * Sets the message type for which to listen
+     *
+     * @param eventChannel
+     */
+    public void setEventChannel(String eventChannel) {
+        this.eventChannel = eventChannel;
+    }
+
 }

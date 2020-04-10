@@ -40,7 +40,7 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
         });
     }
 
-    protected String assignTransferTask(JsonObject body) {
+    public String assignTransferTask(JsonObject body) {
         String uuid = body.getString("id");
         String source = body.getString("source");
 //		String dest =  body.getString("dest");
@@ -99,7 +99,7 @@ public class TransferTaskCreatedListener extends AbstractVerticle {
         return protocol;
     }
 
-    protected void _doPublish(String event, Object body) {
+    public void _doPublish(String event, Object body) {
         getVertx().eventBus().publish(event, body);
     }
 

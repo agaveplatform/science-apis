@@ -19,11 +19,13 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
+import org.agaveplatform.service.transfers.listener.TransferCompleteTaskListenerImpl;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +34,8 @@ import java.io.IOException;
 import static io.restassured.RestAssured.given;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers API integration tests")
@@ -47,6 +51,7 @@ public class TransferServiceVerticalTest extends BaseTestCase {
     private static RequestSpecification requestSpecification;
 
     private TransferTaskDatabaseService dbService;
+
 
     /**
      * Initializes the jwt auth options and the

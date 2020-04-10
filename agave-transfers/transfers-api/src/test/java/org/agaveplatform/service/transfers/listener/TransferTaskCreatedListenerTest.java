@@ -66,11 +66,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
 
-//		TransferTaskCreatedListener ttc = Mockito.mock(TransferTaskCreatedListener.class);
-//		Mockito.when(ttc.getEventChannel()).thenReturn("transfertask.created");
-//		Mockito.when(ttc.getVertx()).thenReturn(vertx);
-//		Mockito.when(ttc.assignTransferTask(Mockito.any())).thenCallRealMethod();
-
 		String assignmentChannel = "transfertask.assigned." +
 				TENANT_ID +
 				"." + PROTOCOL +
@@ -81,7 +76,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		assertEquals("http", result, "result should have been http");
 		verify(ttc)._doPublish(assignmentChannel, json);
 		ctx.completeNow();
-
 
 	}
 }

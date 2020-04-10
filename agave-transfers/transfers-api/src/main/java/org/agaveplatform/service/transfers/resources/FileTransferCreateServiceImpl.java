@@ -11,6 +11,13 @@ import java.util.HashMap;
 public class FileTransferCreateServiceImpl extends AbstractVerticle implements FileTransferService {
 
 	private final HashMap<String, Double> lastValues = new HashMap<>();
+	private String eventChannel = "transfertask.sftp";
+
+	public FileTransferCreateServiceImpl(Vertx vertx, String eventChannel) {
+		super();
+		setVertx(vertx);
+		setEventChannel(eventChannel);
+	}
 
 	public FileTransferCreateServiceImpl(Vertx vertx) {
 		vertx.eventBus().<JsonObject>consumer("filetransfer.sftp", message -> {
@@ -34,4 +41,28 @@ public class FileTransferCreateServiceImpl extends AbstractVerticle implements F
 		// TODO put creat file command here and copy file
 	}
 
+	/**
+	 * Sets the vertx instance for this listener
+	 *
+	 * @param vertx the current instance of vertx
+	 */
+	private void setVertx(Vertx vertx) {
+		this.vertx = vertx;
+	}
+
+	/**
+	 * @return the message type to listen to
+	 */
+	public String getEventChannel() {
+		return eventChannel;
+	}
+
+	/**
+	 * Sets the message type for which to listen
+	 *
+	 * @param eventChannel
+	 */
+	public void setEventChannel(String eventChannel) {
+		this.eventChannel = eventChannel;
+	}
 }

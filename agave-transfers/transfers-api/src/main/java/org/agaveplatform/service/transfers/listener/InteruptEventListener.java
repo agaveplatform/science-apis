@@ -23,7 +23,6 @@ public class InteruptEventListener extends AbstractVerticle {
 	@Override
 	public void start() {
 		EventBus bus = vertx.eventBus();
-
 	}
 
 

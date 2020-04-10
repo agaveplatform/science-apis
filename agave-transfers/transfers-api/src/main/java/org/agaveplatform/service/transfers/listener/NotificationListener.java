@@ -1,6 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.iplantc.service.notification.managers.NotificationManager;
@@ -11,6 +12,19 @@ import org.slf4j.LoggerFactory;
 
 public class NotificationListener extends AbstractVerticle {
 	private final Logger logger = LoggerFactory.getLogger(NotificationListener.class);
+
+	protected String eventChannel = "notification.*";
+
+	public NotificationListener(Vertx vertx) {
+		this(vertx, null);
+	}
+
+	public NotificationListener(Vertx vertx, String eventChannel) {
+		super();
+		setVertx(vertx);
+		setEventChannel(eventChannel);
+	}
+
 
 	@Override
 	public void start() {
@@ -55,5 +69,28 @@ public class NotificationListener extends AbstractVerticle {
 
 
 	}
+	/**
+	 * Sets the vertx instance for this listener
+	 *
+	 * @param vertx the current instance of vertx
+	 */
+	private void setVertx(Vertx vertx) {
+		this.vertx = vertx;
+	}
 
+	/**
+	 * @return the message type to listen to
+	 */
+	public String getEventChannel() {
+		return eventChannel;
+	}
+
+	/**
+	 * Sets the message type for which to listen
+	 *
+	 * @param eventChannel
+	 */
+	public void setEventChannel(String eventChannel) {
+		this.eventChannel = eventChannel;
+	}
 }

@@ -44,6 +44,7 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
     public void prepare(Vertx vertx, VertxTestContext ctx) throws InterruptedException, IOException {
         initConfig();
 
+
         vertx.deployVerticle(new TransferTaskDatabaseVerticle(),
                 new DeploymentOptions().setConfig(config).setWorker(true).setMaxWorkerExecuteTime(3600),
                 ctx.succeeding(id -> {

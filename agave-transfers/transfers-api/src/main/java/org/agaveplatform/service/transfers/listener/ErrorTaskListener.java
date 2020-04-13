@@ -4,12 +4,13 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ErrorTaskListener extends AbstractTransferTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(ErrorTaskListener.class);
-	protected String eventChannel = "transfertask.error";
+	protected String eventChannel = MessageType.TRANSFERTASK_ERROR.getEventChannel() ;
 
 	public ErrorTaskListener(Vertx vertx) {
 		super(vertx);
@@ -19,7 +20,7 @@ public class ErrorTaskListener extends AbstractTransferTaskListener {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = "transfertask.error";
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ERROR.getEventChannel();
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -35,11 +36,11 @@ public class ErrorTaskListener extends AbstractTransferTaskListener {
 			logger.error("Transfer task {} failed: {}: {}",
 					body.getString("id"), body.getString("cause"), body.getString("message"));
 
-			_doPublishEvent("notification.transfertask", body);
+			_doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK.getEventChannel(), body);
 
 		});
 
-		bus.<JsonObject>consumer("transfertask.parent.error", msg -> {
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR.getEventChannel(), msg -> {
 			JsonObject body = msg.body();
 
 			logger.error("Transfer task {} failed to check it's parent task {} for copmletion: {}: {}",

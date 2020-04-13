@@ -1,6 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -26,7 +25,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
         super(vertx, eventChannel);
     }
 
-    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CANCELLED.getEventChannel();
+    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CANCELLED;
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
@@ -42,7 +41,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
             this.processCancelRequest(body);
         });
 
-        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCEL_ACK.getEventChannel(), msg -> {
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_ACK, msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -53,7 +52,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
     }
 
     protected String processCancelAck(JsonObject body) {
-        String parentTaskId = body.getString("parentTaskId");
+        String parentTaskId = body.getString("parentTask");
         String uuid = body.getString("uuid");
         // if this task has children and all are cancelled or completed, then we can
         // mark this task as cancelled.
@@ -65,32 +64,32 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
 
             // this task and all its children are done, so we can send a complete event
             // to safely clear out the uuid from all listener verticals' caches
-            _doPublishEvent(MessageType.TRANSFERTASK_CANCEL_COMPLETE.getEventChannel(), body);
+            _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_COMPLETED, body);
 
             // we can now also check the parent, if present, for completion of its tree.
             // if the parent is empty, the root will be as well. For children of the root
             // transfer task, the root == parent
-            if (!StringUtils.isEmpty(parentTaskId)) {
+            if (StringUtils.isNotEmpty(parentTaskId)) {
                 // once all tasks in the parents tree are complete, we can update the status of the parent
                 // and send out the completed event to clear its uuid out of any caches that may have it.
                 if (allChildrenCancelledOrCompleted(parentTaskId)) {
                     setTransferTaskCancelledIfNotCompleted(parentTaskId);
                     TransferTask parentTask = getTransferTask(parentTaskId);
-                    _doPublishEvent(MessageType.TRANSFERTASK_CANCEL_ACK.getEventChannel(), parentTask.toJSON());
-                    return parentTask.getUuid();
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJSON());
+//                    return parentTask.getUuid();
                 }
             }
-            return uuid;
+//            return uuid;
         }
         return uuid;
     }
 
-    private boolean allChildrenCancelledOrCompleted(String parentTaskId) {
+    protected boolean allChildrenCancelledOrCompleted(String parentTaskId) {
         //TODO: "select count(id) from transfertasks where (parentTask = {}) and status not in (('COMPLETED', 'CANCELLED','FAILED')"
         return false;
     }
 
-    private void setTransferTaskCancelledIfNotCompleted(String uuid) {
+    protected void setTransferTaskCancelledIfNotCompleted(String uuid) {
 
         //TODO: "update transfertasks set status = CANCELLED, lastUpdated = now() where uuid = {} and status not in ('COMPLETED', 'CANCELLED','FAILED')"
     }
@@ -108,7 +107,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
 
                 // push the event transfer task onto the queue. this will cause all listening verticals
                 // actively processing any of its children to cancel their existing work and ack
-                _doPublishEvent(MessageType.TRANSFERTASK_CANCEL_SYNC.getEventChannel(), uuid);
+                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, tt);
             }
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -117,7 +116,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                     .put("message", e.getMessage())
                     .mergeIn(body);
 
-            _doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
+            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
         }
     }
 

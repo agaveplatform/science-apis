@@ -184,7 +184,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 
 //	TransferTaskAssignedListener getMockttaListenerInstance(Vertx vertx) {
 //		TransferTaskAssignedListener tctli = spy(new TransferTaskAssignedListener(vertx));
-//		when(tctli.getEventChannel()).thenReturn("transfertask.created");
+//		when(tctli.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
 //		when(tctli.getVertx()).thenReturn(vertx);
 //		return tctli;
 //	}
@@ -253,9 +253,9 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setStatus(TransferStatusType.TRANSFERRING);
 		transferTask.setStartTime(Instant.now());
-		parentTask.setEndTime(Instant.now());
-		transferTask.setRootTaskId(parentTask.getParentTaskId());
-		transferTask.setParentTaskId(parentTask.getParentTaskId());
+		transferTask.setEndTime(Instant.now());
+		transferTask.setRootTaskId(parentTask.getUuid());
+		transferTask.setParentTaskId(parentTask.getUuid());
 
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected

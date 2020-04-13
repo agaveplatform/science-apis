@@ -1,64 +1,43 @@
 package org.agaveplatform.service.transfers.enumerations;
 
-public enum MessageType {
-	TRANSFERTASK_CREATED("transfertask.created"),
-	TRANSFERTASK_ASSIGNED("transfertask.assigned"),
-	TRANSFERTASK_CANCEL_SYNC("transfertask.cancel.sync"),
-	TRANSFERTASK_CANCEL_COMPLETE("transfertask.cancel.complete"),
-	TRANSFERTASK_CANCEL_COMPLETED("transfertask.cancel.completed"),
-	TRANSFERTASK_CANCEL_ACK("transfertask.cancel.ack"),
-	TRANSFERTASK_CANCELLED("transfertask.cancelled"),
-	TRANSFERTASK_PAUSED("transfertask.paused"),
-	TRANSFERTASK_PAUSED_SYNC("transfertask.paused.sync"),
-	TRANSFERTASK_PAUSED_COMPLETE("transfertask.paused.complete"),
-	TRANSFERTASK_PAUSED_ACK("transfertask.paused.ack"),
-	TRANSFER_COMPLETED("transfer.completed"),
-	TRANSFER_COMPLETE("transfer.complete"),
-	TRANSFERTASK_COMPLETED("transfertask.completed"),
-	TRANSFERTASK_ERROR("transfertask.error"),
-	TRANSFERTASK_PARENT_ERROR("transfertask.parent.error"),
-	TRANSFERTASK_FAILED("transfertask.failed"),
-	TRANSFERTASK_INTERUPT("transfertask.interupt"),
-	NOTIFICATION("notification"),
-	NOTIFICATION_TRANSFERTASK("notification.transfertask"),
-	NOTIFICATION_CANCELLED("notification.cancelled"),
-	NOTIFICATION_COMPLETED("notification.completed"),
-	TRANSFER_SFTP("transfer.sftp"),
-	TRANSFER_HTTP("transfer.http"),
-	TRANSFER_GRIDFTP("transfer.gridftp"),
-	TRANSFER_FTP("transfer.ftp"),
-	TRANSFER_IRODS("transfer.irods"),
-	TRANSFER_IRODS4("transfer.irods4"),
-	TRANSFER_LOCAL("transfer.local"),
-	TRANSFER_AZURE("transfer.azure"),
-	TRANSFER_S3("transfer.s3"),
-	TRANSFER_SWIFT("transfer.swift"),
-	TRANSFER_HTTPS("transfer.https"),
-	FILETRANSFER_SFTP("filetransfer.sftp"),
-	TRANSFERTASK_DB_QUEUE("transfertask.db.queue"),
-	TRANSFERTASK_DELETED("transfertask.deleted"),
-	TRANSFERTASK_UPDATED("transfertask.updated"),
-	TRANSFERTASK_PROCESS_UNARY("transfertask.process.unary"),
-	TRANSFER_STREAMING("transfer.streaming"),
-	TRANSFER_UNARY("transfer.unary");
+public interface MessageType {
+    public static final String 	TRANSFERTASK_CREATED = "transfertask.created";
+    public static final String 	TRANSFERTASK_ASSIGNED = "transfertask.assigned";
+    public static final String  TRANSFERTASK_CANCELED_SYNC = "transfertask.canceled.sync";
+    public static final String  TRANSFERTASK_CANCELED_COMPLETED = "transfertask.canceled.completed";
+    public static final String  TRANSFERTASK_CANCELED_ACK = "transfertask.canceled.ack";
+    public static final String 	TRANSFERTASK_CANCELLED = "transfertask.canceled";
+    public static final String 	TRANSFERTASK_PAUSED = "transfertask.paused";
+    public static final String 	TRANSFERTASK_PAUSED_SYNC = "transfertask.paused.sync";
+    public static final String 	TRANSFERTASK_PAUSED_COMPLETE = "transfertask.paused.complete";
+    public static final String 	TRANSFERTASK_PAUSED_ACK = "transfertask.paused.ack";
+    public static final String 	TRANSFER_COMPLETED = "transfer.completed";
+    public static final String 	TRANSFERTASK_COMPLETED = "transfertask.completed";
+    public static final String 	TRANSFERTASK_ERROR = "transfertask.error";
+    public static final String 	TRANSFERTASK_PARENT_ERROR = "transfertask.parent.error";
+    public static final String 	TRANSFERTASK_FAILED = "transfertask.failed";
+    public static final String  TRANSFERTASK_INTERUPTED = "transfertask.interupted";
+    public static final String 	NOTIFICATION = "notification";
+    public static final String 	NOTIFICATION_TRANSFERTASK = "notification.transfertask";
+    public static final String 	NOTIFICATION_CANCELLED = "notification.cancelled";
+    public static final String 	NOTIFICATION_COMPLETED = "notification.completed";
+    public static final String 	TRANSFER_SFTP = "transfer.sftp";
+    public static final String 	TRANSFER_HTTP = "transfer.http";
+    public static final String 	TRANSFER_GRIDFTP = "transfer.gridftp";
+    public static final String 	TRANSFER_FTP = "transfer.ftp";
+    public static final String 	TRANSFER_IRODS = "transfer.irods";
+    public static final String 	TRANSFER_IRODS4 = "transfer.irods4";
+    public static final String 	TRANSFER_LOCAL = "transfer.local";
+    public static final String 	TRANSFER_AZURE = "transfer.azure";
+    public static final String 	TRANSFER_S3 = "transfer.s3";
+    public static final String 	TRANSFER_SWIFT = "transfer.swift";
+    public static final String 	TRANSFER_HTTPS = "transfer.https";
 
-	private String eventChannel;
-
-	private MessageType(String eventChannel) {
-		setEventChannel(eventChannel);
-	}
-
-	/**
-	 * @return the eventChannel
-	 */
-	public String getEventChannel() {
-		return eventChannel;
-	}
-
-	/**
-	 * @param eventChannel the description to set
-	 */
-	public void setEventChannel(String eventChannel) {
-		this.eventChannel = eventChannel;
-	}
+    public static final String 	FILETRANSFER_SFTP = "filetransfer.sftp";
+    public static final String 	TRANSFERTASK_DB_QUEUE = "transfertask.db.queue";
+    public static final String 	TRANSFERTASK_DELETED = "transfertask.deleted";
+    public static final String 	TRANSFERTASK_UPDATED = "transfertask.updated";
+    public static final String 	TRANSFERTASK_PROCESS_UNARY = "transfertask.process.unary";
+    public static final String 	TRANSFER_STREAMING = "transfer.streaming";
+    public static final String 	TRANSFER_UNARY = "transfer.unary";
 }

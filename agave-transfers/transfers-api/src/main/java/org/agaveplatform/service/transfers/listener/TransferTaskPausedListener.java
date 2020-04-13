@@ -28,7 +28,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 		setEventChannel(eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_PAUSED.getEventChannel();
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_PAUSED;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -45,7 +45,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 			this.processPauseRequest(body);
 		});
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK.getEventChannel(), msg -> {
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 			String parentTaskId = body.getString("parentTaskId");
@@ -63,7 +63,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 
 				// this task and all its children are done, so we can send a complete event
 				// to safely clear out the uuid from all listener verticals' caches
-				_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_COMPLETE.getEventChannel(), body);
+				_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_COMPLETE, body);
 
 				// we can now also check the parent, if present, for completion of its tree.
 				// if the parent is empty, the root will be as well. For children of the root
@@ -74,7 +74,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 					if (allChildrenCancelledOrCompleted(parentTaskId)) {
 						setTransferTaskCancelledIfNotCompleted(parentTaskId);
 						TransferTask parentTask = getTransferTask(parentTaskId);
-						_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_ACK.getEventChannel(), parentTask.toJSON());
+						_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_ACK, parentTask.toJSON());
 					}
 				}
 			}
@@ -104,7 +104,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 
 				// push the event transfer task onto the queue. this will cause all listening verticals
 				// actively processing any of its children to cancel their existing work and ack
-				_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_SYNC.getEventChannel(), body);
+				_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_SYNC, body);
 			}
 		} catch (Exception e) {
 			logger.error(e.getMessage());
@@ -113,7 +113,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
 		}
 	}
 

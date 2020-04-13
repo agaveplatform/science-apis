@@ -9,6 +9,8 @@ import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_HTTP;
+
 public class TransferHttpVertical extends AbstractTransferTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(TransferHttpVertical.class);
 
@@ -20,7 +22,7 @@ public class TransferHttpVertical extends AbstractTransferTaskListener {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_HTTP.getEventChannel();
+	protected static final String EVENT_CHANNEL = TRANSFER_HTTP;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -44,7 +46,7 @@ public class TransferHttpVertical extends AbstractTransferTaskListener {
 	}
 
 	public void processEvent(JsonObject body) {
-		_doPublishEvent(MessageType.TRANSFER_COMPLETED.getEventChannel(), body);
+		_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 	}
 
 }

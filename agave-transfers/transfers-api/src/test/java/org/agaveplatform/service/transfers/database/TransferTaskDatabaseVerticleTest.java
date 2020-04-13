@@ -117,8 +117,8 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
                                     updatedJsonObject
                                             .stream()
                                             .forEach(entry -> {
-                                                if (entry.getValue() instanceof Instant) {
-                                                    Assertions.assertEquals(((Instant) entry.getValue()).getEpochSecond(), getByIdJsonTransferTask2.getInstant(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, entry.getKey())).getEpochSecond(),
+                                                if (entry.getKey().equalsIgnoreCase("startTime") || entry.getKey().equalsIgnoreCase("endTime")) {
+                                                    Assertions.assertEquals(Instant.parse(((String)entry.getValue())).getEpochSecond(), getByIdJsonTransferTask2.getInstant(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, entry.getKey())).getEpochSecond(),
                                                             entry.getKey() + " should be updated in the response from the service");
                                                 } else {
                                                     Assertions.assertEquals(entry.getValue(), getByIdJsonTransferTask2.getValue(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, entry.getKey())),

@@ -60,7 +60,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         // set the config from the main vertical
 //        setConfig(config());
 
-        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, MessageType.TRANSFERTASK_DB_QUEUE.getEventChannel()); // <1>
+        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, MessageType.TRANSFERTASK_DB_QUEUE); // <1>
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
 
@@ -147,7 +147,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         TransferTask transferTask = new TransferTask(routingContext.getBodyAsJson());
         dbService.create(tenantId, transferTask, reply -> {
             if (reply.succeeded()) {
-                _doPublishEvent(MessageType.TRANSFERTASK_CREATED.getEventChannel(), reply.result());
+                _doPublishEvent(MessageType.TRANSFERTASK_CREATED, reply.result());
                 routingContext.response().setStatusCode(201).end(reply.result().encodePrettily());
             } else {
                 routingContext.fail(reply.cause());
@@ -165,7 +165,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         String uuid = routingContext.pathParam("uuid");
         dbService.delete(tenantId, uuid, reply -> {
             if (reply.succeeded()) {
-                _doPublishEvent(MessageType.TRANSFERTASK_DELETED.getEventChannel(), reply.result());
+                _doPublishEvent(MessageType.TRANSFERTASK_DELETED, reply.result());
                 routingContext.response().setStatusCode(203).end();
             } else {
                 routingContext.fail(reply.cause());
@@ -214,7 +214,7 @@ public class TransferAPIVertical extends AbstractVerticle {
 
                     dbService.update(tenantId, uuid, tt, reply2 -> {
                         if (reply2.succeeded()) {
-                            _doPublishEvent(MessageType.TRANSFERTASK_UPDATED.getEventChannel(), reply2.result());
+                            _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, reply2.result());
                             routingContext.response().end(reply2.result().encodePrettily());
                         } else {
                             routingContext.fail(reply2.cause());

@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(VertxExtension.class)
@@ -45,7 +46,7 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
 
     TransferCompleteTaskListenerImpl getMockListenerInstance(Vertx vertx) {
         TransferCompleteTaskListenerImpl ttc = Mockito.mock(TransferCompleteTaskListenerImpl.class);
-        when(ttc.getEventChannel()).thenReturn("transfer.complete");
+        when(ttc.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
         when(ttc.getVertx()).thenReturn(vertx);
         when(ttc.processEvent(any())).thenCallRealMethod();
 
@@ -107,14 +108,14 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishEvent("transfertask.completed", json);
+            verify(ttc)._doPublishEvent(TRANSFERTASK_COMPLETED, json);
 
             // make sure the parent was not processed when none existed for the transfer task
             verify(ttc, never()).processParentEvent(any(), any(), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishEvent(eq("transfertask.error"), any());
-            verify(ttc, never())._doPublishEvent(eq("transfertask.parent.error"), any());
+            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             Assertions.assertTrue(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
@@ -185,14 +186,14 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishEvent("transfertask.completed", json);
+            verify(ttc)._doPublishEvent(TRANSFERTASK_COMPLETED, json);
 
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishEvent(eq("transfertask.error"), any());
-            verify(ttc, never())._doPublishEvent(eq("transfertask.parent.error"), any());
+            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
@@ -262,14 +263,14 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishEvent("transfertask.completed", json);
+            verify(ttc)._doPublishEvent(TRANSFERTASK_COMPLETED, json);
 
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishEvent(eq("transfertask.error"), any());
-            verify(ttc, never())._doPublishEvent(eq("transfertask.parent.error"), any());
+            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             Assertions.assertTrue(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
@@ -340,15 +341,15 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishEvent("transfertask.completed", json);
+            verify(ttc)._doPublishEvent(TRANSFERTASK_COMPLETED, json);
 
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
-            verify(ttc)._doPublishEvent(eq("transfertask.parent.error"), any());
+            verify(ttc)._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishEvent(eq("transfertask.error"), any());
+            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
@@ -376,9 +377,9 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
             TransferTask transferTask = _createTestTransferTask();
             transferTask.setStatus(TransferStatusType.TRANSFERRING);
             transferTask.setStartTime(Instant.now());
-            parentTask.setEndTime(Instant.now());
-            transferTask.setRootTaskId(parentTask.getParentTaskId());
-            transferTask.setParentTaskId(parentTask.getParentTaskId());
+            transferTask.setEndTime(Instant.now());
+            transferTask.setRootTaskId(parentTask.getUuid());
+            transferTask.setParentTaskId(parentTask.getUuid());
 
 
             // mock out the verticle we're testing so we can observe that its methods were called as expected
@@ -429,13 +430,13 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishEvent(eq("transfertask.parent.error"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishEvent(eq("transfertask.error"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc, never())._doPublishEvent(eq("transfer.complete"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has completed");
 
@@ -462,9 +463,9 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
         transferTask.setStartTime(Instant.now());
-        parentTask.setEndTime(Instant.now());
-        transferTask.setRootTaskId(parentTask.getParentTaskId());
-        transferTask.setParentTaskId(parentTask.getParentTaskId());
+        transferTask.setEndTime(Instant.now());
+        transferTask.setRootTaskId(parentTask.getUuid());
+        transferTask.setParentTaskId(parentTask.getUuid());
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferCompleteTaskListenerImpl ttc = getMockListenerInstance(vertx);
@@ -514,13 +515,13 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishEvent(eq("transfertask.parent.error"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishEvent(eq("transfertask.error"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc, never())._doPublishEvent(eq("transfer.complete"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has been cancelled");
 
@@ -547,9 +548,9 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
         transferTask.setStartTime(Instant.now());
-        parentTask.setEndTime(Instant.now());
-        transferTask.setRootTaskId(parentTask.getParentTaskId());
-        transferTask.setParentTaskId(parentTask.getParentTaskId());
+        transferTask.setEndTime(Instant.now());
+        transferTask.setRootTaskId(parentTask.getUuid());
+        transferTask.setParentTaskId(parentTask.getUuid());
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferCompleteTaskListenerImpl ttc = getMockListenerInstance(vertx);
@@ -599,13 +600,13 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishEvent(eq("transfertask.parent.error"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishEvent(eq("transfertask.error"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc, never())._doPublishEvent(eq("transfer.complete"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has failed");
 
@@ -632,9 +633,9 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
         transferTask.setStartTime(Instant.now());
-        parentTask.setEndTime(Instant.now());
-        transferTask.setRootTaskId(parentTask.getParentTaskId());
-        transferTask.setParentTaskId(parentTask.getParentTaskId());
+        transferTask.setEndTime(Instant.now());
+        transferTask.setRootTaskId(parentTask.getUuid());
+        transferTask.setParentTaskId(parentTask.getUuid());
 
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
@@ -685,13 +686,13 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
                 verify(dbService).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishEvent(eq("transfertask.parent.error"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishEvent(eq("transfertask.error"), any());
+                verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc)._doPublishEvent(eq("transfer.complete"), any());
+                verify(ttc)._doPublishEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded");
 

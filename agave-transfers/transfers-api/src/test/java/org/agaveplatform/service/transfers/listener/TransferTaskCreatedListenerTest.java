@@ -5,6 +5,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.enumerations.TransferTaskEventType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers assignTransferTask tests")
@@ -35,7 +38,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) {
 		TransferTaskCreatedListener ttc = Mockito.mock(TransferTaskCreatedListener.class);
-		when(ttc.getEventChannel()).thenReturn("transfertask.created");
+		when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
 		when(ttc.getVertx()).thenReturn(vertx);
 		when(ttc.assignTransferTask(any())).thenCallRealMethod();
 
@@ -55,15 +58,15 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
 
-		String assignmentChannel = "transfertask.assigned." +
-				TENANT_ID +
-				"." + PROTOCOL +
-				"." + HOST +
-				"." + TEST_USERNAME;
+//		String assignmentChannel = "transfertask.assigned." +
+//				TENANT_ID +
+//				"." + PROTOCOL +
+//				"." + HOST +
+//				"." + TEST_USERNAME;
 
 		String result = ttc.assignTransferTask(json);
 		assertEquals("http", result, "result should have been http");
-		verify(ttc)._doPublishEvent(assignmentChannel, json);
+		verify(ttc)._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
 		ctx.completeNow();
 
 	}

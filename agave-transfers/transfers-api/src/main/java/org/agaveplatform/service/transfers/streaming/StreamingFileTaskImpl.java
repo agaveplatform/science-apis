@@ -19,7 +19,7 @@ public class StreamingFileTaskImpl extends AbstractTransferTaskListener implemen
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_STREAMING.getEventChannel();
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_STREAMING;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;

@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 public class ErrorTaskListener extends AbstractTransferTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(ErrorTaskListener.class);
-	protected String eventChannel = MessageType.TRANSFERTASK_ERROR.getEventChannel();
+	protected String eventChannel = MessageType.TRANSFERTASK_ERROR;
 
 	public ErrorTaskListener(Vertx vertx) {
 		super(vertx);
@@ -20,7 +20,7 @@ public class ErrorTaskListener extends AbstractTransferTaskListener {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ERROR.getEventChannel();
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ERROR;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -36,11 +36,11 @@ public class ErrorTaskListener extends AbstractTransferTaskListener {
 			logger.error("Transfer task {} failed: {}: {}",
 					body.getString("id"), body.getString("cause"), body.getString("message"));
 
-			_doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK.getEventChannel(), body);
+			_doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
 
 		});
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR.getEventChannel(), msg -> {
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
 			JsonObject body = msg.body();
 
 			logger.error("Transfer task {} failed to check it's parent task {} for copmletion: {}: {}",

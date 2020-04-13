@@ -4,13 +4,18 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
+
+import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -23,15 +28,8 @@ import static org.mockito.Mockito.when;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 //@Disabled
-class TransferTaskPausedListenerTest {
+class TransferTaskPausedListenerTest extends BaseTestCase {
 
-	private final String TEST_USERNAME = "testuser";
-	public static final String TENANT_ID = "agave.dev";
-	public static final String TRANSFER_SRC = "http://foo.bar/cat";
-	public static final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
-
-	protected Vertx vertx;
-	private TransferTaskDatabaseService service;
 
 //	@BeforeAll
 //	public void prepare(Vertx vertx, VertxTestContext ctx) throws InterruptedException, IOException {
@@ -51,7 +49,7 @@ class TransferTaskPausedListenerTest {
 
 	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) {
 		TransferTaskPausedListener listener = Mockito.mock(TransferTaskPausedListener.class);
-		when(listener.getEventChannel()).thenReturn("transfertask.created");
+		when(listener.getEventChannel()).thenReturn(MessageType.TRANSFERTASK_PAUSED);
 		when(listener.getVertx()).thenReturn(vertx);
 		doCallRealMethod().when(listener).processPauseRequest(any());
 
@@ -67,10 +65,23 @@ class TransferTaskPausedListenerTest {
 	@DisplayName("Transfer Task Paused Listener - processCancelRequest")
 	public void processPauseRequest(Vertx vertx, VertxTestContext ctx) {
 
-		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
-		JsonObject body = tt.toJson();
+		// Set up our transfertask for testing
+		TransferTask parentTask = _createTestTransferTask();
+		parentTask.setStatus(TransferStatusType.COMPLETED);
+		parentTask.setStartTime(Instant.now());
+		parentTask.setEndTime(Instant.now());
+		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
-		TransferTaskPausedListener tpl = getMockListenerInstance(vertx);
+		TransferTask transferTask = _createTestTransferTask();
+		transferTask.setStatus(TransferStatusType.TRANSFERRING);
+		transferTask.setStartTime(Instant.now());
+		transferTask.setEndTime(Instant.now());
+		transferTask.setRootTaskId(parentTask.getUuid());
+		transferTask.setParentTaskId(parentTask.getUuid());
+
+		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
+		when(listener.getTransferTask(transferTask.getUuid())).thenReturn(transferTask);
+
 //
 //
 //		vertx.eventBus().consumer("transfertask.paused.sync", msg -> {
@@ -85,8 +96,8 @@ class TransferTaskPausedListenerTest {
 //			ctx.failNow(new Exception(bodyErr.getString("message")));
 //		});
 
-		tpl.processPauseRequest(body);
-		Mockito.verify(tpl)._doPublishEvent("transfertask.paused.sync", body);
+		listener.processPauseRequest(transferTask.toJson());
+		Mockito.verify(listener)._doPublishEvent(MessageType.TRANSFERTASK_PAUSED_SYNC, transferTask.toJson());
 		ctx.completeNow();
 	}
 

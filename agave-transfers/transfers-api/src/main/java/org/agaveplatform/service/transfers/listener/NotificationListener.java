@@ -1,6 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -14,7 +13,7 @@ import org.slf4j.LoggerFactory;
 public class NotificationListener extends AbstractTransferTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(NotificationListener.class);
 
-	protected String eventChannel = MessageType.NOTIFICATION.getEventChannel() + ".*";
+	protected String eventChannel = MessageType.NOTIFICATION + ".*";
 
 	public NotificationListener(Vertx vertx) {
 		super(vertx);
@@ -24,7 +23,7 @@ public class NotificationListener extends AbstractTransferTaskListener {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.NOTIFICATION.getEventChannel() + ".*";
+	protected static final String EVENT_CHANNEL = MessageType.NOTIFICATION + ".*";
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -47,23 +46,23 @@ public class NotificationListener extends AbstractTransferTaskListener {
 			NotificationManager.process( body.getString("id"), body.encode(), body.getString("owner"));
 		});
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCEL_COMPLETED.getEventChannel(), msg -> {
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
 			JsonObject body = msg.body();
 
 			logger.info("Transfer task {} completed.", body.getString("id"));
 
-			getVertx().eventBus().publish(MessageType.NOTIFICATION_CANCELLED.getEventChannel(), body);
+			getVertx().eventBus().publish(MessageType.NOTIFICATION_CANCELLED, body);
 		});
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_COMPLETED.getEventChannel(), msg -> {
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_COMPLETED, msg -> {
 			JsonObject body = msg.body();
 
 			logger.info("Transfer task {} completed.", body.getString("id"));
 
-			getVertx().eventBus().publish(MessageType.NOTIFICATION_COMPLETED.getEventChannel(), body);
+			getVertx().eventBus().publish(MessageType.NOTIFICATION_COMPLETED, body);
 		});
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CREATED.getEventChannel(), msg -> {
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CREATED, msg -> {
 			JsonObject body = msg.body();
 
 			logger.info("Transfer task {} created.", body.getString("id"));

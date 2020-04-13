@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 public class UnaryFileTaskImpl extends AbstractVerticle implements UnaryFileTask {
 	private final HashMap<String, Double> lastValues = new HashMap<>();
-	private String eventChannel = MessageType.TRANSFER_UNARY.getEventChannel();
+	private String eventChannel = MessageType.TRANSFER_UNARY;
 
 	public UnaryFileTaskImpl (Vertx vertx) {
 		this(vertx, null);
@@ -24,7 +24,7 @@ public class UnaryFileTaskImpl extends AbstractVerticle implements UnaryFileTask
 	}
 
 	public void start() {
-		vertx.eventBus().<JsonObject>consumer(MessageType.FILETRANSFER_SFTP.getEventChannel(), message -> {
+		vertx.eventBus().<JsonObject>consumer(MessageType.FILETRANSFER_SFTP, message -> {
 			JsonObject json = message.body();
 			lastValues.put(json.getString("id"), json.getDouble("temp"));
 		});

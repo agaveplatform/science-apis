@@ -22,7 +22,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 	private TransferTaskDatabaseService dbService;
 	protected List<String>  parentList = new ArrayList<String>();
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_COMPLETED.getEventChannel();
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_COMPLETED;
 
 	public TransferCompleteTaskListenerImpl(Vertx vertx) {
 	}
@@ -55,7 +55,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 
 		//TransferTask bodyTask = new TransferTask(body);
 		body.put("status", TransferStatusType.COMPLETED);
-		String tenantId = body.getString("tenant_id");
+		String tenantId = body.getString("tenantId");
 		String uuid = body.getString("uuid");
 		String status = body.getString("status");
 		String parentTaskId = body.getString("parentTask");
@@ -65,7 +65,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 			getDbService().updateStatus(tenantId, uuid, TransferStatusType.COMPLETED.name(), reply -> {
 				if (reply.succeeded()) {
 
-					_doPublishEvent(MessageType.TRANSFER_COMPLETED.getEventChannel(), body);
+					_doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, body);
 
 					if (parentTaskId != null) {
 						processParentEvent(tenantId, parentTaskId, tt -> {
@@ -80,7 +80,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 										.put("message", tt.cause().getMessage())
 										.mergeIn(body);
 
-								_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR.getEventChannel(), json);
+								_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
 								promise.complete(Boolean.FALSE);
 							}
 						});
@@ -96,7 +96,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 							.put("message", reply.cause().getMessage())
 							.mergeIn(body);
 
-					_doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
+					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
 					promise.fail(reply.cause());
 				}
 			});
@@ -107,7 +107,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 					.put("message", e.getMessage())
 					.mergeIn(body);
 
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
 			promise.fail(e);
 		}
 
@@ -144,7 +144,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 							// if all children are completed or cancelled, the parent is completed. create that event
 							if (isAllChildrenCancelledOrCompleted.result()) {
 								// call to our publishing helper for easier testing.
-								_doPublishEvent(MessageType.TRANSFER_COMPLETE.getEventChannel(), getTaskById.result());
+								_doPublishEvent(MessageType.TRANSFER_COMPLETED, getTaskById.result());
 							} else {
 								// parent has active children. let it run
 							}

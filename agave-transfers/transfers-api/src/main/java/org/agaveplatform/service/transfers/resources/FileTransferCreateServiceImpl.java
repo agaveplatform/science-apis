@@ -22,7 +22,7 @@ public class FileTransferCreateServiceImpl extends AbstractTransferTaskListener 
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.FILETRANSFER_SFTP.getEventChannel();
+	protected static final String EVENT_CHANNEL = MessageType.FILETRANSFER_SFTP;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;

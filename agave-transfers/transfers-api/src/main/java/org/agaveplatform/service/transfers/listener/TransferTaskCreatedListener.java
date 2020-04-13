@@ -27,7 +27,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
         setEventChannel(eventChannel);
     }
 
-    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED.getEventChannel();
+    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
@@ -74,7 +74,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     protocol = srcSystem.getStorageConfig().getProtocol().toString();
                 }
 
-                String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED.getEventChannel();//." +
+                String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED;//." +
 //                        tenantId +
 //                        "." + protocol +
 //                        "." + srcUri.getHost() +
@@ -90,7 +90,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                         .put("cause", RemoteDataSyntaxException.class.getName())
                         .put("message", msg)
                         .mergeIn(body);
-                _doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
+                _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
             }
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -99,7 +99,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     .put("message", e.getMessage())
                     .mergeIn(body);
 
-            _doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
+            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
         }
 
         return protocol;

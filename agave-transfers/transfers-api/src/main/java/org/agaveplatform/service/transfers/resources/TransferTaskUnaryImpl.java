@@ -35,7 +35,7 @@ public class TransferTaskUnaryImpl extends AbstractTransferTaskListener {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_PROCESS_UNARY.getEventChannel();
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_PROCESS_UNARY;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -55,13 +55,13 @@ public class TransferTaskUnaryImpl extends AbstractTransferTaskListener {
 		});
 
 		// paused tasks
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC.getEventChannel(), msg -> {
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
 			logger.info("Transfer task {} paused detected", uuid);
 
-			vertx.eventBus().publish(MessageType.TRANSFERTASK_PAUSED_COMPLETE.getEventChannel(), body);
+			vertx.eventBus().publish(MessageType.TRANSFERTASK_PAUSED_COMPLETE, body);
 		});
 
 	}
@@ -100,7 +100,7 @@ public class TransferTaskUnaryImpl extends AbstractTransferTaskListener {
 			bodyTask.setTotalSkippedFiles(0);
 			bodyTask.setTransferRate(Long.MAX_VALUE);
 
-			vertx.eventBus().publish(MessageType.TRANSFERTASK_COMPLETED.getEventChannel(), bodyTask.toJson());
+			vertx.eventBus().publish(MessageType.TRANSFERTASK_COMPLETED, bodyTask.toJson());
 
 		} catch (Exception e) {
 			logger.error(e.getMessage());
@@ -109,7 +109,7 @@ public class TransferTaskUnaryImpl extends AbstractTransferTaskListener {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 
-			vertx.eventBus().publish(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
+			vertx.eventBus().publish(MessageType.TRANSFERTASK_ERROR, json);
 		}
 	}
 

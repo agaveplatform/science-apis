@@ -1,6 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -20,7 +19,7 @@ public class InteruptEventListener extends AbstractTransferTaskListener {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_INTERUPT.getEventChannel() + ".*.*.*.*";
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_INTERUPTED;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;

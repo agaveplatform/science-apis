@@ -22,7 +22,7 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_SFTP.getEventChannel();
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_SFTP;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -44,7 +44,7 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 	}
 
 	public void processEvent(JsonObject body) {
-		_doPublishEvent(MessageType.TRANSFER_COMPLETED.getEventChannel(), body);
+		_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 	}
 
 }

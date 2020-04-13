@@ -5,13 +5,18 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.agaveplatform.service.transfers.BaseTestCase;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 
+import java.time.Instant;
+
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.verify;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.mockito.Mockito.*;
 //import static org.mockito.Matchers.anyString;
 //import static org.mockito.ArgumentMatchers.*;
 
@@ -20,63 +25,54 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers Task Canceled test")
 //@Disabled
-class TransferTaskCancelListenerTest {
+class TransferTaskCancelListenerTest extends BaseTestCase {
 
-	private EventBus eventBus;
-	private final String TEST_USERNAME = "testuser";
-	public static final String TENANT_ID = "agave.dev";
-	public static final String TRANSFER_SRC = "http://foo.bar/cat";
-	public static final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
-	public static final String HOST = "foo.bar";
-	public static final String PROTOCOL = "http";
+//	private EventBus eventBus;
+//	private final String TEST_USERNAME = "testuser";
+//	public static final String TENANT_ID = "agave.dev";
+//	public static final String TRANSFER_SRC = "http://foo.bar/cat";
+//	public static final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
+//	public static final String HOST = "foo.bar";
+//	public static final String PROTOCOL = "http";
 
 
 	@Test
 	@DisplayName("Transfer Task Cancel Listener - processCancelAck")
 	public void processCancelAck(Vertx vertx, VertxTestContext ctx){
-		eventBus = vertx.eventBus();
+// Set up our transfertask for testing
+		TransferTask parentTask = _createTestTransferTask();
+		parentTask.setStatus(TransferStatusType.COMPLETED);
+		parentTask.setStartTime(Instant.now());
+		parentTask.setEndTime(Instant.now());
+		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
+
+//		TransferTask transferTask = _createTestTransferTask();
+//		transferTask.setStatus(TransferStatusType.TRANSFERRING);
+//		transferTask.setStartTime(Instant.now());
+//		transferTask.setEndTime(Instant.now());
+//		transferTask.setRootTaskId(parentTask.getUuid());
+//		transferTask.setParentTaskId(parentTask.getUuid());
+
 
 		TransferTaskCancelListener ttc = Mockito.mock(TransferTaskCancelListener.class);
-		Mockito.when(ttc.getEventChannel()).thenReturn("transfertask.cancelled");
+		Mockito.when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_CANCELLED);
 		Mockito.when(ttc.getVertx()).thenReturn(vertx);
 		Mockito.when(ttc.processCancelAck(Mockito.any())).thenCallRealMethod();
+		Mockito.when(ttc.getTransferTask(parentTask.getParentTaskId())).thenReturn(parentTask);
+//		Mockito.when(ttc.getTransferTask(transferTask.getParentTaskId())).thenReturn(transferTask);
+		Mockito.when(ttc.allChildrenCancelledOrCompleted(parentTask.getUuid())).thenReturn(true);
+		doCallRealMethod().when(ttc).setTransferTaskCancelledIfNotCompleted(parentTask.getUuid());
 
-		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
-		JsonObject body = tt.toJson();
-		String uuid = body.getString("uuid");
+		String result = ttc.processCancelAck(parentTask.toJson());
 
-		String result = ttc.processCancelAck(body);
+		verify(ttc)._doPublishEvent(TRANSFERTASK_CANCELED_COMPLETED, parentTask.toJson());
+		verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_CANCELED_ACK), any());
 
 //		assertEquals(uuid, result, "result should have been uuid: " + uuid);
-		assertEquals(body.getString("parentTaskId"), result, "Parent result was not verified");
+		assertEquals(parentTask.getUuid(), result, "Transfer task was not acknowledged in repsonse uuid");
 
-//		verify(ttc)._doPublish("transfertask.cancel.ack", body);
 		ctx.completeNow();
 
-//		vertx.deployVerticle(new TransferTaskAssignedListener(), ctx.succeeding(id -> {
-//
-//			eventBus.consumer("transfertask.cancel.ack", msg -> {
-//				JsonObject bodyRec = (JsonObject) msg.body();
-//				assertEquals("1", bodyRec.getString("id"));
-//				assertEquals("dooley", bodyRec.getString("owner"));
-//				assertEquals("agave.dev", bodyRec.getString("tenantId"));
-//				assertEquals("sftp", bodyRec.getString("protocol"));
-//			});
-//
-//			eventBus.consumer("transfertask.cancel.sync", msg -> {
-//				JsonObject bodySync = (JsonObject) msg.body();
-//				String uuid = bodySync.getString("id");
-//				assertEquals("1", bodySync.getString("id"));
-//			});
-//
-//			eventBus.consumer("transfertask.cancel.ack", msg -> {
-//				JsonObject bodyAck = (JsonObject) msg.body();
-//				String uuid = bodyAck.getString("id");
-//				assertEquals("1", bodyAck.getString("id"));
-//			});
-//
-//			eventBus.publish("transfertask.cancelled", body);
-//		}));
 
 	}
 }

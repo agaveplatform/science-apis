@@ -19,7 +19,7 @@ public class FailureHandler extends AbstractTransferTaskListener implements Hand
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_FAILED.getEventChannel();
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_FAILED;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;

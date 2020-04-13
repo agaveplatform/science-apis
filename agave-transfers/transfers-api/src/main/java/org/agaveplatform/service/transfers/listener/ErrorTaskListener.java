@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 public class ErrorTaskListener extends AbstractTransferTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(ErrorTaskListener.class);
-	protected String eventChannel = MessageType.TRANSFERTASK_ERROR.getEventChannel() ;
+	protected String eventChannel = MessageType.TRANSFERTASK_ERROR.getEventChannel();
 
 	public ErrorTaskListener(Vertx vertx) {
 		super(vertx);

@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.streaming;
 
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 
 import java.util.HashMap;
@@ -18,7 +19,7 @@ public class StreamingFileTaskImpl extends AbstractTransferTaskListener implemen
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = "transfer.streaming";
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_STREAMING.getEventChannel();
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;

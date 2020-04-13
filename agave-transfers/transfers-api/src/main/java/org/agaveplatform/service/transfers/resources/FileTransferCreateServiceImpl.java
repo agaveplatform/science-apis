@@ -5,6 +5,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 
 import java.util.HashMap;
@@ -21,7 +22,7 @@ public class FileTransferCreateServiceImpl extends AbstractTransferTaskListener 
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = "filetransfer.sftp";
+	protected static final String EVENT_CHANNEL = MessageType.FILETRANSFER_SFTP.getEventChannel();
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;

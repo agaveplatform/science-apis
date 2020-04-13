@@ -4,6 +4,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.web.RoutingContext;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +19,7 @@ public class FailureHandler extends AbstractTransferTaskListener implements Hand
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = "transfertask.failed";
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_FAILED.getEventChannel();
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;

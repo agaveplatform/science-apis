@@ -4,6 +4,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +20,7 @@ public class InteruptEventListener extends AbstractTransferTaskListener {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = "transfertask.interupt.*.*.*.*";
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_INTERUPT.getEventChannel() + ".*.*.*.*";
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;

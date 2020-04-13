@@ -2,7 +2,7 @@ package org.avageplatform.service.transfers.unary;
 
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.streaming.StreamingFileTask;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 
 import java.util.HashMap;
 import java.util.stream.Collectors;
@@ -10,21 +10,21 @@ import java.util.stream.Collectors;
 
 public class UnaryFileTaskImpl extends AbstractVerticle implements UnaryFileTask {
 	private final HashMap<String, Double> lastValues = new HashMap<>();
-	private String address = "transfer.unary";
+	private String eventChannel = MessageType.TRANSFER_UNARY.getEventChannel();
 
 	public UnaryFileTaskImpl (Vertx vertx) {
 		this(vertx, null);
 	}
 
-	public UnaryFileTaskImpl(Vertx vertx, String address) {
+	public UnaryFileTaskImpl(Vertx vertx, String eventChannel) {
 		super();
 		setVertx(vertx);
-		setAddress(address);
+		setEventChannel(eventChannel);
 
 	}
 
 	public void start() {
-		vertx.eventBus().<JsonObject>consumer("filetransfer.sftp", message -> {
+		vertx.eventBus().<JsonObject>consumer(MessageType.FILETRANSFER_SFTP.getEventChannel(), message -> {
 			JsonObject json = message.body();
 			lastValues.put(json.getString("id"), json.getDouble("temp"));
 		});
@@ -60,16 +60,16 @@ public class UnaryFileTaskImpl extends AbstractVerticle implements UnaryFileTask
 	/**
 	 * @return the message type to listen to
 	 */
-	public String getAddress() {
-		return address;
+	public String getEventChannel() {
+		return eventChannel;
 	}
 
 	/**
 	 * Sets the message type for which to listen
-	 * @param address
+	 * @param eventChannel
 	 */
-	public void setAddress(String address) {
-		this.address = address;
+	public void setEventChannel(String eventChannel) {
+		this.eventChannel = eventChannel;
 	}
 
 }

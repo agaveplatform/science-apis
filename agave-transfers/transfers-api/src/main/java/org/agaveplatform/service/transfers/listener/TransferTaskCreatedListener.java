@@ -4,6 +4,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
@@ -26,7 +27,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
         setEventChannel(eventChannel);
     }
 
-    protected static final String EVENT_CHANNEL = "transfertask.created";
+    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED.getEventChannel();
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
@@ -73,7 +74,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     protocol = srcSystem.getStorageConfig().getProtocol().toString();
                 }
 
-                String assignmentChannel = "transfertask.assigned";//." +
+                String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED.getEventChannel();//." +
 //                        tenantId +
 //                        "." + protocol +
 //                        "." + srcUri.getHost() +
@@ -89,7 +90,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                         .put("cause", RemoteDataSyntaxException.class.getName())
                         .put("message", msg)
                         .mergeIn(body);
-                _doPublishEvent("transfertask.error", json);
+                _doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
             }
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -98,7 +99,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     .put("message", e.getMessage())
                     .mergeIn(body);
 
-            _doPublishEvent("transfertask.error", json);
+            _doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
         }
 
         return protocol;

@@ -3,6 +3,7 @@ package org.agaveplatform.service.transfers.protocol;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
@@ -19,7 +20,7 @@ public class TransferHttpVertical extends AbstractTransferTaskListener {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = "transfer.http";
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_HTTP.getEventChannel();
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -37,44 +38,13 @@ public class TransferHttpVertical extends AbstractTransferTaskListener {
 			TransferTask tt = new TransferTask(body);
 
 			logger.info("Transfer task HTTP {} for source {} and dest {}", uuid, source, dest);
-//			bytesTrasfered = this.sftp(tt, source, dest );
-//			if (bytesTrasfered > 1) {
-//				body.put("total_size", bytesTrasfered);
-//				TransferTask bodyTask = new TransferTask(body);
-//				vertx.eventBus().publish("transfertask.sftp.complete", bodyTask);
-//			}
 			processEvent(body);
 
 			});
 	}
 
 	public void processEvent(JsonObject body) {
-		_doPublishEvent("transfer.completed", body);
-//		org.iplantc.service.transfer.model.TransferTask agaveTransferTask = new org.iplantc.service.transfer.model.TransferTask();
-		//agaveTransferTask.setId(bodyTask.getId());
-
-//		List<String> exclusions = new ArrayList<String>();
-//		logger.info("Cal to URLCopy made here. Source {} Dest {}", srcPath, destPath);
-//		TransferTask sftpTask;
-//		try {
-//			URLCopy urlCopy;
-//			Long urlCopy.copy(srcPath, destPath, agaveTransferTask, exclusions);
-//		} catch (RemoteDataException e) {
-//			logger.error(exclusions.toString());
-//			vertx.eventBus().publish("transfertask.error", e.toString());
-//		}catch (IOException e){
-//			logger.error(e.getStackTrace().toString());
-//			vertx.eventBus().publish("transfertask.error", e.toString());
-//		}catch (TransferException e){
-//			logger.error(e.toString());
-//			vertx.eventBus().publish("transfertask.error", e.toString());
-//		}catch (ClosedByInterruptException e) {
-//			logger.error(e.toString());
-//			vertx.eventBus().publish("transfertask.error", e.toString());
-//		}
-//		if (sftpTask.getTotalSize()!= 0){
-//			vertx.eventBus().publish("transfer");
-//		}
+		_doPublishEvent(MessageType.TRANSFER_COMPLETED.getEventChannel(), body);
 	}
 
 }

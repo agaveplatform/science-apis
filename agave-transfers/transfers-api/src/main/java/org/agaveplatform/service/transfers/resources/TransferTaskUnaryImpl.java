@@ -5,6 +5,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -34,7 +35,7 @@ public class TransferTaskUnaryImpl extends AbstractTransferTaskListener {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = "transfertask.process.unary";
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_PROCESS_UNARY.getEventChannel();
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -54,13 +55,13 @@ public class TransferTaskUnaryImpl extends AbstractTransferTaskListener {
 		});
 
 		// paused tasks
-		bus.<JsonObject>consumer("transfertask.paused.sync", msg -> {
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC.getEventChannel(), msg -> {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
 			logger.info("Transfer task {} paused detected", uuid);
 
-			vertx.eventBus().publish("transfertask.paused.complete", body);
+			vertx.eventBus().publish(MessageType.TRANSFERTASK_PAUSED_COMPLETE.getEventChannel(), body);
 		});
 
 	}
@@ -99,7 +100,7 @@ public class TransferTaskUnaryImpl extends AbstractTransferTaskListener {
 			bodyTask.setTotalSkippedFiles(0);
 			bodyTask.setTransferRate(Long.MAX_VALUE);
 
-			vertx.eventBus().publish("transfertask.completed", bodyTask.toJson());
+			vertx.eventBus().publish(MessageType.TRANSFERTASK_COMPLETED.getEventChannel(), bodyTask.toJson());
 
 		} catch (Exception e) {
 			logger.error(e.getMessage());
@@ -108,7 +109,7 @@ public class TransferTaskUnaryImpl extends AbstractTransferTaskListener {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 
-			vertx.eventBus().publish("transfertask.error", json);
+			vertx.eventBus().publish(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
 		}
 	}
 

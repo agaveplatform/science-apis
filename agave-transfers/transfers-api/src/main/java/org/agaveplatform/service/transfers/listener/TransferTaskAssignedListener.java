@@ -4,6 +4,7 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -24,7 +25,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
 
     protected HashSet<String> interruptedTasks = new HashSet<String>();
 
-    protected static final String EVENT_CHANNEL = "transfertask.assigned";
+    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ASSIGNED.getEventChannel();
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
@@ -50,7 +51,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             this.processTransferTask(body);
         });
 
-        bus.<JsonObject>consumer("transfertask.cancel.sync", msg -> {
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCEL_SYNC.getEventChannel(), msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -58,7 +59,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             this.interruptedTasks.add(uuid);
         });
 
-        bus.<JsonObject>consumer("transfertask.cancel.complete", msg -> {
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCEL_COMPLETE.getEventChannel(), msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -67,7 +68,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         });
 
         // paused tasks
-        bus.<JsonObject>consumer("transfertask.paused.sync", msg -> {
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC.getEventChannel(), msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -75,7 +76,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             this.interruptedTasks.add(uuid);
         });
 
-        bus.<JsonObject>consumer("transfertask.paused.complete", msg -> {
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCEL_COMPLETE.getEventChannel(), msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -147,7 +148,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                             if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
                                                 transferTask.setRootTaskId(body.getString("rootTaskId"));
                                             }
-                                            _doPublishEvent("transfertask.created", transferTask.toJson());
+                                            _doPublishEvent(MessageType.TRANSFERTASK_CREATED.getEventChannel(), transferTask.toJson());
 
 //                                            _doPublishEvent("transfertask." + srcSystem.getType(),
 //                                                    "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath() + "/" + childFileItem.getName());
@@ -167,7 +168,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                             if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
                                                 transferTask.setRootTaskId(body.getString("rootTaskId"));
                                             }
-                                            _doPublishEvent("transfertask.created", transferTask.toJson());
+                                            _doPublishEvent(MessageType.TRANSFERTASK_CREATED.getEventChannel(), transferTask.toJson());
                                         }
                                     });
                         }
@@ -197,13 +198,13 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     .put("message", e.getMessage())
                     .mergeIn(body);
 
-            _doPublishEvent("transfertask.error", json);
+            _doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
         }
         finally {
             // any interrupt involving this task will be processeda t this point, so acknowledge
             // the task has been processed
             if (isTaskInterrupted(bodyTask)) {
-                _doPublishEvent("transfertask.cancel.ack", body);
+                _doPublishEvent(MessageType.TRANSFERTASK_CANCEL_ACK.getEventChannel(), body);
             }
         }
 

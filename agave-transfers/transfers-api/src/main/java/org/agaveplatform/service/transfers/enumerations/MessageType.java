@@ -13,6 +13,7 @@ public enum MessageType {
 	TRANSFERTASK_PAUSED_COMPLETE("transfertask.paused.complete"),
 	TRANSFERTASK_PAUSED_ACK("transfertask.paused.ack"),
 	TRANSFER_COMPLETED("transfer.completed"),
+	TRANSFER_COMPLETE("transfer.complete"),
 	TRANSFERTASK_COMPLETED("transfertask.completed"),
 	TRANSFERTASK_ERROR("transfertask.error"),
 	TRANSFERTASK_PARENT_ERROR("transfertask.parent.error"),
@@ -20,6 +21,8 @@ public enum MessageType {
 	TRANSFERTASK_INTERUPT("transfertask.interupt"),
 	NOTIFICATION("notification"),
 	NOTIFICATION_TRANSFERTASK("notification.transfertask"),
+	NOTIFICATION_CANCELLED("notification.cancelled"),
+	NOTIFICATION_COMPLETED("notification.completed"),
 	TRANSFER_SFTP("transfer.sftp"),
 	TRANSFER_HTTP("transfer.http"),
 	TRANSFER_GRIDFTP("transfer.gridftp"),
@@ -36,8 +39,8 @@ public enum MessageType {
 	TRANSFERTASK_DELETED("transfertask.deleted"),
 	TRANSFERTASK_UPDATED("transfertask.updated"),
 	TRANSFERTASK_PROCESS_UNARY("transfertask.process.unary"),
-	TRANSFER_STREAMING("transfer.streaming");
-
+	TRANSFER_STREAMING("transfer.streaming"),
+	TRANSFER_UNARY("transfer.unary");
 
 	private String eventChannel;
 
@@ -55,7 +58,7 @@ public enum MessageType {
 	/**
 	 * @param eventChannel the description to set
 	 */
-	public void setEventChannel(String description) {
+	public void setEventChannel(String eventChannel) {
 		this.eventChannel = eventChannel;
 	}
 }

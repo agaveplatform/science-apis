@@ -4,6 +4,7 @@ import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
@@ -21,7 +22,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 	private TransferTaskDatabaseService dbService;
 	protected List<String>  parentList = new ArrayList<String>();
 
-	protected static final String EVENT_CHANNEL = "transfer.completed";
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_COMPLETED.getEventChannel();
 
 	public TransferCompleteTaskListenerImpl(Vertx vertx) {
 	}
@@ -64,7 +65,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 			getDbService().updateStatus(tenantId, uuid, TransferStatusType.COMPLETED.name(), reply -> {
 				if (reply.succeeded()) {
 
-					_doPublishEvent("transfertask.completed", body);
+					_doPublishEvent(MessageType.TRANSFER_COMPLETED.getEventChannel(), body);
 
 					if (parentTaskId != null) {
 						processParentEvent(tenantId, parentTaskId, tt -> {
@@ -79,7 +80,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 										.put("message", tt.cause().getMessage())
 										.mergeIn(body);
 
-								_doPublishEvent("transfertask.parent.error", json);
+								_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR.getEventChannel(), json);
 								promise.complete(Boolean.FALSE);
 							}
 						});
@@ -95,7 +96,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 							.put("message", reply.cause().getMessage())
 							.mergeIn(body);
 
-					_doPublishEvent("transfertask.error", json);
+					_doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
 					promise.fail(reply.cause());
 				}
 			});
@@ -106,7 +107,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 					.put("message", e.getMessage())
 					.mergeIn(body);
 
-			_doPublishEvent("transfertask.error", json);
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR.getEventChannel(), json);
 			promise.fail(e);
 		}
 
@@ -143,7 +144,7 @@ public class TransferCompleteTaskListenerImpl extends AbstractTransferTaskListen
 							// if all children are completed or cancelled, the parent is completed. create that event
 							if (isAllChildrenCancelledOrCompleted.result()) {
 								// call to our publishing helper for easier testing.
-								_doPublishEvent("transfer.complete", getTaskById.result());
+								_doPublishEvent(MessageType.TRANSFER_COMPLETE.getEventChannel(), getTaskById.result());
 							} else {
 								// parent has active children. let it run
 							}

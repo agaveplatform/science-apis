@@ -140,9 +140,9 @@ public class Job {
 		setCreated(new DateTime().toDate());
 		setLastUpdated(this.created);
 		updateToken = UUID.randomUUID().toString();
-		nodeCount = new Long(1);
-		processorsPerNode = new Long(1);
-		memoryPerNode = new Double(1);
+		nodeCount = 1L;
+		processorsPerNode = 1L;
+		memoryPerNode = 1d;
 		maxRunTime = BatchQueue.DEFAULT_MAX_RUN_TIME;
 		retries = 0;
 		archiveOutput = true;

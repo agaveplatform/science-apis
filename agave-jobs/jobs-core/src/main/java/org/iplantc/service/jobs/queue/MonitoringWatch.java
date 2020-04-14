@@ -57,8 +57,7 @@ public class MonitoringWatch extends AbstractJobWatch
 	{
 		// pull the oldest job with JobStatusType.CLEANING_UP from the db
 		try
-		{	
-			
+		{
 			if (job.getStatus().equals(JobStatusType.ARCHIVING) || 
 			        job.getStatus().equals(JobStatusType.CLEANING_UP)) 
 			{

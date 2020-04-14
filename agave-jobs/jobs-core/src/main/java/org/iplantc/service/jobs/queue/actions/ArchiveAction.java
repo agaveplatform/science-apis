@@ -55,7 +55,6 @@ public class ArchiveAction extends AbstractWorkerAction {
      * everything not in there to the user-supplied Job.archivePath on the 
      * Job.archiveSystem
      * 
-     * @param job
      * @throws SystemUnavailableException
      * @throws SystemUnknownException
      * @throws JobException

@@ -1143,7 +1143,7 @@ public class JobDao
 	 * enable restriction of job selection by tenant, owner, system, and batch queue.
 	 * 
 	 * @param status by which to filter the list of active jobs.
-	 * @param tenantid tenant to include or exclude from selection.
+	 * @param tenantId tenant to include or exclude from selection.
      * @param owners array of owners to include or exclude from the selection process 
      * @param systemIds array of systems and queues to include or exclude from the selectino process. 
      * @return username of user with pending job
@@ -1183,15 +1183,15 @@ public class JobDao
 			session.clear();
 			
 			String sql = "select jq.owner, jq.tenant_id   \n" +
-    			        "from (    \n" + 
-    			        "       select sq.system_id, sq.name, sq.max_jobs, sq.max_user_jobs, t.system_backlogged_queue_jobs, t.system_queue_jobs, sq.tenant_id    \n" + 
+    			        "from (    \n" +
+    			        "       select sq.system_id, sq.name, sq.max_jobs, sq.max_user_jobs, t.system_backlogged_queue_jobs, t.system_queue_jobs, sq.tenant_id    \n" +
     			        "       from (    \n";
 			if (JobStatusType.PENDING == status) {
                 sql +=  "               select bqj.execution_system, bqj.queue_request, sum( if(bqj.status not in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as system_queue_jobs, sum( if(bqj.status in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as system_backlogged_queue_jobs, bqj.tenant_id     \n";
 			} else {
 			    sql +=  "               select bqj.execution_system, bqj.queue_request, sum( if(bqj.status not in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as system_queue_jobs, sum( if(bqj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as system_backlogged_queue_jobs, bqj.tenant_id     \n";
 			}
-    		sql +=      "               from jobs bqj     \n" + 
+    		sql +=      "               from jobs bqj     \n" +
     			        "               where bqj.visible = 1 and bqj.status in ('PENDING','PROCESSING_INPUTS', 'RUNNING', 'PAUSED', 'QUEUED', 'CLEANING_UP', 'SUBMITTING', 'STAGING_INPUTS', 'STAGING_JOB', 'STAGED') \n" +
     			        "                     and bqj.tenant_id :excludetenant like :tenantid \n";
 	        
@@ -1219,50 +1219,50 @@ public class JobDao
                 sql += "        ) \n";
             }
                     
-    		sql +=      "               group by bqj.execution_system, bqj.queue_request, bqj.tenant_id    \n" + 
-    			        "           ) as t  \n" + 
-    			        "           left join (  \n" + 
-    			        "               select ss.system_id, q.name, q.max_jobs, q.max_user_jobs, ss.tenant_id   \n" + 
-    			        "               from batchqueues q  \n" + 
-    			        "                   left join systems ss on ss.id = q.execution_system_id  \n" + 
-    			        "                   where ss.type = 'EXECUTION'  \n" + 
-    			        "           ) as sq on sq.system_id = t.execution_system and sq.name = t.queue_request and t.tenant_id = sq.tenant_id    \n" + 
-    			        "       where t.system_queue_jobs < sq.max_jobs     \n" + 
-    			        "           or sq.max_jobs = -1    \n" + 
-    			        "           or sq.max_jobs is NULL  \n" + 
-    			        "   ) as sysq   \n" + 
-    			        "   left join (    \n" + 
-    			        "       select buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs, buqj.tenant_id     \n" + 
-    			        "       from jobs buqj  \n" + 
+    		sql +=      "               group by bqj.execution_system, bqj.queue_request, bqj.tenant_id    \n" +
+    			        "           ) as t  \n" +
+    			        "           left join (  \n" +
+    			        "               select ss.system_id, q.name, q.max_jobs, q.max_user_jobs, ss.tenant_id   \n" +
+    			        "               from batchqueues q  \n" +
+    			        "                   left join systems ss on ss.id = q.execution_system_id  \n" +
+    			        "                   where ss.type = 'EXECUTION'  \n" +
+    			        "           ) as sq on sq.system_id = t.execution_system and sq.name = t.queue_request and t.tenant_id = sq.tenant_id    \n" +
+    			        "       where t.system_queue_jobs < sq.max_jobs     \n" +
+    			        "           or sq.max_jobs = -1    \n" +
+    			        "           or sq.max_jobs is NULL  \n" +
+    			        "   ) as sysq   \n" +
+    			        "   left join (    \n" +
+    			        "       select buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs, buqj.tenant_id     \n" +
+    			        "       from jobs buqj  \n" +
     			        "           left join ( \n";
     		if (JobStatusType.PENDING == status) {
                 sql +=  "               select aj.owner, aj.execution_system, aj.queue_request, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS'), 0, 1)) as user_system_queue_jobs, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS'), 1, 0)) as total_backlogged_user_jobs, aj.tenant_id \n";
     		} else {
     		    sql +=  "               select aj.owner, aj.execution_system, aj.queue_request, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 0, 1)) as user_system_queue_jobs, sum( if(aj.status in ('PENDING','PROCESSING_INPUTS','STAGED','STAGING_INPUTS'), 1, 0)) as total_backlogged_user_jobs, aj.tenant_id \n";
     		}
-    		sql +=      "               from jobs aj  \n" + 
-    			        "               where aj.visible = 1 and aj.status in ( 'PENDING','PROCESSING_INPUTS', 'RUNNING', 'PAUSED', 'QUEUED', 'CLEANING_UP', 'SUBMITTING', 'STAGING_INPUTS', 'STAGING_JOB', 'STAGED')   \n" + 
-    			        "               group by aj.owner, aj.execution_system, aj.queue_request, aj.tenant_id \n" + 
-    			        "           ) as auj on buqj.owner = auj.owner and buqj.execution_system = auj.execution_system and buqj.queue_request = auj.queue_request and buqj.tenant_id = auj.tenant_id \n" + 
-    			        "       group by buqj.tenant_id, buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs \n" + 
-    			        "   ) as jq on jq.execution_system = sysq.system_id and jq.queue_request = sysq.name and jq.tenant_id = sysq.tenant_id    \n" + 
-    			        "where     \n" + 
-    			        "   jq.status like :status      \n" + 
-    			        "   and (    \n" + 
-    			        "       jq.user_system_queue_jobs < sysq.max_user_jobs    \n" + 
-    			        "       or sysq.max_user_jobs = -1    \n" + 
-    			        "       or sysq.max_user_jobs is NULL   \n" + 
-    			        "   ) \n"; 
+    		sql +=      "               from jobs aj  \n" +
+    			        "               where aj.visible = 1 and aj.status in ( 'PENDING','PROCESSING_INPUTS', 'RUNNING', 'PAUSED', 'QUEUED', 'CLEANING_UP', 'SUBMITTING', 'STAGING_INPUTS', 'STAGING_JOB', 'STAGED')   \n" +
+    			        "               group by aj.owner, aj.execution_system, aj.queue_request, aj.tenant_id \n" +
+    			        "           ) as auj on buqj.owner = auj.owner and buqj.execution_system = auj.execution_system and buqj.queue_request = auj.queue_request and buqj.tenant_id = auj.tenant_id \n" +
+    			        "       group by buqj.tenant_id, buqj.owner, buqj.status, buqj.execution_system, buqj.queue_request, auj.user_system_queue_jobs, auj.total_backlogged_user_jobs \n" +
+    			        "   ) as jq on jq.execution_system = sysq.system_id and jq.queue_request = sysq.name and jq.tenant_id = sysq.tenant_id    \n" +
+    			        "where     \n" +
+    			        "   jq.status like :status      \n" +
+    			        "   and (    \n" +
+    			        "       jq.user_system_queue_jobs < sysq.max_user_jobs    \n" +
+    			        "       or sysq.max_user_jobs = -1    \n" +
+    			        "       or sysq.max_user_jobs is NULL   \n" +
+    			        "   ) \n";
     			        
 			if (JobStatusType.PENDING == status) {
-				sql +=	"	and jq.total_backlogged_user_jobs > 0 \n"; 	
+				sql +=	"	and jq.total_backlogged_user_jobs > 0 \n";
 			}
 			if (!ArrayUtils.isEmpty(owners)) {
                 sql += "    and jq.owner :excludeowners in :owners \n";
             }
-			sql +=		"	and jq.queue_request is not NULL    \n" + 
+			sql +=		"	and jq.queue_request is not NULL    \n" +
 						"	and jq.queue_request <> ''    \n" +
-						
+
 						"	and jq.tenant_id :excludetenant like :tenantid \n" +
 						"group by jq.owner, jq.tenant_id   \n" +
 						"order by rand() \n";
@@ -1367,12 +1367,12 @@ public class JobDao
      * selection by tenant, owner, system, and batch queue.
      * 
      * @param status by which to filter the list of active jobs.
-     * @param tenantid tenant to include or exclude from selection.
+     * @param tenantId tenant to include or exclude from selection.
      * @param owners array of owners to include or exclude from the selection process 
      * @param systemIds array of systems and queues to include or exclude from the selectino process. 
      * @return username of user with pending job
-     * @see {@link #getRandomUserForNextQueuedJobOfStatus(JobStatusType, String, String[], String[])}
-     * @throws JobException
+     * @see JobDao#getRandomUserForNextQueuedJobOfStatus(JobStatusType, String, String[], String[])
+     * @throws JobException when the query fails to complete
      */
     @SuppressWarnings("unchecked")
     public static String getNextQueuedJobUuid(JobStatusType status, String tenantId, String[] owners, String[] systemIds)

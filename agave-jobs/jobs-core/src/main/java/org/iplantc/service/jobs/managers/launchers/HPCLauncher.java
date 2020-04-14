@@ -485,7 +485,7 @@ public class HPCLauncher extends AbstractJobLauncher
 			throw e;
 		}
 		catch (SchedulerException e) {
-			log.error("Error submitting job " + getJob().getUuid() + ".", e);
+			log.error("Error returned from remote scheduler while submitting job " + getJob().getUuid() + ".", e);
 			throw e;
 		}
 		catch (Exception e)

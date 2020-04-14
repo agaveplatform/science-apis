@@ -50,16 +50,13 @@ public class SubmissionAction extends AbstractWorkerAction {
      * .agave.archive shadow file from the remote job directory and staging
      * everything not in there to the user-supplied Job.archivePath on the 
      * Job.archiveSystem
-     * 
-     * @param job
-     * @return updated job
+     *
      * @throws SystemUnavailableException
      * @throws SystemUnknownException
      * @throws JobException
      * @throws JobDependencyException 
      */
-    public void run() 
-    throws SystemUnavailableException, SystemUnknownException, JobException, 
+    public void run() throws SystemUnavailableException, SystemUnknownException, JobException,
             ClosedByInterruptException, JobDependencyException
     {
         boolean submitted = false;
@@ -99,9 +96,9 @@ public class SubmissionAction extends AbstractWorkerAction {
                 {
                     try
                     {
-                        log.debug("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() + 
+                        log.debug("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() +
                             ". Unable to connect to system.", e);
-                        this.job = JobManager.updateStatus(getJob(), getJob().getStatus(), e.getMessage() + 
+                        this.job = JobManager.updateStatus(getJob(), getJob().getStatus(), e.getMessage() +
                             " The service was unable to connect to the target execution system " +
                             "for this application, " + getJob().getSystem() + ". This job will " +
                             "remain in queue until the system becomes available. Original error message: " + e.getMessage());
@@ -117,7 +114,7 @@ public class SubmissionAction extends AbstractWorkerAction {
                         log.debug("One or more dependent systems for job " + getJob().getUuid() + " is currently unavailable. " + e.getMessage());
                         this.job = JobManager.updateStatus(getJob(), JobStatusType.STAGED, 
                             "Remote execution of  job " + getJob().getUuid() + " is currently paused waiting for " + getJob().getSystem() + 
-                            "to become available. If the system becomes available again within 7 days, this job " + 
+                            " to become available. If the system becomes available again within 7 days, this job " +
                             "will resume staging. After 7 days it will be killed. Original error message: " + e.getMessage());
                     }
                     catch (Exception e1) {
@@ -132,7 +129,7 @@ public class SubmissionAction extends AbstractWorkerAction {
                         log.debug("Software for job " + getJob().getUuid() + " is currently unavailable. " + e.getMessage());
                         this.job = JobManager.updateStatus(getJob(), JobStatusType.STAGED, 
                             "Remote execution of  job " + getJob().getUuid() + " is currently paused waiting for " + job.getSoftwareName() + 
-                            "to become available. If the app becomes available again within 7 days, this job " + 
+                            " to become available. If the app becomes available again within 7 days, this job " +
                             "will resume staging. After 7 days it will be killed. Original error message: " + e.getMessage());
                     }
                     catch (Exception e1) {
@@ -223,7 +220,7 @@ public class SubmissionAction extends AbstractWorkerAction {
         finally 
         {
             // clean up the job directory now that we're either done or failed
-            if (getJobLauncher() != null) { 
+            if (getJobLauncher() != null) {
                 FileUtils.deleteQuietly(getJobLauncher().getTempAppDir());
             }
         }

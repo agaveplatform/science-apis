@@ -39,8 +39,8 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 			String dest = body.getString("dest");
 			TransferTask tt = new TransferTask(body);
 
-			logger.info("Transfer task SFTP {} for source {} and dest {}", uuid, source, dest);
-			});
+			logger.info("SFTP listener claimed task {} for source {} and dest {}", uuid, source, dest);
+		});
 	}
 
 	public void processEvent(JsonObject body) {

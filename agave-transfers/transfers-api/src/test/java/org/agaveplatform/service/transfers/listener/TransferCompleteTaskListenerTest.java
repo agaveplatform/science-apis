@@ -30,8 +30,8 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({ JDBCClient.class })
 //@Disabled
-class TransferCompleteTaskListenerImplTest extends BaseTestCase {
-    private static final Logger log = LoggerFactory.getLogger(TransferCompleteTaskListenerImplTest.class);
+class TransferCompleteTaskListenerTest extends BaseTestCase {
+    private static final Logger log = LoggerFactory.getLogger(TransferCompleteTaskListenerTest.class);
 
 //    @BeforeAll
 //    public void setUpService() throws IOException {
@@ -44,8 +44,8 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
 //        vertx.close(ctx.completing());
 //    }
 
-    TransferCompleteTaskListenerImpl getMockListenerInstance(Vertx vertx) {
-        TransferCompleteTaskListenerImpl ttc = Mockito.mock(TransferCompleteTaskListenerImpl.class);
+    TransferCompleteTaskListener getMockListenerInstance(Vertx vertx) {
+        TransferCompleteTaskListener ttc = Mockito.mock(TransferCompleteTaskListener.class);
         when(ttc.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
         when(ttc.getVertx()).thenReturn(vertx);
         when(ttc.processEvent(any())).thenCallRealMethod();
@@ -65,7 +65,7 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
         String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListenerImpl ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -140,7 +140,7 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
         String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListenerImpl ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -218,7 +218,7 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
         String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListenerImpl ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -295,7 +295,7 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
         String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListenerImpl ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -383,7 +383,7 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
 
 
             // mock out the verticle we're testing so we can observe that its methods were called as expected
-            TransferCompleteTaskListenerImpl ttc = getMockListenerInstance(vertx);
+            TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
             // we switch the call chain when we want to pass through a method invocation to a method returning void
             doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -468,7 +468,7 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
         transferTask.setParentTaskId(parentTask.getUuid());
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListenerImpl ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -553,7 +553,7 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
         transferTask.setParentTaskId(parentTask.getUuid());
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListenerImpl ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -639,7 +639,7 @@ class TransferCompleteTaskListenerImplTest extends BaseTestCase {
 
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListenerImpl ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 

@@ -105,7 +105,20 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     });
     return this;
   }
+//
 
+  public TransferTaskDatabaseService getActiveRootTaskIds(Handler<AsyncResult<JsonArray>> resultHandler) {
+    dbClient.query(sqlQueries.get(SqlQuery.ALL_ACTIVE_ROOT_TRANSFERTASK_IDS), fetch -> {
+      if (fetch.succeeded()) {
+        JsonArray response = new JsonArray(fetch.result().getRows());
+        resultHandler.handle(Future.succeededFuture(response));
+      } else {
+        LOGGER.error("Database query error", fetch.cause());
+        resultHandler.handle(Future.failedFuture(fetch.cause()));
+      }
+    });
+    return this;
+  }
   @Override
   public TransferTaskDatabaseService allChildrenCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -137,6 +150,8 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(transferTask.getEndTime())
             .add(transferTask.getEventId())
             .add(transferTask.getLastUpdated())
+            .add(transferTask.getLastAttempt())
+            .add(transferTask.getNextAttempt())
             .add(transferTask.getOwner())
             .add(transferTask.getSource())
             .add(transferTask.getStartTime())
@@ -177,6 +192,8 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(transferTask.getBytesTransferred())
             .add(transferTask.getEndTime())
             .add(transferTask.getStartTime())
+            .add(transferTask.getLastAttempt())
+            .add(transferTask.getNextAttempt())
             .add(transferTask.getStatus())
             .add(transferTask.getTotalSize())
             .add(transferTask.getTransferRate())

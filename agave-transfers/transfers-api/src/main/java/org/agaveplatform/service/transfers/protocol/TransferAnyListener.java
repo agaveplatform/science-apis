@@ -9,20 +9,18 @@ import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_HTTP;
+public class TransferAnyListener extends AbstractTransferTaskListener {
+	private final Logger logger = LoggerFactory.getLogger(TransferAnyListener.class);
 
-public class TransferHttpVertical extends AbstractTransferTaskListener {
-	private final Logger logger = LoggerFactory.getLogger(TransferHttpVertical.class);
-
-	public TransferHttpVertical(Vertx vertx) {
+	public TransferAnyListener(Vertx vertx) {
 		super(vertx);
 	}
 
-	public TransferHttpVertical(Vertx vertx, String eventChannel) {
+	public TransferAnyListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = TRANSFER_HTTP;
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_SFTP;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -39,10 +37,8 @@ public class TransferHttpVertical extends AbstractTransferTaskListener {
 			String dest = body.getString("dest");
 			TransferTask tt = new TransferTask(body);
 
-			logger.info("HTTP listener claimed task {} for source {} and dest {}", uuid, source, dest);
-			processEvent(body);
-
-			});
+			logger.info("Default listener claimed task {} for source {} and dest {}", uuid, source, dest);
+		});
 	}
 
 	public void processEvent(JsonObject body) {

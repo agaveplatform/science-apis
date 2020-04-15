@@ -41,19 +41,19 @@ public class TransferApplication {
                 log.debug("Starting the app with config: " + config.encodePrettily());
 
                 Promise<String> dbVerticleDeployment = Promise.promise();
-                vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferServiceUIVertical",
+                vertx.deployVerticle("org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle",
                         new DeploymentOptions().setConfig(config), dbVerticleDeployment);
 
                 dbVerticleDeployment.future().compose(id -> {
 
                     Promise<String> httpVerticleDeployment = Promise.promise();
-                    vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferServiceUIVertical",
+                    vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferApiVertical",
                             new DeploymentOptions().setConfig(config),
                             res -> {
                                 if (res.succeeded()) {
-                                    log.info("TransferServiceUIVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
+                                    log.info("TransferApiVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
                                 } else {
-                                    System.out.println("TransferServiceVertical deployment failed !\n" + res.cause());
+                                    System.out.println("TransferApiVertical deployment failed !\n" + res.cause());
                                     res.cause().printStackTrace();
                                 }
                             });
@@ -62,9 +62,9 @@ public class TransferApplication {
 
                 }).setHandler(ar -> {
                     if (ar.succeeded()) {
-                        log.info("TransferServiceUIVertical ({}) started on port {}", ar.result(), config.getInteger("HTTP_PORT"));
+                        log.info("TransferApiVertical ({}) started on port {}", ar.result(), config.getInteger("HTTP_PORT"));
                     } else {
-                        System.out.println("TransferServiceUIVertical deployment failed !\n" + ar.cause());
+                        System.out.println("TransferApiVertical deployment failed !\n" + ar.cause());
                         ar.cause().printStackTrace();
                     }
                 });
@@ -98,7 +98,7 @@ public class TransferApplication {
                     }
                 });
 
-        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferCompleteTaskListenerImpl",
+        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferCompleteTaskListener",
                 new DeploymentOptions()
                         .setWorkerPoolName("transfer-task-complete-pool")
                         .setWorkerPoolSize(poolSize)

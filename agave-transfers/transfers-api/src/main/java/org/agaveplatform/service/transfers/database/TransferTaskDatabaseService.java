@@ -46,6 +46,9 @@ public interface TransferTaskDatabaseService {
   TransferTaskDatabaseService getById(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler);
 
   @Fluent
+  TransferTaskDatabaseService getActiveRootTaskIds(Handler<AsyncResult<JsonArray>> resultHandler);
+  
+  @Fluent
   TransferTaskDatabaseService allChildrenCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler);
 
   @Fluent

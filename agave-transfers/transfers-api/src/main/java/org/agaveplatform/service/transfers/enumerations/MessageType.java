@@ -40,4 +40,6 @@ public interface MessageType {
     public static final String 	TRANSFERTASK_PROCESS_UNARY = "transfertask.process.unary";
     public static final String 	TRANSFER_STREAMING = "transfer.streaming";
     public static final String 	TRANSFER_UNARY = "transfer.unary";
+    public static final String  TRANSFERTASK_HEALTHCHECK = "transfertask.healthcheck";
+
 }

@@ -13,6 +13,8 @@ create-transfertasks-table: |
       "end_time" TIMESTAMP,
       "event_id" VARCHAR(255),
       "last_updated" TIMESTAMP NOT NULL,
+      "last_attempt" TIMESTAMP,
+      "next_attempt" TIMESTAMP,
       "owner" VARCHAR(32) NOT NULL,
       "source" VARCHAR(2048) NOT NULL,
       "start_time" TIMESTAMP,
@@ -33,15 +35,17 @@ get-transfertask: |
   SELECT * FROM transfertasks WHERE "uuid" = ? and "tenant_id" = ?
 create-transfertask: |
   INSERT INTO TransferTasks
-    ("attempts", "bytes_transferred", "created", "dest", "end_time", "event_id", "last_updated", "owner", "source", "start_time", "status", "tenant_id", "total_size", "transfer_rate", "parent_task", "root_task", "uuid", "total_files", "total_skipped_files")
+    ("attempts", "bytes_transferred", "created", "dest", "end_time", "event_id", "last_updated", "last_attempt", "next_attempt", "owner", "source", "start_time", "status", "tenant_id", "total_size", "transfer_rate", "parent_task", "root_task", "uuid", "total_files", "total_skipped_files")
   VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 save-transfertask: |
   UPDATE transfertasks
   SET "attempts" = ?,
     "bytes_transferred" = ?,
     "end_time" = ?,
     "start_time" = ?,
+    "last_attempt" = ?,
+    "next_attempt" = ?,
     "status" = ?,
     "total_size" = ?,
     "transfer_rate" = ?,
@@ -61,3 +65,7 @@ all-transfertask-children-cancelled-or-completed: |
   SELECT count("id") AS "active_child_count"
   FROM transfertasks
   WHERE ("parent_task" = ?) AND "status" NOT IN ('COMPLETED','CANCELLED','FAILED') AND "tenant_id" = ?
+all-active-root-transfertask-ids: |
+  SELECT distinct "uuid"
+  FROM transfertasks
+  WHERE "root_task" is NULL and "parent_task" is NULL and "status" NOT IN ('COMPLETED','CANCELLED','FAILED')

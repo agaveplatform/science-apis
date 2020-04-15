@@ -40,6 +40,8 @@ public class TransferTask {
 	private String owner;
 	private String eventId;
 	private int attempts = 0;
+	private Instant lastAttempt = null;
+	private Instant nextAttempt = null;
 	private TransferStatusType status = TransferStatusType.QUEUED;
 	private long totalSize = 0;
 	private long totalFiles = 0;
@@ -81,15 +83,29 @@ public class TransferTask {
 		} else {
 			this.setEndTime(json.getInstant("endTime", null));
 		}
+
 		if (json.containsKey("event_id")) {
 			this.setEventId(json.getString("event_id", null));
 		} else {
 			this.setEventId(json.getString("eventId", null));
 		}
+
 		if (json.containsKey("last_updated")) {
 			this.setLastUpdated(json.getInstant("last_updated"));
 		} else {
 			this.setLastUpdated(json.getInstant("lastUpdated"));
+		}
+
+		if (json.containsKey("last_attempt")) {
+			this.setLastAttempt(json.getInstant("last_attempt"));
+		} else {
+			this.setLastAttempt(json.getInstant("lastAttempt"));
+		}
+
+		if (json.containsKey("next_attempt")) {
+			this.setNextAttempt(json.getInstant("next_attempt"));
+		} else {
+			this.setNextAttempt(json.getInstant("nextAttempt"));
 		}
 
 		this.setOwner(json.getString("owner", null));
@@ -529,6 +545,8 @@ public class TransferTask {
 				.put("source", getSource())
 				.put("endTime", getEndTime())
                 .put("lastUpdated", getLastUpdated())
+				.put("lastAttempt", getLastAttempt())
+				.put("nextAttempt", getNextAttempt())
                 .put("owner", getOwner())
                 .put("parentTask", getParentTaskId())
                 .put("rootTask", getRootTaskId())
@@ -581,4 +599,20 @@ public class TransferTask {
          
         return String.format("[%s] %s -> %s - %s", status, getSource(), getDest(), getUuid());
     }
+
+	public Instant getLastAttempt() {
+		return lastAttempt;
+	}
+
+	public void setLastAttempt(Instant lastAttempt) {
+		this.lastAttempt = lastAttempt;
+	}
+
+	public Instant getNextAttempt() {
+		return nextAttempt;
+	}
+
+	public void setNextAttempt(Instant nextAttempt) {
+		this.nextAttempt = nextAttempt;
+	}
 }

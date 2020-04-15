@@ -2,8 +2,6 @@ package org.agaveplatform.service.transfers.listener;
 
 
 import io.restassured.builder.RequestSpecBuilder;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
@@ -28,7 +26,6 @@ import org.agaveplatform.service.transfers.resources.TransferAPIVertical;
 import org.agaveplatform.service.transfers.resources.TransferTaskUnaryImpl;
 import org.agaveplatform.service.transfers.streaming.StreamingFileTaskImpl;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
-import org.hibernate.annotations.Check;
 import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +37,6 @@ import java.io.IOException;
 import java.time.Instant;
 
 import static io.restassured.RestAssured.given;
-import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Matchers.any;
@@ -98,8 +94,8 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 
 		return listener;
 	}
-	TransferCompleteTaskListenerImpl getMockTCTListenerInstance(Vertx vertx) {
-		TransferCompleteTaskListenerImpl listener = spy(new TransferCompleteTaskListenerImpl(vertx));
+	TransferCompleteTaskListener getMockTCTListenerInstance(Vertx vertx) {
+		TransferCompleteTaskListener listener = spy(new TransferCompleteTaskListener(vertx));
 		//when(listener.getEventChannel()).thenCallRealMethod();
 //		when(listener.getVertx()).thenReturn(vertx);
 //		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
@@ -264,7 +260,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferTaskCancelListener transferTaskCancelListener = getMockTTCancelListenerInstance(vertx);
 		TransferSftpVertical transferSftpVertical = getMockSFTPVerticalInstance(vertx);
 		TransferHttpVertical transferHttpVertical = getMockHTTPVerticalInstance(vertx);
-		TransferCompleteTaskListenerImpl transferCompleteTaskListener = getMockTCTListenerInstance(vertx);
+		TransferCompleteTaskListener transferCompleteTaskListener = getMockTCTListenerInstance(vertx);
 		ErrorTaskListener errorTaskListener = getMockErrListenerInstance(vertx);
 		InteruptEventListener interuptEventListener = getMockInteruptListenerInstance(vertx);
 		NotificationListener notificationListener = getMockNotificationListenerInstance(vertx);

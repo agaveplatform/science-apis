@@ -32,7 +32,6 @@ public interface MessageType {
     public static final String 	TRANSFER_S3 = "transfer.s3";
     public static final String 	TRANSFER_SWIFT = "transfer.swift";
     public static final String 	TRANSFER_HTTPS = "transfer.https";
-
     public static final String 	FILETRANSFER_SFTP = "filetransfer.sftp";
     public static final String 	TRANSFERTASK_DB_QUEUE = "transfertask.db.queue";
     public static final String 	TRANSFERTASK_DELETED = "transfertask.deleted";

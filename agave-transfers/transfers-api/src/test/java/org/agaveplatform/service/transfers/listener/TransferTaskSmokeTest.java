@@ -57,8 +57,8 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 	public static final String HOST = "foo.bar";
 	public static final String PROTOCOL = "http";
 
-	TransferTaskErrorListener getMockErrListenerInstance(Vertx vertx) {
-		TransferTaskErrorListener listener = spy(new TransferTaskErrorListener(vertx));
+	TransferErrorListener getMockErrListenerInstance(Vertx vertx) {
+		TransferErrorListener listener = spy(new TransferErrorListener(vertx));
 		when(listener.getEventChannel()).thenCallRealMethod();
 		when(listener.getVertx()).thenReturn(vertx);
 		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
@@ -258,7 +258,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferSftpVertical transferSftpVertical = getMockSFTPVerticalInstance(vertx);
 		TransferHttpVertical transferHttpVertical = getMockHTTPVerticalInstance(vertx);
 		TransferCompleteTaskListener transferCompleteTaskListener = getMockTCTListenerInstance(vertx);
-		TransferTaskErrorListener errorTaskListener = getMockErrListenerInstance(vertx);
+		TransferErrorListener errorTaskListener = getMockErrListenerInstance(vertx);
 		InteruptEventListener interuptEventListener = getMockInteruptListenerInstance(vertx);
 		NotificationListener notificationListener = getMockNotificationListenerInstance(vertx);
 		TransferTaskPausedListener transferTaskPausedListener = getMockTTPausedListenerInstance(vertx);

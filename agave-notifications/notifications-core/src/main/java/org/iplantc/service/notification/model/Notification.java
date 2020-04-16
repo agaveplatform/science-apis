@@ -244,7 +244,7 @@ public class Notification
 	}
 
 	/**
-	 * @param nonce the uuid to set
+	 * @param uuid the uuid to set
 	 */
 	public void setUuid(String uuid) throws NotificationException
 	{
@@ -284,7 +284,7 @@ public class Notification
 	}
 
 	/**
-	 * @param nonce the uuid to set
+	 * @param associatedUuid the uuid to set
 	 */
 	public void setAssociatedUuid(String associatedUuid) throws NotificationException
 	{

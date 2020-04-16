@@ -1,6 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -8,15 +7,15 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ErrorTaskListener extends AbstractTransferTaskListener {
-	private final Logger logger = LoggerFactory.getLogger(ErrorTaskListener.class);
+public class TransferTaskErrorListener extends AbstractTransferTaskListener {
+	private final Logger logger = LoggerFactory.getLogger(TransferTaskErrorListener.class);
 	protected String eventChannel = MessageType.TRANSFERTASK_ERROR;
 
-	public ErrorTaskListener(Vertx vertx) {
+	public TransferTaskErrorListener(Vertx vertx) {
 		super(vertx);
 	}
 
-	public ErrorTaskListener(Vertx vertx, String eventChannel) {
+	public TransferTaskErrorListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 

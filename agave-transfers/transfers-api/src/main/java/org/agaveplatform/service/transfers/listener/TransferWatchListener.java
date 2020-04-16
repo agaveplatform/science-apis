@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferWatchListener extends AbstractTransferTaskListener {
@@ -37,68 +38,28 @@ public class TransferWatchListener extends AbstractTransferTaskListener {
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-		getVertx().eventBus().<JsonObject>consumer(MessageType.TRANSFERTASK_HEALTHCHECK, msg -> {
-			JsonObject body = msg.body();
-			String uuid = body.getString("uuid");
-			logger.info("Performing healthcheck on transfer task {}", uuid);
-
-			this.processEvent(body);
+		getVertx().setPeriodic(10000, resp -> {
+			processEvent();
 		});
-
-		while(true) {
-			try {
-				getDbService().getActiveRootTaskIds(getActiveRootTaskIds -> {
-					if (getActiveRootTaskIds.succeeded()) {
-						getActiveRootTaskIds.result().getList().forEach(parentTask -> {
-							_doPublishEvent("transfertask.healthcheck", parentTask);
-						});
-					}
-				});
-				Thread.sleep(10000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
 	}
 
-	public Future<Boolean> processEvent(JsonObject body) {
+	public Future<Boolean> processEvent() {
 		Promise<Boolean> promise = Promise.promise();
 
-		String uuid = body.getString("uuid");
-		String tenantId = body.getString("tenantId");
-
-		getDbService().allChildrenCancelledOrCompleted(tenantId, uuid, reply -> {
-			if (reply.succeeded()) {
-				if (reply.result()) {
-					getDbService().updateStatus(tenantId, uuid, COMPLETED.name(), updateStatus -> {
-						if (updateStatus.succeeded()) {
-							logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
-							_doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, updateStatus.result());
-							promise.handle(Future.succeededFuture(Boolean.TRUE));
-						} else {
-							logger.error("[{}] Task {} completed, but unable to update status: {}",
-									tenantId, uuid, reply.cause());
-							JsonObject json = new JsonObject()
-									.put("cause", updateStatus.cause().getClass().getName())
-									.put("message", updateStatus.cause().getMessage())
-									.mergeIn(body);
-							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-							promise.handle(Future.failedFuture(updateStatus.cause()));
-						}
-					});
-				} else {
-					logger.info("[{}] Transfer task {} is still active", tenantId, uuid);
-					promise.handle(Future.succeededFuture(Boolean.TRUE));
-				}
-			} else {
-				logger.error("[{}] Failed to check child status of transfer task {}. Task remains active: {}",
-						tenantId, uuid, reply.cause().getMessage());
-				JsonObject json = new JsonObject()
-						.put("cause", reply.cause().getClass().getName())
-						.put("message", reply.cause().getMessage())
-						.mergeIn(body);
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-				promise.handle(Future.failedFuture(reply.cause()));
+		getDbService().getActiveRootTaskIds(getActiveRootTaskIds -> {
+			if (getActiveRootTaskIds.succeeded()) {
+				logger.info("Found {} active transfer tasks", getActiveRootTaskIds.result().size());
+				getActiveRootTaskIds.result().getList().forEach(parentTask -> {
+					logger.debug("[{}] Running health check on transfer task {}",
+							((JsonObject)parentTask).getString("tenantId"),
+							((JsonObject)parentTask).getString("uuid"));
+					_doPublishEvent(TRANSFERTASK_HEALTHCHECK, parentTask);
+				});
+				promise.handle(Future.succeededFuture(Boolean.TRUE));
+			}
+			else {
+				logger.error("Unable to retrieve list of active transfer tasks: {}", getActiveRootTaskIds.cause());
+				promise.handle(Future.failedFuture(getActiveRootTaskIds.cause()));
 			}
 		});
 

@@ -51,6 +51,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             this.processTransferTask(body);
         });
 
+        // cancel tasks
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
@@ -76,7 +77,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             this.interruptedTasks.add(uuid);
         });
 
-        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 

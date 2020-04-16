@@ -41,6 +41,40 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 
 			logger.info("SFTP listener claimed task {} for source {} and dest {}", uuid, source, dest);
 		});
+
+		// cancel tasks
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+			JsonObject body = msg.body();
+			String uuid = body.getString("uuid");
+
+			logger.info("Transfer task {} cancel detected", uuid);
+			//this.interruptedTasks.add(uuid);
+		});
+
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+			JsonObject body = msg.body();
+			String uuid = body.getString("uuid");
+
+			logger.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
+			//this.interruptedTasks.remove(uuid);
+		});
+
+		// paused tasks
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+			JsonObject body = msg.body();
+			String uuid = body.getString("uuid");
+
+			logger.info("Transfer task {} paused detected", uuid);
+			//this.interruptedTasks.add(uuid);
+		});
+
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+			JsonObject body = msg.body();
+			String uuid = body.getString("uuid");
+
+			logger.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
+			//this.interruptedTasks.remove(uuid);
+		});
 	}
 
 	public void processEvent(JsonObject body) {

@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_DB_QUEUE;
 
 /**
  * This is the user-facing vertical providing the http interface to internal services.
@@ -41,7 +42,7 @@ public class TransferAPIVertical extends AbstractVerticle {
     private JWTAuth authProvider;
 //    private JsonObject config;
     private TransferTaskDatabaseService dbService;
-    protected String eventChannel = "transfertask.db.queue";
+    protected String eventChannel = TRANSFERTASK_DB_QUEUE;
 
 
     public TransferAPIVertical(Vertx vertx) {
@@ -60,7 +61,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         // set the config from the main vertical
 //        setConfig(config());
 
-        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, MessageType.TRANSFERTASK_DB_QUEUE); // <1>
+        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, TRANSFERTASK_DB_QUEUE); // <1>
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
 

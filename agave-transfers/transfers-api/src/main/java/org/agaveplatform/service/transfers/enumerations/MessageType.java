@@ -9,7 +9,7 @@ public interface MessageType {
     public static final String 	TRANSFERTASK_CANCELLED = "transfertask.canceled";
     public static final String 	TRANSFERTASK_PAUSED = "transfertask.paused";
     public static final String 	TRANSFERTASK_PAUSED_SYNC = "transfertask.paused.sync";
-    public static final String 	TRANSFERTASK_PAUSED_COMPLETE = "transfertask.paused.complete";
+    public static final String 	TRANSFERTASK_PAUSED_COMPLETED = "transfertask.paused.completed";
     public static final String 	TRANSFERTASK_PAUSED_ACK = "transfertask.paused.ack";
     public static final String 	TRANSFER_COMPLETED = "transfer.completed";
     public static final String 	TRANSFERTASK_COMPLETED = "transfertask.completed";
@@ -40,5 +40,5 @@ public interface MessageType {
     public static final String 	TRANSFER_STREAMING = "transfer.streaming";
     public static final String 	TRANSFER_UNARY = "transfer.unary";
     public static final String  TRANSFERTASK_HEALTHCHECK = "transfertask.healthcheck";
-
+    public static final String  TRANSFER_FAILED= "transfer.failed";
 }

@@ -63,7 +63,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 
 				// this task and all its children are done, so we can send a complete event
 				// to safely clear out the uuid from all listener verticals' caches
-				_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_COMPLETE, body);
+				_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_COMPLETED, body);
 
 				// we can now also check the parent, if present, for completion of its tree.
 				// if the parent is empty, the root will be as well. For children of the root

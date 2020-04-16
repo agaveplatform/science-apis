@@ -21,7 +21,7 @@ import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.protocol.TransferHttpVertical;
 import org.agaveplatform.service.transfers.protocol.TransferSftpVertical;
-import org.agaveplatform.service.transfers.resources.FileTransferCreateServiceImpl;
+//import org.agaveplatform.service.transfers.resources.FileTransferCreateServiceImpl;
 import org.agaveplatform.service.transfers.resources.TransferAPIVertical;
 //import org.agaveplatform.service.transfers.resources.TransferTaskUnaryImpl;
 //import org.agaveplatform.service.transfers.streaming.StreamingFileTaskImpl;
@@ -65,8 +65,8 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		return listener;
 	}
 
-	FailureHandler getMockFailListenerInstance(Vertx vertx) {
-		FailureHandler listener = spy(new FailureHandler(vertx));
+	TransferFailureHandler getMockFailListenerInstance(Vertx vertx) {
+		TransferFailureHandler listener = spy(new TransferFailureHandler(vertx));
 		when(listener.getEventChannel()).thenCallRealMethod();
 		when(listener.getVertx()).thenReturn(vertx);
 		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
@@ -142,13 +142,13 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		return listener;
 	}
 
-	FileTransferCreateServiceImpl getMockFTCSIVerticalInstance(Vertx vertx) {
-		FileTransferCreateServiceImpl listener = spy(new FileTransferCreateServiceImpl(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-		return listener;
-	}
+//	FileTransferCreateServiceImpl getMockFTCSIVerticalInstance(Vertx vertx) {
+//		FileTransferCreateServiceImpl listener = spy(new FileTransferCreateServiceImpl(vertx));
+//		//when(listener.getEventChannel()).thenCallRealMethod();
+////		when(listener.getVertx()).thenReturn(vertx);
+////		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+//		return listener;
+//	}
 
 	TransferAPIVertical getMockTransServUIVertInstance(Vertx vertx) {
 		TransferAPIVertical listener = spy(new TransferAPIVertical(vertx));
@@ -258,11 +258,11 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferSftpVertical transferSftpVertical = getMockSFTPVerticalInstance(vertx);
 		TransferHttpVertical transferHttpVertical = getMockHTTPVerticalInstance(vertx);
 		TransferCompleteTaskListener transferCompleteTaskListener = getMockTCTListenerInstance(vertx);
-		TransferTaskErrorListener transferTaskErrorListener = getMockErrListenerInstance(vertx);
+		TransferTaskErrorListener errorTaskListener = getMockErrListenerInstance(vertx);
 		InteruptEventListener interuptEventListener = getMockInteruptListenerInstance(vertx);
 		NotificationListener notificationListener = getMockNotificationListenerInstance(vertx);
 		TransferTaskPausedListener transferTaskPausedListener = getMockTTPausedListenerInstance(vertx);
-		FileTransferCreateServiceImpl fileTransferCreateService = getMockFTCSIVerticalInstance(vertx);
+		//FileTransferCreateServiceImpl fileTransferCreateService = getMockFTCSIVerticalInstance(vertx);
 		TransferAPIVertical transferAPIVertical = getMockTransServUIVertInstance(vertx);
 //		TransferTaskUnaryImpl transferTaskUnary = getMockTransferTaskUnaryImpl(vertx);
 //		StreamingFileTaskImpl streamingFileTask = getMockStreamingFileTaskImpl(vertx);

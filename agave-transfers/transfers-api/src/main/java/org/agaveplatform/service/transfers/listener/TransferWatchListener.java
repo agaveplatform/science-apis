@@ -23,7 +23,7 @@ public class TransferWatchListener extends AbstractTransferTaskListener {
 	private TransferTaskDatabaseService dbService;
 	protected List<String>  parentList = new ArrayList<String>();
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_COMPLETED;
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_HEALTHCHECK;
 
 	public TransferWatchListener(Vertx vertx) {}
 

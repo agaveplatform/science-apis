@@ -66,6 +66,6 @@ all-transfertask-children-cancelled-or-completed: |
   FROM transfertasks
   WHERE ("parent_task" = ?) AND "status" NOT IN ('COMPLETED','CANCELLED','FAILED') AND "tenant_id" = ?
 all-active-root-transfertask-ids: |
-  SELECT distinct "uuid"
+  SELECT distinct "uuid", "tenant_id" 
   FROM transfertasks
   WHERE "root_task" is NULL and "parent_task" is NULL and "status" NOT IN ('COMPLETED','CANCELLED','FAILED')

@@ -6,6 +6,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +75,14 @@ public class TransferCompleteTaskListener extends AbstractTransferTaskListener {
 								//_doPublishEvent("transfertask.notification", body);
 								promise.complete(tt.result());
 							} else {
-								logger.error(tt.cause().getMessage());
+								if (tt.cause() instanceof ObjectNotFoundException) {
+									logger.error("Unable to process parent transfer task {}: {}",
+											parentTaskId, tt.cause().getMessage());
+								} else {
+									logger.error("Unable to check child status of parent task {}: {}",
+											parentTaskId, tt.cause().getMessage());
+								}
+
 								JsonObject json = new JsonObject()
 										.put("cause", tt.cause().getClass().getName())
 										.put("message", tt.cause().getMessage())

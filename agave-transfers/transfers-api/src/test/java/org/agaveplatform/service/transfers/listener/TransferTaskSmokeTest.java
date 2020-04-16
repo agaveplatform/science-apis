@@ -23,8 +23,8 @@ import org.agaveplatform.service.transfers.protocol.TransferHttpVertical;
 import org.agaveplatform.service.transfers.protocol.TransferSftpVertical;
 import org.agaveplatform.service.transfers.resources.FileTransferCreateServiceImpl;
 import org.agaveplatform.service.transfers.resources.TransferAPIVertical;
-import org.agaveplatform.service.transfers.resources.TransferTaskUnaryImpl;
-import org.agaveplatform.service.transfers.streaming.StreamingFileTaskImpl;
+//import org.agaveplatform.service.transfers.resources.TransferTaskUnaryImpl;
+//import org.agaveplatform.service.transfers.streaming.StreamingFileTaskImpl;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.*;
@@ -88,9 +88,6 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 //		when(listener.getVertx()).thenReturn(vertx);
 //		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 //		doCallRealMethod().when(listener).start();
-
-
-
 
 		return listener;
 	}
@@ -161,22 +158,22 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		return listener;
 	}
 
-	TransferTaskUnaryImpl getMockTransferTaskUnaryImpl(Vertx vertx) {
-		TransferTaskUnaryImpl listener = spy(new TransferTaskUnaryImpl(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-		return listener;
-	}
-
-	StreamingFileTaskImpl getMockStreamingFileTaskImpl(Vertx vertx) {
-		StreamingFileTaskImpl listener = spy(new StreamingFileTaskImpl(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-
-		return listener;
-	}
+//	TransferTaskUnaryImpl getMockTransferTaskUnaryImpl(Vertx vertx) {
+//		TransferTaskUnaryImpl listener = spy(new TransferTaskUnaryImpl(vertx));
+//		//when(listener.getEventChannel()).thenCallRealMethod();
+////		when(listener.getVertx()).thenReturn(vertx);
+////		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+//		return listener;
+//	}
+//
+//	StreamingFileTaskImpl getMockStreamingFileTaskImpl(Vertx vertx) {
+//		StreamingFileTaskImpl listener = spy(new StreamingFileTaskImpl(vertx));
+//		//when(listener.getEventChannel()).thenCallRealMethod();
+////		when(listener.getVertx()).thenReturn(vertx);
+////		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+//
+//		return listener;
+//	}
 
 //	TransferTaskAssignedListener getMockttaListenerInstance(Vertx vertx) {
 //		TransferTaskAssignedListener tctli = spy(new TransferTaskAssignedListener(vertx));
@@ -267,8 +264,8 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferTaskPausedListener transferTaskPausedListener = getMockTTPausedListenerInstance(vertx);
 		FileTransferCreateServiceImpl fileTransferCreateService = getMockFTCSIVerticalInstance(vertx);
 		TransferAPIVertical transferAPIVertical = getMockTransServUIVertInstance(vertx);
-		TransferTaskUnaryImpl transferTaskUnary = getMockTransferTaskUnaryImpl(vertx);
-		StreamingFileTaskImpl streamingFileTask = getMockStreamingFileTaskImpl(vertx);
+//		TransferTaskUnaryImpl transferTaskUnary = getMockTransferTaskUnaryImpl(vertx);
+//		StreamingFileTaskImpl streamingFileTask = getMockStreamingFileTaskImpl(vertx);
 
 //		JsonObject createdTransferTask = null;
 		Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();

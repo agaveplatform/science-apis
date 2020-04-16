@@ -7,15 +7,15 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TransferTaskErrorListener extends AbstractTransferTaskListener {
-	private final Logger logger = LoggerFactory.getLogger(TransferTaskErrorListener.class);
+public class TransferErrorListener extends AbstractTransferTaskListener {
+	private final Logger logger = LoggerFactory.getLogger(TransferErrorListener.class);
 	protected String eventChannel = MessageType.TRANSFERTASK_ERROR;
 
-	public TransferTaskErrorListener(Vertx vertx) {
+	public TransferErrorListener(Vertx vertx) {
 		super(vertx);
 	}
 
-	public TransferTaskErrorListener(Vertx vertx, String eventChannel) {
+	public TransferErrorListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 

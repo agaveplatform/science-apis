@@ -8,9 +8,17 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.apache.commons.exec.ExecuteException;
+import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.URLCopy;
+import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.URI;
 
 public class TransferSftpVertical extends AbstractTransferTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(TransferSftpVertical.class);
@@ -80,15 +88,42 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 
 	public void processEvent(JsonObject body) {
 		TransferTask tt = new TransferTask(body);
-		String soruce = tt.getSource();
+		String source = tt.getSource();
 		String dest = tt.getDest();
+		String uuid = tt.getUuid();
+		String owner = tt.getOwner();
+		URI srcUri;
+		URI destUri;
+		try {
+			srcUri = URI.create(source);
+			destUri = URI.create(dest);
+//		} catch (Exception e) {
+//			String msg = String.format("Unable to parse source uri %s for transfertask %s: %s",
+//					source, uuid, e.getMessage());
+//			body.put("message", msg);
 //
-//		srcClient = getRemoteDataClientFromSystemJson(srcClientType);
-//		srcClient.authenticate();
-//
-//		destClient = getRemoteDataClientFromSystemJson(destClientType);
-//
-//		URLCopy urlCopy = new URLCopy(soruce, dest);
+//			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+//			//throw new RemoteDataSyntaxException(msg, e);
+
+//		try {
+			// pull the system out of the url. system id is the hostname in an agave uri
+			RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
+			// get a remtoe data client for the sytem
+			RemoteDataClient srcClient = srcSystem.getRemoteDataClient();
+
+			// pull the dest system out of the url. system id is the hostname in an agave uri
+			RemoteSystem destSystem = new SystemDao().findBySystemId(destUri.getHost());
+			RemoteDataClient destClient = destSystem.getRemoteDataClient();
+
+			// stat the remote path to check its type
+			RemoteFileInfo fileInfo = srcClient.getFileInfo(srcUri.getPath());
+
+
+			URLCopy urcCopy = new URLCopy(srcUri,destUri);
+		}catch (Exception e){
+			logger.error(e.toString());
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+		}
 
 
 		_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);

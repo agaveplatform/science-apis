@@ -57,7 +57,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} cancel detected", uuid);
-            this.interruptedTasks.add(uuid);
+            addInteruptedTask(uuid);
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -65,7 +65,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-            this.interruptedTasks.remove(uuid);
+            removeInteruptedTask(uuid);
         });
 
         // paused tasks
@@ -74,7 +74,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} paused detected", uuid);
-            this.interruptedTasks.add(uuid);
+            addInteruptedTask(uuid);
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -82,9 +82,17 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-            this.interruptedTasks.remove(uuid);
+            removeInteruptedTask(uuid);
         });
     }
+
+    public void addInteruptedTask(String uuid){
+        this.interruptedTasks.add(uuid);
+    }
+    public void removeInteruptedTask(String uuid){
+        this.interruptedTasks.remove(uuid);
+    }
+
 
     protected String processTransferTask(JsonObject body) {
         String uuid = body.getString("uuid");

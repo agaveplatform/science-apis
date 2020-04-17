@@ -35,8 +35,11 @@ public class TransferHealthcheckListener extends AbstractTransferTaskListener {
 	public TransferHealthcheckListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
-
-
+//
+//	@Override
+//	public String getEventChannel(){
+//			return this.eventChannel;
+//	}
 
 
 	@Override

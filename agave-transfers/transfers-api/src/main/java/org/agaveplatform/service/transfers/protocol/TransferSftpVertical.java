@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
+
 import org.apache.commons.exec.ExecuteException;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
@@ -90,8 +91,10 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 		TransferTask tt = new TransferTask(body);
 		String source = tt.getSource();
 		String dest = tt.getDest();
-		String uuid = tt.getUuid();
-		String owner = tt.getOwner();
+//		String uuid = tt.getUuid();
+//		String owner = tt.getOwner();
+//		String parentTask = tt.getParentTaskId();
+//		String rootTask = tt.getRootTaskId();
 		URI srcUri;
 		URI destUri;
 		try {
@@ -119,7 +122,12 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 			RemoteFileInfo fileInfo = srcClient.getFileInfo(srcUri.getPath());
 
 
-			URLCopy urcCopy = new URLCopy(srcUri,destUri);
+			URLCopy urlCopy = new URLCopy(srcClient,destClient);
+
+			org.iplantc.service.transfer.model.TransferTask ttn = new org.iplantc.service.transfer.model.TransferTask(source, dest);
+
+			urlCopy.copy(source,dest, ttn);
+			
 		}catch (Exception e){
 			logger.error(e.toString());
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);

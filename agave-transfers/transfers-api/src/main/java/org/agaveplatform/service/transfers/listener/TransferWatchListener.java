@@ -25,7 +25,9 @@ public class TransferWatchListener extends AbstractTransferTaskListener {
 
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_HEALTHCHECK;
 
-	public TransferWatchListener(Vertx vertx) {}
+	public TransferWatchListener(Vertx vertx) {
+		super(vertx);
+	}
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;

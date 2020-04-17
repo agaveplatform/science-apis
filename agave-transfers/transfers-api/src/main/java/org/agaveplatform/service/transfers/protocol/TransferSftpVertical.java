@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.transfer.URLCopy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +79,28 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 	}
 
 	public void processEvent(JsonObject body) {
+		TransferTask tt = new TransferTask(body);
+		String soruce = tt.getSource();
+		String dest = tt.getDest();
+//
+//		srcClient = getRemoteDataClientFromSystemJson(srcClientType);
+//		srcClient.authenticate();
+//
+//		destClient = getRemoteDataClientFromSystemJson(destClientType);
+//
+//		URLCopy urlCopy = new URLCopy(soruce, dest);
+
+
 		_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 	}
 
 }
+
+
+
+
+
+
+
+
+

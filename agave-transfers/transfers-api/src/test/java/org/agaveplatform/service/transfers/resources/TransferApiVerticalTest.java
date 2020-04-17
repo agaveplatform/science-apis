@@ -140,8 +140,6 @@ public class TransferApiVerticalTest extends BaseTestCase {
                         .extract()
                         .asString();
 
-
-
                 assertThat(response).contains("Hello");
                 requestCheckpoint.flag();
             });

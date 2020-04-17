@@ -44,7 +44,6 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 
 			logger.error("Transfer task {} failed to check it's parent task {} for copmletion: {}: {}",
 					body.getString("id"), body.getString("parentTaskId"), body.getString("cause"), body.getString("message"));
-
 		});
 	}
 }

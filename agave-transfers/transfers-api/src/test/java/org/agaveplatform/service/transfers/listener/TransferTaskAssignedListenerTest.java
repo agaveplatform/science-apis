@@ -53,6 +53,7 @@ class TransferTaskAssignedListenerTest {
 			assertEquals(tt.getUuid(), bodyRec.getString("uuid"));
 			ctx.completeNow();
 		});
+
 		vertx.eventBus().consumer("transfertask.error", msg -> {
 			JsonObject bodyRec = (JsonObject) msg.body();
 			ctx.failNow(new Exception(bodyRec.getString("message")));

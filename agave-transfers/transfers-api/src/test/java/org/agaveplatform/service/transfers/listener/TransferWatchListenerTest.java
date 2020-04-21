@@ -78,6 +78,8 @@ class TransferWatchListenerTest extends BaseTestCase {
 		TransferWatchListener twc = getMockListenerInstance(vertx);
 
 		TransferTask transferTask = _createTestTransferTask();
+
+
 		JsonObject json = transferTask.toJson();
 
 		Future<Boolean> result = twc.processEvent();

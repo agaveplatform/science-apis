@@ -47,7 +47,7 @@ public class TransferHealthcheckListener extends AbstractTransferTaskListener {
 
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
-		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+		setDbService(TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue));
 
 		// listen for healthcheck events to determine if a task is complete
 		// before its transfertask_completed event was received.

@@ -218,10 +218,9 @@ public class NewNotificationQueueProcessor implements InterruptableJob, MessageQ
             throw new MessageProcessingException(true, e);
         }
         catch (Throwable e) {
-            log.error(e);
-            throw new MessageProcessingException("Message processing failed.", e);
-        }
-        
+			log.error(e);
+			throw new MessageProcessingException("Message processing failed.", e);
+		}
     }
 	
 	@Override

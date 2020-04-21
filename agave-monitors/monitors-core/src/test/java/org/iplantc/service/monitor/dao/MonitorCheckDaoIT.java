@@ -17,7 +17,7 @@ import java.util.UUID;
 public class MonitorCheckDaoIT extends AbstractMonitorIT {
 	
 	@AfterMethod
-	protected void afterMethod() throws Exception {
+	public void afterMethod() throws Exception {
 		clearNotifications();
 		clearMonitors();
 	}

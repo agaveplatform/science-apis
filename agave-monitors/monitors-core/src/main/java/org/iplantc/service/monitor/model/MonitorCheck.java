@@ -142,7 +142,7 @@ public class MonitorCheck
 	}
 
 	/**
-	 * @param nonce the uuid to set
+	 * @param uuid the uuid to set
 	 */
 	public void setUuid(String uuid)
 	{
@@ -159,7 +159,7 @@ public class MonitorCheck
 	}
 
 	/**
-	 * @param monitorId the monitor to set
+	 * @param monitor the monitor to set
 	 */
 	public void setMonitor(Monitor monitor) {
 		this.monitor = monitor;

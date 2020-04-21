@@ -11,6 +11,7 @@ import org.hibernate.annotations.Filters;
 import org.hibernate.annotations.ParamDef;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.model.AbstractEntityEvent;
+import org.iplantc.service.common.model.AgaveEntityEvent;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;

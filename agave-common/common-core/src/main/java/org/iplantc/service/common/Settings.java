@@ -118,7 +118,25 @@ public class Settings
     public static String                        NOTIFICATION_TOPIC;
     public static String                        NOTIFICATION_RETRY_QUEUE;
     public static String                        NOTIFICATION_RETRY_TOPIC;
-    
+
+    /* Metadata support */
+    public static String 						METADATA_DB_HOST;
+    public static String 						METADATA_DB_SCHEME;
+    public static String 						METADATA_DB_COLLECTION;
+    public static String                        METADATA_DB_SCHEMATA_COLLECTION;
+    public static int                           METADATA_DB_PORT;
+    public static String                        METADATA_DB_USER;
+    public static String                        METADATA_DB_PWD;
+
+    /* Notification retry */
+    public static String 						FAILED_NOTIFICATION_DB_HOST;
+    public static String 						FAILED_NOTIFICATION_DB_SCHEME;
+    public static int                           FAILED_NOTIFICATION_DB_PORT;
+    public static String                        FAILED_NOTIFICATION_DB_USER;
+    public static String                        FAILED_NOTIFICATION_DB_PWD;
+    public static int                           FAILED_NOTIFICATION_COLLECTION_LIMIT;
+    public static int                           FAILED_NOTIFICATION_COLLECTION_SIZE;
+
     /* Messaging support */
     public static String                        MESSAGING_SERVICE_PROVIDER;
     public static String                        MESSAGING_SERVICE_HOST;
@@ -171,130 +189,154 @@ public class Settings
         
     public static String						TEMP_DIRECTORY;
     
-    static
-    {
+    static {
         // trust everyone. we need this due to the unknown nature of the callback urls
-        try { 
-            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier(){ 
-                    public boolean verify(String hostname, SSLSession session) { 
-                            return true; 
-                    }}); 
-            SSLContext context = SSLContext.getInstance("TLS"); 
-            context.init(null, new X509TrustManager[]{new X509TrustManager(){ 
-                    public void checkClientTrusted(X509Certificate[] chain, 
-                                    String authType) throws CertificateException {} 
-                    public void checkServerTrusted(X509Certificate[] chain, 
-                                    String authType) throws CertificateException {} 
-                    public X509Certificate[] getAcceptedIssuers() { 
-                            return new X509Certificate[0]; 
-                    }}}, new SecureRandom()); 
-            HttpsURLConnection.setDefaultSSLSocketFactory( 
-                            context.getSocketFactory());
-            
+        try {
+            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            });
+            SSLContext context = SSLContext.getInstance("TLS");
+            context.init(null, new X509TrustManager[]{new X509TrustManager() {
+                public void checkClientTrusted(X509Certificate[] chain,
+                                               String authType) throws CertificateException {
+                }
+
+                public void checkServerTrusted(X509Certificate[] chain,
+                                               String authType) throws CertificateException {
+                }
+
+                public X509Certificate[] getAcceptedIssuers() {
+                    return new X509Certificate[0];
+                }
+            }}, new SecureRandom());
+            HttpsURLConnection.setDefaultSSLSocketFactory(
+                    context.getSocketFactory());
+
         } catch (Exception e) { // should never happen 
-        	log.error("Unexpected errror configuring HTTPS URL connection. Continuing initialization.");
+            log.error("Unexpected errror configuring HTTPS URL connection. Continuing initialization.");
         }
-        
+
         Properties props = loadRuntimeProperties();
-        
+
         DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
         TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
-        
-        try {DEBUG = Boolean.valueOf(props.getProperty("iplant.debug.mode", "false"));}
-        	catch (Exception e) {
-        		log.error("Failure loading setting iplant.debug.mode.", e);
-        		DEBUG = false;
-        	}
-        
+
+        try {
+            DEBUG = Boolean.valueOf(props.getProperty("iplant.debug.mode", "false"));
+        } catch (Exception e) {
+            log.error("Failure loading setting iplant.debug.mode.", e);
+            DEBUG = false;
+        }
+
         DEBUG_USERNAME = props.getProperty("iplant.debug.username");
-        
+
         AUTH_SOURCE = props.getProperty("iplant.auth.source");
-        
-        try {VERIFY_JWT_SIGNATURE = Boolean.valueOf((String) props.getProperty("iplant.verify.jwt.signature", "no"));}
-        	catch (Exception e) {
-        		log.error("Failure loading setting iplant.verify.jwt.signature", e);
-        		VERIFY_JWT_SIGNATURE = false;
-        	}
-        
+
+        try {
+            VERIFY_JWT_SIGNATURE = Boolean.valueOf((String) props.getProperty("iplant.verify.jwt.signature", "no"));
+        } catch (Exception e) {
+            log.error("Failure loading setting iplant.verify.jwt.signature", e);
+            VERIFY_JWT_SIGNATURE = false;
+        }
+
         API_VERSION = props.getProperty("iplant.api.version");
-        
+
         TEMP_DIRECTORY = props.getProperty("iplant.server.temp.dir", "/scratch");
-        
+
         SERVICE_VERSION = props.getProperty("iplant.service.version");
-        
+
         IPLANT_LDAP_URL = props.getProperty("iplant.ldap.url");
 
         IPLANT_LDAP_BASE_DN = props.getProperty("iplant.ldap.base.dn");
-        
+
         IPLANT_LDAP_PASSWORD = props.getProperty("iplant.ldap.password");
-        
+
         IPLANT_LDAP_USERNAME = props.getProperty("iplant.ldap.username");
-        
+
         PUBLIC_USER_USERNAME = props.getProperty("iplant.public.user", "public");
-        
+
         WORLD_USER_USERNAME = props.getProperty("iplant.world.user", "world");
-        
+
         COMMUNITY_PROXY_USERNAME = props.getProperty("iplant.community.username");
-        
+
         COMMUNITY_PROXY_PASSWORD = props.getProperty("iplant.community.password");
-        
+
         String trustedUsers = props.getProperty("iplant.trusted.users");
         if (trustedUsers != null && !trustedUsers.equals("")) {
-            for (String user: trustedUsers.split(",")) {
+            for (String user : trustedUsers.split(",")) {
                 TRUSTED_USERS.add(user);
             }
         }
-        
+
         KEYSTORE_PATH = props.getProperty("system.keystore.path");
 
         TRUSTSTORE_PATH = props.getProperty("system.truststore.path");
-        
+
         TACC_MYPROXY_SERVER = props.getProperty("iplant.myproxy.server");
-        
-        try {TACC_MYPROXY_PORT = Integer.valueOf((String)props.getProperty("iplant.myproxy.port", "7512"));}
-        catch (Exception e) {
+
+        try {
+            TACC_MYPROXY_PORT = Integer.valueOf((String) props.getProperty("iplant.myproxy.port", "7512"));
+        } catch (Exception e) {
             log.error("Failure loading setting iplant.myproxy.port - continuing using default value.", e);
             TACC_MYPROXY_PORT = 7512;
         }
-        
-        IPLANT_APP_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.app.service", "https://sandbox.agaveplatform.org/apps/v2");
-        IPLANT_AUTH_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.auth.service", "https://sandbox.agaveplatform.org/auth/v2");
-        IPLANT_CLIENTS_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.clients.service", "http://sandbox.agaveplatform.org/clients/v2");
-        IPLANT_SYSTEM_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.system.service", "https://sandbox.agaveplatform.org/systems/v2");
-        IPLANT_DOCS                 = Settings.getSantizedServiceUrl(props, "iplant.service.documentation", "https://sandbox.agaveplatform.org/docs/v2");
-        IPLANT_FILE_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.io.service", "https://sandbox.agaveplatform.org/files/v2");
-        IPLANT_GROUPS_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.groups.service", "https://sandbox.agaveplatform.org/groups/v2");
-        IPLANT_JOB_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.job.service", "https://sandbox.agaveplatform.org/jobs/v2");
-        IPLANT_LOG_SERVICE          = Settings.getSantizedServiceUrl(props, "iplant.log.service", "https://sandbox.agaveplatform.org/logging/v2");
-        IPLANT_METADATA_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.metadata.service", "https://sandbox.agaveplatform.org/meta/v2");
-        IPLANT_MONITOR_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.monitor.service", "https://sandbox.agaveplatform.org/monitors/v2");
+
+        IPLANT_APP_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.app.service", "https://sandbox.agaveplatform.org/apps/v2");
+        IPLANT_AUTH_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.auth.service", "https://sandbox.agaveplatform.org/auth/v2");
+        IPLANT_CLIENTS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.clients.service", "http://sandbox.agaveplatform.org/clients/v2");
+        IPLANT_SYSTEM_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.system.service", "https://sandbox.agaveplatform.org/systems/v2");
+        IPLANT_DOCS = Settings.getSantizedServiceUrl(props, "iplant.service.documentation", "https://sandbox.agaveplatform.org/docs/v2");
+        IPLANT_FILE_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.io.service", "https://sandbox.agaveplatform.org/files/v2");
+        IPLANT_GROUPS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.groups.service", "https://sandbox.agaveplatform.org/groups/v2");
+        IPLANT_JOB_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.job.service", "https://sandbox.agaveplatform.org/jobs/v2");
+        IPLANT_LOG_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.log.service", "https://sandbox.agaveplatform.org/logging/v2");
+        IPLANT_METADATA_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.metadata.service", "https://sandbox.agaveplatform.org/meta/v2");
+        IPLANT_MONITOR_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.monitor.service", "https://sandbox.agaveplatform.org/monitors/v2");
         IPLANT_NOTIFICATION_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.notification.service", "https://sandbox.agaveplatform.org/notifications/v2");
-        IPLANT_PERMISSIONS_SERVICE  = Settings.getSantizedServiceUrl(props, "iplant.permissions.service", "https://sandbox.agaveplatform.org/permissions/v2");
-        IPLANT_POSTIT_SERVICE       = Settings.getSantizedServiceUrl(props, "iplant.postit.service", "https://sandbox.agaveplatform.org/postits/v2");
-        IPLANT_PROFILE_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.profile.service", "https://sandbox.agaveplatform.org/profiles/v2");
-        IPLANT_REALTIME_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.realtime.service", "http://public.realtime.sandbox.agaveplatform.org/channels/v2");
-        IPLANT_ROLES_SERVICE        = Settings.getSantizedServiceUrl(props, "iplant.roles.service", "https://sandbox.agaveplatform.org/roles/v2");
-        IPLANT_TAGS_SERVICE         = Settings.getSantizedServiceUrl(props, "iplant.tags.service", "https://sandbox.agaveplatform.org/tags/v2");
-        IPLANT_TENANTS_SERVICE      = Settings.getSantizedServiceUrl(props, "iplant.tenants.service", "https://agaveplatform.org/tenants/");
-        IPLANT_TRANSFER_SERVICE     = Settings.getSantizedServiceUrl(props, "iplant.transfer.service", "https://sandbox.agaveplatform.org/transfers/v2");
-        IPLANT_REACTOR_SERVICE     	= Settings.getSantizedServiceUrl(props, "iplant.reactors.service", "https://sandbox.agaveplatform.org/reactors/v2");
-        IPLANT_REPOSITORY_SERVICE   = Settings.getSantizedServiceUrl(props, "iplant.repositories.service", "https://sandbox.agaveplatform.org/repositories/v2");
-        IPLANT_ABACO_SERVICE     	= Settings.getSantizedServiceUrl(props, "iplant.abaco.service", "https://sandbox.agaveplatform.org/abaco/v2");
-        
+        IPLANT_PERMISSIONS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.permissions.service", "https://sandbox.agaveplatform.org/permissions/v2");
+        IPLANT_POSTIT_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.postit.service", "https://sandbox.agaveplatform.org/postits/v2");
+        IPLANT_PROFILE_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.profile.service", "https://sandbox.agaveplatform.org/profiles/v2");
+        IPLANT_REALTIME_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.realtime.service", "http://public.realtime.sandbox.agaveplatform.org/channels/v2");
+        IPLANT_ROLES_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.roles.service", "https://sandbox.agaveplatform.org/roles/v2");
+        IPLANT_TAGS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.tags.service", "https://sandbox.agaveplatform.org/tags/v2");
+        IPLANT_TENANTS_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.tenants.service", "https://agaveplatform.org/tenants/");
+        IPLANT_TRANSFER_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.transfer.service", "https://sandbox.agaveplatform.org/transfers/v2");
+        IPLANT_REACTOR_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.reactors.service", "https://sandbox.agaveplatform.org/reactors/v2");
+        IPLANT_REPOSITORY_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.repositories.service", "https://sandbox.agaveplatform.org/repositories/v2");
+        IPLANT_ABACO_SERVICE = Settings.getSantizedServiceUrl(props, "iplant.abaco.service", "https://sandbox.agaveplatform.org/abaco/v2");
+
         NOTIFICATION_QUEUE = props.getProperty("iplant.notification.service.queue", "prod.notifications.queue");
-		NOTIFICATION_TOPIC = props.getProperty("iplant.notification.service.topic", "prod.notifications.queue");
-		
-		NOTIFICATION_RETRY_QUEUE = props.getProperty("iplant.notification.service.retry.queue", "retry." + NOTIFICATION_QUEUE);
-		NOTIFICATION_RETRY_TOPIC = props.getProperty("iplant.notification.service.retry.topic", "retry." + NOTIFICATION_TOPIC);
-		
+        NOTIFICATION_TOPIC = props.getProperty("iplant.notification.service.topic", "prod.notifications.queue");
+        NOTIFICATION_RETRY_QUEUE = props.getProperty("iplant.notification.service.retry.queue", "retry." + NOTIFICATION_QUEUE);
+        NOTIFICATION_RETRY_TOPIC = props.getProperty("iplant.notification.service.retry.topic", "retry." + NOTIFICATION_TOPIC);
+
+        METADATA_DB_COLLECTION = (String) props.getProperty("iplant.metadata.db.collection", "metadata");
+        METADATA_DB_SCHEMATA_COLLECTION = (String) props.getProperty("iplant.metadata.schemata.db.collection", "schemata");
+        METADATA_DB_SCHEME = (String) props.getProperty("iplant.metadata.db.scheme", "api");
+        METADATA_DB_HOST = (String) props.getProperty("iplant.metadata.db.host", "mongodb");
+        METADATA_DB_PORT = Integer.parseInt((String) props.getProperty("iplant.metadata.db.port", "27017"));
+        METADATA_DB_USER = (String) props.getProperty("iplant.metadata.db.user", "agaveuser");
+        METADATA_DB_PWD = (String) props.getProperty("iplant.metadata.db.pwd", "password");
+
+        FAILED_NOTIFICATION_DB_SCHEME = (String) props.getProperty("iplant.notification.failed.db.scheme", "api");
+        FAILED_NOTIFICATION_DB_HOST = (String) props.getProperty("iplant.notification.failed.db.host", "mongodb");
+        FAILED_NOTIFICATION_DB_PORT = org.apache.commons.lang.math.NumberUtils.toInt((String) props.getProperty("iplant.notification.failed.db.port", "27017"), 27017);
+        FAILED_NOTIFICATION_DB_USER = (String) props.getProperty("iplant.notification.failed.db.user", "agaveuser");
+        FAILED_NOTIFICATION_DB_PWD = (String) props.getProperty("iplant.notification.failed.db.pwd", "password");
+        FAILED_NOTIFICATION_COLLECTION_SIZE = org.apache.commons.lang.math.NumberUtils.toInt((String) props.getProperty("iplant.notification.failed.db.max.queue.size"), 1048576);
+        FAILED_NOTIFICATION_COLLECTION_LIMIT = org.apache.commons.lang.math.NumberUtils.toInt((String) props.getProperty("iplant.notification.failed.db.max.queue.limit"), 1000);
+
         MESSAGING_SERVICE_PROVIDER = props.getProperty("iplant.messaging.provider");
         MESSAGING_SERVICE_USERNAME = props.getProperty("iplant.messaging.username");
         MESSAGING_SERVICE_PASSWORD = props.getProperty("iplant.messaging.password");
         MESSAGING_SERVICE_HOST = props.getProperty("iplant.messaging.host");
-        try {MESSAGING_SERVICE_PORT = Integer.valueOf((String)props.get("iplant.messaging.port"));}
-        	catch (Exception e) {
-        		log.error("Failure loading setting iplant.messaging.port - continuing.", e);
-        	}
+        try {
+            MESSAGING_SERVICE_PORT = Integer.parseInt((String) props.get("iplant.messaging.port"));
+        } catch (Exception e) {
+            log.error("Failure loading setting iplant.messaging.port - continuing.", e);
+        }
         
         FILES_ENCODING_QUEUE = props.getProperty("iplant.files.service.encoding.queue", "encoding.prod.files.queue");
         FILES_ENCODING_TOPIC = props.getProperty("iplant.files.service.encoding.topic", "encoding.prod.files.topic");

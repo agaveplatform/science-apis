@@ -44,8 +44,7 @@ public class MonitorCheckDao extends AbstractDao
 	/**
 	 * Gets all checks for a monitor.
 	 * 
-	 * @param username
-	 * @param uuid
+	 * @param monitorId
 	 * @return
 	 * @throws MonitorException
 	 */
@@ -89,8 +88,7 @@ public class MonitorCheckDao extends AbstractDao
 	/**
 	 * Gets all checks for a monitor.
 	 * 
-	 * @param username
-	 * @param uuid
+	 * @param monitorId the db id of the monitor
 	 * @return
 	 * @throws MonitorException
 	 */
@@ -139,7 +137,7 @@ public class MonitorCheckDao extends AbstractDao
 	/**
 	 * Finds check by uuid within a tenant
 	 * 
-	 * @param apiUsername
+	 * @param uuid
 	 * @return
 	 * @throws MonitorException
 	 */

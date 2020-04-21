@@ -60,7 +60,12 @@ public class AbstractNotificationTest {
 	protected RequestBin requestBin;
 	protected Scheduler sched;
 	protected SimpleTrigger trigger;
-	
+
+	public AbstractNotificationTest() {
+		dataHelper = TestDataHelper.getInstance();
+		dao = new NotificationDao();
+	}
+
 	protected void addNotifications(int instances, NotificationStatusType status, String associatedUuid, boolean stranger, NotificationCallbackProviderType type) 
 	throws Exception
 	{
@@ -108,7 +113,7 @@ public class AbstractNotificationTest {
 		return notification;
 	}
 	
-	protected Notification createEmailNotification() throws NotificationException, IOException
+	public Notification createEmailNotification() throws NotificationException, IOException
 	{
 		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_EMAIL_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
@@ -173,7 +178,7 @@ public class AbstractNotificationTest {
 		return createRealtimeNotification(null);
 	}
 	
-	protected void clearNotifications() throws NotificationException
+	public void clearNotifications() throws NotificationException
 	{
 		try
 		{
@@ -213,7 +218,6 @@ public class AbstractNotificationTest {
 	
 	/**
 	 * Flushes the messaging tube of any and all existing jobs.
-	 * @param queueName
 	 */
 	@AfterMethod
 	protected void drainQueue() 

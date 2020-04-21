@@ -48,7 +48,7 @@ public class MonitorDaoIT extends AbstractMonitorIT
 	}
 	
 	@AfterMethod
-	protected void afterMethod() throws Exception{
+	public void afterMethod() throws Exception{
 		clearMonitors();
 		clearNotifications();
 		clearQueues();

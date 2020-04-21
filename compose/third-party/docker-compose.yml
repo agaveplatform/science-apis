@@ -52,10 +52,10 @@ services:
 #    command: "./flyway migrate"
 
   ##############################################################
-  # MongoDB 2.6
+  # MongoDB 3.0
   ##############################################################
   mongodb:
-    image: agaveplatform/mongodb:2.6
+    image: agaveplatform/mongodb:3.0
     hostname: mongodb
     environment:
       - MONGODB_ADMIN_PASS=changeit

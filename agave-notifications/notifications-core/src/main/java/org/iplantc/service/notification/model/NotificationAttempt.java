@@ -169,7 +169,7 @@ public class NotificationAttempt {
 	}
 
 	/**
-	 * @param fireTime the fireTime to set
+	 * @param startTime the fireTime to set
 	 */
 	public void setStartTime(Date startTime) {
 		this.startTime = startTime;

@@ -1,12 +1,17 @@
 package org.iplantc.service.common.uuid;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.*;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.bson.BSONObject;
 import org.codehaus.plexus.util.FileUtils;
 import org.hibernate.CacheMode;
 import org.hibernate.Criteria;
@@ -14,6 +19,8 @@ import org.hibernate.Session;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.HibernateUtil;
+
+import static com.mongodb.client.model.Filters.eq;
 
 public class UUIDEntityLookup {
     
@@ -41,9 +48,15 @@ public class UUIDEntityLookup {
 				profileUsername.toString() + "/" + internalUserUsername.toString();
 		} else if (entityType.equals(UUIDType.JOB)) {
 			return Settings.IPLANT_JOB_SERVICE + uuid;
+		} else if (entityType.equals(UUIDType.JOB_EVENT)) {
+			Object jobUuid = getEntityFieldByUuid("jobevent", "entity_uuid", uuid);
+			return Settings.IPLANT_JOB_SERVICE + jobUuid + "/history/" + uuid;
 		} else if (entityType.equals(UUIDType.SYSTEM)) {
 			Object systemId = getEntityFieldByUuid(entityType.name(), "system_id", uuid);
 			return Settings.IPLANT_SYSTEM_SERVICE + systemId.toString();
+		} else if (entityType.equals(UUIDType.SYSTEM_EVENT)) {
+			Object systemUuid = getEntityFieldByUuid("systemevent", "entity_uuid", uuid);
+			return Settings.IPLANT_SYSTEM_SERVICE + systemUuid + "/history/" + uuid;
 		} else if (entityType.equals(UUIDType.APP)) {
 			Map<String,Object> map = getEntityFieldByUuid("select `name`, `version`, `publicly_available`, `revision_count` from softwares where uuid = '" + uuid + "' and `available` = 1");
 			if (map.isEmpty()) 
@@ -74,6 +87,34 @@ public class UUIDEntityLookup {
 				
 				return Settings.IPLANT_APP_SERVICE + softwareUniqueName;
 			}
+		} else if (entityType.equals(UUIDType.APP_EVENT)) {
+			Object softwareUuid = getEntityFieldByUuid("softwareevent", "entity_uuid", uuid);
+			Map<String,Object> map = getEntityFieldByUuid("select `name`, `version`, `publicly_available`, `revision_count` from softwares where uuid = '" + softwareUuid + "' and `available` = 1");
+			if (map.isEmpty())
+			{
+				String msg = "Resource id cannot be null for uuid: " + uuid;
+				log.error(msg);
+				throw new UUIDException(msg);
+			}
+			else {
+				String softwareUniqueName = (String) map.get("name") + "-" + (String) map.get("version");
+				Object available = map.get("publicly_available");
+				if (available instanceof Byte) {
+					if ((Byte) map.get("publicly_available") == 1) {
+						softwareUniqueName += "u" + ((Integer) map.get("revision_count")).toString();
+					}
+				} else if (available instanceof Boolean) {
+					if ((Boolean) available) {
+						softwareUniqueName += "u" + ((Integer) map.get("revision_count")).toString();
+					}
+				} else if (available instanceof Integer) {
+					if ((Integer) map.get("publicly_available") == 1) {
+						softwareUniqueName += "u" + ((Integer) map.get("revision_count")).toString();
+					}
+				}
+
+				return Settings.IPLANT_APP_SERVICE + softwareUniqueName + "/history/" + uuid;
+			}
 		} else if (entityType.equals(UUIDType.POSTIT)) {
 			Object postIt = getEntityFieldByUuid(entityType.name(), "postit_key", uuid);
 			return Settings.IPLANT_POSTIT_SERVICE + postIt.toString();
@@ -85,10 +126,41 @@ public class UUIDEntityLookup {
 			return Settings.IPLANT_METADATA_SERVICE + "data/" + uuid;
 		} else if (entityType.equals(UUIDType.NOTIFICATION)) {
 			return Settings.IPLANT_NOTIFICATION_SERVICE + uuid;
+		} else if (entityType.equals(UUIDType.NOTIFICATION_DELIVERY)) {
+			String notificationUuid = getNotificationUuidForDeliveryAttempt(uuid);
+			return Settings.IPLANT_NOTIFICATION_SERVICE + notificationUuid + "/attempts/" + uuid;
 		} else if (entityType.equals(UUIDType.MONITOR)) {
 			return Settings.IPLANT_MONITOR_SERVICE + uuid;
-		} else if (entityType.equals(UUIDType.TRANSFER)) {
-			return Settings.IPLANT_TRANSFER_SERVICE + uuid;
+		} else if (entityType.equals(UUIDType.MONITORCHECK)) {
+			Object monitorId = getEntityFieldByUuid("monitor_check", "monitor", uuid);
+			Map<String, Object> map = getEntityFieldByUuid("select `uuid` from monitors where id = '" + monitorId + "'");
+			if (map.isEmpty()) {
+				String msg = "Resource id cannot be null for uuid: " + uuid;
+				log.error(msg);
+				throw new UUIDException(msg);
+			} else {
+				Object monitorUuid = map.get("uuid");
+				return Settings.IPLANT_MONITOR_SERVICE + monitorUuid + "/checks/" + uuid;
+			}
+		} else if (entityType.equals(UUIDType.MONITOR_EVENT)) {
+			Object monitorUuid = getEntityFieldByUuid("monitorevent", "entity_uuid", uuid);
+			return Settings.IPLANT_MONITOR_SERVICE + monitorUuid + "/history/" + uuid;
+//		} else if (entityType.equals(UUIDType.MONITORCHECK_EVENT)) {
+//			Object monitorId = getEntityFieldByUuid("monitor_check", "monitor", uuid);
+//			Map<String,Object> map = getEntityFieldByUuid("select `uuid` from monitors where id = '" + monitorId + "'");
+//			if (map.isEmpty())
+//			{
+//				String msg = "Resource id cannot be null for uuid: " + uuid;
+//				log.error(msg);
+//				throw new UUIDException(msg);
+//			}
+//			else {
+//				Object monitorUuid = map.get("uuid");
+//				return Settings.IPLANT_MONITOR_SERVICE + monitorUuid + "/checks/" + uuid;
+//			}
+//		} else if (entityType.equals(UUIDType.TRANSFER_UPDATE)) {
+//			Object transferUuid = getEntityFieldByUuid("transferupdate", "entity_uuid", uuid);
+//			return Settings.IPLANT_TRANSFER_SERVICE + transferUuid.toString() + "/updates/" + uuid;
 		} else if (entityType.equals(UUIDType.TAG)) {
 			return Settings.IPLANT_TAGS_SERVICE + uuid;
 		} else if (entityType.equals(UUIDType.REALTIME_CHANNEL)) {
@@ -97,8 +169,8 @@ public class UUIDEntityLookup {
 			return Settings.IPLANT_GROUPS_SERVICE + uuid;
 		} else if (entityType.equals(UUIDType.CLIENTS)) {
 			return Settings.IPLANT_CLIENTS_SERVICE + uuid;
-		} else if (entityType.equals(UUIDType.CLIENTS)) {
-			return Settings.IPLANT_CLIENTS_SERVICE + uuid;
+//		} else if (entityType.equals(UUIDType.CLIENTS)) {
+//			return Settings.IPLANT_CLIENTS_SERVICE + uuid;
 		} else if (entityType.equals(UUIDType.ROLE)) {
 			return Settings.IPLANT_ROLES_SERVICE + uuid;
 		} else if (entityType.equals(UUIDType.TENANT)) {
@@ -119,11 +191,9 @@ public class UUIDEntityLookup {
 			throw new UUIDException(msg);
 		}
 	}
-	
-	
-	
+
 	@SuppressWarnings("unchecked")
-    private static Object getEntityFieldByUuid(String entityType, String fieldName, String uuid) 
+    private static Object getEntityFieldByUuid(String entityType, String fieldName, String uuid)
     throws UUIDException
     {
         // ObjectType should be an enum value and prevent injection attacks.
@@ -282,4 +352,61 @@ public class UUIDEntityLookup {
 		return "/" + StringUtils.substringAfter(absolutepath, rootDir);
 	}
 
+	/**
+	 * Fetches or creates a MongoDB capped collection with the given name
+	 *
+	 * @return The named collection
+	 * @throws UUIDException
+	 */
+	private static DB getMongoDB() throws UUIDException
+	{
+		// Set up MongoDB connection
+		try
+		{
+			MongoCredential credential = MongoCredential.createScramSha1Credential(
+					Settings.FAILED_NOTIFICATION_DB_USER,
+					Settings.FAILED_NOTIFICATION_DB_SCHEME,
+					Settings.FAILED_NOTIFICATION_DB_PWD.toCharArray());
+
+			MongoClient mongoClient = new MongoClient(
+					new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT),
+					Collections.singletonList(credential),
+					MongoClientOptions.builder().build());
+
+			DB db = mongoClient.getDB(Settings.FAILED_NOTIFICATION_DB_SCHEME);
+
+			return db;
+		}
+		catch (Exception e) {
+			throw new UUIDException("Failed to get mongodb database connection", e);
+		}
+	}
+
+	private static String getNotificationUuidForDeliveryAttempt(String uuid) throws UUIDException {
+		String notificationId = null;
+		DB db = null;
+		try {
+			db = getMongoDB();
+			DBObject query = new BasicDBObject();
+			query.put("uuid", uuid);
+			for(String collectionName : db.getCollectionNames()) {
+				DBObject result = db.getCollection(collectionName).findOne(query);
+				if (result != null) {
+					return result.get("notification_id").toString();
+				}
+			}
+
+			return notificationId;
+		}
+		catch (MongoException e) {
+			throw new UUIDException("Failed to fetch notification attempt for " + uuid, e);
+		}
+		catch (Exception e) {
+			throw new UUIDException("Unexpected server error while fetching notification attempt for " +
+					uuid, e);
+		}
+		finally {
+			try { if (db != null) { db.getMongo().close(); } } catch (Exception ignored) {}
+		}
+	}
 }

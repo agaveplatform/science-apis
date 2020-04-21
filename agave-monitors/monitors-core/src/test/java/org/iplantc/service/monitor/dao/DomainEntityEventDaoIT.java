@@ -23,7 +23,7 @@ public class DomainEntityEventDaoIT extends AbstractMonitorIT {
 	private DomainEntityEventDao systemHistoryEventDao;
 	
 	@BeforeClass
-	protected void beforeClass() throws Exception
+	public void beforeClass() throws Exception
 	{
 		super.beforeClass();
 		systemHistoryEventDao = new DomainEntityEventDao();

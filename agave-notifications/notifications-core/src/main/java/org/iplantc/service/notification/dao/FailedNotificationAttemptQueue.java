@@ -92,7 +92,7 @@ public class FailedNotificationAttemptQueue {
     	// Set up MongoDB connection
         try
         {
-        	db = getMongoClient().getDB("api");//Settings.FAILED_NOTIFICATION_DB_SCHEME);
+        	db = getMongoClient().getDB(Settings.FAILED_NOTIFICATION_DB_SCHEME);
         	
             // Gets a collection, if it does not exist creates it
         	DBCollection cappedCollection = null;

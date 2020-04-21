@@ -38,9 +38,9 @@ import com.surftools.BeanstalkClientImpl.ClientImpl;
 @Test(groups={"integration"})
 public class AbstractMonitorIT {
 
-	protected static final String TEST_USER = "systest";
-	protected static final String TEST_EMAIL = "help@agaveplatform.org";
-	protected static final String TEST_URL = "http://requestbin:5101/11pbi6m1?username=${USERNAME}&status=${STATUS}";
+	public static final String TEST_USER = "systest";
+	public static final String TEST_EMAIL = "help@agaveplatform.org";
+	public static final String TEST_URL = "http://requestbin:5101/11pbi6m1?username=${USERNAME}&status=${STATUS}";
 	
 	protected ObjectMapper mapper = new ObjectMapper();
 	protected SystemDao systemDao = new SystemDao();
@@ -55,7 +55,7 @@ public class AbstractMonitorIT {
 	protected ExecutionSystem sharedExecutionSystem;
 	
 	@BeforeClass
-	protected void beforeClass() throws Exception
+	public void beforeClass() throws Exception
 	{
 		dataHelper = TestDataHelper.getInstance();
 		
@@ -67,7 +67,7 @@ public class AbstractMonitorIT {
 	}
 	
 	@AfterClass
-	protected void afterClass() throws MonitorException {
+	public void afterClass() throws MonitorException {
 		clearSystems();
 		clearMonitors();
 		clearNotifications();
@@ -75,7 +75,7 @@ public class AbstractMonitorIT {
 	}
 	
 	@AfterMethod
-	protected void afterMethod() throws Exception
+	public void afterMethod() throws Exception
 	{
 		clearQueues();
 	}
@@ -89,7 +89,7 @@ public class AbstractMonitorIT {
 	 * @param isPublicSystem
 	 * @throws Exception
 	 */
-	protected void addMonitor(boolean isActive, boolean isStranger, boolean isStorageType, boolean isPublicSystem) 
+	public void addMonitor(boolean isActive, boolean isStranger, boolean isStorageType, boolean isPublicSystem)
 	throws Exception
 	{
 		String owner = isStranger ? SYSTEM_SHARE_USER : TEST_USER;
@@ -120,8 +120,8 @@ public class AbstractMonitorIT {
 			
 		Assert.assertNotNull(monitor.getId(), "Failed to save monitor");
 	}
-	
-	protected Monitor createStorageMonitor() throws MonitorException, JSONException, IOException
+
+	public Monitor createStorageMonitor() throws MonitorException, JSONException, IOException
 	{
 		Monitor monitor = Monitor.fromJSON(dataHelper.getTestDataObject(TEST_STORAGE_MONITOR), 
 				null, 
@@ -130,8 +130,8 @@ public class AbstractMonitorIT {
 		monitor.setLastUpdated(monitor.getCreated());
 		return monitor;
 	}
-	
-	protected Monitor createExecutionMonitor() throws MonitorException, JSONException, IOException
+
+	public Monitor createExecutionMonitor() throws MonitorException, JSONException, IOException
 	{
 		Monitor monitor = Monitor.fromJSON(dataHelper.getTestDataObject(TEST_EXECUTION_MONITOR), 
 				null, 
@@ -140,8 +140,8 @@ public class AbstractMonitorIT {
 		monitor.setLastUpdated(monitor.getCreated());
 		return monitor;
 	}
-	
-	protected Monitor createAndSavePendingStorageMonitor() throws MonitorException, JSONException, IOException
+
+	public Monitor createAndSavePendingStorageMonitor() throws MonitorException, JSONException, IOException
 	{
 		Monitor monitor = createStorageMonitor();
 		monitor.setNextUpdateTime(new DateTime().minusYears(1).toDate());
@@ -151,8 +151,8 @@ public class AbstractMonitorIT {
 		return monitor;
 
 	}
-	
-	protected Monitor createAndSavePendingExecutionMonitor() throws MonitorException, JSONException, IOException
+
+	public Monitor createAndSavePendingExecutionMonitor() throws MonitorException, JSONException, IOException
 	{
 		Monitor monitor = createExecutionMonitor();
 		monitor.setNextUpdateTime(new DateTime().minusYears(1).toDate());
@@ -161,8 +161,8 @@ public class AbstractMonitorIT {
 		
 		return monitor;
 	}
-	
-	protected void clearNotifications() throws MonitorException
+
+	public void clearNotifications() throws MonitorException
 	{
 		try
 		{
@@ -182,8 +182,8 @@ public class AbstractMonitorIT {
 			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
 		}
 	}
-	
-	protected void clearMonitors() throws MonitorException
+
+	public void clearMonitors() throws MonitorException
 	{
 		try
 		{
@@ -207,8 +207,8 @@ public class AbstractMonitorIT {
 			catch (Exception ignore) {}
 		}
 	}
-	
-	protected void clearSystems()
+
+	public void clearSystems()
 	{
 	    Session session = null;
         try
@@ -227,7 +227,7 @@ public class AbstractMonitorIT {
         }
 	}
 	
-	protected void initSystems() throws Exception 
+	public void initSystems() throws Exception
 	{
 		clearSystems();
 		
@@ -280,7 +280,7 @@ public class AbstractMonitorIT {
 	/**
 	 * Flushes the messaging tube of any and all existing jobs.
 	 */
-	protected void clearQueues() {
+	public void clearQueues() {
 		ClientImpl client = null;
 	
 		// drain the message queue
@@ -335,8 +335,8 @@ public class AbstractMonitorIT {
 		try { client.close(); } catch (Throwable e) {}
 		client = null;
 	}
-	
-	protected int getMessageQueueSize(String queue)
+
+	public int getMessageQueueSize(String queue)
 	{
 		ClientImpl client = null;
 		int size = 0;
@@ -366,8 +366,8 @@ public class AbstractMonitorIT {
 		
 		return size;
 	}
-	
-	protected boolean isWebhookSent(String callback) throws Exception
+
+	public boolean isWebhookSent(String callback) throws Exception
 	{
 		return true;
 //		File webhookLogFile = new File("/tmp/postbin.out");

@@ -10,6 +10,8 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.agaveplatform.service.transfers.protocol.TransferAllVertical;
+import org.apache.xmlbeans.impl.xb.xsdschema.Public;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.junit.jupiter.api.*;
@@ -33,19 +35,14 @@ import static org.mockito.Mockito.*;
 class TransferCompleteTaskListenerTest extends BaseTestCase {
     private static final Logger log = LoggerFactory.getLogger(TransferCompleteTaskListenerTest.class);
 
-//    @BeforeAll
-//    public void setUpService() throws IOException {
-//        // read in config options
-//        intiConfig();
-//    }
-//
-//    @AfterAll
-//    public void tearDown(Vertx vertx, VertxTestContext ctx) {
-//        vertx.close(ctx.completing());
-//    }
 
-    TransferCompleteTaskListener getMockListenerInstance(Vertx vertx) {
-        TransferCompleteTaskListener ttc = Mockito.mock(TransferCompleteTaskListener.class);
+    @AfterAll
+    public void tearDown(Vertx vertx, VertxTestContext ctx) {
+        vertx.close(ctx.completing());
+    }
+
+    TransferCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) {
+        TransferCompleteTaskListener ttc = mock(TransferCompleteTaskListener.class );
         when(ttc.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
         when(ttc.getVertx()).thenReturn(vertx);
         when(ttc.processEvent(any())).thenCallRealMethod();
@@ -53,8 +50,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         return ttc;
     }
 
+
     @Test
-    void testProcessEventWithNoParent(Vertx vertx, VertxTestContext ctx) {
+    public void testProcessEventWithNoParent(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -65,7 +63,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -127,7 +125,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
     }
 
     @Test
-    void testProcessEventWithInactiveParent(Vertx vertx, VertxTestContext ctx) {
+    public void testProcessEventWithInactiveParent(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -140,7 +138,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -205,7 +203,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
     }
 
     @Test
-    void testProcessEventWithActiveParent(Vertx vertx, VertxTestContext ctx) {
+    public void testProcessEventWithActiveParent(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -218,7 +216,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -282,7 +280,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
     }
 
     @Test
-    void testProcessEventCreatesParentErrorEventWhenParentProcessingFails(Vertx vertx, VertxTestContext ctx) {
+    public void testProcessEventCreatesParentErrorEventWhenParentProcessingFails(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -295,7 +293,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -366,7 +364,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
     ////////////////////////////////////////
 
     @Test
-    void testProcessParentEventStatusCompletedReportsFalse(Vertx vertx, VertxTestContext ctx) {
+    public void testProcessParentEventStatusCompletedReportsFalse(Vertx vertx, VertxTestContext ctx) {
             // Set up our transfertask for testing
             TransferTask parentTask = _createTestTransferTask();
             parentTask.setStatus(TransferStatusType.COMPLETED);
@@ -383,7 +381,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
 
             // mock out the verticle we're testing so we can observe that its methods were called as expected
-            TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
+            TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
             // we switch the call chain when we want to pass through a method invocation to a method returning void
             doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -452,7 +450,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
     }
 
     @Test
-    void testProcessParentEventStatusCancelledReportsFalse(Vertx vertx, VertxTestContext ctx) {
+    public void testProcessParentEventStatusCancelledReportsFalse(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.CANCELLED);
@@ -468,7 +466,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         transferTask.setParentTaskId(parentTask.getUuid());
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -537,7 +535,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
     }
 
     @Test
-    void testProcessParentEventStatusFailedReportsFalse(Vertx vertx, VertxTestContext ctx) {
+    public void testProcessParentEventStatusFailedReportsFalse(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.FAILED);
@@ -553,7 +551,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         transferTask.setParentTaskId(parentTask.getUuid());
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -622,7 +620,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
     }
 
     @Test
-    void testProcessParentEventFoundActive(Vertx vertx, VertxTestContext ctx) {
+    public void testProcessParentEventFoundActive(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -639,7 +637,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockListenerInstance(vertx);
+        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 

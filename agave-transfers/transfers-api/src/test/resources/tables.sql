@@ -6,6 +6,8 @@ DROP TABLE IF EXISTS transfertasks;
 CREATE TABLE IF NOT EXISTS transfertasks (
     "id" BIGINT IDENTITY PRIMARY KEY,
     "attempts" INTEGER,
+    "lastAttempt" TIMESTAMP,
+    "nextAttempt" TIMESTAMP,
     "bytes_transferred" DOUBLE,
     "created" TIMESTAMP,
     "dest" VARCHAR(2048) NOT NULL,

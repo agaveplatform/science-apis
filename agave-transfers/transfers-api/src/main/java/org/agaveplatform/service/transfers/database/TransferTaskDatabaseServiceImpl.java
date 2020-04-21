@@ -119,6 +119,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     });
     return this;
   }
+
   @Override
   public TransferTaskDatabaseService allChildrenCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -139,6 +140,28 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     });
     return this;
   }
+
+  @Override
+  public TransferTaskDatabaseService singleNotCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
+    JsonArray data = new JsonArray()
+            .add(uuid)
+            .add(tenantId);
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.SINGLE_NOT_CANCELED_OR_COMPLETED), data, fetch -> {
+      if (fetch.succeeded()) {
+        ResultSet resultSet = fetch.result();
+        Boolean response = Boolean.FALSE;
+        if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") > 0) {
+          response = Boolean.TRUE;
+        }
+        resultHandler.handle(Future.succeededFuture(response));
+      } else {
+        LOGGER.error("Database query error", fetch.cause());
+        resultHandler.handle(Future.failedFuture(fetch.cause()));
+      }
+    });
+    return this;
+  }
+
 
   @Override
   public TransferTaskDatabaseService create(String tenantId, TransferTask transferTask, Handler<AsyncResult<JsonObject>> resultHandler) {

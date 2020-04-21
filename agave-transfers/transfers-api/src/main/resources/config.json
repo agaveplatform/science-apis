@@ -8,5 +8,6 @@
   "transfertask.jdbc.url": "jdbc:hsqldb:mem:dev?shutdown=true",
   "transfertask.jdbc.max_pool_size": 10,
   "transfertask.db.queue": "transfertaskdb.queue",
-  "transfertasks.sqlqueries.resource.file": "db-queries.yml"
+  "transfertasks.sqlqueries.resource.file": "db-queries.yml",
+  "transfertask.max.tries": 3
 }

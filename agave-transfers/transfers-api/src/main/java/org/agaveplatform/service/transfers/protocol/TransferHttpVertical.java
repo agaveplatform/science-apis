@@ -6,8 +6,18 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
+import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.RemoteFileInfo;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.http.HTTP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.URI;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_HTTP;
 
@@ -81,7 +91,43 @@ public class TransferHttpVertical extends AbstractTransferTaskListener {
 	}
 
 	public void processEvent(JsonObject body) {
+		TransferTask tt = new TransferTask(body);
+		String source = tt.getSource();
+		String dest = tt.getDest();
 
+		URI srcUri;
+		URI destUri;
+		try {
+			srcUri = URI.create(source);
+			destUri = URI.create(dest);
+			// pull the system out of the url. system id is the hostname in an agave uri
+			RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
+			// get a remtoe data client for the sytem
+			RemoteDataClient srcClient = srcSystem.getRemoteDataClient();
+
+			// pull the dest system out of the url. system id is the hostname in an agave uri
+			RemoteSystem destSystem = new SystemDao().findBySystemId(destUri.getHost());
+			RemoteDataClient destClient = destSystem.getRemoteDataClient();
+
+			// stat the remote path to check its type
+			RemoteFileInfo fileInfo = srcClient.getFileInfo(srcUri.getPath());
+
+			HTTP http = new HTTP(srcUri);
+			http.put(srcUri.getPath(), destUri.getPath());
+
+		}catch (RemoteDataException e){
+			logger.error("Remote Data Exception occured {}",e.getMessage());
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+		}catch (RemoteCredentialException e){
+			logger.error("Remote Credential Exception occured {}",e.getMessage());
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+		}catch (IOException e){
+			logger.error("IO Exception occured {}",e.getMessage());
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+		} catch (Exception e) {
+			logger.error("Exception occured {}",e.getMessage());
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+		}
 		_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 	}
 

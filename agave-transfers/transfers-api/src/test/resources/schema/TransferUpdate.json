@@ -27,6 +27,20 @@
       "description": "An explanation about the purpose of this instance.",
       "default": 0
     },
+    "lastAttempt": {
+      "$id": "#/properties/lastAttempt",
+      "type": "string",
+      "title": "datetime",
+      "description": "The last attempt that this was done",
+      "default": 0
+    },
+    "nextAttempt": {
+      "$id": "#/properties/nextAttempt",
+      "type": "string",
+      "title": "datetime",
+      "description": "next attempt that this will be done",
+      "default": 0
+    },
     "bytesTransferred": {
       "$id": "#/properties/bytesTransferred",
       "type": "integer",

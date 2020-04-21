@@ -69,3 +69,7 @@ all-active-root-transfertask-ids: |
   SELECT distinct "uuid", "tenant_id" 
   FROM transfertasks
   WHERE "root_task" is NULL and "parent_task" is NULL and "status" NOT IN ('COMPLETED','CANCELLED','FAILED')
+single-not-canceled-or-completed: |
+    SELECT count("id") AS "active_uuid"
+    FROM transfertasks
+    WHERE ("uuid" = ?) AND "status" NOT IN ('COMPLETED','CANCELLED','FAILED') AND "tenant_id" = ?

@@ -1,9 +1,13 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -21,22 +25,20 @@ import java.util.HashSet;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_COMPLETED;
+import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.COMPLETED;
 
 public class TransferRetryListener extends AbstractTransferTaskListener{
 	private final Logger logger = LoggerFactory.getLogger(TransferRetryListener.class);
 
 	protected HashSet<String> interruptedTasks = new HashSet<String>();
-
+	private TransferTaskDatabaseService dbService;
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_RETRY;
-
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
 	}
-
 	public TransferRetryListener(Vertx vertx) {
 		super(vertx);
 	}
-
 	public TransferRetryListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
@@ -102,6 +104,69 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 		String username = body.getString("owner");
 		String tenantId = body.getString("tenantId");
 		String protocol = null;
+		Integer attempts = body.getInteger("attempts");
+
+		TransferTask bodyTask = new TransferTask(body);
+
+		Promise<Boolean> promise = Promise.promise();
+
+		// check to see if the uuid is Canceled or Completed
+		this.getDbService().getById(tenantId, uuid, reply -> {
+			if (reply.succeeded()) {
+				TransferTask transferTaskDb = new TransferTask(new JsonObject(String.valueOf(reply)));
+				if (transferTaskDb.getStatus() != TransferStatusType.CANCELLED ||
+						transferTaskDb.getStatus() != TransferStatusType.COMPLETED ||
+						transferTaskDb.getStatus() != TransferStatusType.FAILED ||
+						transferTaskDb.getStatus() != TransferStatusType.TRANSFERRING) {
+					// we're good to to go forward.
+					// the status is not in the states above.  Now check to see if the # of attempts exceeds the max
+
+					if (config().getInteger("transfertask.max.tries") <= transferTaskDb.getAttempts()) {
+						// # of retries is less.
+
+						// increment the attempts
+						transferTaskDb.setAttempts( attempts +1 );
+						getDbService().update(tenantId, uuid, transferTaskDb, updateBody -> {
+							if (updateBody.succeeded()) {
+								logger.info("[{}] Transfer task {} updated.", tenantId, uuid);
+								promise.handle(Future.succeededFuture(Boolean.TRUE));
+							} else {
+								logger.error("[{}] Task {} update failed: {}",
+										tenantId, uuid, reply.cause());
+								JsonObject json = new JsonObject()
+										.put("cause", updateBody.cause().getClass().getName())
+										.put("message", updateBody.cause().getMessage())
+										.mergeIn(body);
+								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+								promise.handle(Future.failedFuture(updateBody.cause()));
+							}
+						});
+
+						processRetry(transferTaskDb.toJson());
+
+						//promise.handle(Future.failedFuture(reply.cause()));
+					} else {
+						// this handles the failure of the getDbService
+						//promise.handle(Future.succeededFuture(Boolean.FALSE));
+					}
+				}
+				promise.handle(Future.succeededFuture(Boolean.TRUE));
+			}
+
+		});
+		return protocol;
+	}
+
+
+	public void processRetry(JsonObject body) {
+
+		String uuid = body.getString("uuid");
+		String source = body.getString("source");
+		String dest =  body.getString("dest");
+		String username = body.getString("owner");
+		String tenantId = body.getString("tenantId");
+		String protocol = null;
+		Integer attempts = body.getInteger("attempts");
 		TransferTask bodyTask = new TransferTask(body);
 
 		try {
@@ -216,6 +281,26 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 					}
 				} else {
 					// tell everyone else that you killed this task
+					// also set the status to CANCELLED
+					Promise<Boolean> promise = Promise.promise();
+					bodyTask.setStatus(TransferStatusType.CANCELLED);
+
+					getDbService().update(tenantId, uuid, bodyTask, updateBody -> {
+						if (updateBody.succeeded()) {
+							logger.info("[{}] Transfer task {} updated.", tenantId, uuid);
+							promise.handle(Future.succeededFuture(Boolean.TRUE));
+						} else {
+							logger.error("[{}] Task {} retry failed",
+									tenantId, uuid);
+							JsonObject json = new JsonObject()
+									.put("cause", updateBody.cause().getClass().getName())
+									.put("message", updateBody.cause().getMessage())
+									.mergeIn(body);
+							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+							promise.handle(Future.failedFuture(updateBody.cause()));
+						}
+					});
+
 					throw new InterruptedException(String.format("Transfer task %s interrupted due to cancel event", uuid));
 				}
 			} else {
@@ -243,9 +328,9 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 				_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
 			}
 		}
-
-		return protocol;
 	}
+
+
 
 	/**
 	 * Checks whether the transfer task or any of its children exist in the list of
@@ -258,6 +343,14 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 		return this.interruptedTasks.contains(transferTask.getUuid()) ||
 				this.interruptedTasks.contains(transferTask.getParentTaskId()) ||
 				this.interruptedTasks.contains(transferTask.getRootTaskId());
+	}
+
+	public TransferTaskDatabaseService getDbService() {
+		return dbService;
+	}
+
+	public void setDbService(TransferTaskDatabaseService dbService) {
+		this.dbService = dbService;
 	}
 
 }

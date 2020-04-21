@@ -33,36 +33,6 @@ class TransferTaskAssignedListenerTest {
 	private EventBus eventBus;
 	private TransferTaskDatabaseService service;
 
-//	@BeforeAll
-//	public void prepare(Vertx vertx, VertxTestContext ctx) throws InterruptedException, IOException {
-//		Path configPath = Paths.get(TransferServiceVerticalTest.class.getClassLoader().getResource("config.json").getPath());
-//		String json = new String(Files.readAllBytes(configPath));
-//		JsonObject conf = new JsonObject(json);
-//
-//		ctx.completeNow();
-////		vertx.deployVerticle(new TransferTaskDatabaseVerticle(),
-////				new DeploymentOptions().setConfig(conf).setWorker(true).setMaxWorkerExecuteTime(3600),
-////				ctx.succeeding(id -> {
-////					service = TransferTaskDatabaseService.createProxy(vertx, conf.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
-////					ctx.completeNow();
-////				}));
-////
-////		vertx.deployVerticle(new TransferTaskCreatedListener(vertx,"transfertask.created"));
-////		vertx.deployVerticle(new TransferTaskAssignedListener(vertx));
-////		vertx.deployVerticle(new TransferTaskCancelListener(vertx));
-////		vertx.deployVerticle(new TransferSftpVertical(vertx));
-////		vertx.deployVerticle(new TransferCompleteTaskListenerImpl(vertx));
-////		vertx.deployVerticle(new ErrorTaskListener());
-////		vertx.deployVerticle(new InteruptEventListener(vertx));
-////		vertx.deployVerticle(new NotificationListener());
-////		vertx.deployVerticle(new TransferTaskPausedListener(vertx));
-////		vertx.deployVerticle(new FileTransferCreateServiceImpl(vertx));
-////		vertx.deployVerticle(new TransferServiceUIVertical());
-////		vertx.deployVerticle(new TransferTaskUnaryImpl(vertx));
-////		vertx.deployVerticle(new StreamingFileTaskImpl(vertx));
-//
-//	}
-
 	@AfterAll
 	public void finish(Vertx vertx, VertxTestContext ctx) {
 		vertx.close(ctx.completing());

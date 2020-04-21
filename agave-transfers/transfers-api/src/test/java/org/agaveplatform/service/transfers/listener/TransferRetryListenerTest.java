@@ -5,6 +5,7 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -21,13 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("👋 TransferRetryListenerTest test")
 //@Disabled
-class TransferRetryListenerTest {
-
-	private final String TEST_USERNAME = "testuser";
-	public static final String TENANT_ID = "agave.dev";
-	public static final String TRANSFER_SRC = "http://foo.bar/cat";
-	public static final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
-	public static final String TEST_USER = "testuser";
+class TransferRetryListenerTest  extends BaseTestCase {
 
 	private EventBus eventBus;
 	private TransferTaskDatabaseService service;

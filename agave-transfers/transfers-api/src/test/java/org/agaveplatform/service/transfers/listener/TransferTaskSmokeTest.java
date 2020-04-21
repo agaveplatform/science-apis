@@ -26,7 +26,6 @@ import org.agaveplatform.service.transfers.resources.TransferAPIVertical;
 //import org.agaveplatform.service.transfers.resources.TransferTaskUnaryImpl;
 //import org.agaveplatform.service.transfers.streaming.StreamingFileTaskImpl;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
-import org.hibernate.annotations.Check;
 import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -76,59 +75,105 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 
 	InteruptEventListener getMockInteruptListenerInstance(Vertx vertx) {
 		InteruptEventListener listener = spy(new InteruptEventListener(vertx));
+		//when(listener.getEventChannel()).thenCallRealMethod();
+//		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 	NotificationListener getMockNotificationListenerInstance(Vertx vertx) {
+//		NotificationListener listener = spy(new NotificationListener(vertx));
 		NotificationListener listener = Mockito.spy(new NotificationListener(vertx));
+
+//		when(listener.getEventChannel()).thenCallRealMethod();
+//		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+//		doCallRealMethod().when(listener).start();
+
 		return listener;
 	}
 	TransferCompleteTaskListener getMockTCTListenerInstance(Vertx vertx) {
 		TransferCompleteTaskListener listener = spy(new TransferCompleteTaskListener(vertx));
+		//when(listener.getEventChannel()).thenCallRealMethod();
+//		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 	TransferTaskAssignedListener getMockTTAListenerInstance(Vertx vertx) {
 		TransferTaskAssignedListener listener = spy(new TransferTaskAssignedListener(vertx));
+		//when(listener.getEventChannel()).thenCallRealMethod();
+//		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 	TransferTaskCancelListener getMockTTCancelListenerInstance(Vertx vertx) {
 		TransferTaskCancelListener listener = spy(new TransferTaskCancelListener(vertx));
+		//when(listener.getEventChannel()).thenCallRealMethod();
+//		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 	TransferTaskCreatedListener getMockTTCListenerInstance(Vertx vertx) {
 		TransferTaskCreatedListener listener = spy(new TransferTaskCreatedListener(vertx));
+		//when(listener.getEventChannel()).thenCallRealMethod();
+//		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 	TransferTaskPausedListener getMockTTPausedListenerInstance(Vertx vertx) {
 		TransferTaskPausedListener listener = spy(new TransferTaskPausedListener(vertx));
+		//when(listener.getEventChannel()).thenCallRealMethod();
+//		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 	TransferSftpVertical getMockSFTPVerticalInstance(Vertx vertx) {
 		TransferSftpVertical listener = spy(new TransferSftpVertical(vertx));
+		//when(listener.getEventChannel()).thenCallRealMethod();
+//		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 
 	TransferHttpVertical getMockHTTPVerticalInstance(Vertx vertx) {
 		TransferHttpVertical listener = spy(new TransferHttpVertical(vertx));
+		//when(listener.getEventChannel()).thenCallRealMethod();
+//		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
 
-	TransferWatchListener getMockWatchListenerInstance(Vertx vertx) {
-		TransferWatchListener listener = spy(new TransferWatchListener(vertx));
-		return listener;
-	}
-	TransferHealthcheckListener getMockHealthcheckListenerInstance(Vertx vertx) {
-		TransferHealthcheckListener listener = spy(new TransferHealthcheckListener(vertx));
-		return listener;
-	}
+//	FileTransferCreateServiceImpl getMockFTCSIVerticalInstance(Vertx vertx) {
+//		FileTransferCreateServiceImpl listener = spy(new FileTransferCreateServiceImpl(vertx));
+//		//when(listener.getEventChannel()).thenCallRealMethod();
+////		when(listener.getVertx()).thenReturn(vertx);
+////		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+//		return listener;
+//	}
 
 	TransferAPIVertical getMockTransServUIVertInstance(Vertx vertx) {
 		TransferAPIVertical listener = spy(new TransferAPIVertical(vertx));
+		//when(listener.getEventChannel()).thenCallRealMethod();
+//		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
 		return listener;
 	}
-	TransferRetryListener getMockRetryListenerInstance(Vertx vertx) {
-		TransferRetryListener listener = spy(new TransferRetryListener(vertx));
-		return listener;
-	}
+
+//	TransferTaskUnaryImpl getMockTransferTaskUnaryImpl(Vertx vertx) {
+//		TransferTaskUnaryImpl listener = spy(new TransferTaskUnaryImpl(vertx));
+//		//when(listener.getEventChannel()).thenCallRealMethod();
+////		when(listener.getVertx()).thenReturn(vertx);
+////		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+//		return listener;
+//	}
+//
+//	StreamingFileTaskImpl getMockStreamingFileTaskImpl(Vertx vertx) {
+//		StreamingFileTaskImpl listener = spy(new StreamingFileTaskImpl(vertx));
+//		//when(listener.getEventChannel()).thenCallRealMethod();
+////		when(listener.getVertx()).thenReturn(vertx);
+////		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+//
+//		return listener;
+//	}
 
 	/**
 	 * Generates a JWT token to authenticate to the service. Token is signed using the
@@ -211,12 +256,10 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		InteruptEventListener interuptEventListener = getMockInteruptListenerInstance(vertx);
 		NotificationListener notificationListener = getMockNotificationListenerInstance(vertx);
 		TransferTaskPausedListener transferTaskPausedListener = getMockTTPausedListenerInstance(vertx);
-		TransferWatchListener transferWatchListener = getMockWatchListenerInstance(vertx);
-		TransferHealthcheckListener transferHealthcheckListener = getMockHealthcheckListenerInstance(vertx);
 		//FileTransferCreateServiceImpl fileTransferCreateService = getMockFTCSIVerticalInstance(vertx);
 		TransferAPIVertical transferAPIVertical = getMockTransServUIVertInstance(vertx);
-		TransferRetryListener transferRetryListener = getMockRetryListenerInstance(vertx);
-		TransferFailureHandler transferFailureHandler = getMockFailListenerInstance(vertx);
+//		TransferTaskUnaryImpl transferTaskUnary = getMockTransferTaskUnaryImpl(vertx);
+//		StreamingFileTaskImpl streamingFileTask = getMockStreamingFileTaskImpl(vertx);
 
 		Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();
 		Checkpoint apiDeploymentCheckpoint = ctx.checkpoint();
@@ -225,16 +268,6 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		Checkpoint httpDeploymentCheckpoint = ctx.checkpoint();
 		Checkpoint requestCheckpoint = ctx.checkpoint();
 		Checkpoint completedDeploymentCheckpoint = ctx.checkpoint();
-		Checkpoint watchCheckpoint = ctx.checkpoint();
-		Checkpoint healthcheckCheckpoint = ctx.checkpoint();
-		Checkpoint retryCheckpoint = ctx.checkpoint();
-		Checkpoint errorCheckpoint = ctx.checkpoint();
-		Checkpoint failureCheckpoint = ctx.checkpoint();
-		Checkpoint httpVertCheckpoint = ctx.checkpoint();
-		Checkpoint sftpVertCheckpoint = ctx.checkpoint();
-		Checkpoint allVertCheckpoint = ctx.checkpoint();
-
-
 
 		DeploymentOptions options = new DeploymentOptions().setConfig(config);
 
@@ -261,69 +294,41 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 										.setBaseUri("http://localhost:" + port + "/")
 										.build();
 
-								vertx.deployVerticle(transferWatchListener, options, ctx.succeeding(watchCompletedId -> {
-									watchCheckpoint.flag();
+								ctx.verify(() -> {
+									String response = given()
+											.spec(requestSpecification)
+											//										.header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
+											.contentType(ContentType.JSON)
+											.body(parentTask.toJSON())
+											.when()
+											.post("api/transfers")
+											.then()
+											.assertThat()
+											.statusCode(201)
+											.extract()
+											.asString();
 
-									vertx.deployVerticle(transferHealthcheckListener, options, ctx.succeeding(healthcheckCompletedId -> {
-										healthcheckCheckpoint.flag();
+									JsonObject createdTransferTask = new JsonObject(response);
+									assertThat(createdTransferTask).isNotNull();
+									requestCheckpoint.flag();
 
-										vertx.deployVerticle(transferRetryListener, options, ctx.succeeding(retryId -> {
-											retryCheckpoint.flag();
+									verify(transferAPIVertical)._doPublishEvent("transfertask.created", createdTransferTask);
+									verify(transferAPIVertical, never())._doPublishEvent("transfertask.error", createdTransferTask);
 
-											vertx.deployVerticle(transferSftpVertical, options, ctx.succeeding(sftpId -> {
-												sftpVertCheckpoint.flag();
+									verify(transferTaskCreatedListener)._doPublishEvent("transfertask.assigned", createdTransferTask);
+									verify(transferTaskCreatedListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
 
-												ctx.verify(() -> {
-													String response = given()
-															.spec(requestSpecification)
-															//										.header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
-															.contentType(ContentType.JSON)
-															.body(parentTask.toJSON())
-															.when()
-															.post("api/transfers")
-															.then()
-															.assertThat()
-															.statusCode(201)
-															.extract()
-															.asString();
+									verify(transferTaskAssignedListener)._doPublishEvent("transfertask.http", createdTransferTask);
+									verify(transferTaskAssignedListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
 
-													JsonObject createdTransferTask = new JsonObject(response);
-													assertThat(createdTransferTask).isNotNull();
-													requestCheckpoint.flag();
+									verify(transferHttpVertical)._doPublishEvent("transfer.completed", createdTransferTask);
+									verify(transferHttpVertical, never())._doPublishEvent("transfertask.error", createdTransferTask);
 
-													verify(transferAPIVertical)._doPublishEvent("transfertask.created", createdTransferTask);
-													verify(transferAPIVertical, never())._doPublishEvent("transfertask.error", createdTransferTask);
+									verify(transferCompleteTaskListener)._doPublishEvent("transfertask.completed", createdTransferTask);
+									verify(transferCompleteTaskListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
 
-													verify(transferTaskCreatedListener)._doPublishEvent("transfertask.assigned", createdTransferTask);
-													verify(transferTaskCreatedListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-													verify(transferRetryListener)._doPublishEvent("transfertask.retry", createdTransferTask);
-													verify(transferRetryListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-													verify(transferTaskAssignedListener)._doPublishEvent("transfertask.http", createdTransferTask);
-													verify(transferTaskAssignedListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-													verify(transferSftpVertical)._doPublishEvent("transfertask.sftp", createdTransferTask);
-													verify(transferSftpVertical, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-													verify(transferHttpVertical)._doPublishEvent("transfer.completed", createdTransferTask);
-													verify(transferHttpVertical, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-													verify(transferCompleteTaskListener)._doPublishEvent("transfertask.completed", createdTransferTask);
-													verify(transferCompleteTaskListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-													verify(transferWatchListener)._doPublishEvent("transfertask.healthcheck", createdTransferTask);
-													//verify(transferWatchListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-													verify(transferHealthcheckListener)._doPublishEvent("transfertask.completed", createdTransferTask);
-													verify(transferHealthcheckListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-													ctx.completeNow();
-												});
-											}));
-										}));
-									}));
-								}));
+									ctx.completeNow();
+								});
 							}));
 						}));
 					}));

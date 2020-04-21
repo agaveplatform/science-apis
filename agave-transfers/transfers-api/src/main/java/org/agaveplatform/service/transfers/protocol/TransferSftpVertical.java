@@ -11,14 +11,17 @@ import org.agaveplatform.service.transfers.model.TransferTask;
 
 import org.apache.commons.exec.ExecuteException;
 import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.URLCopy;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URI;
 
 public class TransferSftpVertical extends AbstractTransferTaskListener {
@@ -91,24 +94,13 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 		TransferTask tt = new TransferTask(body);
 		String source = tt.getSource();
 		String dest = tt.getDest();
-//		String uuid = tt.getUuid();
-//		String owner = tt.getOwner();
-//		String parentTask = tt.getParentTaskId();
-//		String rootTask = tt.getRootTaskId();
+
 		URI srcUri;
 		URI destUri;
 		try {
 			srcUri = URI.create(source);
 			destUri = URI.create(dest);
-//		} catch (Exception e) {
-//			String msg = String.format("Unable to parse source uri %s for transfertask %s: %s",
-//					source, uuid, e.getMessage());
-//			body.put("message", msg);
-//
-//			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-//			//throw new RemoteDataSyntaxException(msg, e);
 
-//		try {
 			// pull the system out of the url. system id is the hostname in an agave uri
 			RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
 			// get a remtoe data client for the sytem
@@ -121,18 +113,25 @@ public class TransferSftpVertical extends AbstractTransferTaskListener {
 			// stat the remote path to check its type
 			RemoteFileInfo fileInfo = srcClient.getFileInfo(srcUri.getPath());
 
-
 			URLCopy urlCopy = new URLCopy(srcClient,destClient);
 
-			org.iplantc.service.transfer.model.TransferTask ttn = new org.iplantc.service.transfer.model.TransferTask(source, dest);
+			org.iplantc.service.transfer.model.TransferTask transferTaskIplant = new org.iplantc.service.transfer.model.TransferTask(source, dest);
 
-			urlCopy.copy(source,dest, ttn);
+			urlCopy.copy(source,dest, transferTaskIplant);
 			
+		}catch (RemoteDataException e){
+			logger.error("Remote Data Exception {}",e.toString());
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+		}catch (RemoteCredentialException e){
+			logger.error("Remote Credential Exception {}", e.toString());
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+		}catch (IOException e){
+			logger.error("IO Exception {}", e.toString());
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
 		}catch (Exception e){
-			logger.error(e.toString());
+			logger.error("Exception {}", e.toString());
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
 		}
-
 
 		_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 	}

@@ -10,7 +10,9 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.protocol.TransferAllVertical;
+import org.agaveplatform.service.transfers.listener.TransferCompleteTaskListener;
+
+import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
 import org.apache.xmlbeans.impl.xb.xsdschema.Public;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -21,9 +23,7 @@ import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.time.Instant;
-
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.mockito.Mockito.*;
 
@@ -31,17 +31,15 @@ import static org.mockito.Mockito.*;
 @DisplayName("Transfers completed task listener integration tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({ JDBCClient.class })
-//@Disabled
 class TransferCompleteTaskListenerTest extends BaseTestCase {
     private static final Logger log = LoggerFactory.getLogger(TransferCompleteTaskListenerTest.class);
-
 
     @AfterAll
     public void tearDown(Vertx vertx, VertxTestContext ctx) {
         vertx.close(ctx.completing());
     }
 
-    TransferCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) {
+    protected TransferCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) {
         TransferCompleteTaskListener ttc = mock(TransferCompleteTaskListener.class );
         when(ttc.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
         when(ttc.getVertx()).thenReturn(vertx);
@@ -52,6 +50,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
 
     @Test
+    @DisplayName("testProcessEventWithNoParent")
     public void testProcessEventWithNoParent(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
@@ -63,7 +62,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        TransferCompleteTaskListener transferCompleteTaskListener = getMockTransferCompleteListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -72,6 +71,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         JsonObject expectedUdpatedJsonObject = transferTask.toJson()
                 .put("status", TransferStatusType.COMPLETED.name())
                 .put("endTime", Instant.now());
+
         AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
 
         // mock the handler passed into updateStatus
@@ -82,20 +82,20 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         }).when(dbService).updateStatus(any(), any(), any(), any());
 
 //        // mock a successful outcome with false result from processParentEvent indicating the parent has active children
-//        AsyncResult<Boolean> processParentEventHandler = getMockAsyncResult(Boolean.FALSE);
-//
+        AsyncResult<Boolean> processParentEventHandler = getMockAsyncResult(Boolean.FALSE);
+
 //        // mock the handler passed into processParentEvent
-//        doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-//            ((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-//                    .handle(processParentEventHandler);
-//            return null;
-//        }).when(ttc).processParentEvent(any(), any(), any());
+        doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+            ((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
+                    .handle(processParentEventHandler);
+            return null;
+        }).when(transferCompleteTaskListener).processParentEvent(any(), any(), any());
 
         // mock the dbService getter in our mocked vertical so we don't need to use powermock
-        when(ttc.getDbService()).thenReturn(dbService);
+        when(transferCompleteTaskListener.getDbService()).thenReturn(dbService);
 
         // now we run the actual test using our test transfer task data
-        Future<Boolean> result = ttc.processEvent(json);
+        Future<Boolean> result = transferCompleteTaskListener.processEvent(json);
 
         ctx.verify(() -> {
             // verify the db service was called to update the task status
@@ -106,14 +106,14 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishEvent(TRANSFERTASK_COMPLETED, json);
+            verify(transferCompleteTaskListener)._doPublishEvent(TRANSFERTASK_COMPLETED, json);
 
             // make sure the parent was not processed when none existed for the transfer task
-            verify(ttc, never()).processParentEvent(any(), any(), any());
+            verify(transferCompleteTaskListener, never()).processParentEvent(any(), any(), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-            verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+            verify(transferCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+            verify(transferCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             Assertions.assertTrue(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
@@ -125,6 +125,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
     }
 
     @Test
+    @DisplayName("testProcessEventWithInactiveParent")
     public void testProcessEventWithInactiveParent(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
@@ -203,6 +204,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
     }
 
     @Test
+    @DisplayName("testProcessEventWithActiveParent")
     public void testProcessEventWithActiveParent(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
@@ -280,6 +282,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
     }
 
     @Test
+    @DisplayName("testProcessEventCreatesParentErrorEventWhenParentProcessingFails")
     public void testProcessEventCreatesParentErrorEventWhenParentProcessingFails(Vertx vertx, VertxTestContext ctx) {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();

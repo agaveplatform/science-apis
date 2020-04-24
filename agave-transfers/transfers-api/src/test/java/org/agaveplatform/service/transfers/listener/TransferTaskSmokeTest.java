@@ -19,9 +19,8 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.protocol.TransferHttpVertical;
-import org.agaveplatform.service.transfers.protocol.TransferSftpVertical;
 //import org.agaveplatform.service.transfers.resources.FileTransferCreateServiceImpl;
+import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
 import org.agaveplatform.service.transfers.resources.TransferAPIVertical;
 //import org.agaveplatform.service.transfers.resources.TransferTaskUnaryImpl;
 //import org.agaveplatform.service.transfers.streaming.StreamingFileTaskImpl;
@@ -75,105 +74,52 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 
 	InteruptEventListener getMockInteruptListenerInstance(Vertx vertx) {
 		InteruptEventListener listener = spy(new InteruptEventListener(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+
 		return listener;
 	}
 	NotificationListener getMockNotificationListenerInstance(Vertx vertx) {
 //		NotificationListener listener = spy(new NotificationListener(vertx));
 		NotificationListener listener = Mockito.spy(new NotificationListener(vertx));
 
-//		when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-//		doCallRealMethod().when(listener).start();
-
 		return listener;
 	}
 	TransferCompleteTaskListener getMockTCTListenerInstance(Vertx vertx) {
 		TransferCompleteTaskListener listener = spy(new TransferCompleteTaskListener(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+
 		return listener;
 	}
 	TransferTaskAssignedListener getMockTTAListenerInstance(Vertx vertx) {
 		TransferTaskAssignedListener listener = spy(new TransferTaskAssignedListener(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+
 		return listener;
 	}
 	TransferTaskCancelListener getMockTTCancelListenerInstance(Vertx vertx) {
 		TransferTaskCancelListener listener = spy(new TransferTaskCancelListener(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+
 		return listener;
 	}
 	TransferTaskCreatedListener getMockTTCListenerInstance(Vertx vertx) {
 		TransferTaskCreatedListener listener = spy(new TransferTaskCreatedListener(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+
 		return listener;
 	}
 	TransferTaskPausedListener getMockTTPausedListenerInstance(Vertx vertx) {
 		TransferTaskPausedListener listener = spy(new TransferTaskPausedListener(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-		return listener;
-	}
-	TransferSftpVertical getMockSFTPVerticalInstance(Vertx vertx) {
-		TransferSftpVertical listener = spy(new TransferSftpVertical(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+
 		return listener;
 	}
 
-	TransferHttpVertical getMockHTTPVerticalInstance(Vertx vertx) {
-		TransferHttpVertical listener = spy(new TransferHttpVertical(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+	TransferAllProtocolVertical getMockAllProtocolVerticalInstance(Vertx vertx) {
+		TransferAllProtocolVertical listener = spy(new TransferAllProtocolVertical(vertx));
+
 		return listener;
 	}
-
-//	FileTransferCreateServiceImpl getMockFTCSIVerticalInstance(Vertx vertx) {
-//		FileTransferCreateServiceImpl listener = spy(new FileTransferCreateServiceImpl(vertx));
-//		//when(listener.getEventChannel()).thenCallRealMethod();
-////		when(listener.getVertx()).thenReturn(vertx);
-////		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-//		return listener;
-//	}
 
 	TransferAPIVertical getMockTransServUIVertInstance(Vertx vertx) {
 		TransferAPIVertical listener = spy(new TransferAPIVertical(vertx));
-		//when(listener.getEventChannel()).thenCallRealMethod();
-//		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+
 		return listener;
 	}
-
-//	TransferTaskUnaryImpl getMockTransferTaskUnaryImpl(Vertx vertx) {
-//		TransferTaskUnaryImpl listener = spy(new TransferTaskUnaryImpl(vertx));
-//		//when(listener.getEventChannel()).thenCallRealMethod();
-////		when(listener.getVertx()).thenReturn(vertx);
-////		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-//		return listener;
-//	}
-//
-//	StreamingFileTaskImpl getMockStreamingFileTaskImpl(Vertx vertx) {
-//		StreamingFileTaskImpl listener = spy(new StreamingFileTaskImpl(vertx));
-//		//when(listener.getEventChannel()).thenCallRealMethod();
-////		when(listener.getVertx()).thenReturn(vertx);
-////		doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
-//
-//		return listener;
-//	}
 
 	/**
 	 * Generates a JWT token to authenticate to the service. Token is signed using the
@@ -249,8 +195,8 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferTaskCreatedListener transferTaskCreatedListener = getMockTTCListenerInstance(vertx);
 		TransferTaskAssignedListener transferTaskAssignedListener = getMockTTAListenerInstance(vertx);
 		TransferTaskCancelListener transferTaskCancelListener = getMockTTCancelListenerInstance(vertx);
-		TransferSftpVertical transferSftpVertical = getMockSFTPVerticalInstance(vertx);
-		TransferHttpVertical transferHttpVertical = getMockHTTPVerticalInstance(vertx);
+//		TransferSftpVertical transferSftpVertical = getMockSFTPVerticalInstance(vertx);
+		TransferAllProtocolVertical transferAllProtocolVertical = getMockAllProtocolVerticalInstance(vertx);
 		TransferCompleteTaskListener transferCompleteTaskListener = getMockTCTListenerInstance(vertx);
 		TransferErrorListener errorTaskListener = getMockErrListenerInstance(vertx);
 		InteruptEventListener interuptEventListener = getMockInteruptListenerInstance(vertx);
@@ -283,7 +229,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 					vertx.deployVerticle(transferTaskAssignedListener, options, ctx.succeeding(assignedId -> {
 						assignedDeploymentCheckpoint.flag();
 
-						vertx.deployVerticle(transferHttpVertical, options, ctx.succeeding(httpId -> {
+						vertx.deployVerticle(transferAllProtocolVertical, options, ctx.succeeding(httpId -> {
 							httpDeploymentCheckpoint.flag();
 
 							vertx.deployVerticle(transferCompleteTaskListener, options, ctx.succeeding(completedId -> {
@@ -321,8 +267,8 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 									verify(transferTaskAssignedListener)._doPublishEvent("transfertask.http", createdTransferTask);
 									verify(transferTaskAssignedListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
 
-									verify(transferHttpVertical)._doPublishEvent("transfer.completed", createdTransferTask);
-									verify(transferHttpVertical, never())._doPublishEvent("transfertask.error", createdTransferTask);
+									verify(transferAllProtocolVertical)._doPublishEvent("transfer.completed", createdTransferTask);
+									verify(transferAllProtocolVertical, never())._doPublishEvent("transfertask.error", createdTransferTask);
 
 									verify(transferCompleteTaskListener)._doPublishEvent("transfertask.completed", createdTransferTask);
 									verify(transferCompleteTaskListener, never())._doPublishEvent("transfertask.error", createdTransferTask);

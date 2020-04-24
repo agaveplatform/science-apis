@@ -33,6 +33,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 	}
 
 	@Test
+	@DisplayName("Process TransferTaskPublishesProtocolEvent")
 	public void processTransferTaskPublishesProtocolEvent(Vertx vertx, VertxTestContext ctx) {
 		//JsonObject body = new JsonObject();
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
@@ -62,6 +63,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 	}
 
 	@Test
+	@DisplayName("Process processTransferTaskPublishesChildTasksForDirectory")
 	public void processTransferTaskPublishesChildTasksForDirectory(Vertx vertx, VertxTestContext ctx) {
 		//JsonObject body = new JsonObject();
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
@@ -87,6 +89,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 	}
 
 	@Test
+	@DisplayName("Process processTransferTaskPublishesErrorOnSystemUnavailble")
 	public void processTransferTaskPublishesErrorOnSystemUnavailble(Vertx vertx, VertxTestContext ctx) {
 		//JsonObject body = new JsonObject();
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
@@ -111,6 +114,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 	}
 
 	@Test
+	@DisplayName("Process processTransferTaskPublishesErrorOnSystemUnknown")
 	public void processTransferTaskPublishesErrorOnSystemUnknown(Vertx vertx, VertxTestContext ctx) {
 		//JsonObject body = new JsonObject();
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
@@ -134,6 +138,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 	}
 
 	@Test
+	@DisplayName("Process isTaskInterrupted")
 	void isTaskInterrupted(){
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

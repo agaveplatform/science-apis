@@ -36,6 +36,14 @@ public abstract class BaseTestCase {
     }
 
     /**
+     * Creates a legacy {@link org.iplantc.service.transfer.model.TransferTask} for use when mocking URLCopy operations
+     * @return
+     */
+    protected org.iplantc.service.transfer.model.TransferTask _createTestTransferTaskIPC() {
+        return new org.iplantc.service.transfer.model.TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USER, null, null);
+    }
+
+    /**
      * Reads config file synchronously to ensure completion prior to setup.
      */
     protected void initConfig() {

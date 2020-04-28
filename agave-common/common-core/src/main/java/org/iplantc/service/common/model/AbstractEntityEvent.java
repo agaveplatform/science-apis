@@ -213,7 +213,7 @@ public abstract class AbstractEntityEvent<T extends Enum<?>> implements AgaveEnt
     }
 
     /**
-     * @param entity
+     * @param entityUuid
      *            the uuid of the entity to set
      */
     public void setEntity(String entityUuid) {
@@ -243,7 +243,7 @@ public abstract class AbstractEntityEvent<T extends Enum<?>> implements AgaveEnt
     }
 
     /**
-     * @param username
+     * @param createdBy
      *            the creator to set
      */
     public void setCreatedBy(String createdBy) {

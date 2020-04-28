@@ -59,7 +59,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 
 		boolean result = txfrErrorListener.processError(body);
 
-		assertTrue(result, "processError should return true when the TransferErrorListener.prcessError is called");
+		assertFalse(result, "processError should return false when the TransferErrorListener.prcessError is called.  It is already in the QUEUE");
 
 		ctx.completeNow();
 	}
@@ -82,7 +82,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 
 		boolean result = txfrErrorListener.processError(body);
 
-		assertTrue(result, "processError should return true when the TransferErrorListener.prcessError is called for an IOException");
+		assertFalse(result, "processError should return true when the TransferErrorListener.prcessError is called for an IOException. It is already in the QUEUE");
 
 		ctx.completeNow();
 	}

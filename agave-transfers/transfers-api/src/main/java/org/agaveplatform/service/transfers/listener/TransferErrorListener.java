@@ -65,24 +65,12 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 		String cause = body.getString("cause");
 		String message = body.getString("message");
 		String status = body.getString("status");
-		boolean statusBool = true;
 
 		if ( body.getString("cause").equals(RemoteDataException.class.getName()) ||
 				body.getString("cause").equals(IOException.class.getName()) ||
 				body.getString("cause").equals(InterruptedException.class.getName())){
 
-			switch (status) {
-				case "CANCELLED":
-					statusBool = false;
-					break;
-				case "COMPLETED":
-					statusBool = false;
-					break;
-				case "FAILED":
-					statusBool = false;
-					break;
-			}
-			if (statusBool) {
+			if (getRetryStatus(status)) {
 				//log.error("TransformErrorListener will retry this error {} processing an error.  The error was {}", cause, message);
 				_doPublishEvent(TRANSFER_RETRY, body);
 				return true;
@@ -91,5 +79,21 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 
 		_doPublishEvent(TRANSFER_FAILED, body);
 		return false;
+	}
+
+	protected boolean getRetryStatus(String status){
+		boolean statusBool = true;
+		switch (status) {
+			case "CANCELLED":
+				statusBool = false;
+				break;
+			case "COMPLETED":
+				statusBool = false;
+				break;
+			case "FAILED":
+				statusBool = false;
+				break;
+		}
+		return statusBool;
 	}
 }

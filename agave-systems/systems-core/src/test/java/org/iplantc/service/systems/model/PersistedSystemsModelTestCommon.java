@@ -21,6 +21,7 @@ public class PersistedSystemsModelTestCommon extends SystemsModelTestCommon {
             session.createQuery("delete AuthConfig").executeUpdate();
             session.createQuery("delete SystemRole").executeUpdate();
             session.createQuery("delete CredentialServer").executeUpdate();
+            session.createQuery("delete SystemHistoryEvent").executeUpdate();
             session.flush();
         } catch (Throwable t) {
             t.printStackTrace();

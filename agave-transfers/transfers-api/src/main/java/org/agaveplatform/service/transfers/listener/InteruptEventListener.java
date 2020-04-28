@@ -34,14 +34,7 @@ public class InteruptEventListener extends AbstractTransferTaskListener {
 			String tenantId = body.getString("tenantId");
 			String source = body.getString("source");
 			logger.info("Transfer task paused {} created: {} -> {}",tenantId, uuid, source);
-
-//			this.processEvent(body);
 		});
-//
-//		bus.<JsonObject>consumer("paused." + tenantId +"." + username + "." + uuid ).isRegistered()) {
-//			logger.info("Transfer task paused {} created: {} -> {}", tenantId, uuid, source);
-//			return true;
-//		}
 	}
 
 

@@ -66,23 +66,10 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		return rdc;
 	}
 
-
-	@Test
-	@DisplayName("Transfer All Vertical - processEvent")
-	@Disabled
-	public void processEvent(Vertx vertx, VertxTestContext ctx) throws SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
-		TransferTask transferTask = _createTestTransferTask();
-
-		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);
-		String result = txfrAllVert.processEvent(transferTask.toJson());
-
-		assertEquals("Complte", result);
-		ctx.completeNow();
-	}
-
 	@Test
 	@DisplayName("Test the processCopyRequest")
-	public void testProcessCopyRequest () throws SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
+	public void testProcessCopyRequest () throws SystemUnknownException, AgaveNamespaceException, RemoteCredentialException,
+			PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
 		// set up the parameters
 		org.iplantc.service.transfer.model.TransferTask legacyTransferTask = _createTestTransferTaskIPC();
 		legacyTransferTask.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -135,7 +122,8 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 
 	@Test
 	@DisplayName("Test the processCopyRequest exception handling")
-	public void testProcessCopyRequestThrowsRemoteDataException() throws SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
+	public void testProcessCopyRequestThrowsRemoteDataException() throws SystemUnknownException, AgaveNamespaceException,
+			RemoteCredentialException, PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
 		// set up the parameters
 		org.iplantc.service.transfer.model.TransferTask legacyTransferTask = _createTestTransferTaskIPC();
 		legacyTransferTask.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());

@@ -43,7 +43,8 @@ public class NotificationListener extends AbstractTransferTaskListener {
 					body.getString("uuid"),
 					body.encodePrettily());
 
-			NotificationManager.process( body.getString("id"), body.encode(), body.getString("owner"));
+			boolean result = notificationEventProcess(body);
+
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -68,5 +69,11 @@ public class NotificationListener extends AbstractTransferTaskListener {
 			logger.info("Transfer task {} created.", body.getString("id"));
 
 		});
+	}
+
+	protected boolean notificationEventProcess(JsonObject body) {
+
+		NotificationManager.process(body.getString("id"), body.encode(), body.getString("owner"));
+		return true;
 	}
 }

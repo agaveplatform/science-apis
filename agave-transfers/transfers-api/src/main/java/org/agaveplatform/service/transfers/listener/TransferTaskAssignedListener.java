@@ -225,6 +225,12 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         }
         catch (InterruptedException e) {
             logger.error(e.getMessage());
+            JsonObject json = new JsonObject()
+                    .put("cause", e.getClass().getName())
+                    .put("message", e.getMessage())
+                    .mergeIn(body);
+
+            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
         }
         catch (Exception e) {
             logger.error(e.getMessage());

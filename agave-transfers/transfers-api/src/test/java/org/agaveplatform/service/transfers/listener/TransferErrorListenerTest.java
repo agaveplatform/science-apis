@@ -37,7 +37,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		TransferErrorListener ttc = mock(TransferErrorListener.class );
 		when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_ERROR);
 		when(ttc.getVertx()).thenReturn(vertx);
-
+		when(ttc.config()).thenReturn(config);
 		return ttc;
 	}
 

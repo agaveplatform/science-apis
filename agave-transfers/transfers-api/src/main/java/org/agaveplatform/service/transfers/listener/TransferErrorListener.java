@@ -71,7 +71,7 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 		//int maxTries = 3;
 		int maxTries = config().getInteger(TRANSFERTASK_MAX_TRIES, 3);
 
-		//if ( attempts <= maxTries ) {
+		if ( attempts <= maxTries ) {
 			if (body.getString("cause").equals(RemoteDataException.class.getName()) ||
 					body.getString("cause").equals(IOException.class.getName()) ||
 					body.getString("cause").equals(InterruptedException.class.getName())) {
@@ -82,7 +82,7 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 					return true;
 				}
 			}
-		//}
+		}
 
 		_doPublishEvent(TRANSFER_FAILED, body);
 		return false;

@@ -3,6 +3,7 @@ package org.agaveplatform.service.transfers.listener;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -18,7 +19,7 @@ import static org.agaveplatform.service.transfers.enumerations.TransferStatusTyp
 
 public class TransferErrorListener extends AbstractTransferTaskListener {
 	protected final Logger log = LoggerFactory.getLogger(TransferErrorListener.class);
-
+	//private TransferTaskDatabaseService dbService;
 	protected String eventChannel = MessageType.TRANSFERTASK_ERROR;
 
 	public TransferErrorListener(Vertx vertx) {
@@ -65,15 +66,18 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 		String cause = body.getString("cause");
 		String message = body.getString("message");
 		String status = body.getString("status");
+		int attempts = body.getInteger("attempts");
 
-		if ( body.getString("cause").equals(RemoteDataException.class.getName()) ||
-				body.getString("cause").equals(IOException.class.getName()) ||
-				body.getString("cause").equals(InterruptedException.class.getName())){
+		if ( attempts <= config().getInteger("transfertask.max.tries") ) {
+			if (body.getString("cause").equals(RemoteDataException.class.getName()) ||
+					body.getString("cause").equals(IOException.class.getName()) ||
+					body.getString("cause").equals(InterruptedException.class.getName())) {
 
-			if (getRetryStatus(status)) {
-				//log.error("TransformErrorListener will retry this error {} processing an error.  The error was {}", cause, message);
-				_doPublishEvent(TRANSFER_RETRY, body);
-				return true;
+				if (getRetryStatus(status)) {
+					//log.error("TransformErrorListener will retry this error {} processing an error.  The error was {}", cause, message);
+					_doPublishEvent(TRANSFER_RETRY, body);
+					return true;
+				}
 			}
 		}
 

@@ -14,34 +14,35 @@ import org.restlet.security.Verifier;
 
 public class ServletJaxRsApplication extends JaxRsApplication 
 {
-	//private static final Logger log = Logger.getLogger(ServletJaxRsApplication.class);
-	
-    public ServletJaxRsApplication(Context context) 
+	private SchedulerFactory schedulerFactory = null;
+
+	public SchedulerFactory getSchedulerFactory() {
+		return schedulerFactory;
+	}
+
+	public ServletJaxRsApplication(Context context)
     {
         super(context);
-        
-        SchedulerFactory sf;
+
 		try {
-			sf = new StdSchedulerFactory("quartz.properties");
-			Scheduler sched = sf.getScheduler();
+			schedulerFactory = new StdSchedulerFactory("quartz.properties");
+			Scheduler sched = schedulerFactory.getScheduler();
 			sched.start();
 		} catch (SchedulerException e) {
 			e.printStackTrace();
 			System.exit(1);
 		}
 		
-		
-        add(new MonitorApplication());
-        setStatusService(new AgaveStatusService());
-        
-        // add basic auth
+		// add basic auth
   		Verifier verifier = new VerifierFactory().createVerifier(Settings.AUTH_SOURCE);
-  		ChallengeAuthenticator guard = new ChallengeAuthenticator(context,
-  				 ChallengeScheme.HTTP_BASIC, "iPlant Agave API");
-  		guard.setVerifier(verifier);
-  		
-  		guard.setNext(this);
-//  		setGuard(guard);
-  		setAuthenticator(guard);
+  		ChallengeAuthenticator authenticator = new ChallengeAuthenticator(context,
+  				 ChallengeScheme.HTTP_BASIC, "The Agave Platform");
+		authenticator.setVerifier(verifier);
+
+		add(new MonitorApplication());
+		setStatusService(new AgaveStatusService());
+
+		authenticator.setNext(this);
+		this.setAuthenticator(authenticator);
     }
 }

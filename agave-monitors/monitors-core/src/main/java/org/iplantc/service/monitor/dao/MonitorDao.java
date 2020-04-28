@@ -3,20 +3,36 @@
  */
 package org.iplantc.service.monitor.dao;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.hibernate.ObjectNotFoundException;
 import org.hibernate.Query;
 import org.hibernate.Session;
 import org.hibernate.exception.ConstraintViolationException;
+import org.hibernate.transform.Transformers;
+import org.iplantc.service.common.Settings;
+import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.dao.AbstractDao;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.model.Monitor;
+import org.iplantc.service.monitor.search.MonitorSearchFilter;
+import org.iplantc.service.systems.exceptions.SystemException;
+import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
+import org.iplantc.service.systems.search.SystemSearchFilter;
+import org.iplantc.service.systems.search.SystemSearchResult;
+import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
 /**
  * Data access class for internal users.
@@ -26,6 +42,7 @@ import org.iplantc.service.systems.model.RemoteSystem;
 @SuppressWarnings("ALL")
 public class MonitorDao extends AbstractDao
 {
+	private static final Logger log = Logger.getLogger(MonitorDao.class);
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.common.persistence.AbstractDao#getSession()
 	 */
@@ -579,5 +596,153 @@ public class MonitorDao extends AbstractDao
 		finally {
 			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
-	}	
+	}
+
+	/**
+	 * Searches for {@link Monitor}s by the given user who matches the
+	 * given set of parameters. Permissions are honored in this query. Results
+	 * are limited to at most {@link Settings#DEFAULT_PAGE_SIZE}.
+	 *
+	 * @param username
+	 * @param searchCriteria
+	 * @return
+	 * @throws MonitorException
+	 */
+	public List<Monitor> findMatching(String username, Map<SearchTerm, Object> searchCriteria)
+			throws MonitorException {
+		return findMatching(username, searchCriteria, Settings.DEFAULT_PAGE_SIZE, 0, false);
+	}
+
+	/**
+	 * Searches for {@link Monitor}s by the given user who matches the
+	 * given set of parameters. Permissions are honored in this query.
+	 *
+	 * @param username username of the user making the query
+	 * @param searchCriteria map of the search criteria to match
+	 * @param limit the max results returned
+	 * @param offset the number of results to skip
+	 * @param fullResponse should the full entity object be returned?
+	 * @return a list of the Monitors
+	 * @throws MonitorException
+	 */
+	@SuppressWarnings("unchecked")
+	public List<Monitor> findMatching(String username, Map<SearchTerm, Object> searchCriteria, int limit, int offset, boolean fullResponse)
+			throws MonitorException {
+
+		try {
+			Class<?> transformClass = Monitor.class;
+			Map<String, Class> searchTypeMappings = new MonitorSearchFilter().getSearchTypeMappings();
+			Session session = getSession();
+			session.clear();
+			String hql =  "SELECT distinct m.id as id, \n"
+					+ "     m.active as active, \n"
+					+ "     m.created as created, \n"
+					+ "     m.frequency as frequency, \n"
+					+ "     m.system as system, \n"
+					+ "     m.internalUsername as internalUsername, \n"
+					+ "     m.lastSuccess as lastSuccess, \n"
+					+ "     m.lastUpdated as lastUpdated, \n"
+					+ "     m.nextUpdateTime as nextUpdateTime, \n"
+					+ "     m.owner as owner, \n"
+					+ "     m.created as created, \n"
+					+ "     m.lastUpdated as lastUpdated, \n"
+					+ "     m.updateSystemStatus as updateSystemStatus, \n"
+					+ "     m.uuid as uuid \n"
+					+ "FROM Monitor m left join m.system \n"
+					+ "WHERE m.tenantId = :tenantid ";
+
+			if (!AuthorizationHelper.isTenantAdmin(username)) {
+				hql += "\n     AND  m.owner = :owner ";
+			}
+
+			for (SearchTerm searchTerm : searchCriteria.keySet()) {
+				if (searchTerm.getSearchField().startsWith("owner") && !AuthorizationHelper.isTenantAdmin(username)) {
+					continue;
+				}
+				if (searchCriteria.get(searchTerm) == null
+						|| StringUtils.equalsIgnoreCase(searchCriteria.get(searchTerm).toString(), "null"))
+				{
+					if (searchTerm.getOperator() == SearchTerm.Operator.NEQ ) {
+						hql += "\n     AND  " + String.format(searchTerm.getMappedField(), searchTerm.getPrefix()) + " is not null ";
+					} else if (searchTerm.getOperator() == SearchTerm.Operator.EQ ) {
+						hql += "\n     AND  " + String.format(searchTerm.getMappedField(), searchTerm.getPrefix()) + " is null ";
+					} else {
+						hql += "\n     AND  " + searchTerm.getExpression();
+					}
+				} else {
+					hql += "\n     AND  " + searchTerm.getExpression();
+				}
+			}
+
+			hql += " ORDER BY m.lastUpdated DESC\n";
+
+			String q = hql;
+
+			Query query = session.createQuery(hql)
+					.setResultTransformer(Transformers.aliasToBean(transformClass))
+					.setString("tenantid", TenancyHelper.getCurrentTenantId());
+
+			q = q.replaceAll(":tenantid", "'" + TenancyHelper.getCurrentTenantId() + "'");
+
+			if (hql.contains(":owner")) {
+				query.setString("owner", username);
+				q = q.replaceAll(":owner", "'" + username + "'");
+			}
+
+			for (SearchTerm searchTerm : searchCriteria.keySet()) {
+				if (searchTerm.getOperator() == SearchTerm.Operator.BETWEEN || searchTerm.getOperator() == SearchTerm.Operator.ON) {
+					List<String> formattedDates = (List<String>)searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm));
+					for(int i=0;i<formattedDates.size(); i++) {
+						query.setString(searchTerm.getSafeSearchField()+i, formattedDates.get(i));
+						q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "'" + formattedDates.get(i) + "'");
+					}
+				}
+				else if (searchTerm.getOperator().isSetOperator())
+				{
+					query.setParameterList(searchTerm.getSafeSearchField(), (List<Object>)searchCriteria.get(searchTerm));
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "('" + StringUtils.join((List<String>)searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)), "','") + "')" );
+				}
+				else if (searchCriteria.get(searchTerm) == null
+						|| StringUtils.equalsIgnoreCase(searchCriteria.get(searchTerm).toString(), "null")
+						&& (searchTerm.getOperator() == SearchTerm.Operator.NEQ || searchTerm.getOperator() == SearchTerm.Operator.EQ )) {
+					// this was explicitly set to 'is null' or 'is not null'
+				}
+				else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Date.class ) {
+					query.setDate(searchTerm.getSafeSearchField(), (java.util.Date)searchCriteria.get(searchTerm));
+
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+							"'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+				}
+				else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Integer.class) {
+					query.setInteger(searchTerm.getSafeSearchField(), (Integer)searchCriteria.get(searchTerm));
+
+					q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
+							"'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+				}
+				else
+				{
+					query.setParameter(searchTerm.getSafeSearchField(),
+							searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)));
+					q = StringUtils.replace(q, ":" + searchTerm.getSafeSearchField(),
+							"'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+				}
+			}
+
+//			log.debug(q);
+
+			List<Monitor> monitors = query.setFirstResult(offset).setMaxResults(limit).list();
+
+			session.flush();
+
+			return monitors;
+
+		} catch (Throwable ex) {
+			throw new MonitorException(ex);
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
+		}
+	}
 }

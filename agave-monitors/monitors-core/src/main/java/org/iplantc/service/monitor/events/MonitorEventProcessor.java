@@ -143,10 +143,10 @@ public class MonitorEventProcessor {
 	 * {@link Monitor}.
 	 * 
 	 * @param monitor the {@link Monitor} on which the even is triggered
-	 * @param check the {@link MonitorCheck} that just ran
-	 * @param eventType the event being triggered
+	 * @param lastCheck the {@link MonitorCheck} that just ran
+	 * @param currentCheck the {@link MonitorCheck} that is currently being run
 	 * @param createdBy the user who caused this event
-	 * @return the {@link MonitorEvent} with the association to the {@link Monitor}
+	 * @return the {@link DomainEntityEvent} with the association to the {@link Monitor}
 	 */
 	public DomainEntityEvent processCheckEvent(Monitor monitor, MonitorCheck lastCheck, MonitorCheck currentCheck, String createdBy) {
 		

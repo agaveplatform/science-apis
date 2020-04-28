@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Date;
 
 import org.apache.log4j.Logger;
+import org.hibernate.StaleStateException;
 import org.iplantc.service.monitor.dao.MonitorCheckDao;
 import org.iplantc.service.monitor.dao.MonitorDao;
 import org.iplantc.service.monitor.events.MonitorEventProcessor;
@@ -40,10 +41,9 @@ public class MonitorManager
 	/**
 	 * Sends off all the monitors for a particular event and UUID for processing.
 	 * 
-	 * @param associatedUuid
-	 * @param monitorEvent
-	 * @param affectedUser
-	 * @return
+	 * @param monitor the monitor to check
+	 * @param createdBy the user who initiated the check
+	 * @return a monitor with the check results or null if the system is not available to check
 	 */
 	public MonitorCheck check(Monitor monitor, String createdBy)
 	{
@@ -92,7 +92,7 @@ public class MonitorManager
 	 * 
 	 * @param monitor the monitor to check
 	 * @param createdBy user who kicked off the check
-	 * @return
+	 * @return a monitor check with the current check results
 	 */
 	@SuppressWarnings("unused")
     private MonitorCheck doStorageCheck(Monitor monitor, String createdBy)
@@ -122,51 +122,26 @@ public class MonitorManager
 			    log.trace("Data connectivity succeeded to " + system.getSystemId() + 
 					"(" +  system.getStorageConfig().getProtocol() + ":" + monitoredSystemRemoteDataClient.getHost() + ")");
 		}
-		catch (IOException e) 
+		catch (RemoteDataException|IOException  e)
 		{
-			if (system != null && system.getStorageConfig() != null) {
+			if (system.getStorageConfig() != null) {
 				log.debug("Data connectivity failed to " + system.getSystemId() + 
-					"(" +  system.getStorageConfig().getProtocol() + ":" + monitoredSystemRemoteDataClient.getHost() + ")" + 
+					"(" +  system.getStorageConfig().getProtocol() + ":" + system.getStorageConfig().getHost() + ")" +
 					". " + e.getMessage());
-			} else if (system != null) {
-				log.debug("Data connectivity failed to " + system.getSystemId() + 
-						". " + e.getMessage());
-			} 
-			else {
-				log.debug("Data connectivity failed for monitor " + monitor.getId());
-			}
-			
-			// something went wrong. The system storage is not accessible.
-			currentCheck.setMessage(e.getMessage());
-			currentCheck.setResult(MonitorStatusType.FAILED);
-		}
-		catch (RemoteDataException e) 
-		{
-			if (system != null && system.getStorageConfig() != null) {
-				log.debug("Data connectivity failed to " + system.getSystemId() + 
-					"(" +  system.getStorageConfig().getProtocol() + ":" + monitoredSystemRemoteDataClient.getHost() + ")" + 
-					". " + e.getMessage());
-			} else if (system != null) {
-				log.debug("Data connectivity failed to " + system.getSystemId() + 
-						". " + e.getMessage());
 			} else {
-				log.debug("Data connectivity failed for monitor " + monitor.getId());
+				log.debug("Data connectivity failed to " + system.getSystemId() + 
+						". " + e.getMessage());
 			}
-			
+
 			// something went wrong. The system storage is not accessible.
 			currentCheck.setMessage(e.getMessage());
 			currentCheck.setResult(MonitorStatusType.FAILED);
 		}
 		catch (RemoteCredentialException e) 
 		{
-			if (system != null) {
-				log.debug("Failed to retrieve an authentication credential for " + system.getSystemId() + 
-					" when running storage check. " +  e.getMessage());
-			} else {
-				log.debug("Failed to retrieve an authentication credential for "
-						+ " when performing storage check for monitor " + monitor.getId());
-			}
-			
+			log.debug("Failed to retrieve an authentication credential for " + system.getSystemId() +
+				" when running storage check. " +  e.getMessage());
+
 			// something went wrong. The system storage is not accessible.
 			currentCheck.setMessage("Authentication failed for " + system.getSystemId() + 
 					". " + e.getMessage());
@@ -176,7 +151,7 @@ public class MonitorManager
 		{
 			if (system != null && system.getStorageConfig() != null) {
 				log.debug("Data connectivity failed to " + system.getSystemId() + 
-					"(" +  system.getStorageConfig().getProtocol() + ":" + monitoredSystemRemoteDataClient.getHost() + ")" + 
+					"(" +  system.getStorageConfig().getProtocol() + ":" + system.getStorageConfig().getHost() + ")" +
 					". " + e.getMessage());
 			} else if (system != null) {
 				log.debug("Data connectivity failed to " + system.getSystemId() + 
@@ -190,7 +165,7 @@ public class MonitorManager
 			currentCheck.setResult(MonitorStatusType.FAILED);
 		}
 		finally {
-			try { monitoredSystemRemoteDataClient.disconnect(); } catch (Exception e) {}
+			try { if (monitoredSystemRemoteDataClient != null) monitoredSystemRemoteDataClient.disconnect(); } catch (Exception ignored) {}
 		}
 		
 		try 
@@ -213,7 +188,15 @@ public class MonitorManager
 			try {
 				monitor.setLastUpdated(new Date());
 				new MonitorDao().persist(monitor);
-			} catch (Exception e){}
+			}
+			catch (StaleStateException e) {
+				log.error("Failed to update stale reference to monitor " + monitor.getUuid() +
+						" after check " + currentCheck.getUuid());
+			}
+			catch (Throwable t){
+				log.error("Failed to update monitor " + monitor.getUuid() + " after check " +
+						currentCheck.getUuid(), t);
+			}
 			
 		}
 		
@@ -225,13 +208,12 @@ public class MonitorManager
 	 * 
 	 * @param monitor the monitor to check
 	 * @param createdBy user who kicked off the check
-	 * @return
+	 * @return a monitor check with the current check results
 	 */
 	@SuppressWarnings("unused")
 	private MonitorCheck doLoginCheck(Monitor monitor, String createdBy)
 	{
 		MonitorCheckDao checkDao = new MonitorCheckDao();
-		
 		MonitorCheck currentCheck = new MonitorCheck(monitor, MonitorStatusType.UNKNOWN, null, MonitorCheckType.LOGIN);
 		
 		RemoteSubmissionClient submissionClient = null;
@@ -271,34 +253,15 @@ public class MonitorManager
                         system.getLoginConfig().getHost() + ")");
 			}
 		}
-		catch (IOException e) 
+		catch (RemoteDataException e)
 		{
-			if (system != null && system.getStorageConfig() != null) {
+			if (system.getStorageConfig() != null) {
 				log.debug("Login connectivity failed to " + system.getSystemId() + 
 					"(" +  system.getLoginConfig().getProtocol() + ":" + system.getLoginConfig().getHost() + ")" + 
 					". " + e.getMessage());
-			} else if (system != null) {
+			} else {
 				log.debug("Login connectivity failed to " + system.getSystemId() + 
 						". " + e.getMessage());
-			} else {
-				log.debug("Login connectivity failed for monitor " + monitor.getId());
-			}
-			
-			// something went wrong. The system storage is not accessible.
-			currentCheck.setMessage(e.getMessage());
-			currentCheck.setResult(MonitorStatusType.FAILED);
-		}
-		catch (RemoteDataException e) 
-		{
-			if (system != null && system.getStorageConfig() != null) {
-				log.debug("Login connectivity failed to " + system.getSystemId() + 
-					"(" +  system.getLoginConfig().getProtocol() + ":" + system.getLoginConfig().getHost() + ")" + 
-					". " + e.getMessage());
-			} else if (system != null) {
-				log.debug("Login connectivity failed to " + system.getSystemId() + 
-						". " + e.getMessage());
-			} else {
-				log.debug("Login connectivity failed for monitor " + monitor.getId());
 			}
 			
 			// something went wrong. The system storage is not accessible.
@@ -307,14 +270,9 @@ public class MonitorManager
 		}
 		catch (RemoteCredentialException e) 
 		{
-			if (system != null) {
-				log.debug("Failed to retrieve an authentication credential for " + system.getSystemId() + 
-					" when running login check. " +  e.getMessage());
-			} else {
-				log.debug("Failed to retrieve an authentication credential for "
-						+ " when performing login check for monitor " + monitor.getId());
-			}
-			
+			log.debug("Failed to retrieve an authentication credential for " + system.getSystemId() +
+				" when running login check. " +  e.getMessage());
+
 			// something went wrong. The system storage is not accessible.
 			currentCheck.setMessage("Authentication failed for " + system.getSystemId() + 
 					". " + e.getMessage());
@@ -323,17 +281,21 @@ public class MonitorManager
 		}
 		catch (Exception e)
 		{
-			log.debug("Login connectivity failed to " + system.getSystemId() + 
-					"(" +  system.getLoginConfig().getProtocol() + ":" + 
-					system.getLoginConfig().getHost() + ")");
+			if (system != null) {
+				log.debug("Login connectivity failed to " + system.getSystemId() +
+						"(" + system.getLoginConfig().getProtocol() + ":" +
+						system.getLoginConfig().getHost() + ")");
+			} else {
+				log.debug("Login connectivity failed to " + monitor.getSystem().getSystemId());
+			}
 			
-			currentCheck.setMessage("Failed to perform login monitoring check on " + 
-					system.getSystemId() + "\n" + e.getMessage());
+			currentCheck.setMessage("Failed to perform login monitoring check on " +
+					monitor.getSystem().getSystemId() + "\n" + e.getMessage());
 			
 			currentCheck.setResult(MonitorStatusType.FAILED);
 		}
 		finally {
-			try { submissionClient.close(); } catch (Exception e) {}
+			try { if (submissionClient != null) submissionClient.close(); } catch (Exception ignored) {}
 		}
 		
 		try 
@@ -405,7 +367,7 @@ public class MonitorManager
 			try {
 				monitor.setLastUpdated(new Date());
 				new MonitorDao().persist(monitor);
-			} catch (Exception e){}
+			} catch (Exception ignored){}
 			
 		}
 		
@@ -416,8 +378,8 @@ public class MonitorManager
 	 * Reschedules a {@link MonitorCheck} for the next avaialble time based on the
 	 * frequency set at registration.
 	 * 
-	 * @param monitor
-	 * @throws MonitorException
+	 * @param monitor the monitor whose timer will be reset
+	 * @throws MonitorException when the monitor cannot be updated
 	 */
 	public void resetNextUpdateTime(Monitor monitor) throws MonitorException
 	{

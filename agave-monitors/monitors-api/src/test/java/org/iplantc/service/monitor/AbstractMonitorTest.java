@@ -250,7 +250,6 @@ public class AbstractMonitorTest {
 	
 	/**
 	 * Flushes the messaging tube of any and all existing jobs.
-	 * @param queueName
 	 */
 	@AfterMethod
 	protected void clearQueues() 

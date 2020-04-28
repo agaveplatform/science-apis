@@ -12,6 +12,7 @@ import org.iplantc.service.monitor.managers.MonitorManager;
 import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.MonitorCheck;
 import org.iplantc.service.monitor.model.enumeration.MonitorStatusType;
+import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.json.JSONException;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -48,8 +49,7 @@ public class MonitorQueueListenerIT extends AbstractMonitorIT
 	}
 	
 	@DataProvider(name="processMessageProvider")
-	private Object[][] processMessageProvider() throws MonitorException, JSONException, IOException
-	{
+	private Object[][] processMessageProvider() throws MonitorException, JSONException, IOException, SystemArgumentException, SystemArgumentException {
 		Monitor storageMonitor = createStorageMonitor();
 		Monitor executionMonitor = createExecutionMonitor();
 	

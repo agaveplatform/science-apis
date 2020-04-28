@@ -8,7 +8,10 @@ import static org.iplantc.service.monitor.TestDataHelper.TEST_STORAGE_SYSTEM_FIL
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -19,6 +22,7 @@ import org.iplantc.service.monitor.dao.MonitorDao;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
@@ -26,6 +30,7 @@ import org.iplantc.service.systems.model.SystemRole;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.joda.time.DateTime;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
@@ -35,7 +40,6 @@ import org.testng.annotations.Test;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.surftools.BeanstalkClientImpl.ClientImpl;
 
-@Test(groups={"integration"})
 public class AbstractMonitorIT {
 
 	public static final String TEST_USER = "systest";
@@ -57,12 +61,11 @@ public class AbstractMonitorIT {
 	@BeforeClass
 	public void beforeClass() throws Exception
 	{
-		dataHelper = TestDataHelper.getInstance();
-		
 		HibernateUtil.getConfiguration();
 		
 		clearMonitors();
 		clearNotifications();
+		clearSystems();
 		initSystems();
 	}
 	
@@ -77,7 +80,7 @@ public class AbstractMonitorIT {
 	@AfterMethod
 	public void afterMethod() throws Exception
 	{
-		clearQueues();
+
 	}
 	
 	/**
@@ -89,7 +92,7 @@ public class AbstractMonitorIT {
 	 * @param isPublicSystem
 	 * @throws Exception
 	 */
-	public void addMonitor(boolean isActive, boolean isStranger, boolean isStorageType, boolean isPublicSystem)
+	protected void addMonitor(boolean isActive, boolean isStranger, boolean isStorageType, boolean isPublicSystem)
 	throws Exception
 	{
 		String owner = isStranger ? SYSTEM_SHARE_USER : TEST_USER;
@@ -123,19 +126,30 @@ public class AbstractMonitorIT {
 
 	public Monitor createStorageMonitor() throws MonitorException, JSONException, IOException
 	{
-		Monitor monitor = Monitor.fromJSON(dataHelper.getTestDataObject(TEST_STORAGE_MONITOR), 
-				null, 
-				TEST_USER);
+		JSONObject storageJson = TestDataHelper.getInstance().getTestDataObjectAsJSONObject(TEST_STORAGE_SYSTEM_FILE);
+		storageJson.put("id", UUID.randomUUID().toString());
+		StorageSystem privateStorageSystem = StorageSystem.fromJSON(storageJson);
+		privateStorageSystem.setOwner(TEST_USER);
+		systemDao.persist(privateStorageSystem);
+
+		JsonNode json = TestDataHelper.getInstance().getTestDataObject(TEST_STORAGE_MONITOR);
+		((ObjectNode)json).put("target",privateStorageSystem.getSystemId());
+		Monitor monitor = Monitor.fromJSON(json, null, TEST_USER);
 		monitor.setCreated(new DateTime().minusDays(1).toDate());
 		monitor.setLastUpdated(monitor.getCreated());
 		return monitor;
 	}
 
-	public Monitor createExecutionMonitor() throws MonitorException, JSONException, IOException
-	{
-		Monitor monitor = Monitor.fromJSON(dataHelper.getTestDataObject(TEST_EXECUTION_MONITOR), 
-				null, 
-				TEST_USER);
+	public Monitor createExecutionMonitor() throws MonitorException, JSONException, IOException, SystemArgumentException {
+		JSONObject executionJson = TestDataHelper.getInstance().getTestDataObjectAsJSONObject(TEST_EXECUTION_SYSTEM_FILE);
+		executionJson.put("id", UUID.randomUUID().toString());
+		ExecutionSystem privateExecutionSystem = ExecutionSystem.fromJSON(executionJson);
+		privateExecutionSystem.setOwner(TEST_USER);
+		systemDao.persist(privateExecutionSystem);
+
+		JsonNode json = TestDataHelper.getInstance().getTestDataObject(TEST_EXECUTION_MONITOR);
+		((ObjectNode)json).put("target",privateExecutionSystem.getSystemId());
+		Monitor monitor = Monitor.fromJSON(json, null, TEST_USER);
 		monitor.setCreated(new DateTime().minusDays(1).toDate());
 		monitor.setLastUpdated(monitor.getCreated());
 		return monitor;
@@ -152,7 +166,7 @@ public class AbstractMonitorIT {
 
 	}
 
-	public Monitor createAndSavePendingExecutionMonitor() throws MonitorException, JSONException, IOException
+	public Monitor createAndSavePendingExecutionMonitor() throws MonitorException, JSONException, IOException, SystemArgumentException
 	{
 		Monitor monitor = createExecutionMonitor();
 		monitor.setNextUpdateTime(new DateTime().minusYears(1).toDate());
@@ -223,60 +237,58 @@ public class AbstractMonitorIT {
         }
         finally
         {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
 	}
 	
 	public void initSystems() throws Exception
 	{
-		clearSystems();
-		
-    	privateStorageSystem = StorageSystem.fromJSON( dataHelper.getTestDataObjectAsJSONObject(
-        		TEST_STORAGE_SYSTEM_FILE));
+		JSONObject storageJson = TestDataHelper.getInstance().getTestDataObjectAsJSONObject(TEST_STORAGE_SYSTEM_FILE);
+		storageJson.put("id", UUID.randomUUID().toString());
+    	privateStorageSystem = StorageSystem.fromJSON(storageJson);
         privateStorageSystem.setOwner(TEST_USER);
         systemDao.persist(privateStorageSystem);
-        
-        publicStorageSystem = StorageSystem.fromJSON( dataHelper.getTestDataObjectAsJSONObject(
-        		TEST_STORAGE_SYSTEM_FILE));
+
+		storageJson.put("id", UUID.randomUUID().toString());
+        publicStorageSystem = StorageSystem.fromJSON(storageJson);
         publicStorageSystem.setOwner(TEST_USER);
         publicStorageSystem.setPubliclyAvailable(true);
         publicStorageSystem.setGlobalDefault(true);
-        publicStorageSystem.setSystemId(publicStorageSystem.getSystemId() + ".public");
+//        publicStorageSystem.setSystemId(publicStorageSystem.getSystemId() + ".public");
         systemDao.persist(publicStorageSystem);
-        
-        privateExecutionSystem = ExecutionSystem.fromJSON( dataHelper.getTestDataObjectAsJSONObject(
-        		TEST_EXECUTION_SYSTEM_FILE));
+
+		storageJson.put("id", UUID.randomUUID().toString());
+		sharedStorageSystem = StorageSystem.fromJSON(storageJson);
+		sharedStorageSystem.setOwner(TEST_USER);
+//		sharedStorageSystem.setSystemId(sharedStorageSystem.getSystemId() + ".shared");
+		systemDao.persist(sharedStorageSystem);
+		sharedStorageSystem.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.ADMIN));
+		systemDao.persist(sharedStorageSystem);
+
+
+		JSONObject executionJson = TestDataHelper.getInstance().getTestDataObjectAsJSONObject(TEST_EXECUTION_SYSTEM_FILE);
+		executionJson.put("id", UUID.randomUUID().toString());
+		privateExecutionSystem = ExecutionSystem.fromJSON(executionJson);
         privateExecutionSystem.setOwner(TEST_USER);
         systemDao.persist(privateExecutionSystem);
-        
-        publicExecutionSystem = ExecutionSystem.fromJSON( dataHelper.getTestDataObjectAsJSONObject(
-        		TEST_EXECUTION_SYSTEM_FILE));
+
+		executionJson.put("id", UUID.randomUUID().toString());
+		publicExecutionSystem = ExecutionSystem.fromJSON(executionJson);
         publicExecutionSystem.setOwner(TEST_USER);
         publicExecutionSystem.setPubliclyAvailable(true);
         publicExecutionSystem.setGlobalDefault(true);
-        publicExecutionSystem.setSystemId(publicExecutionSystem.getSystemId() + ".public");
+//        publicExecutionSystem.setSystemId(publicExecutionSystem.getSystemId() + ".public");
         systemDao.persist(publicExecutionSystem);
-        
-        sharedExecutionSystem = ExecutionSystem.fromJSON( dataHelper.getTestDataObjectAsJSONObject(
-        		TEST_EXECUTION_SYSTEM_FILE));
+
+		executionJson.put("id", UUID.randomUUID().toString());
+        sharedExecutionSystem = ExecutionSystem.fromJSON(executionJson);
         sharedExecutionSystem.setOwner(TEST_USER);
-        sharedExecutionSystem.setSystemId(sharedExecutionSystem.getSystemId() + ".shared");
+//        sharedExecutionSystem.setSystemId(sharedExecutionSystem.getSystemId() + ".shared");
         systemDao.persist(sharedExecutionSystem);
 		sharedExecutionSystem.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.ADMIN));
 		systemDao.persist(sharedExecutionSystem);
-
-
-		sharedStorageSystem = StorageSystem.fromJSON( dataHelper.getTestDataObjectAsJSONObject(
-        		TEST_STORAGE_SYSTEM_FILE));
-        sharedStorageSystem.setOwner(TEST_USER);
-        sharedStorageSystem.setSystemId(sharedStorageSystem.getSystemId() + ".shared");
-        systemDao.persist(sharedStorageSystem);
-		sharedStorageSystem.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.ADMIN));
-		systemDao.persist(sharedStorageSystem);
 	}
-	
-	
-	
+
 	/**
 	 * Flushes the messaging tube of any and all existing jobs.
 	 */

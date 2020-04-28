@@ -82,7 +82,7 @@ public class MonitorCheck
 	}	
 
 	/**
-	 * @return the status
+	 * @return the result of the check
 	 */
 	@Enumerated(EnumType.STRING)
 	@Column(name = "result", nullable = false, length = 32)
@@ -91,7 +91,7 @@ public class MonitorCheck
 	}
 
 	/**
-	 * @param status the status to set
+	 * @param result the result of the check
 	 */
 	public void setResult(MonitorStatusType result) {
 		this.result = result;

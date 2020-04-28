@@ -3,6 +3,7 @@ package org.iplantc.service.monitor.queue;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
+import org.hibernate.StaleStateException;
 import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.messaging.Message;
@@ -87,7 +88,7 @@ public class MonitorQueueListener implements org.quartz.Job
 			}
 		}
 		finally {
-			try { messageClient.stop(); } catch (Exception e) {}
+			try { messageClient.stop(); } catch (Exception ignored) {}
 		}
 	}
 			
@@ -113,14 +114,13 @@ public class MonitorQueueListener implements org.quartz.Job
 				manager.check(monitor, monitor.getOwner());
 			}
 		}
-		catch (StaleObjectStateException e) {
+		catch (StaleStateException e) {
 			log.debug("Just avoided a monitor check race condition.");
 		}
 		catch (Throwable e) {
 			throw new MessageProcessingException("Failed to process monitor message: " + body, e);
 			
 		}
-		
 	}
 
 	public void stop()

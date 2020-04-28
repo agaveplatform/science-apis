@@ -4,8 +4,10 @@ import org.iplantc.service.monitor.AbstractMonitorIT;
 import org.iplantc.service.monitor.TestDataHelper;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.model.Monitor;
+import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.joda.time.DateTime;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.DataProvider;
@@ -13,6 +15,9 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
+
+import static org.iplantc.service.monitor.TestDataHelper.TEST_STORAGE_SYSTEM_FILE;
 
 @Test(singleThreaded=true, groups={"integration"})
 public class MonitorDaoIT extends AbstractMonitorIT
@@ -31,6 +36,8 @@ public class MonitorDaoIT extends AbstractMonitorIT
 	private void loadTestData() throws Exception
 	{
 		// totalActiveMonitorsForUser
+		initSystems();
+
 		addMonitor(true, false, true, false);
 		try { Thread.sleep(500); } catch (Exception e) {}
 		addMonitor(true, false, false, false);
@@ -82,10 +89,11 @@ public class MonitorDaoIT extends AbstractMonitorIT
 	@Test(dependsOnMethods={"persist"}, expectedExceptions = {MonitorException.class})
 	public void persistFailsOnDuplicateEntry() throws MonitorException
 	{
+		Monitor m1 = null;
 		try 
 		{
 			// add a valid monitor
-			Monitor m1 = createStorageMonitor();
+			m1 = createStorageMonitor();
 			dao.persist(m1);
 			Assert.assertNotNull(m1.getId(), "Failed to generate an monitor ID.");
 		} 
@@ -96,6 +104,7 @@ public class MonitorDaoIT extends AbstractMonitorIT
 		try {
 			// now add a duplicate. this should fail
 			Monitor m2 = createStorageMonitor();
+			m2.setSystem(m1.getSystem());
 			dao.persist(m2);
 			Assert.fail("Duplicate monitors should not be allowed");
 		}
@@ -109,13 +118,19 @@ public class MonitorDaoIT extends AbstractMonitorIT
 	{
 		try 
 		{
-			loadTestData();
+			int totalMonitorCount = 10;
+			for (int i=0; i<totalMonitorCount/2; i++) {
+				Monitor storageMonitor = createExecutionMonitor();
+				dao.persist(storageMonitor);
+				Monitor executionMonitor = createStorageMonitor();
+				dao.persist(executionMonitor);
+			}
 			
 			List<Monitor> notifs = dao.getAll();
 			
-			Assert.assertFalse(notifs.isEmpty(), "None of the " + totalMonitors + " test monitors found.");
-			Assert.assertEquals(notifs.size(), totalMonitors, "Wrong number of monitors found. " +
-					totalMonitors + " saved, " + notifs.size() + " found.");
+			Assert.assertFalse(notifs.isEmpty(), "None of the " + totalMonitorCount + " test monitors found.");
+			Assert.assertEquals(notifs.size(), totalMonitorCount, "Wrong number of monitors found. " +
+					totalMonitorCount + " saved, " + notifs.size() + " found.");
 		} 
 		catch(Exception e) 
 		{
@@ -132,63 +147,43 @@ public class MonitorDaoIT extends AbstractMonitorIT
 		};
 	}
 	
-	@Test(dataProvider="findByUuidProvider", dependsOnMethods={"getAll"})
-	public void findByUuid(Monitor n, String errorMessage, boolean shouldThrowException)
-	{
-		try 
-		{
-			dao.persist(n);
-			Assert.assertNotNull(n.getId(), "Failed to generate an monitor ID.");
-			
-			String monitorUuid = n.getUuid();
-			
-			n = dao.findByUuid(monitorUuid);
-			
-			Assert.assertNotNull(n, "Notifiation was not found in db.");
-		} 
-		catch(Exception e) 
-		{
-			if (!shouldThrowException) {
-				Assert.fail(errorMessage, e);
-			}
-		}
-	}
-	
-	@DataProvider(name="deleteProvider")
-	protected Object[][] deleteProvider() throws Exception
-	{
-		return new Object[][] { 
-				{ createStorageMonitor(), "Failed to delete monitor", false },
-				{ createExecutionMonitor(), "Failed to delete monitor", false }
-		};
+	@Test(dependsOnMethods={"getAll"})
+	public void findByUuidReturnsStorageMonitor() throws IOException, JSONException, MonitorException {
+		Monitor monitor = createStorageMonitor();
+		dao.persist(monitor);
+		Assert.assertNotNull(monitor.getId(), "Failed to generate an monitor ID.");
+
+		String monitorUuid = monitor.getUuid();
+
+		monitor = dao.findByUuid(monitorUuid);
+
+		Assert.assertNotNull(monitor, "Failed to find storage monitor by uuid");
 	}
 
-	@Test(dataProvider="deleteProvider",dependsOnMethods={"findByUuid"})
-	public void delete(Monitor n, String errorMessage, boolean shouldThrowException)
-	{
-		try 
-		{
-			dao.persist(n);
-			Assert.assertNotNull(n.getId(), "Failed to generate an monitor ID.");
-			
-			String notifUuid = n.getUuid();
-			
-			n = dao.findByUuid(notifUuid);
-			
-			Assert.assertNotNull(n, "Notifiation was not found in db.");
-			
-			dao.delete(n);
-			
-			n = dao.findByUuid(notifUuid);
-			
-			Assert.assertNull(n, "Monitor was not found deleted from the db.");
-		} 
-		catch(Exception e) 
-		{
-			if (!shouldThrowException) {
-				Assert.fail(errorMessage, e);
-			}
-		}
+	@Test(dependsOnMethods={"findByUuidReturnsStorageMonitor"})
+	public void findByUuidReturnsExecutionMonitor() throws MonitorException, SystemArgumentException, JSONException, IOException {
+		Monitor monitor = createExecutionMonitor();
+		dao.persist(monitor);
+		Assert.assertNotNull(monitor.getId(), "Failed to generate an monitor ID.");
+
+		String monitorUuid = monitor.getUuid();
+
+		monitor = dao.findByUuid(monitorUuid);
+
+		Assert.assertNotNull(monitor, "Failed to find execution monitor by uuid");
+
+	}
+
+	@Test(dependsOnMethods={"findByUuidReturnsExecutionMonitor"})
+	public void delete() throws IOException, JSONException, MonitorException {
+		Monitor monitor = createStorageMonitor();
+		dao.persist(monitor);
+		Assert.assertNotNull(monitor.getId(), "Failed to generate a monitor ID.");
+
+		dao.delete(monitor);
+		Monitor searchResult = dao.findByUuid(monitor.getUuid());
+
+		Assert.assertNull(searchResult, "Monitor was not deleted from the db.");
 	}
 	
 	@Test(dependsOnMethods={"delete"})

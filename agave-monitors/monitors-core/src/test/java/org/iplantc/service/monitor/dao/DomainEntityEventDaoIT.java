@@ -29,11 +29,6 @@ public class DomainEntityEventDaoIT extends AbstractMonitorIT {
 		systemHistoryEventDao = new DomainEntityEventDao();
 	}
 	
-	@AfterClass
-	public void afterClass() throws MonitorException {
-		super.afterClass();
-	}
-
 	@AfterMethod
 	public void afterMethod() throws Exception
 	{
@@ -49,7 +44,7 @@ public class DomainEntityEventDaoIT extends AbstractMonitorIT {
 		Assert.assertNotNull(entityEvent.getId(), "system event did not persist.");
 	}
 
-	@Test(dependsOnMethods={"persist"})
+	@Test//(dependsOnMethods={"persist"})
 	public void delete() throws Exception
 	{
 		DomainEntityEvent entityEvent = new DomainEntityEvent(createStorageMonitor().getUuid(), MonitorEventType.CREATED, SYSTEM_OWNER);
@@ -61,7 +56,7 @@ public class DomainEntityEventDaoIT extends AbstractMonitorIT {
 		Assert.assertNull(userPem, "A system event should be returned after deleting.");
 	}
 
-	@Test(dependsOnMethods={"delete"})
+	@Test//(dependsOnMethods={"delete"})
 	public void getEntityEventByEntityUuid() throws Exception
 	{
 		Monitor system = createStorageMonitor();
@@ -81,7 +76,7 @@ public class DomainEntityEventDaoIT extends AbstractMonitorIT {
 		Assert.assertFalse(pems.contains(entityEvent2), "getBytagId returned a permission from another system.");
 	}
 
-	@Test(dependsOnMethods={"getEntityEventByEntityUuid"})
+	@Test//(dependsOnMethods={"getEntityEventByEntityUuid"})
 	public void getAllEntityEventWithStatusForEntityUuid() throws Exception
 	{
 		Monitor system = createStorageMonitor();

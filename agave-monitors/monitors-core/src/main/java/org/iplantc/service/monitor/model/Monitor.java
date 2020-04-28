@@ -27,6 +27,7 @@ import org.iplantc.service.monitor.dao.MonitorCheckDao;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.util.ServiceUtils;
 import org.iplantc.service.profile.dao.InternalUserDao;
+import org.iplantc.service.profile.exceptions.ProfileException;
 import org.iplantc.service.profile.model.InternalUser;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
@@ -382,7 +383,11 @@ public class Monitor
 							+ "If provided, internalUsername must be the username of a valid internal user.");
 				}
 
-				InternalUser iternalUser = new InternalUserDao().getInternalUserByAPIUserAndUsername(username, internalUsername);
+				InternalUser iternalUser = null;
+				try {
+					iternalUser = new InternalUserDao().getInternalUserByAPIUserAndUsername(username, internalUsername);
+				} catch (ProfileException ignored) {}
+
 				if (iternalUser == null)
 	        	{
 	        		throw new MonitorException(
@@ -446,7 +451,7 @@ public class Monitor
 			
 			if (json.has("active"))
 			{
-				if (json.get("active").isBoolean()) {
+				if (ServiceUtils.isBooleanOrNumericBoolean(json.get("active"))) {
 					monitor.setActive(json.get("active").asBoolean());
 				} else {
 					throw new MonitorException("Invalid 'active' value. "
@@ -488,18 +493,24 @@ public class Monitor
 				.put("active", isActive());
 
 				ObjectNode lastCheckObject = mapper.createObjectNode();
-				MonitorCheck lastCheck = new MonitorCheckDao().getLastMonitorCheck(getId());
-				if (lastCheck != null)
-				{
-					lastCheckObject
-						.put("id", lastCheck.getUuid())
-						.put("result", lastCheck.getResult().name())
-						.put("message", lastCheck.getMessage())
-						.put("type", lastCheck.getCheckType().name())
-						.put("created", new DateTime(lastCheck.getCreated()).toString());
-				}
 
-				json.set("lastCheck", lastCheckObject);
+				try {
+					MonitorCheck lastCheck = new MonitorCheckDao().getLastMonitorCheck(getId());
+					if (lastCheck != null) {
+						lastCheckObject
+								.put("id", lastCheck.getUuid())
+								.put("result", lastCheck.getResult().name())
+								.put("message", lastCheck.getMessage())
+								.put("type", lastCheck.getCheckType().name())
+								.put("created", new DateTime(lastCheck.getCreated()).toString());
+					}
+
+					json.set("lastCheck", lastCheckObject);
+				}
+				catch (MonitorException e) {
+					log.error("Failed to look up last monitor check for monitor " + getUuid(), e);
+					json.putNull("lastCheck");
+				}
 
 				ObjectNode linksObject = mapper.createObjectNode();
 				linksObject.set("self", (ObjectNode)mapper.createObjectNode()

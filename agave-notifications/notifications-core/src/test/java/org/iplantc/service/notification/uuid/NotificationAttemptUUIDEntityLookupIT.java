@@ -8,6 +8,7 @@ import org.iplantc.service.common.uuid.AbstractUUIDTest;
 import org.iplantc.service.common.uuid.UUIDEntityLookup;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.notification.AbstractNotificationTest;
+import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.dao.FailedNotificationAttemptQueue;
 import org.iplantc.service.notification.dao.NotificationAttemptDao;
 import org.iplantc.service.notification.dao.NotificationDao;
@@ -24,7 +25,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 
 @Test(groups={"integration"})
-public class NotificationAttemptUUIDEntityLookupTest implements AbstractUUIDTest<NotificationAttempt> {
+public class NotificationAttemptUUIDEntityLookupIT implements AbstractUUIDTest<NotificationAttempt> {
     UUIDEntityLookup uuidEntityLookup = new UUIDEntityLookup();
     AbstractNotificationTest it;
 
@@ -62,6 +63,7 @@ public class NotificationAttemptUUIDEntityLookupTest implements AbstractUUIDTest
             notificationAttempt = new NotificationAttempt(notification.getUuid(), notification.getCallbackUrl(),
                     notification.getOwner(), notification.getAssociatedUuid(),
                     notification.getEvent(), "This is a test", Timestamp.from(Instant.now()));
+            notificationAttempt.setAssociatedUuid(notification.getAssociatedUuid());
             FailedNotificationAttemptQueue.getInstance().push(notificationAttempt);
         } catch (Exception e) {
             Assert.fail("Unable to create notification delivery attempt", e);
@@ -81,9 +83,9 @@ public class NotificationAttemptUUIDEntityLookupTest implements AbstractUUIDTest
     public String serializeEntityToJSON(NotificationAttempt testEntity) {
         String json = null;
         try {
-            json = new ObjectMapper().writeValueAsString(testEntity);
-        } catch (JsonProcessingException e) {
-            Assert.fail("Failed to serialized notification", e);
+            json = testEntity.toJSON();
+        } catch (NotificationException e) {
+            Assert.fail("Failed to serialized notification delivery attempt", e);
         }
 
         return json;
@@ -108,20 +110,24 @@ public class NotificationAttemptUUIDEntityLookupTest implements AbstractUUIDTest
             testEntity = createEntity();
             String resolvedUrl = UUIDEntityLookup
                     .getResourceUrl(getEntityType(), getEntityUuid(testEntity));
-
+            String resolvedTenantUrl = TenancyHelper.resolveURLToCurrentTenant(resolvedUrl);
+            String hypermediaUrl = getUrlFromEntityJson(serializeEntityToJSON(testEntity));
             Assert.assertEquals(
-                    TenancyHelper.resolveURLToCurrentTenant(resolvedUrl),
-                    getUrlFromEntityJson(serializeEntityToJSON(testEntity)),
+                    resolvedTenantUrl,
+                    hypermediaUrl,
                     "Resolved "
                             + getEntityType().name().toLowerCase()
                             + " urls should match those created by the entity class itself.");
         } catch (UUIDException | IOException e) {
-            Assert.fail("Resolving logical file path from UUID should not throw exception.", e);
+            Assert.fail("Failed ot resolve UUID: " + e.getMessage(), e);
         }
         finally {
             try {
                 if (testEntity != null) {
-                    FailedNotificationAttemptQueue.getInstance().remove(testEntity.getNotificationId(), testEntity.getUuid());
+                    FailedNotificationAttemptQueue.getInstance().getMongoClient()
+                            .getDatabase(Settings.FAILED_NOTIFICATION_DB_SCHEME)
+                            .getCollection(testEntity.getNotificationId())
+                            .drop();
                 }
             } catch (Exception ignored) {}
         }
@@ -131,10 +137,10 @@ public class NotificationAttemptUUIDEntityLookupTest implements AbstractUUIDTest
      * Extracts the HAL from a json representation of an object and returns the
      * _links.self.href value.
      *
-     * @param entityJson
-     * @return
-     * @throws JsonProcessingException
-     * @throws IOException
+     * @param entityJson the serialized json object
+     * @return self link of the object json representation
+     * @throws JsonProcessingException if the HAL structure is missing from the json string
+     * @throws IOException if the JSON representation is unreadable
      */
     protected String getUrlFromEntityJson(String entityJson)
             throws JsonProcessingException, IOException {

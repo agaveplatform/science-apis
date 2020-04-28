@@ -9,15 +9,23 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.conn.ClientConnectionManager;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.conn.scheme.Scheme;
+import org.apache.http.conn.scheme.SchemeLayeredSocketFactory;
 import org.apache.http.conn.scheme.SchemeRegistry;
+import org.apache.http.conn.scheme.SchemeSocketFactory;
+import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
+import org.apache.http.params.HttpParams;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -177,10 +185,6 @@ public class RequestBin
 	 * @param httpUriRequest
 	 * @return JsonNode
 	 * @throws IOException
-	 * @throws KeyStoreException 
-	 * @throws NoSuchAlgorithmException 
-	 * @throws UnrecoverableKeyException 
-	 * @throws KeyManagementException 
 	 */
 	@SuppressWarnings("deprecation")
 	private JsonNode doRequest(HttpUriRequest httpUriRequest)
@@ -188,20 +192,22 @@ public class RequestBin
 	{
 		DefaultHttpClient httpClient = null;
 		try {
-			TrustStrategy acceptingTrustStrategy = new TrustStrategy() {
-				@Override
-				public boolean isTrusted(X509Certificate[] chain, String authType)
-						throws CertificateException {
-					return true;
-				}
-			};
-		    SSLSocketFactory sf = new SSLSocketFactory(
-		      acceptingTrustStrategy, SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-		    SchemeRegistry registry = new SchemeRegistry();
-		    registry.register(new Scheme("https", 443, sf));
-		    ClientConnectionManager ccm = new PoolingClientConnectionManager(registry);
+//			TrustStrategy acceptingTrustStrategy = new TrustStrategy() {
+//				@Override
+//				public boolean isTrusted(X509Certificate[] chain, String authType)
+//						throws CertificateException {
+//					return true;
+//				}
+//			};
+//		    SSLSocketFactory sf = new SSLSocketFactory(
+//		      acceptingTrustStrategy, SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+//		    SchemeRegistry registry = new SchemeRegistry();
+//		    registry.register(new Scheme("https", 443, sf));
+
+//			registry.register(new Scheme("http", 80, PlainConnectionSocketFactory.getSocketFactory()));
+//		    ClientConnectionManager ccm = new PoolingClientConnectionManager(registry);
 		    
-		    httpClient = new DefaultHttpClient(ccm);
+		    httpClient = new DefaultHttpClient();
 		    
 		    HttpResponse response = httpClient.execute(httpUriRequest);
 		    
@@ -220,9 +226,9 @@ public class RequestBin
 						" - " + response.getStatusLine().getReasonPhrase());
 			}
 		}
-		catch (KeyManagementException | UnrecoverableKeyException | NoSuchAlgorithmException | KeyStoreException e) {
-			throw new IOException("Request failed to requestbin.", e);
-		}
+//		catch (KeyManagementException | UnrecoverableKeyException | NoSuchAlgorithmException | KeyStoreException e) {
+//			throw new IOException("Request failed to requestbin.", e);
+//		}
 		finally {
 			try {httpClient.close(); } catch (Exception e){}
 		}

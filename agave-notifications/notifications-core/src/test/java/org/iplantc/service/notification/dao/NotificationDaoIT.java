@@ -28,7 +28,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 @Test(singleThreaded=true, groups={"integration"})
-public class NotificationDaoTest extends AbstractNotificationTest 
+public class NotificationDaoIT extends AbstractNotificationTest
 {
 	private int totalActiveValidSpecificNotifications = 7;// totalActiveValidSpecificNotificationsForUser + totalActiveValidSpecificNotificationsForStranger;
 	private int totalActiveValidSpecificNotificationsForUser = 6;
@@ -119,7 +119,7 @@ public class NotificationDaoTest extends AbstractNotificationTest
 		}
 		catch (Exception e)
 		{	
-			e.printStackTrace();
+			Assert.fail("Unable to connect to database", e);
 		}
 	}
 
@@ -166,7 +166,7 @@ public class NotificationDaoTest extends AbstractNotificationTest
 		}
 	}
 	
-	@Test(dependsOnMethods={"persist"})
+	@Test//(dependsOnMethods={"persist"})
 	public void getAll()
 	{
 		try 
@@ -194,7 +194,7 @@ public class NotificationDaoTest extends AbstractNotificationTest
 		};
 	}
 	
-	@Test(dataProvider="findByUuidProvider", dependsOnMethods={"getAll"})
+	@Test(dataProvider="findByUuidProvider")//, dependsOnMethods={"getAll"})
 	public void findByUuid(Notification n, String errorMessage, boolean shouldThrowException)
 	{
 		try 
@@ -216,7 +216,7 @@ public class NotificationDaoTest extends AbstractNotificationTest
 		}
 	}
 	
-	@Test(dependsOnMethods={"findByUuid"})
+	@Test//(dependsOnMethods={"findByUuid"})
 	public void getActiveNotificationsForUuid()
 	{	
 		try 
@@ -277,7 +277,7 @@ public class NotificationDaoTest extends AbstractNotificationTest
 		}
 	}
 
-	@Test(dependsOnMethods={"getActiveNotificationsForUuid"})
+	@Test//(dependsOnMethods={"getActiveNotificationsForUuid"})
 	public void getActiveUserNotifications()
 	{
 		try 
@@ -353,7 +353,7 @@ public class NotificationDaoTest extends AbstractNotificationTest
 		}
 	}
 
-	@Test(dependsOnMethods={"getActiveUserNotifications"})
+	@Test//(dependsOnMethods={"getActiveUserNotifications"})
 	public void getActiveUserNotificationsForUuid()
 	{
 		try 
@@ -436,7 +436,7 @@ public class NotificationDaoTest extends AbstractNotificationTest
 		};
 	}
 
-	@Test(dataProvider="deleteProvider", dependsOnMethods={"getActiveUserNotificationsForUuid"})
+	@Test(dataProvider="deleteProvider")//, dependsOnMethods={"getActiveUserNotificationsForUuid"})
 	public void delete(Notification n, String errorMessage, boolean shouldThrowException)
 	{
 		try 
@@ -464,7 +464,7 @@ public class NotificationDaoTest extends AbstractNotificationTest
 		}
 	}	
 	
-	@Test(dependsOnMethods={"delete"})
+	@Test//(dependsOnMethods={"delete"})
 	public void getActiveNotificationsForUuidIgnoresTerminated()
 	{
 		try 
@@ -487,7 +487,7 @@ public class NotificationDaoTest extends AbstractNotificationTest
 		}
 	}
 	
-	@Test(dependsOnMethods={"getActiveNotificationsForUuidIgnoresTerminated"})
+	@Test//(dependsOnMethods={"getActiveNotificationsForUuidIgnoresTerminated"})
 	public void getActiveUserNotificationsForUuidIgnoresTerminated()
 	{
 		try 
@@ -510,7 +510,7 @@ public class NotificationDaoTest extends AbstractNotificationTest
 		}
 	}
 	
-	@Test(dependsOnMethods={"getActiveUserNotificationsForUuidIgnoresTerminated"})
+	@Test//(dependsOnMethods={"getActiveUserNotificationsForUuidIgnoresTerminated"})
 	public void getActiveUserNotificationsIgnoresTerminated()
 	{
 		try 

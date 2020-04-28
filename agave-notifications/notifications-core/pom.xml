@@ -25,12 +25,14 @@
 				<directory>src/main/resources</directory>
 			</resource>
 		</resources>
+
 		<testResources>
 			<testResource>
 				<filtering>true</filtering>
 				<directory>src/test/resources</directory>
 			</testResource>
 		</testResources>
+
 		<plugins>
 			<!-- Starts and stops integration test containers with Docker Compose -->
 			<plugin>

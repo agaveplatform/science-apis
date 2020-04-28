@@ -51,7 +51,7 @@ public class NotificationDao extends AbstractDao
 	/**
      * Gets all active notifications for a given user.
      * 
-     * @param apiUsername
+     * @param username
      * @return
      * @throws NotificationException
      */
@@ -64,7 +64,7 @@ public class NotificationDao extends AbstractDao
 	/**
 	 * Gets all active notifications for a given user.
 	 * 
-	 * @param apiUsername owner of notification
+	 * @param username owner of notification
 	 * @param offset number of results to skip 
 	 * @param limit max results
 	 * @return
@@ -108,12 +108,12 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -121,7 +121,7 @@ public class NotificationDao extends AbstractDao
      * Gets all active notifications for a given user and associated uuid.
      * 
      * @param username
-     * @param uuid
+     * @param associatedUuid
      * @return
      * @throws NotificationException
      */
@@ -135,7 +135,7 @@ public class NotificationDao extends AbstractDao
 	 * Gets all active notifications for a given user and associated uuid.
 	 * 
 	 * @param username
-	 * @param uuid
+	 * @param associatedUuid
 	 * @param offset number of results to skip 
      * @param limit max results
      * @return
@@ -185,12 +185,12 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -199,7 +199,7 @@ public class NotificationDao extends AbstractDao
 	/**
 	 * Gets all active notifications for all users on a given uuid.
 	 * 
-	 * @param uuid
+	 * @param associatedUuid
 	 * @return
 	 * @throws NotificationException
 	 */
@@ -235,12 +235,12 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -275,19 +275,19 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Gets a notification by uuid regardless of tenant.
 	 * 
-	 * @param apiUsername
+	 * @param uuid
 	 * @return
 	 * @throws NotificationException
 	 */
@@ -318,12 +318,12 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -378,12 +378,12 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -447,7 +447,7 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException("Failed to merge notification", ex);
 		}
@@ -482,7 +482,7 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException("Failed to save notification", ex);
 		}
@@ -494,7 +494,7 @@ public class NotificationDao extends AbstractDao
 	/**
 	 * Deletes a notification
 	 * 
-	 * @param profile
+	 * @param notification
 	 * @throws NotificationException
 	 */
 	public void delete(Notification notification) throws NotificationException
@@ -519,12 +519,12 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException("Failed to delete notification", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -553,12 +553,12 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}	
 	
@@ -696,7 +696,7 @@ public class NotificationDao extends AbstractDao
             throw new NotificationException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+            try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
         }
     }
 
@@ -740,12 +740,12 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 		
 	}
@@ -809,7 +809,7 @@ public class NotificationDao extends AbstractDao
 							persist(notification);
 							newNotifications.add(notification);
 						}
-						catch (Exception e) {}
+						catch (Exception ignored) {}
 					}
 				}
 			}
@@ -827,12 +827,12 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 		
 		
@@ -873,12 +873,12 @@ public class NotificationDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new NotificationException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 }

@@ -8,10 +8,13 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.*;
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoDatabase;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.bson.BSONObject;
+import org.bson.Document;
 import org.codehaus.plexus.util.FileUtils;
 import org.hibernate.CacheMode;
 import org.hibernate.Criteria;
@@ -355,10 +358,10 @@ public class UUIDEntityLookup {
 	/**
 	 * Fetches or creates a MongoDB capped collection with the given name
 	 *
-	 * @return The named collection
+	 * @return An instance of the mongo client connection
 	 * @throws UUIDException
 	 */
-	private static DB getMongoDB() throws UUIDException
+	private static MongoClient getMongoClient() throws UUIDException
 	{
 		// Set up MongoDB connection
 		try
@@ -368,14 +371,27 @@ public class UUIDEntityLookup {
 					Settings.FAILED_NOTIFICATION_DB_SCHEME,
 					Settings.FAILED_NOTIFICATION_DB_PWD.toCharArray());
 
-			MongoClient mongoClient = new MongoClient(
+			return new MongoClient(
 					new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT),
-					Collections.singletonList(credential),
+					credential,
 					MongoClientOptions.builder().build());
-
-			DB db = mongoClient.getDB(Settings.FAILED_NOTIFICATION_DB_SCHEME);
-
-			return db;
+		}
+		catch (Exception e) {
+			throw new UUIDException("Failed to get mongodb database connection", e);
+		}
+	}
+	/**
+	 * Fetches or creates a MongoDB capped collection with the given name
+	 * @param mongoClient a mongodb client connection
+	 * @return An instance of the mongo feailed notification db
+	 * @throws UUIDException
+	 */
+	private static MongoDatabase getMongoDB(MongoClient mongoClient) throws UUIDException
+	{
+		// Set up MongoDB connection
+		try
+		{
+			return mongoClient.getDatabase(Settings.FAILED_NOTIFICATION_DB_SCHEME);
 		}
 		catch (Exception e) {
 			throw new UUIDException("Failed to get mongodb database connection", e);
@@ -384,15 +400,19 @@ public class UUIDEntityLookup {
 
 	private static String getNotificationUuidForDeliveryAttempt(String uuid) throws UUIDException {
 		String notificationId = null;
-		DB db = null;
+		MongoDatabase db = null;
+		MongoClient mongoClient = null;
 		try {
-			db = getMongoDB();
-			DBObject query = new BasicDBObject();
-			query.put("uuid", uuid);
-			for(String collectionName : db.getCollectionNames()) {
-				DBObject result = db.getCollection(collectionName).findOne(query);
+			mongoClient = getMongoClient();
+			db = getMongoDB(mongoClient);
+			for(String collectionName : db.listCollectionNames()) {
+				FindIterable<Document> result = db.getCollection(collectionName).find(eq("id", uuid)).limit(1);
+
 				if (result != null) {
-					return result.get("notification_id").toString();
+					Document attemptDoc = result.first();
+					if (attemptDoc != null) {
+						return attemptDoc.getString("notificationId");
+					}
 				}
 			}
 
@@ -406,7 +426,7 @@ public class UUIDEntityLookup {
 					uuid, e);
 		}
 		finally {
-			try { if (db != null) { db.getMongo().close(); } } catch (Exception ignored) {}
+			try { if (mongoClient != null) { mongoClient.close(); } } catch (Exception ignored) {}
 		}
 	}
 }

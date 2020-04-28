@@ -136,7 +136,7 @@
         <hibernate-entitymanager.version>3.6.10.Final</hibernate-entitymanager.version>
         <hibernate-validator-annotation-processor.version>5.0.1.Final</hibernate-validator-annotation-processor.version>
         <hibernate-validator.version>4.1.0.Final</hibernate-validator.version>
-        <httpclient.version>4.3.4</httpclient.version>
+        <httpclient.version>4.5.10</httpclient.version>
         <httpmime.version>4.3.1</httpmime.version>
         <ironmq.version>3.0.2</ironmq.version>
         <jackson-antpathfilter.version>1.0.1</jackson-antpathfilter.version>
@@ -170,7 +170,7 @@
         <quartz.version>2.1.7</quartz.version>
         <reflections.version>0.9.9</reflections.version>
         <restlet.version>2.3.4</restlet.version>
-        <sendgrid-java.version>2.2.2</sendgrid-java.version>
+        <sendgrid-java.version>4.4.8</sendgrid-java.version>
         <servlet-api.version>2.4</servlet-api.version>
         <simple-http.version>1.0-jdk6</simple-http.version>
         <simple-jndi.version>0.11.4.1</simple-jndi.version>
@@ -319,6 +319,9 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${maven-surefire-plugin.version}</version>
                     <configuration>
+                        <argLine>
+                            --illegal-access=permit
+                        </argLine>
                         <skipTests>${skip.unit.tests}</skipTests>
                         <groups>unit</groups>
                         <excludedGroups>broken,notReady</excludedGroups>
@@ -425,6 +428,9 @@
                     <artifactId>maven-failsafe-plugin</artifactId>
                     <version>${maven-failsafe-plugin.version}</version>
                     <configuration>
+                        <argLine>
+                            --illegal-access=permit
+                        </argLine>
                         <skipTests>${skip.integration.tests}</skipTests>
                         <groups>integration</groups>
                         <excludedGroups>broken,notReady</excludedGroups>

@@ -21,7 +21,7 @@ public class NewNotificationAttemptListener implements JobListener{
     public void jobWasExecuted(JobExecutionContext context, JobExecutionException e) {
     	if (e == null) {
     		NotificationAttempt attempt = (NotificationAttempt)context.getResult();
-    		if (attempt instanceof NotificationAttempt) {
+    		if (attempt != null) {
 	    		if (attempt.isSuccess()) {
 	    			log.debug("Successfully sent " + attempt.getEventName() + " notification to " + attempt.getCallbackUrl());
 	    		} 
@@ -30,8 +30,7 @@ public class NewNotificationAttemptListener implements JobListener{
 	    				log.info(String.format("Failed to send %s notification to %s on initial attempt. "
 	    						+ "No retry will be attempted according to the retry policy for this notification", 
 		    					attempt.getEventName(),
-		    					attempt.getCallbackUrl(),
-		    					new DateTime(attempt.getScheduledTime()).toString()));
+		    					attempt.getCallbackUrl()));
 	    			} else {
 	    				log.info(String.format("Failed to send %s notification to %s on initial attempt. "
 	    						+ "Next retry is scheduled for %s.", 
@@ -41,7 +40,7 @@ public class NewNotificationAttemptListener implements JobListener{
 	    			}
 	    		}
     		} else {
-    			log.error("Unexpected result returned from new notification processing job ", e);
+    			log.error("Unexpected null result returned from new notification processing job ", e);
     		}
         } else {
         	log.error("Unexpected termination of new notification processing job ", e);

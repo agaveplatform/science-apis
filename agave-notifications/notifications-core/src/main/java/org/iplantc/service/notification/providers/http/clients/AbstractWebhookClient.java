@@ -75,12 +75,12 @@ public abstract class AbstractWebhookClient implements WebhookClient {
 	 * Subclasses should extend this method to altering the body of the 
 	 * webhook response.
 	 * 
-	 * @param content
+	 * @param content the content of the message
 	 * @return the filtered content to be sent to the {@link NotificationAttempt#getCallbackUrl()}
 	 * @throws NotificationException 
 	 */
 	protected String getFilteredContent(String content) throws NotificationException {
-		return content;
+		return StringUtils.isEmpty(content) ? " " : content;
 	}
 	
 	/**
@@ -90,8 +90,7 @@ public abstract class AbstractWebhookClient implements WebhookClient {
 	 * contains authorization informaiton, HTTP Basic auth is attempted with the
 	 * given credentials.
 	 * 
-	 * @param attempt the attempt to make
-	 * @return contains the http response code and interpreted message from the response. 
+	 * @return contains the http response code and interpreted message from the response.
 	 * @throws NotificationException
 	 */
 	@Override
@@ -158,6 +157,7 @@ public abstract class AbstractWebhookClient implements WebhookClient {
             }
 			
 			callstart = System.currentTimeMillis();
+
 			try
 			{
 				if (escapedUri.getUserInfo() != null) 
@@ -224,7 +224,7 @@ public abstract class AbstractWebhookClient implements WebhookClient {
 						log.error(attemptResponse.getMessage(), e);
 					}
 					finally {
-						try {in.close();} catch (Exception e){}
+						try { if (in != null) in.close();} catch (Exception ignore){}
 					}
 				}
 			} 
@@ -257,7 +257,7 @@ public abstract class AbstractWebhookClient implements WebhookClient {
 				throw new NotificationException(attemptResponse.getMessage(),e);
 			} 
 			finally {
-		        try { response.close(); } catch (Exception e) {}
+		        try { if (response != null) response.close(); } catch (Exception ignore) {}
 		    }	
 		}
 		catch (NotificationException e) {
@@ -279,8 +279,8 @@ public abstract class AbstractWebhookClient implements WebhookClient {
 
 	/**
 	 * Allows implementing classes to alter the callback url as needed.
-	 * @param callbackUrl
-	 * @return
+	 * @param callbackUrl the url to filter.
+	 * @return the filtered callbackUrl. Defaults to the original url if not overridden
 	 * @throws NotificationException
 	 */
 	public String getFilteredCallbackUrl(String callbackUrl)

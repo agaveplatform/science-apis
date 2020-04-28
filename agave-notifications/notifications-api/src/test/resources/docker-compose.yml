@@ -32,6 +32,9 @@ services:
     restart: on-failure
     ports:
       - '5101:5000'
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_BACKEND: requestbin.storage.redis.RedisStorage
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.requestbin.rule=Host(`requestbin`)"
@@ -41,6 +44,8 @@ services:
       - "traefik.http.routers.requestbin-secure.entrypoints=websecure"
       - "traefik.http.routers.requestbin-secure.tls=true"
 
+  redis:
+    image: redis:alpine
 
   httpbin:
       image: agaveplatform/httpbin:latest
@@ -64,10 +69,6 @@ services:
     ports:
       - '10080:80'
       - '10443:443'
-    volumes:
-      - type: bind
-        source: ./transfer
-        target: /var/www/html/public
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.httpd.rule=Host(`httpd`)"
@@ -79,3 +80,10 @@ services:
       - "traefik.http.routers.httpd-secure.service=httpd"
       - "traefik.http.routers.httpd-secure.tls=true"
       - "traefik.http.services.httpd.loadbalancer.server.port=80"
+
+  maildev:
+    image: agaveplatform/maildev:latest
+    ports:
+      - "25:25"
+    volumes:
+      - ./persistence-services/maildev/rules.json:/data/rules.json

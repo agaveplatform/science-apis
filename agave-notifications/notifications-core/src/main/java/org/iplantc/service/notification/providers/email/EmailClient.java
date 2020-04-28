@@ -39,4 +39,5 @@ public interface EmailClient {
      * @return an empty map if no headers have been sent
      */
     public Map<String, String> getCustomHeaders();
+
 }

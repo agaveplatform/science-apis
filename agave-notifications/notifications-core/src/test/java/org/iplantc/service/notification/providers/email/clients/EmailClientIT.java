@@ -1,22 +1,34 @@
 package org.iplantc.service.notification.providers.email.clients;
 
+import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.providers.email.EmailClient;
 import org.iplantc.service.notification.providers.email.EmailClientFactory;
 import org.iplantc.service.notification.providers.email.enumeration.EmailProviderType;
 import org.testng.Assert;
+import org.testng.SkipException;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.lang.reflect.Method;
+
 @Test(groups={"integration"})
-public class EmailClientTest {
+public class EmailClientIT {
 
     private static final String TO_NAME = "Unit Test User";
     private static final String TO_ADDRESS = Settings.SMTP_FROM_ADDRESS;
     private static final String SUBJECT = "This is a test message body";
     private static final String BODY = "This is a test message body\nwhich spans multiple lines. It should show up perfectly fine in the body of the text.";
     private static final String HTMLBODY = "<h3>Pay Attention</h3><p>This is a <em>test</em> <i>HTML</i>message body.</p><p>It should display with markup in the resulting email.</p>";
+
+    @BeforeMethod
+    private void beforeMethod(Method m) {
+        if (m.getName().equals("sendSendgridEmailClient") && StringUtils.isEmpty(Settings.SMTP_AUTH_TOKEN)) {
+            throw new SkipException("SendGrid token is missing. Skipping tests");
+        }
+    }
 
     @DataProvider
     public Object[][] sendProvider() {
@@ -75,19 +87,28 @@ public class EmailClientTest {
     @Test(dataProvider="sendProvider")
     public void sendSendgridEmailClient(String recipientName, String recipientAddress, String subject, String body, String htmlBody, boolean shouldThrowException, String message) 
     {
-        doSend(EmailProviderType.SENDGRID, 
-                recipientName, 
-                recipientAddress, 
-                subject, 
-                body, htmlBody,
-                shouldThrowException,
-                message);
+
+        SendGridEmailClient client = (SendGridEmailClient)EmailClientFactory.getInstance(EmailProviderType.SENDGRID);
+
+        try {
+            // enable sandbox mode
+            client.setSandboxMode(true);
+            client.send(recipientName, recipientAddress, subject, body, htmlBody);
+            Assert.assertFalse(shouldThrowException, message);
+        } catch (NotificationException e) {
+            if (!shouldThrowException)
+                Assert.fail(message, e);
+        }
     }
     
-    public void doSend(EmailProviderType provider, 
-            String recipientName, String recipientAddress, 
-            String subject, String body, String htmlBody, boolean shouldThrowException, 
-            String message)
+    private void doSend(EmailProviderType provider,
+                        String recipientName,
+                        String recipientAddress,
+                        String subject,
+                        String body,
+                        String htmlBody,
+                        boolean shouldThrowException,
+                        String message)
     {
         EmailClient client = EmailClientFactory.getInstance(provider);
         

@@ -2,6 +2,7 @@ package org.iplantc.service.notification;
 
 import org.iplantc.service.common.auth.VerifierFactory;
 import org.iplantc.service.common.restlet.AgaveStatusService;
+import org.quartz.SchedulerFactory;
 import org.restlet.Context;
 import org.restlet.data.ChallengeScheme;
 import org.restlet.ext.jaxrs.JaxRsApplication;
@@ -10,7 +11,7 @@ import org.restlet.security.Verifier;
 
 public class ServletJaxRsApplication extends JaxRsApplication {
 
-    public ServletJaxRsApplication(Context context) 
+	public ServletJaxRsApplication(Context context)
     {
         super(context);
         

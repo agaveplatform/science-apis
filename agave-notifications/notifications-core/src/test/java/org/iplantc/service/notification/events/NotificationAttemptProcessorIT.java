@@ -33,8 +33,8 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
-public class NotificationAttemptProcessorTest extends AbstractNotificationTest {
+@Test(groups={"integration", "broken"})
+public class NotificationAttemptProcessorIT extends AbstractNotificationTest {
 
 	@BeforeClass
 	public void beforeClass()

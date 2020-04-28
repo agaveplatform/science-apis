@@ -19,7 +19,7 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 
 @Test(groups={"integration"})
-public class NotificationUUIDEntityLookupTest implements AbstractUUIDTest<Notification> {
+public class NotificationUUIDEntityLookupIT implements AbstractUUIDTest<Notification> {
     UUIDEntityLookup uuidEntityLookup = new UUIDEntityLookup();
     AbstractNotificationTest it;
 

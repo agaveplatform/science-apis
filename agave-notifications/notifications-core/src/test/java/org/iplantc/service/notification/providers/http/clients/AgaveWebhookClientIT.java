@@ -7,7 +7,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 @Test(groups={"integration"})
-public class AgaveWebhookClientTest {
+public class AgaveWebhookClientIT {
 
 	@DataProvider
 	protected Object[][] getFilteredCallbackUrlProvider() {

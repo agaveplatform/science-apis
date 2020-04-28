@@ -28,9 +28,9 @@ public class TestDataHelper {
 	public static final String TEST_MULTIPLE_EMAIL_NOTIFICATION = "src/test/resources/notifications/email_multi_notif.json";
 	public static final String TEST_MULTIPLE_WEBHOOK_NOTIFICATION = "src/test/resources/notifications/webhook_multi_notif.json";
 	public static final String TEST_REALTIME_NOTIFICATION = "src/test/resources/notifications/realtime_notif.json";
-	
+
 	public static TestDataHelper testDataHelper;
-	
+
 	/**
      * Get a test data file from disk and deserializes to a JSONObject.
      *

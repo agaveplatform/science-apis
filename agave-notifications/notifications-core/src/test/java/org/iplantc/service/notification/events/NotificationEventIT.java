@@ -5,8 +5,14 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
+import com.mongodb.MongoCredential;
+import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoDatabase;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.notification.AbstractNotificationTest;
+import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.TestDataHelper;
 import org.iplantc.service.notification.dao.FailedNotificationAttemptQueue;
 import org.iplantc.service.notification.dao.NotificationDao;
@@ -16,13 +22,10 @@ import org.iplantc.service.notification.model.NotificationAttempt;
 import org.iplantc.service.notification.model.enumerations.NotificationStatusType;
 import org.iplantc.service.notification.model.enumerations.RetryStrategyType;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 @Test(groups={"integration"})
-public class NotificationEventTest extends AbstractNotificationTest {
+public class NotificationEventIT extends AbstractNotificationTest {
 
 	@BeforeClass
 	public void beforeClass()
@@ -34,8 +37,6 @@ public class NotificationEventTest extends AbstractNotificationTest {
 			HibernateUtil.getConfiguration();
 			
 			dao = new NotificationDao();
-			
-			clearDeadLetterQueue();
 		}
 		catch (Exception e)
 		{	
@@ -43,31 +44,42 @@ public class NotificationEventTest extends AbstractNotificationTest {
 		}
 	}
 
+	@AfterMethod
+	public void drainQueue() {
+		super.drainQueue();
+		try { clearDeadLetterQueue(); } catch (Exception ignored) {}
+		HibernateUtil.getSession().createQuery("delete Notification").executeUpdate();
+
+	}
+
 	private void clearDeadLetterQueue() {
-//		MongoClient mongoClient = null;
-//		MongoCredential credential = null;
-//		DB db = null;
-//		try {
-//			// default admin u/p for the test container
-//			credential = MongoCredential.createCredential(
-//	                "admin", Settings.FAILED_NOTIFICATION_DB_SCHEME, "changeit".toCharArray());
-//			
-//			mongoClient = new MongoClient(new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT), Arrays.asList(credential));
-//	    	
-//			db = mongoClient.getDB(Settings.FAILED_NOTIFICATION_DB_SCHEME);
-//			
-//			for (String collection: db.getCollectionNames()) {
-//				if (Arrays.asList("metadata","schema").contains(collection)) {
-//					db.getCollection(collection).drop();
-//				}
-//			}
-//		}
-//		catch (Exception e) {
-//			Assert.fail("Failed to clean out dead letter queues before tests run ",e);
-//		}
-//		finally {
-//			try { mongoClient.close(); } catch (Exception e) {}
-//		}
+		MongoClient mongoClient = null;
+		MongoCredential credential = null;
+		MongoDatabase db = null;
+		try {
+			// default admin u/p for the test container
+			credential = MongoCredential.createCredential(
+	                Settings.FAILED_NOTIFICATION_DB_USER,
+					Settings.FAILED_NOTIFICATION_DB_SCHEME,
+					Settings.FAILED_NOTIFICATION_DB_PWD.toCharArray());
+
+			mongoClient = new MongoClient(
+					new ServerAddress(Settings.FAILED_NOTIFICATION_DB_HOST, Settings.FAILED_NOTIFICATION_DB_PORT),
+					credential,
+					MongoClientOptions.builder().build());
+
+			db = mongoClient.getDatabase(Settings.FAILED_NOTIFICATION_DB_SCHEME);
+
+			for (String collectionName: db.listCollectionNames()) {
+				db.getCollection(collectionName).drop();
+			}
+		}
+		catch (Exception e) {
+			Assert.fail("Failed to clean out dead letter queues before tests run ",e);
+		}
+		finally {
+			try { if (mongoClient != null) { mongoClient.close(); } } catch (Exception ignore) {}
+		}
 	}
 
 	@AfterClass
@@ -77,8 +89,8 @@ public class NotificationEventTest extends AbstractNotificationTest {
 		clearDeadLetterQueue();
 	}
 	
-	@DataProvider(name = "fireProvider")
-	private Object[][] fireProvider() throws Exception
+	@DataProvider(name = "fireProvider", parallel = false)
+	protected Object[][] fireProvider() throws Exception
 	{
 		Notification validEmail = createEmailNotification();
 		Notification validURL = createWebhookNotification();
@@ -93,12 +105,12 @@ public class NotificationEventTest extends AbstractNotificationTest {
 		};
 	}
 
-	@Test(enabled=true, dataProvider = "fireProvider")
+	@Test(dataProvider = "fireProvider", singleThreaded = true)
 	public void fire(Notification notification, String errorMessage, boolean shouldSucceed) throws Exception
 	{
 		try {
 			dao.persist(notification);
-			
+
 			NotificationAttempt attempt = NotificationMessageProcessor.process(notification, "SENT", TEST_USER, notification.getAssociatedUuid(), notification.toJSON());
 			Assert.assertNotNull(attempt, "No attempt returned from processing notification");
 			
@@ -106,27 +118,14 @@ public class NotificationEventTest extends AbstractNotificationTest {
 			Notification updatedNotification = dao.findByUuidAcrossTenants(notification.getUuid());
 			
 			Assert.assertEquals(shouldSucceed, updatedNotification.getStatus() == NotificationStatusType.COMPLETE, errorMessage);
-			
-//			if (shouldSucceed) {
-//				Assert.assertTrue(notification.isSuccess(), "Notification outcome was false when it should be true.");
-//				Assert.assertNotNull(notification.getLastSent(), "Notification last sent time was not updated.");
-//				Assert.assertEquals(notification.getResponseCode(), new Integer(200), "Notification last sent time was not updated.");
-//			} else {
-//				Assert.assertFalse(notification.isSuccess(), "Notification outcome was true when it should be false.");
-//				Assert.assertNotNull(notification.getLastSent(), "Notification last sent time was not updated on failure.");
-//				Assert.assertNotEquals(notification.getResponseCode(), new Integer(200), "Notification last sent time was not set to a failure code on failure.");
-//			}
 		}
 		catch (NotificationException e) {
 			Assert.fail(errorMessage, e);
 		}
-		finally {
-			try { dao.delete(notification); } catch (Exception e) {}
-		}
 	}
 	
-	@DataProvider(name = "fireFailsOnBadWebhookProvider")
-	private Object[][] fireFailsOnBadWebhookProvider() throws Exception
+	@DataProvider(name = "fireFailsOnBadWebhookProvider", parallel = false)
+	protected Object[][] fireFailsOnBadWebhookProvider() throws Exception
 	{
 		List<Object[]> testCases = new ArrayList<Object[]>();
 		
@@ -144,7 +143,7 @@ public class NotificationEventTest extends AbstractNotificationTest {
 		return testCases.toArray(new Object[][]{});
 	}
 	
-	@Test(enabled=true, dataProvider = "fireFailsOnBadWebhookProvider")
+	@Test(dataProvider = "fireFailsOnBadWebhookProvider", singleThreaded = true)
 	public void fireFailsOnBadWebhook(Notification notification, String errorMessage, boolean shouldThrowException) throws Exception
 	{
 		try 
@@ -163,14 +162,9 @@ public class NotificationEventTest extends AbstractNotificationTest {
 				Assert.fail(errorMessage, e);
 			}
 		}
-		finally {
-			try { dao.delete(notification); } catch (Exception e) {
-				Assert.fail("Failed to delete test notification", e);
-			}
-		}
 	}
 	
-	@Test(enabled=true, dependsOnMethods={"fireFailsOnBadWebhook"})
+	@Test
 	public void failedNotificationAttemptWithSavePolicySaves() throws Exception {
 		Notification notification = null;
 	
@@ -194,19 +188,6 @@ public class NotificationEventTest extends AbstractNotificationTest {
 		}
 		catch (NotificationException e) {
 			Assert.fail("No exception should be thrown processing a notification.", e);
-		}
-		finally {
-			try { dao.delete(notification); } catch (Exception e) {
-				Assert.fail("Failed to delete test notification", e);
-			}
-			
-			try {
-				// skipping cleanup since no notification is used twice, thus no bucket
-				// duplication. after this we'll just blow away the container. much faster
-//				FailedNotificationAttemptQueue.getInstance().removeAll(notification.getUuid());
-			} catch (Exception e) {
-				Assert.fail("Failed to delete test notification attempt collection", e);
-			}
 		}
 	}
 	

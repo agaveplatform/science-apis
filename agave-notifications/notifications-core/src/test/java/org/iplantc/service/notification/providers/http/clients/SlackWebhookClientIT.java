@@ -5,11 +5,15 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.NotificationAttempt;
 import org.testng.Assert;
+import org.testng.SkipException;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -18,10 +22,22 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-@Test(groups={"broken", "integration"}) // need to mock the slack call or provide a valid url for this to pass. Tests all work, though
-public class SlackWebhookClientTest {
+import java.util.Properties;
 
-	public static final String SLACK_INCOMING_WEBHOOK_URL = "https://hooks.slack.com/services/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L";
+@Test(groups={"broken", "integration"}) // need to mock the slack call or provide a valid url for this to pass. Tests all work, though
+public class SlackWebhookClientIT {
+
+	private String slackWebhookUrl = null;
+
+	@BeforeClass
+	private void beforeClass() {
+		Properties props = org.iplantc.service.common.Settings.loadRuntimeProperties();
+		slackWebhookUrl = props.getProperty("test.slack.webhook.url");
+		if (StringUtils.isEmpty(slackWebhookUrl)) {
+			throw new SkipException("No Slack Incoming Webhook URL provided in the test service.properties file.");
+		}
+	}
+
 	@DataProvider
 	protected Object[][] getFilteredContentProvider() throws JsonProcessingException {
 		ObjectMapper mapper = new ObjectMapper();
@@ -29,23 +45,22 @@ public class SlackWebhookClientTest {
 				.put("subject", "Test basic notification")
 				.put("color", "good");
 		
-		ObjectNode runtimeData = mapper.createObjectNode()
+		JsonNode runtimeData = mapper.createObjectNode()
 			.put("foo", "foo")
-			.put("bar", "bar")
 			.put("bar", simple.toString())
-			.put("CUSTOM_USER_JOB_EVENT_NAME", "JOB_RUNTIME_CALLBACK_EVENT");
+			.put("CUSTOM_USER_JOB_EVENT_NAME", "JOB_RUNTIME_CALLBACK_EVENT")
+			.set("baz", simple);
+
 			
 		ObjectNode runtime = mapper.createObjectNode()
 				.put("subject", "Test basic notification")
 				.put("color", "red")
 				.put("body", mapper.writer(new DefaultPrettyPrinter()).writeValueAsString(runtimeData));
 		
-		Object[][] testCases = new Object[][] {
-				{ simple.toString(), "" },
-				{ runtime.toString(), "https://hooks.slack.com/services/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" },
+		return new Object[][] {
+				{ simple.toString(), slackWebhookUrl },
+				{ runtime.toString(), slackWebhookUrl },
 		};
-		
-		return testCases;
 	}
 	
 	@Test(dataProvider="getFilteredContentProvider")
@@ -75,16 +90,16 @@ public class SlackWebhookClientTest {
 				.put("subject", "Test basic notification");
 		
 		Object[][] testCases = new Object[][] {
-				{ simple.deepCopy().put("color", "good").toString(), "https://hooks.slack.com/services/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" },
-				{ simple.deepCopy().put("color", "warning").toString(), "https://hooks.slack.com/services/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" },
-				{ simple.deepCopy().put("color", "danger").toString(), "https://hooks.slack.com/services/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" },
-				{ simple.deepCopy().put("color", "#f3f3f3").toString(), "https://hooks.slack.com/services/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" },
+				{ simple.deepCopy().put("color", "good").toString(),    slackWebhookUrl },
+				{ simple.deepCopy().put("color", "warning").toString(), slackWebhookUrl },
+				{ simple.deepCopy().put("color", "danger").toString(),  slackWebhookUrl },
+				{ simple.deepCopy().put("color", "#f3f3f3").toString(), slackWebhookUrl },
 		};
 		
 		return testCases;
 	}
 	
-	@Test(dataProvider="getFilteredContentHonorsColorsProvider", enabled=false)
+	@Test(dataProvider="getFilteredContentHonorsColorsProvider")
 	public void getFilteredContentHonorsColors(String content, String callbackUrl) {
 		NotificationAttempt attempt = mock(NotificationAttempt.class);
 		when(attempt.getContent()).thenReturn(content);

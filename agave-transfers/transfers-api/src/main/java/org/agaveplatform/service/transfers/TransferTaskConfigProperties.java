@@ -10,4 +10,5 @@ public class TransferTaskConfigProperties {
     public static final String CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE = "transfertask.jdbc.max_pool_size";
     public static final String CONFIG_TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE = "transfertask.sqlqueries.resource.file";
     public static final String CONFIG_TRANSFERTASK_DB_QUEUE = "transfertask.db.queue";
+    public static final String TRANSFERTASK_MAX_TRIES = "transfertask.max.tries";
 }

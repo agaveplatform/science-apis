@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_TRIES;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_RETRY;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
@@ -67,8 +68,10 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 		String message = body.getString("message");
 		String status = body.getString("status");
 		int attempts = body.getInteger("attempts");
+		//int maxTries = 3;
+		int maxTries = config().getInteger(TRANSFERTASK_MAX_TRIES, 3);
 
-		if ( attempts <= config().getInteger("transfertask.max.tries") ) {
+		//if ( attempts <= maxTries ) {
 			if (body.getString("cause").equals(RemoteDataException.class.getName()) ||
 					body.getString("cause").equals(IOException.class.getName()) ||
 					body.getString("cause").equals(InterruptedException.class.getName())) {
@@ -79,7 +82,7 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 					return true;
 				}
 			}
-		}
+		//}
 
 		_doPublishEvent(TRANSFER_FAILED, body);
 		return false;

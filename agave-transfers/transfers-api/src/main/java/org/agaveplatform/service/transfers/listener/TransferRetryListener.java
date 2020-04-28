@@ -24,6 +24,7 @@ import java.net.URI;
 import java.util.HashSet;
 import java.util.List;
 
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_COMPLETED;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.COMPLETED;
 
@@ -45,6 +46,10 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 
 	@Override
 	public void start() {
+		// init our db connection from the pool
+		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+
 		EventBus bus = vertx.eventBus();
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
@@ -119,9 +124,10 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 						transferTaskDb.getStatus() != TransferStatusType.FAILED ||
 						transferTaskDb.getStatus() != TransferStatusType.TRANSFERRING) {
 					// we're good to to go forward.
-					// the status is not in the states above.  Now check to see if the # of attempts exceeds the max
 
-					if (config().getInteger("transfertask.max.tries") <= transferTaskDb.getAttempts()) {
+					// the status is not in the states above.  Now check to see if the # of attempts exceeds the max
+					int configMaxTries = config().getInteger("transfertask.max.tries");
+					if (configMaxTries <= transferTaskDb.getAttempts()) {
 						// # of retries is less.
 
 						// increment the attempts

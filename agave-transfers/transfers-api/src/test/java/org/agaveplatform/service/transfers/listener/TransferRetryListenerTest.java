@@ -14,7 +14,11 @@ import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_RETRY;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -27,10 +31,30 @@ class TransferRetryListenerTest  extends BaseTestCase {
 	private EventBus eventBus;
 	private TransferTaskDatabaseService service;
 
+	protected TransferRetryListener getMockTransferRetryListenerInstance(Vertx vertx) {
+		TransferRetryListener ttc = mock(TransferRetryListener.class );
+		when(ttc.getEventChannel()).thenReturn(TRANSFER_RETRY);
+		when(ttc.getVertx()).thenReturn(vertx);
+
+		return ttc;
+	}
+
+
 	@AfterAll
 	public void finish(Vertx vertx, VertxTestContext ctx) {
 		vertx.close(ctx.completing());
 	}
+
+
+
+//	@Test
+//	@DisplayName("Process retryProcessTransferTaskTest")
+//	@Disabled
+//	public void retryProcessTransferTaskTest(Vertx vertx, VertxTestContext ctx){
+//
+//
+//	}
+
 
 	@Test
 	@DisplayName("Process TransferTaskPublishesProtocolEvent")
@@ -50,8 +74,8 @@ class TransferRetryListenerTest  extends BaseTestCase {
 			ctx.failNow(new Exception(bodyRec.getString("message")));
 		});
 
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		ta.processTransferTask(body);
+		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+		ta.retryProcessTransferTask(body);
 
 //		URI srcUri = URI.create(tt.getSource());
 //		RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
@@ -76,8 +100,8 @@ class TransferRetryListenerTest  extends BaseTestCase {
 			ctx.completeNow();
 		});
 
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		ta.processTransferTask(body);
+		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+		ta.retryProcessTransferTask(body);
 
 //		URI srcUri = URI.create(tt.getSource());
 //		RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
@@ -102,8 +126,8 @@ class TransferRetryListenerTest  extends BaseTestCase {
 			ctx.completeNow();
 		});
 
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		ta.processTransferTask(body);
+		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+		ta.retryProcessTransferTask(body);
 
 //		URI srcUri = URI.create(tt.getSource());
 //		RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
@@ -127,8 +151,8 @@ class TransferRetryListenerTest  extends BaseTestCase {
 			ctx.completeNow();
 		});
 
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		ta.processTransferTask(body);
+		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+		ta.retryProcessTransferTask(body);
 //		URI srcUri = URI.create(tt.getSource());
 //		RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
 //		String protocolSelected =  srcSystem.getStorageConfig().getProtocol().name().toLowerCase();
@@ -144,7 +168,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(Vertx.vertx(), "transfertask.assigned");
+		TransferRetryListener ta = new TransferRetryListener(Vertx.vertx(), "transfertask.assigned");
 		ta.interruptedTasks.add(tt.getUuid());
 		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt present in interruptedTasks list should return true");
 		ta.interruptedTasks.remove(tt.getUuid());

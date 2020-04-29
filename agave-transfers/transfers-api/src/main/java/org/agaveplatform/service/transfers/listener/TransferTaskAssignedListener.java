@@ -211,7 +211,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     // it's not an agave uri, so we forward on the raw uri as we know that we can
                     // handle it from the wrapping if statement check
                     else {
-                        _doPublishEvent("transfer." + srcUri.getScheme(), body);
+                        _doPublishEvent(TRANSFER_ALL, body);
                     }
                 } else {
                     // tell everyone else that you killed this task

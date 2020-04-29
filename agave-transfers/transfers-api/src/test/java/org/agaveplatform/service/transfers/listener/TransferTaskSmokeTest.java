@@ -266,7 +266,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 									verify(transferTaskCreatedListener)._doPublishEvent("transfertask.assigned", createdTransferTask);
 									verify(transferTaskCreatedListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
 
-									verify(transferTaskAssignedListener)._doPublishEvent("transfertask.http", createdTransferTask);
+									verify(transferTaskAssignedListener)._doPublishEvent("transfertask.all", createdTransferTask);
 									verify(transferTaskAssignedListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
 
 									verify(transferAllProtocolVertical)._doPublishEvent("transfer.completed", createdTransferTask);

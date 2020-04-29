@@ -52,7 +52,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
 //		String dest =  body.getString("dest");
         String username = body.getString("owner");
         String tenantId = body.getString("tenantId");
-        String protocol = null;
+        String protocol = "";
 
         try {
 
@@ -74,12 +74,9 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     protocol = srcSystem.getStorageConfig().getProtocol().toString();
                 }
 
-                String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED;//." +
-//                        tenantId +
-//                        "." + protocol +
-//                        "." + srcUri.getHost() +
-//                        "." + username;
+                String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED;
                 _doPublishEvent(assignmentChannel, body);
+                return protocol;
 
             } else {
                 String msg = String.format("Unknown source schema %s for the transfertask %s",
@@ -91,17 +88,18 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                         .put("message", msg)
                         .mergeIn(body);
                 _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+                return json.toString();
             }
         } catch (Exception e) {
-            logger.error(e.getMessage());
+            //logger.info(e.getMessage());
             JsonObject json = new JsonObject()
                     .put("cause", e.getClass().getName())
                     .put("message", e.getMessage())
                     .mergeIn(body);
 
             _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+            return json.toString();
         }
-
-        return protocol;
     }
+
 }

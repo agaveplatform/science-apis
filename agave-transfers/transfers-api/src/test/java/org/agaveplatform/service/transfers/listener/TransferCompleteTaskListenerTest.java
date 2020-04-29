@@ -41,6 +41,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
     protected TransferCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) {
         TransferCompleteTaskListener ttc = mock(TransferCompleteTaskListener.class );
+        when(ttc.config()).thenReturn(config);
         when(ttc.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
         when(ttc.getVertx()).thenReturn(vertx);
         when(ttc.processEvent(any())).thenCallRealMethod();

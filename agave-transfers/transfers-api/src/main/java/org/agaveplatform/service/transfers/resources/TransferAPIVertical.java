@@ -55,6 +55,21 @@ public class TransferAPIVertical extends AbstractVerticle {
         setEventChannel(eventChannel);
     }
 
+    /**
+     * Overriding the parent with a null safe check for the verticle context
+     * before continuing. This affords us the luxury of spying on this instance
+     * with a mock call chain.
+     * @return the config if present, an empty JsonObject otherwise
+     */
+    @Override
+    public JsonObject config() {
+        if (this.context == null) {
+            return new JsonObject();
+        } else {
+            return this.context.config();
+        }
+    }
+
 
     @Override
     public void start(Promise<Void> promise) {

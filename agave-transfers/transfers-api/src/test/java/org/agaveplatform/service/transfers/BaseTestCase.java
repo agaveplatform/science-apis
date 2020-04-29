@@ -3,6 +3,7 @@ package org.agaveplatform.service.transfers;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -111,6 +113,22 @@ public abstract class BaseTestCase {
      */
     protected AsyncResult<JsonObject> getMockAsyncResult(JsonObject result) {
         AsyncResult<JsonObject> asyncResult = mock(AsyncResult.class);
+        when(asyncResult.result()).thenReturn(result);
+        when(asyncResult.succeeded()).thenReturn(true);
+        when(asyncResult.failed()).thenReturn(false);
+        when(asyncResult.cause()).thenReturn(null);
+
+        return asyncResult;
+    }
+
+    /**
+     * Creates a mock {@link AsyncResult<JsonArray>} that can be used as a handler controlling
+     * the success outcomes
+     * @param result the expected {@link JsonArray} returned from {@link AsyncResult#result()}
+     * @return a valid mock for testing {@link JsonArray} result behavior
+     */
+    protected AsyncResult<JsonArray> getMockAsyncResult(JsonArray result) {
+        AsyncResult<JsonArray> asyncResult = mock(AsyncResult.class);
         when(asyncResult.result()).thenReturn(result);
         when(asyncResult.succeeded()).thenReturn(true);
         when(asyncResult.failed()).thenReturn(false);

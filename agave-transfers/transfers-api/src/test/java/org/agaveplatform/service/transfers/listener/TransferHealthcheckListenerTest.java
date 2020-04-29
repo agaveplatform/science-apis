@@ -25,8 +25,7 @@ import java.time.Instant;
 import org.agaveplatform.service.transfers.listener.TransferHealthcheckListener;
 import org.mockito.stubbing.Answer;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_COMPLETED;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -45,27 +44,11 @@ class TransferHealthcheckListenerTest extends BaseTestCase {
 	private Vertx vertx;
 	private JWTAuth jwtAuth;
 
-	/**
-	 * Initializes the jwt auth options and the
-	 * @throws IOException when the key cannot be read
-	 */
-	private void initAuth() throws IOException {
-		JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
-				.addPubSecKey(new PubSecKeyOptions()
-						.setAlgorithm("RS256")
-						.setPublicKey(CryptoHelper.publicKey())
-						.setSecretKey(CryptoHelper.privateKey()));
-
-		jwtAuth = JWTAuth.create(vertx, jwtAuthOptions);
-	}
-
 	@BeforeAll
 	public void setUpService() throws IOException {
 		// read in config options
 		initConfig();
 
-		// init the jwt auth used in the api calls
-		initAuth();
 	}
 
 
@@ -74,7 +57,8 @@ class TransferHealthcheckListenerTest extends BaseTestCase {
 		when(thc.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(thc.getVertx()).thenReturn(vertx);
 		when(thc.processEvent(any())).thenCallRealMethod();
-
+		when(thc.config()).thenReturn(config);
+		doNothing().when(thc)._doPublishEvent(anyString(), any());
 		return thc;
 	}
 
@@ -104,10 +88,25 @@ class TransferHealthcheckListenerTest extends BaseTestCase {
 			return null;
 		}).when(dbService).updateStatus(any(), any(), any(), any());
 
+		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.FALSE);
 
+		// mock the handler passed into updateStatus
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
+					.handle(allChildrenCancelledOrCompletedHandler);
+			return null;
+		}).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
+
+		when(thc.getDbService()).thenReturn(dbService);
 
 		Future<Boolean> result = thc.processEvent(json);
+
+		// empty list response from db mock should result in no healthcheck events being raised
 		verify(thc, never())._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), any());
+		verify(thc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+
+		Assertions.assertTrue(result.result(),
+				"Empty list returned from db mock should result in a true response to the callback.");
 
 		ctx.completeNow();
 	}

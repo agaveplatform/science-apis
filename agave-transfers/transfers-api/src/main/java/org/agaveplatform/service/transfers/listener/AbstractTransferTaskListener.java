@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +27,21 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
         super();
         setVertx(vertx);
         setEventChannel(eventChannel);
+    }
+
+    /**
+     * Overriding the parent with a null safe check for the verticle context
+     * before continuing. This affords us the luxury of spying on this instance
+     * with a mock call chain.
+     * @return the config if present, an empty JsonObject otherwise
+     */
+    @Override
+    public JsonObject config() {
+        if (this.context == null) {
+            return new JsonObject();
+        } else {
+            return this.context.config();
+        }
     }
 
     protected void _doPublishEvent(String event, Object body) {

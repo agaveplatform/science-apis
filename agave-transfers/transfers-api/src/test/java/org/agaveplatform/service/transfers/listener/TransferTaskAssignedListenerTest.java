@@ -13,6 +13,7 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -38,17 +39,14 @@ class TransferTaskAssignedListenerTest {
 		vertx.close(ctx.completing());
 	}
 
-//	@ParameterizedTest
-//	@ValueSource(strings = { "GRIDFTP", "FTP", "SFTP", "IRODS", "IRODS4", "LOCAL", "AZURE", "S3", "SWIFT", "HTTP", "HTTPS" })
 	@Test
-	//@Disabled
-	public void processTransferTaskPublishesProtocolEvent(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskPublishesProtocolEventTest(Vertx vertx, VertxTestContext ctx) {
 		//JsonObject body = new JsonObject();
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
 		JsonObject body = tt.toJson();
 
-		vertx.eventBus().consumer("transfertask.sftp", msg -> {
+		vertx.eventBus().consumer("transfertask.all", msg -> {
 			JsonObject bodyRec = (JsonObject) msg.body();
 			assertEquals(tt.getUuid(), bodyRec.getString("uuid"));
 			ctx.completeNow();
@@ -62,9 +60,6 @@ class TransferTaskAssignedListenerTest {
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
 		ta.processTransferTask(body);
 
-//		URI srcUri = URI.create(tt.getSource());
-//		RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
-//		String protocolSelected =  srcSystem.getStorageConfig().getProtocol().name().toLowerCase();
 		String protocolSelected = "http";
 
 		assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
@@ -72,13 +67,12 @@ class TransferTaskAssignedListenerTest {
 	}
 
 	@Test
-	public void processTransferTaskPublishesChildTasksForDirectory(Vertx vertx, VertxTestContext ctx) {
-		//JsonObject body = new JsonObject();
+	public void processTransferTaskPublishesChildTasksForDirectoryTest(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
 		JsonObject body = tt.toJson();
 
-		vertx.eventBus().consumer("transfertask.sftp", msg -> {
+		vertx.eventBus().consumer("transfertask.all", msg -> {
 			JsonObject bodyRec = (JsonObject) msg.body();
 			assertEquals(tt.getUuid(), bodyRec.getString("uuid"));
 			ctx.completeNow();
@@ -87,9 +81,6 @@ class TransferTaskAssignedListenerTest {
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
 		ta.processTransferTask(body);
 
-//		URI srcUri = URI.create(tt.getSource());
-//		RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
-//		String protocolSelected =  srcSystem.getStorageConfig().getProtocol().name().toLowerCase();
 		String protocolSelected = "http";
 
 		assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
@@ -97,8 +88,7 @@ class TransferTaskAssignedListenerTest {
 	}
 
 	@Test
-	public void processTransferTaskPublishesErrorOnSystemUnavailble(Vertx vertx, VertxTestContext ctx) {
-		//JsonObject body = new JsonObject();
+	public void processTransferTaskPublishesErrorOnSystemUnavailbleTest(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
 		JsonObject body = tt.toJson();
@@ -112,17 +102,13 @@ class TransferTaskAssignedListenerTest {
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
 		ta.processTransferTask(body);
 
-//		URI srcUri = URI.create(tt.getSource());
-//		RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
-//		String protocolSelected =  srcSystem.getStorageConfig().getProtocol().name().toLowerCase();
 		String protocolSelected = "http";
 		assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
 		ctx.completeNow();
 	}
 
 	@Test
-	public void processTransferTaskPublishesErrorOnSystemUnknown(Vertx vertx, VertxTestContext ctx) {
-		//JsonObject body = new JsonObject();
+	public void processTransferTaskPublishesErrorOnSystemUnknownTest(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
 		JsonObject body = tt.toJson();
@@ -135,21 +121,20 @@ class TransferTaskAssignedListenerTest {
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
 		ta.processTransferTask(body);
-//		URI srcUri = URI.create(tt.getSource());
-//		RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
-//		String protocolSelected =  srcSystem.getStorageConfig().getProtocol().name().toLowerCase();
+
 		String protocolSelected = "http";
 		assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
 		ctx.completeNow();
 	}
 
 	@Test
-	void isTaskInterrupted(){
+	void isTaskInterruptedTest(){
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(Vertx.vertx(), "transfertask.assigned");
+
 		ta.interruptedTasks.add(tt.getUuid());
 		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt present in interruptedTasks list should return true");
 		ta.interruptedTasks.remove(tt.getUuid());

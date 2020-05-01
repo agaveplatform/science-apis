@@ -54,7 +54,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			String dest = body.getString("dest");
 			TransferTask tt = new TransferTask(body);
 
-			logger.info("Default listener claimed task {} for source {} and dest {}", uuid, source, dest);
+			logger.info("Transfer task {} transferring: {} -> {}", uuid, source, dest);
+			processEvent(body);
 		});
 
 		// cancel tasks
@@ -92,11 +93,11 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		});
 	}
 
-	public String processEvent(JsonObject body) {
+	public boolean processEvent(JsonObject body) {
 		TransferTask tt = new TransferTask(body);
 		String source = tt.getSource();
 		String dest = tt.getDest();
-
+		Boolean result = true;
 		URI srcUri;
 		URI destUri;
 		RemoteDataClient srcClient = null;
@@ -105,13 +106,6 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		try {
 			srcUri = URI.create(source);
 			destUri = URI.create(dest);
-			// pull the system out of the url. system id is the hostname in an agave uri
-
-			srcClient = getRemoteDataClient(body.getString("owner"), srcUri);
-
-			// pull the dest system out of the url. system id is the hostname in an agave uri
-			destClient = getRemoteDataClient(body.getString("owner"), destUri);
-
 
 			// stat the remote path to check its type
 			//RemoteFileInfo fileInfo = srcClient.getFileInfo(srcUri.getPath());
@@ -122,71 +116,90 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			// smoke test this method with real object. We'll port the url copy class
 			// over in the coming week to handle current transfertask objects so we
 			// don' tneed this shim
-			org.iplantc.service.transfer.model.TransferTask legacyTransferTask =
-					new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
+			org.iplantc.service.transfer.model.TransferTask legacyTransferTask = null;
+			if (false) {
 
-			legacyTransferTask.setUuid(tt.getUuid());
-			legacyTransferTask.setTenantId(tt.getTenantId());
-			legacyTransferTask.setStatus(TransferStatusType.valueOf(tt.getStatus().name()));
-			legacyTransferTask.setAttempts(tt.getAttempts());
-			legacyTransferTask.setBytesTransferred(tt.getBytesTransferred());
-			legacyTransferTask.setTotalSize(tt.getTotalSize());
-			legacyTransferTask.setCreated(Date.from(tt.getCreated()));
-			legacyTransferTask.setLastUpdated(Date.from(tt.getLastUpdated()));
-			legacyTransferTask.setStartTime(Date.from(tt.getStartTime()));
-			legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));
-			if (tt.getParentTaskId() != null) {
-				org.iplantc.service.transfer.model.TransferTask legacyParentTask = new org.iplantc.service.transfer.model.TransferTask();
-				legacyParentTask.setUuid(tt.getParentTaskId());
-				legacyTransferTask.setParentTask(legacyParentTask);
+				// pull the system out of the url. system id is the hostname in an agave uri
+				logger.debug("Creating source remote data client to {} for transfer task {}", srcUri.getHost(), tt.getUuid());
+				if (false) srcClient = getRemoteDataClient(body.getString("owner"), srcUri);
+
+				logger.debug("Creating dest remote data client to {} for transfer task {}", destUri.getHost(), tt.getUuid());
+				// pull the dest system out of the url. system id is the hostname in an agave uri
+				if (false) destClient = getRemoteDataClient(body.getString("owner"), destUri);
+
+				legacyTransferTask =
+						new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
+
+				legacyTransferTask.setUuid(tt.getUuid());
+				legacyTransferTask.setTenantId(tt.getTenantId());
+				legacyTransferTask.setStatus(TransferStatusType.valueOf(tt.getStatus().name()));
+				legacyTransferTask.setAttempts(tt.getAttempts());
+				legacyTransferTask.setBytesTransferred(tt.getBytesTransferred());
+				legacyTransferTask.setTotalSize(tt.getTotalSize());
+				legacyTransferTask.setCreated(Date.from(tt.getCreated()));
+				legacyTransferTask.setLastUpdated(Date.from(tt.getLastUpdated()));
+				legacyTransferTask.setStartTime(Date.from(tt.getStartTime()));
+				legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));
+				if (tt.getParentTaskId() != null) {
+					org.iplantc.service.transfer.model.TransferTask legacyParentTask = new org.iplantc.service.transfer.model.TransferTask();
+					legacyParentTask.setUuid(tt.getParentTaskId());
+					legacyTransferTask.setParentTask(legacyParentTask);
+				}
+				if (tt.getRootTaskId() != null) {
+					org.iplantc.service.transfer.model.TransferTask legacyRootTask = new org.iplantc.service.transfer.model.TransferTask();
+					legacyRootTask.setUuid(tt.getRootTaskId());
+					legacyTransferTask.setRootTask(legacyRootTask);
+				}
+
+				logger.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+				result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
+				logger.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
 			}
-			if (tt.getRootTaskId() != null) {
-				org.iplantc.service.transfer.model.TransferTask legacyRootTask = new org.iplantc.service.transfer.model.TransferTask();
-				legacyRootTask.setUuid(tt.getRootTaskId());
-				legacyTransferTask.setRootTask(legacyRootTask);
-			}
 
-			Boolean result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
-			logger.info("Result of calling the processRequest {}", result);
-
+			logger.debug("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+			logger.debug("Completed transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
 
 		} catch (RemoteDataException e){
-			logger.error("Remote Data Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
+			logger.error("RemoteDataException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			return e.toString();
+			return false;
+
 		} catch (RemoteCredentialException e){
-			logger.error("Remote Credential Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
+			logger.error("RemoteCredentialException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-			return e.toString();
+			return false;
+//			return e.toString();
 		} catch (IOException e){
-			logger.error("IO Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
+			logger.error("IOException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-			return e.toString();
+			return false;
+//			return e.toString();
 		} catch (Exception e){
-			logger.error("General Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
+			logger.error("Unexpected Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
 
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			return e.toString();
+			return false;
+//			return e.toString();
 		}
 
 		_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
-		return "Complete";
+		return true;
 	}
 
 	protected Boolean processCopyRequest(String source, RemoteDataClient srcClient, String dest, RemoteDataClient destClient, org.iplantc.service.transfer.model.TransferTask legacyTransferTask)

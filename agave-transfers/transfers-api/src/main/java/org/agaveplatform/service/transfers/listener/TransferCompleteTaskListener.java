@@ -44,8 +44,11 @@ public class TransferCompleteTaskListener extends AbstractTransferTaskListener {
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
-			String status = body.getString("status");
-			logger.info("Transfer task {} completed with status {}", uuid, status);
+			String source = body.getString("source");
+			String dest = body.getString("dest");
+			TransferTask tt = new TransferTask(body);
+
+			logger.info("Transfer task {} completed: {} -> {}", uuid, source, dest);
 
 			this.processEvent(body);
 		});
@@ -61,28 +64,31 @@ public class TransferCompleteTaskListener extends AbstractTransferTaskListener {
 		String uuid = body.getString("uuid");
 		String status = body.getString("status");
 		String parentTaskId = body.getString("parentTask");
+		logger.debug("Updating status of transfer task {} to COMPLETED", uuid);
 
 		try {
 //			dbService.updateStatus(tenantId, uuid, status, reply -> this.handleUpdateStatus(reply, tenantId, parentTaskId));
 			getDbService().updateStatus(tenantId, uuid, TransferStatusType.COMPLETED.name(), reply -> {
 				if (reply.succeeded()) {
-
+					logger.debug("Transfer task {} status updated to COMPLETED", uuid);
 					_doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, body);
 
 					if (parentTaskId != null) {
+						logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);
 						processParentEvent(tenantId, parentTaskId, tt -> {
 							if (tt.succeeded()) {
+								logger.debug("Check for parent task {} for completed transfer task {} done.", parentTaskId, uuid);
 								// TODO: send notification events? or should listeners listen to the existing events?
 								//_doPublishEvent("transfertask.notification", body);
 								promise.complete(tt.result());
 							} else {
-								if (tt.cause() instanceof ObjectNotFoundException) {
-									logger.error("Unable to process parent transfer task {}: {}",
-											parentTaskId, tt.cause().getMessage());
-								} else {
-									logger.error("Unable to check child status of parent task {}: {}",
-											parentTaskId, tt.cause().getMessage());
-								}
+//								if (tt.cause() instanceof ObjectNotFoundException) {
+//									logger.error("Unable to process parent transfer task {}: {}",
+//											parentTaskId, tt.cause().getMessage());
+//								} else {
+//									logger.error("Unable to check child status of parent task {}: {}",
+//											parentTaskId, tt.cause().getMessage());
+//								}
 
 								JsonObject json = new JsonObject()
 										.put("cause", tt.cause().getClass().getName())
@@ -95,6 +101,7 @@ public class TransferCompleteTaskListener extends AbstractTransferTaskListener {
 						});
 					}
 					else {
+						logger.debug("Transfer task {} has no parent task to process.", uuid);
 						promise.complete(Boolean.TRUE);
 					}
 				}
@@ -120,7 +127,6 @@ public class TransferCompleteTaskListener extends AbstractTransferTaskListener {
 			promise.fail(e);
 		}
 
-		logger.debug("exiting processEvent for transfertask {}", uuid);
 		return promise.future();
 	}
 
@@ -152,28 +158,36 @@ public class TransferCompleteTaskListener extends AbstractTransferTaskListener {
 						if (isAllChildrenCancelledOrCompleted.succeeded()) {
 							// if all children are completed or cancelled, the parent is completed. create that event
 							if (isAllChildrenCancelledOrCompleted.result()) {
+								logger.debug("All child tasks for parent transfer task {} are cancelled or completed. " +
+										"A transfer.completed event will be created for this task.", parentTaskId);
 								// call to our publishing helper for easier testing.
 								_doPublishEvent(MessageType.TRANSFER_COMPLETED, getTaskById.result());
 							} else {
+								logger.debug("Parent transfer task {} has active children. " +
+										"Skipping further processing ", parentTaskId);
 								// parent has active children. let it run
 							}
 
 							// return true indicating the parent event was processed
 							resultHandler.handle(isAllChildrenCancelledOrCompleted);
 						} else {
+							logger.debug("Failed to look up children for parent transfer task {}. " +
+									"Skipping further processing ", parentTaskId);
 							// failed to look up child tasks. processing of the parent failed. we
 							// forward on the exception to the handler
 							resultHandler.handle(Future.failedFuture(isAllChildrenCancelledOrCompleted.cause()));
 						}
 					});
 				} else {
+					logger.debug("Parent transfer task {} is already in a terminal state. " +
+							"Skipping further processing ", parentTaskId);
 					// parent is already terminal. let it lay
 					// return true indicating the parent event was processed
 					resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
 				}
 			} else {
 //				promise.fail(getTaskById.cause());
-//				logger.error("Failed to set status of transfertask {} to completed. error: {}", parentTaskId, getTaskById.cause());
+				logger.error("Failed to lookup parent transfer task {}: {}", parentTaskId, getTaskById.cause().getMessage());
 				resultHandler.handle(Future.failedFuture(getTaskById.cause()));
 			}
 		});

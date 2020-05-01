@@ -27,14 +27,6 @@ import static org.mockito.Mockito.*;
 //@Disabled
 class TransferTaskCancelListenerTest extends BaseTestCase {
 
-//	private EventBus eventBus;
-//	private final String TEST_USERNAME = "testuser";
-//	public static final String TENANT_ID = "agave.dev";
-//	public static final String TRANSFER_SRC = "http://foo.bar/cat";
-//	public static final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
-//	public static final String HOST = "foo.bar";
-//	public static final String PROTOCOL = "http";
-
 
 	@Test
 	@DisplayName("Transfer Task Cancel Listener - processCancelAck")

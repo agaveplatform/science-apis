@@ -31,11 +31,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListenerTest.class);
 
-	public static final String HOST = "foo.bar";
-	public static final String PROTOCOL = "http";
-	Vertx vertx;
-
-
 	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) {
 		TransferTaskCreatedListener ttc = Mockito.mock(TransferTaskCreatedListener.class);
 		when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
@@ -43,11 +38,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		when(ttc.assignTransferTask(any())).thenCallRealMethod();
 		return ttc;
 	}
-
-	@Mock
-	private SessionFactory hibernateSessionFactory;
-
-
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignTransferTask")

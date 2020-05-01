@@ -6,6 +6,7 @@ import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
@@ -18,6 +19,7 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 //import org.agaveplatform.service.transfers.resources.FileTransferCreateServiceImpl;
 import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
@@ -34,8 +36,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Matchers.any;
@@ -49,12 +55,11 @@ import static org.mockito.Mockito.*;
 public class TransferTaskSmokeTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskSmokeTest.class);
 
-	private Vertx vertx;
+	Vertx vertx = null;
 	private JWTAuth jwtAuth;
 	private static RequestSpecification requestSpecification;
 	private TransferTaskDatabaseService dbService;
-	public static final String HOST = "foo.bar";
-	public static final String PROTOCOL = "http";
+	List<String> messages = new ArrayList<String>();
 
 	TransferErrorListener getMockErrListenerInstance(Vertx vertx) {
 		TransferErrorListener listener = spy(new TransferErrorListener(vertx));
@@ -77,49 +82,58 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 	InteruptEventListener getMockInteruptListenerInstance(Vertx vertx) {
 		InteruptEventListener listener = spy(new InteruptEventListener(vertx));
 		when(listener.config()).thenReturn(config);
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 	NotificationListener getMockNotificationListenerInstance(Vertx vertx) {
 //		NotificationListener listener = spy(new NotificationListener(vertx));
 		NotificationListener listener = Mockito.spy(new NotificationListener(vertx));
 		when(listener.config()).thenReturn(config);
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 	TransferCompleteTaskListener getMockTCTListenerInstance(Vertx vertx) {
 		TransferCompleteTaskListener listener = spy(new TransferCompleteTaskListener(vertx));
 		when(listener.config()).thenReturn(config);
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 	TransferTaskAssignedListener getMockTTAListenerInstance(Vertx vertx) {
 		TransferTaskAssignedListener listener = spy(new TransferTaskAssignedListener(vertx));
 		when(listener.config()).thenReturn(config);
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 	TransferTaskCancelListener getMockTTCancelListenerInstance(Vertx vertx) {
 		TransferTaskCancelListener listener = spy(new TransferTaskCancelListener(vertx));
 		when(listener.config()).thenReturn(config);
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 	TransferTaskCreatedListener getMockTTCListenerInstance(Vertx vertx) {
 		TransferTaskCreatedListener listener = spy(new TransferTaskCreatedListener(vertx));
 		doReturn(config).when(listener).config();
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 	TransferTaskPausedListener getMockTTPausedListenerInstance(Vertx vertx) {
 		TransferTaskPausedListener listener = spy(new TransferTaskPausedListener(vertx));
 		when(listener.config()).thenReturn(config);
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 
 	TransferAllProtocolVertical getMockAllProtocolVerticalInstance(Vertx vertx) {
 		TransferAllProtocolVertical listener = spy(new TransferAllProtocolVertical(vertx));
 		when(listener.config()).thenReturn(config);
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 
 	TransferAPIVertical getMockTransferAPIVerticalInstance(Vertx vertx) {
 		TransferAPIVertical listener = spy(new TransferAPIVertical(vertx));
 		when(listener.config()).thenReturn(config);
+		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 
@@ -165,7 +179,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 	 * Initializes the jwt auth options and the
 	 * @throws IOException when the key cannot be read
 	 */
-	private void initAuth() throws IOException {
+	private void initAuth(Vertx vertx) throws IOException {
 		JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
 				.addPubSecKey(new PubSecKeyOptions()
 						.setAlgorithm("RS256")
@@ -175,18 +189,80 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		jwtAuth = JWTAuth.create(vertx, jwtAuthOptions);
 	}
 
+	@BeforeAll
+	protected void beforeAll(Vertx vertx, VertxTestContext ctx) throws IOException {
+		super.setUpService();
+
+		DeploymentOptions options = new DeploymentOptions().setConfig(config);
+		vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, dbId -> {
+			log.debug("Completed deploying transfer task db verticles");
+			vertx.deployVerticle(TransferAPIVertical.class.getName(), options, apiId -> {
+				log.debug("Completed deploying transfer api verticles");
+				vertx.deployVerticle(TransferTaskCreatedListener.class.getName(), options, createdId -> {
+					log.debug("Completed deploying transfer task createdverticles");
+					vertx.deployVerticle(TransferTaskAssignedListener.class.getName(), options, assignedId -> {
+						log.debug("Completed deploying transfer task assigned verticles");
+						vertx.deployVerticle(TransferAllProtocolVertical.class.getName(), options, httpId -> {
+							log.debug("Completed deploying transfer all verticles");
+							vertx.deployVerticle(TransferCompleteTaskListener.class.getName(), options, completedId -> {
+								log.debug("Completed deploying transfer complete verticles");
+								ctx.completeNow();
+							});
+						});
+					});
+				});
+			});
+		});
+	}
+
+	@BeforeEach
+	protected void beforeEach(Vertx vertx, VertxTestContext ctx) {
+
+		TransferTask parentTask = _createTestTransferTask();
+		parentTask.setStatus(TransferStatusType.QUEUED);
+		parentTask.setStartTime(Instant.now());
+		parentTask.setEndTime(Instant.now());
+		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
+
+		RequestSpecification requestSpecification = new RequestSpecBuilder()
+				//								.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+				.setBaseUri("http://localhost:" + port + "/")
+				.build();
+
+		Checkpoint requestCheckpoint = ctx.checkpoint();
+		ctx.verify(() -> {
+			String response = given()
+					.spec(requestSpecification)
+					//										.header("X-JWT-ASSERTION-AGAVE_DEV", this.makeJwtToken(TEST_USERNAME))
+					.contentType(ContentType.JSON)
+					.body(parentTask.toJSON())
+					.when()
+					.post("api/transfers")
+					.then()
+					.assertThat()
+					.statusCode(201)
+					.extract()
+					.asString();
+
+			JsonObject createdTransferTask = new JsonObject(response);
+			assertThat(createdTransferTask).isNotNull();
+			requestCheckpoint.flag();
+			ctx.completeNow();
+		});
+	}
+
 	@Test
 	@DisplayName("Single file transfer task smoke test")
 	public void singleFileTransferSmokeTest(Vertx vertx, VertxTestContext ctx) {
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
-		parentTask.setStatus(TransferStatusType.COMPLETED);
+		parentTask.setStatus(TransferStatusType.QUEUED);
 		parentTask.setStartTime(Instant.now());
 		parentTask.setEndTime(Instant.now());
 		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		TransferTask transferTask = _createTestTransferTask();
-		transferTask.setStatus(TransferStatusType.TRANSFERRING);
+		transferTask.setStatus(TransferStatusType.QUEUED);
 		transferTask.setStartTime(Instant.now());
 		transferTask.setEndTime(Instant.now());
 		transferTask.setRootTaskId(parentTask.getUuid());
@@ -216,6 +292,13 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		Checkpoint httpDeploymentCheckpoint = ctx.checkpoint();
 		Checkpoint requestCheckpoint = ctx.checkpoint();
 		Checkpoint completedDeploymentCheckpoint = ctx.checkpoint();
+
+		Checkpoint apiListenerCheckpoint = ctx.checkpoint();
+		Checkpoint createdListenerCheckpoint = ctx.checkpoint();
+		Checkpoint assignedListenerCheckpoint = ctx.checkpoint();
+		Checkpoint transferAllListenerCheckpoint = ctx.checkpoint();
+		Checkpoint transferCompletedListenerCheckpoint = ctx.checkpoint();
+		Checkpoint transferTaskCompletedListenerCheckpoint = ctx.checkpoint();
 
 		DeploymentOptions options = new DeploymentOptions().setConfig(config);
 
@@ -259,23 +342,70 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 									JsonObject createdTransferTask = new JsonObject(response);
 									assertThat(createdTransferTask).isNotNull();
 									requestCheckpoint.flag();
+									ctx.verify(() -> {
+										vertx.eventBus().addOutboundInterceptor(dc -> {
+											String address = dc.message().address();
+											if (address.equals(TRANSFERTASK_CREATED)) {
+												createdListenerCheckpoint.flag();
+											} else if (address.equals(TRANSFERTASK_ASSIGNED)) {
+												assignedListenerCheckpoint.flag();
+											} else if (address.equals(TRANSFER_ALL)) {
+												transferAllListenerCheckpoint.flag();
+											} else if (address.equals(TRANSFER_COMPLETED)) {
+												transferCompletedListenerCheckpoint.flag();
+											} else if (address.equals(TRANSFERTASK_COMPLETED)) {
+												transferTaskCompletedListenerCheckpoint.flag();
+												ctx.completeNow();
+											} else if (address.equals(TRANSFERTASK_ERROR)) {
+												ctx.failNow(new TransferException("Unexpected exception thrown during processing."));
+											} else {
+												ctx.failNow(new TransferException("Invalid event raised during transfer processing"));
+											}
+											dc.next();
+										});
+									});
 
-									verify(transferAPIVertical)._doPublishEvent("transfertask.created", createdTransferTask);
-									verify(transferAPIVertical, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-									verify(transferTaskCreatedListener)._doPublishEvent("transfertask.assigned", createdTransferTask);
-									verify(transferTaskCreatedListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-									verify(transferTaskAssignedListener)._doPublishEvent("transfertask.all", createdTransferTask);
-									verify(transferTaskAssignedListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-									verify(transferAllProtocolVertical)._doPublishEvent("transfer.completed", createdTransferTask);
-									verify(transferAllProtocolVertical, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-									verify(transferCompleteTaskListener)._doPublishEvent("transfertask.completed", createdTransferTask);
-									verify(transferCompleteTaskListener, never())._doPublishEvent("transfertask.error", createdTransferTask);
-
-									ctx.completeNow();
+//									vertx.eventBus().<JsonObject>request(TRANSFERTASK_COMPLETED, "", ctx.succeeding(reply -> {
+//										ctx.verify(() -> {
+//											JsonObject body = reply.body();
+//											assertEquals(body.getString("status"), TransferStatusType.COMPLETED,
+//													"Transfer task should have completed status after completed event is raised");
+//
+//											verify(transferAPIVertical)._doPublishEvent(eq(TRANSFERTASK_CREATED), any());
+//											verify(transferAPIVertical, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+//
+//											verify(transferTaskCreatedListener)._doPublishEvent(eq(TRANSFERTASK_ASSIGNED), any());
+//											verify(transferTaskCreatedListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+//
+//											verify(transferTaskAssignedListener)._doPublishEvent(eq(TRANSFER_ALL), any());
+//											verify(transferTaskAssignedListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+//
+//											verify(transferAllProtocolVertical)._doPublishEvent(eq(TRANSFER_COMPLETED), any());
+//											verify(transferAllProtocolVertical, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+//
+//											verify(transferCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_COMPLETED), any());
+//											verify(transferCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+//
+//											ctx.completeNow();
+//										});
+//									}));
+//
+//									verify(transferAPIVertical)._doPublishEvent(TRANSFERTASK_CREATED, createdTransferTask);
+//									verify(transferAPIVertical, never())._doPublishEvent(TRANSFERTASK_ERROR, createdTransferTask);
+//
+//									verify(transferTaskCreatedListener)._doPublishEvent(TRANSFERTASK_ASSIGNED, createdTransferTask);
+//									verify(transferTaskCreatedListener, never())._doPublishEvent(TRANSFERTASK_ERROR, createdTransferTask);
+//
+//									verify(transferTaskAssignedListener)._doPublishEvent(TRANSFER_ALL, createdTransferTask);
+//									verify(transferTaskAssignedListener, never())._doPublishEvent(TRANSFERTASK_ERROR, createdTransferTask);
+//
+//									verify(transferAllProtocolVertical)._doPublishEvent(TRANSFER_COMPLETED, createdTransferTask);
+//									verify(transferAllProtocolVertical, never())._doPublishEvent(TRANSFERTASK_ERROR, createdTransferTask);
+//
+//									verify(transferCompleteTaskListener, never())._doPublishEvent(TRANSFERTASK_COMPLETED, createdTransferTask);
+//									verify(transferCompleteTaskListener, never())._doPublishEvent(TRANSFERTASK_ERROR, createdTransferTask);
+//
+//									ctx.completeNow();
 								});
 							}));
 						}));
@@ -283,6 +413,8 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 				}));
 			}));
 		}));
-	}
 
+
+
+	}
 }

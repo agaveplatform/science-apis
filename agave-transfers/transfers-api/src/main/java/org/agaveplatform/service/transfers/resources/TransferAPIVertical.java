@@ -163,7 +163,8 @@ public class TransferAPIVertical extends AbstractVerticle {
         TransferTask transferTask = new TransferTask(routingContext.getBodyAsJson());
         dbService.create(tenantId, transferTask, reply -> {
             if (reply.succeeded()) {
-                _doPublishEvent(MessageType.TRANSFERTASK_CREATED, reply.result());
+                TransferTask tt = new TransferTask(reply.result());
+                _doPublishEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
                 routingContext.response().setStatusCode(201).end(reply.result().encodePrettily());
             } else {
                 routingContext.fail(reply.cause());

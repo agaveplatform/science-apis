@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.UUID;
 
 public abstract class AbstractMetadataPermissionDaoIT implements IMetadataPermissionDaoIT {
-    protected String TEST_OWNER = "owner";
-    protected String TEST_SHARED_OWNER = "sharedowner";
+    protected String TEST_OWNER = "testuser";
+    protected String TEST_SHARED_OWNER = "testshareuser";
 
     @BeforeClass
     public void beforeClass() throws Exception {

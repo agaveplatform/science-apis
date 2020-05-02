@@ -1,17 +1,28 @@
 package org.iplantc.service.metadata.dao;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.*;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import org.apache.log4j.Logger;
 
-import com.mongodb.DB;
-import com.mongodb.MongoClient;
+import org.bson.BsonDocument;
+import org.bson.Document;
+import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.exceptions.MetadataStoreException;
+import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataSchemaItem;
+
+import java.net.UnknownHostException;
 
 public class MetadataSchemaDao {
     
     private static final Logger log = Logger.getLogger(MetadataSchemaDao.class);
-    
-    private DB db = null;
-    private MongoClient mongoClient = null;
-    
+
+    private MongoClient mongoClient;
+    private MongoDatabase db;
+
     private static MetadataSchemaDao dao = null;
     
     public static MetadataSchemaDao getInstance() {
@@ -21,38 +32,76 @@ public class MetadataSchemaDao {
         
         return dao;
     }
-    
-//    public JacksonDBCollection<MetadataSchemaItem, String> getDefaultCollection() throws UnknownHostException {
-//        return getCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_SCHEMATA_COLLECTION);
-//    }
-//    
-//    public JacksonDBCollection<MetadataSchemaItem, String> getCollection(String dbName, String collectionName) throws UnknownHostException {
-//        
-//        db = getClient().getDB(dbName);
-//        // Gets a collection, if it does not exist creates it
-//        return JacksonDBCollection.wrap(db.getCollection(collectionName), MetadataSchemaItem.class,
-//                String.class);
-//    }
-//    
-//    @SuppressWarnings("deprecation")
-//    private MongoClient getClient() throws UnknownHostException {
-//        if (mongoClient == null) {
-//            
-//            mongoClient = new MongoClient(new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT), 
-//                    Arrays.asList(MongoCredential.createMongoCRCredential(
-//                            Settings.METADATA_DB_USER, "api", Settings.METADATA_DB_PWD.toCharArray())));
-//        } 
-//        else if (!mongoClient.getConnector().isOpen()) 
-//        {
-//            try { mongoClient.close(); } catch (Exception e) { log.error("Failed to close mongo client.", e); }
-//            mongoClient = null;
-//            mongoClient = new MongoClient(new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT), 
-//                    Arrays.asList(MongoCredential.createMongoCRCredential(
-//                            Settings.METADATA_DB_USER, "api", Settings.METADATA_DB_PWD.toCharArray())));
-//        }
-//            
-//        return mongoClient;
-//    }
+
+    /**
+     * Establishes a connection to the mongo server
+     *
+     * @return valid mongo client connection
+     * @throws UnknownHostException when the host cannot be found
+     */
+    public MongoClient getMongoClient() throws UnknownHostException
+    {
+        if (mongoClient == null )
+        {
+            mongoClient = new MongoClient(
+                    new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT),
+                    getMongoCredential(),
+                    MongoClientOptions.builder().build());
+        }
+
+        return mongoClient;
+    }
+
+    /**
+     * Creates a new MongoDB credential for the database collections
+     * @return valid mongo credential for this instance
+     */
+    private MongoCredential getMongoCredential() {
+        return MongoCredential.createScramSha1Credential(
+                Settings.METADATA_DB_USER, Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_PWD.toCharArray());
+    }
+
+    /**
+     * Gets the default metadata collection from the default mongodb metatadata db.
+     * @return collection from the db
+     * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
+     */
+    public MongoCollection getDefaultCollection() throws UnknownHostException {
+        return getCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_SCHEMATA_COLLECTION);
+    }
+
+    /**
+     * Gets the named collection from the named db.
+     * @param dbName database name
+     * @param collectionName collection name
+     * @return collection from the db
+     * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
+     */
+    public MongoCollection getCollection(String dbName, String collectionName) throws UnknownHostException {
+
+        db = getMongoClient().getDatabase(dbName);
+
+        // Gets a collection, if it does not exist creates it
+        return db.getCollection(collectionName);
+    }
+
+    /**
+     * Stores the provided {@link MetadataSchemaItem} in the mongo collection
+     * @param metadataSchema the {@link MetadataSchemaItem} to be inserted
+     * @return the inserted {@link MetadataSchemaItem}
+     * @throws MetadataStoreException when the insertion failed
+     */
+    public MetadataSchemaItem insert(MetadataSchemaItem metadataSchema) throws MetadataStoreException {
+        ObjectMapper mapper = new ObjectMapper();
+        MongoCollection collection;
+        try {
+            collection = getDefaultCollection();
+            collection.insertOne(Document.parse(mapper.writeValueAsString(metadataSchema)));
+            return metadataSchema;
+        } catch (UnknownHostException| JsonProcessingException e) {
+            throw new MetadataStoreException("Failed to insert metadata item", e);
+        }
+    }
 //    
 //    /**
 //     * Generates a {@link Query} from the given {@code uuid} and {@link TenancyHelper#getCurrentTenantId()}

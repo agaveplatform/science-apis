@@ -2,31 +2,37 @@ package org.iplantc.service.metadata.dao;
 
 import static org.iplantc.service.metadata.model.enumerations.PermissionType.ALL;
 
+import java.net.UnknownHostException;
 import java.sql.Date;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.*;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.InsertOneOptions;
 import org.apache.log4j.Logger;
+import org.bson.BsonDocument;
+import org.bson.BsonString;
+import org.bson.BsonValue;
+import org.bson.Document;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
+import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.QueryBuilder;
 
 public class MetadataDao {
     
     private static final Logger log = Logger.getLogger(MetadataDao.class);
     
-    private DB db = null;
+    private MongoDatabase db = null;
     private MongoClient mongoClient = null;
     
     private static MetadataDao dao = null;
@@ -38,7 +44,94 @@ public class MetadataDao {
         
         return dao;
     }
-    
+
+    /**
+     * Establishes a connection to the mongo server
+     *
+     * @return valid mongo client connection
+     * @throws UnknownHostException when the host cannot be found
+     */
+    public MongoClient getMongoClient() throws UnknownHostException
+    {
+        if (mongoClient == null )
+        {
+            mongoClient = new MongoClient(
+                    new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT),
+                    getMongoCredential(),
+                    MongoClientOptions.builder().build());
+        }
+
+        return mongoClient;
+    }
+
+    /**
+     * Creates a new MongoDB credential for the database collections
+     * @return valid mongo credential for this instance
+     */
+    private MongoCredential getMongoCredential() {
+        return MongoCredential.createScramSha1Credential(
+                Settings.METADATA_DB_USER, Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_PWD.toCharArray());
+    }
+
+
+    /**
+     * Gets the default metadata collection from the default mongodb metatadata db.
+     * @return collection from the db
+     * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
+     */
+    public MongoCollection getDefaultCollection() throws UnknownHostException {
+        return getCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
+    }
+
+    /**
+     * Gets the named collection from the named db.
+     * @param dbName database name
+     * @param collectionName collection name
+     * @return collection from the db
+     * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
+     */
+    public MongoCollection getCollection(String dbName, String collectionName) throws UnknownHostException {
+
+        db = getMongoClient().getDatabase(dbName);
+
+        // Gets a collection, if it does not exist creates it
+        return db.getCollection(collectionName);
+    }
+
+    /**
+     * Stores the provided {@link MetadataItem} in the mongo collection
+     * @param metadataItem the {@link MetadataItem} to be inserted
+     * @return the inserted {@link MetadataItem}
+     * @throws MetadataStoreException when the insertion failed
+     */
+    public MetadataItem insert(MetadataItem metadataItem) throws MetadataStoreException {
+        ObjectMapper mapper = new ObjectMapper();
+        MongoCollection collection;
+        try {
+            collection = getDefaultCollection();
+            collection.insertOne(Document.parse(mapper.writeValueAsString(metadataItem)));
+            return metadataItem;
+        } catch (UnknownHostException| JsonProcessingException e) {
+            throw new MetadataStoreException("Failed to insert metadata item", e);
+        }
+    }
+
+//    public MetadataItem persist(MetadataItem item) throws MetadataStoreException {
+//        ObjectMapper mapper = new ObjectMapper();
+//        MongoCollection collection;
+//        try {
+//            collection = getDefaultCollection();
+//            collection.insertOne(BasicDBObject.parse(mapper.writeValueAsString(item)));
+////            BsonDocument query = new BsonDocument()
+////                    .append("uuid", new BsonString(item.getUuid()))
+////                    .append("tenant_id", new BsonString(TenancyHelper.getCurrentTenantId()));
+////            Object obj = collection.find(query).limit(1).first();
+//            return item;
+//        } catch (UnknownHostException|JsonProcessingException e) {
+//            throw new MetadataStoreException("Failed to insert metadata item", e);
+//        }
+//    }
+
 //    public JacksonDBCollection<MetadataItem, String> getDefaultCollection() throws UnknownHostException {
 //        return getCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
 //    }

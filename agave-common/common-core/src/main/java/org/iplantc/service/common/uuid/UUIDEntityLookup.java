@@ -1,19 +1,11 @@
 package org.iplantc.service.common.uuid;
 
-import java.io.File;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.*;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoDatabase;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.bson.BSONObject;
 import org.bson.Document;
 import org.codehaus.plexus.util.FileUtils;
 import org.hibernate.CacheMode;
@@ -22,6 +14,10 @@ import org.hibernate.Session;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.HibernateUtil;
+
+import java.io.File;
+import java.util.List;
+import java.util.Map;
 
 import static com.mongodb.client.model.Filters.eq;
 
@@ -70,28 +66,11 @@ public class UUIDEntityLookup {
 			} 
 			else 
 			{
-				String softwareUniqueName = (String)map.get("name") + "-" + (String)map.get("version");
-				Object available = map.get("publicly_available");
-				if (available instanceof Byte) {
-				    if ((Byte)map.get("publicly_available") == 1) {
-				        softwareUniqueName += "u" + ((Integer)map.get("revision_count")).toString();
-				    }
-				}
-				else if (available instanceof Boolean) {
-					if ((Boolean)available) {
-						softwareUniqueName += "u" + ((Integer)map.get("revision_count")).toString();
-					}
-				}
-				else if (available instanceof Integer) {
-					if ((Integer)map.get("publicly_available") == 1) {
-						softwareUniqueName += "u" + ((Integer)map.get("revision_count")).toString();
-					}
-				}
-				
+				String softwareUniqueName = buildSoftwareUrl(map);
 				return Settings.IPLANT_APP_SERVICE + softwareUniqueName;
 			}
 		} else if (entityType.equals(UUIDType.APP_EVENT)) {
-			Object softwareUuid = getEntityFieldByUuid("softwareevent", "entity_uuid", uuid);
+			Object softwareUuid = getEntityFieldByUuid("softwareevent", "software_uuid", uuid);
 			Map<String,Object> map = getEntityFieldByUuid("select `name`, `version`, `publicly_available`, `revision_count` from softwares where uuid = '" + softwareUuid + "' and `available` = 1");
 			if (map.isEmpty())
 			{
@@ -100,22 +79,7 @@ public class UUIDEntityLookup {
 				throw new UUIDException(msg);
 			}
 			else {
-				String softwareUniqueName = (String) map.get("name") + "-" + (String) map.get("version");
-				Object available = map.get("publicly_available");
-				if (available instanceof Byte) {
-					if ((Byte) map.get("publicly_available") == 1) {
-						softwareUniqueName += "u" + ((Integer) map.get("revision_count")).toString();
-					}
-				} else if (available instanceof Boolean) {
-					if ((Boolean) available) {
-						softwareUniqueName += "u" + ((Integer) map.get("revision_count")).toString();
-					}
-				} else if (available instanceof Integer) {
-					if ((Integer) map.get("publicly_available") == 1) {
-						softwareUniqueName += "u" + ((Integer) map.get("revision_count")).toString();
-					}
-				}
-
+				String softwareUniqueName = buildSoftwareUrl(map);
 				return Settings.IPLANT_APP_SERVICE + softwareUniqueName + "/history/" + uuid;
 			}
 		} else if (entityType.equals(UUIDType.POSTIT)) {
@@ -195,6 +159,40 @@ public class UUIDEntityLookup {
 		}
 	}
 
+	/**
+	 * Constructs the software unique name from the query result map passed in.
+	 * @param queryResult the map of column names and values returned from the db query
+	 * @return the software unique name regardless of public or private app
+	 */
+	private static String buildSoftwareUrl(Map<String, Object> queryResult) {
+		String softwareUniqueName = queryResult.get("name") + "-" + queryResult.get("version");
+		Object available = queryResult.get("publicly_available");
+		if (available instanceof Byte) {
+			if ((Byte) queryResult.get("publicly_available") == 1) {
+				softwareUniqueName += "u" + ((Integer) queryResult.get("revision_count")).toString();
+			}
+		} else if (available instanceof Boolean) {
+			if ((Boolean) available) {
+				softwareUniqueName += "u" + ((Integer) queryResult.get("revision_count")).toString();
+			}
+		} else if (available instanceof Integer) {
+			if ((Integer) queryResult.get("publicly_available") == 1) {
+				softwareUniqueName += "u" + ((Integer) queryResult.get("revision_count")).toString();
+			}
+		}
+
+		return softwareUniqueName;
+	}
+
+	/**
+	 * Looks up the value of <code>fieldName</code> in the table referenced for <code>entityType</code>
+	 * and keyed off the <code>uuid</code>.
+	 * @param entityType the entity type to look up. This will be pluralized to build the query.
+	 * @param fieldName the column whose value will be returned.
+	 * @param uuid the uuid of the entity to lookup in the <code>entityType</code> table
+	 * @return the value in the <code>fieldName</code> column
+	 * @throws UUIDException if the query is null or cannot be run.
+	 */
 	@SuppressWarnings("unchecked")
     private static Object getEntityFieldByUuid(String entityType, String fieldName, String uuid)
     throws UUIDException
@@ -214,14 +212,14 @@ public class UUIDEntityLookup {
         
         String tableName = entityType.toLowerCase() + "s";
 
-        List<Object> fieldValues = null;
+        List<Object> fieldValues;
         try 
         {
         	Session session = HibernateUtil.getSession();
             
             fieldValues = session
             		.createSQLQuery("select " + fieldName + " from " + tableName + " where uuid = :uuid")
-            		.setString("uuid", uuid.toString())
+            		.setString("uuid", uuid)
             		.setCacheable(false)
             		.setCacheMode(CacheMode.IGNORE)
             		.list();
@@ -244,7 +242,13 @@ public class UUIDEntityLookup {
         
         return fieldValues.get(0);
     }
-	
+
+	/**
+	 * Runs the given <code>sql</code> query over agave's relational db.
+	 * @param sql the query to run
+	 * @return a map of the columns and values returned from the query
+	 * @throws UUIDException if the query is null or cannot be run.
+	 */
 	@SuppressWarnings("unchecked")
 	private static Map<String, Object> getEntityFieldByUuid(String sql) 
     throws UUIDException
@@ -256,7 +260,7 @@ public class UUIDEntityLookup {
             throw new UUIDException(msg);
 		}
         
-		Map<String, Object> row = null;
+		Map<String, Object> row;
         try 
         {
 			Session session = HibernateUtil.getSession();
@@ -283,7 +287,13 @@ public class UUIDEntityLookup {
         
         return row;
     }
-	
+
+	/**
+	 * Returns the url for a logical file by querying the db by uuid and constructing a valid url
+	 * @param uuid the uuid of the <code>LogicalFile</code>
+	 * @return the url for the given logical file
+	 * @throws UUIDException if the uuid is invalid or query cannot be run.
+	 */
 	protected static String resolveLogicalFileURLFromUUID(String uuid) throws UUIDException
 	{
 		String sql = "SELECT s.system_id as fileitem_systemid, st.home_dir, st.root_dir, f.path as absolutepath, f.tenant_id"
@@ -306,12 +316,20 @@ public class UUIDEntityLookup {
 			
 			return Settings.IPLANT_FILE_SERVICE + 
 						"media/system/" + 
-						(String)map.get("fileitem_systemid") + 
+						map.get("fileitem_systemid") +
 						File.separator + resolvedPath;
 		}
 	}
-	
-	protected static String getAgaveRelativePathFromAbsolutePath(String absolutepath, String rootDir, String homeDir) 
+
+	/**
+	 * Resolves an <code>absolutePath</code> relative to the <code>rootDir</code> and <code>homeDir</code>.
+	 *
+	 * @param absolutePath the absolute path on a <code>RemoteSystem</code>
+	 * @param rootDir the path by which to resolve the <code>absolutePath</code>
+	 * @param homeDir the home directory relative to the <code>rootDir</code>
+	 * @return the relative path as it would be referenced by a user on a <code>RemoteSystem
+	 */
+	protected static String getAgaveRelativePathFromAbsolutePath(String absolutePath, String rootDir, String homeDir)
 	{	
 		rootDir = FilenameUtils.normalize(rootDir);
 		if (!StringUtils.isEmpty(rootDir)) {
@@ -335,31 +353,31 @@ public class UUIDEntityLookup {
         homeDir = homeDir.replaceAll("/+", "/");
         rootDir = rootDir.replaceAll("/+", "/");
         
-		if (StringUtils.isEmpty(absolutepath)) {
+		if (StringUtils.isEmpty(absolutePath)) {
 			return homeDir;
 		}
 		
-		String adjustedPath = absolutepath;
+		String adjustedPath = absolutePath;
 		if (adjustedPath.endsWith("/..") || adjustedPath.endsWith("/.")) {
 			adjustedPath += File.separator;
 		}
 		
 		if (adjustedPath.startsWith("/")) {
-			absolutepath = FileUtils.normalize(adjustedPath);
+			absolutePath = FileUtils.normalize(adjustedPath);
 		} else {
-			absolutepath = FilenameUtils.normalize(adjustedPath);
+			absolutePath = FilenameUtils.normalize(adjustedPath);
 		}
 		
-		absolutepath = absolutepath.replaceAll("/+", "/");
+		absolutePath = absolutePath.replaceAll("/+", "/");
 		
-		return "/" + StringUtils.substringAfter(absolutepath, rootDir);
+		return "/" + StringUtils.substringAfter(absolutePath, rootDir);
 	}
 
 	/**
 	 * Fetches or creates a MongoDB capped collection with the given name
 	 *
 	 * @return An instance of the mongo client connection
-	 * @throws UUIDException
+	 * @throws UUIDException if the db connection cannot be initialized
 	 */
 	private static MongoClient getMongoClient() throws UUIDException
 	{
@@ -380,11 +398,12 @@ public class UUIDEntityLookup {
 			throw new UUIDException("Failed to get mongodb database connection", e);
 		}
 	}
+
 	/**
 	 * Fetches or creates a MongoDB capped collection with the given name
 	 * @param mongoClient a mongodb client connection
 	 * @return An instance of the mongo feailed notification db
-	 * @throws UUIDException
+	 * @throws UUIDException when the database cannot be accessed on a valid connection
 	 */
 	private static MongoDatabase getMongoDB(MongoClient mongoClient) throws UUIDException
 	{
@@ -398,14 +417,18 @@ public class UUIDEntityLookup {
 		}
 	}
 
+	/**
+	 * Returns the <code>Notification</code> uuid corresponding to the given <code>NotificationAttempt</code>.
+	 * @param uuid the <code>NotificationAttempt</code> to look up
+	 * @return the uuid of the <code>Notification</code> corresponding to the <code>NotificationAttempt</code>
+	 * @throws UUIDException when the notification attempt cannot be looked up or found.
+	 */
 	private static String getNotificationUuidForDeliveryAttempt(String uuid) throws UUIDException {
 		String notificationId = null;
-		MongoDatabase db = null;
-		MongoClient mongoClient = null;
-		try {
-			mongoClient = getMongoClient();
+		MongoDatabase db;
+		try (MongoClient mongoClient = getMongoClient()) {
 			db = getMongoDB(mongoClient);
-			for(String collectionName : db.listCollectionNames()) {
+			for (String collectionName : db.listCollectionNames()) {
 				FindIterable<Document> result = db.getCollection(collectionName).find(eq("id", uuid)).limit(1);
 
 				if (result != null) {
@@ -417,16 +440,10 @@ public class UUIDEntityLookup {
 			}
 
 			return notificationId;
-		}
-		catch (MongoException e) {
+		} catch (MongoException e) {
 			throw new UUIDException("Failed to fetch notification attempt for " + uuid, e);
-		}
-		catch (Exception e) {
-			throw new UUIDException("Unexpected server error while fetching notification attempt for " +
-					uuid, e);
-		}
-		finally {
-			try { if (mongoClient != null) { mongoClient.close(); } } catch (Exception ignored) {}
+		} catch (Exception e) {
+			throw new UUIDException("Unexpected server error while fetching notification attempt for " + uuid, e);
 		}
 	}
 }

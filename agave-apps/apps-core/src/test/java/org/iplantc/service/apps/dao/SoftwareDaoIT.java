@@ -15,48 +15,12 @@ import org.testng.annotations.Test;
 
 @Test(groups={"integration","notReady"})
 public class SoftwareDaoIT extends AbstractDaoTest {
-	@Test(dataProvider = "dp")
-	public void f(Integer n, String s) {
-	}
-
-	@DataProvider
-	public Object[][] dp() {
-		return new Object[][] { new Object[] { 1, "a" },
-				new Object[] { 2, "b" }, };
-	}
 
 	@BeforeClass
 	public void beforeClass() {
+		clearSystems();
 	}
 
-	@AfterClass
-	public void afterClass() {
-	}
-
-	@Test
-	public void delete() {
-		throw new RuntimeException("Test not implemented");
-	}
-
-	@Test
-	public void findMatchingStringMapSearchTermObjectboolean() {
-		throw new RuntimeException("Test not implemented");
-	}
-
-	@Test
-	public void findMatchingStringMapSearchTermObjectintintboolean() {
-		throw new RuntimeException("Test not implemented");
-	}
-
-	@Test
-	public void getLong() {
-		throw new RuntimeException("Test not implemented");
-	}
-
-	@Test
-	public void getString() {
-		throw new RuntimeException("Test not implemented");
-	}
 
 	@Test
 	public void getActiveJobsForSoftware() {

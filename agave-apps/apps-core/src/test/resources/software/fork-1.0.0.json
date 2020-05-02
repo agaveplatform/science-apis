@@ -17,7 +17,9 @@
   "tags": [
     "demo","debug"
   ],
-  "modules": [],
+  "modules": [
+    "python3"
+  ],
   "inputs": [
   	{
 		"details": {
@@ -60,6 +62,33 @@
       },
       "semantics": {
         "ontology": []
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "details": {
+        "description": "Marker file",
+        "label": "Marker file",
+        "visible": true
+      },
+      "id": "inputfile",
+      "semantics": {
+        "fileTypes": [
+          "TEXT-0"
+        ],
+        "minCardinality": 0,
+        "maxCardinality": 1,
+        "ontology": [
+          "marker"
+        ]
+      },
+      "value": {
+        "default": null,
+        "required": false,
+        "validator": "\\.marker$",
+        "visible": true,
+        "order": 0
       }
     }
   ],

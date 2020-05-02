@@ -107,10 +107,6 @@ public class SoftwareEventProcessorIT extends AbstractDaoTest {
 		super.beforeClass();
 	}
 
-//	@BeforeMethod
-//	protected void beforeMethod() {
-////		reset(eventProcessor);
-//	}
 	
 	@DataProvider
     protected Object[][] doJobEventsProvider() throws Exception {

@@ -19,9 +19,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.UUID;
 
-@Test(groups={"notReady", "integration"})
+@Test(groups = {"integration"})
 public class PublishActionIT extends AbstractWorkerActionTest {
-    
+
     private static final Logger log = Logger.getLogger(PublishActionIT.class);
     private PublishAction publishAction;
 
@@ -39,39 +39,55 @@ public class PublishActionIT extends AbstractWorkerActionTest {
 
     @BeforeMethod
     public void beforeMethod() throws Exception {
-//        clearSoftware();
+//        initSystems();
     }
 
     @AfterMethod
     public void afterMethod() throws Exception {
-        try { clearSoftware(); } catch (Exception e) {
-            log.error("Failed to clear software tables ", e);
-        }
+        clearSoftware();
+        clearSystems();
     }
 
     @DataProvider
-    protected Object[][] runProvider() throws Exception {
+    protected Object[][] publishToNamedExectuionSystemHonorsNameAndVersionProvider() throws Exception {
         ArrayList<Object[]> testCases = new ArrayList<Object[]>();
 
-        testCases.add(new Object[]{ createSoftware(), publicExecutionSystem, createNonce(UUID.randomUUID().toString()), "99.9.9"});
-        testCases.add(new Object[]{ createSoftware(), publicExecutionSystem, createNonce(UUID.randomUUID().toString()), ""});
-        testCases.add(new Object[]{ createSoftware(), publicExecutionSystem, createNonce(UUID.randomUUID().toString()), null});
-        testCases.add(new Object[]{ createSoftware(), publicExecutionSystem, "", "99.9.9"});
-        testCases.add(new Object[]{ createSoftware(), publicExecutionSystem, null, "99.9.9"});
-        testCases.add(new Object[]{ createSoftware(), publicExecutionSystem, "", ""});
-        testCases.add(new Object[]{ createSoftware(), publicExecutionSystem, null, null});
+        testCases.add(new Object[]{createNonce(UUID.randomUUID().toString()), "99.9.9"});
+        testCases.add(new Object[]{createNonce(UUID.randomUUID().toString()), ""});
+        testCases.add(new Object[]{createNonce(UUID.randomUUID().toString()), null});
+        testCases.add(new Object[]{"", "99.9.9"});
+        testCases.add(new Object[]{null, "99.9.9"});
+        testCases.add(new Object[]{"", ""});
+        testCases.add(new Object[]{null, null});
 
         return testCases.toArray(new Object[][]{});
     }
-    
-    @Test(dataProvider="runProvider")
-    public void run(Software originalSoftware, ExecutionSystem expectedExecutionSystem, String expectedName, String expectedVersion) {
-        
+
+    @Test(dataProvider = "publishToNamedExectuionSystemHonorsNameAndVersionProvider")
+    public void publishToNamedExectuionSystemHonorsNameAndVersion(String expectedName, String expectedVersion) {
+
         RemoteDataClient client = null;
         Software publishedSoftware = null;
         String nonce = createNonce(UUID.randomUUID().toString());
         Path baseDeploymentDir = Paths.get(nonce);
+        Software originalSoftware = null;
+        ExecutionSystem expectedExecutionSystem = null;
+        StorageSystem publicStorageSystem = null;
         try {
+
+            expectedExecutionSystem = createExecutionSystem();
+            expectedExecutionSystem.setOwner(SYSTEM_OWNER);
+            expectedExecutionSystem.setPubliclyAvailable(true);
+            expectedExecutionSystem.setGlobalDefault(true);
+            systemDao.persist(expectedExecutionSystem);
+
+            publicStorageSystem = createStorageSystem();
+            publicStorageSystem.setOwner(SYSTEM_OWNER);
+            publicStorageSystem.setPubliclyAvailable(true);
+            publicStorageSystem.setGlobalDefault(true);
+            systemDao.persist(publicStorageSystem);
+
+            originalSoftware = createSoftware();
 
             originalSoftware.setDeploymentPath(baseDeploymentDir.resolve(originalSoftware.getDeploymentPath()).toString());
 
@@ -82,10 +98,10 @@ public class PublishActionIT extends AbstractWorkerActionTest {
             SoftwareDao.persist(originalSoftware);
 
             PublishAction publishAction = new PublishAction(originalSoftware,
-                                                            ADMIN_USER,
-                                                            expectedName,
-                                                            expectedVersion,
-                                                            expectedExecutionSystem.getSystemId());
+                    ADMIN_USER,
+                    expectedName,
+                    expectedVersion,
+                    expectedExecutionSystem.getSystemId());
 
             publishAction.run();
             publishedSoftware = publishAction.getPublishedSoftware();
@@ -128,28 +144,32 @@ public class PublishActionIT extends AbstractWorkerActionTest {
 
             Assert.assertEquals((int) publishedSoftware.getRevisionCount(), 1,
                     "Revision count should be 1 for newly published apps");
-        }
-        catch (Throwable t) {
+        } catch (Throwable t) {
             Assert.fail("Publishing happy path should not throw exception", t);
-        }
-        finally {
+        } finally {
             if (originalSoftware != null) {
-                try { deleteRemoteSoftwareAssets(originalSoftware); } catch (Exception ignored){}
+                try {
+                    deleteRemoteSoftwareAssets(originalSoftware);
+                } catch (Exception ignored) {
+                }
 //                try { SoftwareDao.delete(originalSoftware); } catch (Exception ignored){}
             }
 
             if (publishedSoftware != null) {
-                try { deleteRemoteSoftwareAssets(publishedSoftware); } catch (Exception ignored) {}
+                try {
+                    deleteRemoteSoftwareAssets(publishedSoftware);
+                } catch (Exception ignored) {
+                }
 //                try { SoftwareDao.delete(publishedSoftware); } catch (Exception ignored) {}
             }
         }
     }
 
 
-    @Test(enabled = false)
-    public void copyPublicAppArchiveToDeploymentSystem(Software software, String username ) {
-        
-    }
+//    @Test(enabled = false)
+//    public void copyPublicAppArchiveToDeploymentSystem(Software software, String username) {
+//
+//    }
 //
 //    @Test
 //    public void fetchSoftwareDeploymentPath() {
@@ -185,19 +205,19 @@ public class PublishActionIT extends AbstractWorkerActionTest {
 //    public void resolveAndCreatePublishedDeploymentPath() {
 //        throw new RuntimeException("Test not implemented");
 //    }
-
-    @Test(enabled = false)
-    public void schedulePublicAppAssetBundleBackup() {
-        throw new RuntimeException("Test not implemented");
-    }
-
-    @Test(enabled = false)
-    public void setPublishedSoftware() {
-        throw new RuntimeException("Test not implemented");
-    }
-
-    @Test(enabled = false)
-    public void setPublishingUsername() {
-        throw new RuntimeException("Test not implemented");
-    }
+//
+//    @Test(enabled = false)
+//    public void schedulePublicAppAssetBundleBackup() {
+//        throw new RuntimeException("Test not implemented");
+//    }
+//
+//    @Test(enabled = false)
+//    public void setPublishedSoftware() {
+//        throw new RuntimeException("Test not implemented");
+//    }
+//
+//    @Test(enabled = false)
+//    public void setPublishingUsername() {
+//        throw new RuntimeException("Test not implemented");
+//    }
 }

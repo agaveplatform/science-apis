@@ -64,7 +64,7 @@ public class SoftwareSearchFilterIT extends AbstractDaoTest
 		_filterInvalidSearchCriteria(criteria, shouldExistAfterFiltering, message); 
 	}
 	
-	@DataProvider(name="filterInvalidSearchCriteriaWithOperatorsProvider", parallel=true)
+	@DataProvider
 	public Object[][] filterInvalidSearchCriteriaWithOperatorsProvider() throws Exception
 	{
 		List<Object[]> testData = new ArrayList<Object[]>();
@@ -105,7 +105,7 @@ public class SoftwareSearchFilterIT extends AbstractDaoTest
 		_filterInvalidSearchCriteria(criteria, shouldExistAfterFiltering, message); 
 	}
 	
-	@DataProvider(name="filterCommaSeparatedSetSearchCriteriaIntoListProvider", parallel=true)
+	@DataProvider
 	public Object[][] filterCommaSeparatedSetSearchCriteriaIntoListProvider()
 	{
 		List<Object[]> testData = new ArrayList<Object[]>();

@@ -1,18 +1,47 @@
 version: '3.7'
 
-volumes:
-
 services:
+
+  traefik:
+    image: traefik:v2.1
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.grpc.address=:50052"
+    ports:
+      - 8000:80
+      - 8443:443
+      - 50052:50052
+      - 28443:8080
+    restart: on-failure
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    labels:
+      - "traefik.enable=true"
+
+  sftp-relay:
+    image: sftp-relay:develop
+    ports:
+      - 50051:50051
+      - 9092
+    restart: on-failure
+    volumes:
+      - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
+      - "traefik.http.routers.sftp-relay.entrypoints=grpc"
+      - "traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c"
+      - "traefik.http.services.sftp-relay.loadbalancer.server.port=50051"
 
   sftp:
     image: agaveplatform/sshd:latest
     command: "-p 10022"
-    hostname: docker.example.com
+    restart: on-failure
     ports:
       - '10022:10022'
-
-  requestbin:
-    image: agaveplatform/requestbin:2.0.0
-    hostname: requestbin
-    ports:
-      - '5101:5000'

@@ -29,6 +29,8 @@ echo "Printing runtime environment..."
 
 env
 
+touch "${AGAVE_JOB_ID}.marker"
+
 CALLBACK=$(${command})
 
 ${AGAVE_JOB_CALLBACK_NOTIFICATION|CALLBACK}

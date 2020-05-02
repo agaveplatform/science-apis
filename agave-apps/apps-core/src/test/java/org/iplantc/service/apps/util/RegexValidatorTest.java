@@ -12,10 +12,10 @@ import org.testng.annotations.Test;
 import com.stevesoft.pat.Regex;
 
 @Test(groups={"unit"})
-public class RegexValidator
+public class RegexValidatorTest
 {
 
-	public RegexValidator(){}
+	public RegexValidatorTest(){}
 	
 	@DataProvider
 	public Object[][] validateRegexProvider() {
@@ -58,7 +58,6 @@ public class RegexValidator
 		} catch (Exception e) {
 			throw new SoftwareException(expression + " is not a valid regular expression.", e);
 		}
-		
 	}
 
 }

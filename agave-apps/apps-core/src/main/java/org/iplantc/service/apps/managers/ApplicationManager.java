@@ -83,17 +83,17 @@ public class ApplicationManager
 	 * {@code existingSoftware} exists, then the {@link JSONObject} is validated for correctness 
 	 * and merged with the existing {@link Software} object as an update. Otherwise a new {@link Software}
 	 * entry is created.
-	 *  
-	 * @param existingSoftware
-	 * @param json
-	 * @param username
+	 *
+	 * @param existingSoftware the existing {@link Software) resource to be updated by the <code>json</code> object
+	 * @param json the json definition of the system
+	 * @param callingUser the username of the user callign the method
 	 * @return
 	 * @throws SoftwareResourceException
 	 */
-	public Software processSoftware(Software existingSoftware, JSONObject json, String username) 
+	public Software processSoftware(Software existingSoftware, JSONObject json, String callingUser)
 	throws SoftwareResourceException
 	{
-		String owner = (existingSoftware == null ? username : existingSoftware.getOwner());
+		String owner = (existingSoftware == null ? callingUser : existingSoftware.getOwner());
 		
 		try 
 		{
@@ -101,7 +101,7 @@ public class ApplicationManager
 	        Software newSoftware = Software.fromJSON(json, owner);
 	        newSoftware.setOwner(owner);
 	        
-	        if (!newSoftware.getExecutionSystem().getUserRole(username).canPublish()) {
+	        if (!newSoftware.getExecutionSystem().getUserRole(callingUser).canPublish()) {
 	        	throw new SoftwareResourceException(CLIENT_ERROR_FORBIDDEN,
 	        			"User does not have permission to publish applications on execution system \"" + 
 	        					newSoftware.getExecutionSystem().getSystemId() + "\"");
@@ -127,9 +127,9 @@ public class ApplicationManager
 	        	}
 	        }
 	        
-	        if (ApplicationManager.userCanPublish(username, newSoftware)) 
+	        if (ApplicationManager.userCanPublish(callingUser, newSoftware))
 	        {	
-	        	validateSoftwareDependencies(username, newSoftware);
+	        	validateSoftwareDependencies(callingUser, newSoftware);
 	        	
 	        } else {
 	        	throw new SoftwareResourceException(CLIENT_ERROR_FORBIDDEN,

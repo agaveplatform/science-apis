@@ -37,33 +37,26 @@ import org.json.JSONObject;
  */
 public abstract class AbstractWorkerActionTest extends AbstractDaoTest {
 
+    protected StorageSystem privateStorageSystem;
     protected StorageSystem sharedStorageSystem;
     protected StorageSystem publicStorageSystem;
+    protected ExecutionSystem privateExecutionSystem;
     protected ExecutionSystem sharedExecutionSystem;
     protected ExecutionSystem publicExecutionSystem;
 
     protected void initSystems() throws Exception
     {
-        clearSystems();
-        
-        privateExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(TEST_EXECUTION_SYSTEM_FILE));
-        privateExecutionSystem.setOwner(TEST_OWNER);
-        systemDao.persist(privateExecutionSystem);
-        
-        privateStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(TEST_STORAGE_SYSTEM_FILE));
-        privateStorageSystem.setOwner(TEST_OWNER);
-        privateStorageSystem.getUsersUsingAsDefault().add(TEST_OWNER);
-        systemDao.persist(privateStorageSystem);
+        privateExecutionSystem = createExecutionSystem();
 
-        publicExecutionSystem = ExecutionSystem.fromJSON( jtd.getTestDataObject(TEST_EXECUTION_SYSTEM_FILE)
-                .put("id", privateExecutionSystem.getSystemId() + ".public") );
+        privateStorageSystem = createStorageSystem();
+
+        publicExecutionSystem = createExecutionSystem();
         publicExecutionSystem.setOwner(SYSTEM_OWNER);
         publicExecutionSystem.setPubliclyAvailable(true);
         publicExecutionSystem.setGlobalDefault(true);
         systemDao.persist(publicExecutionSystem);
 
-        publicStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(TEST_STORAGE_SYSTEM_FILE)
-                .put("id", privateStorageSystem.getSystemId() + ".public") );
+        publicStorageSystem = createStorageSystem();
         publicStorageSystem.setOwner(SYSTEM_OWNER);
         publicStorageSystem.setPubliclyAvailable(true);
         publicStorageSystem.setGlobalDefault(true);
@@ -76,50 +69,49 @@ public abstract class AbstractWorkerActionTest extends AbstractDaoTest {
         sharedExecutionSystem.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.ADMIN));
         systemDao.persist(sharedExecutionSystem);
 
-        sharedStorageSystem = StorageSystem.fromJSON( jtd.getTestDataObject(TEST_STORAGE_SYSTEM_FILE)
-                .put("id", privateStorageSystem.getSystemId() + ".shared") );
+        sharedStorageSystem = createStorageSystem();
         sharedStorageSystem.setOwner(SYSTEM_OWNER);
         systemDao.persist(sharedStorageSystem);
         sharedStorageSystem.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.ADMIN));
         systemDao.persist(sharedStorageSystem);
     }
 
-    protected Software createSoftware() throws JSONException, IOException {
-        JSONObject json = jtd.getTestDataObject(FORK_SOFTWARE_TEMPLATE_FILE);
-        Software software = Software.fromJSON(json, TEST_OWNER);
-        software.setExecutionSystem(privateExecutionSystem);
-        software.setOwner(SYSTEM_OWNER);
-
-        return software;
-    }
-
-    protected Software createSoftware(ExecutionSystem executionSystem, StorageSystem storageSystem, 
-            String name, String version, boolean publiclyAvailable, String owner) 
-    throws JSONException, IOException 
-    {
-        JSONObject json = jtd.getTestDataObject(FORK_SOFTWARE_TEMPLATE_FILE);
-        software = Software.fromJSON(json, TEST_OWNER);
-        software.setExecutionSystem(executionSystem);
-        software.setStorageSystem(storageSystem);
-        software.setName(name);
-        software.setVersion(version);
-        software.setPubliclyAvailable(publiclyAvailable);
-        software.setOwner(owner);
-        return software;
-    }
-    
-    protected Software createExecutionSystem(boolean isPubliclyAvailable, boolean isGlobalDefault, 
-            SystemStatusType status, boolean isAvailable, boolean owner)
-    throws JSONException, IOException 
-    {
-        JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
-        software = Software.fromJSON(json, TEST_OWNER);
-        software.setExecutionSystem(privateExecutionSystem);
-        software.setOwner(TEST_OWNER);
-        software.setVersion("1.0.1");
-        software.setChecksum("abc12345");
-        return software;
-    }
+//    protected Software createSoftware() throws JSONException, IOException {
+//        JSONObject json = jtd.getTestDataObject(FORK_SOFTWARE_TEMPLATE_FILE);
+//        Software software = Software.fromJSON(json, TEST_OWNER);
+//        software.setExecutionSystem(privateExecutionSystem);
+//        software.setOwner(SYSTEM_OWNER);
+//
+//        return software;
+//    }
+//
+//    protected Software createSoftware(ExecutionSystem executionSystem, StorageSystem storageSystem,
+//            String name, String version, boolean publiclyAvailable, String owner)
+//    throws JSONException, IOException
+//    {
+//        JSONObject json = jtd.getTestDataObject(FORK_SOFTWARE_TEMPLATE_FILE);
+//        software = Software.fromJSON(json, TEST_OWNER);
+//        software.setExecutionSystem(executionSystem);
+//        software.setStorageSystem(storageSystem);
+//        software.setName(name);
+//        software.setVersion(version);
+//        software.setPubliclyAvailable(publiclyAvailable);
+//        software.setOwner(owner);
+//        return software;
+//    }
+//
+//    protected Software createExecutionSystem(boolean isPubliclyAvailable, boolean isGlobalDefault,
+//            SystemStatusType status, boolean isAvailable, boolean owner)
+//    throws JSONException, IOException
+//    {
+//        JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
+//        software = Software.fromJSON(json, TEST_OWNER);
+//        software.setExecutionSystem(privateExecutionSystem);
+//        software.setOwner(TEST_OWNER);
+//        software.setVersion("1.0.1");
+//        software.setChecksum("abc12345");
+//        return software;
+//    }
 
     /**
      * Stages {@link Software} deployment assets to the {@link StorageSystem}

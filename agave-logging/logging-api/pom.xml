@@ -33,7 +33,16 @@
 		</resources>
 
 		<plugins>
-			<!-- The web assemby -->
+			<!-- Dont' build jar for php assets -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
+
+			<!--  The web assemby -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
@@ -42,11 +51,18 @@
 				</configuration>
 			</plugin>
 
+			<!-- Skip site generation -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-site-plugin</artifactId>
+				<configuration>
+					<skipDeploy>true</skipDeploy>
+				</configuration>
 			</plugin>
 
+			<!-- ************************************ -->
+			<!-- ***           DEPLOYMENT          ** -->
+			<!-- ************************************ -->
 			<!-- Don't deploy the war -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -55,6 +71,8 @@
 					<skip>true</skip>
 				</configuration>
 			</plugin>
+
+			<!-- ***** skip installing empty java assets from php project ***** -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-install-plugin</artifactId>

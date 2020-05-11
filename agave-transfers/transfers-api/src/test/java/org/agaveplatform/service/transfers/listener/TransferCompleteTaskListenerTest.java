@@ -149,6 +149,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         JsonObject expectedUdpatedJsonObject = transferTask.toJson()
                 .put("status", TransferStatusType.COMPLETED.name())
                 .put("endTime", Instant.now());
+
         AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
 
         // mock the handler passed into updateStatus

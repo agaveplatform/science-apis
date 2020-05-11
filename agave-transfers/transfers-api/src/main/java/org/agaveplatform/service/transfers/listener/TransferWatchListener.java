@@ -17,6 +17,7 @@ import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.C
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
+
 public class TransferWatchListener extends AbstractTransferTaskListener {
 	private final static Logger logger = LoggerFactory.getLogger(TransferWatchListener.class);
 

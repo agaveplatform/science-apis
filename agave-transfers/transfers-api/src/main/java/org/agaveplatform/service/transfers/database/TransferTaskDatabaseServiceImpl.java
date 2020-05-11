@@ -68,6 +68,60 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     });
   }
 
+//  getTransferTaskTree
+  @Override
+  public TransferTaskDatabaseService getTransferTaskTree(String uuid, Handler<AsyncResult<JsonArray>> resultHandler) {
+    JsonArray data = new JsonArray()
+            .add(uuid);
+
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK_TREE), data, res -> {
+      if (res.succeeded()) {
+        JsonArray response = new JsonArray(res.result().getRows());
+        resultHandler.handle(Future.succeededFuture(response));
+      } else {
+        LOGGER.error("Database query error", res.cause());
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      }
+    });
+    return this;
+  }
+
+  @Override
+  public TransferTaskDatabaseService getAllChildrenCanceledOrCompleted(String uuid, Handler<AsyncResult<JsonArray>> resultHandler) {
+    JsonArray data = new JsonArray()
+            .add(uuid);
+
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_CHILDREN_CANCELED_OR_COMPLETED), data, res -> {
+      if (res.succeeded()) {
+        JsonArray response = new JsonArray(res.result().getRows());
+        resultHandler.handle(Future.succeededFuture(response));
+      } else {
+        LOGGER.error("Database query error", res.cause());
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      }
+    });
+    return this;
+  }
+
+  @Override
+  public TransferTaskDatabaseService setTransferTaskCanceledIfNotCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
+    JsonArray data = new JsonArray()
+            .add(tenantId)
+            .add(uuid);
+
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_CHILDREN_CANCELED_OR_COMPLETED), data, res -> {
+      if (res.succeeded()) {
+        JsonArray response = new JsonArray(res.result().getRows());
+        resultHandler.handle(Future.succeededFuture(Boolean.TRUE));
+      } else {
+        LOGGER.error("Database query error", res.cause());
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      }
+    });
+    return this;
+  }
+
+
   @Override
   public TransferTaskDatabaseService getAll(String tenantId, Handler<AsyncResult<JsonArray>> resultHandler) {
     JsonArray data = new JsonArray()

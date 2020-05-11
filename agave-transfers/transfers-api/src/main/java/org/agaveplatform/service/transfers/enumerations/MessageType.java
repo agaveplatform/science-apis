@@ -1,5 +1,9 @@
 package org.agaveplatform.service.transfers.enumerations;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
+import org.agaveplatform.service.transfers.model.TransferTask;
+
 public interface MessageType {
     public static final String 	TRANSFERTASK_CREATED = "transfertask.created";
     public static final String 	TRANSFERTASK_ASSIGNED = "transfertask.assigned";

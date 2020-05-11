@@ -72,4 +72,41 @@ all-active-root-transfertask-ids: |
 single-not-canceled-or-completed: |
     SELECT count("id") AS "active_uuid"
     FROM transfertasks
-    WHERE ("uuid" = ?) AND "status" NOT IN ('COMPLETED','CANCELLED','FAILED') AND "tenant_id" = ?
+    WHERE ("tenant_id" = ?) and ("uuid" = ?) AND "status" NOT IN ('COMPLETED','CANCELLED','FAILED') AND "tenant_id" = ?
+all-children-canceled-or-completed: |
+  SELECT count(id)
+   FROM transfertasks
+   WHERE ("parentTask" = ?) and status not in (('COMPLETED', 'CANCELLED','FAILED')
+set-transfertask-cancelled-if-not-completed: |
+  UPDATE transfertasks
+  SET status = CANCELLED, lastUpdated = NOW()
+  WHERE ("tenant_id" = ?) and ("uuid" = ?) and status not in ('COMPLETED', 'CANCELLED','FAILED')
+get_transfertask_tree: |
+  SELECT *
+  FROM transfertasks
+  WHERE parent_task = (SELECT parent_task from transfertasks where "uuid" = ? )
+    AND status NOT IN (('COMPLETED', 'CANCELLED','FAILED')
+  UNION
+  SELECT *
+  FROM transfertasks
+  WHERE "uuid" = ?
+  AND root_task IS NULL
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

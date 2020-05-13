@@ -2,7 +2,6 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.Handler;
 import io.vertx.core.AsyncResult;
@@ -17,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_PAUSED;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
@@ -244,7 +242,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 		Promise<Boolean> promise = Promise.promise();
 		//TODO: "update transfertasks set status = CANCELLED, lastUpdated = now() where uuid = {} and status not in ('COMPLETED', 'CANCELLED','FAILED')"
 
-		getDbService().setTransferTaskCanceledIfNotCompleted(tenantId, uuid, result -> {
+		getDbService().setTransferTaskCanceledWhereNotCompleted(tenantId, uuid, result -> {
 			if (result.succeeded()) {
 				//logger.info("[{}] Transfer task {} updated.", tenantId, uuid);
 				promise.handle(Future.succeededFuture(Boolean.TRUE));

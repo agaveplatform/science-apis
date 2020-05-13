@@ -25,21 +25,17 @@ import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.serviceproxy.ServiceBinder;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.Properties;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 /**
@@ -105,7 +101,7 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
       sqlQueries.put(SqlQuery.ALL_ACTIVE_ROOT_TRANSFERTASK_IDS, node.get("all-active-root-transfertask-ids").textValue());
       sqlQueries.put(SqlQuery.SINGLE_NOT_CANCELED_OR_COMPLETED, node.get("single-not-canceled-or-completed").textValue());
       sqlQueries.put(SqlQuery.ALL_CHILDREN_CANCELED_OR_COMPLETED, node.get("all-children-canceled-or-completed").textValue());
-      sqlQueries.put(SqlQuery.SET_TRANSFERTASK_CANCELLED_IF_NOT_COMPLETED, node.get("set-transfertask-cancelled-if-not-completed").textValue());
+      sqlQueries.put(SqlQuery.SET_TRANSFERTASK_CANCELLED_WHERE_NOT_COMPLETED, node.get("set-transfertask-cancelled-where-not-completed").textValue());
       sqlQueries.put(SqlQuery.GET_TRANSFERTASK_TREE, node.get("get_transfertask_tree").textValue());
 
       return sqlQueries;

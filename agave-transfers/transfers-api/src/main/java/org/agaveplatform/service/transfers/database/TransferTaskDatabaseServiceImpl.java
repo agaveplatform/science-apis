@@ -104,7 +104,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
   @Override
-  public TransferTaskDatabaseService setTransferTaskCanceledIfNotCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
+  public TransferTaskDatabaseService setTransferTaskCanceledWhereNotCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
     JsonArray data = new JsonArray()
             .add(tenantId)
             .add(uuid);

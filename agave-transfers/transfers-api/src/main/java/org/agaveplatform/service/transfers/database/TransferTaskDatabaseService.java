@@ -49,7 +49,7 @@ public interface TransferTaskDatabaseService {
   TransferTaskDatabaseService getTransferTaskTree(String uuid, Handler<AsyncResult<JsonArray>> resultHandler);
 
   @Fluent
-  TransferTaskDatabaseService setTransferTaskCanceledIfNotCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler);
+  TransferTaskDatabaseService setTransferTaskCanceledWhereNotCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler);
 
   @Fluent
   TransferTaskDatabaseService getById(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler);

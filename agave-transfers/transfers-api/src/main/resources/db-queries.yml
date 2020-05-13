@@ -77,7 +77,7 @@ all-children-canceled-or-completed: |
   SELECT count(id)
    FROM transfertasks
    WHERE ("parentTask" = ?) and status not in (('COMPLETED', 'CANCELLED','FAILED')
-set-transfertask-cancelled-if-not-completed: |
+set-transfertask-cancelled-where-not-completed: |
   UPDATE transfertasks
   SET status = CANCELLED, lastUpdated = NOW()
   WHERE ("tenant_id" = ?) and ("uuid" = ?) and status not in ('COMPLETED', 'CANCELLED','FAILED')

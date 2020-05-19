@@ -1,9 +1,12 @@
 package org.iplantc.service.systems.model.enumerations;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.iplantc.service.systems.exceptions.SystemArgumentException;
 
 /**
  * Execution systems fall into a taxonomy based on the method they use to run jobs. That basis of that taonomy is
@@ -57,5 +60,24 @@ public enum ExecutionType
 			types = List.of(CLI);
 		}
 		return types;
+	}
+
+	/**
+	 * Returns the list of compatible {@link SchedulerType} for this {@link ExecutionType}.
+	 * @return list of {@link SchedulerType}
+	 */
+	public List<SchedulerType> getCompatibleSchedulerTypes() {
+		switch (this) {
+			case CLI:
+				return List.of(SchedulerType.FORK);
+			case CONDOR:
+				return List.of(SchedulerType.CONDOR, SchedulerType.CUSTOM_CONDOR);
+			case HPC:
+				return Arrays.stream(SchedulerType.values())
+						.filter( t -> ! List.of(SchedulerType.FORK, SchedulerType.CONDOR, SchedulerType.CUSTOM_CONDOR, SchedulerType.UNKNOWN).contains(t))
+						.collect(Collectors.toList());
+			default:
+				return List.of();
+		}
 	}
 }

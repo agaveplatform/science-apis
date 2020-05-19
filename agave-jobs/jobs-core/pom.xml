@@ -43,6 +43,7 @@
 				<artifactId>await-maven-plugin</artifactId>
 			</plugin>
 		</plugins>
+
 	</build>
 
 	<dependencies>

@@ -18,7 +18,7 @@
   ],
   "login": {
     "host": "torque",
-    "port": 10144,
+    "port": 10111,
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -28,7 +28,7 @@
   },
   "storage": {
     "host": "torque",
-    "port": 10144,
+    "port": 10111,
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

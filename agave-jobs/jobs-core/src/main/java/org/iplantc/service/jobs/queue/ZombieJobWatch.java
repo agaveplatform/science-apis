@@ -160,7 +160,7 @@ public class ZombieJobWatch implements org.quartz.Job
 	 * @param job the job that will be rolled back
 	 * @param callingUsername the principal requesting the rollback
 	 * @throws JobException if the job cannot be rolled back due to invalid status
-	 * @throws JobDependencyException
+	 * @throws JobDependencyException if job was inactive when attempting to roll back
 	 */
 	public Job rollbackJob(Job job, String callingUsername)
 	throws JobException, JobDependencyException

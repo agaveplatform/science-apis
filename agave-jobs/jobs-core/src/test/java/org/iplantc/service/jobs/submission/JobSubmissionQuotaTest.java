@@ -167,9 +167,9 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 			
 			PowerMockito.mockStatic(JobManager.class);
 //			when(JobManager.updateStatus(job, JobStatusType.STAGED)).thenReturn(job);
-			
+
 			submissionAction.run();
-		
+
 			PowerMockito.verifyStatic(JobManager.class);
 			JobManager.updateStatus(job, JobStatusType.STAGED);
 			

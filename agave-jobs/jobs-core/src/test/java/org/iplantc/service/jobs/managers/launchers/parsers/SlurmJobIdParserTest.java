@@ -23,7 +23,7 @@ public class SlurmJobIdParserTest {
 		};
 	}
 	
-	@Test(dataProvider = "getJobIdProvider", groups={"broken"})
+	@Test(dataProvider = "getJobIdProvider")
 	public void getJobId(String schedulerOutput, String expectedJobId) 
 	throws RemoteJobIDParsingException, JobException, SchedulerException 
 	{

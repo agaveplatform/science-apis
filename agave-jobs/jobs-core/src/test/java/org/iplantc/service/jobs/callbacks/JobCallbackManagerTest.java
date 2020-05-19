@@ -18,6 +18,7 @@ import java.util.List;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.dao.AbstractDaoTest;
 import org.iplantc.service.jobs.dao.JobDao;
@@ -70,7 +71,8 @@ public class JobCallbackManagerTest extends AbstractDaoTest {
     public void processCallbackWithNullJobFails() 
     throws Exception 
     {
-        Job job = createJob(PENDING);
+        Software software = createSoftware();
+        Job job = createJob(PENDING, software);
         JobCallbackManager manager = new JobCallbackManager();
         
         try 
@@ -90,7 +92,9 @@ public class JobCallbackManagerTest extends AbstractDaoTest {
     public void processCallbackWithNullStatusFails() 
     throws Exception 
     {
-        Job job = createJob(PENDING);
+        Software software = createSoftware();
+        Job job = createJob(PENDING, software);
+
         JobCallbackManager manager = new JobCallbackManager();
         
         try 
@@ -135,7 +139,9 @@ public class JobCallbackManagerTest extends AbstractDaoTest {
     public void processCallbackToNextNaturalStatus(JobStatusType currentStatus, JobStatusType newStatus, boolean shouldThrowException, String message) 
     throws Exception 
     {
-        Job job = createJob(currentStatus);
+        Software software = createSoftware();
+        Job job = createJob(currentStatus, software);
+
         JobCallback callback = new JobCallback(job, newStatus);
         JobCallbackManager manager = new JobCallbackManager();
         
@@ -181,7 +187,9 @@ public class JobCallbackManagerTest extends AbstractDaoTest {
     public void processCallbackToNextNaturalStatusCreatesOrderedEvents(JobStatusType currentStatus, JobStatusType newStatus, String message) 
     throws Exception 
     {
-        Job job = createJob(currentStatus);
+        Software software = createSoftware();
+        Job job = createJob(currentStatus, software);
+
         JobCallback callback = new JobCallback(job, newStatus);
         JobCallbackManager manager = new JobCallbackManager();
         
@@ -241,7 +249,8 @@ public class JobCallbackManagerTest extends AbstractDaoTest {
     public void processCallbackArchivingStatusFailsInNonArchivingJob(JobStatusType currentStatus, JobStatusType newStatus, String message) 
     throws Exception 
     {
-        Job job = createJob(currentStatus);
+        Software software = createSoftware();
+        Job job = createJob(currentStatus, software);
         job.setArchiveOutput(false);
         JobDao.persist(job);
         JobCallback callback = new JobCallback(job, newStatus);
@@ -288,7 +297,8 @@ public class JobCallbackManagerTest extends AbstractDaoTest {
     public void processCallbackToNextNaturalStatusCreatesOrderedEventsInNonArchivingJob(JobStatusType currentStatus, JobStatusType newStatus, String message) 
     throws Exception 
     {
-        Job job = createJob(currentStatus);
+        Software software = createSoftware();
+        Job job = createJob(currentStatus, software);
         job.setArchiveOutput(false);
         JobDao.persist(job);
         JobCallback callback = new JobCallback(job, newStatus);
@@ -371,7 +381,8 @@ public class JobCallbackManagerTest extends AbstractDaoTest {
     public void processHeartbeatCallback(JobStatusType currentStatus, boolean shouldThrowException, String message) 
     throws Exception 
     {
-        Job job = createJob(currentStatus);
+        Software software = createSoftware();
+        Job job = createJob(currentStatus, software);
         int originalEventCount = job.getEvents().size();
         JobCallback callback = new JobCallback(job, HEARTBEAT);
         JobCallbackManager manager = new JobCallbackManager();
@@ -417,7 +428,8 @@ public class JobCallbackManagerTest extends AbstractDaoTest {
     public void validateLocalSchedulerJobId(String newLocalSchedulerJobId, String currentLocalSchedulerJobId, String expectedLocalSchedulerJobId, boolean shouldThrowException, String message)
     throws Exception 
     {
-        Job job = createJob(QUEUED);
+        Software software = createSoftware();
+        Job job = createJob(QUEUED, software);
         job.setLocalJobId(currentLocalSchedulerJobId);
         JobDao.persist(job);
         
@@ -442,7 +454,8 @@ public class JobCallbackManagerTest extends AbstractDaoTest {
     public void processIgnoresTenancy()
     throws Exception 
     {
-        Job job = createJob(QUEUED);
+        Software software = createSoftware();
+        Job job = createJob(QUEUED, software);
         job.setLocalJobId(null);
         JobDao.persist(job);
         

@@ -22,8 +22,7 @@ public interface WorkerAction {
      * This method performs the actual task described by
      * this action. That may include staging data, invoking
      * processes, etc.
-     * 
-     * @param job
+     *
      * @return 
      * @throws SystemUnavailableException
      * @throws SystemUnknownException

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.dao.AbstractDaoTest;
@@ -55,7 +56,8 @@ public class JobCallbackTest extends AbstractDaoTest {
     throws Exception
     {
         boolean shouldThrowException  = false;
-        Job job = createJob(previousStatus);
+        Software software = createSoftware();
+        Job job = createJob(previousStatus, software);
         
         try {
             new JobCallback(job, newStatus);
@@ -81,7 +83,8 @@ public class JobCallbackTest extends AbstractDaoTest {
     public void jobCallbackFailsOnBadStatus(String badStatus) {
         
         try {
-            Job job = createJob(PENDING);
+            Software software = createSoftware();
+            Job job = createJob(PENDING, software);
             new JobCallback(job.getUuid(), badStatus, job.getUpdateToken());
             
             Assert.fail("JobCallbackException should be thrown on bad status value " + badStatus);
@@ -136,7 +139,8 @@ public class JobCallbackTest extends AbstractDaoTest {
     public void jobCallbackFailsOnBadUpdateToken(String updateToken) {
         
         try {
-            Job job = createJob(PENDING);
+            Software software = createSoftware();
+            Job job = createJob(PENDING, software);
             new JobCallback(job.getUuid(), PENDING.name(), updateToken);
             
             Assert.fail("PermissionException should be thrown on bad updateToken value " + updateToken);
@@ -160,8 +164,9 @@ public class JobCallbackTest extends AbstractDaoTest {
     
     @Test()
     public void jobCallbackStringStringStringIgnoresTenancy() throws Exception {
-        
-        Job job = createJob(PENDING);
+
+        Software software = createSoftware();
+        Job job = createJob(PENDING, software);
         
         TenancyHelper.setCurrentEndUser(JSONTestDataUtil.TEST_SHARED_OWNER);
         TenancyHelper.setCurrentTenantId("notwhatyouthinkitis");
@@ -177,8 +182,9 @@ public class JobCallbackTest extends AbstractDaoTest {
     
     @Test()
     public void jobCallbackStringStringString() throws Exception {
-        
-        Job job = createJob(PENDING);
+
+        Software software = createSoftware();
+        Job job = createJob(PENDING, software);
         
         for (JobStatusType status : JobStatusType.values()) {
             try {
@@ -191,7 +197,8 @@ public class JobCallbackTest extends AbstractDaoTest {
     
     @Test
     public void JobCallbackStringStringStringString() throws Exception {
-        Job job = createJob(PENDING);
+        Software software = createSoftware();
+        Job job = createJob(PENDING, software);
         
         for (JobStatusType status : JobStatusType.values()) {
             try {
@@ -210,7 +217,8 @@ public class JobCallbackTest extends AbstractDaoTest {
     
     @Test
     public void JobCallbackStringStringStringStringIgnoresTenancy() throws Exception {
-        Job job = createJob(PENDING);
+        Software software = createSoftware();
+        Job job = createJob(PENDING, software);
         
         TenancyHelper.setCurrentEndUser(JSONTestDataUtil.TEST_SHARED_OWNER);
         TenancyHelper.setCurrentTenantId("notwhatyouthinkitis");

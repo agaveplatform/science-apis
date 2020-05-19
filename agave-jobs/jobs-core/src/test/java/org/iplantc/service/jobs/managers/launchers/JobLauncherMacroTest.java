@@ -31,6 +31,8 @@ import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.SchedulerType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.json.JSONObject;
+import org.mockito.Mockito;
+import org.mockito.Spy;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -110,11 +112,11 @@ public class JobLauncherMacroTest extends AbstractJobSubmissionTest {
 	}
 	
 	/**
-	 * Creates a {@link Mockity.spy(JobLauncher)} instance returning non-persistent
+	 * Creates a {@link Spy (JobLauncher)} instance returning non-persistent
 	 * {@link Job}, {@link Software}, and {@link ExecutionSystem} objects when needed.
 	 * 
-	 * @param job the job to associate with the returned {@link JobLauncher.
-	 * @return a {@link Mockity.spy(JobLauncher)} instance valid for the given {@code job}.
+	 * @param job the job to associate with the returned {@link JobLauncher}
+	 * @return a {@link Spy} instance valid for the given {@code job}.
 	 */
 	protected JobLauncher getTestJobLauncher(Job job) {
 		JobLauncher launcher = null;

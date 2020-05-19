@@ -1,6 +1,3 @@
-/**
- * 
- */
 package org.iplantc.service.jobs.managers;
 
 import java.io.IOException;
@@ -53,11 +50,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * Generally speaking, this will delegate most of the work to the other *QueueProcessor
  * classes which have field-specific behavior.
  * 
- * @see {@link JobRequestInputProcessor}
- * @see {@link JobRequestParameterProcessor}
- * @see {@link JobRequestQueueProcessor}
- * @see {@link JobRequestInputProcessor}
- * @see {@link JobRequestNotificationProcessor}
+ * @see JobRequestInputProcessor
+ * @see JobRequestParameterProcessor
+ * @see JobRequestQueueProcessor
+ * @see JobRequestInputProcessor
+ * @see JobRequestNotificationProcessor
  * @author dooley
  *
  */
@@ -89,7 +86,7 @@ public class JobRequestProcessor {
 	 *
 	 * @param json a JsonNode containing the job request
 	 * @return validated job object ready for submission
-	 * @throws JobProcessingException
+	 * @throws JobProcessingException of the job request cannot be validated
 	 */
 	public Job processJob(JsonNode json)
 	throws JobProcessingException
@@ -148,19 +145,17 @@ public class JobRequestProcessor {
 						    }
 						    else if (childchild.isNumber())
 						    {
-						        jobRequestMap.put(childKey, new Long(childchild.longValue()).toString());
+						        jobRequestMap.put(childKey, childchild.longValue());
 						    }
 						    else if (childchild.isArray()) {
 						        List<String> arrayValues = new ArrayList<String>();
-							    for (Iterator<JsonNode> argIterator = childchild.iterator(); argIterator.hasNext();)
-							    {
-								    JsonNode argValue = argIterator.next();
-								    if (argValue.isNull() || argValue.isMissingNode()) {
-									    continue;
-								    } else {
-								        arrayValues.add(argValue.asText());
-								    }
-							    }
+								for (JsonNode argValue : childchild) {
+									if (argValue.isNull() || argValue.isMissingNode()) {
+										continue;
+									} else {
+										arrayValues.add(argValue.asText());
+									}
+								}
 							    jobRequestMap.put(childKey, StringUtils.join(arrayValues, ";"));
 						    }
 						    else if (childchild.isTextual()) {
@@ -198,7 +193,7 @@ public class JobRequestProcessor {
 				try {this.notificationProcessor.process(json.get("notifications"));}
 				    catch (Exception e) {
                         String input = "";
-                        try {input = json.get("notifications").toString();} catch (Exception e1) {}
+                        try {input = json.get("notifications").toString();} catch (Exception ignored) {}
 	                    String msg = "General notification processing failed with input [" + 
                                      input + "]\n" + e.getMessage();
 	                    log.error(msg, e);
@@ -209,7 +204,7 @@ public class JobRequestProcessor {
 				try {this.notificationProcessor.process(json.get("callbackUrl"));}
                     catch (Exception e) {
                         String input = "";
-                        try {input = json.get("callbackUrl").toString();} catch (Exception e1) {}
+                        try {input = json.get("callbackUrl").toString();} catch (Exception ignored) {}
                         String msg = "Callback notification processing failed with input [" + 
                                      input + "]\n" + e.getMessage();
                         log.error(msg, e);
@@ -268,7 +263,7 @@ public class JobRequestProcessor {
 	 *
 	 * @param json a JsonNode containing the job request
 	 * @return validated job object ready for submission
-	 * @throws JobProcessingException
+	 * @throws JobProcessingException of the resubmitted job cannot be validated
 	 */
 	public Job processResubmissionJob(JsonNode json)
 	throws JobProcessingException
@@ -280,9 +275,9 @@ public class JobRequestProcessor {
 	 * Takes a Form representing a job request and parses it into a job object. This is a
 	 * stripped down, unstructured version of the other processJob method.
 	 *
-	 * @param json a JsonNode containing the job request
-	 * @return validated job object ready for submission
-	 * @throws JobProcessingException
+	 * @param jobRequestMap a map representing the job request form
+	 * @return validated job instance ready for submission
+	 * @throws JobProcessingException when validation fails unexpectedly
 	 */
 	public Job processJob(Map<String, Object> jobRequestMap)
 	throws JobProcessingException
@@ -297,8 +292,8 @@ public class JobRequestProcessor {
 
 		// validate the optional execution system matches the software execution system
 		setExecutionSystem(processExecutionSystemRequest(jobRequestMap, getSoftware()));
-		
-		/***************************************************************************
+
+		/* **************************************************************************
 		 **						Batch Parameter Selection 						  **
 		 ***************************************************************************/
 
@@ -312,14 +307,14 @@ public class JobRequestProcessor {
 
 		try
 		{
-			/********************************** Queue Selection *****************************************/
+			/* ********************************* Queue Selection *****************************************/
 
 			currentParameter = "batchQueue";
 			this.queueProcessor = new JobRequestQueueProcessor(getSoftware(), executionSystem);
 			
 			jobQueue = this.queueProcessor.process(jobRequestMap);
 
-			/********************************** Node Count Selection *****************************************/
+			/* ********************************* Node Count Selection *****************************************/
 
 			currentParameter = "nodeCount";
 			String userNodeCount = (String)jobRequestMap.get("nodeCount");
@@ -344,7 +339,7 @@ public class JobRequestProcessor {
 						executionSystem.getSystemId() + " does not support jobs with " + nodeCount + " nodes.");
 			}
 
-			/********************************** Max Memory Selection *****************************************/
+			/* ********************************* Max Memory Selection *****************************************/
 
 			currentParameter = "memoryPerNode";
 			String userMemoryPerNode = (String)jobRequestMap.get("memoryPerNode");
@@ -410,7 +405,7 @@ public class JobRequestProcessor {
 						memoryPerNode + "GB memory per node");
 			}
 
-			/********************************** Run Time Selection *****************************************/
+			// ********************************** Run Time Selection ***************************************** //
 
 			currentParameter = "requestedTime";
 			//requestedTime = pTable.containsKey("requestedTime") ? pTable.get("requestedTime") : software.getDefaultMaxRunTime();
@@ -464,7 +459,7 @@ public class JobRequestProcessor {
 						memoryPerNode + "GB memory per node, and a run time of " + requestedTime);
 			}
 
-			/********************************** Max Processors Selection *****************************************/
+			/* ********************************* Max Processors Selection *****************************************/
 
 			currentParameter = "processorsPerNode";
 			String userProcessorsPerNode = (String)jobRequestMap.get("processorsPerNode");
@@ -478,7 +473,7 @@ public class JobRequestProcessor {
 				} else if (jobQueue.getMaxProcessorsPerNode() != null && jobQueue.getMaxProcessorsPerNode() > 0) {
 					processorsPerNode = jobQueue.getMaxProcessorsPerNode();
 				} else {
-					processorsPerNode = new Long(1);
+					processorsPerNode = 1L;
 				}
 			}
 			else
@@ -523,14 +518,14 @@ public class JobRequestProcessor {
 			throw new JobProcessingException(400, "Invalid " + currentParameter + " value.", e);
 		}
 
-		/***************************************************************************
+		/* **************************************************************************
 		 **						Verifying remote connectivity 					  **
 		 ***************************************************************************/
 
 		checkExecutionSystemLogin(executionSystem);
 		checkExecutionSystemStorage(executionSystem);
 
-		/***************************************************************************
+		/* **************************************************************************
 		 **						Verifying Input Parmaeters						  **
 		 ***************************************************************************/
 
@@ -539,13 +534,13 @@ public class JobRequestProcessor {
 		getInputProcessor().process(jobRequestMap);
 		ObjectNode jobInputs = getInputProcessor().getJobInputs();
 		
-		/***************************************************************************
+		/* **************************************************************************
 		 **						Verifying  Parameters							  **
 		 ***************************************************************************/
 		getParameterProcessor().process(jobRequestMap);
 		ObjectNode jobParameters = this.parameterProcessor.getJobParameters();
 		
-		/***************************************************************************
+		/* **************************************************************************
          **                 Create and assign job data                            **
          ***************************************************************************/
 
@@ -557,6 +552,8 @@ public class JobRequestProcessor {
             job.setSoftwareName(getSoftware().getUniqueName());
             job.setInternalUsername(internalUsername);
             job.setSystem(getSoftware().getExecutionSystem().getSystemId());
+            job.setSchedulerType(getSoftware().getExecutionSystem().getScheduler());
+            job.setExecutionType(getSoftware().getExecutionType());
             job.setBatchQueue(jobQueue.getName());
             job.setNodeCount(nodeCount);
             job.setProcessorsPerNode(processorsPerNode);
@@ -570,18 +567,18 @@ public class JobRequestProcessor {
             throw new JobProcessingException(500, e.getMessage(), e);
         }
         
-        /***************************************************************************
+        /* **************************************************************************
 		 **						End Batch Queue Selection 						  **
 		 ***************************************************************************/
 
         
-        /***************************************************************************
+        /* **************************************************************************
 		 **						Verifying optional notifications				  **
 		 ***************************************************************************/
         
 		processCallbackUrlRequest(jobRequestMap, job);
 
-		/***************************************************************************
+		/* **************************************************************************
 		 **						Verifying archive configuration					  **
 		 ***************************************************************************/
 
@@ -619,10 +616,11 @@ public class JobRequestProcessor {
 	}
 
 	/**
-	 * @param jobRequestMap
-	 * @param username
-	 * @param job
-	 * @throws JobProcessingException
+	 * Validates the callbackUrl paraemter into a notification. This is only supported on job request form submissions
+	 * which do not support structured data.
+	 * @param jobRequestMap the job request form
+	 * @param job the current job object
+	 * @throws JobProcessingException if the url is invalid or cannot be generated.
 	 */
 	public void processCallbackUrlRequest(Map<String, Object> jobRequestMap, Job job) 
 	throws JobProcessingException 
@@ -664,12 +662,14 @@ public class JobRequestProcessor {
 	}
 
 	/**
-	 * @param jobRequestMap
-	 * @param username
-	 * @param internalUsername
-	 * @param job
-	 * @param archiveSystem
-	 * @return
+	 * Calculates the archive path of the job. If not supplied by the user, the path is generated for them using the
+	 * job name and timestamp.
+	 *
+	 * @param archiveOutput should the job directory be archived
+	 * @param jobRequestMap the job request form
+	 * @param archiveSystem the system to which the job will be archived.
+	 * @param job the current job object
+	 * @return the remote path to which the job will be archived.
 	 * @throws JobProcessingException
 	 */
 	public String processArchivePath(boolean archiveOutput, Map<String, Object> jobRequestMap, RemoteSystem archiveSystem, Job job) 
@@ -704,9 +704,10 @@ public class JobRequestProcessor {
 	}
 
 	/**
-	 * @param archiveSystem
-	 * @param archivePath
-	 * @throws JobProcessingException
+	 * Creates the job archive directory if not already present
+	 * @param archiveSystem the system to which the job output will be archived
+	 * @param archivePath the agave relative path on the remote system
+	 * @throws JobProcessingException if the remote directory cannot be created.
 	 */
 	public boolean createArchivePath(RemoteSystem archiveSystem, String archivePath) 
 	throws JobProcessingException 
@@ -760,18 +761,20 @@ public class JobRequestProcessor {
 		    throw new JobProcessingException(500, "Could not verify archive path", e);
 		}
 		finally {
-		    try { remoteDataClient.disconnect(); } catch (Exception e) {}
+		    try {
+				if (remoteDataClient != null) {
+					remoteDataClient.disconnect();
+				}
+			} catch (Exception ignored) {}
 		}
 	}
 
 	/**
-	 * @param jobRequestMap
-	 * @param username
-	 * @param job
-	 * @param systemManager
-	 * @return
-	 * @throws JobProcessingException
-	 * @throws SystemException
+	 * Processes the archive system value in the job request form
+	 * @param jobRequestMap the job request form
+	 * @return the system to which the job will be archived.
+	 * @throws JobProcessingException if the user does not have access
+	 * @throws SystemException if the sytem is not found, or offline
 	 */
 	protected RemoteSystem processArchiveSystemRequest(boolean archiveOutput, Map<String, Object> jobRequestMap) 
 	throws JobProcessingException, SystemException {
@@ -808,18 +811,16 @@ public class JobRequestProcessor {
 	/**
 	 * Should the job output be archived? Default true;
 	 * 
-	 * @param jobRequestMap
-	 * @param job
+	 * @param jobRequestMap the job form
+	 * @return true if the request to archive the output was true, false otherwise
 	 */
 	protected boolean processArchiveOutputRequest(Map<String, Object> jobRequestMap) {
 		if (jobRequestMap.containsKey("archive") 
 				&& StringUtils.isNotEmpty((String)jobRequestMap.get("archive"))) {
 			
 		    String doArchive = (String)jobRequestMap.get("archive");
-		    
-		    if (!BooleanUtils.toBoolean(doArchive) && !doArchive.equals("1")) {
-			    return false;
-			}
+
+			return BooleanUtils.toBoolean(doArchive) || doArchive.equals("1");
 		}
 		
 		return true;
@@ -827,11 +828,9 @@ public class JobRequestProcessor {
 
 	/**
 	 * Can we login to the remote system?
-	 * 
-	 * @param internalUsername
-	 * @param software
-	 * @param executionSystem
-	 * @throws JobProcessingException
+	 *
+	 * @param executionSystem the system on which the job will run
+	 * @throws JobProcessingException if the system is not accessible, auth fails, etc.
 	 */
 	public boolean checkExecutionSystemLogin(ExecutionSystem executionSystem)
 	throws JobProcessingException {
@@ -880,10 +879,9 @@ public class JobRequestProcessor {
 	}
 	
 	/**
-	 * @param internalUsername
-	 * @param software
-	 * @param executionSystem
-	 * @throws JobProcessingException
+	 * Validates the storage credentials of the execution system.
+	 * @param executionSystem the system on which the job will be run
+	 * @throws JobProcessingException if the system credentials are bad or the system is unavailable
 	 */
 	public boolean checkExecutionSystemStorage(ExecutionSystem executionSystem)
 	throws JobProcessingException {
@@ -910,7 +908,11 @@ public class JobRequestProcessor {
 		    log.error(msg, e);
 			throw new JobProcessingException(412, msg);
 		} finally {
-			try { remoteExecutionDataClient.disconnect(); } catch (Exception e) {}
+			try {
+				if (remoteExecutionDataClient != null) {
+					remoteExecutionDataClient.disconnect();
+				}
+			} catch (Exception ignored) {}
 		}
 		
 		return true;
@@ -918,10 +920,10 @@ public class JobRequestProcessor {
 	}
 
 	/**
-	 * @param jobRequestMap
-	 * @param name
-	 * @return
-	 * @throws JobProcessingException
+	 * Validates the sofware name was valid and the user has permission to use it.
+	 * @param jobRequestMap the job request form
+	 * @return the software requested by the job request
+	 * @throws JobProcessingException if the software choice is invalid or unavailable
 	 */
 	public Software processSoftwareName(Map<String, Object> jobRequestMap) 
 	throws JobProcessingException 
@@ -967,18 +969,19 @@ public class JobRequestProcessor {
 	 * Delegates to {@link ApplicationManager#isInvokableByUser(Software, String)}.
 	 * Wrapped here for testability.
 	 * 
-	 * @param software
-	 * @param username
-	 * @return
+	 * @param software the software to check
+	 * @param username the user to check
+	 * @return true if the user has access to the software and user or better role on the execution system
 	 */
 	public boolean isSoftwareInvokableByUser(Software software, String username) {
 		return ApplicationManager.isInvokableByUser(software, username);
 	}
 
 	/**
-	 * @param jobRequestMap
-	 * @return
-	 * @throws JobProcessingException
+	 * Enforces basic naming conventions on the job name
+	 * @param jobRequestMap the job request
+	 * @return the trimmed job name
+	 * @throws JobProcessingException if the name fails validation
 	 */
 	public String processNameRequest(Map<String, Object> jobRequestMap)
 	throws JobProcessingException 
@@ -1006,10 +1009,11 @@ public class JobRequestProcessor {
 	}
 
 	/**
-	 * @param software
-	 * @param userNodeCount
-	 * @return
-	 * @throws JobProcessingException
+	 * Checks the node count, defaulting to the {@link Software#getDefaultNodes()} if not supplied by the job request.
+	 * @param software the software to run
+	 * @param userNodeCount the user requested node count
+	 * @return the number of nodes to include in the job request
+	 * @throws JobProcessingException if the number of nodes is not possible
 	 */
 	public Long processNodeCountRequest(Software software, String userNodeCount) 
 	throws JobProcessingException 
@@ -1024,7 +1028,7 @@ public class JobRequestProcessor {
 			else
 			{
 				// use a single node otherwise
-				nodeCount = new Long(1);
+				nodeCount = 1L;
 			}
 		}
 		else
@@ -1049,10 +1053,11 @@ public class JobRequestProcessor {
 	}
 
 	/**
-	 * @param jobRequestMap
-	 * @param software
-	 * @return
-	 * @throws JobProcessingException
+	 * Processes the execution system
+	 * @param jobRequestMap the job request form
+	 * @param software the software requested by the job
+	 * @return the system on which the job will run
+	 * @throws JobProcessingException if the execution system cannot be processed
 	 */
 	public ExecutionSystem processExecutionSystemRequest(Map<String, Object> jobRequestMap, Software software)
 	throws JobProcessingException 
@@ -1065,6 +1070,7 @@ public class JobRequestProcessor {
 		}
 		
 		ExecutionSystem executionSystem = software.getExecutionSystem();
+		//TODO: this should be 64, i believe, to line up with the {@link RemoteSystem#systemId} field
 		if (StringUtils.length(exeSystemName) > 80) {
 			throw new JobProcessingException(400,
 					"executionSystem must be less than 80 characters");

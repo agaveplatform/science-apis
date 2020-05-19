@@ -3,9 +3,10 @@ package org.iplantc.service.jobs.dao;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.common.util.StringToTime;
@@ -27,35 +28,7 @@ import org.testng.annotations.Test;
 public class JobSearchIT extends AbstractDaoTest {
 
     private static final Logger log = Logger.getLogger(JobSearchIT.class);
-    protected static final String[] DATETIME_FIELDS = new String[]{"created", "lastUpdated", "submittime", "starttime", "lastupdated", "lastmodified", "endtime"};
-
-    @BeforeClass
-    @Override
-    public void beforeClass() throws Exception {
-        HibernateUtil.getConfiguration().getProperties().setProperty("hibernate.show_sql", "false");
-        super.beforeClass();
-        SoftwareDao.persist(software);
-    }
-
-    @AfterClass
-    @Override
-    public void afterClass() throws Exception {
-        super.afterClass();
-    }
-
-    @BeforeMethod
-    public void setUp() throws Exception {
-        initSystems();
-        initSoftware();
-        clearJobs();
-    }
-
-    @AfterMethod
-    public void tearDown() throws Exception {
-        clearJobs();
-        clearSoftware();
-        clearSystems();
-    }
+    private final String[] DATETIME_FIELDS = new String[]{"created", "lastUpdated", "submittime", "starttime", "lastupdated", "lastmodified", "endtime"};
 
     @DataProvider(name = "searchJobsByDerivedRunTimeProvider", parallel = false)
     protected Object[][] searchJobsByDerivedRunTimeProvider() throws Exception {
@@ -64,10 +37,12 @@ public class JobSearchIT extends AbstractDaoTest {
 //        for (JobStatusType status: JobStatusType.values()) 
         {
             JobStatusType status = JobStatusType.FINISHED;
-            Job job = createJob(status);
             searchCriteria.add(new Object[]{status, "runtime.lte", true, "Searching by less than or equal to  known exact runtime should not fail"});
 
-            if (job.getStartTime() == null) {
+            if (status.equals(JobStatusType.RUNNING) || status.equals(JobStatusType.PAUSED) || status.equals(JobStatusType.STOPPED) ||
+                    status.equals(JobStatusType.ARCHIVING) || status.equals(JobStatusType.ARCHIVING_FAILED) || status.equals(JobStatusType.ARCHIVING_FINISHED) ||
+                    status.equals(JobStatusType.FAILED) || status.equals(JobStatusType.FINISHED) || status.equals(JobStatusType.CLEANING_UP) ||
+                    status.equals(JobStatusType.KILLED)) {
                 searchCriteria.add(new Object[]{status, "runtime", false, "Searching by known exact runtime on a job that has not started should not fail"});
                 searchCriteria.add(new Object[]{status, "runtime.eq", false, "Searching by known exact runtime on a job that has not started should not fail"});
                 searchCriteria.add(new Object[]{status, "runtime.lte", true, "Searching by less than or equal to known exact runtime on a job that has not started should succeed"});
@@ -92,15 +67,14 @@ public class JobSearchIT extends AbstractDaoTest {
 
     @Test(dataProvider = "searchJobsByDerivedRunTimeProvider")
     public void searchJobsByDerivedRunTime(JobStatusType status, String searchField, boolean shouldSucceed, String message) throws Exception {
-        Job job = createJob(status);
-        JobDao.persist(job);
+        Software software = createSoftware();
+        Job job = createJob(status, software);
         Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 
 //        long endTime = (job.getEndTime() == null ? new Date().getTime() : job.getEndTime().getTime());
 //        Integer searchValue = Math.round((endTime - job.getStartTime().getTime()) / 1000);
         int searchValue = (int) ((new DateTime(job.getEndTime()).getMillis() - new DateTime(job.getStartTime()).getMillis()) / 1000);
         log.debug("Searching for " + searchField + "=" + String.valueOf(searchValue) + " (" + JobDao.getJobRunTime(job.getUuid()) + ")");
-
 
         Map<String, String> map = new HashMap<String, String>();
         map.put(searchField, String.valueOf(searchValue));
@@ -149,7 +123,8 @@ public class JobSearchIT extends AbstractDaoTest {
 
     @Test(dataProvider = "searchJobsByDerivedWallTimeProvider", dependsOnMethods = {"searchJobsByDerivedRunTime"})
     public void searchJobsByDerivedWallTime(JobStatusType status, String searchField, boolean shouldSucceed, String message) throws Exception {
-        Job job = createJob(status);
+        Software software = createSoftware();
+        Job job = createJob(status, software);
         JobDao.persist(job);
         Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 
@@ -173,42 +148,63 @@ public class JobSearchIT extends AbstractDaoTest {
 
     @DataProvider(name = "searchJobsProvider")
     protected Object[][] searchJobsProvider() throws Exception {
-        Job job = createJob(JobStatusType.FINISHED);
-        return new Object[][]{
-                {"appid", job.getSoftwareName()},
-                {"archive", job.isArchiveOutput()},
-                {"archivepath", job.getArchivePath()},
-                {"archivesystem", job.getArchiveSystem().getSystemId()},
-                {"batchqueue", job.getBatchQueue()},
-                {"executionsystem", job.getSystem()},
-                {"inputs", job.getInputs()},
+        Software software = createSoftware();
+        try {
+            Job job = createJob(JobStatusType.FINISHED, software);
+
+            return new Object[][]{
+                    {"id", job.getUuid()},
+                    {"appid", job.getSoftwareName()},
+                    {"archive", job.isArchiveOutput()},
+                    {"archivepath", job.getArchivePath()},
+                    {"archivesystem", job.getArchiveSystem().getSystemId()},
+                    {"batchqueue", job.getBatchQueue()},
+                    {"executionsystem", job.getSystem()},
+                    {"inputs", job.getInputs()},
 //			{ "localId", job.getLocalJobId() },
-                {"maxruntime", job.getMaxRunTime()},
-                {"memorypernode", job.getMemoryPerNode()},
-                {"name", job.getName()},
-                {"nodecount", job.getNodeCount()},
-                {"outputpath", job.getOutputPath()},
-                {"owner", job.getOwner()},
-                {"parameters", job.getParameters()},
-                {"processorspernode", job.getProcessorsPerNode()},
-                {"retries", job.getRetries()},
-                {"visible", job.isVisible()},
-        };
+                    {"maxruntime", job.getMaxRunTime()},
+                    {"memorypernode", job.getMemoryPerNode()},
+                    {"name", job.getName()},
+                    {"nodecount", job.getNodeCount()},
+                    {"outputpath", job.getOutputPath()},
+                    {"owner", job.getOwner()},
+                    {"parameters", job.getParameters()},
+                    {"processorspernode", job.getProcessorsPerNode()},
+                    {"retries", job.getRetries()},
+                    {"visible", job.isVisible()},
+            };
+        }
+        finally {
+            super.afterMethod();
+        }
     }
 
     @Test(dataProvider = "searchJobsProvider", dependsOnMethods = {"searchJobsByDerivedWallTime"})
     public void findMatching(String attribute, Object value) throws Exception {
-        Job job = createJob(JobStatusType.FINISHED);
-        JobDao.persist(job);
+        Software software = createSoftware();
+        Job job = createJob(JobStatusType.FINISHED, software);
         Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 
         Map<String, String> map = new HashMap<String, String>();
-        map.put(attribute, String.valueOf(value));
+        if (org.apache.commons.lang3.StringUtils.equals(attribute, "appid")) {
+            map.put(attribute, software.getUniqueName());
+        } else if (org.apache.commons.lang3.StringUtils.equals(attribute, "archivesystem")) {
+            map.put(attribute, job.getArchiveSystem().getSystemId());
+        } else if (org.apache.commons.lang3.StringUtils.equals(attribute, "executionsystem")) {
+            map.put(attribute, software.getExecutionSystem().getSystemId());
+        } else if (org.apache.commons.lang3.StringUtils.equals(attribute, "name")) {
+            map.put(attribute, job.getName());
+        } else if (org.apache.commons.lang3.StringUtils.equals(attribute, "id")) {
+            map.put(attribute, job.getUuid());
+        } else {
+            map.put(attribute, String.valueOf(value));
+        }
 
         List<JobDTO> searchJobs = JobDao.findMatching(job.getOwner(), new JobSearchFilter().filterCriteria(map));
         Assert.assertNotNull(searchJobs, "findMatching failed to find any jobs.");
         Assert.assertEquals(searchJobs.size(), 1, "findMatching returned the wrong number of jobs for search by " + attribute);
-        Assert.assertTrue(searchJobs.contains(job), "findMatching did not return the saved job.");
+        JobDTO dto = new JobDTO(job);
+        Assert.assertTrue(searchJobs.contains(dto), "findMatching did not return the saved job.");
     }
 
     @DataProvider(parallel = false)
@@ -259,7 +255,8 @@ public class JobSearchIT extends AbstractDaoTest {
 
     @Test(dataProvider = "findMatchingTimeProvider", singleThreaded = true, dependsOnMethods = {"findMatching"})
     public void findMatchingCreatedTime(String operator, String relativeTimePhrase, boolean shouldMatch) throws Exception {
-        Job job = createJob(JobStatusType.CLEANING_UP);
+        Software software = createSoftware();
+        Job job = createJob(JobStatusType.CLEANING_UP, software);
 
         Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 //        Job savedJob = JobDao.getByUuid(job.getUuid());
@@ -357,8 +354,8 @@ public class JobSearchIT extends AbstractDaoTest {
 
     @Test(dataProvider = "findExactDateTimeProvider")//, dependsOnMethods={"findMatchingCreatedTime"} )
     public void findExactCreatedTime(String searchTerm, String relativeTimePhrase, boolean shouldMatch) throws Exception {
-        Job job = createJob(JobStatusType.FINISHED);
-        JobDao.persist(job);
+        Software software = createSoftware();
+        Job job = createJob(JobStatusType.FINISHED, software);
         Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 
         StringToTime searchDate = new StringToTime(relativeTimePhrase, job.getCreated());
@@ -396,7 +393,8 @@ public class JobSearchIT extends AbstractDaoTest {
 
     @Test(dataProvider = "searchJobsProvider", dependsOnMethods = {"findMatchingCreatedTime"})
     public void findMatchingCaseInsensitive(String attribute, Object value) throws Exception {
-        Job job = createJob(JobStatusType.PENDING);
+        Software software = createSoftware();
+        Job job = createJob(JobStatusType.PENDING, software);
         JobDao.persist(job);
         Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
         JobDTO jobDTO = new JobDTO(job);
@@ -460,7 +458,8 @@ public class JobSearchIT extends AbstractDaoTest {
 
     @Test(dataProvider = "dateSearchExpressionTestProvider", dependsOnMethods = {"findMatchingCaseInsensitive"}, enabled = true)
     public void dateSearchExpressionTest(String attribute, String dateFormattedString, boolean shouldSucceed) throws Exception {
-        Job job = createJob(JobStatusType.ARCHIVING);
+        Software software = createSoftware();
+        Job job = createJob(JobStatusType.ARCHIVING, software);
         job.setCreated(new DateTime().minusYears(5).toDate());
         JobDao.persist(job);
         Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
@@ -475,7 +474,8 @@ public class JobSearchIT extends AbstractDaoTest {
             if (shouldSucceed) {
                 Assert.assertEquals(searchJobs.size(), 1, "findMatching returned the wrong number of jobs for search by "
                         + attribute + "=" + dateFormattedString);
-                Assert.assertTrue(searchJobs.contains(job), "findMatching did not return the saved job.");
+                JobDTO dto = new JobDTO(job);
+                Assert.assertTrue(searchJobs.contains(dto), "findMatching did not return the saved job.");
             }
         } catch (Exception e) {
             if (shouldSucceed) {

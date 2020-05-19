@@ -96,23 +96,23 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see org.iplantc.service.jobs.submission.AbstractJobSubmissionTest#clearSystems()
-	 */
-	@Override
-	protected void clearSystems() {
-		SystemDao dao = new SystemDao();
-		try { dao.remove(executionSystem); } catch (Exception e){}
-		try { dao.remove(storageSystem); } catch (Exception e){}
-	}
-
-	/* (non-Javadoc)
-	 * @see org.iplantc.service.jobs.submission.AbstractJobSubmissionTest#clearSoftware()
-	 */
-	@Override
-	protected void clearSoftware() throws Exception {
-		try { SoftwareDao.delete(software); } catch (Exception e){}
-	}
+//	/* (non-Javadoc)
+//	 * @see org.iplantc.service.jobs.submission.AbstractJobSubmissionTest#clearSystems()
+//	 */
+//	@Override
+//	protected void clearSystems() {
+//		SystemDao dao = new SystemDao();
+//		try { dao.remove(executionSystem); } catch (Exception e){}
+//		try { dao.remove(storageSystem); } catch (Exception e){}
+//	}
+//
+//	/* (non-Javadoc)
+//	 * @see org.iplantc.service.jobs.submission.AbstractJobSubmissionTest#clearSoftware()
+//	 */
+//	@Override
+//	protected void clearSoftware() throws Exception {
+//		try { SoftwareDao.delete(software); } catch (Exception e){}
+//	}
 
 	@Override
 	protected void initSystems() throws Exception {

@@ -37,47 +37,47 @@ public class JobEventProcessorTest extends AbstractDaoTest {
 
 	protected NotificationDao ndao = new NotificationDao();
 
-	@Override
-	@BeforeClass
-	public void beforeClass() throws Exception {
-		super.beforeClass();
-		SoftwareDao.persist(software);
-	}
-
-	@AfterClass
-	public void afterClass() throws Exception {
-		clearJobs();
-		clearSoftware();
-		clearSystems();
-		clearNotifications();
-	}
-
-	@BeforeMethod
-	public void beforeMethod(Method m) throws Exception {
-		clearJobs();
-		clearNotifications();
-	}
-
-	@AfterClass
-	public void clearNotifications() throws NotificationException {
-		Session session = null;
-		try {
-			HibernateUtil.beginTransaction();
-			session = HibernateUtil.getSession();
-			session.clear();
-			HibernateUtil.disableAllFilters();
-			session.createQuery("delete Notification").executeUpdate();
-			session.flush();
-		} catch (HibernateException ex) {
-			throw new SoftwareException(ex);
-		} finally {
-			try {
-				HibernateUtil.commitTransaction();
-			} catch (Throwable e) {
-			}
-		}
-
-	}
+//	@Override
+//	@BeforeClass
+//	public void beforeClass() throws Exception {
+//		super.beforeClass();
+//		SoftwareDao.persist(software);
+//	}
+//
+//	@AfterClass
+//	public void afterClass() throws Exception {
+//		clearJobs();
+//		clearSoftware();
+//		clearSystems();
+//		clearNotifications();
+//	}
+//
+//	@BeforeMethod
+//	public void beforeMethod(Method m) throws Exception {
+//		clearJobs();
+//		clearNotifications();
+//	}
+//
+//	@AfterClass
+//	public void clearNotifications() throws NotificationException {
+//		Session session = null;
+//		try {
+//			HibernateUtil.beginTransaction();
+//			session = HibernateUtil.getSession();
+//			session.clear();
+//			HibernateUtil.disableAllFilters();
+//			session.createQuery("delete Notification").executeUpdate();
+//			session.flush();
+//		} catch (HibernateException ex) {
+//			throw new SoftwareException(ex);
+//		} finally {
+//			try {
+//				HibernateUtil.commitTransaction();
+//			} catch (Throwable e) {
+//			}
+//		}
+//
+//	}
 
 	protected Notification createNotification(Job job)
 			throws NotificationException, IOException {

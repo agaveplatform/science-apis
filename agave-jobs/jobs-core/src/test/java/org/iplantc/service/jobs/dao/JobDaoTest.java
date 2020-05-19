@@ -11,6 +11,7 @@ import java.util.Hashtable;
 import java.util.List;
 
 import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
@@ -24,40 +25,41 @@ import org.testng.annotations.Test;
 
 @Test(groups={"broken", "integration"})
 public class JobDaoTest extends AbstractDaoTest {
-
-	@BeforeClass
-	@Override
-	public void beforeClass() throws Exception
-	{
-		super.beforeClass();
-	}
-	
-	@AfterClass
-	@Override
-	public void afterClass() throws Exception
-	{
-		super.afterClass();
-	}
-	
-	@BeforeMethod
-	public void setUp() throws Exception {
-		initSystems();
-        initSoftware();
-        SoftwareDao.persist(software);
-		clearJobs();
-	}
-	
-	@AfterMethod
-	public void tearDown() throws Exception {
-		clearJobs();
-		clearSoftware();
-		clearSystems();
-	}
-	
+//
+//	@BeforeClass
+//	@Override
+//	public void beforeClass() throws Exception
+//	{
+//		super.beforeClass();
+//	}
+//
+//	@AfterClass
+//	@Override
+//	public void afterClass() throws Exception
+//	{
+//		super.afterClass();
+//	}
+//
+//	@BeforeMethod
+//	public void setUp() throws Exception {
+////		initSystems();
+////        initSoftware();
+////        SoftwareDao.persist(software);
+//		clearJobs();
+//	}
+//
+//	@AfterMethod
+//	public void tearDown() throws Exception {
+//		clearJobs();
+//		clearSoftware();
+//		clearSystems();
+//	}
+//
 	@Test
 	public void persist() throws Exception
 	{
-		Job job = createJob(JobStatusType.PENDING);
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
 		JobDao.persist(job);
 		Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 	}
@@ -65,7 +67,8 @@ public class JobDaoTest extends AbstractDaoTest {
 	@Test(dependsOnMethods={"persist"})
 	public void delete() throws Exception
 	{
-		Job job = createJob(JobStatusType.PENDING);
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
 		JobDao.persist(job);
 		Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 		long jobId = job.getId();
@@ -81,11 +84,13 @@ public class JobDaoTest extends AbstractDaoTest {
 	{
 		List<Job> testActiveJobs = new ArrayList<Job>();
 		List<Job> testInactiveJobs = new ArrayList<Job>();
-		Job otherUserJob = null; 
-		
+		Job otherUserJob = null;
+
+		Software software = createSoftware();
+
 		for (JobStatusType status: JobStatusType.getActiveStatuses())
 		{	
-			Job testJob = createJob(status);
+			Job testJob = createJob(status, software);
 			JobDao.persist(testJob);
 			Assert.assertNotNull(testJob.getId(), 
 					"Failed to persist active job " + status.name() + ".");
@@ -96,7 +101,7 @@ public class JobDaoTest extends AbstractDaoTest {
 		{	
 			if (!Arrays.asList(JobStatusType.getActiveStatuses()).contains(status))
 			{
-				Job testJob = createJob(status);
+				Job testJob = createJob(status, software);
 				JobDao.persist(testJob);
 				Assert.assertNotNull(testJob.getId(), 
 						"Failed to persist inactive job " + status.name() + ".");
@@ -104,7 +109,7 @@ public class JobDaoTest extends AbstractDaoTest {
 			}
 		}
 		
-		otherUserJob = createJob(JobStatusType.RUNNING);
+		otherUserJob = createJob(JobStatusType.RUNNING, software);
 		otherUserJob.setOwner(TEST_SHARED_OWNER);
 		JobDao.persist(otherUserJob);
 		Assert.assertNotNull(otherUserJob.getId(), "Failed to persist other user job.");
@@ -120,11 +125,13 @@ public class JobDaoTest extends AbstractDaoTest {
 	{
 		List<Job> testActiveJobs = new ArrayList<Job>();
 		List<Job> testInactiveJobs = new ArrayList<Job>();
-		Job otherUserJob = null; 
-		
+		Job otherUserJob = null;
+
+		Software software = createSoftware();
+
 		for (JobStatusType status: JobStatusType.getActiveStatuses())
 		{	
-			Job testJob = createJob(status);
+			Job testJob = createJob(status, software);
 			JobDao.persist(testJob);
 			Assert.assertNotNull(testJob.getId(), 
 					"Failed to persist active job " + status.name() + ".");
@@ -135,7 +142,7 @@ public class JobDaoTest extends AbstractDaoTest {
 		{	
 			if (!Arrays.asList(JobStatusType.getActiveStatuses()).contains(status))
 			{
-				Job testJob = createJob(status);
+				Job testJob = createJob(status, software);
 				JobDao.persist(testJob);
 				Assert.assertNotNull(testJob.getId(), 
 						"Failed to persist inactive job " + status.name() + ".");
@@ -143,7 +150,7 @@ public class JobDaoTest extends AbstractDaoTest {
 			}
 		}
 		
-		otherUserJob = createJob(JobStatusType.RUNNING);
+		otherUserJob = createJob(JobStatusType.RUNNING, software);
 		otherUserJob.setOwner(TEST_SHARED_OWNER);
 		JobDao.persist(otherUserJob);
 		Assert.assertNotNull(otherUserJob.getId(), "Failed to persist other user job.");
@@ -162,7 +169,8 @@ public class JobDaoTest extends AbstractDaoTest {
 //			systemDao.persist(privateStorageSystem);
 //		} catch (Throwable e) { e.printStackTrace(); }
 //		
-		Job job = createJob(JobStatusType.PENDING);
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
 		JobDao.persist(job);
 		Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 		
@@ -174,7 +182,8 @@ public class JobDaoTest extends AbstractDaoTest {
 	@Test(dependsOnMethods={"getById"})
 	public void getByUserAndId() throws Exception
 	{
-		Job job = createJob(JobStatusType.PENDING);
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
 		JobDao.persist(job);
 		Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 		
@@ -186,19 +195,20 @@ public class JobDaoTest extends AbstractDaoTest {
 	@Test(dependsOnMethods={"getByUserAndId"})
 	public void getByUsernameAndStatus() throws Exception
 	{
-		Job job1 = createJob(JobStatusType.RUNNING);
+		Software software = createSoftware();
+		Job job1 = createJob(JobStatusType.RUNNING, software);
 		JobDao.persist(job1);
 		Assert.assertNotNull(job1.getId(), "Failed to save job 1.");
 		
-		Job job2 = createJob(JobStatusType.RUNNING);
+		Job job2 = createJob(JobStatusType.RUNNING, software);
 		JobDao.persist(job2);
 		Assert.assertNotNull(job2.getId(), "Failed to save job 2.");
 		
-		Job job3 = createJob(JobStatusType.PENDING);
+		Job job3 = createJob(JobStatusType.PENDING, software);
 		JobDao.persist(job3);
 		Assert.assertNotNull(job3.getId(), "Failed to save job 3.");
 		
-		Job job4 = createJob(JobStatusType.PENDING);
+		Job job4 = createJob(JobStatusType.PENDING, software);
 		job4.setOwner(TEST_SHARED_OWNER);
 		JobDao.persist(job4);
 		Assert.assertNotNull(job4.getId(), "Failed to save job 4.");
@@ -213,19 +223,20 @@ public class JobDaoTest extends AbstractDaoTest {
 	@Test(dependsOnMethods={"getByUsernameAndStatus"})
 	public void getNextQueuedJob() throws Exception
 	{
-		Job job1 = createJob(JobStatusType.PENDING);
+		Software software = createSoftware();
+		Job job1 = createJob(JobStatusType.PENDING, software);
 		JobDao.persist(job1);
 		Assert.assertNotNull(job1.getId(), "Failed to save job 1.");
 		
-		Job job2 = createJob(JobStatusType.PENDING);
+		Job job2 = createJob(JobStatusType.PENDING, software);
 		JobDao.persist(job2);
 		Assert.assertNotNull(job2.getId(), "Failed to save job 2.");
 		
-		Job job3 = createJob(JobStatusType.RUNNING);
+		Job job3 = createJob(JobStatusType.RUNNING, software);
 		JobDao.persist(job3);
 		Assert.assertNotNull(job3.getId(), "Failed to save job 3.");
 		
-		Job job4 = createJob(JobStatusType.ARCHIVING_FINISHED);
+		Job job4 = createJob(JobStatusType.ARCHIVING_FINISHED, software);
 		job4.setOwner(TEST_SHARED_OWNER);
 		JobDao.persist(job4);
 		Assert.assertNotNull(job4.getId(), "Failed to save job 4.");
@@ -244,7 +255,8 @@ public class JobDaoTest extends AbstractDaoTest {
 	@Test(dependsOnMethods={"getNextQueuedJob"})
 	public void setStatusPersistsJobEventTest() throws Exception
 	{
-		Job job = createJob(JobStatusType.PENDING);
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
 		
 		JobDao.persist(job);
 		Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");

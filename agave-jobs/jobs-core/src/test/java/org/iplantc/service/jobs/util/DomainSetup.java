@@ -478,72 +478,46 @@ public class DomainSetup extends AbstractDaoTest
         //g.closeConnection("DomainSetup");
     }
 
-    /**
-     * Job setup is currently written for wca-iplant-condor software definition and assumes that
-     * wca-iplant-condor is persisted in the database.
-     * @throws JobException 
-     */
-    public void  addAJobSubmissionToDatabase() throws JobException{
-        // this sets up the ability to create
-        //RemoteHPCJobSubmissionTest remoteJob = new RemoteHPCJobSubmissionTest();
-        JobDaoTest jobDaoTest = new JobDaoTest();
-        Job testJob = null;
-        try {
-
-            jobDaoTest.software = SoftwareDao.get("wca-1.00");
-            testJob = jobDaoTest.createJob(JobStatusType.PENDING);
-            System.out.println();
-        } catch (Exception e) {
-            System.out.println("our Job creator jobDaoTest is failing for some reason");
-            e.printStackTrace();
-        }
-
-        // need to change some values on this job and then persist in database in order to
-        // kick off the test for CondorLauncher.
-
-        testJob.setName("testname");
-        testJob.setOwner("testuser");
-        testJob.setInternalUsername("testinternaluser");
-        testJob.setOutputPath("");
-        testJob.setArchivePath("/iplant/home/testuser/archive/test-job-999");
-        testJob.setWorkPath("/dev/null");
-        testJob.setUpdateToken("232a28d8930d43fbc4c58069eaae8bba");
-        testJob.setLocalJobId("");
-        testJob.setSchedulerJobId("");
-        testJob.setCharge(Float.parseFloat("1001.5"));
-
-        try {
-            JobDao.persist(testJob);
-        } catch (JobException e) {
-            e.printStackTrace();
-        }
-
-    }
-
-
-
-
-    public static void main(String[] args) throws IOException, JobException {
-
-        DomainSetup ds = new DomainSetup();
-
-        //ds.baseDataForSoftwareRegistrationTest();
-        ds.addAJobSubmissionToDatabase();
-
-
-        //ds.fillListsMaps();
-        //GSqlData g = new GSqlData("DomainSetup");
-        //ds.setupCondorTestDataStructure();
-        //ds.fillSoftwareMap();
-        //ds.persistSoftwareDomain();
-        //ds.persistSingleSoftwareEntryFromFile(SOFTWARE_SYSTEM_TEMPLATE_DIR+"/wc-iplant-condor.tacc.utexas.edu.json");
-        // pick a software def
-        //ds.viewDomain();
-        //g.closeConnection("DomainSetup");
-        //ds.persistSingleSoftwareEntryFromFile(SOFTWARE_SYSTEM_TEMPLATE_DIR+"/system-software.json","ipctest");
-
-    }
-
-
+//    /**
+//     * Job setup is currently written for wca-iplant-condor software definition and assumes that
+//     * wca-iplant-condor is persisted in the database.
+//     * @throws JobException
+//     */
+//    public void  addAJobSubmissionToDatabase() throws JobException{
+//        // this sets up the ability to create
+//        //RemoteHPCJobSubmissionTest remoteJob = new RemoteHPCJobSubmissionTest();
+//        JobDaoTest jobDaoTest = new JobDaoTest();
+//        Job testJob = null;
+//        try {
+//
+//            Software software = createSoftware();
+//            testJob = jobDaoTest.createJob(JobStatusType.PENDING, software);
+//            System.out.println();
+//        } catch (Exception e) {
+//            System.out.println("our Job creator jobDaoTest is failing for some reason");
+//            e.printStackTrace();
+//        }
+//
+//        // need to change some values on this job and then persist in database in order to
+//        // kick off the test for CondorLauncher.
+//
+//        testJob.setName("testname");
+//        testJob.setOwner("testuser");
+//        testJob.setInternalUsername("testinternaluser");
+//        testJob.setOutputPath("");
+//        testJob.setArchivePath("/iplant/home/testuser/archive/test-job-999");
+//        testJob.setWorkPath("/dev/null");
+//        testJob.setUpdateToken("232a28d8930d43fbc4c58069eaae8bba");
+//        testJob.setLocalJobId("");
+//        testJob.setSchedulerJobId("");
+//        testJob.setCharge(Float.parseFloat("1001.5"));
+//
+//        try {
+//            JobDao.persist(testJob);
+//        } catch (JobException e) {
+//            e.printStackTrace();
+//        }
+//
+//    }
 }
 

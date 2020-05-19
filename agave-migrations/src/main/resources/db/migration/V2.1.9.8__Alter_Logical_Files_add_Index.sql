@@ -29,7 +29,6 @@ alter table logical_files add column path_hash bigint not null default 0;
 
 update logical_files set path_hash = conv(substring(md5(path), 1, 8), 16, 10);
 
-
 CREATE INDEX `logical_files_system_id_path_hash` ON `logical_files` 
 (`system_id`, `path_hash`);
 

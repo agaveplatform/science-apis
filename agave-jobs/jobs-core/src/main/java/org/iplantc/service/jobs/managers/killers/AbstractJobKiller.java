@@ -4,11 +4,8 @@
 package org.iplantc.service.jobs.managers.killers;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.jobs.exceptions.JobTerminationException;
-import org.iplantc.service.jobs.managers.monitors.JobMonitor;
-import org.iplantc.service.jobs.managers.monitors.JobMonitorFactory;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType;
 import org.iplantc.service.remote.RemoteSubmissionClient;

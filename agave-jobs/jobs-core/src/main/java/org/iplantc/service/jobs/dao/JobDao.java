@@ -34,6 +34,8 @@ import org.iplantc.service.jobs.model.dto.JobDTO;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.model.enumerations.PermissionType;
 import org.iplantc.service.jobs.search.JobSearchFilter;
+import org.iplantc.service.systems.model.BatchQueue;
+import org.iplantc.service.systems.model.ExecutionSystem;
 import org.joda.time.DateTime;
 
 /**
@@ -88,11 +90,11 @@ public class JobDao
 	}
 	
 	/**
-	 * Returns all jobs for a given username.
-	 * 
-	 * @param username
-	 * @return
-	 * @throws JobException
+	 * Returns {@link Settings#DEFAULT_PAGE_SIZE} jobs for a given username.
+	 *
+	 * @param username the user making the query
+	 * @return list of jobs for the user
+	 * @throws JobException if the query cannot be completed
 	 */
 	public static List<Job> getByUsername(String username) throws JobException
 	{
@@ -101,13 +103,13 @@ public class JobDao
 	
 	/**
 	 * Returns all jobs for a given username.
-	 * @param username
-	 * @param offset
-	 * @param limit
-	 * @return
-	 * @throws JobException
+	 * @param username the user making the query
+	 * @param offset the number of records to skip in the result set
+	 * @param limit the max records to return
+	 * @return list of jobs for the user
+	 * @throws JobException if the query cannot be completed
 	 * @deprecated 
-	 * @see {@link #getByUsername(String, int, int, AgaveResourceSearchResultOrdering, SearchTerm)
+	 * @see #getByUsername(String, int, int, AgaveResourceResultOrdering, SearchTerm)
 	 */
 	public static List<Job> getByUsername(String username, int offset, int limit) 
 	throws JobException
@@ -116,12 +118,14 @@ public class JobDao
 	}
 	
 	/**
-	 * Returns all jobs for a given username with optional search result ordering
-	 * @param username
-	 * @param offset
-	 * @param limit
-	 * @return
-	 * @throws JobException
+	 * Returns all jobs for a given username with optional search result ordering. Permissions will be honored .
+	 * @param username the username by which to filter results.
+	 * @param offset the number of records to skip in the result set
+	 * @param limit the maximum number of records  to return.
+	 * @param order the direction to order
+	 * @param orderBy the search field by which to order.
+	 * @return list of jobs for the given user with pagination
+	 * @throws JobException if unable to perform the query
 	 */
 	@SuppressWarnings("unchecked")
 	public static List<Job> getByUsername(String username, int offset, int limit, AgaveResourceResultOrdering order, SearchTerm orderBy) 
@@ -163,7 +167,7 @@ public class JobDao
 			List<Job> jobs = session.createSQLQuery(sql).addEntity(Job.class)
 					.setString("owner",username)
 					.setString("none",PermissionType.NONE.name())
-					.setInteger("visible", new Integer(1))
+					.setInteger("visible", 1)
 					.setString("tenantid", TenancyHelper.getCurrentTenantId())
 					.setFirstResult(offset)
 					.setMaxResults(limit)
@@ -173,58 +177,46 @@ public class JobDao
 			
 			return jobs;
 
-		}
-		catch (ObjectNotFoundException e) {
+		} catch (ObjectNotFoundException e) {
+			// not found is a valid result. return an empty list in that event
 			return new ArrayList<Job>();
-		}
-		catch (HibernateException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 
 	/**
-	 * Gets a job by its unique id.
-	 * @param jobId
-	 * @return
-	 * @throws JobException
+	 * Gets a job by its database id. This method bypasses the tenant filter and is capable of
+	 * querying across tenants.
+	 * @param jobId the database id of the job for which to query
+	 * @return the {@link Job} with the given {@code jobId} or {@code null} if no matching job found.
+	 * @throws JobException if unable to perform the query
 	 */
 	public static Job getById(long jobId) throws JobException
 	{
-		try
-		{
+		try {
 			Session session = getSession();
-//			session.clear();
 			session.disableFilter("jobTenantFilter");
-			Job job = (Job) session.get(Job.class, jobId);
-			
-//			session.flush();
-			
-			return job;
-
-		}
-		catch (ObjectNotFoundException ex)
-		{
-			return null;
-		}
-		catch (HibernateException ex)
-		{
+			return (Job) session.get(Job.class, jobId);
+		} catch (ObjectNotFoundException ex) {
+            // not found is a valid result. return a null value
+            return null;
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
 	/**
-     * Gets a {@link Job} by its uuid.
+     * Gets a {@link Job} by its uuid, forcing the cache to flush.
      * 
-     * @param uuid identifier for the job
-     * @return {@link Job} object
-     * @throws JobException
+     * * @param uuid agave uuid for the job
+     * @return the {@link Job} with the given {@code uuid} or {@code null} if no matching job found.
+     * @throws JobException if unable to perform the query.
+     * @see #getByUuid(String, boolean)
      */
 	public static Job getByUuid(String uuid) throws JobException
     {
@@ -234,22 +226,23 @@ public class JobDao
 	/**
 	 * Gets a {@link Job} by its uuid, optionally forcing cache eviction
 	 * 
-	 * @param uuid identifier for the job
+	 * @param uuid agave uuid for the job
 	 * @param forceFlush should the cache be flushed on this request?
-	 * @return {@link Job} object
-	 * @throws JobException
+	 * @return the {@link Job} with the given {@code uuid} or {@code null} if no matching job found.
+	 * @throws JobException if unable to perform the query.
 	 */
 	public static Job getByUuid(String uuid, boolean forceFlush) throws JobException
 	{
+	    // empty uuid should return null.
 		if (StringUtils.isEmpty(uuid)) return null;
 		
 		try
 		{
 		    HibernateUtil.beginTransaction();
 			Session session = HibernateUtil.getSession();
-			
 			session.clear();
-			
+
+			// force a query that bypasses the hibernate cache
 			Job job = (Job) session.createSQLQuery("select * from jobs where uuid = :uuid")
 			        .addEntity(Job.class)
 					.setString("uuid",  uuid)
@@ -260,27 +253,21 @@ public class JobDao
 			if (forceFlush) session.flush();
 			
 			return job;
-
-		}
-		catch (ObjectNotFoundException ex)
-		{
+		} catch (ObjectNotFoundException ex) {
+		    // if unable to find the object, just return null. this is a valid result.
 			return null;
-		}
-		catch (HibernateException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		finally {
-//		    if (forceFlush)
-		        try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+            try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
 	/**
-	 * Refreshes a stale job
-	 * @param job
-	 * @return
-	 * @throws JobException
+	 * Refreshes a stale job. This is helpful to call after a failed concurrent modification update to get the
+     * latest revision number for future updates.
+	 * @param job the updated job to refresh
+	 * @throws JobException if unable to refresh. This is usually due to a subsequent concurrent modification issue
 	 */
 	public static void refresh(Job job) throws JobException
 	{
@@ -290,14 +277,12 @@ public class JobDao
 			session.clear();
 			session.refresh(job);
 			session.flush();
-		}
-		catch (HibernateException ex)
-		{
+		} catch (HibernateException ex) {
 		    log.error("Concurrency issue with job " + job.getUuid());
 			throw new JobException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
@@ -305,9 +290,9 @@ public class JobDao
 	 * Merges the current cached job object with the persisted value. The 
 	 * current instance is not updated. The merged instance is returned.
 	 * 
-	 * @param job
-	 * @return merged job.
-	 * @throws JobException
+	 * @param job the updated job to merge with the db version
+	 * @return merged job
+	 * @throws JobException if unable to merge. This is usually due to a concurrent modification issue
 	 */
 	public static Job merge(Job job) throws JobException
 	{
@@ -317,22 +302,22 @@ public class JobDao
 			Session session = HibernateUtil.getSession();
 			return (Job)session.merge(job);
 		}
-		catch (HibernateException ex)
-		{
+		catch (HibernateException ex) {
 		    log.error("Concurrency issue with job " + job.getUuid());
 			throw new JobException(ex);
 		}
 	}
 	
 	/**
-	 * Returns a job owned by the user with teh given job id. This is essentially
+	 * Returns a job owned by the user with the given {@code jobId}. This is essentially
 	 * just a security check to make sure the owner matches the job id. ACL are 
 	 * not taken into consideration here, just ownership.
-	 * 
-	 * @param username
-	 * @param jobId
-	 * @return
-	 * @throws JobException
+	 *
+     * TODO: this should return null if no job was found, not throw an exception
+	 * @param username the job owner's username for which to filter the job
+	 * @param jobId database id of the job for which to lookup
+	 * @return the job with the given id or {@code null}
+	 * @throws JobException if unable to perform the query, or if the job is null
 	 */
 	public static Job getByUsernameAndId(String username, long jobId) throws JobException
 	{
@@ -360,17 +345,13 @@ public class JobDao
 				return job;
 			}
 
-		}
-		catch (ObjectNotFoundException ex)
-		{
-			return null;
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+        } catch (ObjectNotFoundException ex) {
+            // if unable to find the object, just return null. this is a valid result.
+            return null;
+        } catch (HibernateException ex) {
+            throw new JobException(ex);
+		} finally {
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 
@@ -378,10 +359,10 @@ public class JobDao
 	 * Returns a {@link List} of {@link Job}s belonging to the given user with the given status.
 	 * Permissions are observed in this query.
 	 * 
-	 * @param username
-	 * @param jobStatus
-	 * @return
-	 * @throws JobException
+	 * @param username the user for whom to query for jobs
+	 * @param jobStatus the status of the user jobs for which to query
+	 * @return list of jobs for the user with the given status.
+	 * @throws JobException if unable to perform the query
 	 */
 	@SuppressWarnings("unchecked")
 	public static List<Job> getByUsernameAndStatus(String username, JobStatusType jobStatus) 
@@ -408,7 +389,7 @@ public class JobDao
 			List<Job> jobs = session.createSQLQuery(sql).addEntity(Job.class)
 					.setString("owner",username)
 					.setString("none",PermissionType.NONE.name())
-					.setInteger("isadmin", new Integer(BooleanUtils.toInteger(ServiceUtils.isAdmin(username))) )
+					.setInteger("isadmin", BooleanUtils.toInteger(ServiceUtils.isAdmin(username)))
 					.setBoolean("visible", true)
 					.setString("status", jobStatus.name())
 					.list();
@@ -417,16 +398,13 @@ public class JobDao
 			
 			return jobs;
 
-		}
-		catch (ObjectNotFoundException e) {
-			return new ArrayList<Job>();
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+        } catch (ObjectNotFoundException ex) {
+            // if unable to find the object, just return empty list. this is a valid result.
+            return new ArrayList<Job>();
+        } catch (HibernateException ex) {
+            throw new JobException(ex);
+        } finally {
+		  	try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
@@ -436,12 +414,12 @@ public class JobDao
 	 * on a given system. Active states are defined by 
 	 * JobStatusType.getActiveStatuses().
 	 * 
-	 * @param username
-	 * @param system
-	 * @return
-	 * @throws JobException
+	 * @param username the user for whome to count active jobs
+     * @param systemId The user-defined name of the system for which to count active jobs.
+	 * @return the number of active jobs for {@code username} on the {@code systemId}}
+	 * @throws JobException if unable to perform the query.
 	 */
-	public static long countActiveUserJobsOnSystem(String username, String system) throws JobException
+	public static long countActiveUserJobsOnSystem(String username, String systemId) throws JobException
 	{
 		try
 		{
@@ -455,27 +433,22 @@ public class JobDao
 					+ "		and j.status in "
 					+ "(" + JobStatusType.getActiveStatusValues() + ") ";
 			
-			long currentUserJobCount = ((Long)session.createQuery(hql)
+			long currentUserJobCount = (Long)session.createQuery(hql)
 					.setBoolean("visible", true)
 					.setString("jobowner",username)
-					.setString("jobsystem", system)
-					.uniqueResult()).longValue();
+					.setString("jobsystem", systemId)
+					.uniqueResult();
 			
 			session.flush();
 			
 			return currentUserJobCount;
 
 		}
-		catch (ObjectNotFoundException ex)
-		{
-			throw new JobException(ex);
-		}
-		catch (HibernateException ex)
-		{
+		catch (HibernateException ex) {
 			throw new JobException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
@@ -665,23 +638,14 @@ public class JobDao
                 log.debug("Next executing job is " + uuid + ".");
             return uuid;
             
-		}
-        catch (StaleObjectStateException ex) {
-            log.error("Unable to select monitoring job on tenant " + tenantId + " due to stale object.", ex);
+		} catch (ObjectNotFoundException|StaleObjectStateException ex) {
+            log.error("Unable to select monitoring job on tenant " + tenantId + " due to concurrency issue.", ex);
             return null;
-        }
-        catch (ObjectNotFoundException ex)
-        {
-            log.warn("Unable to select monitoring job on tenant " + tenantId + " due to object not found.", ex);
-            return null;
-        }
-        catch (HibernateException ex)
-        {
-            log.error("Unable to select monitoring job on tenant " + tenantId + " due to hibernate problem.", ex);
+        } catch (HibernateException ex) {
             throw new JobException(ex);
         }
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
@@ -689,13 +653,12 @@ public class JobDao
 	 * Returns the total number of jobs in an active state 
 	 * on a given system. Active states are defined by 
 	 * JobStatusType.getActiveStatuses().
-	 * 
-	 * @param username
-	 * @param system
-	 * @return jobCount 
-	 * @throws JobException
+	 *
+	 * @param systemId The user-defined name of the system for which to count active jobs.
+	 * @return the number of current jobs for the system
+	 * @throws JobException if unable to query the db
 	 */
-	public static long countActiveJobsOnSystem(String system) throws JobException
+	public static long countActiveJobsOnSystem(String systemId) throws JobException
 	{
 		try
 		{
@@ -705,34 +668,39 @@ public class JobDao
 					"where system = :jobsystem and " +
 					"status in (" + JobStatusType.getActiveStatusValues() + ")";
 			
-			long currentUserJobCount = ((Long)session.createQuery(hql)
-					.setString("jobsystem", system)
-					.uniqueResult()).longValue();
+			long currentUserJobCount = (Long) session.createQuery(hql)
+					.setString("jobsystem", systemId)
+					.uniqueResult();
 			
 			session.flush();
-			
 			return currentUserJobCount;
-
-		}
-		catch (ObjectNotFoundException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
-	
-	public static void persist(Job job) 
+
+    /**
+     * Saves or updates a job. This will force the lastUpdated timestamp to update every time.
+     *
+     * @param job the job to save
+     * @throws JobException if unable to save the job
+     * @see #persist(Job, boolean)
+     */
+    public static void persist(Job job)
 	throws JobException, UnresolvableObjectException 
 	{
 		persist(job, true);
 	}
-	
+
+    /**
+     * Saves or updates a job, optionally forcing the lastUpdated timestamp to update.
+     *
+     * @param job the job to save
+     * @param forceTimestamp true if a timestamp should be set, false otherwise
+     * @throws JobException if unable to save the job
+     */
 	public static void persist(Job job, boolean forceTimestamp) 
 	throws JobException, UnresolvableObjectException
 	{
@@ -750,37 +718,32 @@ public class JobDao
 			}
 			
 			session.saveOrUpdate(job);
-		}
-		catch (UnresolvableObjectException ex) {
-//		    throw ex;
-		}
-		catch (StaleStateException ex) {
-		    throw ex;
-		}
-		catch (HibernateException ex)
-		{
-			try
-			{
-				if (session != null && session.isOpen())
-				{
-					HibernateUtil.rollbackTransaction();
-					session.close();
-				}
-			}
-			catch (Exception e) {}
-			log.error("Concurrency issue with job " + job.getUuid());
-			
-			throw new JobException(ex);
-		}
-		finally {
-		    try {HibernateUtil.commitTransaction(); } catch (Exception e) {}
-		}
+        } catch (StaleStateException ex) {
+            // TODO: swallow this and rethrow a JobException for consistent behavior and easier exception handling upstream
+            throw ex;
+        } catch (HibernateException ex) {
+            log.error("Concurrency issue experienced updating job " + job.getUuid() + " aborting save.");
+            try {
+                if (session != null && session.isOpen()) {
+                    HibernateUtil.rollbackTransaction();
+                    session.close();
+                }
+            } catch (Exception ignored) {
+            }
+
+            throw new JobException(ex);
+        } finally {
+            try {
+                HibernateUtil.commitTransaction();
+            } catch (Exception ignored) {
+            }
+        }
 	}
 
 	/**
 	 * Deletes a job from the db.
-	 * @param job
-	 * @throws JobException
+	 * @param job the job to delete
+	 * @throws JobException if the delete operation fails
 	 */
 	public static void delete(Job job) throws JobException
 	{
@@ -806,12 +769,12 @@ public class JobDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Throwable e) {}
+			catch (Throwable ignored) {}
 				
 			throw new JobException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
 	
@@ -823,11 +786,11 @@ public class JobDao
      * enable restriction of job selection by tenant, owner, system, and batch queue are taken
      * into consideration.
 	 * 
-	 * @param tenantid tenant to include or exclude from selection.
+	 * @param tenantId tenant to include or exclude from selection.
      * @param owners array of owners to include or exclude from the selection process 
 	 * @param systemIds array of systems and queues to include or exclude from the selectino process. 
 	 * @return uuid of next job to archive.
-	 * @throws JobException
+	 * @throws JobException if the query fails
 	 */
 	@SuppressWarnings("unchecked")
 	public static String getFairButRandomJobUuidForNextArchivingTask(String tenantId, String[] owners, String[] systemIds)
@@ -1115,25 +1078,22 @@ public class JobDao
 	                    log.debug("Selected " + uuids.get(0) + " as the next archiving job on tenant " + tid + ".");
 					return uuids.get(0);
 				}
-			}
-		}
-        catch (StaleObjectStateException ex) {
+            }
+        } catch (StaleObjectStateException ex) {
             log.error("Unable to select archiving job on tenant " + tenantId + " due to stale object.", ex);
             return null;
-        }
-        catch (ObjectNotFoundException ex)
-        {
+        } catch (ObjectNotFoundException ex) {
             log.warn("Unable to select archiving job on tenant " + tenantId + " due to object not found.", ex);
             return null;
-        }
-        catch (HibernateException ex)
-        {
+        } catch (HibernateException ex) {
             log.error("Unable to select archiving job on tenant " + tenantId + " due to hibernate problem.", ex);
             throw new JobException(ex);
+        } finally {
+            try {
+                HibernateUtil.commitTransaction();
+            } catch (Exception ignored) {
+            }
         }
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
-		}
 		
 	}
 	
@@ -1147,7 +1107,7 @@ public class JobDao
      * @param owners array of owners to include or exclude from the selection process 
      * @param systemIds array of systems and queues to include or exclude from the selectino process. 
      * @return username of user with pending job
-	 * @throws JobException
+	 * @throws JobException if the query failed
 	 */
 	@SuppressWarnings("unchecked")
 	public static String getRandomUserForNextQueuedJobOfStatus(JobStatusType status, String tenantId, String[] systemIds, String[] owners)
@@ -1355,7 +1315,7 @@ public class JobDao
             throw new JobException(ex);
         }
 		finally {
-            try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+            try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
         }
 	}
 
@@ -1599,7 +1559,7 @@ public class JobDao
 			throw new JobException(ex);
 		}
 		finally {
-            try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+            try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
         }
 	}
 	
@@ -1608,10 +1568,10 @@ public class JobDao
 	 * given id. This is only needed because job inputs are not a 
 	 * separate table.
 	 * 
-	 * @param jobId
-	 * @param source
-	 * @param dest
-	 * @throws JobException
+	 * @param jobId the db id of the job to update
+	 * @param source the value within the inputs column to be replaced
+	 * @param dest the value with which to replace {@code source} in the inputs column
+	 * @throws JobException when the query fails to complete
 	 */
 	public static void updateInputs(long jobId, String source, String dest)
 	throws JobException
@@ -1625,13 +1585,13 @@ public class JobDao
 					"dest", dest).executeUpdate();
 			
 			session.flush();
-		}
-		catch (HibernateException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 
 	}
@@ -1640,10 +1600,10 @@ public class JobDao
 	 * Searches for jobs by the given user who matches the given set of 
 	 * parameters. Permissions are honored in this query.
 	 * 
-	 * @param username
+	 * @param username the user for whom to search for user jobs
 	 * @param searchCriteria Map of key value pairs by which to query.
-	 * @return
-	 * @throws JobException
+	 * @return list of matching jobs, marshalled to {@link JobDTO}
+	 * @throws JobException if unable to perform the query
 	 */
 	public static List<JobDTO> findMatching(String username,
 			Map<SearchTerm, Object> searchCriteria) throws JobException
@@ -1655,12 +1615,12 @@ public class JobDao
 	 * Searches for jobs by the given user who matches the given set of 
 	 * parameters. Permissions are honored in this query.
 	 *
-	 * @param username
-	 * @param searchCriteria
-	 * @param offset
-	 * @param limit
-	 * @return
-	 * @throws JobException
+	 * @param username the user for whom to search for user jobs
+	 * @param searchCriteria Map of key value pairs by which to query.
+	 * @param offset the number of records to skip in the result set
+	 * @param limit the maximum number of records  to return.
+	 * @return list of matching jobs, marshalled to {@link JobDTO}
+	 * @throws JobException if unable to perform the query
 	 */
 	public static List<JobDTO> findMatching(String username,
 			Map<SearchTerm, Object> searchCriteria,
@@ -1670,15 +1630,17 @@ public class JobDao
 	}
 	
 	/**
-	 * Searches for jobs by the given user who matches the given set of 
-	 * parameters. Permissions are honored in this query.
+	 * Searches for jobs by the given user who matches the given map of {@link SearchTerm}s parameters.
+	 * Permissions are honored in this query.
 	 *
-	 * @param username
-	 * @param searchCriteria
-	 * @param offset
-	 * @param limit
-	 * @return
-	 * @throws JobException
+	 * @param username the user for whom to search for user jobs
+	 * @param searchCriteria Map of key value pairs by which to query.
+	 * @param offset the number of records to skip in the result set
+	 * @param limit the maximum number of records  to return.
+	 * @param order the direction to order
+	 * @param orderBy the search field by which to order.
+     * @return list of matching jobs, marshalled to {@link JobDTO}
+	 * @throws JobException if unable to perform the query
 	 */
 	@SuppressWarnings("unchecked")
 	public static List<JobDTO> findMatching(String username,
@@ -1691,9 +1653,6 @@ public class JobDao
 		
 		if (orderBy == null) {
 			orderBy = new JobSearchFilter().filterAttributeName("lastupdated");
-//			if (orderBy == null) {
-//				orderBy = j.last_updated
-//			}
 		}
 		
 		try
@@ -1709,7 +1668,8 @@ public class JobDao
 					"       j.created, \n" + 
 					"       j.end_time, \n" + 
 					"       j.error_message, \n" + 
-					"       j.execution_system, \n" + 
+					"       j.execution_system, \n" +
+					"       j.execution_type, \n" +
 					"       j.id, \n" + 
 					"       j.inputs, \n" + 
 					"       j.internal_username, \n" + 
@@ -1723,8 +1683,9 @@ public class JobDao
 					"       j.processor_count, \n" + 
 					"       j.queue_request, \n" + 
 					"       j.requested_time, \n" + 
-					"       j.retries, \n" + 
-					"       j.scheduler_job_id, \n" + 
+					"       j.retries, \n" +
+					"       j.scheduler_type, \n" +
+					"       j.scheduler_job_id, \n" +
 					"       j.software_name, \n" + 
 					"       j.start_time, \n" + 
 					"       j.status, \n" + 
@@ -1781,6 +1742,7 @@ public class JobDao
 				.addScalar("end_time", StandardBasicTypes.TIMESTAMP)
 				.addScalar("error_message", StandardBasicTypes.STRING)
 				.addScalar("execution_system", StandardBasicTypes.STRING)
+				.addScalar("execution_type", StandardBasicTypes.STRING)
 				.addScalar("inputs", StandardBasicTypes.STRING)
 				.addScalar("internal_username", StandardBasicTypes.STRING)
 				.addScalar("last_updated", StandardBasicTypes.TIMESTAMP)
@@ -1790,6 +1752,7 @@ public class JobDao
 				.addScalar("parameters", StandardBasicTypes.STRING)
 				.addScalar("queue_request", StandardBasicTypes.STRING)
 				.addScalar("requested_time", StandardBasicTypes.STRING)
+				.addScalar("scheduler_type", StandardBasicTypes.STRING)
 				.addScalar("scheduler_job_id", StandardBasicTypes.STRING)
 				.addScalar("software_name", StandardBasicTypes.STRING)
 				.addScalar("start_time", StandardBasicTypes.TIMESTAMP)
@@ -1866,16 +1829,25 @@ public class JobDao
 			
 			return jobs;
 
-		}
-		catch (Throwable ex)
-		{
+		} catch (Throwable ex) {
+			// general catchall here since several things could go wrong
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
-	
+
+	/**
+	 * Returns the wall clock time for this job as computed from the {@link Job#getEndTime()} and
+	 * {@link Job#getCreated()}. If the job has not yet finished, the time since creation will be used.
+	 *
+	 * @param uuid the agave uuid of the job for which the wall time will be calculated
+	 * @return the wall time in seconds
+	 * @throws JobException if unable to perform the calculation
+	 */
 	public static int getJobWallTime(String uuid) throws JobException {
 		try
 		{
@@ -1887,17 +1859,27 @@ public class JobDao
 					.addScalar("walltime")
 					.setString("uuid", uuid)
 					.uniqueResult()).intValue();
-			
-		}
-		catch (Throwable ex)
-		{
+
+		} catch (Throwable ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
-	
+
+	/**
+	 * Returns the job's remote execution time, independent of queue wait and data staging, etc. The job's
+	 * {@link Job#getEndTime()} and {@link Job#getStartTime()} are used for this calculation. If the job has
+	 * not yet finished, the current run time will be used. If the job has not yet started running, 0 will
+	 * be returned.
+	 *
+	 * @param uuid the agave uuid of the job for which the wall time will be calculated
+	 * @return the wall time in seconds or 0 if it has not yet started to run.
+	 * @throws JobException if unable to perform the calculation
+	 */
 	public static int getJobRunTime(String uuid) throws JobException {
 		try
 		{
@@ -1909,17 +1891,22 @@ public class JobDao
 					.addScalar("runtime")
 					.setString("uuid", uuid)
 					.uniqueResult()).intValue();
-			
-		}
-		catch (Throwable ex)
-		{
+
+		} catch (Throwable ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 
+	/**
+	 * Fetches all jobs from the current tenant. No pagination is performed here, so beware this result set.
+	 * @return list of all jobs
+	 * @throws JobException if the query cannot be performed.
+	 */
 	@SuppressWarnings("unchecked")
 	public static List<Job> getAll() throws JobException
 	{
@@ -1932,16 +1919,21 @@ public class JobDao
 			session.flush();
 			
 			return jobs;
-		}
-		catch (HibernateException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 
+	/**
+	 * Counts the number of active jobs in a tenant.
+	 * @return number of currently active jobs.
+	 * @throws JobException if the query cannot be performed.
+	 */
 	public static Integer countTotalActiveJobs() throws JobException
 	{
 		try
@@ -1967,79 +1959,20 @@ public class JobDao
 			throw new JobException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+			try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
 		}
 	}
-	
-//	/**
-//	 * Collects current active job activity stats for a single tenant using 
-//	 * formula driven attributes.
-//	 *  
-//	 * @param tenantCode The unique code of the tenant
-//	 * @return {@link TenantJobActivity} containing stats on active jobs in the tenant
-//	 * @throws JobException
-//	 */
-//	public static SummaryTenantJobActivity getSummaryTenantJobActivity(String tenantCode)
-//	throws JobException
-//	{
-//		try
-//		{
-//			HibernateUtil.beginTransaction();
-//			Session session = HibernateUtil.getSession();
-//			String hql = "from SummaryTenantJobActivity where id.tenantId = :tenantCode";
-//			SummaryTenantJobActivity tenantJobActivity = (SummaryTenantJobActivity)(session.createQuery(hql)
-//					.setString("tenantCode", tenantCode)
-//					.uniqueResult());
-//			
-//			session.flush();
-//			
-//			return tenantJobActivity;
-//
-//		}
-//		catch (Throwable ex)
-//		{
-//			throw new JobException(ex);
-//		}
-//		finally {
-//			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
-//		}
-//	}
-//	
-//	/**
-//	 * Collects current active job activity stats for all tenants using 
-//	 * formula driven attributes.
-//	 *  
-//	 * @return {@link List} of {@link TenantJobActivity} containing stats on active jobs for each tenant
-//	 * @throws JobException
-//	 */
-//	@SuppressWarnings("unchecked")
-//	public static List<SummaryTenantJobActivity> getSummaryTenantJobActivityForAllTenants()
-//	throws JobException
-//	{
-//		try
-//		{
-//			HibernateUtil.beginTransaction();
-//			Session session = HibernateUtil.getSession();
-//			String hql = "from SummaryTenantJobActivity";
-//			List<SummaryTenantJobActivity> tenantJobActivities = (List<SummaryTenantJobActivity>)session
-//					.createQuery(hql)
-//					.list();
-//			
-//			session.flush();
-//			
-//			return tenantJobActivities;
-//
-//		}
-//		catch (Throwable ex)
-//		{
-//			throw new JobException(ex);
-//		}
-//		finally {
-//			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
-//		}
-//	}
 
-	public static Long countActiveJobsOnSystemQueue(String system, String queueName) 
+	/**
+	 * Counts the number of active jobs on a {@link BatchQueue}. The {@code systemId} and {@code queueName} are given
+	 * instead of domain objects to avoid redundant validation within this method.
+	 *
+	 * @param systemId the system id {@link ExecutionSystem} with the named {@link BatchQueue}
+	 * @param queueName the name of the {@link BatchQueue} for which to count active jobs
+	 * @return the number of active jobs associated with a {@link BatchQueue}.
+	 * @throws JobException if the query cannot be performed
+	 */
+	public static Long countActiveJobsOnSystemQueue(String systemId, String queueName)
 	throws JobException
 	{
 		try
@@ -2052,31 +1985,37 @@ public class JobDao
 					+ "		status in " + "(" + JobStatusType.getActiveStatusValues() + ") and "
 					+ "		visible = :visible ";
 			
-			long currentUserJobCount = ((Long)session.createQuery(hql)
+			long currentUserJobCount = (Long) session.createQuery(hql)
 					.setBoolean("visible", true)
 					.setString("queuerequest", queueName)
-					.setString("jobsystem", system)
-					.uniqueResult()).longValue();
+					.setString("jobsystem", systemId)
+					.uniqueResult();
 			
 			session.flush();
 			
 			return currentUserJobCount;
 
-		}
-		catch (ObjectNotFoundException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 
-	public static Long countActiveUserJobsOnSystemQueue(String owner, String system, String queueName) 
+	/**
+	 * Counts the number of active jobs on a {@link BatchQueue} for a given {@code username}. The {@code systemId}
+	 * and {@code queueName} are given instead of domain objects to avoid redundant validation within this method.
+	 *
+	 * @param owner the user for whom to count active jobs
+	 * @param systemId the system id {@link ExecutionSystem} with the named {@link BatchQueue}
+	 * @param queueName the name of the {@link BatchQueue} for which to count active jobs
+	 * @return the number of active jobs associated with a {@link BatchQueue}.
+	 * @throws JobException if the query cannot be performed
+	 */
+	public static Long countActiveUserJobsOnSystemQueue(String owner, String systemId, String queueName)
 	throws JobException
 	{
 		try
@@ -2091,28 +2030,23 @@ public class JobDao
 					+ "		status in " + "(" + JobStatusType.getActiveStatusValues() + ") and "
 					+ "		visible = :visible ";
 			
-			long jobCount = ((Long)session.createQuery(hql)
+			long jobCount = (Long) session.createQuery(hql)
 					.setBoolean("visible", true)
-					.setString("jobowner",owner)
+					.setString("jobowner", owner)
 					.setString("queuerequest", queueName)
-					.setString("jobsystem", system)
-					.uniqueResult()).longValue();
+					.setString("jobsystem", systemId)
+					.uniqueResult();
 			
 			session.flush();
 			
 			return jobCount;
-
-		}
-		catch (ObjectNotFoundException ex)
-		{
+		} catch (HibernateException ex) {
 			throw new JobException(ex);
-		}
-		catch (HibernateException ex)
-		{
-			throw new JobException(ex);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 
@@ -2120,7 +2054,8 @@ public class JobDao
 	 * Returns all zombie jobs which have active transfers that have not been 
 	 * updated in the last 15 minutes or which have been in intermediate 
 	 * statuses without transfers for over an hour.
-	 * 
+	 *
+	 * @param tenantId the tenant for which to search.
 	 * @return {@link List<Long>} of zombie {@link Job} ids
 	 */
 	@SuppressWarnings("unchecked")
@@ -2160,16 +2095,16 @@ public class JobDao
 					.list();
 			
 			return jobIds;
-		}
-		catch (StaleObjectStateException e) {
+		} catch (StaleObjectStateException e) {
+			// unable to perform the query due to stale data. return null and try again later
 			return null;
-		}
-		catch (Throwable e)
-		{
+		} catch (Throwable e) {
 			throw new JobException("Failed to retrieve zombie archiving jobs", e);
-		}
-		finally {
-			try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+		} finally {
+			try {
+				HibernateUtil.commitTransaction();
+			} catch (Exception ignored) {
+			}
 		}
 	}
 

@@ -40,7 +40,7 @@ public class LsfSubmitScript extends AbstractSubmitScript {
 			+ DIRECTIVE_PREFIX + "-J " + name + "\n"
 			+ DIRECTIVE_PREFIX + "-o " + standardOutputFile + "\n" 
 			+ DIRECTIVE_PREFIX + "-e " + standardErrorFile + "\n" 
-			+ DIRECTIVE_PREFIX + "-W " + getTime() + "\n"
+			+ DIRECTIVE_PREFIX + "-W " + getTime() + "\n" // seconds not supported here
 			+ DIRECTIVE_PREFIX + "-q " + queue.getEffectiveMappedName() + "\n"
 			+ DIRECTIVE_PREFIX + "-L bash \n";
 		

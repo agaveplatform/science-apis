@@ -24,8 +24,9 @@ import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.remote.exceptions.RemoteExecutionException;
 
 import com.jcraft.jsch.JSch;
+import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 
-/**
+ /**
  * Implements an SSH client with methods to connect to a remote server and
  * perform all necessary SSH functions such as SCP, SFTP, executing commands,
  * starting the users shell and perform port forwarding.
@@ -58,8 +59,7 @@ public class GSISSHClient implements RemoteSubmissionClient
 		this.port = port;
 	}
 
-	public String runCommand(String command) throws Exception
-	{
+	public String runCommand(String command) throws RemoteConnectionException, RemoteExecutionException {
 		log.debug("Forking command " + command + " on " + hostname + ":" + port);
 		
 		PropertyAuthenticationInfo authenticationInfo = new PropertyAuthenticationInfo(credential, CoGProperties.getDefault().getCaCertLocations());
@@ -77,7 +77,7 @@ public class GSISSHClient implements RemoteSubmissionClient
 			CommandExecutor.executeCommand(commandInfo, serverInfo, authenticationInfo, commandOutput, new ConfigReader());
 		} catch (SSHApiException e) {
 			throw new RemoteExecutionException("Failed to execute command " + command + " on " + hostname + ":" + port, e);
-		} catch (IOException e) {
+		} catch (Exception e) {
 			throw new RemoteExecutionException("Failed to execute command " + command + " on " + hostname + ":" + port, e);
 		}
         

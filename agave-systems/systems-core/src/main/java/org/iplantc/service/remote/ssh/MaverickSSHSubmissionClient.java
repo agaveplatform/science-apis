@@ -17,6 +17,7 @@ import org.iplantc.service.remote.ssh.net.SocketWrapper;
 import org.iplantc.service.remote.ssh.shell.Shell;
 import org.iplantc.service.remote.ssh.shell.ShellProcess;
 import org.iplantc.service.systems.Settings;
+import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.sftp.MaverickSFTPLogger;
 import org.iplantc.service.transfer.sftp.MultiFactorKBIRequestHandler;
@@ -445,7 +446,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
      * @see org.iplantc.service.remote.RemoteSubmissionClient#runCommand(java.lang.String)
      */
     @Override
-    public String runCommand(String command) throws Exception {
+    public String runCommand(String command) throws RemoteExecutionException, RemoteConnectionException {
         Shell shell = null;
         try {
             if (log.isDebugEnabled())
@@ -518,15 +519,14 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
                                 password, null, proxyPort, publicKey, privateKey);
                         proxyResponse = proxySubmissionClient.runCommand(command);
                         return proxyResponse;
-                    } catch (RemoteDataException e) {
+                    } catch (RemoteExecutionException e) {
                         throw e;
                     } catch (Exception e) {
-                        throw new RemoteDataException("Failed to connect to destination server " + hostname + ":" + port, e);
+                        throw new RemoteConnectionException("Failed to connect to destination server " + hostname + ":" + port, e);
                     } finally {
                         try {
-                            proxySubmissionClient.close();
-                        } catch (Exception ignored) {
-                        }
+                            if (proxySubmissionClient != null) proxySubmissionClient.close();
+                        } catch (Exception ignored) {}
                     }
 
 //					if (sessionStarted) {
@@ -603,7 +603,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
                         // was a timeout.  A new mapping will be inserted and its value incremented
                         // to 1 if the key doesn't already appear in the map.  If key already exists
                         // in the map, its value is incremented.
-                        if ((emsg != null) && (emsg.indexOf("connection timed out") > -1))
+                        if ((emsg != null) && (emsg.contains("connection timed out")))
                             _attemptMap.computeIfAbsent(attemptKey, k -> new AtomicInteger()).incrementAndGet();
 
                         throw e;
@@ -620,7 +620,9 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
                     try {
                         // no idea why, but this fails if we don't wait for 8 seconds
                         long start = System.currentTimeMillis();
-                        while (process.isActive() && (System.currentTimeMillis() - start) < (Settings.MAX_REMOTE_OPERATION_TIME * 1000)) {
+                        while (process != null &&
+                                process.isActive() &&
+                                (System.currentTimeMillis() - start) < (Settings.MAX_REMOTE_OPERATION_TIME * 1000)) {
                             if (log.isDebugEnabled())
                                 log.debug("Process has succeeded: " + process.hasSucceeded() + "\n"
                                         + "Process exit code: " + process.getExitCode() + "\n"
@@ -647,7 +649,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
             } else {
                 throw new RemoteExecutionException("Failed to authenticate to " + hostname);
             }
-        } catch (RemoteExecutionException e) {
+        } catch (RemoteConnectionException|RemoteExecutionException e) {
             throw e;
         } catch (Throwable t) {
             String msg = "Failed to execute command on " + hostname + " due to " +

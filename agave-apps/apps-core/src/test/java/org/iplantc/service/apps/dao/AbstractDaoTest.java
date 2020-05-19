@@ -115,7 +115,7 @@ public class AbstractDaoTest
 			json.put("id", UUID.randomUUID().toString());
 			system = StorageSystem.fromJSON(json);
 			system.setOwner(SYSTEM_OWNER);
-			system.getUsersUsingAsDefault().add(TEST_OWNER);
+			system.getUsersUsingAsDefault().add(SYSTEM_OWNER);
 			new SystemDao().persist(system);
 		} catch (IOException|JSONException e) {
 			log.error("Unable create storage system", e);
@@ -173,7 +173,6 @@ public class AbstractDaoTest
 		Software software = Software.fromJSON(jsonSoftware, SYSTEM_OWNER);
 		software.setExecutionSystem(executionSystem);
 		software.setOwner(SYSTEM_OWNER);
-		software.setName(software.getUuid());
 
 		SoftwareDao.persist(software);
 

@@ -8,7 +8,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
 
+/**
+ * Defines the interfaces for testing {@link RemoteDataClient} implementing class behavior.
+ */
 public interface IRemoteDataClientIT {
+
     @Test(groups={"proxy"}, retryAnalyzer=TransferTestRetryAnalyzer.class)
     void isPermissionMirroringRequired();
 

@@ -1,10 +1,13 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
@@ -44,6 +47,44 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             logger.info("Transfer task {} created: {} -> {}", uuid, source, dest);
             this.assignTransferTask(body);
         });
+
+        // cancel tasks
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+            JsonObject body = msg.body();
+            String uuid = body.getString("uuid");
+
+            logger.info("Transfer task {} cancel detected", uuid);
+            //this.interruptedTasks.add(uuid);
+            super.processInterrupt("add", body);
+
+        });
+
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+            JsonObject body = msg.body();
+            String uuid = body.getString("uuid");
+
+            logger.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
+            super.processInterrupt("remove", body);
+            //this.interruptedTasks.remove(uuid);
+        });
+
+        // paused tasks
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+            JsonObject body = msg.body();
+            String uuid = body.getString("uuid");
+
+            logger.info("Transfer task {} paused detected", uuid);
+            super.processInterrupt("add", body);
+        });
+
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+            JsonObject body = msg.body();
+            String uuid = body.getString("uuid");
+
+            logger.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
+            super.processInterrupt("remove", body);
+        });
+
     }
 
     public String assignTransferTask(JsonObject body) {
@@ -53,9 +94,9 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
         String username = body.getString("owner");
         String tenantId = body.getString("tenantId");
         String protocol = "";
+        TransferTask bodyTask = new TransferTask(body);
 
         try {
-
             URI srcUri;
             try {
                 srcUri = URI.create(source);
@@ -73,10 +114,19 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
                     protocol = srcSystem.getStorageConfig().getProtocol().toString();
                 }
-
-                String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED;
-                _doPublishEvent(assignmentChannel, body);
-                return protocol;
+                if ( ! isTaskInterrupted(bodyTask)) {
+                    String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED;
+                    _doPublishEvent(assignmentChannel, body);
+                    return protocol;
+                }else {
+                    String msg = "Transfer was Canceled or Paused in the TransferTaskCanceledListener";
+                    logger.info("Transfer was Canceled or Paused in the TransferTaskCanceledListener for uuid {}", uuid);
+                    JsonObject json = new JsonObject()
+                            .put("message", msg)
+                            .mergeIn(body);
+                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+                    return json.toString();
+                }
 
             } else {
                 String msg = String.format("Unknown source schema %s for the transfertask %s",

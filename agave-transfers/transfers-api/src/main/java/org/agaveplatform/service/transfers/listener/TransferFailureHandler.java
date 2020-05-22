@@ -1,9 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
@@ -61,8 +58,6 @@ public class TransferFailureHandler extends AbstractTransferTaskListener impleme
 					body.getString("id"), body.getString("cause"), body.getString("message"));
 
 			_doPublishEvent(MessageType.TRANSFERTASK_FAILED, body);
-			//_doPublishEvent(MessageType.TRANSFER_FAILED, body);
-
 		});
 
 	}
@@ -76,7 +71,6 @@ public class TransferFailureHandler extends AbstractTransferTaskListener impleme
 		String uuid = body.getString("uuid");
 		String tenantId = body.getString("tenantId");
 
-		//log.info(body.toString());
 		body.remove("cause");
 		body.remove("message");
 		body.remove("id");
@@ -88,17 +82,13 @@ public class TransferFailureHandler extends AbstractTransferTaskListener impleme
 			if (updateBody.succeeded()) {
 				//log.info("Transfer task  updated.");
 				promise.handle(Future.succeededFuture(Boolean.TRUE));
-				//promise.complete(Boolean.TRUE);
 			} else {
-//				log.error("[{}] Task {} retry failed",
-//						tenantId, uuid);
 				JsonObject json = new JsonObject()
 						.put("cause", updateBody.cause().getClass().getName())
 						.put("message", updateBody.cause().getMessage())
 						.mergeIn(body);
 				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
 				promise.handle(Future.failedFuture(updateBody.cause()));
-				//promise.fail(updateBody.cause());
 			}
 		});
 
@@ -112,6 +102,5 @@ public class TransferFailureHandler extends AbstractTransferTaskListener impleme
 	public void setDbService(TransferTaskDatabaseService dbService) {
 		this.dbService = dbService;
 	}
-
 
 }

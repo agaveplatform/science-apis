@@ -79,4 +79,7 @@ public class TransferWatchListener extends AbstractTransferTaskListener {
 	}
 
 
+	public void processInterrupt(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
+
+	}
 }

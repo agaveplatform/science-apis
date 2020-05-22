@@ -35,7 +35,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		TransferTaskCreatedListener ttc = Mockito.mock(TransferTaskCreatedListener.class);
 		when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
 		when(ttc.getVertx()).thenReturn(vertx);
-		when(ttc.assignTransferTask(any())).thenCallRealMethod();
+
 		return ttc;
 	}
 
@@ -51,6 +51,8 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		log.info("TransferTaskCreateListenerTest");
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
+
+		when(ttc.assignTransferTask(transferTask.toJson())).thenCallRealMethod();
 
 		String result = ttc.assignTransferTask(json);
 
@@ -71,6 +73,8 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		log.info("TransferTaskCreateListenerTest with no source");
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
+		when(ttc.assignTransferTask(transferTask.toJson())).thenCallRealMethod();
+		when(ttc.isTaskInterrupted(transferTask)).thenCallRealMethod();
 
 		String result = ttc.assignTransferTask(json);
 		JsonObject newJsonObject = new JsonObject(result);

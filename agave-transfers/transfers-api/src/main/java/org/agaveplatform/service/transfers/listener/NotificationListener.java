@@ -1,5 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -44,7 +46,6 @@ public class NotificationListener extends AbstractTransferTaskListener {
 					body.encodePrettily());
 
 			boolean result = notificationEventProcess(body);
-
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -76,4 +77,5 @@ public class NotificationListener extends AbstractTransferTaskListener {
 		NotificationManager.process(body.getString("id"), body.encode(), body.getString("owner"));
 		return true;
 	}
+
 }

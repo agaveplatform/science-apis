@@ -1,5 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -47,4 +49,5 @@ public class InteruptEventListener extends AbstractTransferTaskListener {
 		}
 		return false;
 	}
+
 }

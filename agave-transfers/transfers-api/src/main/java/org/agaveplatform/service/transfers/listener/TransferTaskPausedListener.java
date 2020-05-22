@@ -302,7 +302,9 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 		this.dbService = dbService;
 	}
 
+	public void processInterrupt(JsonObject body, io.vertx.core.Handler<io.vertx.core.AsyncResult<Boolean>> handler) {
 
+	}
 }
 
 

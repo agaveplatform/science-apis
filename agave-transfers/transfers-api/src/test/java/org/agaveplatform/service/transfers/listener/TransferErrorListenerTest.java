@@ -57,6 +57,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
+		when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
 
 		boolean result = txfrErrorListener.processError(body);
 
@@ -67,6 +68,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processError IOException and Status= QUEUED test")
+	//@Disabled
 	protected void processErrorIOE_test(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 		tt.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -80,6 +82,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
+		when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
 
 		boolean result = txfrErrorListener.processError(body);
 
@@ -90,6 +93,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processError IOException and Status= COMPLETED test")
+	//@Disabled
 	protected void processErrorIOE_COMPLETE_test(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 		tt.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -104,6 +108,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
+		when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
 
 		boolean result = txfrErrorListener.processError(body);
 
@@ -115,6 +120,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processError InterruptedException and Status= FAILED test")
+	//@Disabled
 	protected void processErrorInterruptedException_FAILED_test(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 		tt.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -129,6 +135,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
+		when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
 
 		boolean result = txfrErrorListener.processError(body);
 

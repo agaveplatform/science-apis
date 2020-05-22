@@ -1,11 +1,14 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.mvel2.templates.TemplateRuntimeError;
 import org.slf4j.Logger;
@@ -58,7 +61,6 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 			log.error("Transfer task {} failed to check it's parent task {} for copmletion: {}: {}",
 					body.getString("id"), body.getString("parentTaskId"), body.getString("cause"), body.getString("message"));
 
-			//boolean result = processError(body);
 		});
 	}
 
@@ -68,6 +70,12 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 		String message = body.getString("message");
 		String status = body.getString("status");
 		int attempts = body.getInteger("attempts");
+
+		TransferTask tt = new TransferTask();
+		tt.setUuid(body.getString("uuid"));
+		tt.setParentTaskId(body.getString("parentTaskId"));
+		tt.setRootTaskId(body.getString("rootTaskId"));
+
 		//int maxTries = 3;
 		int maxTries = config().getInteger(TRANSFERTASK_MAX_TRIES, 3);
 
@@ -75,11 +83,14 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 			if (body.getString("cause").equals(RemoteDataException.class.getName()) ||
 					body.getString("cause").equals(IOException.class.getName()) ||
 					body.getString("cause").equals(InterruptedException.class.getName())) {
-
-				if (getRetryStatus(status)) {
-					//log.error("TransformErrorListener will retry this error {} processing an error.  The error was {}", cause, message);
-					_doPublishEvent(TRANSFER_RETRY, body);
-					return true;
+				//check to see if the job was canceled first
+				if( !isTaskInterrupted(tt)) {
+					// now check its status
+					if (getRetryStatus(status)) {
+						//log.error("TransformErrorListener will retry this error {} processing an error.  The error was {}", cause, message);
+						_doPublishEvent(TRANSFER_RETRY, body);
+						return true;
+					}
 				}
 			}
 		}
@@ -103,4 +114,5 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 		}
 		return statusBool;
 	}
+
 }

@@ -1,8 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -66,7 +64,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 			String uuid = body.getString("uuid");
 
 			logger.info("Transfer task {} cancel detected", uuid);
-			addInteruptedTask(uuid);
+			super.processInterrupt("add", body);
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -74,7 +72,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 			String uuid = body.getString("uuid");
 
 			logger.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-			removeInteruptedTask(uuid);
+			super.processInterrupt("remove", body);
 		});
 
 		// paused tasks
@@ -83,7 +81,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 			String uuid = body.getString("uuid");
 
 			logger.info("Transfer task {} paused detected", uuid);
-			addInteruptedTask(uuid);
+			super.processInterrupt("add", body);
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -91,18 +89,18 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 			String uuid = body.getString("uuid");
 
 			logger.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-			removeInteruptedTask(uuid);
+			super.processInterrupt("remove", body);
 		});
 	}
 
-	public void addInteruptedTask(String uuid){
-		this.interruptedTasks.add(uuid);
-	}
-	public void removeInteruptedTask(String uuid){
-		this.interruptedTasks.remove(uuid);
-	}
+//	public void addInteruptedTask(String uuid){
+//		this.interruptedTasks.add(uuid);
+//	}
+//	public void removeInteruptedTask(String uuid){
+//		this.interruptedTasks.remove(uuid);
+//	}
 
-	protected String retryProcessTransferTask(JsonObject body) {
+	protected void retryProcessTransferTask(JsonObject body) {
 		String uuid = body.getString("uuid");
 		String source = body.getString("source");
 		String dest =  body.getString("dest");
@@ -148,7 +146,11 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 							}
 						});
 
-						processRetry(transferTaskDb.toJson());
+						if (! super.isTaskInterrupted(bodyTask)) {
+							processRetry(transferTaskDb.toJson());
+						}else {
+							logger.info("Transfer was Canceled or Paused for uuid {}", uuid);
+						}
 
 						//promise.handle(Future.failedFuture(reply.cause()));
 					} else {
@@ -160,7 +162,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 			}
 
 		});
-		return protocol;
+		//return protocol;
 	}
 
 
@@ -338,18 +340,14 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 
 
 
-	/**
-	 * Checks whether the transfer task or any of its children exist in the list of
-	 * interrupted tasks.
-	 *
-	 * @param transferTask the current task being checked from the running task
-	 * @return true if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #isTaskInterrupted(TransferTask)} list
-	 */
-	public boolean isTaskInterrupted( TransferTask transferTask ){
-		return this.interruptedTasks.contains(transferTask.getUuid()) ||
-				this.interruptedTasks.contains(transferTask.getParentTaskId()) ||
-				this.interruptedTasks.contains(transferTask.getRootTaskId());
-	}
+//	/**
+//	 * Checks whether the transfer task or any of its children exist in the list of
+//	 * interrupted tasks.
+//	 *
+//	 * @param transferTask the current task being checked from the running task
+//	 * @return true if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #isTaskInterrupted(TransferTask)} list
+//	 */
+
 
 	public TransferTaskDatabaseService getDbService() {
 		return dbService;
@@ -358,5 +356,6 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 	public void setDbService(TransferTaskDatabaseService dbService) {
 		this.dbService = dbService;
 	}
+
 
 }

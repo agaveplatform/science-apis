@@ -1,5 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -23,7 +25,7 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
     private final Logger logger = LoggerFactory.getLogger(TransferTaskAssignedListener.class);
 
-    protected HashSet<String> interruptedTasks = new HashSet<String>();
+    //protected HashSet<String> interruptedTasks = new HashSet<String>();
 
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ASSIGNED;
 
@@ -57,7 +59,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} cancel detected", uuid);
-            addInteruptedTask(uuid);
+            super.processInterrupt("add", body);
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -65,7 +67,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-            removeInteruptedTask(uuid);
+            super.processInterrupt("remove", body);
         });
 
         // paused tasks
@@ -74,7 +76,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} paused detected", uuid);
-            addInteruptedTask(uuid);
+            super.processInterrupt("add", body);
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -82,16 +84,16 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-            removeInteruptedTask(uuid);
+            super.processInterrupt("remove", body);
         });
     }
 
-    public void addInteruptedTask(String uuid){
-        this.interruptedTasks.add(uuid);
-    }
-    public void removeInteruptedTask(String uuid){
-        this.interruptedTasks.remove(uuid);
-    }
+//    public void addInteruptedTask(String uuid){
+//        this.interruptedTasks.add(uuid);
+//    }
+//    public void removeInteruptedTask(String uuid){
+//        this.interruptedTasks.remove(uuid);
+//    }
 
 
     protected String processTransferTask(JsonObject body) {
@@ -117,7 +119,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             }
 
             // check for task interruption
-            if (!isTaskInterrupted(bodyTask)) {
+            if (! super.isTaskInterrupted(bodyTask)) {
                 // basic sanity check on uri again
                 if (RemoteDataClientFactory.isSchemeSupported(srcUri)) {
                     // if it's an "agave://" uri, look up the connection info, get a rdc, and process the remote
@@ -259,10 +261,10 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
      * @param transferTask the current task being checked from the running task
      * @return true if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #isTaskInterrupted(TransferTask)} list
      */
-    public boolean isTaskInterrupted( TransferTask transferTask ){
-        return this.interruptedTasks.contains(transferTask.getUuid()) ||
-                this.interruptedTasks.contains(transferTask.getParentTaskId()) ||
-                this.interruptedTasks.contains(transferTask.getRootTaskId());
-    }
+//    public boolean isTaskInterrupted( TransferTask transferTask ){
+//        return this.interruptedTasks.contains(transferTask.getUuid()) ||
+//                this.interruptedTasks.contains(transferTask.getParentTaskId()) ||
+//                this.interruptedTasks.contains(transferTask.getRootTaskId());
+//    }
 
 }

@@ -51,7 +51,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-//@Disabled
+@Disabled
 public class TransferTaskSmokeTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskSmokeTest.class);
 
@@ -253,6 +253,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Single file transfer task smoke test")
+	@Disabled
 	public void singleFileTransferSmokeTest(Vertx vertx, VertxTestContext ctx) {
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -364,48 +365,6 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 											dc.next();
 										});
 									});
-
-//									vertx.eventBus().<JsonObject>request(TRANSFERTASK_COMPLETED, "", ctx.succeeding(reply -> {
-//										ctx.verify(() -> {
-//											JsonObject body = reply.body();
-//											assertEquals(body.getString("status"), TransferStatusType.COMPLETED,
-//													"Transfer task should have completed status after completed event is raised");
-//
-//											verify(transferAPIVertical)._doPublishEvent(eq(TRANSFERTASK_CREATED), any());
-//											verify(transferAPIVertical, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-//
-//											verify(transferTaskCreatedListener)._doPublishEvent(eq(TRANSFERTASK_ASSIGNED), any());
-//											verify(transferTaskCreatedListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-//
-//											verify(transferTaskAssignedListener)._doPublishEvent(eq(TRANSFER_ALL), any());
-//											verify(transferTaskAssignedListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-//
-//											verify(transferAllProtocolVertical)._doPublishEvent(eq(TRANSFER_COMPLETED), any());
-//											verify(transferAllProtocolVertical, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-//
-//											verify(transferCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_COMPLETED), any());
-//											verify(transferCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-//
-//											ctx.completeNow();
-//										});
-//									}));
-//
-//									verify(transferAPIVertical)._doPublishEvent(TRANSFERTASK_CREATED, createdTransferTask);
-//									verify(transferAPIVertical, never())._doPublishEvent(TRANSFERTASK_ERROR, createdTransferTask);
-//
-//									verify(transferTaskCreatedListener)._doPublishEvent(TRANSFERTASK_ASSIGNED, createdTransferTask);
-//									verify(transferTaskCreatedListener, never())._doPublishEvent(TRANSFERTASK_ERROR, createdTransferTask);
-//
-//									verify(transferTaskAssignedListener)._doPublishEvent(TRANSFER_ALL, createdTransferTask);
-//									verify(transferTaskAssignedListener, never())._doPublishEvent(TRANSFERTASK_ERROR, createdTransferTask);
-//
-//									verify(transferAllProtocolVertical)._doPublishEvent(TRANSFER_COMPLETED, createdTransferTask);
-//									verify(transferAllProtocolVertical, never())._doPublishEvent(TRANSFERTASK_ERROR, createdTransferTask);
-//
-//									verify(transferCompleteTaskListener, never())._doPublishEvent(TRANSFERTASK_COMPLETED, createdTransferTask);
-//									verify(transferCompleteTaskListener, never())._doPublishEvent(TRANSFERTASK_ERROR, createdTransferTask);
-//
-//									ctx.completeNow();
 								});
 							}));
 						}));

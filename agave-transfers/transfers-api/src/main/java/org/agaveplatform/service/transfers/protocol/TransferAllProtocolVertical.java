@@ -1,6 +1,6 @@
 package org.agaveplatform.service.transfers.protocol;
 
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
@@ -44,6 +44,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		return EVENT_CHANNEL;
 	}
 
+	//boolean killOrPauseJob = false;
+
 	@Override
 	public void start() {
 		EventBus bus = vertx.eventBus();
@@ -65,6 +67,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 			logger.info("Transfer task {} cancel detected", uuid);
 			//this.interruptedTasks.add(uuid);
+			super.processInterrupt("add", body);
+
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -72,6 +76,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			logger.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
+			super.processInterrupt("remove", body);
 			//this.interruptedTasks.remove(uuid);
 		});
 
@@ -81,7 +86,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			logger.info("Transfer task {} paused detected", uuid);
-			//this.interruptedTasks.add(uuid);
+			super.processInterrupt("add", body);
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -89,11 +94,13 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			logger.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-			//this.interruptedTasks.remove(uuid);
+			super.processInterrupt("remove", body);
 		});
 	}
 
-	public boolean processEvent(JsonObject body) {
+	public Future<Boolean> processEvent(JsonObject body) {
+		Promise<Boolean> promise = Promise.promise();
+
 		TransferTask tt = new TransferTask(body);
 		String source = tt.getSource();
 		String dest = tt.getDest();
@@ -127,33 +134,37 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 				// pull the dest system out of the url. system id is the hostname in an agave uri
 				if (false) destClient = getRemoteDataClient(body.getString("owner"), destUri);
 
-				legacyTransferTask =
-						new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
+				if( ! super.isTaskInterrupted(tt)) {
+					legacyTransferTask =
+							new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
 
-				legacyTransferTask.setUuid(tt.getUuid());
-				legacyTransferTask.setTenantId(tt.getTenantId());
-				legacyTransferTask.setStatus(TransferStatusType.valueOf(tt.getStatus().name()));
-				legacyTransferTask.setAttempts(tt.getAttempts());
-				legacyTransferTask.setBytesTransferred(tt.getBytesTransferred());
-				legacyTransferTask.setTotalSize(tt.getTotalSize());
-				legacyTransferTask.setCreated(Date.from(tt.getCreated()));
-				legacyTransferTask.setLastUpdated(Date.from(tt.getLastUpdated()));
-				legacyTransferTask.setStartTime(Date.from(tt.getStartTime()));
-				legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));
-				if (tt.getParentTaskId() != null) {
-					org.iplantc.service.transfer.model.TransferTask legacyParentTask = new org.iplantc.service.transfer.model.TransferTask();
-					legacyParentTask.setUuid(tt.getParentTaskId());
-					legacyTransferTask.setParentTask(legacyParentTask);
-				}
-				if (tt.getRootTaskId() != null) {
-					org.iplantc.service.transfer.model.TransferTask legacyRootTask = new org.iplantc.service.transfer.model.TransferTask();
-					legacyRootTask.setUuid(tt.getRootTaskId());
-					legacyTransferTask.setRootTask(legacyRootTask);
-				}
+					legacyTransferTask.setUuid(tt.getUuid());
+					legacyTransferTask.setTenantId(tt.getTenantId());
+					legacyTransferTask.setStatus(TransferStatusType.valueOf(tt.getStatus().name()));
+					legacyTransferTask.setAttempts(tt.getAttempts());
+					legacyTransferTask.setBytesTransferred(tt.getBytesTransferred());
+					legacyTransferTask.setTotalSize(tt.getTotalSize());
+					legacyTransferTask.setCreated(Date.from(tt.getCreated()));
+					legacyTransferTask.setLastUpdated(Date.from(tt.getLastUpdated()));
+					legacyTransferTask.setStartTime(Date.from(tt.getStartTime()));
+					legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));
+					if (tt.getParentTaskId() != null) {
+						org.iplantc.service.transfer.model.TransferTask legacyParentTask = new org.iplantc.service.transfer.model.TransferTask();
+						legacyParentTask.setUuid(tt.getParentTaskId());
+						legacyTransferTask.setParentTask(legacyParentTask);
+					}
+					if (tt.getRootTaskId() != null) {
+						org.iplantc.service.transfer.model.TransferTask legacyRootTask = new org.iplantc.service.transfer.model.TransferTask();
+						legacyRootTask.setUuid(tt.getRootTaskId());
+						legacyTransferTask.setRootTask(legacyRootTask);
+					}
 
-				logger.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
-				result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
-				logger.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
+					logger.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+					result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
+					logger.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
+				} else {
+					logger.info("Job was Canceled or Paused {}", tt.getUuid());
+				}
 			}
 
 			logger.debug("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
@@ -166,7 +177,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			return false;
+			Future.succeededFuture(Boolean.FALSE);
+			//return false;
 
 		} catch (RemoteCredentialException e){
 			logger.error("RemoteCredentialException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
@@ -175,7 +187,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-			return false;
+			Future.succeededFuture(Boolean.FALSE);
 //			return e.toString();
 		} catch (IOException e){
 			logger.error("IOException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
@@ -184,7 +196,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-			return false;
+			Future.succeededFuture(Boolean.FALSE);
 //			return e.toString();
 		} catch (Exception e){
 			logger.error("Unexpected Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
@@ -194,12 +206,12 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					.mergeIn(body);
 
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			return false;
+			Future.succeededFuture(Boolean.FALSE);
 //			return e.toString();
 		}
 
 		_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
-		return true;
+		return Future.succeededFuture(Boolean.TRUE);
 	}
 
 	protected Boolean processCopyRequest(String source, RemoteDataClient srcClient, String dest, RemoteDataClient destClient, org.iplantc.service.transfer.model.TransferTask legacyTransferTask)
@@ -210,7 +222,6 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		legacyTransferTask = urlCopy.copy(source, dest, legacyTransferTask);
 
 		return legacyTransferTask.getStatus() == TransferStatusType.COMPLETED;
-
 	}
 
 	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient){
@@ -230,4 +241,5 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			PermissionException, FileNotFoundException, RemoteDataException {
 		return new RemoteDataClientFactory().getInstance(apiUsername, null, uri);
 	}
+
 }

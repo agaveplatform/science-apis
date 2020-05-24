@@ -47,13 +47,151 @@ public class TransferApplication {
                 dbVerticleDeployment.future().compose(id -> {
 
                     Promise<String> httpVerticleDeployment = Promise.promise();
-                    vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferApiVertical",
+                    vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferAPIVertical",
                             new DeploymentOptions().setConfig(config),
                             res -> {
                                 if (res.succeeded()) {
-                                    log.info("TransferApiVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
+                                    log.info("TransferAPIVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
+
+                                    DeploymentOptions localOptions = new DeploymentOptions()
+                                            .setWorkerPoolName("streaming-task-worker-pool")
+                                            .setWorkerPoolSize(poolSize)
+                                            .setInstances(instanceSize)
+                                            .setWorker(true);
+
+                                    //Deploy the TransferTaskAssignedListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener",
+                                    localOptions, res0 -> {
+                                        if (res.succeeded()){
+                                            System.out.println("TransferTaskAssignedListener Deployment id is " + res.result());
+                                        }else{
+                                            System.out.println("TransferTaskAssignedListener Deployment failed !");
+                                        }
+                                    });
+
+                                    // Deployment TransferTaskCreatedListener verticle
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferTaskCreatedListener",
+                                    localOptions,  res1 -> {
+                                        if (res1.succeeded()){
+                                            System.out.println("TransferTaskCreatedListener Deployment id is " + res.result());
+                                        }else{
+                                            System.out.println("TransferTaskCreatedListener Deployment failed !");
+                                        }
+                                    });
+
+                                    // Deploy the TransferRetryListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferRetryListener",
+                                            localOptions, res3 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("TransferRetryListener Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("TransferRetryListener Deployment failed !");
+                                                }
+                                            });
+
+                                    // Deploy the TransferAllProtocolVertical vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical",
+                                            localOptions, res4 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("TransferAllProtocolVertical Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("TransferAllProtocolVertical Deployment failed !");
+                                                }
+                                            });
+
+                                    // Deploy the TransferCompleteTaskListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferCompleteTaskListener",
+                                            localOptions, res5 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("TransferCompleteTaskListener Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("TransferCompleteTaskListener Deployment failed !");
+                                                }
+                                            });
+
+
+                                    // Deploy the TransferErrorTaskListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferErrorTaskListener",
+                                           localOptions, res6 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("ErrorTaskListener Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("ErrorTaskListener Deployment failed !");
+                                                }
+                                            });
+
+                                    // Deploy the TransferFailureHandler vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferFailureHandler",
+                                            localOptions, res7 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("TransferFailureHandler Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("TransferFailureHandler Deployment failed !");
+                                                }
+                                            });
+
+                                    // Deploy the TransferTaskCancelListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferTaskCancelListener",
+                                           localOptions, res8 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("TransferTaskCancelListener Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("TransferTaskCancelListener Deployment failed !");
+                                                }
+                                            });
+
+                                    // Deploy the TransferTaskPausedListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferTaskPausedListener",
+                                    localOptions,  res9 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("TransferTaskPausedListener Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("TransferTaskPausedListener Deployment failed !");
+                                                }
+                                            });
+
+                                    // Deploy the NotificationListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.NotificationListener",
+                                            localOptions, res10 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("NotificationListener Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("NotificationListener Deployment failed !");
+                                                }
+                                            });
+
+                                    // Deploy the TransferErrorListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferErrorListener",
+                                            localOptions, res11 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("TransferErrorListener Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("TransferErrorListener Deployment failed !");
+                                                }
+                                            });
+
+                                    // Deploy the TransferHealthcheckListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",
+                                            localOptions, res12 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("TransferHealthcheckListener Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("TransferHealthcheckListener Deployment failed !");
+                                                }
+                                            });
+
+                                    // Deploy the TransferWatchListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferWatchListener",
+                                            localOptions, res13 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("TransferWatchListener Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("TransferWatchListener Deployment failed !");
+                                                }
+                                            });
+
                                 } else {
-                                    System.out.println("TransferApiVertical deployment failed !\n" + res.cause());
+                                    System.out.println("TransferAPIVertical deployment failed !\n" + res.cause());
                                     res.cause().printStackTrace();
                                 }
                             });
@@ -68,140 +206,15 @@ public class TransferApplication {
                         ar.cause().printStackTrace();
                     }
                 });
-
-
-
             } else {
                 log.error("Error retrieving configuration.");
             }
         });
 
 
-        vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferTaskCreatedListener",
-                new DeploymentOptions()
-                        .setWorkerPoolName("streaming-task-worker-pool")
-                        .setWorkerPoolSize(poolSize)
-                        .setInstances(instanceSize)
-                        .setWorker(true),
-                res -> {
-                    if (res.succeeded()){
-                        System.out.println("StreamingTask Deployment id is " + res.result());
-                    }else{
-                        System.out.println("StreamingTask Deployment failed !");
-                    }
-                });
-
-        vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener",
-                new DeploymentOptions()
-                        .setWorkerPoolName("streaming-task-worker-pool")
-                        .setWorkerPoolSize(poolSize)
-                        .setInstances(instanceSize)
-                        .setWorker(true),
-                res -> {
-                    if (res.succeeded()){
-                        System.out.println("StreamingTask Deployment id is " + res.result());
-                    }else{
-                        System.out.println("StreamingTask Deployment failed !");
-                    }
-                });
-
-        vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferRetryListener",
-                new DeploymentOptions()
-                        .setWorkerPoolName("streaming-task-worker-pool")
-                        .setWorkerPoolSize(poolSize)
-                        .setInstances(instanceSize)
-                        .setWorker(true),
-                res -> {
-                    if (res.succeeded()){
-                        System.out.println("StreamingTask Deployment id is " + res.result());
-                    }else{
-                        System.out.println("StreamingTask Deployment failed !");
-                    }
-                });
-
-        vertx.deployVerticle("org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical",
-                new DeploymentOptions()
-                        .setWorkerPoolName("streaming-task-worker-pool")
-                        .setWorkerPoolSize(poolSize)
-                        .setInstances(instanceSize)
-                        .setWorker(true),
-                res -> {
-                    if (res.succeeded()){
-                        System.out.println("StreamingTask Deployment id is " + res.result());
-                    }else{
-                        System.out.println("StreamingTask Deployment failed !");
-                    }
-                });
 
 
-        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferCompleteTaskListener",
-                new DeploymentOptions()
-                        .setWorkerPoolName("transfer-task-complete-pool")
-                        .setWorkerPoolSize(poolSize)
-                        .setInstances(instanceSize)
-                        .setWorker(true),
-                res -> {
-                    if (res.succeeded()){
-                        System.out.println("TransferComplete Deployment id is " + res.result());
-                    }else{
-                        System.out.println("TransferComplete Deployment failed !");
-                    }
-                });
 
-        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.ErrorTaskListener",
-                new DeploymentOptions()
-                        .setWorkerPoolName("transfer-task-error-pool")
-                        .setWorkerPoolSize(poolSize)
-                        .setInstances(instanceSize)
-                        .setWorker(true),
-                res -> {
-                    if (res.succeeded()){
-                        System.out.println("ErrorTask Deployment id is " + res.result());
-                    }else{
-                        System.out.println("ErrorTask Deployment failed !");
-                    }
-                });
 
-        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferFailureHandler",
-                new DeploymentOptions()
-                        .setWorkerPoolName("sftp-transfer-task-worker-pool")
-                        .setWorkerPoolSize(poolSize)
-                        .setInstances(instanceSize)
-                        .setWorker(true),
-                res -> {
-                    if (res.succeeded()){
-                        System.out.println("FileTransferServiceImpl Deployment id is " + res.result());
-                    }else{
-                        System.out.println("FileTransferServiceImpl Deployment failed !");
-                    }
-                });
-
-        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferTaskCancelListener",
-                new DeploymentOptions()
-                        .setWorkerPoolName("sftp-transfer-task-worker-pool")
-                        .setWorkerPoolSize(poolSize)
-                        .setInstances(instanceSize)
-                        .setWorker(true),
-                res -> {
-                    if (res.succeeded()){
-                        System.out.println("FileTransferServiceImpl Deployment id is " + res.result());
-                    }else{
-                        System.out.println("FileTransferServiceImpl Deployment failed !");
-                    }
-                });
-
-        vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferTaskPausedListener",
-                new DeploymentOptions()
-                        .setWorkerPoolName("sftp-transfer-task-worker-pool")
-                        .setWorkerPoolSize(poolSize)
-                        .setInstances(instanceSize)
-                        .setWorker(true),
-                res -> {
-                    if (res.succeeded()){
-                        System.out.println("FileTransferServiceImpl Deployment id is " + res.result());
-                    }else{
-                        System.out.println("FileTransferServiceImpl Deployment failed !");
-                    }
-                });
     }
 }

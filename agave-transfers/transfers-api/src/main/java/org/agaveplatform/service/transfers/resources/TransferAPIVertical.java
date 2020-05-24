@@ -44,6 +44,7 @@ public class TransferAPIVertical extends AbstractVerticle {
     private TransferTaskDatabaseService dbService;
     protected String eventChannel = TRANSFERTASK_DB_QUEUE;
 
+    public TransferAPIVertical(){super();}
 
     public TransferAPIVertical(Vertx vertx) {
         this(vertx, null);

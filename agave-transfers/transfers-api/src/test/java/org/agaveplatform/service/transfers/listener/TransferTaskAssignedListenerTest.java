@@ -7,6 +7,7 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -58,7 +59,11 @@ class TransferTaskAssignedListenerTest {
 		});
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		ta.processTransferTask(body);
+		try {
+			ta.processTransferTask(body);
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 
 		String protocolSelected = "http";
 
@@ -79,7 +84,11 @@ class TransferTaskAssignedListenerTest {
 		});
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		ta.processTransferTask(body);
+		try {
+			ta.processTransferTask(body);
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 
 		String protocolSelected = "http";
 
@@ -100,7 +109,11 @@ class TransferTaskAssignedListenerTest {
 		});
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		ta.processTransferTask(body);
+		try {
+			ta.processTransferTask(body);
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 
 		String protocolSelected = "http";
 		assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
@@ -120,7 +133,11 @@ class TransferTaskAssignedListenerTest {
 		});
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		ta.processTransferTask(body);
+		try {
+			ta.processTransferTask(body);
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 
 		String protocolSelected = "http";
 		assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
@@ -134,17 +151,18 @@ class TransferTaskAssignedListenerTest {
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(Vertx.vertx(), "transfertask.assigned");
-
-		ta.interruptedTasks.add(tt.getUuid());
-		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt present in interruptedTasks list should return true");
-		ta.interruptedTasks.remove(tt.getUuid());
-
-		ta.interruptedTasks.add(tt.getParentTaskId());
-		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt parent present in interruptedTasks list should return true");
-		ta.interruptedTasks.remove(tt.getParentTaskId());
-
-		ta.interruptedTasks.add(tt.getRootTaskId());
-		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt root present in interruptedTasks list should return true");
+		try {
+			ta.interruptedTasks.add(tt.getUuid());
+			assertTrue(ta.isTaskInterrupted(tt), "UUID of tt present in interruptedTasks list should return true");
+			ta.interruptedTasks.remove(tt.getUuid());
+			ta.interruptedTasks.add(tt.getParentTaskId());
+			assertTrue(ta.isTaskInterrupted(tt), "UUID of tt parent present in interruptedTasks list should return true");
+			ta.interruptedTasks.remove(tt.getParentTaskId());
+			ta.interruptedTasks.add(tt.getRootTaskId());
+			assertTrue(ta.isTaskInterrupted(tt), "UUID of tt root present in interruptedTasks list should return true");
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 		ta.interruptedTasks.remove(tt.getRootTaskId());
 	}
 

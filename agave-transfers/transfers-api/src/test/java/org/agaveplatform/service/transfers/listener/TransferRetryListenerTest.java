@@ -7,6 +7,7 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -67,7 +68,11 @@ class TransferRetryListenerTest  extends BaseTestCase {
 		});
 
 		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
-		when(ta.isTaskInterrupted(tt)).thenCallRealMethod();
+		try {
+			when(ta.isTaskInterrupted(tt)).thenCallRealMethod();
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 		ta.retryProcessTransferTask(body);
 
 		String protocolSelected = "http";
@@ -153,19 +158,26 @@ class TransferRetryListenerTest  extends BaseTestCase {
 		TransferRetryListener ta = new TransferRetryListener(Vertx.vertx(), "transfertask.assigned");
 		ta.processInterrupt("add", tt.toJson());
 		//ta.interruptedTasks.add(tt.getUuid());
-		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt present in interruptedTasks list should return true");
-		ta.processInterrupt("remove", tt.toJson());
-		//ta.interruptedTasks.remove(tt.getUuid());
+		try {
+			assertTrue(ta.isTaskInterrupted(tt), "UUID of tt present in interruptedTasks list should return true");
 
-		//ta.interruptedTasks.add(tt.getParentTaskId());
-		ta.processInterrupt("add", tt.toJson());
-		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt parent present in interruptedTasks list should return true");
-		//ta.interruptedTasks.remove(tt.getParentTaskId());
-		ta.processInterrupt("remove", tt.toJson());
+			ta.processInterrupt("remove", tt.toJson());
+			//ta.interruptedTasks.remove(tt.getUuid());
 
-		//ta.interruptedTasks.add(tt.getRootTaskId());
-		ta.processInterrupt("add", tt.toJson());
-		assertTrue(ta.isTaskInterrupted(tt), "UUID of tt root present in interruptedTasks list should return true");
+			//ta.interruptedTasks.add(tt.getParentTaskId());
+			ta.processInterrupt("add", tt.toJson());
+
+			assertTrue(ta.isTaskInterrupted(tt), "UUID of tt parent present in interruptedTasks list should return true");
+
+			//ta.interruptedTasks.remove(tt.getParentTaskId());
+			ta.processInterrupt("remove", tt.toJson());
+
+			//ta.interruptedTasks.add(tt.getRootTaskId());
+			ta.processInterrupt("add", tt.toJson());
+			assertTrue(ta.isTaskInterrupted(tt), "UUID of tt root present in interruptedTasks list should return true");
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 		//ta.interruptedTasks.remove(tt.getRootTaskId());
 		ta.processInterrupt("remove", tt.toJson());
 	}

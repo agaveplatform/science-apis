@@ -2,6 +2,8 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -10,12 +12,13 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Optional;
 
-public abstract class AbstractTransferTaskListener extends AbstractVerticle implements InterruptableTransferTaskListener {
+public abstract class AbstractTransferTaskListener extends AbstractVerticle  {
     private final Logger logger = LoggerFactory.getLogger(AbstractTransferTaskListener.class);
 
     String address;
     String eventChannel;
     public HashSet<String> interruptedTasks = new HashSet<String>();
+    private Object InterruptableTransferTaskListener;
 
     public AbstractTransferTaskListener() {
         super();
@@ -78,11 +81,25 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle impl
      * @param transferTask the current task being checked from the running task
      * @return true if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #isTaskInterrupted(TransferTask)} list
      */
-    public boolean isTaskInterrupted( TransferTask transferTask ){
-        return this.interruptedTasks.contains(transferTask.getUuid()) ||
+    public boolean isTaskInterrupted( TransferTask transferTask )throws InterruptableTransferTaskException {
+
+        if (this.interruptedTasks.contains(transferTask.getUuid()) ||
                 this.interruptedTasks.contains(transferTask.getParentTaskId()) ||
-                this.interruptedTasks.contains(transferTask.getRootTaskId());
+                this.interruptedTasks.contains(transferTask.getRootTaskId())) {
+            String msg = "Transfer was Canceled or Paused";
+            logger.info("Transfer was Canceled or Paused {}");
+            JsonObject json = new JsonObject()
+                    .put("message", msg);
+            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+
+            throw new InterruptableTransferTaskException();
+
+        }
+        return true;
     }
+
+
+
 
     /**
      * Sets the vertx instance for this listener

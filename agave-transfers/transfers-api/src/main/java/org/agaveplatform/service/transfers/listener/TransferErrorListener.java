@@ -8,6 +8,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.mvel2.templates.TemplateRuntimeError;
@@ -84,13 +85,17 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 					body.getString("cause").equals(IOException.class.getName()) ||
 					body.getString("cause").equals(InterruptedException.class.getName())) {
 				//check to see if the job was canceled first
-				if( !isTaskInterrupted(tt)) {
-					// now check its status
-					if (getRetryStatus(status)) {
-						//log.error("TransformErrorListener will retry this error {} processing an error.  The error was {}", cause, message);
-						_doPublishEvent(TRANSFER_RETRY, body);
-						return true;
+				try {
+					if( !isTaskInterrupted(tt)) {
+						// now check its status
+						if (getRetryStatus(status)) {
+							//log.error("TransformErrorListener will retry this error {} processing an error.  The error was {}", cause, message);
+							_doPublishEvent(TRANSFER_RETRY, body);
+							return true;
+						}
 					}
+				} catch (InterruptableTransferTaskException e) {
+					e.printStackTrace();
 				}
 			}
 		}

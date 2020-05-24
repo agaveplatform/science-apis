@@ -9,6 +9,7 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Deprecated
 public class InteruptEventListener extends AbstractTransferTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(InteruptEventListener.class);
 

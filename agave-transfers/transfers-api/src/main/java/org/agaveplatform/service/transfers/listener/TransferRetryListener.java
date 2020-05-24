@@ -6,6 +6,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -146,10 +147,14 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 							}
 						});
 
-						if (! super.isTaskInterrupted(bodyTask)) {
-							processRetry(transferTaskDb.toJson());
-						}else {
-							logger.info("Transfer was Canceled or Paused for uuid {}", uuid);
+						try {
+							if (! super.isTaskInterrupted(bodyTask)) {
+								processRetry(transferTaskDb.toJson());
+							}else {
+								logger.info("Transfer was Canceled or Paused for uuid {}", uuid);
+							}
+						} catch (InterruptableTransferTaskException e) {
+							e.printStackTrace();
 						}
 
 						//promise.handle(Future.failedFuture(reply.cause()));
@@ -191,131 +196,137 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 			}
 
 			// check for task interruption
-			if (!isTaskInterrupted(bodyTask)) {
-				// basic sanity check on uri again
-				if (RemoteDataClientFactory.isSchemeSupported(srcUri)) {
-					// if it's an "agave://" uri, look up the connection info, get a rdc, and process the remote
-					// file item
-					if (srcUri.getScheme().equalsIgnoreCase("agave")) {
-						// pull the system out of the url. system id is the hostname in an agave uri
-						RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
-						// get a remtoe data client for the sytem
-						RemoteDataClient srcClient = srcSystem.getRemoteDataClient();
 
-						// pull the dest system out of the url. system id is the hostname in an agave uri
-						RemoteSystem destSystem = new SystemDao().findBySystemId(destUri.getHost());
-						RemoteDataClient destClient = destSystem.getRemoteDataClient();
+				if (!isTaskInterrupted(bodyTask)) {
+					// basic sanity check on uri again
+					if (RemoteDataClientFactory.isSchemeSupported(srcUri)) {
+						// if it's an "agave://" uri, look up the connection info, get a rdc, and process the remote
+						// file item
+						if (srcUri.getScheme().equalsIgnoreCase("agave")) {
+							// pull the system out of the url. system id is the hostname in an agave uri
+							RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
+							// get a remtoe data client for the sytem
+							RemoteDataClient srcClient = srcSystem.getRemoteDataClient();
 
-						// stat the remote path to check its type
-						RemoteFileInfo fileInfo = srcClient.getFileInfo(srcUri.getPath());
+							// pull the dest system out of the url. system id is the hostname in an agave uri
+							RemoteSystem destSystem = new SystemDao().findBySystemId(destUri.getHost());
+							RemoteDataClient destClient = destSystem.getRemoteDataClient();
 
-						// if the path is a file, then we can move it directly, so we raise an event telling the protocol
-						// listener to move the file item
-						if (fileInfo.isFile()) {
-							// write to the protocol event channel. the uri is all they should need for this....
-							// might need tenant id. not sure yet.
-							_doPublishEvent("transfer." + srcSystem.getStorageConfig().getProtocol().name().toLowerCase(),
-									body);//"agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath());
-						} else {
-							// path is a directory, so walk the first level of the directory
-							List<RemoteFileInfo> remoteFileInfoList = srcClient.ls(srcUri.getPath());
+							// stat the remote path to check its type
+							RemoteFileInfo fileInfo = srcClient.getFileInfo(srcUri.getPath());
 
-							// if the directory is emnpty, mark as complete and exit
-							if (remoteFileInfoList.isEmpty()) {
-								_doPublishEvent(TRANSFER_COMPLETED, body);
-							}
-							// if there are contents, walk the first level, creating directories on the remote side
-							// as we go to ensure that out of order processing by worker tasks can still succeed.
-							else {
-								// create the remote directory to ensure it's present when the transfers begin. This
-								// also allows us to check for things like permissions ahead of time and save the
-								// traversal in the event it's not allowed.
-								destClient.mkdirs(destUri.getPath());
+							// if the path is a file, then we can move it directly, so we raise an event telling the protocol
+							// listener to move the file item
+							if (fileInfo.isFile()) {
+								// write to the protocol event channel. the uri is all they should need for this....
+								// might need tenant id. not sure yet.
+								_doPublishEvent("transfer." + srcSystem.getStorageConfig().getProtocol().name().toLowerCase(),
+										body);//"agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath());
+							} else {
+								// path is a directory, so walk the first level of the directory
+								List<RemoteFileInfo> remoteFileInfoList = srcClient.ls(srcUri.getPath());
 
-								for (RemoteFileInfo childFileItem: remoteFileInfoList) {
-									// allow for interrupts to come out of band
-									if (!isTaskInterrupted(bodyTask)) {
-										break;
-									}
+								// if the directory is emnpty, mark as complete and exit
+								if (remoteFileInfoList.isEmpty()) {
+									_doPublishEvent(TRANSFER_COMPLETED, body);
+								}
+								// if there are contents, walk the first level, creating directories on the remote side
+								// as we go to ensure that out of order processing by worker tasks can still succeed.
+								else {
+									// create the remote directory to ensure it's present when the transfers begin. This
+									// also allows us to check for things like permissions ahead of time and save the
+									// traversal in the event it's not allowed.
+									destClient.mkdirs(destUri.getPath());
 
-									// if it's a file, we can process this as we would if the original path were a file
-									if (childFileItem.isFile()) {
-										// build the child paths
-										String childSource = body.getString("source") + "/" + childFileItem.getName();
-										String childDest = body.getString("dest") + "/" + childFileItem.getName();
-
-										TransferTask transferTask = new TransferTask(childSource, childDest, tenantId);
-										transferTask.setTenantId(tenantId);
-										transferTask.setOwner(username);
-										transferTask.setParentTaskId(uuid);
-										if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
-											transferTask.setRootTaskId(body.getString("rootTaskId"));
+									for (RemoteFileInfo childFileItem : remoteFileInfoList) {
+										// allow for interrupts to come out of band
+										try {
+											if (!isTaskInterrupted(bodyTask)) {
+												break;
+											}
+										} catch (InterruptableTransferTaskException e) {
+											e.printStackTrace();
+											break;
 										}
-										_doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
+
+										// if it's a file, we can process this as we would if the original path were a file
+										if (childFileItem.isFile()) {
+											// build the child paths
+											String childSource = body.getString("source") + "/" + childFileItem.getName();
+											String childDest = body.getString("dest") + "/" + childFileItem.getName();
+
+											TransferTask transferTask = new TransferTask(childSource, childDest, tenantId);
+											transferTask.setTenantId(tenantId);
+											transferTask.setOwner(username);
+											transferTask.setParentTaskId(uuid);
+											if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
+												transferTask.setRootTaskId(body.getString("rootTaskId"));
+											}
+											_doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
 
 //                                            _doPublishEvent("transfertask." + srcSystem.getType(),
 //                                                    "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath() + "/" + childFileItem.getName());
-									}
-									// if a directory, then create a new transfer task to repeat this process,
-									// keep the association between this transfer task, the original, and the children
-									// in place for traversal in queries later on.
-									else {
-										// build the child paths
-										String childSource = body.getString("source") + "/" + childFileItem.getName();
-										String childDest = body.getString("dest") + "/" + childFileItem.getName();
+										}
+										// if a directory, then create a new transfer task to repeat this process,
+										// keep the association between this transfer task, the original, and the children
+										// in place for traversal in queries later on.
+										else {
+											// build the child paths
+											String childSource = body.getString("source") + "/" + childFileItem.getName();
+											String childDest = body.getString("dest") + "/" + childFileItem.getName();
 
 //                                        // create the remote directory to ensure it's present when the transfers begin. This
 //                                        // also allows us to check for things like permissions ahead of time and save the
 //                                        // traversal in the event it's not allowed.
 //                                        boolean isDestCreated = destClient.mkdirs(destUri.getPath() + "/" + childFileItem.getName());
 
-										TransferTask transferTask = new TransferTask(childSource, childDest, tenantId);
-										transferTask.setTenantId(tenantId);
-										transferTask.setOwner(username);
-										transferTask.setParentTaskId(uuid);
-										if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
-											transferTask.setRootTaskId(body.getString("rootTaskId"));
+											TransferTask transferTask = new TransferTask(childSource, childDest, tenantId);
+											transferTask.setTenantId(tenantId);
+											transferTask.setOwner(username);
+											transferTask.setParentTaskId(uuid);
+											if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
+												transferTask.setRootTaskId(body.getString("rootTaskId"));
+											}
+											_doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
 										}
-										_doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
 									}
 								}
 							}
 						}
-					}
-					// it's not an agave uri, so we forward on the raw uri as we know that we can
-					// handle it from the wrapping if statement check
-					else {
-						_doPublishEvent("transfer." + srcUri.getScheme(), body);
+						// it's not an agave uri, so we forward on the raw uri as we know that we can
+						// handle it from the wrapping if statement check
+						else {
+							_doPublishEvent("transfer." + srcUri.getScheme(), body);
+						}
+					} else {
+						// tell everyone else that you killed this task
+						// also set the status to CANCELLED
+						Promise<Boolean> promise = Promise.promise();
+						bodyTask.setStatus(TransferStatusType.CANCELLED);
+
+						getDbService().update(tenantId, uuid, bodyTask, updateBody -> {
+							if (updateBody.succeeded()) {
+								logger.info("[{}] Transfer task {} updated.", tenantId, uuid);
+								promise.handle(Future.succeededFuture(Boolean.TRUE));
+							} else {
+								logger.error("[{}] Task {} retry failed",
+										tenantId, uuid);
+								JsonObject json = new JsonObject()
+										.put("cause", updateBody.cause().getClass().getName())
+										.put("message", updateBody.cause().getMessage())
+										.mergeIn(body);
+								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+								promise.handle(Future.failedFuture(updateBody.cause()));
+							}
+						});
+
+						throw new InterruptedException(String.format("Transfer task %s interrupted due to cancel event", uuid));
 					}
 				} else {
-					// tell everyone else that you killed this task
-					// also set the status to CANCELLED
-					Promise<Boolean> promise = Promise.promise();
-					bodyTask.setStatus(TransferStatusType.CANCELLED);
-
-					getDbService().update(tenantId, uuid, bodyTask, updateBody -> {
-						if (updateBody.succeeded()) {
-							logger.info("[{}] Transfer task {} updated.", tenantId, uuid);
-							promise.handle(Future.succeededFuture(Boolean.TRUE));
-						} else {
-							logger.error("[{}] Task {} retry failed",
-									tenantId, uuid);
-							JsonObject json = new JsonObject()
-									.put("cause", updateBody.cause().getClass().getName())
-									.put("message", updateBody.cause().getMessage())
-									.mergeIn(body);
-							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-							promise.handle(Future.failedFuture(updateBody.cause()));
-						}
-					});
-
-					throw new InterruptedException(String.format("Transfer task %s interrupted due to cancel event", uuid));
+					String msg = String.format("Unknown source schema %s for the transfertask %s",
+							srcUri.getScheme(), uuid);
+					throw new RemoteDataSyntaxException(msg);
 				}
-			} else {
-				String msg = String.format("Unknown source schema %s for the transfertask %s",
-						srcUri.getScheme(), uuid);
-				throw new RemoteDataSyntaxException(msg);
-			}
 		}
 		catch (InterruptedException e) {
 			logger.error(e.getMessage());
@@ -328,12 +339,17 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 					.mergeIn(body);
 
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-		}
-		finally {
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		} finally {
 			// any interrupt involving this task will be processeda t this point, so acknowledge
 			// the task has been processed
-			if (isTaskInterrupted(bodyTask)) {
-				_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
+			try {
+				if (isTaskInterrupted(bodyTask)) {
+					_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
+				}
+			} catch (InterruptableTransferTaskException e) {
+				e.printStackTrace();
 			}
 		}
 	}

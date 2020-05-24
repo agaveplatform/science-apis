@@ -70,6 +70,40 @@ public class NotificationListener extends AbstractTransferTaskListener {
 			logger.info("Transfer task {} created.", body.getString("id"));
 
 		});
+
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
+			JsonObject body = msg.body();
+
+			logger.info("Transfer task {} created.", body.getString("id"));
+
+		});
+
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_ACK, msg -> {
+			JsonObject body = msg.body();
+
+			logger.info("Transfer task {} created.", body.getString("id"));
+
+		});
+
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+			JsonObject body = msg.body();
+
+			logger.info("Transfer task {} created.", body.getString("id"));
+
+		});
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_ERROR, msg -> {
+			JsonObject body = msg.body();
+
+			logger.info("Transfer task {} created.", body.getString("id"));
+
+		});
+
+		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
+			JsonObject body = msg.body();
+
+			logger.info("Transfer task {} created.", body.getString("id"));
+
+		});
 	}
 
 	protected boolean notificationEventProcess(JsonObject body) {

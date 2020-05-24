@@ -9,6 +9,7 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferTaskEventType;
+import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.aspectj.lang.annotation.Before;
 import org.junit.jupiter.api.*;
@@ -41,7 +42,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignTransferTask")
-	public void assignTransferTask(Vertx vertx, VertxTestContext ctx) {
+	public void assignTransferTask(Vertx vertx, VertxTestContext ctx) throws InterruptableTransferTaskException {
 
 		// get the JsonObject to pass back and forth between verticles
 		TransferTask transferTask = _createTestTransferTask();
@@ -64,7 +65,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignTransferTask with no source")
-	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) {
+	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) throws InterruptableTransferTaskException {
 
 		// get the JsonObject to pass back and forth between verticles
 		TransferTask transferTask = _createTestTransferTask();

@@ -14,12 +14,13 @@ import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import java.net.URI;
 
 public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
     private final Logger logger = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
 
+    public TransferTaskCreatedListener(){super();}
     public TransferTaskCreatedListener(Vertx vertx) {
         this(vertx, null);
     }
@@ -45,7 +46,11 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             String source = body.getString("source");
             String dest = body.getString("dest");
             logger.info("Transfer task {} created: {} -> {}", uuid, source, dest);
-            this.assignTransferTask(body);
+            try {
+                this.assignTransferTask(body);
+            } catch (InterruptableTransferTaskException e) {
+                e.printStackTrace();
+            }
         });
 
         // cancel tasks
@@ -87,7 +92,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
 
     }
 
-    public String assignTransferTask(JsonObject body) {
+    public String assignTransferTask(JsonObject body) throws InterruptableTransferTaskException {
         String uuid = body.getString("uuid");
         String source = body.getString("source");
 //		String dest =  body.getString("dest");
@@ -118,16 +123,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED;
                     _doPublishEvent(assignmentChannel, body);
                     return protocol;
-                }else {
-                    String msg = "Transfer was Canceled or Paused in the TransferTaskCanceledListener";
-                    logger.info("Transfer was Canceled or Paused in the TransferTaskCanceledListener for uuid {}", uuid);
-                    JsonObject json = new JsonObject()
-                            .put("message", msg)
-                            .mergeIn(body);
-                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                    return json.toString();
                 }
-
             } else {
                 String msg = String.format("Unknown source schema %s for the transfertask %s",
 											srcUri.getScheme(), uuid);
@@ -149,7 +145,16 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
 
             _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
             return json.toString();
+        } catch (Throwable t){
+            //logger.info(e.getMessage());
+            JsonObject json = new JsonObject()
+                    .put("cause", t.getClass().getName())
+                    .put("message", t.getMessage())
+                    .mergeIn(body);
+            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+            throw new InterruptableTransferTaskException(t.getMessage());
         }
+        return null;
     }
 
 }

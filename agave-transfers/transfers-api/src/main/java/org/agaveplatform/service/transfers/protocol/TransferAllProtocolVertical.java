@@ -4,6 +4,7 @@ import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
@@ -208,6 +209,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
 			Future.succeededFuture(Boolean.FALSE);
 //			return e.toString();
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
 		}
 
 		_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);

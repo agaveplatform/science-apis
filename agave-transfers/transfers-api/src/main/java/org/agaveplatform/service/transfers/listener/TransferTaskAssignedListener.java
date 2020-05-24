@@ -6,6 +6,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -50,7 +51,11 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             String source = body.getString("source");
             String dest = body.getString("dest");
             logger.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-            this.processTransferTask(body);
+            try {
+                this.processTransferTask(body);
+            } catch (InterruptableTransferTaskException e) {
+                e.printStackTrace();
+            }
         });
 
         // cancel tasks
@@ -96,7 +101,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
 //    }
 
 
-    protected String processTransferTask(JsonObject body) {
+    protected String processTransferTask(JsonObject body) throws InterruptableTransferTaskException {
         String uuid = body.getString("uuid");
         String source = body.getString("source");
 		String dest =  body.getString("dest");
@@ -246,6 +251,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         finally {
             // any interrupt involving this task will be processeda t this point, so acknowledge
             // the task has been processed
+
             if (isTaskInterrupted(bodyTask)) {
                 _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
             }

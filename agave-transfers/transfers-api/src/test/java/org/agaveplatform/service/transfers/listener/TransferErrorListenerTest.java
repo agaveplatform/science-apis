@@ -5,6 +5,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
+import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -57,7 +58,11 @@ class TransferErrorListenerTest extends BaseTestCase {
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
-		when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+		try {
+			when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 
 		boolean result = txfrErrorListener.processError(body);
 
@@ -82,7 +87,11 @@ class TransferErrorListenerTest extends BaseTestCase {
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
-		when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+		try {
+			when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 
 		boolean result = txfrErrorListener.processError(body);
 
@@ -108,7 +117,11 @@ class TransferErrorListenerTest extends BaseTestCase {
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
-		when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+		try {
+			when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 
 		boolean result = txfrErrorListener.processError(body);
 
@@ -135,7 +148,11 @@ class TransferErrorListenerTest extends BaseTestCase {
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
-		when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+		try {
+			when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+		} catch (InterruptableTransferTaskException e) {
+			e.printStackTrace();
+		}
 
 		boolean result = txfrErrorListener.processError(body);
 

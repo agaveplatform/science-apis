@@ -17,7 +17,6 @@ import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener;
 
 import java.net.URI;
 import java.util.HashSet;
@@ -25,7 +24,6 @@ import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_COMPLETED;
-import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.COMPLETED;
 
 public class TransferRetryListener extends AbstractTransferTaskListener{
 	private final Logger logger = LoggerFactory.getLogger(TransferRetryListener.class);
@@ -148,7 +146,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 						});
 
 						try {
-							if (! super.isTaskInterrupted(bodyTask)) {
+							if (! super.checkTaskInterrupted(bodyTask)) {
 								processRetry(transferTaskDb.toJson());
 							}else {
 								logger.info("Transfer was Canceled or Paused for uuid {}", uuid);
@@ -197,7 +195,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 
 			// check for task interruption
 
-				if (!isTaskInterrupted(bodyTask)) {
+				if (!checkTaskInterrupted(bodyTask)) {
 					// basic sanity check on uri again
 					if (RemoteDataClientFactory.isSchemeSupported(srcUri)) {
 						// if it's an "agave://" uri, look up the connection info, get a rdc, and process the remote
@@ -241,7 +239,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 									for (RemoteFileInfo childFileItem : remoteFileInfoList) {
 										// allow for interrupts to come out of band
 										try {
-											if (!isTaskInterrupted(bodyTask)) {
+											if (!checkTaskInterrupted(bodyTask)) {
 												break;
 											}
 										} catch (InterruptableTransferTaskException e) {
@@ -345,7 +343,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 			// any interrupt involving this task will be processeda t this point, so acknowledge
 			// the task has been processed
 			try {
-				if (isTaskInterrupted(bodyTask)) {
+				if (checkTaskInterrupted(bodyTask)) {
 					_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
 				}
 			} catch (InterruptableTransferTaskException e) {

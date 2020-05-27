@@ -1,25 +1,18 @@
 package org.agaveplatform.service.transfers.listener;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.google.gson.Gson;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.enumerations.TransferTaskEventType;
 import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.aspectj.lang.annotation.Before;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.hibernate.*;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
@@ -52,8 +45,8 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		log.info("TransferTaskCreateListenerTest");
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
-
-		when(ttc.assignTransferTask(transferTask.toJson())).thenCallRealMethod();
+		doNothing().when(ttc)._doPublishEvent(any(), any());
+		when(ttc.assignTransferTask(eq(json))).thenCallRealMethod();
 
 		String result = ttc.assignTransferTask(json);
 
@@ -75,7 +68,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
 		when(ttc.assignTransferTask(transferTask.toJson())).thenCallRealMethod();
-		when(ttc.isTaskInterrupted(transferTask)).thenCallRealMethod();
+		when(ttc.checkTaskInterrupted(transferTask)).thenCallRealMethod();
 
 		String result = ttc.assignTransferTask(json);
 		JsonObject newJsonObject = new JsonObject(result);

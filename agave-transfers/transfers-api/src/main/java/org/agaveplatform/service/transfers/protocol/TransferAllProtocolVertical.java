@@ -9,13 +9,10 @@ import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
-import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
-import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
@@ -135,7 +132,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 				// pull the dest system out of the url. system id is the hostname in an agave uri
 				if (false) destClient = getRemoteDataClient(body.getString("owner"), destUri);
 
-				if( ! super.isTaskInterrupted(tt)) {
+				if( ! super.checkTaskInterrupted(tt)) {
 					legacyTransferTask =
 							new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
 

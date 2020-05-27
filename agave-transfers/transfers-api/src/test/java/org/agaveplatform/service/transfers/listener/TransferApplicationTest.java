@@ -103,13 +103,16 @@ class TransferApplicationTest extends BaseTestCase {
 		initAuth();
 	}
 
+
+
 	@Test
-	void main(Vertx vertx, VertxTestContext ctx) {
+	void testEndToEndTaskAssignmentSmoke(Vertx vertx, VertxTestContext ctx) {
+
 		TransferTask tt = _createTestTransferTask();
 
 		RequestSpecification requestSpecification = new RequestSpecBuilder()
 				.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
-				.setBaseUri("http://localhost:" + 8085 + "/")
+				.setBaseUri("http://localhost:" + getPort() + "/")
 				.build();
 
 		String response = given()

@@ -5,12 +5,10 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
-import java.util.Optional;
 
 public abstract class AbstractTransferTaskListener extends AbstractVerticle  {
     private final Logger logger = LoggerFactory.getLogger(AbstractTransferTaskListener.class);
@@ -79,9 +77,9 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle  {
      * interrupted tasks.
      *
      * @param transferTask the current task being checked from the running task
-     * @return true if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #isTaskInterrupted(TransferTask)} list
+     * @return true if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #checkTaskInterrupted(TransferTask)} list
      */
-    public boolean isTaskInterrupted( TransferTask transferTask )throws InterruptableTransferTaskException {
+    public boolean checkTaskInterrupted(TransferTask transferTask )throws InterruptableTransferTaskException {
 
         if (this.interruptedTasks.contains(transferTask.getUuid()) ||
                 this.interruptedTasks.contains(transferTask.getParentTaskId()) ||

@@ -53,7 +53,7 @@ public abstract class BaseTestCase {
         try {
             String json = new String(Files.readAllBytes(configPath));
             config = new JsonObject(json)
-                    .put( "transfertask.http.port", port)
+                    .put( "transfertask.http.port", getPort())
                     .put("transfertask.jwt.auth", false);
         } catch (IOException e) {
             log.error("Unable to read config options file", e);
@@ -185,5 +185,13 @@ public abstract class BaseTestCase {
         return asyncResult;
     }
 
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
 
 }

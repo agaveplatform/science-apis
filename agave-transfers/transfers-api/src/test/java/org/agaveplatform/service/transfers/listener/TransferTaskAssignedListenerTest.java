@@ -14,7 +14,6 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -153,13 +152,13 @@ class TransferTaskAssignedListenerTest {
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(Vertx.vertx(), "transfertask.assigned");
 		try {
 			ta.interruptedTasks.add(tt.getUuid());
-			assertTrue(ta.isTaskInterrupted(tt), "UUID of tt present in interruptedTasks list should return true");
+			assertTrue(ta.checkTaskInterrupted(tt), "UUID of tt present in interruptedTasks list should return true");
 			ta.interruptedTasks.remove(tt.getUuid());
 			ta.interruptedTasks.add(tt.getParentTaskId());
-			assertTrue(ta.isTaskInterrupted(tt), "UUID of tt parent present in interruptedTasks list should return true");
+			assertTrue(ta.checkTaskInterrupted(tt), "UUID of tt parent present in interruptedTasks list should return true");
 			ta.interruptedTasks.remove(tt.getParentTaskId());
 			ta.interruptedTasks.add(tt.getRootTaskId());
-			assertTrue(ta.isTaskInterrupted(tt), "UUID of tt root present in interruptedTasks list should return true");
+			assertTrue(ta.checkTaskInterrupted(tt), "UUID of tt root present in interruptedTasks list should return true");
 		} catch (InterruptableTransferTaskException e) {
 			e.printStackTrace();
 		}

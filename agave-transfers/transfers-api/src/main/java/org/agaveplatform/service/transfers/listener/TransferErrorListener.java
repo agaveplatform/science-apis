@@ -1,17 +1,12 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.mvel2.templates.TemplateRuntimeError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +15,6 @@ import java.io.IOException;
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_TRIES;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_RETRY;
-import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferErrorListener extends AbstractTransferTaskListener {
 	protected final Logger log = LoggerFactory.getLogger(TransferErrorListener.class);
@@ -86,7 +80,7 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 					body.getString("cause").equals(InterruptedException.class.getName())) {
 				//check to see if the job was canceled first
 				try {
-					if( !isTaskInterrupted(tt)) {
+					if( !checkTaskInterrupted(tt)) {
 						// now check its status
 						if (getRetryStatus(status)) {
 							//log.error("TransformErrorListener will retry this error {} processing an error.  The error was {}", cause, message);

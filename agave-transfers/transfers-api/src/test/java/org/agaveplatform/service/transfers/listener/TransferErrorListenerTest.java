@@ -15,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_COMPLETED;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
@@ -59,7 +58,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
 		try {
-			when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+			when(txfrErrorListener.checkTaskInterrupted(tt)).thenCallRealMethod();
 		} catch (InterruptableTransferTaskException e) {
 			e.printStackTrace();
 		}
@@ -88,7 +87,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
 		try {
-			when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+			when(txfrErrorListener.checkTaskInterrupted(tt)).thenCallRealMethod();
 		} catch (InterruptableTransferTaskException e) {
 			e.printStackTrace();
 		}
@@ -118,7 +117,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
 		try {
-			when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+			when(txfrErrorListener.checkTaskInterrupted(tt)).thenCallRealMethod();
 		} catch (InterruptableTransferTaskException e) {
 			e.printStackTrace();
 		}
@@ -149,7 +148,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		when(txfrErrorListener.processError(any())).thenCallRealMethod();
 		try {
-			when(txfrErrorListener.isTaskInterrupted(tt)).thenCallRealMethod();
+			when(txfrErrorListener.checkTaskInterrupted(tt)).thenCallRealMethod();
 		} catch (InterruptableTransferTaskException e) {
 			e.printStackTrace();
 		}

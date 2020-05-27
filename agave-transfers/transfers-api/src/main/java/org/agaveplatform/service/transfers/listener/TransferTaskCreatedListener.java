@@ -1,8 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -18,7 +15,7 @@ import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskEx
 import java.net.URI;
 
 public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
-    private final Logger logger = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
+    private static final Logger logger = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
 
     public TransferTaskCreatedListener(){super();}
     public TransferTaskCreatedListener(Vertx vertx) {
@@ -119,12 +116,15 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     RemoteSystem srcSystem = new SystemDao().findBySystemId(srcUri.getHost());
                     protocol = srcSystem.getStorageConfig().getProtocol().toString();
                 }
-                if ( ! isTaskInterrupted(bodyTask)) {
-                    logger.info("TransferTaskAssigned works. The value of the body = {}", body);
-                    String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED;
-                    _doPublishEvent(assignmentChannel, body);
-                    return protocol;
-                }
+                // check for interrupte before proceeding
+                checkTaskInterrupted(bodyTask);
+
+                // continue assigning the task and return
+                logger.info("TransferTaskAssigned works. The value of the body = {}", body);
+                String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED;
+                _doPublishEvent(assignmentChannel, body);
+                return protocol;
+
             } else {
                 String msg = String.format("Unknown source schema %s for the transfertask %s",
 											srcUri.getScheme(), uuid);
@@ -155,7 +155,6 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
             throw new InterruptableTransferTaskException(t.getMessage());
         }
-        return null;
     }
 
 }

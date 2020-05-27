@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
-@DisplayName("TransfeeApplication tests")
+@DisplayName("TransferApplication tests")
 
 class TransferApplicationTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferApplicationTest.class);

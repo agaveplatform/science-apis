@@ -120,6 +120,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     protocol = srcSystem.getStorageConfig().getProtocol().toString();
                 }
                 if ( ! isTaskInterrupted(bodyTask)) {
+                    logger.info("TransferTaskAssigned works. The value of the body = {}", body);
                     String assignmentChannel = MessageType.TRANSFERTASK_ASSIGNED;
                     _doPublishEvent(assignmentChannel, body);
                     return protocol;

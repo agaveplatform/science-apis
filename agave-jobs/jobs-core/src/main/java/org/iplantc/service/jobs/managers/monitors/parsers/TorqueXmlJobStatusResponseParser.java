@@ -10,31 +10,36 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 /**
- * Parses the XML response from Torque and PBSPro {@code qstat} job status checks.
- * @deprecated
+ * Parses the XML response from Torque and TorquePro {@code qstat} XML job status checks.
  */
-public class PBSXmlJobStatusResponseParser implements JobStatusResponseParser {
+public class TorqueXmlJobStatusResponseParser implements JobStatusResponseParser {
 	
-	private static final Logger log = Logger.getLogger(PBSXmlJobStatusResponseParser.class);
+	private static final Logger log = Logger.getLogger(TorqueXmlJobStatusResponseParser.class);
 
-	class PBSData {
-		private List<PBSJob> jobs;
+	class TorqueData {
+		private List<TorqueJob> jobs;
 
-		public List<PBSJob> getJobs() {
+		public List<TorqueJob> getJobs() {
 			return jobs;
 		}
 
-		public void setQueueInfo(List<PBSJob> jobs) {
+		public void setQueueInfo(List<TorqueJob> jobs) {
 			this.jobs = jobs;
 		}
 	}
 
-	class PBSJobResources {
+	class TorqueJobResources {
 		String cput;
 		String memory;
 		String virtualMemory;
@@ -73,7 +78,7 @@ public class PBSXmlJobStatusResponseParser implements JobStatusResponseParser {
 		}
 	}
 
-	class PBSJob {
+	class TorqueJob {
 		String id;
 		String name;
 		String state;
@@ -88,6 +93,24 @@ public class PBSXmlJobStatusResponseParser implements JobStatusResponseParser {
 		Double totalRuntime;
 		String exitCode;
 		String outputPath;
+		String owner;
+		TorqueJobResources resourcesUsed;
+
+		public String getOwner() {
+			return owner;
+		}
+
+		public void setOwner(String owner) {
+			this.owner = owner;
+		}
+
+		public TorqueJobResources getResourcesUsed() {
+			return resourcesUsed;
+		}
+
+		public void setResourcesUsed(TorqueJobResources resourcesUsed) {
+			this.resourcesUsed = resourcesUsed;
+		}
 
 		public Long getQueueTime() {
 			return queueTime;
@@ -202,9 +225,9 @@ public class PBSXmlJobStatusResponseParser implements JobStatusResponseParser {
 		}
 	}
 
-	class PBSHandler extends DefaultHandler {
-		private static final String QUEUE_DATA = "Job";
-		private static final String JOB = "Data";
+	class TorqueHandler extends DefaultHandler {
+		private static final String QUEUE_DATA = "Data";
+		private static final String JOB = "Job";
 		private static final String JOB_ID = "Job_Id";
 		private static final String JOB_NAME = "Job_Name";
 		private static final String JOB_STATE = "job_state";
@@ -218,6 +241,7 @@ public class PBSXmlJobStatusResponseParser implements JobStatusResponseParser {
 		private static final String JOB_MTIME = "mtime";
 		private static final String JOB_ERROR_PATH = "Error_Path";
 		private static final String JOB_OUTPUT_PATH = "Output_Path";
+		private static final String JOB_OWNER_PATH = "Job_Owner";
 		private static final String JOB_RESOURCES_USED = "resources_used";
 		private static final String JOB_RESOURCES_USED_CPUT = "cput";
 		private static final String JOB_RESOURCES_USED_ENERGY_USED = "energy_used";
@@ -225,7 +249,7 @@ public class PBSXmlJobStatusResponseParser implements JobStatusResponseParser {
 		private static final String JOB_RESOURCES_USED_VMEM = "vmem";
 		private static final String JOB_RESOURCES_USED_WALLTIME = "walltime";
 
-		private PBSData pbsData;
+		private TorqueData torqueData;
 		private String elementValue;
 
 		@Override
@@ -235,18 +259,21 @@ public class PBSXmlJobStatusResponseParser implements JobStatusResponseParser {
 
 		@Override
 		public void startDocument() throws SAXException {
-			pbsData = new PBSData();
+			torqueData = new TorqueData();
 		}
 
 		@Override
 		public void startElement(String uri, String lName, String qName, Attributes attr) throws SAXException {
 			switch (qName) {
 				case QUEUE_DATA:
-					pbsData.jobs = new ArrayList<>();
+					torqueData.jobs = new ArrayList<>();
 					break;
 				case JOB:
-					PBSJob job = new PBSJob();
-					pbsData.jobs.add(job);
+					TorqueJob job = new TorqueJob();
+					torqueData.jobs.add(job);
+				case JOB_RESOURCES_USED:
+					TorqueJobResources resourcesUsed = new TorqueJobResources();
+					latestTorqueJob().resourcesUsed = resourcesUsed;
 			}
 		}
 
@@ -254,55 +281,58 @@ public class PBSXmlJobStatusResponseParser implements JobStatusResponseParser {
 		public void endElement(String uri, String localName, String qName) throws SAXException {
 			switch (qName) {
 				case JOB_ID:
-					latestPBSJob().id = elementValue;
+					latestTorqueJob().id = elementValue;
 					break;
 				case JOB_NAME:
-					latestPBSJob().name = elementValue;
+					latestTorqueJob().name = elementValue;
 					break;
 				case JOB_STATE:
-					latestPBSJob().state = elementValue;
+					latestTorqueJob().state = elementValue;
 					break;
 				case JOB_START_TIME:
-					latestPBSJob().startTime = Long.parseLong(elementValue);
+					latestTorqueJob().startTime = Long.parseLong(elementValue);
 					break;
 				case JOB_END_TIME:
-					latestPBSJob().endTime = Long.parseLong(elementValue);
+					latestTorqueJob().endTime = Long.parseLong(elementValue);
 					break;
 				case JOB_QUEUE:
-					latestPBSJob().queue = elementValue;
+					latestTorqueJob().queue = elementValue;
 					break;
 				case JOB_EXIT_STATUS:
-					latestPBSJob().exitCode = elementValue;
+					latestTorqueJob().exitCode = elementValue;
 					break;
 				case JOB_COMP_TIME:
-					latestPBSJob().ctime = Long.parseLong(elementValue);
+					latestTorqueJob().ctime = Long.parseLong(elementValue);
 					break;
 				case JOB_TOTAL_RUNTIME:
-					latestPBSJob().name = elementValue;
+					latestTorqueJob().totalRuntime = Double.parseDouble(elementValue);
 					break;
 				case JOB_QUEUE_TIME:
-					latestPBSJob().queueTime = Long.parseLong(elementValue);
+					latestTorqueJob().queueTime = Long.parseLong(elementValue);
 					break;
 				case JOB_MTIME:
-					latestPBSJob().mtime = Long.parseLong(elementValue);
+					latestTorqueJob().mtime = Long.parseLong(elementValue);
 					break;
 				case JOB_ERROR_PATH:
-					latestPBSJob().errorPath = elementValue;
+					latestTorqueJob().errorPath = elementValue;
 					break;
 				case JOB_OUTPUT_PATH:
-					latestPBSJob().outputPath = elementValue;
+					latestTorqueJob().outputPath = elementValue;
+					break;
+				case JOB_OWNER_PATH:
+					latestTorqueJob().owner = elementValue;
 					break;
 			}
 		}
 
-		private PBSJob latestPBSJob() {
-			List<PBSJob> jobList = pbsData.jobs;
+		private TorqueJob latestTorqueJob() {
+			List<TorqueJob> jobList = torqueData.jobs;
 			int latestArticleIndex = jobList.size() - 1;
 			return jobList.get(latestArticleIndex);
 		}
 
-		public PBSData getJobData() {
-			return pbsData;
+		public TorqueData getJobData() {
+			return torqueData;
 		}
 	}
 
@@ -314,11 +344,11 @@ public class PBSXmlJobStatusResponseParser implements JobStatusResponseParser {
 	 */
 	@Override
 	public List<SchedulerType> getSupportedSchedulerType() {
-		return List.of(SchedulerType.PBS, SchedulerType.CUSTOM_PBS);
+		return List.of(SchedulerType.TORQUE, SchedulerType.CUSTOM_TORQUE, SchedulerType.MOAB, SchedulerType.CUSTOM_MOAB);
 	}
 
 	/**
-	 * The job status query to PBS was of the form {@code "qstat -a | grep ^<job_id>}. That means the response should
+	 * The job status query to Torque was of the form {@code "qstat -a | grep ^<job_id>}. That means the response should
 	 * come back in a tabbed column with the following fields
 	 *
 	 * <pre>
@@ -351,72 +381,50 @@ public class PBSXmlJobStatusResponseParser implements JobStatusResponseParser {
 					"Error response from job status check on the remote system. This is likely due to the job " +
 							"completing and being purged from the qstat job cache. Calling tracejob with sufficient " +
 							"permissions or examining the job logs should provide more information about the job.");
-		}
-		else if (schedulerResponseText.toLowerCase().contains("unknown")
-				|| schedulerResponseText.toLowerCase().contains("error")
-				|| schedulerResponseText.toLowerCase().contains("not ")) {
-			throw new RemoteJobMonitorResponseParsingException("Unable to obtain job status in the response from the scheduler: " + schedulerResponseText);
 		} else {
-			List<String> lines = Arrays.asList(StringUtils.stripToEmpty(schedulerResponseText).split("[\\r\\n]+"));
-			// iterate over each line, finding the one starting with the job id
-			for (String line: lines) {
-				// PBS status lines start with the job id
-				if (line.startsWith(remoteJobId)) {
-					try {
-						// parse the line with the status info in it
-						return parseLine(remoteJobId, line);
-					} catch (RemoteJobMonitorResponseParsingException e) {
-						throw new RemoteJobMonitorResponseParsingException(e.getMessage() + ": " + schedulerResponseText, e);
-					}
-				}
-			}
-			throw new RemoteJobMonitorResponseParsingException("Unable to obtain job status in the response from the scheduler");
+			// otherwise, parse the XML response and return the resulting JobStatusResponse
+			return parseXMLResponse(remoteJobId, schedulerResponseText);
 		}
 	}
 
 	/**
 	 * Parses a single status line from the remote server response. This should be the line containing the actual
-	 * status info for the PBS job, trimmed of any headers, debug info, etc.
+	 * status info for the Torque job, trimmed of any headers, debug info, etc.
 	 *
 	 * @param remoteJobId the remote job id to parse from the response
-	 * @param statusLine the qstat job status line
+	 * @param schedulerResponseText the qstat job response
 	 * @return a {@link JobStatusResponse} containing remote status info about the job with {@code remoteJobId}
 	 * @throws RemoteJobMonitorResponseParsingException if unable to parse the job status
 	 */
-	protected JobStatusResponse<PBSJobStatus> parseLine(String remoteJobId, String statusLine) throws RemoteJobMonitorResponseParsingException {
+	protected JobStatusResponse<TorqueJobStatus> parseXMLResponse(String remoteJobId, String schedulerResponseText) throws RemoteJobMonitorResponseParsingException {
 
-		List<String> tokens = Arrays.asList(StringUtils.split(statusLine));
+		try (InputStream in = new ByteArrayInputStream(schedulerResponseText.getBytes())) {
+			SAXParserFactory factory = SAXParserFactory.newInstance();
+			SAXParser saxParser = factory.newSAXParser();
+			TorqueXmlJobStatusResponseParser.TorqueHandler handler = new TorqueXmlJobStatusResponseParser.TorqueHandler();
+			saxParser.parse(in, handler);
+			TorqueXmlJobStatusResponseParser.TorqueData data = handler.getJobData();
 
-		// output from {@code qstat -a <job_id> } should be similar to
-		// <pre>Job ID                         Username        Queue           Jobname         SessID   NDS  TSK   Memory Time  S Time</pre>
-		if (tokens.size() == 11) {
-			try {
-				PBSJobStatus remoteJobStatus = PBSJobStatus.valueOfCode(tokens.get(9));
-				String exitCode = "0";
-
-				return new JobStatusResponse<>(remoteJobId, remoteJobStatus, exitCode);
-			}
-			catch (Throwable e) {
-				throw new RemoteJobMonitorResponseParsingException("Unexpected fields in the response from the scheduler");
-			}
-		}
-		// in case the response is customized, we start checking from the last column inward,
-		// looking for single character values, which is what the status would be.
-		else {
-			for (int i=tokens.size()-1; i >= 0; i--) {
-				if (tokens.get(i).matches("^([a-zA-Z]{1})$")) {
-					try {
-						PBSJobStatus remoteJobStatus = PBSJobStatus.valueOfCode(tokens.get(i));
-						String exitCode = "0";
-
-						return new JobStatusResponse<>(remoteJobId, remoteJobStatus, exitCode);
-					}
-					catch (Throwable e) {
-						throw new RemoteJobMonitorResponseParsingException("Unexpected fields in the response from the scheduler");
-					}
+			TorqueXmlJobStatusResponseParser.TorqueJob torqueJob = null;
+			for (TorqueXmlJobStatusResponseParser.TorqueJob job: data.getJobs()) {
+				if (job.id.startsWith(remoteJobId + ".")) {
+					torqueJob = job;
+					break;
 				}
 			}
+
+			if (torqueJob == null) {
+				throw new RemoteJobMonitorResponseParsingException(
+						"Unable to obtain job status in the response from the scheduler.");
+			}
+
+			String exitCode = "0";
+			TorqueJobStatus remoteJobStatus = TorqueJobStatus.valueOfCode(torqueJob.state);
+
+			return new JobStatusResponse<>(torqueJob.id, remoteJobStatus, exitCode );
+
+		} catch (SAXException| ParserConfigurationException | IOException e) {
+			throw new RemoteJobMonitorResponseParsingException("Unexpected fields in the response from the scheduler: " + schedulerResponseText);
 		}
-		throw new RemoteJobMonitorResponseParsingException("Unable to obtain job status in the response from the scheduler");
 	}
 }

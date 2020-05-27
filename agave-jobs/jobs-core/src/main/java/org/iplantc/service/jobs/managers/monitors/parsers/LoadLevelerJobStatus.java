@@ -291,4 +291,21 @@ public enum LoadLevelerJobStatus implements RemoteSchedulerJobStatus<LoadLeveler
 	private void setMappedJobStatusType(JobStatusType mappedJobStatusType) {
 		this.mappedJobStatusType = mappedJobStatusType;
 	}
+
+	/**
+	 * Returns the {@link LoadLevelerJobStatus} with code matching the value passed in regardless of case.
+	 * This is similar to valueOf, but provides an {@link LoadLevelerJobStatus#UNKNOWN} value when
+	 * no codes match.
+	 * @param code the status code to match in a case-insensitive way.
+	 * @return the {@link LoadLevelerJobStatus} with matching code, or {@link LoadLevelerJobStatus#UNKNOWN} if no matches.
+	 */
+	public static LoadLevelerJobStatus valueOfCode(String code) {
+		for(LoadLevelerJobStatus status: values()) {
+			if (status.code.equalsIgnoreCase(code)) {
+				return status;
+			}
+		}
+
+		return UNKNOWN;
+	}
 }

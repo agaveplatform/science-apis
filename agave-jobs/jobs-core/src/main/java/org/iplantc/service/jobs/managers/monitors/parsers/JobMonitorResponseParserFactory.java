@@ -91,7 +91,7 @@ public class JobMonitorResponseParserFactory {
 				case CUSTOM_MOAB:
 				case TORQUE:
 				case CUSTOM_TORQUE:
-					parser = new TorqueJobStatusResponseParser();
+					parser = new TorqueXmlJobStatusResponseParser();
 					break;
 				case SGE:
 				case CUSTOM_GRIDENGINE:

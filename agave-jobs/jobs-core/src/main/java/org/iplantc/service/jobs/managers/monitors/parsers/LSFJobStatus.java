@@ -9,10 +9,10 @@ import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
 
 public enum LSFJobStatus implements RemoteSchedulerJobStatus<LSFJobStatus> {
 
-	PEND("PEND", "The job is pending. That is, it has not yet been started.", PENDING),
+	PEND("PEND", "The job is pending. That is, it has not yet been started.", QUEUED),
 
 	PROV("PROV", "The job has been dispatched to a power-saved host that is waking up. " +
-			"Before the job can be sent to the sbatchd, it is in a PROV state.", PENDING),
+			"Before the job can be sent to the sbatchd, it is in a PROV state.", QUEUED),
 	PSUSP("PSUSP", "The job has been suspended, either by its owner or the LSF administrator, while pending.", PAUSED),
 	RUN("RUN", "The job is currently running.", RUNNING),
 	USUSP("USUSP", "The job has been suspended, either by its owner or the LSF administrator, while running.", PAUSED),
@@ -25,7 +25,7 @@ public enum LSFJobStatus implements RemoteSchedulerJobStatus<LSFJobStatus> {
 			"due to an error in its execution, or killed by its owner or the LSF administrator. \n" +
 			"For example, exit code 131 means that the job exceeded a configured resource usage limit and " +
 			"LSF killed the job.", null),
-	WAIT("WAIT", "Job is part of a chunk job and waiting to run.", PENDING),
+	WAIT("WAIT", "Job is part of a chunk job and waiting to run.", QUEUED),
 	ZOMBI("ZOMBI", "A job becomes ZOMBI if:\n" +
 			"- A non-rerunnable job is killed by bkill while the sbatchd on the " +
 			"execution host is unreachable and the job is shown as UNKWN.\n" +

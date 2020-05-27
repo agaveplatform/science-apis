@@ -308,10 +308,15 @@ public class SGEJobStatusResponseParser implements JobStatusResponseParser {
 				}
 			}
 
-			String exitCode = "0";
-			SGEJobStatus remoteJobStatus = sgeJob != null ? SGEJobStatus.valueOfCode(sgeJob.state) : SGEJobStatus.UNKNOWN;
+			if (sgeJob == null) {
+				throw new RemoteJobMonitorResponseParsingException(
+						"Unable to obtain job status in the response from the scheduler.");
+			}
 
-			return new JobStatusResponse<>(remoteJobId, remoteJobStatus, exitCode );
+			String exitCode = "0";
+			SGEJobStatus remoteJobStatus = SGEJobStatus.valueOfCode(sgeJob.state);
+
+			return new JobStatusResponse<>(sgeJob.JB_job_number, remoteJobStatus, exitCode );
 
         } catch (SAXException|ParserConfigurationException|IOException e) {
 			throw new RemoteJobMonitorResponseParsingException("Unexpected fields in the response from the scheduler: " + statusLine);

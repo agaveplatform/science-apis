@@ -210,11 +210,11 @@ services:
 #      - '2022:22'
 #      - '7515:7512'
 
-#  slurm:
-#    image: agaveplatform/slurm:latest
-#    hostname: docker.example.com
-#    ports:
-#      - '10133:22'
+  slurm:
+    image: agaveplatform/slurm:latest
+    hostname: docker.example.com
+    ports:
+      - '10133:22'
 
   torque:
     image: agaveplatform/torque:6.1.3
@@ -231,12 +231,12 @@ services:
     ports:
       - '10188:22'
 
-#  htcondor:
-#    image: agaveplatform/htcondor:8.4.9
-#    hostname: docker.example.com
-#    ports:
-#      - '10155:22'
-#
+  htcondor:
+    image: agaveplatform/htcondor:8.4.9
+    hostname: docker.example.com
+    ports:
+      - '10155:22'
+
   gridengine:
     image: agaveplatform/gridengine:6.2
     hostname: docker.example.com
@@ -247,13 +247,12 @@ services:
       - '10166:22'
       - '6444:6444'
       - '6445:6445'
-#
-#  openlava:
-#    image: agaveplatform/openlava:3.3
-#    hostname: docker.example.com
-#    ports:
-#      - '10177:22'
-#      - '6879:6879'
-#      - '6878:6878'
-#      - '6882:6882'
-#      - '6881:6881'
+
+  openlava:
+    image: agaveplatform/openlava:3.3
+    ports:
+      - '10177:22'
+      - '6879:6879'
+      - '6878:6878'
+      - '6882:6882'
+      - '6881:6881'

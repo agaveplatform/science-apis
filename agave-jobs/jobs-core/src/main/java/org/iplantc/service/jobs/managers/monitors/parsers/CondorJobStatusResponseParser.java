@@ -42,6 +42,32 @@ public class CondorJobStatusResponseParser implements JobStatusResponseParser {
      * determining the job satus. A section footer contains a single line with three periods, "...", and marks the
      * end of the section.
      *
+     * A full log file for a test job will resemble the following:
+     * <pre>
+     * 000 (007.000.000) 05/27 11:27:01 Job submitted from host: <172.19.0.18:36901?addrs=172.19.0.18-36901>
+     * ...
+     * 001 (007.000.000) 05/27 11:27:04 Job executing on host: <172.19.0.18:49543?addrs=172.19.0.18-49543>
+     * ...
+     * 006 (007.000.000) 05/27 11:27:08 Image size of job updated: 1
+     *         0  -  MemoryUsage of job (MB)
+     *         0  -  ResidentSetSize of job (KB)
+     * ...
+     * 005 (007.000.000) 05/27 11:27:08 Job terminated.
+     *         (1) Normal termination (return value 0)
+     *                 Usr 0 00:00:00, Sys 0 00:00:00  -  Run Remote Usage
+     *                 Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+     *                 Usr 0 00:00:00, Sys 0 00:00:00  -  Total Remote Usage
+     *                 Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+     *         10325  -  Run Bytes Sent By Job
+     *         6396  -  Run Bytes Received By Job
+     *         10325  -  Total Bytes Sent By Job
+     *         6396  -  Total Bytes Received By Job
+     *         Partitionable Resources :    Usage  Request Allocated
+     *            Cpus                 :                 1         1
+     *            Disk (KB)            :       22       12  26480434
+     *            Memory (MB)          :        0     1024      4004
+     * ...
+     * </pre>
      * @param remoteJobId           the remote job id to parse from the response
      * @param schedulerResponseText the response text from the remote scheduler
      * @return a {@link JobStatusResponse} containing remote status info about the job with {@code remoteJobId}

@@ -29,7 +29,7 @@ public enum SchedulerType
 	 * Custom scheduling directives are supported, allowing for overriding the default agave directives to interact with
 	 * advanced scheduler features.
 	 * <p>
-	 * Currently integration tested against OpenLava 3.3, IBM Spectrum LSF Suite Community Edition 10.2.0.6
+	 * Currently integration tested against 	OpenLava 3.3, IBM Spectrum LSF Suite Community Edition 10.2.0.6
 	 */
 	CUSTOM_LSF,
 	/**
@@ -270,7 +270,7 @@ public enum SchedulerType
 				return "bjobs -w -noheader ";
 			case LOADLEVELER:
 			case CUSTOM_LOADLEVELER:
-				return "llq";
+				return "llq -l ";
 			case SGE:
 			case CUSTOM_GRIDENGINE:
 				return "qstat -ext -urg -xml ";
@@ -288,7 +288,7 @@ public enum SchedulerType
 				return "condor_q -format '%d'  JobStatus";
 			case UNKNOWN:
 			case FORK:
-				return "ps -o pid= -o comm= -p ";
+				return "ps -o pid= -o user= -o stat= -o time= -o comm= -p ";
 			case SLURM:
 			case CUSTOM_SLURM:
 				return "sacct -p -o 'JOBID,State,ExitCode' -n -j ";

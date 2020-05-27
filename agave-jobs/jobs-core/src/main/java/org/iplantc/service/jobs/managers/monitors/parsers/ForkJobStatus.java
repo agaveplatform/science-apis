@@ -5,20 +5,21 @@ import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 
 import java.util.ArrayList;
 import java.util.List;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
 
 public enum ForkJobStatus implements RemoteSchedulerJobStatus<ForkJobStatus> {
-	I("I", "Process that is idle (sleeping for longer than about 20 seconds).", RUNNING),
-	R("R", "Runnable process.", RUNNING),
-	S("S", "Sleeping for less than about 20 seconds.", RUNNING),
-	T("T", "Stopped process.", PAUSED),
-	U("U", "Process in uninterruptible wait.", RUNNING),
-	Z("Z", "Dead process (a 'zombie').", null),
+    // ps man page
+	IDLE("I", "Process that is idle (sleeping for longer than about 20 seconds).", JobStatusType.RUNNING),
+	RUNNABLE("R", "Runnable process.", JobStatusType.RUNNING),
+	SLEEPING("S", "Sleeping for less than about 20 seconds.", JobStatusType.RUNNING),
+	TERMINATED("T", "Stopped by job control signal.", null),
+    UNINTERRUPTABLE_WAIT("U", "Process in uninterruptible wait.", JobStatusType.RUNNING),
+	ZOMBIE("Z", "Dead process (a 'zombie').", null),
     // state codes from STAT
-	D("D", "Uninterruptible sleep (usually IO)", RUNNING),
-	W("W", "Paging (kernels <= 2.6.xx)", RUNNING),
-	X("X", "Dead process", null),
-    COMPLETED("-", "Process has completed.", null),
+    UNINTERRUPTABLE_SLEEP("D", "Uninterruptible sleep (usually IO)", JobStatusType.RUNNING),
+    TERMIANTED_TRACING("t", "Stopped by debugger during the tracing.", null),
+    PAGING("W", "Paging (kernels <= 2.6.xx)", JobStatusType.RUNNING),
+	DEAD("X", "Dead process", null),
+    DONE("-", "Process is no longer running.", null),
     UNKNOWN("", "Job status is unknown or could not be obtained.", null);
 
     private String description;
@@ -97,7 +98,7 @@ public enum ForkJobStatus implements RemoteSchedulerJobStatus<ForkJobStatus> {
      */
     @Override
     public List<ForkJobStatus> getRunningStatuses() {
-        return List.of(D, I, R, S, U, W);
+        return List.of(IDLE, RUNNABLE, SLEEPING, UNINTERRUPTABLE_WAIT, UNINTERRUPTABLE_SLEEP, PAGING);
     }
 
     /**
@@ -118,7 +119,7 @@ public enum ForkJobStatus implements RemoteSchedulerJobStatus<ForkJobStatus> {
      */
     @Override
     public List<ForkJobStatus> getFailedStatuses() {
-        return List.of();
+        return List.of(TERMINATED, TERMIANTED_TRACING);
     }
 
     /**
@@ -131,7 +132,7 @@ public enum ForkJobStatus implements RemoteSchedulerJobStatus<ForkJobStatus> {
      */
     @Override
     public List<ForkJobStatus> getUnrecoverableStatuses() {
-        return List.of(Z);
+        return List.of(ZOMBIE, DEAD);
     }
 
     /**
@@ -144,7 +145,7 @@ public enum ForkJobStatus implements RemoteSchedulerJobStatus<ForkJobStatus> {
      */
     @Override
     public List<ForkJobStatus> getPausedStatuses() {
-        return List.of(T);
+        return List.of();
     }
 
     /**
@@ -270,7 +271,7 @@ public enum ForkJobStatus implements RemoteSchedulerJobStatus<ForkJobStatus> {
      */
     public static ForkJobStatus valueOfCode(String code) {
         for(ForkJobStatus status: values()) {
-            if (status.code.equalsIgnoreCase(code)) {
+            if (status.code.equals(code)) {
                 return status;
             }
         }

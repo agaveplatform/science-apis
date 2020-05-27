@@ -3,7 +3,7 @@
     <queue_info>
     </queue_info>
     <job_info>
-        <job_list state="pending">
+        <job_list state="${JOB_STATUS}">
             <JB_job_number>${JOB_ID}</JB_job_number>
             <JAT_prio>0.00000</JAT_prio>
             <JAT_ntix>0.00000</JAT_ntix>
@@ -13,7 +13,7 @@
             <JB_wtcontr>0</JB_wtcontr>
             <JB_dlcontr>0</JB_dlcontr>
             <JB_name>STDIN</JB_name>
-            <JB_owner>testuser</JB_owner>
+            <JB_owner>${JOB_USERNAME}</JB_owner>
             <JB_project></JB_project>
             <JB_department>defaultdepartment</JB_department>
             <state>${JOB_STATUS}</state>
@@ -25,7 +25,7 @@
             <ftickets>0</ftickets>
             <stickets>0</stickets>
             <JAT_share>0.00000</JAT_share>
-            <queue_name></queue_name>
+            <queue_name>${JOB_QUEUE}</queue_name>
             <slots>1</slots>
         </job_list>
     </job_info>

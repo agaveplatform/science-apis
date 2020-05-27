@@ -17,7 +17,7 @@
     }
   ],
   "login": {
-    "host": "moab",
+    "host": "torque",
     "port": 10144,
     "protocol": "SSH",
     "auth": {
@@ -27,7 +27,7 @@
     }
   },
   "storage": {
-    "host": "moab",
+    "host": "torque",
     "port": 10144,
     "protocol": "SFTP",
     "rootDir": "/",

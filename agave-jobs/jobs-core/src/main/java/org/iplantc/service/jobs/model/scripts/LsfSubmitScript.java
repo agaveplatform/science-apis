@@ -69,12 +69,11 @@ public class LsfSubmitScript extends AbstractSubmitScript {
 	}
 	
 	/** 
-	 * Formats the requested {@link Job#getMaxRunTime()} without the seconds
-	 * value. If seconds was greater than zero, the number is rounded down. 
+	 * Formats the requested {@link Job#getMaxRunTime()} in integer minutes.
 	 * If the overall duration is zero, a minimum run time of 1 minute is 
 	 * returned. 
 	 * 
-	 * @returns the {@link Job#getMaxRunTime()} formatted into HH:mm.
+	 * @returns the {@link Job#getMaxRunTime()} formatted into minutes.
 	 */
 	@Override
 	public String getTime()
@@ -85,20 +84,23 @@ public class LsfSubmitScript extends AbstractSubmitScript {
 		
 		// LSF acceptes a minmum run time of 1 minute. Adjust 
 		maxRequestedTimeInMilliseconds = Math.max(maxRequestedTimeInMilliseconds, 60000);
-		
-		// convert to a duration and print. we already pull in joda time
-		// so this saves us having to check for runtime ranges, rounding, etc.
-		Duration duration = new Duration(maxRequestedTimeInMilliseconds);
-		
-		PeriodFormatter hm = new PeriodFormatterBuilder()
-		    .printZeroAlways()
-		    .minimumPrintedDigits(2) // gives the '01'
-		    .appendHours()
-		    .appendSeparator(":")
-		    .appendMinutes()
-		    .toFormatter();
-	
-		return hm.print(duration.toPeriod());
+		Duration d = new Duration(maxRequestedTimeInMilliseconds);
+		d.getStandardMinutes();
+		return String.format("%d", d.getStandardMinutes());
+
+//		// convert to a duration and print. we already pull in joda time
+//		// so this saves us having to check for runtime ranges, rounding, etc.
+//		Duration duration = new Duration(maxRequestedTimeInMilliseconds);
+//
+//		PeriodFormatter hm = new PeriodFormatterBuilder()
+//		    .printZeroAlways()
+//		    .minimumPrintedDigits(1) // gives the '01'
+//		    .appendHours()
+//		    .appendSeparator(":")
+//		    .appendMinutes()
+//		    .toFormatter();
+//
+//		return hm.print(duration.toPeriod());
 		
 	}
 

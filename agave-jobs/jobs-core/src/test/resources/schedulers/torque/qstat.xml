@@ -11,7 +11,7 @@
             <mem>0kb</mem>
             <energy_used>0</energy_used>
         </resources_used>
-        <job_state>C</job_state>
+        <job_state>${JOB_STATUS}</job_state>
         <queue>debug</queue>
         <server>${JOB_NODE}</server>
         <Checkpoint>u</Checkpoint>

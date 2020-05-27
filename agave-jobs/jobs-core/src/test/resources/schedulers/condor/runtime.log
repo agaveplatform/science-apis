@@ -1,0 +1,23 @@
+000 (${JOB_ID}.000.000) 05/27 11:27:01 Job submitted from host: <${JOB_NODE}:36901?addrs=${JOB_NODE}-36901>
+...
+001 (${JOB_ID}.000.000) 05/27 11:27:04 Job executing on host: <${JOB_NODE}:49543?addrs=${JOB_NODE}-49543>
+...
+006 (${JOB_ID}.000.000) 05/27 11:27:08 Image size of job updated: 1
+        0  -  MemoryUsage of job (MB)
+        0  -  ResidentSetSize of job (KB)
+...
+${JOB_STATUS} (${JOB_ID}.000.000) 05/27 11:27:08 Job terminated.
+        (1) Normal termination (return value ${JOB_EXIT_CODE})
+                Usr 0 00:00:00, Sys 0 00:00:00  -  Run Remote Usage
+                Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+                Usr 0 00:00:00, Sys 0 00:00:00  -  Total Remote Usage
+                Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+        10325  -  Run Bytes Sent By Job
+        6396  -  Run Bytes Received By Job
+        10325  -  Total Bytes Sent By Job
+        6396  -  Total Bytes Received By Job
+        Partitionable Resources :    Usage  Request Allocated
+           Cpus                 :                 1         1
+           Disk (KB)            :       22       12  26480434
+           Memory (MB)          :        0     1024      4004
+...

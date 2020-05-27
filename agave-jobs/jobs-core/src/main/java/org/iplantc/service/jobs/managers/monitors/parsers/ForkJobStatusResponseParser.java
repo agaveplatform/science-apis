@@ -25,6 +25,14 @@ public class ForkJobStatusResponseParser implements JobStatusResponseParser {
     }
 
     /**
+     *  The job status query to LoadLeveler was of the form {@code ps -o pid= -o user= -o stat= -o time= -o comm= -p <job_id>}.
+     * 	That means the response should come back in columns with the following fields:
+     *
+     *  <pre>
+     * PID USER  STATUS  TIME COMMAND
+     * </pre>
+     * We parse the status value and use it to generate the appropriate {@link ForkJobStatus} used in the response.
+     *
      * @param remoteJobId           the remote job id to parse from the response
      * @param schedulerResponseText the response text from the remote scheduler
      * @return a {@link JobStatusResponse containing remote status info about the job with {@code remoteJobId}
@@ -34,15 +42,17 @@ public class ForkJobStatusResponseParser implements JobStatusResponseParser {
     @Override
     public JobStatusResponse parse(String remoteJobId, String schedulerResponseText) throws RemoteJobMonitorEmptyResponseException, RemoteJobMonitorResponseParsingException {
 
-        if (StringUtils.isEmpty(schedulerResponseText)) {
+        if (StringUtils.isBlank(schedulerResponseText)) {
             throw new RemoteJobMonitorEmptyResponseException(
-                    "Empty response received from job process check on the remote system.");
+                    "Empty response received from job status check on the remote system. Since the job was " +
+                            "successfully placed into queue, this is likely caused by a communication issue with the " +
+                            "scheduler. Retrying may clear up the issue.");
         } else {
-            String[] lines = schedulerResponseText.replaceAll("\r", "\n").split("\n");
+            String[] lines = StringUtils.stripToEmpty(schedulerResponseText).split("[\\r\\n]+");
             for (String line : lines) {
-                String trimmedLine = line.trim();
+                String trimmedLine = StringUtils.stripToEmpty(line);
                 // bad syntax...possible on some OS, in theory
-                if (StringUtils.isEmpty(trimmedLine) || StringUtils.startsWithAny(trimmedLine, new String[]{"[", "usage", "ps"})) {
+                if (StringUtils.isBlank(trimmedLine) || StringUtils.startsWithAny(trimmedLine, new String[]{"[", "usage", "ps"})) {
                     continue;
                 }
                 // pid is invalid
@@ -52,16 +62,19 @@ public class ForkJobStatusResponseParser implements JobStatusResponseParser {
                 // response isn't a show stopper out of the box. parse for more info
                 else {
                     String[] tokens = StringUtils.split(trimmedLine);
-                    String localId = StringUtils.trim(tokens[0]);
+                    String localId = StringUtils.stripToEmpty(tokens[0]);
                     if (!StringUtils.isNumeric(localId)) {
-                        throw new RemoteJobMonitorResponseParsingException(schedulerResponseText);
+                        throw new RemoteJobMonitorResponseParsingException("Unexpected response format returned from ps: " + schedulerResponseText);
+                    } else if (!StringUtils.equals(remoteJobId, localId)) {
+                        // ignore any non-matching job ids
+                        continue;
                     } else {
-                        return new JobStatusResponse<>(remoteJobId, ForkJobStatus.R, "-1");
+                        return new JobStatusResponse<>(remoteJobId, ForkJobStatus.valueOfCode(tokens[2]), "-1");
                     }
                 }
             }
             // TODO: didn't find a line with the pid, that should mean the process is in a terminal state.
-            return new JobStatusResponse<>(remoteJobId, ForkJobStatus.COMPLETED, "-1");
+            return new JobStatusResponse<>(remoteJobId, ForkJobStatus.DONE, "-1");
         }
     }
 }

@@ -14,6 +14,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 
+/**
+ * Parses a standard Torque and TorquePro {@code qstat} job status checks when structured response data is not
+ * The {@link TorqueXmlJobStatusResponseParser} class should be preferred whenever XML output is available from
+ * the scheduler.
+ * @deprecated
+ * @see TorqueXmlJobStatusResponseParser
+ */
 public class TorqueJobStatusResponseParser implements JobStatusResponseParser {
 	
 	private static final Logger log = Logger.getLogger(TorqueJobStatusResponseParser.class);
@@ -56,7 +63,7 @@ public class TorqueJobStatusResponseParser implements JobStatusResponseParser {
 		else if (schedulerResponseText.toLowerCase().contains("error")) {
 			throw new RemoteJobMonitorResponseParsingException("Unable to obtain job status in the response from the scheduler: " + schedulerResponseText);
 		} else {
-			List<String> lines = Arrays.asList(StringUtils.stripToEmpty(schedulerResponseText).split("[\\r\\n]+"));
+			String[] lines = StringUtils.stripToEmpty(schedulerResponseText).split("[\\r\\n]+");
 			// iterate over each line, finding the one starting with the job id
 			for (String line: lines) {
 				// PBS status lines start with the job id

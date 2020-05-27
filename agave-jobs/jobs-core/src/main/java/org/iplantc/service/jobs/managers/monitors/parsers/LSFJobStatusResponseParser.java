@@ -56,12 +56,12 @@ public class LSFJobStatusResponseParser implements JobStatusResponseParser {
 							"completing and being purged from the qstat job cache. Calling tracejob with sufficient " +
 							"permissions or examining the job logs should provide more information about the job.");
 		}
-		else if (schedulerResponseText.toLowerCase().contains("unknown")
+		else if (schedulerResponseText.toLowerCase().contains("job id")
 				|| schedulerResponseText.toLowerCase().contains("error")
 				|| schedulerResponseText.toLowerCase().contains("not ")) {
 			throw new RemoteJobMonitorResponseParsingException("Unable to obtain job status in the response from the scheduler: " + schedulerResponseText);
 		} else {
-			List<String> lines = Arrays.asList(StringUtils.stripToEmpty(schedulerResponseText).split("[\\r\\n]+"));
+			String[] lines = StringUtils.stripToEmpty(schedulerResponseText).split("[\\r\\n]+");
 			// iterate over each line, finding the one starting with the job id
 			for (String line: lines) {
 				// PBS status lines start with the job id
@@ -89,13 +89,13 @@ public class LSFJobStatusResponseParser implements JobStatusResponseParser {
 	 * @return a {@link JobStatusResponse} containing remote status info about the job with {@code remoteJobId}
 	 * @throws RemoteJobMonitorResponseParsingException if unable to parse the job status
 	 */
-	protected JobStatusResponse<PBSJobStatus> parseLine(String remoteJobId, String statusLine) throws RemoteJobMonitorResponseParsingException {
+	protected JobStatusResponse<LSFJobStatus> parseLine(String remoteJobId, String statusLine) throws RemoteJobMonitorResponseParsingException {
 
 		List<String> tokens = Arrays.asList(StringUtils.split(statusLine));
 
 		if (StringUtils.isNotBlank(tokens.get(0)) && remoteJobId.equals(tokens.get(0))) {
 			try {
-				PBSJobStatus remoteJobStatus = PBSJobStatus.valueOfCode(tokens.get(2));
+				LSFJobStatus remoteJobStatus = LSFJobStatus.valueOfCode(tokens.get(2));
 				String exitCode = "0";
 				return new JobStatusResponse<>(remoteJobId, remoteJobStatus, exitCode);
 			}

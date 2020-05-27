@@ -2,17 +2,16 @@ package org.iplantc.service.jobs.managers.monitors.parsers;
 
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorEmptyResponseException;
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorResponseParsingException;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Test(groups={"unit"})
-public class TorqueJobStatusResponseParserTest extends AbstractJobStatusResponseParserTest {
+@Test(enabled=false, groups={"unit"})
+public class CondorJobStatusResponseParserTest extends AbstractJobStatusResponseParserTest {
 
-	protected final static String TEST_SCHEDULER_JOB_ID = "1125";
+	protected final static String TEST_SCHEDULER_JOB_ID = "0";
 	protected final String TEST_USER = "testuser";
 
 	/**

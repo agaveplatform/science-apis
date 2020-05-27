@@ -290,15 +290,15 @@ public enum SGEJobStatus implements RemoteSchedulerJobStatus<SGEJobStatus> {
     }
 
     /**
-     * Returns the {@link SGEJobStatus} with code matching the value passed in regardless of case.
-     * This is similar to valueOf, but provides an {@link SGEJobStatus#UNKNOWN} value when
-     * no codes match.
-     * @param code the status code to match in a case-insensitive way.
+     * Returns the {@link SGEJobStatus} with code matching the value passed in. Unlike other {@link RemoteSchedulerJobStatus}
+     * classes, case sensitivity matters here due to the recycling of status codes with upper and lower cases.
+     * This is similar to valueOf, but provides an {@link SGEJobStatus#UNKNOWN} value when no codes match.
+     * @param code the status code to match. Case-sensitivity matters.
      * @return the {@link SGEJobStatus} with matching code, or {@link SGEJobStatus#UNKNOWN} if no matches.
      */
     public static SGEJobStatus valueOfCode(String code) {
         for(SGEJobStatus status: values()) {
-            if (status.code.equalsIgnoreCase(code)) {
+            if (status.code.equals(code)) {
                 return status;
             }
         }

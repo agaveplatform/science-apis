@@ -26,15 +26,17 @@ public class LoadLevelerJobStatusResponseParser implements JobStatusResponsePars
 	}
 
 	/**
-	 * The job status query to LSF was of the form {@code bjobs -w -noheader <job_id>}. That means the response should
+	 * The job status query to LoadLeveler was of the form {@code llq <job_id>}. That means the response should
 	 * come back in a tabbed column with the following fields
 	 *
 	 * <pre>
-	 * $ bjobs -w -noheader 114
-	 * 114     testuser RUN   normal     fc0b07ca1fb9 fc0b07ca1fb9 test_job   May  9 02:59
+	 * $ llq 114
+	 * Id               Owner    Submitted    ST  PRI Class        Running On
+	 * ---------------- -------- -----------  --  --- ------------ ----------
+	 * 114.11.0         tesuser  7/28 10:05   R   50  data_stage   lltest
 	 * </pre>
 	 *
-	 * We parse the status value and use it to generate the appropriate {@link LSFJobStatus} used in the response.
+	 * We parse the status value and use it to generate the appropriate {@link LoadLevelerJobStatus} used in the response.
 	 *
 	 * @param remoteJobId the remote job id to parse from the response
 	 * @param schedulerResponseText the response text from the remote scheduler
@@ -56,15 +58,15 @@ public class LoadLevelerJobStatusResponseParser implements JobStatusResponsePars
 							"completing and being purged from the qstat job cache. Calling tracejob with sufficient " +
 							"permissions or examining the job logs should provide more information about the job.");
 		}
-		else if (schedulerResponseText.toLowerCase().contains("unknown")
+		else if (schedulerResponseText.toLowerCase().contains("job id")
 				|| schedulerResponseText.toLowerCase().contains("error")
 				|| schedulerResponseText.toLowerCase().contains("not ")) {
 			throw new RemoteJobMonitorResponseParsingException("Unable to obtain job status in the response from the scheduler: " + schedulerResponseText);
 		} else {
-			List<String> lines = Arrays.asList(StringUtils.stripToEmpty(schedulerResponseText).split("[\\r\\n]+"));
-			// iterate over each line, finding the one starting with the job id
+			String[] lines = StringUtils.stripToEmpty(schedulerResponseText).split("[\\r\\n]+");
+			// Iterate over each line, finding the one starting with the job id
 			for (String line: lines) {
-				// PBS status lines start with the job id
+				// LoadLeveler status lines start with the job id
 				if (line.startsWith(remoteJobId)) {
 					try {
 						// parse the line with the status info in it
@@ -79,33 +81,45 @@ public class LoadLevelerJobStatusResponseParser implements JobStatusResponsePars
 	}
 
 	/**
-	 * Parses a single status line from the remote server response. Job id, username, and status cannot contain
-	 * spaces, so it is sufficient to split the status line and use the tokens. Expected format is:
-	 * <pre>
-	 * 114     testuser RUN   normal     fc0b07ca1fb9 fc0b07ca1fb9 test_job   May  9 02:59
-	 * </pre>
+	 * Parses a single status line from the remote server response. This should be the line containing the actual
+	 * status info for the LoadLeveler job, trimmed of any headers, debug info, etc.
+	 *
 	 * @param remoteJobId the remote job id to parse from the response
 	 * @param statusLine the qstat job status line
 	 * @return a {@link JobStatusResponse} containing remote status info about the job with {@code remoteJobId}
 	 * @throws RemoteJobMonitorResponseParsingException if unable to parse the job status
 	 */
-	protected JobStatusResponse<PBSJobStatus> parseLine(String remoteJobId, String statusLine) throws RemoteJobMonitorResponseParsingException {
+	protected JobStatusResponse<LoadLevelerJobStatus> parseLine(String remoteJobId, String statusLine) throws RemoteJobMonitorResponseParsingException {
 
 		List<String> tokens = Arrays.asList(StringUtils.split(statusLine));
+		// output frsom {@code llq <job_id> } should be similar to one of the two following formats depending on LoadLeveler
+		// <pre>Id               Owner    Submitted    ST  PRI Class        Running On</pre>
 
-		if (StringUtils.isNotBlank(tokens.get(0)) && remoteJobId.equals(tokens.get(0))) {
-			try {
-				PBSJobStatus remoteJobStatus = PBSJobStatus.valueOfCode(tokens.get(2));
-				String exitCode = "0";
-				return new JobStatusResponse<>(remoteJobId, remoteJobStatus, exitCode);
-			}
-			catch (Throwable e) {
-				throw new RemoteJobMonitorResponseParsingException("Unexpected fields in the response from the scheduler");
+		// in case the response is customized, we start checking from the last column inward,
+		// looking for single character values, which is what the status would be.
+		String exitCode = "0";
+		for (int i=tokens.size()-1; i > 0; i--) {
+			if (tokens.get(i).matches("^([a-zA-Z]{1,2})$")) {
+				try {
+					LoadLevelerJobStatus remoteJobStatus = LoadLevelerJobStatus.valueOfCode(tokens.get(i));
+					return new JobStatusResponse<>(remoteJobId, remoteJobStatus, exitCode);
+				}
+				catch (Throwable e) {
+					throw new RemoteJobMonitorResponseParsingException("Unexpected fields in the response from the scheduler");
+				}
 			}
 		}
-		else {
-			throw new RemoteJobMonitorResponseParsingException(
-					"Unable to obtain job status in the response from the scheduler: " + statusLine);
+
+		// The status line wasn't delimited like we thought and/or we couldn't find a valid status code, so we
+		// check for the job id as the first token indicating that it was a status line, but that we could
+		// not decipher the status. If found, we return a JobStatusResponse with LoadLevelerJobStatus.UNKNOWN
+		// letting the scheduler know that the job was present, but no longer in a known running state.
+		if (tokens.get(0).equals(remoteJobId)) {
+			return new JobStatusResponse<>(remoteJobId, LoadLevelerJobStatus.UNKNOWN, exitCode);
+		} else {
+			// Otherwise, we don't really know what we have, so we reject the status line and throw a
+			// RemoteJobMonitorResponseParsingException indicating we couldn't parse the response.
+			throw new RemoteJobMonitorResponseParsingException("Unable to obtain job status in the response from the scheduler: " + statusLine);
 		}
 	}
 }

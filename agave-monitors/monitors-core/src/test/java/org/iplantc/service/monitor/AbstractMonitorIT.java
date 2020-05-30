@@ -224,21 +224,27 @@ public class AbstractMonitorIT {
 
 	public void clearSystems()
 	{
-	    Session session = null;
-        try
-        {
-            HibernateUtil.beginTransaction();
-            session = HibernateUtil.getSession();
-            session.clear();
-            HibernateUtil.disableAllFilters();
+		Session session = null;
+		try {
+			HibernateUtil.beginTransaction();
+			session = HibernateUtil.getSession();
+			session.clear();
+			HibernateUtil.disableAllFilters();
 
-            session.createQuery("delete RemoteSystem").executeUpdate();
-            session.flush();
-        }
-        finally
-        {
-            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
-        }
+			session.createQuery("delete RemoteSystem").executeUpdate();
+			session.createQuery("delete BatchQueue").executeUpdate();
+			session.createQuery("delete StorageConfig").executeUpdate();
+			session.createQuery("delete LoginConfig").executeUpdate();
+			session.createQuery("delete AuthConfig").executeUpdate();
+			session.createQuery("delete SystemRole").executeUpdate();
+			session.createQuery("delete CredentialServer").executeUpdate();
+			session.createQuery("delete SystemHistoryEvent").executeUpdate();
+			session.flush();
+		} catch (Throwable t) {
+			t.printStackTrace();
+		} finally {
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
+		}
 	}
 	
 	public void initSystems() throws Exception

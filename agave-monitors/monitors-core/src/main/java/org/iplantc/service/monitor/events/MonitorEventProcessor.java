@@ -8,11 +8,16 @@ import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.MonitorCheck;
 import org.iplantc.service.monitor.model.enumeration.MonitorEventType;
 import org.iplantc.service.notification.managers.NotificationManager;
+import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.events.RemoteSystemEventProcessor;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.RemoteSystem;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.iplantc.service.systems.model.enumerations.RoleType;
+import org.iplantc.service.systems.model.enumerations.SystemEventType;
+import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 
 /**
  * Handles sending and propagation of events on {@link Monitor} and {@link MonitorCheck} objects.
@@ -188,13 +193,14 @@ public class MonitorEventProcessor {
 			// if the result of this check was different from the last, sent a MonitorEventType.RESULT_CHANGE event
 			if (lastCheck != null && !currentCheck.getResult().equals(lastCheck.getResult())) {
 				processNotification(monitor.getUuid(), MonitorEventType.RESULT_CHANGE.name(), createdBy, sJson);
-				
+
 				processNotification(monitor.getSystem().getUuid(), "MONITOR_" + eventType.name(), createdBy, sJson);
 			}
 			
 			// multiple checks can run for a single monitor. if this check tips the scale and 
 			// changes the overall monitor status, send a result
-			if (currentCheck.getResult().getSystemStatus() != monitor.getSystem().getStatus()) {
+			RemoteSystem system = monitor.getSystem();
+			if (currentCheck.getResult().getSystemStatus() != system.getStatus()) {
 				
 				// monitor event
 				processNotification(monitor.getUuid(), MonitorEventType.STATUS_CHANGE.name(), createdBy, sJson);
@@ -202,9 +208,10 @@ public class MonitorEventProcessor {
 				// delegated system event
 				processNotification(monitor.getSystem().getUuid(), "MONITOR_" + MonitorEventType.STATUS_CHANGE.name(), createdBy, sJson);
 				
-				// if the monitor is configured to update a system, then do so here. The SystemManager
-				// can handle its own event propagation.
-				if (monitor.isUpdateSystemStatus()) {
+				// if the monitor is configured to update a system on monitor status change and the user has permission
+				// to do so on the target system, then do so here. The SystemManager will handle its own event
+				// propagation of system update events.
+				if (monitor.isUpdateSystemStatus() && userCanUpdateSystemStatus(system, monitor.getOwner())) {
 					SystemManager systemManager = new SystemManager();
 					systemManager.updateSystemStatus(monitor.getSystem(), currentCheck.getResult().getSystemStatus(), monitor.getOwner());
 				}
@@ -218,6 +225,20 @@ public class MonitorEventProcessor {
 		
 		return event;
 	}
+
+	/**
+	 * Checks the user has at least {@link RoleType#ADMIN} on the {@code system} to authorize an update.
+	 *
+	 * @param system the system to check the user role
+	 * @param username the user whose role will be checked
+	 * @return true if the user has permission, false otherwise
+	 */
+	protected boolean userCanUpdateSystemStatus(RemoteSystem system, String username) {
+
+		return system.getUserRole(username).canAdmin();
+	}
+
+
 	
 //	/**
 //	 * Generates notification events for granting and revoking {@link AgaveEntityPermission} 

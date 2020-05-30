@@ -308,5 +308,4 @@ public abstract class RemoteConfig implements LastUpdatable
 	{
 		return getProtocol().name() + "://" + host + ":" + port;
 	}
-
 }

@@ -210,13 +210,13 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 					.build();
 		} catch (MonitorException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					e.getLocalizedMessage(), e);
+					e.getLocalizedMessage());
 		} catch (NumberFormatException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					"Unable to save monitor: " + e.getMessage(), e);
+					"Unable to save monitor: " + e.getMessage());
 		} catch (NotificationException e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-					"Failed to save monitor: " + e.getMessage(), e);
+					"Failed to save monitor: " + e.getMessage());
 		}
 	}
 	

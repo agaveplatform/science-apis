@@ -75,52 +75,20 @@ public class GSISSHClient implements RemoteSubmissionClient
         // Execute command
         try {
 			CommandExecutor.executeCommand(commandInfo, serverInfo, authenticationInfo, commandOutput, new ConfigReader());
-		} catch (SSHApiException e) {
-			throw new RemoteExecutionException("Failed to execute command " + command + " on " + hostname + ":" + port, e);
 		} catch (Exception e) {
-			throw new RemoteExecutionException("Failed to execute command " + command + " on " + hostname + ":" + port, e);
+			String msg = String.format("Failed to execute command \"%s\" on %s:%d: %s",
+					command, hostname, port, e.getMessage());
+			log.error(msg);
+			throw new RemoteExecutionException(msg, e);
+//		} catch (Exception e) {
+//			throw new RemoteExecutionException("Failed to execute command " + command + " on " + hostname + ":" + port, e);
 		}
         
         return commandOutput.getStdOutputString();
 	}
 
-	public void close() {}
-
-	
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args)
-	{
-
-		// Set up a simple configuration that logs on the console.
-		log.addAppender(new ConsoleAppender());
-		log.setLevel(Level.DEBUG);
-		String response = "";
-		GSISSHClient client = null;
-		try
-		{
-			System.out.println("Retrieving credential...");
-			
-			GSSCredential proxy = MyProxyClient.getCredential("myproxy.teragrid.org", 7512, "username","passphrase", null);
-			System.out.println("Credential retrieved valid for "
-					+ proxy.getRemainingLifetime() + " seconds");
-
-			System.out.println("Connecting to " + "stampede...");
-			client = new GSISSHClient("stampede.tacc.utexas.edu",2222, proxy);
-			System.out.println("Running command");
-
-			response = client.runCommand("/bin/date");//"source ~/.bashrc; cd /home1/02818/reddy/dxing/job-0001391405382179-b0b0b0bb0b-0001-007-meme_test/meme_4.9.1; chmod +x meme_test.ipcexe; sbatch meme_test.ipcexe");
-
-			System.out.println(response);
-			log.debug(response);
-
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-		}
-	}
+	@Override
+	public void close() throws Exception {}
 
 	@Override
 	public boolean canAuthentication()
@@ -141,9 +109,7 @@ public class GSISSHClient implements RemoteSubmissionClient
         // Execute command
         try {
 			CommandExecutor.executeCommand(commandInfo, serverInfo, authenticationInfo, commandOutput, new ConfigReader());
-		} catch (SSHApiException e) {
-			return false;
-		} catch (IOException e) {
+		} catch (IOException | SSHApiException e) {
 			return false;
 		}
         
@@ -159,5 +125,40 @@ public class GSISSHClient implements RemoteSubmissionClient
 	public int getPort() {
 		return port;
 	}
+
+//	/**
+//	 * @param args
+//	 */
+//	public static void main(String[] args)
+//	{
+//
+//		// Set up a simple configuration that logs on the console.
+//		log.addAppender(new ConsoleAppender());
+//		log.setLevel(Level.DEBUG);
+//		String response = "";
+//		GSISSHClient client = null;
+//		try
+//		{
+//			System.out.println("Retrieving credential...");
+//
+//			GSSCredential proxy = MyProxyClient.getCredential("myproxy.teragrid.org", 7512, "username","passphrase", null);
+//			System.out.println("Credential retrieved valid for "
+//					+ proxy.getRemainingLifetime() + " seconds");
+//
+//			System.out.println("Connecting to " + "stampede...");
+//			client = new GSISSHClient("stampede.tacc.utexas.edu",2222, proxy);
+//			System.out.println("Running command");
+//
+//			response = client.runCommand("/bin/date");//"source ~/.bashrc; cd /home1/02818/reddy/dxing/job-0001391405382179-b0b0b0bb0b-0001-007-meme_test/meme_4.9.1; chmod +x meme_test.ipcexe; sbatch meme_test.ipcexe");
+//
+//			System.out.println(response);
+//			log.debug(response);
+//
+//		}
+//		catch (Exception e)
+//		{
+//			e.printStackTrace();
+//		}
+//	}
 
 }

@@ -512,21 +512,15 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
                      * Now that the local proxy tunnel is running, make the call to
                      * the target server through the tunnel.
                      */
-                    MaverickSSHSubmissionClient proxySubmissionClient = null;
                     String proxyResponse = null;
-                    try {
-                        proxySubmissionClient = new MaverickSSHSubmissionClient("127.0.0.1", randomlyChosenTunnelPort, username,
-                                password, null, proxyPort, publicKey, privateKey);
+                    try (MaverickSSHSubmissionClient proxySubmissionClient = new MaverickSSHSubmissionClient("127.0.0.1", randomlyChosenTunnelPort, username,
+                            password, null, proxyPort, publicKey, privateKey)) {
                         proxyResponse = proxySubmissionClient.runCommand(command);
                         return proxyResponse;
                     } catch (RemoteExecutionException e) {
                         throw e;
                     } catch (Exception e) {
                         throw new RemoteConnectionException("Failed to connect to destination server " + hostname + ":" + port, e);
-                    } finally {
-                        try {
-                            if (proxySubmissionClient != null) proxySubmissionClient.close();
-                        } catch (Exception ignored) {}
                     }
 
 //					if (sessionStarted) {
@@ -652,17 +646,17 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
         } catch (RemoteConnectionException|RemoteExecutionException e) {
             throw e;
         } catch (Throwable t) {
-            String msg = "Failed to execute command on " + hostname + " due to " +
-                    t.getClass().getSimpleName() + " exception.";
-            log.error(msg + ": " + t.getMessage());
+            String msg = String.format("Failed to execute command \"%s\" on %s:%d: %s",
+                    command, hostname, port, t.getMessage());
+            log.error(msg);
             throw new RemoteExecutionException(msg, t);
         } finally {
-            close();
+            try { close(); } catch (Exception ignored) {}
         }
     }
 
     @Override
-    public void close() {
+    public void close() throws Exception {
         // Disconnect all communication links.
         try {
             if (ssh2 != null) ssh2.disconnect();
@@ -697,7 +691,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
         } catch (RemoteExecutionException e) {
             return false;
         } finally {
-            close();
+            try { close(); } catch (Exception ignored) {}
         }
     }
 

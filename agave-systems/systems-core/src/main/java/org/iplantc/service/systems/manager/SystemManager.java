@@ -80,50 +80,52 @@ public class SystemManager {
 		this.eventProcessor = eventProcessor;
 	}
 
-	/**
-	 * Returns true if the login configuration is valid and can be used
-	 * to connect to the remote system.
-	 * 
-	 * @param loginConfig
-	 * @return true if a connection can be established, false otherwise
-	 * @throws SystemException
-	 */
-	public boolean isLoginConfigValid(LoginConfig loginConfig) 
-	{
-		if (loginConfig == null) {
-			throw new SystemException("No login configuration provided.");
-		} 
-		
-		try {
-			loginConfig.testConnection();
-			
-			return true;
-		} catch (Exception e) {
-			return false;
-		}
-	}
-	
-	/**
-	 * Returns true if the storage configuration is valid and can be used
-	 * to connect to the remote system.
-	 *
-	 * @param storageConfig
-	 * @return true if a connection can be established, false otherwise
-	 * @throws SystemException
-	 */
-	public boolean isDataConfigValid(StorageConfig storageConfig) 
-	{
-		if (storageConfig == null) {
-			throw new SystemException("No storage configuration provided.");
-		} 
-		
-		try {
-			storageConfig.testConnection();
-			return true;
-		} catch (Exception e) {
-			return false;
-		}
-	}
+//	/**
+//	 * Returns true if the login configuration is valid and can be used
+//	 * to connect to the remote system.
+//	 *
+//	 * @param loginConfig
+//	 * @return true if a connection can be established, false otherwise
+//	 * @throws SystemException
+//	 * @deprecated
+//	 */
+//	public boolean isLoginConfigValid(LoginConfig loginConfig)
+//	{
+//		if (loginConfig == null) {
+//			throw new SystemException("No login configuration provided.");
+//		}
+//
+//		try {
+//			loginConfig.testConnection();
+//
+//			return true;
+//		} catch (Exception e) {
+//			return false;
+//		}
+//	}
+//
+//	/**
+//	 * Returns true if the storage configuration is valid and can be used
+//	 * to connect to the remote system.
+//	 *
+//	 * @param storageConfig
+//	 * @return true if a connection can be established, false otherwise
+//	 * @throws SystemException
+//	 * @deprecated
+//	 */
+//	public boolean isDataConfigValid(StorageConfig storageConfig)
+//	{
+//		if (storageConfig == null) {
+//			throw new SystemException("No storage configuration provided.");
+//		}
+//
+//		try {
+//			storageConfig.testConnection();
+//			return true;
+//		} catch (Exception e) {
+//			return false;
+//		}
+//	}
 
 	/**
 	 * Returns true if the api user has a role sufficient to perform management
@@ -1678,7 +1680,7 @@ public class SystemManager {
     /**
      * Sets the system availability to false and notifies subscribers
      * @param system the system to make available
-     * @param username user who made the request
+     * @param createdBy user who made the request
      * @return the updated system
      */
     public RemoteSystem disableSystem(RemoteSystem system, String createdBy) 
@@ -1709,18 +1711,18 @@ public class SystemManager {
 
 	/**
 	 * Updates the system status and propagates events by calling the
-	 * {@link RemoteSystemEventProcessor#processStatusChangeEvent(RemoteSystem, SystemStatusType, String))}
-	 * method.
-	 * 
-	 * @param system
-	 * @param newSystemStatus
-	 * @param username
+	 * {@link RemoteSystemEventProcessor#processSystemUpdateEvent(RemoteSystem, SystemEventType, String)}
+	 * method. No authorization is performed within this method
+	 *
+	 * @param system the system to update
+	 * @param newSystemStatus the new status to assign to the system
+	 * @param username the user to whom the udpate is attributed
 	 */
 	public void updateSystemStatus(RemoteSystem system, SystemStatusType newSystemStatus, String username) {
-		
+
 		getDao().updateStatus(system, newSystemStatus);
 		SystemStatusType oldSystemStatus = system.getStatus();
-		
+
 		getEventProcessor().processStatusChangeEvent(system, oldSystemStatus, newSystemStatus, username);
 	}
 }

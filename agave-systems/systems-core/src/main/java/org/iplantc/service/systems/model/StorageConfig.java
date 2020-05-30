@@ -223,11 +223,11 @@ public class StorageConfig extends RemoteConfig implements LastUpdatable
 		return protocol.name() + "  " + host + ":" + port;
 	}
 
-	@Override
-	public boolean testConnection() throws IOException
-	{
-		throw new NotImplementedException();
-	}
+//	@Override
+//	public boolean testConnection() throws IOException
+//	{
+//		throw new NotImplementedException();
+//	}
 
 	public static StorageConfig fromJSON(JSONObject jsonConfig) throws SystemArgumentException
 	{

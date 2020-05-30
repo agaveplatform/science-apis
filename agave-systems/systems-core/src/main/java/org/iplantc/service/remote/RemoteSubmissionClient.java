@@ -16,7 +16,7 @@ import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
  * @author dooley
  *
  */
-public interface RemoteSubmissionClient {
+public interface RemoteSubmissionClient extends AutoCloseable {
 
 	/**
 	 * Run a command on a remote host. Authentication is handled prior
@@ -28,10 +28,13 @@ public interface RemoteSubmissionClient {
 	public String runCommand(String command) throws RemoteExecutionException, RemoteConnectionException;
 
 	/**
-	 * Explicitly force the connection to the remote host to close.
-	 * All exceptions are swallowed in this operation.
+	 * Explicitly force the connection to the remote host to close. Any state, session, etc. will be cleaned up
+	 * and released. All exceptions are swallowed in this operation. The exception declaration is kept for
+	 * compliance with the {@link AutoCloseable} interface.
+	 *
+	 * @throws Exception this will always be swallowed, so nothing will ever actually be thrown here.
 	 */
-	public void close();
+	public void close() throws Exception ;
 	
 	/**
 	 * Check whether authentication is valid on the remote host.

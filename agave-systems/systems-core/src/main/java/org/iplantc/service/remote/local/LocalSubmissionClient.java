@@ -18,7 +18,7 @@ public class LocalSubmissionClient implements RemoteSubmissionClient
 	}
 	
 	@Override
-	public void close() {}
+	public void close() throws Exception {}
 	
 	public String runCommand(String command) throws RemoteExecutionException, RemoteConnectionException
 	{	
@@ -44,8 +44,7 @@ public class LocalSubmissionClient implements RemoteSubmissionClient
 	}
 
 	@Override
-	public boolean canAuthentication()
-	{
+	public boolean canAuthentication() {
 		return true;
 	}
 

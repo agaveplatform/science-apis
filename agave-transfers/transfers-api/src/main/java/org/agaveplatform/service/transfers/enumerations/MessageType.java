@@ -47,4 +47,5 @@ public interface MessageType {
     public static final String  TRANSFER_FAILED = "transfer.failed";
     public static final String  TRANSFER_RETRY = "transfer.retry";
     public static final String  TRANSFER_ALL = "transfer.all";
+    public static final String  TRANSFERTASK_NOTIFICATION = "transfertask.notification";
 }

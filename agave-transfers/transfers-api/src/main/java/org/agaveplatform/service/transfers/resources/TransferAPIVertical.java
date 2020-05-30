@@ -220,6 +220,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         String tenantId = routingContext.get("tenantId");
         if (StringUtils.isBlank(tenantId)) tenantId = "agave.dev";
         TransferTask transferTask = new TransferTask(routingContext.getBodyAsJson());
+
         dbService.create(tenantId, transferTask, reply -> {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());

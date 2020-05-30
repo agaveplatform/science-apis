@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("👋 TransferTaskAssignedListener test")
-//@Disabled
 class TransferTaskAssignedListenerTest {
 
 	private final String TEST_USERNAME = "testuser";

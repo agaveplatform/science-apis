@@ -44,11 +44,8 @@ public class TransferApiVerticalTest extends BaseTestCase {
     private static final Logger log = LoggerFactory.getLogger(TransferApiVerticalTest.class);
     private Vertx vertx;
     private JWTAuth jwtAuth;
-
-    private static RequestSpecification requestSpecification;
-
     private TransferTaskDatabaseService dbService;
-
+    private static RequestSpecification requestSpecification;
 
     /**
      * Initializes the jwt auth options and the
@@ -129,6 +126,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
                     .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
                     .setBaseUri("http://localhost:" + port + "/")
                     .build();
+
             ctx.verify(() -> {
                 String response = given()
                         .spec(requestSpecification)
@@ -148,7 +146,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
 
     @Test
     @DisplayName("Create new transfer task")
-//    @Disabled
+    @Disabled
     void create(Vertx vertx, VertxTestContext ctx) {
         TransferTask tt = _createTestTransferTask();
         DeploymentOptions options = new DeploymentOptions().setConfig(config);

@@ -170,10 +170,8 @@ public class DefaultJobMonitor extends AbstractJobMonitor {
 	 * @throws RemoteJobMonitoringException if unable to fetch the condor log file content for any reason.
 	 */
 	public String getJobStatusResponse(String command) throws RemoteJobMonitoringException {
-		RemoteSubmissionClient remoteSubmissionClient = null;
 
-		try {
-			remoteSubmissionClient = getRemoteSubmissionClient();
+		try (RemoteSubmissionClient remoteSubmissionClient = getRemoteSubmissionClient()) {
 
 			log.debug("Forking command \"" + command + "\" on " + remoteSubmissionClient.getHost() + ":" +
 					remoteSubmissionClient.getPort() + " for job " + job.getUuid());
@@ -186,9 +184,6 @@ public class DefaultJobMonitor extends AbstractJobMonitor {
 		} catch (Exception e) {
 			throw new RemoteJobMonitoringException("Failed to retrieve status information for job " + job.getUuid() +
 					" from remote system.", e);
-		} finally {
-			if (remoteSubmissionClient != null)
-				remoteSubmissionClient.close();
 		}
 	}
 }

@@ -1,5 +1,6 @@
 package org.iplantc.service.jobs.managers.monitors.parsers;
 
+import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 
@@ -28,16 +29,6 @@ public enum CondorJobStatus implements RemoteSchedulerJobStatus<CondorJobStatus>
 		this.setCode(code);
 		this.setMappedJobStatusType(mappedJobStatusType);
 	}
-
-    public static CondorJobStatus valueOfCode(String code) {
-		for(CondorJobStatus status: values()) {
-			if (status.code.equals(code)) {
-				return status;
-			}
-		}
-
-		return UNKNOWN;
-    }
 
     /**
 	 * @return the description
@@ -271,5 +262,23 @@ public enum CondorJobStatus implements RemoteSchedulerJobStatus<CondorJobStatus>
 	 */
 	private void setMappedJobStatusType(JobStatusType mappedJobStatusType) {
 		this.mappedJobStatusType = mappedJobStatusType;
+	}
+
+	/**
+	 * Returns the {@link CondorJobStatus} with code matching the value passed in regardless of case.
+	 * This is similar to valueOf, but provides an {@link CondorJobStatus#UNKNOWN} value when
+	 * no codes match.
+	 * @param code the status code to match in a case-insensitive way.
+	 * @return the {@link CondorJobStatus} with matching code, or {@link CondorJobStatus#UNKNOWN} if no matches.
+	 */
+	public static CondorJobStatus valueOfCode(String code) {
+		String paddedCode = StringUtils.leftPad(code, 3, "0");
+		for(CondorJobStatus status: values()) {
+			if (status.code.equalsIgnoreCase(paddedCode)) {
+				return status;
+			}
+		}
+
+		return UNKNOWN;
 	}
 }

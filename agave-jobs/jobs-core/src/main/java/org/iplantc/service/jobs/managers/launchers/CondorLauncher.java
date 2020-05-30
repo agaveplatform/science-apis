@@ -498,18 +498,13 @@ public class CondorLauncher  extends AbstractJobLauncher {
                 + "chmod +x *.sh");
         ExecutionSystem system = (ExecutionSystem) new SystemDao().findBySystemId(getJob().getSystem());
 
-        RemoteSubmissionClient remoteSubmissionClient = null;
-        try {
-            remoteSubmissionClient = system.getRemoteSubmissionClient(getJob().getInternalUsername());
+        try (RemoteSubmissionClient remoteSubmissionClient = system.getRemoteSubmissionClient(getJob().getInternalUsername())) {
             String response = remoteSubmissionClient.runCommand(changePermissionsCmd);
             if (response.contains("Cannot")) {
                 throw new JobException("Failed to create transfer package for condor submission. \n" + response);
             }
         } catch (Exception e) {
             e.printStackTrace();  //To change body of catch statement use File | Settings | File Templates.
-        }finally{
-            remoteSubmissionClient.close();
-
         }
     }
 

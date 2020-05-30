@@ -211,7 +211,7 @@ services:
 #      - '7515:7512'
 
   slurm:
-    image: agaveplatform/slurm:latest
+    image: agaveplatform/slurm:14.03.9
     hostname: docker.example.com
     ports:
       - '10133:22'

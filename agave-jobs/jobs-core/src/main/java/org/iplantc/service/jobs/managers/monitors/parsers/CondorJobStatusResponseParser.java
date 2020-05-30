@@ -1,25 +1,32 @@
 package org.iplantc.service.jobs.managers.monitors.parsers;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorEmptyResponseException;
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorResponseParsingException;
 import org.iplantc.service.jobs.managers.JobStatusResponse;
 import org.iplantc.service.systems.model.enumerations.SchedulerType;
 
 /**
- * Job status parser for CondorHT job log files. CondorHT does not have a queryable interface
- * for job status, so we need to check the job log file for status info. The log file is written
- * in "sections" with one section per job status update. The job status is given as a three digit
- * code at the start of a section header line.
+ * Job status parser for CondorHT job log files. HTCondor does not have a descriptive queryable interface
+ * for job status, and jobs are immediately purged from the {@code condor_q} response upon completion, so
+ * we use the {@code runtime.log} file in the job directory to track job status. The log file is written
+ * in "sections" with one section per job status update. The job status is given as a three digit code at
+ * the start of a section header line.
  */
 public class CondorJobStatusResponseParser implements JobStatusResponseParser {
-    /**
-     * List of the {@link CondorJobStatus} codes found in the section headers of the condor log file.
-     * We use a list because order is important. Generally the last status is the one we care about,
-     * but we parse them all in the event there is a log race condition.
-     */
-    private ArrayList<CondorJobStatus> condorLogStatuses = new ArrayList<CondorJobStatus>();
+    private static final String CONDOR_LOG_EVENT_EXIT_CODE_REGEX = "(?:.*\\(return value )(?<exitCode>[\\d]+)(?:\\).*)";
+    private static final String CONDOR_LOG_EVENT_HEADER_REGEX = "(?<statusCode>[\\d]{3})\\s+\\((?<jobId>[\\d]+)(?:\\.[\\d]+\\.[\\d]+)\\)\\s+(?<eventDate>[0-9/]+)\\s+(?<eventTime>[0-9:]+)\\s+(?<eventMessage>.*)";
+    private static final String CONDOR_LOG_EVENT_DELIMITER_REGEX = "\\.\\.\\.";
+//    /**
+//     * List of the {@link CondorLogJobStatus} codes found in the section headers of the condor log file.
+//     * We use a list because order is important. Generally the last status is the one we care about,
+//     * but we parse them all in the event there is a log race condition.
+//     */
+//    private ArrayList<CondorLogJobStatus> condorLogStatuses = new ArrayList<CondorLogJobStatus>();
 
     /**
      * Provides a mapping from {@link JobStatusResponseParser} to one or more {@link SchedulerType} for which this
@@ -36,11 +43,12 @@ public class CondorJobStatusResponseParser implements JobStatusResponseParser {
      * Parses the file into sections based on predefined section headers and footers. A section header
      * follows the general pattern:
      *
-     * <pre>000 (154.000.000) 01/31 14:27:43 Job submitted from host: <192.168.10.1:56091></pre>
-     * <p>
+     * <pre>
+     * 000 (154.000.000) 01/31 14:27:43 Job submitted from host: <192.168.10.1:56091>
+     * </pre>
+     *
      * The First three digits of the header line mark the beginning of a section and indicate the condor status code
-     * determining the job satus. A section footer contains a single line with three periods, "...", and marks the
-     * end of the section.
+     * determining the job satus. A section break contains a single line with three periods, "...".
      *
      * A full log file for a test job will resemble the following:
      * <pre>
@@ -73,79 +81,108 @@ public class CondorJobStatusResponseParser implements JobStatusResponseParser {
      * @return a {@link JobStatusResponse} containing remote status info about the job with {@code remoteJobId}
      * @throws RemoteJobMonitorEmptyResponseException if {@code schedulerResponseText} is blank
      * @throws RemoteJobMonitorResponseParsingException if {@code schedulerResponseText} could not be parsed
+     *
      */
-    @Override
     public JobStatusResponse parse(String remoteJobId, String schedulerResponseText) throws RemoteJobMonitorEmptyResponseException, RemoteJobMonitorResponseParsingException {
-        if (org.apache.commons.lang.StringUtils.isBlank(schedulerResponseText)) {
+        schedulerResponseText = StringUtils.stripToEmpty(schedulerResponseText);
+        if (schedulerResponseText.isEmpty()) {
             throw new RemoteJobMonitorEmptyResponseException(
                     "Empty response received from job status check on the remote system.");
         } else {
-            String[] lines = org.apache.commons.lang.StringUtils.stripToEmpty(schedulerResponseText).split("[\\r\\n]+");
+            // split the response into individual condor log events
+            String[] logEventSections = schedulerResponseText.split(CONDOR_LOG_EVENT_DELIMITER_REGEX);
 
-            if (lines.length == 0) {
-                throw new RemoteJobMonitorEmptyResponseException("Condor log file content was empty.");
-            } else if (!isValidLogFile(lines[0])) {
+            // The string was not empty, so we know the split array will have at least one value,
+            // thus no null check is required. We sanity check the first value to make sure the
+            // file is an actual runtime log file.
+            if (!isValidLogFile(logEventSections[0])) {
                 throw new RemoteJobMonitorResponseParsingException("Invalid Condor log file format. " +
                         "No section header found on the first line.");
             }
 
-            // are there any lines to read
-            int index_start = 0;
-            while (index_start < lines.length) {
-                // send index of section start
-                index_start = parseLogFileSection(lines, index_start);
-            }
-            return parseLastLoggedStatus(remoteJobId);
+            // parse the last section in the event log as that contains the current job status.
+            return parseLogEventSection(remoteJobId, logEventSections[logEventSections.length - 1]);
         }
-    }
-
-    /**
-     * Reads forward in the log file until the next section footer is reached. The header code and line are a
-     * added to the {@link #condorLogStatuses} map and the line number representing the end of the section is
-     * returned.
-     * @param lines the newline split log file content
-     * @param index the line number to start parsing the section.
-     * @return the last line number of the parsed section.
-     */
-    protected int parseLogFileSection(String[] lines, int index){
-        // this is the first line of the section
-        String line = lines[index];
-        // parse out the code to get the status info
-        String code = line.substring(0,3);
-        CondorJobStatus status = CondorJobStatus.valueOfCode(code);
-//        condorLogSectionHeaders.put(status, line);  // add the first line of the section
-        condorLogStatuses.add(status);  // add the first line of the section
-        // read the next lines
-        while (index < lines.length && !line.equals("...")) {
-            line = lines[index++];
-        }
-        return index;
     }
 
     /**
      * Looks up the status of the last section header in the condor log file. If no section headers
      * were found, a status of {@link CondorJobStatus#UNKNOWN} is set.
-     * @param remoteJobId           the remote job id to parse from the response
+     * @param condorLogEvent  the text of a single condor event log
      * @return status found in last section header
+     * @throws RemoteJobMonitorResponseParsingException if the event log data cannot be parsed
      */
-    protected JobStatusResponse parseLastLoggedStatus(String remoteJobId) {
+    protected JobStatusResponse parseLogEventSection(String remoteJobId, String condorLogEvent) throws RemoteJobMonitorResponseParsingException {
         // no section headers in the log file will result in an UNKNOWN status
-        if (condorLogStatuses.isEmpty()) {
-            return new JobStatusResponse<>(remoteJobId, CondorJobStatus.UNKNOWN, "0");
-        } else {
-            // set to the status found in the last section header in the log file.
-            CondorJobStatus statusType = condorLogStatuses.get(condorLogStatuses.size() - 1);
-            return new JobStatusResponse<>(remoteJobId, statusType, "0");
+        condorLogEvent = StringUtils.trimToEmpty(condorLogEvent);
+
+        // empty event throws blank response exception as this should never happen
+        if (StringUtils.isEmpty(condorLogEvent)) {
+            throw new RemoteJobMonitorResponseParsingException("Empty event log found in condor runtime log file.");
+        } // a three digit value followed by a space starting the event log section indicate a job status
+        else {
+            Matcher headerMatcher = Pattern.compile(CONDOR_LOG_EVENT_HEADER_REGEX).matcher(condorLogEvent);
+            if (headerMatcher.find()) {
+                // job id in the header will be left zero padded if the job id is less than 100. We strip rather than
+                // parse as a Long because remote job ids are stored in the db as strings. This saves us a null check
+                // and double conversion
+                String strippedLogJobId = StringUtils.stripStart(headerMatcher.group("jobId"), "0");
+                // condor job ids start at 1, so we don't need to worry about an job id of zero being empty and
+                // triggering a false failure here
+                if (StringUtils.isEmpty(strippedLogJobId)) {
+                    throw new RemoteJobMonitorResponseParsingException(
+                            "No job id found in current event for Condor runtime log file.");
+                } else if ( !remoteJobId.equals(strippedLogJobId)) {
+                    // if the job ids don't match up, throw an exception
+                    throw new RemoteJobMonitorResponseParsingException(
+                            "Mismatched job id found in current event for Condor runtime log file. " +
+                                    strippedLogJobId + " != " + remoteJobId );
+                } else {
+                    // job ids match up, so we can parse the rest of the status line and return the interpreted response
+                    String statusCode = headerMatcher.group("statusCode");
+                    CondorLogJobStatus remoteJobStatus = CondorLogJobStatus.valueOfCode(statusCode);
+
+                    // Use the condor event log message in leu of the default description, when possible, for more
+                    // job-specific info about the job state.
+                    String eventMessage = headerMatcher.group("eventMessage");
+                    if (!StringUtils.isEmpty(eventMessage)) {
+                        remoteJobStatus.setDescription(eventMessage);
+                    }
+
+                    // if an exit code was returned, we will parse that out here. We probably don't need to do this
+                    // unless the job is in a terminal state, but we're only parsing a few lines of text and the
+                    // complete condor state machine is not entirely clear, so we err on the side of certainty over
+                    // the negligible performance savings.
+                    Matcher matcher = Pattern.compile(CONDOR_LOG_EVENT_EXIT_CODE_REGEX).matcher(condorLogEvent);
+                    String exitCode = "-1";
+                    if (matcher.find()) {
+                        exitCode = matcher.group("exitCode");
+                    }
+
+                    return new JobStatusResponse<>(remoteJobId, remoteJobStatus, exitCode);
+                }
+            } else {
+                throw new RemoteJobMonitorResponseParsingException("Unexpected header format found when parsing current job " +
+                        "event from Condor runtime log file: " + condorLogEvent );
+            }
         }
     }
 
     /**
-     * Checks the given line for a valid section header to start the file. If found, it is treated as valid.
-     * Generally, the first line of the log file should be provided here.
+     * Checks the given section starts with a valid section header to start the file. If found and it has a
+     * {@link CondorJobStatus#SUBMITTED} status code, we say it is valid. This should be safe as the first event in
+     * every condor log file is a {@link CondorJobStatus#SUBMITTED} event.
+     *
+     * @param condorLogEvent A single section from the condor log file representing one event
      * @return true if the file begins with {@link CondorJobStatus#SUBMITTED} code.
      */
-    protected boolean isValidLogFile(String firstLine) {
-        return firstLine != null && firstLine.contains(CondorJobStatus.SUBMITTED.getCode());
+    protected boolean isValidLogFile(String condorLogEvent) {
+        Matcher headerMatcher = Pattern.compile(CONDOR_LOG_EVENT_HEADER_REGEX).matcher(condorLogEvent);
+        if (headerMatcher.find()) {
+            CondorLogJobStatus actualStatus = CondorLogJobStatus.valueOfCode(headerMatcher.group("statusCode"));
+            return actualStatus == CondorLogJobStatus.JOB_SUBMITTED;
+        }
+        return false;
     }
 }
 

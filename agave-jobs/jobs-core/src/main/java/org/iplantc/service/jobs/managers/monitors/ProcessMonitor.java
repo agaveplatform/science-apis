@@ -60,8 +60,8 @@ public class ProcessMonitor extends AbstractJobMonitor {
         // jobs to this system remotely. In this case, a worker will be running
         // dedicated to that system and will submitting jobs locally. All workers
         // other that this should pass on accepting this job.
-        if (executionSystem.getLoginConfig().getProtocol().equals(LoginProtocolType.LOCAL) &&
-                !Settings.LOCAL_SYSTEM_ID.equals(this.job.getSystem())) {
+        if (executionSystem.getLoginConfig().getProtocol() == LoginProtocolType.LOCAL &&
+                ! Settings.LOCAL_SYSTEM_ID.equals(this.job.getSystem())) {
             return this.job;
         } else {// otherwise, throw it in remotely
 			try {
@@ -144,10 +144,8 @@ public class ProcessMonitor extends AbstractJobMonitor {
 	 * @throws RemoteJobMonitoringException if unable to fetch the condor log file content for any reason.
 	 */
 	public String getJobStatusResponse(String command) throws RemoteJobMonitoringException {
-		RemoteSubmissionClient remoteSubmissionClient = null;
 
-		try {
-			remoteSubmissionClient = getRemoteSubmissionClient();
+		try (RemoteSubmissionClient remoteSubmissionClient = getRemoteSubmissionClient()) {
 
 			log.debug("Forking command " + command + " on " + remoteSubmissionClient.getHost() + ":" +
 					remoteSubmissionClient.getPort() + " for job " + job.getUuid());
@@ -160,9 +158,6 @@ public class ProcessMonitor extends AbstractJobMonitor {
 		} catch (Exception e) {
 			throw new RemoteJobMonitoringException("Failed to retrieve status information for job " + job.getUuid() +
 					" from remote system.", e);
-		} finally {
-			if (remoteSubmissionClient != null)
-				remoteSubmissionClient.close();
 		}
 	}
 

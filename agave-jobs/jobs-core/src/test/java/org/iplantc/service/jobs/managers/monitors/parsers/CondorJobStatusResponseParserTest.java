@@ -1,75 +1,112 @@
 package org.iplantc.service.jobs.managers.monitors.parsers;
 
+import org.apache.commons.fileupload.util.Streams;
+import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorEmptyResponseException;
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorResponseParsingException;
+import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-@Test(enabled=false, groups={"unit"})
+@Test(groups={"unit"})
 public class CondorJobStatusResponseParserTest extends AbstractJobStatusResponseParserTest {
 
-	protected final static String TEST_SCHEDULER_JOB_ID = "0";
-	protected final String TEST_USER = "testuser";
+	protected final static String TEST_SCHEDULER_JOB_ID = "124";
+	protected final static String TEST_USER = "testuser";
+	protected final static String TEST_STATUS_QUERY_RESPONSE_TEMPLATE_PATH = "schedulers/condor/runtime.log";
+	protected String testSchedulerResponseTemplate;
 
-	/**
-	 * Returns a test job id appropriate for the scheduler
-	 * @return a test job id
-	 */
-	@Override
-	public String getTestSchedulerJobId() {
-		return TEST_SCHEDULER_JOB_ID;
+	@BeforeClass
+	public void beforeClass() {
+		try (InputStream in = getClass().getClassLoader().getResourceAsStream(TEST_STATUS_QUERY_RESPONSE_TEMPLATE_PATH)) {
+			testSchedulerResponseTemplate = Streams.asString(in);
+		} catch (IOException e) {
+			Assert.fail("Unable to load status query response template: " + TEST_STATUS_QUERY_RESPONSE_TEMPLATE_PATH);
+		}
 	}
-	/**
-	 * The job status query to Torque is {@code "qstat -a | grep ^<job_id>}. That means the response should
-	 * come back in a space-delimited line with the following fields:
+
+    /**
+     * Provides the instance of the {@link JobStatusResponseParser} under test
+     * @return an instance of the concrete implementing class
+     */
+    @Override
+    public JobStatusResponseParser getJobMonitorResponseParser()
+    {
+        return new CondorJobStatusResponseParser();
+    }
+
+    @Override
+    public RemoteSchedulerJobStatus getUnknownStatus() {
+        return CondorLogJobStatus.UNKNOWN;
+    }
+
+    /**
+     * Returns a test job id appropriate for the scheduler
+     * @return a test job id
+     */
+    @Override
+    public String getTestSchedulerJobId() {
+        return StringUtils.leftPad(TEST_SCHEDULER_JOB_ID, 3, "0");
+    }
+
+    /**
+	 * Resolves the qstat status response template with the provided test values.
 	 *
-	 * <pre>
-	 * JobID                         Username        Queue           Jobname         SessID   NDS  TSK   Req'dMemory Req'dTime  S ElapTime
-	 * a
-	 * </pre>
-	 * We can then resolve a valid status line from the template using the following command:
-	 * <pre>
-	 * String.format(TEST_VALID_STATUS_LINE_TEMPLATE, TEST_SCHEDULER_JOB_ID, TEST_USER, TorqueJobStatus.QUEUED.getCode());
-	 * </pre>
+	 * @param testSchedulerJobId the job id to set in the returned job status response
+	 * @param testSchedulerJobStatusCode the status code to set in the returned job status response
+	 * @param testSchedulerJobExitCode the exit code to set in the returned job status response
+	 * @return a formatted job status response with the given values injected
 	 */
-	public final static String TEST_VALID_STATUS_LINE_TEMPLATE = "%s          %s    debug    torque.submit       --    --     --     --   00:01:00 %s       -- ";
+	private String getSchedulerResponseString(String testSchedulerJobId, String testSchedulerJobStatusCode, String testSchedulerJobExitCode) {
+		return testSchedulerResponseTemplate
+				.replace("${JOB_ID}", StringUtils.leftPad(testSchedulerJobId, 3, "0"))
+				.replace("${JOB_STATUS}", testSchedulerJobStatusCode)
+				.replace("${JOB_USERNAME}", TEST_USER)
+				.replace("${JOB_NODE}", "33cf4118fced")
+				.replace("${JOB_EXIT_CODE}", testSchedulerJobExitCode);
+	}
 
 	/**
-	 * In some cases, the short qstat format will be returned. This happens frequently for users wrappign the qstat
-	 * commandfor use with alternative schedulers. The output resembles the response from {@code "qstat ^<job_id>}.
-	 * That means the response should come back in a space-delimited line with the following fields:
+	 * Resolves the qstat status response template with the provided test values. Defaults exit code to "1".
 	 *
-	 * <pre>
-	 * Job ID                    Name             User            Time Use S Queue
-	 * a
-	 * </pre>
-	 * We can then resolve a valid status line from the template using the following command:
-	 * <pre>
-	 * String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE, TEST_SCHEDULER_JOB_ID, TEST_USER, TorqueJobStatus.QUEUED.getCode());
-	 * </pre>
+	 * @param testSchedulerJobId the job id to set in the returned job status response
+	 * @param testSchedulerJobStatusCode the status code to set in the returned job status response
+	 * @return a formatted job status response with the given values injected
 	 */
-	public final static String TEST_VALID_SHORT_STATUS_LINE_TEMPLATE = "%s             torque.submit    %s               0 %s debug";
-
-	public final static String TEST_INVALID_STATUS_LINE_TEMPLATE = "";
-	public final static String TEST_VALID_STATUS_MULTILINE_TEMPLATE = "";
+	private String getSchedulerResponseString(String testSchedulerJobId, String testSchedulerJobStatusCode) {
+		return getSchedulerResponseString(testSchedulerJobId, testSchedulerJobStatusCode, "1");
+	}
 
 	/**
-	 * Provides the instance of the {@link JobStatusResponseParser} under test
-	 * @return an instance of the concrete implementing class
+	 * Resolves the qstat status response template with the provided test values.
+	 *
+	 * @param testSchedulerJobId the job id to set in the returned job status response
+	 * @param testSchedulerJobStatus the status to set in the returned job status response
+	 * @param testSchedulerJobExitCode the exit code to set in the returned job status response
+	 * @return a formatted job status response with the given values injected
 	 */
-	@Override
-	public JobStatusResponseParser getJobMonitorResponseParser()
-	{
-		return new TorqueJobStatusResponseParser();
+	private String getSchedulerResponseString(String testSchedulerJobId, CondorLogJobStatus testSchedulerJobStatus, String testSchedulerJobExitCode) {
+		return getSchedulerResponseString(testSchedulerJobId, testSchedulerJobStatus.getCode(), testSchedulerJobExitCode);
 	}
 
-	@Override
-	public RemoteSchedulerJobStatus getUnknownStatus() {
-		return TorqueJobStatus.UNKNOWN;
+	/**
+	 * Resolves the qstat status response template with the provided test values. Defaults exit code to "0".
+	 *
+	 * @param testSchedulerJobId the job id to set in the returned job status response
+	 * @param testSchedulerJobStatus the status to set in the returned job status response
+	 * @return a formatted job status response with the given values injected
+	 * @see #getSchedulerResponseString(String, CondorLogJobStatus, String)
+	 */
+	private String getSchedulerResponseString(String testSchedulerJobId, CondorLogJobStatus testSchedulerJobStatus) {
+		return getSchedulerResponseString(testSchedulerJobId, testSchedulerJobStatus, "0");
 	}
+
 
 	@Override
 	@DataProvider
@@ -92,7 +129,6 @@ public class CondorJobStatusResponseParserTest extends AbstractJobStatusResponse
 		}
 
 		return testCases.toArray(new Object[][]{});
-
 	}
 
 	@Override
@@ -107,12 +143,9 @@ public class CondorJobStatusResponseParserTest extends AbstractJobStatusResponse
 	protected Object[][] parseSchedulerResponseWithBadDelimiterThrowsRemoteJobMonitorResponseParsingExceptionProvider()
 	{
 		return new Object[][] {
-				{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.QUEUED.getCode()).replaceAll("\\s+", "|"), "Pipe delimited server response should throw RemoteJobMonitorResponseParsingException" },
-				{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.QUEUED.getCode()).replaceAll("\\s+", ","), "Comma delimited server response should throw RemoteJobMonitorResponseParsingException" },
-				{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.QUEUED.getCode()).replaceAll("\\s+", "|"), "Pipe delimited server response should throw RemoteJobMonitorResponseParsingException" },
-				{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.QUEUED.getCode()).replaceAll("\\s+", ","), "Comma delimited server response should throw RemoteJobMonitorResponseParsingException" },
-
-				{ TorqueJobStatus.QUEUED.getCode(), "Status only response should throw RemoteJobMonitorResponseParsingException" },
+				{ getSchedulerResponseString(getTestSchedulerJobId(), CondorLogJobStatus.JOB_SUBMITTED_TO_GRID_RESOURCE).replaceAll("\\s+", "|"), "Pipe delimited server response should throw RemoteJobMonitorResponseParsingException" },
+				{ getSchedulerResponseString(getTestSchedulerJobId(), CondorLogJobStatus.JOB_SUBMITTED_TO_GRID_RESOURCE).replaceAll("\\s+", ","), "Comma delimited server response should throw RemoteJobMonitorResponseParsingException" },
+				{ CondorLogJobStatus.JOB_SUBMITTED.getCode(), "Status only response should throw RemoteJobMonitorResponseParsingException" },
 		};
 	}
 
@@ -128,14 +161,13 @@ public class CondorJobStatusResponseParserTest extends AbstractJobStatusResponse
 	protected Object[][] parseSchedulerResponseProvider()
 	{
 		List<Object[]> testCases = new ArrayList<Object[]>();
-		for (TorqueJobStatus statusType: TorqueJobStatus.values()) {
-			testCases.add(new Object[]{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, statusType.getCode()), statusType });
-			testCases.add(new Object[]{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, statusType.getCode()), statusType });
+		for (CondorLogJobStatus statusType: CondorLogJobStatus.values()) {
+		    // skip unknown status as the empty value will cause an exception to be thrown
+		    if (statusType != CondorLogJobStatus.UNKNOWN) {
+                testCases.add(new Object[]{getSchedulerResponseString(getTestSchedulerJobId(), statusType), statusType});
+            }
 		}
-		testCases.add(new Object[]{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, "UNKNOWN"), TorqueJobStatus.UNKNOWN });
-		testCases.add(new Object[]{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, "asdfasdfasdfadfa"), TorqueJobStatus.UNKNOWN });
-		testCases.add(new Object[]{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, "UNKNOWN"), TorqueJobStatus.UNKNOWN });
-		testCases.add(new Object[]{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, "asdfasdfasdfadfa"), TorqueJobStatus.UNKNOWN });
+		testCases.add(new Object[]{ getSchedulerResponseString(getTestSchedulerJobId(), "999"), CondorLogJobStatus.UNKNOWN });
 
 		return testCases.toArray(new Object[][]{});
 	}
@@ -147,8 +179,49 @@ public class CondorJobStatusResponseParserTest extends AbstractJobStatusResponse
 		_parseSchedulerResponse(rawServerResponse, expectedStatus);
 	}
 
+    /**
+     * Creates the test cases for {@link #parseSchedulerResponseProvider()} with remote job id less than 3 digits in
+     * length to validate the comparison of left zero padded job id in the log headers.
+     * @return test cases for job id with 1 and 2 digits for every {@link CondorLogJobStatus} except UNKNOWN
+     */
+    @DataProvider
+    protected Object[][] parseSchedulerResponseForSmallJobIdProvider()
+    {
+        List<Object[]> testCases = new ArrayList<Object[]>();
+        for (String remoteJobId: List.of("1", "10", "1000", "10000", "1000000000")) {
+            String altJobId = String.valueOf((long)Math.floor(Double.parseDouble(remoteJobId) * Math.PI));
+            for (CondorLogJobStatus statusType : CondorLogJobStatus.values()) {
+                // skip unknown status as the empty value will cause an exception to be thrown
+                if (statusType != CondorLogJobStatus.UNKNOWN) {
+                    testCases.add(new Object[]{remoteJobId, getSchedulerResponseString(remoteJobId, statusType), statusType});
+                    testCases.add(new Object[]{altJobId, getSchedulerResponseString(altJobId, statusType), statusType});
+                }
+            }
+            testCases.add(new Object[]{ remoteJobId, getSchedulerResponseString(remoteJobId, "999"), CondorLogJobStatus.UNKNOWN });
+            testCases.add(new Object[]{ altJobId, getSchedulerResponseString(altJobId, "999"), CondorLogJobStatus.UNKNOWN });
+
+        }
+
+        return testCases.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "parseSchedulerResponseForSmallJobIdProvider")
+    public void parseSchedulerResponseForSmallJobId(String remoteJobId, String rawServerResponse, RemoteSchedulerJobStatus expectedStatus)
+    {
+        String message = "Scheduler output for job id < 100 should result in RemoteSchedulerJobStatus " + expectedStatus.toString();
+        _parseReturnsExpectedRemoteSchedulerJobStatus(remoteJobId, rawServerResponse, expectedStatus, message);
+    }
+
+	/**
+	 * Case sensitivity matters in both the job status and the XML response, so we skip these tests
+     *
+	 * @param rawServerResponse tests server response
+	 * @param expectedStatus expected output.
+	 * @throws RemoteJobMonitorEmptyResponseException  if the {@code rawServerResponse} was empty. Should always be false
+	 * @throws RemoteJobMonitorResponseParsingException if the {@code rawServerResponse} cannot be parsed.
+	 */
 	@Override
-	@Test(dataProvider = "parseSchedulerResponseProvider")
+	@Test(dataProvider = "parseSchedulerResponseProvider", enabled = false)
 	public void parseCaseInsensitiveSchedulerResponse(String rawServerResponse, RemoteSchedulerJobStatus expectedStatus) throws RemoteJobMonitorEmptyResponseException, RemoteJobMonitorResponseParsingException
 	{
 		_parseCaseInsensitiveSchedulerResponse(rawServerResponse.toLowerCase(), expectedStatus);
@@ -159,10 +232,11 @@ public class CondorJobStatusResponseParserTest extends AbstractJobStatusResponse
 	protected Object[][] parseSchedulerResponseWithMissingJobIdThrowsRemoteJobMonitorResponseParsingExceptionProvider()
 	{
 		return new Object[][] {
-				{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE, "", TEST_USER, TorqueJobStatus.COMPLETED.getCode()) },
-				{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE, "", TEST_USER, TorqueJobStatus.COMPLETED.getCode()) },
-				{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE, "", TEST_USER,"") },
-				{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE, "", TEST_USER,"") },
+				{getSchedulerResponseString("", CondorLogJobStatus.JOB_WAS_SUSPENDED)},
+				{getSchedulerResponseString("foo-" + getTestSchedulerJobId() , CondorLogJobStatus.JOB_EXECUTING)},
+				{getSchedulerResponseString(getTestSchedulerJobId() + "-foo" , CondorLogJobStatus.JOB_SUBMITTED)},
+				{getSchedulerResponseString("foo-" + getTestSchedulerJobId() + "-foo" , CondorLogJobStatus.JOB_SUBMITTED)},
+				{getSchedulerResponseString("", "")},
 		};
 	}
 
@@ -178,10 +252,7 @@ public class CondorJobStatusResponseParserTest extends AbstractJobStatusResponse
 	protected Object[][] parseSchedulerResponseWithEmptyStatusValueReturnsUnknownRemoteJobStatusProvider()
 	{
 		return new Object[][] {
-				{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, "") },
-				{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), "", "") },
-				{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), TEST_USER, "") },
-				{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE, getTestSchedulerJobId(), "", "") },
+				{ getSchedulerResponseString(getTestSchedulerJobId(), "") },
 		};
 	}
 
@@ -196,33 +267,8 @@ public class CondorJobStatusResponseParserTest extends AbstractJobStatusResponse
 	@DataProvider
 	protected Object[][] parseMultilineSchedulerResponseProvider()
 	{
-		return new Object[][] {
-				{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE +"\n" + TEST_VALID_STATUS_LINE_TEMPLATE + "\n" + TEST_VALID_STATUS_LINE_TEMPLATE + "\n",
-						getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.COMPLETED.getCode(),
-						"foo-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.FINISHED.getCode(),
-						"bar-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.QUEUED.getCode()), TorqueJobStatus.COMPLETED },
-				{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE +"\n" + TEST_VALID_STATUS_LINE_TEMPLATE + "\n" + TEST_VALID_STATUS_LINE_TEMPLATE + "\n",
-						"foo-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.COMPLETED.getCode(),
-						getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.FINISHED.getCode(),
-						"bar-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.QUEUED.getCode()), TorqueJobStatus.FINISHED },
-				{ String.format(TEST_VALID_STATUS_LINE_TEMPLATE +"\n" + TEST_VALID_STATUS_LINE_TEMPLATE + "\n" + TEST_VALID_STATUS_LINE_TEMPLATE + "\n",
-						"bar-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.COMPLETED.getCode(),
-						"foo-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.FINISHED.getCode(),
-						getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.QUEUED.getCode()), TorqueJobStatus.QUEUED },
-
-				{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE +"\n" + TEST_VALID_SHORT_STATUS_LINE_TEMPLATE + "\n" + TEST_VALID_SHORT_STATUS_LINE_TEMPLATE + "\n",
-						getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.COMPLETED.getCode(),
-						"foo-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.FINISHED.getCode(),
-						"bar-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.QUEUED.getCode()), TorqueJobStatus.COMPLETED },
-				{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE +"\n" + TEST_VALID_SHORT_STATUS_LINE_TEMPLATE + "\n" + TEST_VALID_SHORT_STATUS_LINE_TEMPLATE + "\n",
-						"foo-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.COMPLETED.getCode(),
-						getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.FINISHED.getCode(),
-						"bar-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.QUEUED.getCode()), TorqueJobStatus.FINISHED },
-				{ String.format(TEST_VALID_SHORT_STATUS_LINE_TEMPLATE +"\n" + TEST_VALID_SHORT_STATUS_LINE_TEMPLATE + "\n" + TEST_VALID_SHORT_STATUS_LINE_TEMPLATE + "\n",
-						"bar-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.COMPLETED.getCode(),
-						"foo-" + getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.FINISHED.getCode(),
-						getTestSchedulerJobId(), TEST_USER, TorqueJobStatus.QUEUED.getCode()), TorqueJobStatus.QUEUED },
-		};
+//		throw new SkipException("Multiline tests mean nothing when the response is multiline");
+		return new Object[][] {};
 	}
 
 	@Override

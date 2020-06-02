@@ -60,6 +60,12 @@
 				<configuration>
 					<skip>true</skip>
 				</configuration>
+				<executions>
+					<execution>
+						<id>default-jar</id>
+						<phase/>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

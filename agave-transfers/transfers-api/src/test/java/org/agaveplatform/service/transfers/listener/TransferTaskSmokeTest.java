@@ -176,15 +176,17 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 
 
 	/**
-	 * Initializes the jwt auth options and the
+	 * Initializes the jwt auth options and sets the jwt signing cert to a set of test generated keys.
 	 * @throws IOException when the key cannot be read
 	 */
 	private void initAuth(Vertx vertx) throws IOException {
+		CryptoHelper helper = new CryptoHelper();
+
 		JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
 				.addPubSecKey(new PubSecKeyOptions()
 						.setAlgorithm("RS256")
-						.setPublicKey(CryptoHelper.publicKey())
-						.setSecretKey(CryptoHelper.privateKey()));
+						.setPublicKey(helper.getPublicKey())
+						.setSecretKey(helper.getPrivateKey()));
 
 		jwtAuth = JWTAuth.create(vertx, jwtAuthOptions);
 	}

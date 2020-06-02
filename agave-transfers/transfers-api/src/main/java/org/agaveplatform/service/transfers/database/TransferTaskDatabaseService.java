@@ -40,7 +40,10 @@ import java.util.HashMap;
 public interface TransferTaskDatabaseService {
 
   @Fluent
-  TransferTaskDatabaseService getAll(String tenantId, Handler<AsyncResult<JsonArray>> resultHandler);
+  TransferTaskDatabaseService getAll(String tenantId, int limit, int offset, Handler<AsyncResult<JsonArray>> resultHandler);
+
+  @Fluent
+  TransferTaskDatabaseService getAllForUser(String tenantId, String username, int limit, int offset, Handler<AsyncResult<JsonArray>> resultHandler);
 
   @Fluent
   TransferTaskDatabaseService getAllChildrenCanceledOrCompleted(String uuid, Handler<AsyncResult<JsonArray>> resultHandler);

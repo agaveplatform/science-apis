@@ -54,7 +54,9 @@ save-transfertask: |
     "last_updated" = NOW()
   WHERE "uuid" = ? AND "tenant_id" = ?
 all-transfertasks: |
-  SELECT * FROM transfertasks WHERE "tenant_id" = ?
+  SELECT * FROM transfertasks WHERE "tenant_id" = ? LIMIT ? OFFSET ?
+all-user-transfertasks: |
+  SELECT * FROM transfertasks WHERE "owner" = ? AND "tenant_id" = ? LIMIT ? OFFSET ?
 delete-transfertask: |
   DELETE FROM transfertasks WHERE "uuid" = ? AND "tenant_id" = ?
 update-transfertask-status: |

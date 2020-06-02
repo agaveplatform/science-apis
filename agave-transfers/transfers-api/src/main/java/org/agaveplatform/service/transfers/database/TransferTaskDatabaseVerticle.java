@@ -92,6 +92,7 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
       HashMap<SqlQuery, String> sqlQueries = new HashMap<>();
       sqlQueries.put(SqlQuery.CREATE_TRANSFERTASKS_TABLE, node.get("create-transfertasks-table").textValue());
       sqlQueries.put(SqlQuery.ALL_TRANSFERTASKS, node.get("all-transfertasks").textValue());
+      sqlQueries.put(SqlQuery.ALL_USER_TRANSFERTASKS, node.get("all-user-transfertasks").textValue());
       sqlQueries.put(SqlQuery.GET_TRANSFERTASK, node.get("get-transfertask").textValue());
       sqlQueries.put(SqlQuery.CREATE_TRANSFERTASK, node.get("create-transfertask").textValue());
       sqlQueries.put(SqlQuery.SAVE_TRANSFERTASK, node.get("save-transfertask").textValue());

@@ -1,11 +1,14 @@
 package org.agaveplatform.service.transfers.util;
 
 import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.json.JsonObject;
+import net.minidev.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.auth.JWTClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -41,6 +44,8 @@ public class AuthHelper {
         if (StringUtils.startsWith(authHeader, JWT_HEADER_PREFIX)) {
             if (! StringUtils.equalsIgnoreCase(authHeader, JWT_HEADER_PREFIX)) {
                 tenantId = authHeader.toLowerCase().substring(JWT_HEADER_PREFIX.length() + 1);
+                tenantId = StringUtils.replaceChars(tenantId, '_', '.');
+                tenantId = StringUtils.replaceChars(tenantId, '-', '.');
             }
         }
 
@@ -92,5 +97,28 @@ public class AuthHelper {
 
         log.error("No " + JWT_HEADER_PREFIX + " header found in request. Authentication failed.");
         return false;
+    }
+
+    public static boolean isTenantAdmin(JsonObject claims) {
+        try {
+            String roles = (String)claims.getString("http://wso2.org/claims/role");
+            if (!StringUtils.isEmpty(roles)) {
+                for(String role: Arrays.asList(StringUtils.split(roles, ","))) {
+                    if (StringUtils.endsWith(role, "-services-admin") || StringUtils.endsWith(role, "-super-admin")) {
+                        if (role.contains("/")) {
+                            role = role.substring(role.lastIndexOf("/") + 1);
+                        }
+                        if (StringUtils.startsWith(role, claims.getString("rawTenantId"))) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            } else {
+                return false;
+            }
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

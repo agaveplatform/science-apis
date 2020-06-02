@@ -1,12 +1,25 @@
 package org.agaveplatform.service.transfers;
 
+import io.vertx.config.ConfigRetriever;
+import io.vertx.config.ConfigRetrieverOptions;
+import io.vertx.config.ConfigStoreOptions;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.auth.AuthProvider;
+import io.vertx.ext.auth.PubSecKeyOptions;
+import io.vertx.ext.auth.jwt.JWTAuthOptions;
+import io.vertx.ext.jwt.JWTOptions;
+import io.vertx.ext.web.handler.impl.AgaveJWTAuthProviderImpl;
+import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.agaveplatform.service.transfers.util.CryptoHelper;
+import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
@@ -18,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -32,6 +46,7 @@ public abstract class BaseTestCase {
 
     protected JsonObject config;
     protected int port = 32331;
+    protected AgaveJWTAuthProviderImpl jwtAuth;
 
     protected TransferTask _createTestTransferTask() {
         return new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USER, TENANT_ID, null, null);
@@ -48,24 +63,138 @@ public abstract class BaseTestCase {
     /**
      * Reads config file synchronously to ensure completion prior to setup.
      */
-    protected void initConfig() {
-        Path configPath = Paths.get(getClass().getClassLoader().getResource("config.json").getPath());
-        try {
-            String json = new String(Files.readAllBytes(configPath));
-            config = new JsonObject(json)
-                    .put( "transfertask.http.port", getPort())
-                    .put("transfertask.jwt.auth", false);
-        } catch (IOException e) {
-            log.error("Unable to read config options file", e);
-        } catch (DecodeException e) {
-            log.error("Error parsing config options file", e);
-        }
+    protected void initConfig(Vertx vertx, Handler<AsyncResult<JsonObject>> handler) {
+        ConfigStoreOptions fileStore = new ConfigStoreOptions()
+                .setType("file")
+                .setOptional(true)
+                .setConfig(new JsonObject().put("path", "config.json"));
+
+        ConfigStoreOptions envPropsStore = new ConfigStoreOptions().setType("env");
+
+        ConfigRetrieverOptions options = new ConfigRetrieverOptions()
+                .addStore(fileStore)
+                .addStore(envPropsStore);
+
+        ConfigRetriever retriever = ConfigRetriever.create(vertx, options);
+
+        retriever.getConfig(json -> {
+            if (json.succeeded()) {
+                JsonObject config = json.result();
+
+                try {
+                    // generate keys to use in the test. We persist them to temp files so we can pass them to the api via the
+                    // config settings.
+                    CryptoHelper cryptoHelper = new CryptoHelper();
+                    Path privateKey = Files.write(Files.createTempFile("private", "pem"), cryptoHelper.getPrivateKey().getBytes());
+                    Path publicKey = Files.write(Files.createTempFile("public", "pem"), cryptoHelper.getPublicKey().getBytes());
+
+                    config.put("transfertask.http.port", getPort())
+                            .put("transfertask.jwt.auth", true)
+                            .put("transfertask.jwt.public_key", publicKey.toAbsolutePath().toString())
+                            .put("transfertask.jwt.private_key", privateKey.toAbsolutePath().toString());
+
+                    handler.handle(Future.succeededFuture(config));
+                } catch (IOException e) {
+                    log.error("Unable to read config options file", e);
+                } catch (DecodeException e) {
+                    log.error("Error parsing config options file", e);
+                }
+            } else {
+                handler.handle(Future.failedFuture(json.cause()));
+            }
+        });
+    }
+
+    /**
+     * Initializes the jwt auth options and sets the jwt signing cert to a set of test generated keys.
+     * @throws IOException when the key cannot be read
+     */
+    protected void initAuth(Vertx vertx, Handler<AsyncResult<AgaveJWTAuthProviderImpl>> handler) throws IOException {
+        initConfig(vertx, resp -> {
+            if (resp.succeeded()) {
+                try {
+                    JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
+                            .setJWTOptions(new JWTOptions()
+                                    .setLeeway(30)
+                                    .setAlgorithm("RS256"))
+                            .setPermissionsClaimKey("http://wso2.org/claims/role")
+                            .addPubSecKey(new PubSecKeyOptions()
+                                    .setAlgorithm("RS256")
+                                    .setPublicKey(CryptoHelper.publicKey(resp.result().getString("transfertask.jwt.public_key")))
+                                    .setSecretKey(CryptoHelper.privateKey(resp.result().getString("transfertask.jwt.private_key"))));
+
+                    config = resp.result();
+
+                    AgaveJWTAuthProviderImpl jwtAuth = new AgaveJWTAuthProviderImpl(vertx, jwtAuthOptions);
+
+                    handler.handle(Future.succeededFuture(jwtAuth));
+                } catch (IOException e) {
+                    handler.handle(Future.failedFuture(e));
+                }
+            } else {
+                handler.handle(Future.failedFuture(resp.cause()));
+            }
+        });
+    }
+
+    /**
+     * Generates a JWT token to authenticate to the service. Token is signed using the
+     * test private_key.pem and public_key.pem files in the resources directory.
+     *
+     * @param username Name of the test user
+     * @return signed jwt token
+     */
+    protected String makeTestJwt(String username) {
+        // Add wso2 claims set
+        JsonObject claims = new JsonObject()
+                .put("http://wso2.org/claims/subscriber", username)
+                .put("http://wso2.org/claims/applicationid", "-9999")
+                .put("http://wso2.org/claims/applicationname", "agaveops")
+                .put("http://wso2.org/claims/applicationtier", "Unlimited")
+                .put("http://wso2.org/claims/apicontext", "/internal")
+                .put("http://wso2.org/claims/version", Settings.SERVICE_VERSION)
+                .put("http://wso2.org/claims/tier", "Unlimited")
+                .put("http://wso2.org/claims/keytype", "PRODUCTION")
+                .put("http://wso2.org/claims/usertype", "APPLICATION_USER")
+                .put("http://wso2.org/claims/enduser", username)
+                .put("http://wso2.org/claims/enduserTenantId", "-9999")
+                .put("http://wso2.org/claims/emailaddress", "testuser@example.com")
+                .put("http://wso2.org/claims/fullname", "Test User")
+                .put("http://wso2.org/claims/givenname", "Test")
+                .put("http://wso2.org/claims/lastname", "User")
+                .put("http://wso2.org/claims/primaryChallengeQuestion", "N/A")
+                .put("http://wso2.org/claims/role", "Internal/everyone,Internal/subscriber")
+                .put("http://wso2.org/claims/title", "N/A");
+
+        JWTOptions jwtOptions = new JWTOptions()
+                .setAlgorithm("RS256")
+                .setExpiresInMinutes(10_080) // 7 days
+                .setIssuer("transfers-api-integration-tests")
+                .setSubject(username);
+
+        return jwtAuth.generateToken(claims, jwtOptions);
     }
 
     @BeforeAll
-    public void setUpService() throws IOException {
-        // read in config options
-        initConfig();
+    public void setUpService(Vertx vertx, VertxTestContext ctx) throws IOException {
+        Checkpoint authCheckpoint = ctx.checkpoint();
+
+        // init the jwt auth used in the api calls
+        initAuth(vertx, resp -> {
+            authCheckpoint.flag();
+            if (resp.succeeded()) {
+                jwtAuth = resp.result();
+                ctx.verify(() -> {
+                    assertNotNull(jwtAuth);
+                    assertNotNull(config);
+
+                    ctx.completeNow();
+                });
+
+            } else {
+                ctx.failNow(resp.cause());
+            }
+        });
     }
 
     @AfterAll

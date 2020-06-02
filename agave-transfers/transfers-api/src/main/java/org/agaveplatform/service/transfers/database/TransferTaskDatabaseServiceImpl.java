@@ -27,6 +27,7 @@ import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
 import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.Settings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -123,10 +124,31 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
 
 
   @Override
-  public TransferTaskDatabaseService getAll(String tenantId, Handler<AsyncResult<JsonArray>> resultHandler) {
+  public TransferTaskDatabaseService getAll(String tenantId, int limit, int offset, Handler<AsyncResult<JsonArray>> resultHandler) {
     JsonArray data = new JsonArray()
-            .add(tenantId);
+            .add(tenantId)
+            .add(Math.min(Settings.MAX_PAGE_SIZE, Math.max(0, limit))) // throttle the max response size to preserve performance
+            .add(Math.max(0, offset)); // ensure pagination is positive
     dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASKS), data, res -> {
+      if (res.succeeded()) {
+        JsonArray response = new JsonArray(res.result().getRows());
+        resultHandler.handle(Future.succeededFuture(response));
+      } else {
+        LOGGER.error("Database query error", res.cause());
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      }
+    });
+    return this;
+  }
+
+  @Override
+  public TransferTaskDatabaseService getAllForUser(String tenantId, String username, int limit, int offset, Handler<AsyncResult<JsonArray>> resultHandler) {
+    JsonArray data = new JsonArray()
+            .add(username)
+            .add(tenantId)
+            .add(Math.min(Settings.MAX_PAGE_SIZE, Math.max(0, limit))) // throttle the max response size to preserve performance
+            .add(Math.max(0, offset)); // ensure pagination is positive
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_USER_TRANSFERTASKS), data, res -> {
       if (res.succeeded()) {
         JsonArray response = new JsonArray(res.result().getRows());
         resultHandler.handle(Future.succeededFuture(response));

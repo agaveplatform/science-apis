@@ -3,6 +3,7 @@
  */
 package org.agaveplatform.service.transfers.model;
 
+import io.vertx.core.json.JsonObject;
 import org.codehaus.plexus.util.StringUtils;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.systems.model.LastUpdatable;
@@ -18,7 +19,7 @@ import java.util.Date;
 import static javax.persistence.GenerationType.IDENTITY;
 
 /**
- * Class to represent individual shared permissions for files.
+ * Class to represent individual shared permissions for {@link TransferTask}. This is not currently used.
  *
  * @author dooley
  *
@@ -212,25 +213,20 @@ public class TransferTaskPermission implements Comparable<TransferTaskPermission
 
 	public String toJSON(String path, String systemId) throws JSONException
 	{
-		JSONWriter writer = new JSONStringer();
-		writer.object()
-			.key("username").value(getUsername())
-			.key("permission").object()
-				.key("read").value(canRead())
-				.key("write").value(canWrite())
-				.key("execute").value(canExecute())
-			.endObject()
-			.key("recursive").value(isRecursive())
-			.key("_links").object()
-            	.key("transferTask").object()
-            		.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + "/" + getTransferTaskId())
-	        	.endObject()
-	        	.key("profile").object()
-	        		.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + username)
-	        	.endObject()
-	        .endObject()
-		.endObject();
-		return writer.toString();
+		JsonObject json = new JsonObject()
+			.put("username", getUsername())
+			.put("permission", new JsonObject()
+				.put("read", canRead())
+				.put("write", canWrite())
+				.put("execute", canExecute()))
+			.put("recursive", isRecursive())
+			.put("_links", new JsonObject()
+            	.put("transferTask", new JsonObject()
+            		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + "/" + getTransferTaskId()))
+	        	.put("profile", new JsonObject()
+					.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + username)));
+
+		return json.encode();
 	}
 
 	public String toString()

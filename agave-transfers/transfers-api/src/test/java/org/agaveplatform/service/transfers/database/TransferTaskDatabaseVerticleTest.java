@@ -4,6 +4,7 @@ import com.google.common.base.CaseFormat;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
@@ -18,6 +19,7 @@ import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers completed task listener integration tests")
@@ -27,16 +29,38 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
     private TransferTaskDatabaseService service;
 
     @BeforeAll
-    public void prepare(Vertx vertx, VertxTestContext ctx) throws InterruptedException, IOException {
-        initConfig();
+    @Override
+    public void setUpService(Vertx vertx, VertxTestContext ctx) throws IOException {
+        Checkpoint authCheckpoint = ctx.checkpoint();
+        Checkpoint deployCheckpoint = ctx.checkpoint();
+        Checkpoint serviceCheckpoint = ctx.checkpoint();
 
+        // init the jwt auth used in the api calls
+        initAuth(vertx, reply -> {
+            authCheckpoint.flag();
+            if (reply.succeeded()) {
+                jwtAuth = reply.result();
 
-        vertx.deployVerticle(new TransferTaskDatabaseVerticle(),
-                new DeploymentOptions().setConfig(config).setWorker(true).setMaxWorkerExecuteTime(3600),
-                ctx.succeeding(id -> {
+                DeploymentOptions options = new DeploymentOptions()
+                        .setConfig(config)
+                        .setWorker(true)
+                        .setMaxWorkerExecuteTime(3600);
+
+                vertx.deployVerticle(new TransferTaskDatabaseVerticle(), options, ctx.succeeding(id -> {
+                    deployCheckpoint.flag();
                     service = TransferTaskDatabaseService.createProxy(vertx, config.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
-                    ctx.completeNow();
+
+                    ctx.verify(() -> {
+                        serviceCheckpoint.flag();
+                        assertNotNull(jwtAuth);
+                        assertNotNull(config);
+                        ctx.completeNow();
+                    });
                 }));
+            } else {
+                ctx.failNow(new Exception("Failed to initialize jwtAuth"));
+            }
+        });
     }
 
     @Test
@@ -67,7 +91,7 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
                     Assertions.assertEquals(createdJsonTransferTask.getLong("id"), updateStatusJsonTransferTask.getLong("id"),
                             "Object returned from create should have same id as original");
 
-                    service.getAll(TENANT_ID, context.succeeding(getAllJsonTransferTaskArray -> {
+                    service.getAll(TENANT_ID, 100, 0, context.succeeding(getAllJsonTransferTaskArray -> {
                         Assertions.assertEquals(1, getAllJsonTransferTaskArray.size(),
                                 "getAll should only have a single record after updating status of an existing object." +
                                         "New object was likely added to the db.");
@@ -97,7 +121,7 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
 
                         service.update(TENANT_ID, testTransferTask.getUuid(), updatedTransferTask, context.succeeding(updateJsonTransferTask -> {
 
-                            service.getAll(TENANT_ID, context.succeeding(getAllJsonTransferTaskArray2 -> {
+                            service.getAll(TENANT_ID, 100, 0, context.succeeding(getAllJsonTransferTaskArray2 -> {
                                 Assertions.assertEquals(1, getAllJsonTransferTaskArray2.size(),
                                         "getAll should only have a single record after updating an existing object." +
                                                 "New object was likely added to the db.");
@@ -135,7 +159,7 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
 
                                     service.delete(TENANT_ID, testTransferTask.getUuid(), context.succeeding(v3 -> {
 
-                                        service.getAll(TENANT_ID, context.succeeding( getAllJsonTransferTaskArray3 -> {
+                                        service.getAll(TENANT_ID, 100, 0, context.succeeding( getAllJsonTransferTaskArray3 -> {
                                             Assertions.assertTrue(getAllJsonTransferTaskArray3.isEmpty(), "No records should be returned from getAll after deleting the test object");
                                             context.completeNow();
                                         }));

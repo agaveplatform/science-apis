@@ -12,7 +12,9 @@ import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.JWTAuthHandler;
 import org.agaveplatform.service.transfers.util.AuthHelper;
+import org.apache.commons.lang.StringUtils;
 
+import javax.naming.AuthenticationException;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +25,10 @@ public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements
     @Override
     public void authorize(User user, Handler<AsyncResult<Void>> handler) {
         super.authorize(user, handler);
+    }
+
+    public AgaveJWTAuthHandlerImpl(JWTAuth authProvider) {
+        this(authProvider, (String)null);
     }
 
     public AgaveJWTAuthHandlerImpl(JWTAuth authProvider, String skip) {
@@ -46,6 +52,14 @@ public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements
         return this;
     }
 
+    /**
+     * Parses the map returned from the call to {@link #parseMultiTenantAuthorization(RoutingContext, boolean, Handler)}
+     * and passes the info to the handler for use initializing the {@link Wso2JwtUser} that will be attached to the
+     * {@link RoutingContext} for the rest of the request lifecycle.
+     *
+     * @param context the routing context for this request
+     * @param handler the handler to call with the result of this async call.
+     */
     public void parseCredentials(RoutingContext context, Handler<AsyncResult<JsonObject>> handler) {
         this.parseMultiTenantAuthorization(context, false, (parseAuthorization) -> {
             if (parseAuthorization.failed()) {
@@ -55,7 +69,7 @@ public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements
                 JsonObject futureResponse = new JsonObject()
                         .put("jwt", map.get("jwt"))
                         .put("tenantId", map.get("tenantId"))
-                        .put("bearer", map.get("bearer"))
+                        .put("rawTenantId", map.get("rawTenantId"))
                         .put("options", this.options);
                 handler.handle(Future.succeededFuture(futureResponse));
             }
@@ -64,12 +78,14 @@ public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements
 
     /**
      * Parses the headers and locates the first auth header for a tenant. This is generally one which begins with
-     * @param ctx
-     * @param optional
-     * @param handler
+     * {@code x-jwt-assertion-}.
+     *
+     * @param ctx the routing context for this request
+     * @param optional is auth optional.
+     * @param handler the handler to call with the result of this async call.
      */
     protected void parseMultiTenantAuthorization(RoutingContext ctx, boolean optional, Handler<AsyncResult<Map<String,String>>> handler) {
-        HttpServerRequest request = ctx.request();
+          HttpServerRequest request = ctx.request();
         List<Map.Entry<String,String>> headers = request.headers().entries();
         String authHeader = AuthHelper.getAuthHeader(headers);
         if (authHeader == null) {
@@ -92,16 +108,20 @@ public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements
                     return;
                 }
 
+                String rawTenantId = AuthHelper.getTenantIdFromAuthHeader(authHeader);
+                String tenantId = StringUtils.replaceChars(rawTenantId, '_', '.');
+                tenantId = StringUtils.replaceChars(tenantId, '-', '.');
+
                 Map<String,String> map = Map.of(
                         "bearer", request.headers().contains(HttpHeaders.AUTHORIZATION) ? request.headers().get(HttpHeaders.AUTHORIZATION) : "",
                         "jwt", authorization,
-                        "tenantId", AuthHelper.getTenantIdFromAuthHeader(authHeader));
+                        "rawTenantId", rawTenantId,
+                        "tenantId", tenantId);
 
                 handler.handle(Future.succeededFuture(map));
             } catch (RuntimeException var7) {
                 handler.handle(Future.failedFuture(var7));
             }
-
         }
     }
 

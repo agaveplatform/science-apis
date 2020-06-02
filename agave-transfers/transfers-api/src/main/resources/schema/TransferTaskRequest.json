@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "title": "TransferTaskRequest",
+  "description": "Transfer task request validation schema.",
+  "required": [
+    "dest",
+    "source"
+  ],
+  "properties": {
+    "dest": {
+      "$id": "#/properties/dest",
+      "type": "string",
+      "title": "The Dest Schema",
+      "description": "URI to which the data will be copied.",
+      "default": ""
+    },
+    "source": {
+      "$id": "#/properties/source",
+      "type": "string",
+      "title": "Source URI",
+      "description": "URL being transfered by this transfer task.",
+      "default": ""
+    }
+  }
+}

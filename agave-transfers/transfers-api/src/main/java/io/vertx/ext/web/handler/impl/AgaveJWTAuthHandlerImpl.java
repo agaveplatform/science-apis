@@ -108,9 +108,8 @@ public class AgaveJWTAuthHandlerImpl extends AuthorizationAuthHandler implements
                     return;
                 }
 
-                String rawTenantId = AuthHelper.getTenantIdFromAuthHeader(authHeader);
-                String tenantId = StringUtils.replaceChars(rawTenantId, '_', '.');
-                tenantId = StringUtils.replaceChars(tenantId, '-', '.');
+                String rawTenantId = AuthHelper.getRawTenantIdFromAuthHeader(authHeader);
+                String tenantId = AuthHelper.getTenantIdFromAuthHeader(authHeader);
 
                 Map<String,String> map = Map.of(
                         "bearer", request.headers().contains(HttpHeaders.AUTHORIZATION) ? request.headers().get(HttpHeaders.AUTHORIZATION) : "",

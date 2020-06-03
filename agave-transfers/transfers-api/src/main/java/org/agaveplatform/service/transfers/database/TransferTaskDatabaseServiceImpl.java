@@ -25,15 +25,12 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
-import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.Settings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * @author deardooley
@@ -170,7 +167,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonObject response = new JsonObject();
         ResultSet resultSet = fetch.result();
         if (resultSet.getNumRows() == 0) {
-          resultHandler.handle(Future.failedFuture(new ObjectNotFoundException("No transfer task found")));
+          resultHandler.handle(Future.succeededFuture(null));//new ObjectNotFoundException("No transfer task found")));
         } else {
           resultHandler.handle(Future.succeededFuture(resultSet.getRows().get(0)));
         }

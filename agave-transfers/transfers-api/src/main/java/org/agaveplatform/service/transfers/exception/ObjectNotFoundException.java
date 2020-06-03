@@ -1,5 +1,8 @@
 package org.agaveplatform.service.transfers.exception;
 
+import io.vertx.core.json.JsonObject;
+import org.iplantc.service.common.Settings;
+
 import java.security.PrivilegedActionException;
 
 public class ObjectNotFoundException extends Exception {
@@ -75,5 +78,17 @@ public class ObjectNotFoundException extends Exception {
      */
     public ObjectNotFoundException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
+    }
+
+    /**
+     * Serializes this exception into an error message suitable for returning to the user
+     * @return json representation of the exception
+     */
+    public JsonObject toJson() {
+        return new JsonObject()
+                .put("version", Settings.API_VERSION)
+                .put("status", "error")
+                .put("message", getMessage())
+                .putNull("result");
     }
 }

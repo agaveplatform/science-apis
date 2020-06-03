@@ -44,17 +44,8 @@ class TransferWatchListenerTest extends BaseTestCase {
 	private Vertx vertx;
 	private JWTAuth jwtAuth;
 
-	@BeforeAll
-	public void setUpService() throws IOException {
-		// read in config options
-		initConfig();
-
-	}
-
 
 	TransferWatchListener getMockListenerInstance(Vertx vertx) {
-
-
 		TransferWatchListener twc = Mockito.mock(TransferWatchListener.class);
 		when(twc.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(twc.getVertx()).thenReturn(vertx);

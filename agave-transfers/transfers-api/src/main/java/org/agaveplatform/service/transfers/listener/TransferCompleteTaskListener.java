@@ -6,7 +6,6 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
-import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;

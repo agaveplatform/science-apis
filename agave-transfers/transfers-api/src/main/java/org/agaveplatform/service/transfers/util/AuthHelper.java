@@ -35,6 +35,17 @@ public class AuthHelper {
     }
 
     /**
+     * Returns the raw tenant id portion of the auth header found in a multitenant jwt auth request. This value will
+     * be a noncified version of teh actual tenant id. Periods will be replaced by understores.
+     *
+     * @param authHeader the raw tenant id.
+     * @return the raw tenant id from the header
+     */
+    public static String getRawTenantIdFromAuthHeader(String authHeader) {
+        return StringUtils.trimToEmpty(authHeader).toLowerCase().replaceFirst(JWT_HEADER_PREFIX + "-", "");
+    }
+
+    /**
      * Parses out the tenant id from the tenant auth header. Expected format is <pre>JWT_HEADER_PREFIX-TENANT_ID</pre>
      * @param authHeader the header name starting with the {@link #JWT_HEADER_PREFIX} and ending in the tenant id
      * @return the tenant id or null if no id is present in the header

@@ -44,6 +44,7 @@ import static io.restassured.RestAssured.given;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -192,29 +193,48 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 	}
 
 	@BeforeAll
-	protected void beforeAll(Vertx vertx, VertxTestContext ctx) throws IOException {
-		super.setUpService();
+	@Override
+	public void setUpService(Vertx vertx, VertxTestContext ctx) throws IOException {
+		Checkpoint authCheckpoint = ctx.checkpoint();
 
-		DeploymentOptions options = new DeploymentOptions().setConfig(config);
-		vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, dbId -> {
-			log.debug("Completed deploying transfer task db verticles");
-			vertx.deployVerticle(TransferAPIVertical.class.getName(), options, apiId -> {
-				log.debug("Completed deploying transfer api verticles");
-				vertx.deployVerticle(TransferTaskCreatedListener.class.getName(), options, createdId -> {
-					log.debug("Completed deploying transfer task createdverticles");
-					vertx.deployVerticle(TransferTaskAssignedListener.class.getName(), options, assignedId -> {
-						log.debug("Completed deploying transfer task assigned verticles");
-						vertx.deployVerticle(TransferAllProtocolVertical.class.getName(), options, httpId -> {
-							log.debug("Completed deploying transfer all verticles");
-							vertx.deployVerticle(TransferCompleteTaskListener.class.getName(), options, completedId -> {
-								log.debug("Completed deploying transfer complete verticles");
-								ctx.completeNow();
+		// init the jwt auth used in the api calls
+		initAuth(vertx, resp -> {
+			authCheckpoint.flag();
+			if (resp.succeeded()) {
+				jwtAuth = resp.result();
+
+				DeploymentOptions options = new DeploymentOptions().setConfig(config);
+				vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, dbId -> {
+					log.debug("Completed deploying transfer task db verticles");
+					vertx.deployVerticle(TransferAPIVertical.class.getName(), options, apiId -> {
+						log.debug("Completed deploying transfer api verticles");
+						vertx.deployVerticle(TransferTaskCreatedListener.class.getName(), options, createdId -> {
+							log.debug("Completed deploying transfer task createdverticles");
+							vertx.deployVerticle(TransferTaskAssignedListener.class.getName(), options, assignedId -> {
+								log.debug("Completed deploying transfer task assigned verticles");
+								vertx.deployVerticle(TransferAllProtocolVertical.class.getName(), options, httpId -> {
+									log.debug("Completed deploying transfer all verticles");
+									vertx.deployVerticle(TransferCompleteTaskListener.class.getName(), options, completedId -> {
+										log.debug("Completed deploying transfer complete verticles");
+
+										ctx.verify(() -> {
+											assertNotNull(jwtAuth);
+											assertNotNull(config);
+
+											ctx.completeNow();
+										});
+									});
+								});
 							});
 						});
 					});
 				});
-			});
+			} else {
+				ctx.failNow(resp.cause());
+			}
 		});
+
+
 	}
 
 	@BeforeEach

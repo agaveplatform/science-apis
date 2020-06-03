@@ -19,6 +19,8 @@ import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
+import org.agaveplatform.service.transfers.util.ServiceUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -39,6 +41,9 @@ public abstract class BaseTestCase {
     private static final Logger log = LoggerFactory.getLogger(BaseTestCase.class);
 
     public final String TEST_USERNAME = "testuser";
+    public final String TEST_OTHER_USERNAME = "testotheruser";
+    public final String TEST_SHARE_USERNAME = "testshareuser";
+    public final String TEST_ADMIN_USERNAME = "testadminuser";
     public final String TENANT_ID = "agave.dev";
     public final String TRANSFER_SRC = "http://foo.bar/cat/in/the/hat";
     public final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
@@ -139,13 +144,15 @@ public abstract class BaseTestCase {
 
     /**
      * Generates a JWT token to authenticate to the service. Token is signed using the
-     * test private_key.pem and public_key.pem files in the resources directory.
+     * test private key in the service config file.
      *
      * @param username Name of the test user
+     * @param roles Comma separated list of roles to append to the jwt
      * @return signed jwt token
      */
-    protected String makeTestJwt(String username) {
+    protected String makeTestJwt(String username, String roles) {
         // Add wso2 claims set
+        String givenName = username.replace("user", "");
         JsonObject claims = new JsonObject()
                 .put("http://wso2.org/claims/subscriber", username)
                 .put("http://wso2.org/claims/applicationid", "-9999")
@@ -158,12 +165,12 @@ public abstract class BaseTestCase {
                 .put("http://wso2.org/claims/usertype", "APPLICATION_USER")
                 .put("http://wso2.org/claims/enduser", username)
                 .put("http://wso2.org/claims/enduserTenantId", "-9999")
-                .put("http://wso2.org/claims/emailaddress", "testuser@example.com")
-                .put("http://wso2.org/claims/fullname", "Test User")
-                .put("http://wso2.org/claims/givenname", "Test")
+                .put("http://wso2.org/claims/emailaddress", username + "@example.com")
+                .put("http://wso2.org/claims/fullname", StringUtils.capitalize(givenName) + " User")
+                .put("http://wso2.org/claims/givenname", givenName)
                 .put("http://wso2.org/claims/lastname", "User")
                 .put("http://wso2.org/claims/primaryChallengeQuestion", "N/A")
-                .put("http://wso2.org/claims/role", "Internal/everyone,Internal/subscriber")
+                .put("http://wso2.org/claims/role", ServiceUtils.explode(",", List.of("Internal/everyone,Internal/subscriber", roles)))
                 .put("http://wso2.org/claims/title", "N/A");
 
         JWTOptions jwtOptions = new JWTOptions()
@@ -173,6 +180,19 @@ public abstract class BaseTestCase {
                 .setSubject(username);
 
         return jwtAuth.generateToken(claims, jwtOptions);
+    }
+
+    /**
+     * Generates a JWT token to authenticate to the service. Token is signed using the
+     * test private key in the service config file. Only the default user roles are assigned
+     * to this jwt.
+     *
+     * @param username Name of the test user
+     * @return signed jwt token
+     * @see #makeTestJwt(String, String)
+     */
+    protected String makeTestJwt(String username) {
+        return makeTestJwt(username, "");
     }
 
     @BeforeAll

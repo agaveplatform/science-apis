@@ -1,11 +1,13 @@
 package org.agaveplatform.service.transfers.resources;
 
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
@@ -17,11 +19,9 @@ import io.vertx.ext.web.api.validation.HTTPRequestValidationHandler;
 
 import io.vertx.ext.web.api.validation.ValidationException;
 import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.JWTAuthHandler;
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
 
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthProviderImpl;
-import io.vertx.ext.web.handler.impl.JWTAuthHandlerImpl;
 import io.vertx.ext.web.handler.impl.Wso2JwtUser;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
@@ -33,11 +33,12 @@ import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
@@ -55,7 +56,6 @@ public class TransferAPIVertical extends AbstractVerticle {
     private JWTAuth authProvider;
     private JWTAuth jwtAuth;
 
-//    private JsonObject config;
     private TransferTaskDatabaseService dbService;
     protected String eventChannel = TRANSFERTASK_DB_QUEUE;
 
@@ -69,66 +69,6 @@ public class TransferAPIVertical extends AbstractVerticle {
         super();
         setVertx(vertx);
         setEventChannel(eventChannel);
-    }
-
-
-//    /**
-//     * Initializes the jwt auth options and the
-//     * @throws IOException when the key cannot be read
-//     */
-//    private void initAuth() throws IOException {
-//        JsonObject config = new JsonObject()
-//                .put("pubSecKeys", new JsonArray()
-//                        .add(new JsonObject()
-//                                .put("algorithm", "RS256")
-//                                .put("publicKey", CryptoHelper.publicKey())
-//                        ))
-//                .put("permissionsClaimKey", "http://wso2.org/claims/role");
-//
-//        JWTAuthOptions jwtAuthOptions = new JWTAuthOptions(config);
-////                .addPubSecKey(new PubSecKeyOptions()
-////                        .setAlgorithm("RS256")
-////                        .setPublicKey(CryptoHelper.publicKey()));
-//
-//        jwtAuth = JWTAuth.create(vertx, jwtAuthOptions);
-//    }
-
-    /**
-     * Generates a JWT token to authenticate to the service. Token is signed using the
-     * test private_key.pem and public_key.pem files in the resources directory.
-     *
-     * @param username Name of the test user
-     * @return signed jwt token
-     */
-    private String makeJwtToken(String username) {
-        // Add wso2 claims set
-        JsonObject claims = new JsonObject()
-                .put("http://wso2.org/claims/subscriber", username)
-                .put("http://wso2.org/claims/applicationid", "-9999")
-                .put("http://wso2.org/claims/applicationname", "agaveops")
-                .put("http://wso2.org/claims/applicationtier", "Unlimited")
-                .put("http://wso2.org/claims/apicontext", "/internal")
-                .put("http://wso2.org/claims/version", Settings.SERVICE_VERSION)
-                .put("http://wso2.org/claims/tier", "Unlimited")
-                .put("http://wso2.org/claims/keytype", "PRODUCTION")
-                .put("http://wso2.org/claims/usertype", "APPLICATION_USER")
-                .put("http://wso2.org/claims/enduser", username)
-                .put("http://wso2.org/claims/enduserTenantId", "-9999")
-                .put("http://wso2.org/claims/emailaddress", "testuser@example.com")
-                .put("http://wso2.org/claims/fullname", "Test User")
-                .put("http://wso2.org/claims/givenname", "Test")
-                .put("http://wso2.org/claims/lastname", "User")
-                .put("http://wso2.org/claims/primaryChallengeQuestion", "N/A")
-                .put("http://wso2.org/claims/role", "Internal/everyone,Internal/subscriber")
-                .put("http://wso2.org/claims/title", "N/A");
-
-        JWTOptions jwtOptions = new JWTOptions()
-                .setAlgorithm("RS256")
-                .setExpiresInMinutes(10_080) // 7 days
-                .setIssuer("transfers-api-integration-tests")
-                .setSubject(username);
-
-        return jwtAuth.generateToken(claims, jwtOptions);
     }
 
     /**
@@ -150,7 +90,6 @@ public class TransferAPIVertical extends AbstractVerticle {
     @Override
     public void start(Promise<Void> promise) {
         // set the config from the main vertical
-//        setConfig(config());
 
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, TRANSFERTASK_DB_QUEUE); // <1>
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
@@ -183,15 +122,14 @@ public class TransferAPIVertical extends AbstractVerticle {
         router.post("/api/transfers")
                 // Mount validation handler to ensure the posted json is valid prior to adding
                 .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
-                .failureHandler(routingContext -> {
-                    Throwable failure = routingContext.failure();
-                    if (failure instanceof ValidationException) {
-                        // Something went wrong during validation!
-                        String validationErrorMessage = failure.getMessage();
-                        routingContext.response().setStatusCode(400).end(validationErrorMessage);
-                    }
-                })
-
+//                .failureHandler(routingContext -> {
+//                    Throwable failure = routingContext.failure();
+//                    if (failure instanceof ValidationException) {
+//                        // Something went wrong during validation!
+//                        String validationErrorMessage = failure.getMessage();
+//                        routingContext.response().setStatusCode(400).end(validationErrorMessage);
+//                    }
+//                })
                 // Mount primary handler
                 .handler(this::addOne);
         router.put("/api/transfers/:uuid")
@@ -201,13 +139,12 @@ public class TransferAPIVertical extends AbstractVerticle {
                 .handler(this::updateOne);
 
         router.errorHandler(500, ctx -> {
-                JsonObject json = new JsonObject()
-                        .put("version", Settings.API_VERSION)
-                        .put("status", "error")
-                        .put("message", ctx.failure().getMessage())
-                        .putNull("result");
-
-                ctx.response().end(json.encode());
+            ctx.response().end(
+                    AgaveResponseBuilder.getInstance(ctx)
+                            .setStatus(AgaveResponse.RequestStatus.error)
+                            .setMessage(ctx.failure().getMessage())
+                            .build()
+                            .toString());
             });
 
         int portNumber = config().getInteger(CONFIG_TRANSFERTASK_HTTP_PORT, 8080);
@@ -232,19 +169,25 @@ public class TransferAPIVertical extends AbstractVerticle {
      * Fetches all {@link TransferTask} from the db. Results are added to the routing context.
      * If the user does not have admin privileges, then the call is delegated to {@link #getAllForUser(RoutingContext)}
      * and only results for the user are returned.
-     * TODO: add pagination and querying.
+     * TODO: add querying.
      *
      * @param routingContext the current rounting context for the request
      */
     private void getAll(RoutingContext routingContext) {
-        String tenantId = routingContext.get("tenantId");
+        Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
+        JsonObject principal = user.principal();
+        String tenantId = principal.getString("tenantId");
         int limit = getPageSize(routingContext);
         int offset = getOffset(routingContext);
 
-        if (((Wso2JwtUser)routingContext.user()).isAdminRoleExists()) {
+        if (user.isAdminRoleExists()) {
             dbService.getAll(tenantId, limit, offset, reply -> {
                 if (reply.succeeded()) {
-                    routingContext.response().end(reply.result().encodePrettily());
+                    routingContext.response().end(
+                            AgaveResponseBuilder.getInstance(routingContext)
+                                    .setResult(reply.result())
+                                    .build()
+                                    .toString());
                 } else {
                     routingContext.fail(reply.cause());
                 }
@@ -262,14 +205,19 @@ public class TransferAPIVertical extends AbstractVerticle {
      * @see #getAll(RoutingContext)
      */
     private void getAllForUser(RoutingContext routingContext) {
-        String tenantId = routingContext.get("tenantId");
-        String username = routingContext.user().principal().getString("username");
+        JsonObject principal = routingContext.user().principal();
+        String tenantId = principal.getString("tenantId");
+        String username = principal.getString("username");
         int limit = getPageSize(routingContext);
         int offset = getOffset(routingContext);
 
         dbService.getAllForUser(tenantId, username, limit, offset, reply -> {
             if (reply.succeeded()) {
-                routingContext.response().end(reply.result().encodePrettily());
+                routingContext.response().end(
+                        AgaveResponseBuilder.getInstance(routingContext)
+                            .setResult(reply.result())
+                            .build()
+                            .toString());
             } else {
                 routingContext.fail(reply.cause());
             }
@@ -283,7 +231,8 @@ public class TransferAPIVertical extends AbstractVerticle {
      * @param routingContext the current rounting context for the request
      */
     private void addOne(RoutingContext routingContext) {
-        JsonObject principal = routingContext.user().principal();
+        Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
+        JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
 
@@ -300,7 +249,12 @@ public class TransferAPIVertical extends AbstractVerticle {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());
                 _doPublishEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
-                routingContext.response().setStatusCode(201).end(reply.result().encodePrettily());
+                routingContext.response()
+                            .setStatusCode(201)
+                            .end(AgaveResponseBuilder.getInstance(routingContext)
+                                    .setResult(tt.toJson())
+                                    .build()
+                                    .toString());
             } else {
                 routingContext.fail(reply.cause());
             }
@@ -313,7 +267,8 @@ public class TransferAPIVertical extends AbstractVerticle {
      * @param routingContext the current rounting context for the request
      */
     private void deleteOne(RoutingContext routingContext) {
-        JsonObject principal = routingContext.user().principal();
+        Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
+        JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
         String uuid = routingContext.pathParam("uuid");
@@ -327,7 +282,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                 } else {
                     // if the current user is the owner or has admin privileges, allow the action
                     if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            ((Wso2JwtUser) routingContext.user()).isAdminRoleExists()) {
+                            user.isAdminRoleExists()) {
                         dbService.delete(tenantId, uuid, deleteReply -> {
                             if (deleteReply.succeeded()) {
                                 _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
@@ -355,10 +310,12 @@ public class TransferAPIVertical extends AbstractVerticle {
      * @param routingContext the current rounting context for the request
      */
     private void getOne(RoutingContext routingContext) {
-        JsonObject principal = routingContext.user().principal();
+        Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
+        JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
         String uuid = routingContext.pathParam("uuid");
+        AgaveResponseBuilder responseBuilder = AgaveResponseBuilder.getInstance(routingContext);
 
         // lookup the transfer task regardless
         dbService.getById(tenantId, uuid, getByIdReply -> {
@@ -369,11 +326,16 @@ public class TransferAPIVertical extends AbstractVerticle {
                 } else {
                     // if the current user is the owner or has admin privileges, allow the action
                     if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            ((Wso2JwtUser)routingContext.user()).isAdminRoleExists()) {
+                            user.isAdminRoleExists()) {
 
                         TransferTask transferTask = new TransferTask(getByIdReply.result());
 
-                        routingContext.response().end(getByIdReply.result().encodePrettily());
+                        // format and return the result
+                        routingContext.response().end(
+                                responseBuilder
+                                    .setResult(transferTask.toJson())
+                                    .build()
+                                    .toString());
                     } else {
                         routingContext.fail(403);
                     }
@@ -392,7 +354,8 @@ public class TransferAPIVertical extends AbstractVerticle {
      * @param routingContext the current rounting context for the request
      */
     private void updateOne(RoutingContext routingContext) {
-        JsonObject principal = routingContext.user().principal();
+        Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
+        JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
         String uuid = routingContext.request().getParam("uuid");
@@ -406,7 +369,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                 } else {
                     // if the current user is the owner or has admin privileges, allow the action
                     if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            ((Wso2JwtUser)routingContext.user()).isAdminRoleExists()) {
+                            user.isAdminRoleExists()) {
 
                         TransferTask tt = TransferRateHelper.updateSummaryStats(new TransferTask(getByIdReply.result()), transferUpdate);
 
@@ -414,7 +377,11 @@ public class TransferAPIVertical extends AbstractVerticle {
                         dbService.update(tenantId, uuid, tt, updateReply -> {
                             if (updateReply.succeeded()) {
                                 _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
-                                routingContext.response().end(updateReply.result().encodePrettily());
+                                routingContext.response().end(
+                                        AgaveResponseBuilder.getInstance(routingContext)
+                                                .setResult(updateReply.result())
+                                                .build()
+                                                .toString());
                             } else {
                                 // update failed
                                 routingContext.fail(updateReply.cause());
@@ -432,6 +399,18 @@ public class TransferAPIVertical extends AbstractVerticle {
         });
     }
 
+
+    // --------- Helper methods for events --------------
+
+    /**
+     * Publishes a message to the named event channel.
+     * @param event the event channel to which the message will be published
+     * @param message the message to publish
+     */
+    public void _doPublishEvent(String event, Object message) {
+        log.debug("Publishing {} event: {}", event, message);
+        getVertx().eventBus().publish(event, message);
+    }
 
     // --------- Getters and Setters --------------
 
@@ -463,11 +442,6 @@ public class TransferAPIVertical extends AbstractVerticle {
         return authProvider;
     }
 
-    public void _doPublishEvent(String event, Object body) {
-        log.debug("Publishing {} event: {}", event, body);
-        getVertx().eventBus().publish(event, body);
-    }
-    
     /**
      * Sets the vertx instance for this listener
      *

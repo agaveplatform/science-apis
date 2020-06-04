@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
+
 public abstract class AbstractTransferTaskListener extends AbstractVerticle  {
     private final Logger logger = LoggerFactory.getLogger(AbstractTransferTaskListener.class);
 
@@ -51,6 +53,8 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle  {
     public void _doPublishEvent(String event, Object body) {
         logger.debug("Publishing {} event: {}", event, body);
         getVertx().eventBus().publish(event, body);
+
+        getVertx().eventBus().send(TRANSFERTASK_NOTIFICATION, body);
     }
 
 

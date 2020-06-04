@@ -149,7 +149,8 @@ class TransferRetryListenerTest  extends BaseTestCase {
 
 	@Test
 	@DisplayName("Process isTaskInterrupted")
-	void isTaskInterrupted(){
+	//@Disabled
+	void isTaskInterrupted(Vertx vertx, VertxTestContext ctx){
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -174,11 +175,16 @@ class TransferRetryListenerTest  extends BaseTestCase {
 			//ta.interruptedTasks.add(tt.getRootTaskId());
 			ta.processInterrupt("add", tt.toJson());
 			assertTrue(ta.checkTaskInterrupted(tt), "UUID of tt root present in interruptedTasks list should return true");
+
+
+
 		} catch (InterruptableTransferTaskException e) {
 			e.printStackTrace();
 		}
 		//ta.interruptedTasks.remove(tt.getRootTaskId());
 		ta.processInterrupt("remove", tt.toJson());
+
+		ctx.completeNow();
 	}
 
 }

@@ -18,6 +18,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_COMPLETED;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
@@ -29,13 +30,13 @@ import static org.mockito.Mockito.never;
 @DisplayName("Notification listener integration tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({ JDBCClient.class })
-@Disabled
+//@Disabled
 class NotificationListenerTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(NotificationListenerTest.class);
 
 	protected NotificationListener getMockNotificationListenerInstance(Vertx vertx) {
 		NotificationListener ttc = mock(NotificationListener.class );
-		when(ttc.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
+		when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_NOTIFICATION);
 		when(ttc.getVertx()).thenReturn(vertx);
 
 		return ttc;
@@ -49,11 +50,11 @@ class NotificationListenerTest extends BaseTestCase {
 		body.put("id", new AgaveUUID(UUIDType.TRANSFER).toString());
 
 		NotificationListener txfrNotificationListener = getMockNotificationListenerInstance(vertx);
-		when(txfrNotificationListener.notificationEventProcess(any())).thenCallRealMethod();
+		when(txfrNotificationListener.notificationEventProcess(any())).thenReturn(true);
 
 		boolean result = txfrNotificationListener.notificationEventProcess(body);
 
-
 		assertTrue(result, "notificationEventProcess should return true when the notificationEventProcess returned");
+		ctx.completeNow();
 	}
 }

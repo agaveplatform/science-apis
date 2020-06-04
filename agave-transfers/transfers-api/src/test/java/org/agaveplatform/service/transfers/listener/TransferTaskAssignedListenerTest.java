@@ -39,6 +39,7 @@ class TransferTaskAssignedListenerTest {
 	}
 
 	@Test
+	@DisplayName("TransferTaskAssignedListener - processTransferTaskPublishesProtocolEventTest")
 	public void processTransferTaskPublishesProtocolEventTest(Vertx vertx, VertxTestContext ctx) {
 		//JsonObject body = new JsonObject();
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
@@ -70,6 +71,7 @@ class TransferTaskAssignedListenerTest {
 	}
 
 	@Test
+	@DisplayName("TransferTaskAssignedListener - processTransferTaskPublishesChildTasksForDirectoryTest")
 	public void processTransferTaskPublishesChildTasksForDirectoryTest(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
@@ -95,6 +97,7 @@ class TransferTaskAssignedListenerTest {
 	}
 
 	@Test
+	@DisplayName("TransferTaskAssignedListener - processTransferTaskPublishesErrorOnSystemUnavailbleTest")
 	public void processTransferTaskPublishesErrorOnSystemUnavailbleTest(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
@@ -119,6 +122,7 @@ class TransferTaskAssignedListenerTest {
 	}
 
 	@Test
+	@DisplayName("TransferTaskAssignedListener - processTransferTaskPublishesErrorOnSystemUnknownTest")
 	public void processTransferTaskPublishesErrorOnSystemUnknownTest(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
@@ -143,7 +147,9 @@ class TransferTaskAssignedListenerTest {
 	}
 
 	@Test
-	void isTaskInterruptedTest(){
+	@DisplayName("TransferTaskAssignedListener - isTaskInterruptedTest")
+	//@Disabled
+	void isTaskInterruptedTest(Vertx vertx, VertxTestContext ctx){
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -162,6 +168,8 @@ class TransferTaskAssignedListenerTest {
 			e.printStackTrace();
 		}
 		ta.interruptedTasks.remove(tt.getRootTaskId());
+
+		ctx.completeNow();
 	}
 
 }

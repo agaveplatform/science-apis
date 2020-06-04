@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("TransferApplication Tests")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-//@Disabled
+@Disabled
 class TransferApplicationTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferApplicationTest.class);
 	private TransferTaskDatabaseService dbService;
@@ -247,15 +247,16 @@ class TransferApplicationTest extends BaseTestCase {
 				.extract()
 				.asString();
 
-		// TODO: fix this check as it cannot work as written
 		vertx.eventBus().consumer(TRANSFERTASK_NOTIFICATION, m -> {
 			JsonObject json = (JsonObject) m.body();
 			ctx.verify(() -> {
-				if (json.getString("event").equalsIgnoreCase(TRANSFERTASK_COMPLETED)) {
+				if (json.getString("event").equalsIgnoreCase(TRANSFERTASK_NOTIFICATION)) {
 					ctx.completeNow();
 				}
 			});
 		});
+
+
 	}
 }
 

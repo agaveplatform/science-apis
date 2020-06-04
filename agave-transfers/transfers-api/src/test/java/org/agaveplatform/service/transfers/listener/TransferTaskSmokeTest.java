@@ -138,60 +138,6 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		return listener;
 	}
 
-	/**
-	 * Generates a JWT token to authenticate to the service. Token is signed using the
-	 * test private_key.pem and public_key.pem files in the resources directory.
-	 *
-	 * @param username Name of the test user
-	 * @return signed jwt token
-	 */
-	private String makeJwtToken(String username) {
-		// Add wso2 claims set
-		JsonObject claims = new JsonObject()
-				.put("http://wso2.org/claims/subscriber", username)
-				.put("http://wso2.org/claims/applicationid", "-9999")
-				.put("http://wso2.org/claims/applicationname", "agaveops")
-				.put("http://wso2.org/claims/applicationtier", "Unlimited")
-				.put("http://wso2.org/claims/apicontext", "/internal")
-				.put("http://wso2.org/claims/version", Settings.SERVICE_VERSION)
-				.put("http://wso2.org/claims/tier", "Unlimited")
-				.put("http://wso2.org/claims/keytype", "PRODUCTION")
-				.put("http://wso2.org/claims/usertype", "APPLICATION_USER")
-				.put("http://wso2.org/claims/enduser", username)
-				.put("http://wso2.org/claims/enduserTenantId", "-9999")
-				.put("http://wso2.org/claims/emailaddress", "testuser@example.com")
-				.put("http://wso2.org/claims/fullname", "Test User")
-				.put("http://wso2.org/claims/givenname", "Test")
-				.put("http://wso2.org/claims/lastname", "User")
-				.put("http://wso2.org/claims/primaryChallengeQuestion", "N/A")
-				.put("http://wso2.org/claims/role", "Internal/everyone,Internal/subscriber")
-				.put("http://wso2.org/claims/title", "N/A");
-
-		JWTOptions jwtOptions = new JWTOptions()
-				.setAlgorithm("RS256")
-				.setExpiresInMinutes(10_080) // 7 days
-				.setIssuer("transfers-api-integration-tests")
-				.setSubject(username);
-		return jwtAuth.generateToken(claims, jwtOptions);
-	}
-
-
-	/**
-	 * Initializes the jwt auth options and sets the jwt signing cert to a set of test generated keys.
-	 * @throws IOException when the key cannot be read
-	 */
-	private void initAuth(Vertx vertx) throws IOException {
-		CryptoHelper helper = new CryptoHelper();
-
-		JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
-				.addPubSecKey(new PubSecKeyOptions()
-						.setAlgorithm("RS256")
-						.setPublicKey(helper.getPublicKey())
-						.setSecretKey(helper.getPrivateKey()));
-
-		jwtAuth = JWTAuth.create(vertx, jwtAuthOptions);
-	}
-
 	@BeforeAll
 	@Override
 	public void setUpService(Vertx vertx, VertxTestContext ctx) throws IOException {

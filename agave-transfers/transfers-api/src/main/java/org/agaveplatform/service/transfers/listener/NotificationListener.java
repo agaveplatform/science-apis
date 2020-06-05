@@ -108,7 +108,7 @@ public class NotificationListener extends AbstractTransferTaskListener {
 	}
 
 	protected boolean notificationEventProcess(JsonObject body) {
-
+		logger.info(body.getString("id"), body.encode(), body.getString("owner"));
 		NotificationManager.process(body.getString("id"), body.encode(), body.getString("owner"));
 		return true;
 	}

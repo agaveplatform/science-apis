@@ -206,11 +206,12 @@ public abstract class AbstractJobMonitor implements JobMonitor {
 		}
 		else {
 			String resolvedStartupScript = startupScript;
+			ExecutionSystem executionSystem = getExecutionSystem();
 			for (StartupScriptSystemVariableType macro: StartupScriptSystemVariableType.values()) {
-				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForSystem(getExecutionSystem()));
+				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForSystem(executionSystem));
 			}
 			
-			for (StartupScriptJobVariableType macro: StartupScriptJobVariableType.values()) {
+			 for (StartupScriptJobVariableType macro: StartupScriptJobVariableType.values()) {
 				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
 			}
 			

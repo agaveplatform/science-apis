@@ -19,9 +19,9 @@ public enum StartupScriptJobVariableType implements WrapperTemplateVariableType
 	AGAVE_JOB_EXECUTION_SYSTEM,
 	AGAVE_JOB_BATCH_QUEUE,
 	AGAVE_JOB_ARCHIVE_PATH,
-	
 	AGAVE_JOB_OWNER,
-	AGAVE_JOB_TENANT;
+	AGAVE_JOB_TENANT,
+	AGAVE_JOB_WORK_PATH;
 	
 	private static final Logger log = Logger.getLogger(StartupScriptJobVariableType.class);
 
@@ -29,7 +29,7 @@ public enum StartupScriptJobVariableType implements WrapperTemplateVariableType
 	 * Resolves job-specific macros in the {@link ExecutionSystem#getStartupScript()} value for the 
 	 * system. Tenancy is honored with respect to the system and job.
 	 * 
-	 * @param job A valid job object
+	 * @param job the job whose values will be used to resolve the given variable
 	 * @return resolved value of the variable.
 	 */
 	@Override
@@ -80,6 +80,9 @@ public enum StartupScriptJobVariableType implements WrapperTemplateVariableType
         {
             return job.getTenantId();
         }
+		else if (this == AGAVE_JOB_WORK_PATH) {
+			return job.getWorkPath();
+		}
 		else {
 			throw new NotYetImplementedException("The startupScript variable " + name() + " is not yet supported.");
 		}

@@ -9,6 +9,7 @@ import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.exceptions.QuotaViolationException;
 import org.iplantc.service.jobs.exceptions.SchedulerException;
 import org.iplantc.service.jobs.model.Job;
@@ -89,7 +90,7 @@ public interface JobLauncher
 	 * @param wrapperTemplate
 	 * @return content of wrapper template with all macros resolved.
 	 */
-	public String resolveMacros(String wrapperTemplate);
+	public String resolveMacros(String wrapperTemplate) throws JobMacroResolutionException;
 	
 	/**
 	 * Returns the temp directory used by this {@link JobLauncher} to cache app assets as 
@@ -156,7 +157,7 @@ public interface JobLauncher
 	 * @return null if the value is blank, the value of the {@code resolveStartupScriptMacros) 
 	 * filtered with job and system macros otherwise.
 	 */
-	public String resolveStartupScriptMacros(String startupScript);
+	public String resolveStartupScriptMacros(String startupScript) throws JobMacroResolutionException;
 	
 	/**
 	 * @return the executionSystem

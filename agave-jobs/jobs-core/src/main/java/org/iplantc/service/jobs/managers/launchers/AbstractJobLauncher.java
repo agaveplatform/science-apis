@@ -6,10 +6,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -30,11 +30,11 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.util.HTMLizer;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.exceptions.SchedulerException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateAttributeVariableType;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariableType;
 import org.iplantc.service.jobs.util.Slug;
@@ -43,7 +43,6 @@ import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.enumerations.StartupScriptSystemVariableType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
@@ -151,20 +150,16 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	public abstract void launch() throws JobException, ClosedByInterruptException, SchedulerException, IOException, SystemUnavailableException;
 	
 	/**
-	 * Removes all the user-provided job status macros that agave inserts into the wrapper template
-	 * that would otherwise screw things up. 
-	 * @param wrapperTemplate
-	 * @return
+	 * Users can include any of the {@link WrapperTemplateStatusVariableType#userAccessibleJobCallbackMacros()} in their
+	 * wrapper template. All other status callback values will cause issues in the proper execution and monitoring of
+	 * the job. This method removes all {@link WrapperTemplateStatusVariableType} that are not availble to the user
+	 * from the wrapper template.
+	 * @param wrapperTemplate the wrapper template to filter
+	 * @return the wrapper with the reserved {@link WrapperTemplateStatusVariableType} macros removed
 	 */
-	public String filterRuntimeStatusMacros(String wrapperTemplate) {
-		WrapperTemplateStatusVariableType[] userAccessibleStatuCallbacks = WrapperTemplateStatusVariableType.getUserAccessibleStatusCallbacks();
-		for (WrapperTemplateStatusVariableType macro: WrapperTemplateStatusVariableType.values()) {
-			if (!ArrayUtils.contains(userAccessibleStatuCallbacks, macro)) {
-				wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", "");
-			}
-		}
-		
-		return wrapperTemplate;
+	public String removeReservedJobStatusMacros(String wrapperTemplate) {
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
+		return resolver.removeReservedJobStatusMacros(wrapperTemplate);
 	}
 	
 	/* (non-Javadoc)
@@ -172,107 +167,108 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	 */
 	@Override
 	public String resolveRuntimeNotificationMacros(String wrapperTemplate) {
-		
-		Pattern emptyCallbackPattern = Pattern.compile("(?s).*\\$\\{AGAVE_JOB_CALLBACK_NOTIFICATION\\}.*");
-        Matcher callbackMatcher = emptyCallbackPattern.matcher(wrapperTemplate);
-        while (callbackMatcher.matches()) {
-        	String callbackSnippet = WrapperTemplateStatusVariableType.resolveNotificationEventMacro(
-                    getJob(), "JOB_RUNTIME_CALLBACK_EVENT", new String[]{});
-            
-            wrapperTemplate = StringUtils.replace(wrapperTemplate, callbackMatcher.group(0), callbackSnippet);
-            
-            callbackMatcher = emptyCallbackPattern.matcher(wrapperTemplate);
-        }
-        
-	    // process the notification template first so there is no confusion or namespace conflict prior to resolution
-        Pattern defaultCallbackPattern = Pattern.compile("(?s)(?:.*)?(?:(\\$\\{AGAVE_JOB_CALLBACK_NOTIFICATION\\|(?:([a-zA-Z0-9_,\\s]*))\\}))(?:.*)?");
-        callbackMatcher = defaultCallbackPattern.matcher(wrapperTemplate);
-        while (callbackMatcher.matches()) {
-        	String callbackSnippet = WrapperTemplateStatusVariableType.resolveNotificationEventMacro(
-                    getJob(), "JOB_RUNTIME_CALLBACK_EVENT", StringUtils.split(callbackMatcher.group(2), ","));
-            
-            wrapperTemplate = StringUtils.replace(wrapperTemplate, callbackMatcher.group(1), callbackSnippet);
-            
-            callbackMatcher = defaultCallbackPattern.matcher(wrapperTemplate);
-        }
-        
-        Pattern customCallbackPattern = Pattern.compile("(?s)(?:.*)?(?:(\\$\\{AGAVE_JOB_CALLBACK_NOTIFICATION\\|(?:(\\s*[a-zA-Z0-9_]*\\s*))\\|(?:([a-zA-Z0-9_,\\s]*))\\}))(?:.*)?");
-        callbackMatcher = customCallbackPattern.matcher(wrapperTemplate);
-        while (callbackMatcher.matches()) {
-            String callbackSnippet = WrapperTemplateStatusVariableType.resolveNotificationEventMacro(
-                    getJob(), callbackMatcher.group(2), StringUtils.split(callbackMatcher.group(3), ","));
-            
-            wrapperTemplate = StringUtils.replace(wrapperTemplate, callbackMatcher.group(1), callbackSnippet);
-            
-            callbackMatcher = customCallbackPattern.matcher(wrapperTemplate);
-        }
-        
-        return wrapperTemplate;
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
+		return resolver.resolveRuntimeNotificationMacros(wrapperTemplate);
+//
+//		Pattern emptyCallbackPattern = Pattern.compile("(?s).*\\$\\{AGAVE_JOB_CALLBACK_NOTIFICATION\\}.*");
+//        Matcher callbackMatcher = emptyCallbackPattern.matcher(wrapperTemplate);
+//        while (callbackMatcher.matches()) {
+//        	String callbackSnippet = resolver.resolveNotificationEventMacro(
+//        			"JOB_RUNTIME_CALLBACK_EVENT", new String[]{});
+//
+//            wrapperTemplate = StringUtils.replace(wrapperTemplate, callbackMatcher.group(0), callbackSnippet);
+//
+//            callbackMatcher = emptyCallbackPattern.matcher(wrapperTemplate);
+//        }
+//
+//	    // process the notification template first so there is no confusion or namespace conflict prior to resolution
+//        Pattern defaultCallbackPattern = Pattern.compile("(?s)(?:.*)?(?:(\\$\\{AGAVE_JOB_CALLBACK_NOTIFICATION\\|(?:([a-zA-Z0-9_,\\s]*))\\}))(?:.*)?");
+//        callbackMatcher = defaultCallbackPattern.matcher(wrapperTemplate);
+//        while (callbackMatcher.matches()) {
+//        	String callbackSnippet = resolver.resolveNotificationEventMacro(
+//                    "JOB_RUNTIME_CALLBACK_EVENT", StringUtils.split(callbackMatcher.group(2), ","));
+//
+//            wrapperTemplate = StringUtils.replace(wrapperTemplate, callbackMatcher.group(1), callbackSnippet);
+//
+//            callbackMatcher = defaultCallbackPattern.matcher(wrapperTemplate);
+//        }
+//
+//        Pattern customCallbackPattern = Pattern.compile("(?s)(?:.*)?(?:(\\$\\{AGAVE_JOB_CALLBACK_NOTIFICATION\\|(?:(\\s*[a-zA-Z0-9_]*\\s*))\\|(?:([a-zA-Z0-9_,\\s]*))\\}))(?:.*)?");
+//        callbackMatcher = customCallbackPattern.matcher(wrapperTemplate);
+//        while (callbackMatcher.matches()) {
+//            String callbackSnippet = resolver.resolveNotificationEventMacro(
+//                    callbackMatcher.group(2), StringUtils.split(callbackMatcher.group(3), ","));
+//
+//            wrapperTemplate = StringUtils.replace(wrapperTemplate, callbackMatcher.group(1), callbackSnippet);
+//
+//            callbackMatcher = customCallbackPattern.matcher(wrapperTemplate);
+//        }
+//
+//        return wrapperTemplate;
 	}
 	
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.jobs.managers.launchers.JobLauncher#resolveMacros(java.lang.String)
 	 */
 	@Override
-	public String resolveMacros(String wrapperTemplate) {
-		
-		for (WrapperTemplateAttributeVariableType macro: WrapperTemplateAttributeVariableType.values()) {
-			wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
-		}
-		
-		for (WrapperTemplateStatusVariableType macro: WrapperTemplateStatusVariableType.values()) {
-//			if (macro != WrapperTemplateStatusVariableType.AGAVE_JOB_CALLBACK_NOTIFICATION) {
-				wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
-//			}
-		}
-		
-		return wrapperTemplate;
+	public String resolveMacros(String wrapperTemplate) throws JobMacroResolutionException {
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
+		return resolver.resolve(wrapperTemplate);
+
+//		for (WrapperTemplateAttributeVariableType macro: WrapperTemplateAttributeVariableType.values()) {
+//			wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
+//		}
+//
+//		for (WrapperTemplateStatusVariableType macro: WrapperTemplateStatusVariableType.values()) {
+////			if (macro != WrapperTemplateStatusVariableType.AGAVE_JOB_CALLBACK_NOTIFICATION) {
+//				wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
+////			}
+//		}
+//
+//		return wrapperTemplate;
 	}
 	
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.jobs.managers.launchers.JobLauncher#resolveStartupScriptMacros(java.lang.String)
 	 */
-	public String resolveStartupScriptMacros(String startupScript) {
-		if (StringUtils.isBlank(startupScript)) {
-			return null;
-		}
-		else {
-			String resolvedStartupScript = startupScript;
-			for (StartupScriptSystemVariableType macro: StartupScriptSystemVariableType.values()) {
-				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForSystem(getExecutionSystem()));
-			}
-			
-			for (StartupScriptJobVariableType macro: StartupScriptJobVariableType.values()) {
-				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
-			}
-			
-			return resolvedStartupScript;
-		}
+	public String resolveStartupScriptMacros(String startupScript) throws JobMacroResolutionException {
+		StartupScriptJobMacroResolver resolver = new StartupScriptJobMacroResolver(getJob());
+		return resolver.resolve();
+//
+//		if (StringUtils.isBlank(startupScript)) {
+//			return null;
+//		}
+//		else {
+//			String resolvedStartupScript = startupScript;
+//			for (StartupScriptSystemVariableType macro: StartupScriptSystemVariableType.values()) {
+//				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForSystem(getExecutionSystem()));
+//			}
+//
+//			for (StartupScriptJobVariableType macro: StartupScriptJobVariableType.values()) {
+//				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
+//			}
+//
+//			return resolvedStartupScript;
+//		}
 	}
 	
 	/**
 	 * Generates the command to source the {@link ExecutionSystem#getStartupScript()} and log the 
-	 * response to the {@code .agave.log} file in the job work directory.
+	 * response to the job's {@code .agave.log} file in the job work directory.
+	 * @param absoluteRemoteWorkPath the absolute path to the job work directory on the remote system.
 	 * @return the properly escaped command to be run on the remote system.
-	 * @throws SystemUnavailableException
+	 * @throws JobMacroResolutionException when the startup script cannot be resolved. This is usually due ot the system not being available
 	 */
-	public String getStartupScriptCommand(String absoluteRemoteWorkPath) throws SystemUnavailableException {
-		String startupScriptCommand = "";
-		if (!StringUtils.isEmpty(getExecutionSystem().getStartupScript())) {
-			String resolvedstartupScript = resolveStartupScriptMacros(getExecutionSystem().getStartupScript());
-			
-			if (resolvedstartupScript != null) {
-				startupScriptCommand = String.format("printf \"[%%s] %%b\\n\" $(date '+%%Y-%%m-%%dT%%H:%%M:%%S%%z') \"$(source %s 2>&1)\" >> %s/.agave.log ",
-						resolvedstartupScript,
-						absoluteRemoteWorkPath);
-			}
-		}
-		
-		if (StringUtils.isEmpty(startupScriptCommand)) {
-			startupScriptCommand = String.format("printf \"[%%s] %%b\\n\" $(date '+%%Y-%%m-%%dT%%H:%%M:%%S%%z') \"$(echo 'No startup script defined. Skipping...')\" >> %s/.agave.log ",
+	public String getStartupScriptCommand(String absoluteRemoteWorkPath) throws JobMacroResolutionException {
+		String resolvedStartupScript = new StartupScriptJobMacroResolver(getJob()).resolve();
+		if (resolvedStartupScript != null) {
+			return String.format("printf \"[%%s] %%b\\n\" $(date '+%%Y-%%m-%%dT%%H:%%M:%%S%%z') \"$(source %s 2>&1)\" >> %s/.agave.log ",
+					resolvedStartupScript,
+					absoluteRemoteWorkPath);
+		} else {
+			return String.format("printf \"[%%s] %%b\\n\" $(date '+%%Y-%%m-%%dT%%H:%%M:%%S%%z') \"$(echo 'No startup script defined. Skipping...')\" >> %s/.agave.log ",
 					absoluteRemoteWorkPath);
 		}
-		return startupScriptCommand;
 	}
 	
 	/**
@@ -489,7 +485,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
             throw new JobException(msg, e);
         } 
 		finally {
-        	 try { remoteSoftwareDataClient.disconnect(); } catch (Exception e) {}
+        	 try { remoteSoftwareDataClient.disconnect(); } catch (Exception ignored) {}
         }
     }
 
@@ -558,14 +554,15 @@ public abstract class AbstractJobLauncher implements JobLauncher
 			throw new JobException(msg, e);
 		} 
     	finally {
-			try { remoteExecutionDataClient.disconnect();} catch (Exception e) {} 
+			try { remoteExecutionDataClient.disconnect();} catch (Exception ignored) {}
 		}
     }
 
     /**
-     *  This method creates an archive log file
-     * @param logFileName
-     * @return
+     * This method creates a manifest file for the job work directory that contains all the file items that will be
+	 * present when the job starts. These file items will be ignored during archiving.
+     * @param logFileName the name of the log file to create
+     * @return the local file created
      * @throws JobException
      */
     protected File createArchiveLog(String logFileName) throws JobException {
@@ -589,12 +586,17 @@ public abstract class AbstractJobLauncher implements JobLauncher
             throw new JobException(msg, e);
         }
 		finally {
-            try { logWriter.close(); } catch (Exception e) {}
+            try {
+				if (logWriter != null) {
+					logWriter.close();
+				}
+			} catch (Exception ignored) {}
         }
     }
     
     protected void printListing(File file, File baseFolder, FileWriter writer) throws IOException
     {
+
         if (file.isFile())
         {
         	String relativeFilePath = StringUtils.removeStart(file.getPath(), baseFolder.getPath());
@@ -619,46 +621,14 @@ public abstract class AbstractJobLauncher implements JobLauncher
         }
     }
     
-    protected void printJobPropertyEnvironmentVariables(File file) throws JobException
-    {
-        FileWriter writer = null;
-        try 
-        {
-            File agaverc = new File(tempAppDir, ".agaverc");
-            agaverc.createNewFile();
-            writer = new FileWriter(agaverc);
-            writer.append("#!/bin/bash \n\n");
-            
-            for (WrapperTemplateAttributeVariableType macro: WrapperTemplateAttributeVariableType.values()) {
-                if (StringUtils.startsWith(macro.name(), "AGAVE")) {
-                    writer.append(String.format("%s=\"%s\"\n", macro.name(), macro.resolveForJob(getJob())));
-                }
-            }
-            
-            writer.close();
-        } 
-        catch (IOException e) 
-        {
-            step = "Creating the .agaverc " + getJob().getUuid();
-            log.debug(step);
-            String msg = "Failed to create runcom file for job " + getJob().getUuid();
-            log.error(msg, e);
-            throw new JobException(msg, e);
-        }
-        finally {
-            try { writer.close(); } catch (Exception e) {}
-        }
-    }
-        
-        
     /**
      * Make the remote call to start the job on the remote system. This will need to
      * handle the invocation command, remote connection, parsing of the response to
      * get the job id, and updating of the job status on success or failure.
      * 
-     * @return
-     * @throws JobException
-     * @throws SchedulerException
+     * @return the response from the remote scheduler
+     * @throws JobException when an error occurs trying to submit the job
+     * @throws SchedulerException when the remote schedueler response cannot be parsed
      */
     protected abstract String submitJobToQueue() throws JobException, SchedulerException;
     

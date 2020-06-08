@@ -11,7 +11,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.managers.JobManager;
+import org.iplantc.service.jobs.managers.launchers.AbstractJobLauncher;
+import org.iplantc.service.jobs.managers.launchers.StartupScriptJobMacroResolver;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType;
@@ -191,49 +194,24 @@ public abstract class AbstractJobMonitor implements JobMonitor {
     }
     
     /**
-     * The {@code startupScript} is a optional path to a file residing on, and defined by, the {@link ExecutionSystem}
-     * of this job. The path may include job macros similar to the app wrapper template. This method resolves any
-     * macros in path (not the actual file), and returns it for use building the submit command.
-     *
-     * @param startupScript templatized path to the startup script
-     * @return the {@code startupScript} file path on the remote system, filtered for any job macros
-     * @throws SystemUnavailableException when the execution system is not available
-     */
-    protected String resolveStartupScriptMacros(String startupScript) throws SystemUnavailableException
-	{
-	    if (StringUtils.isBlank(startupScript)) {
-			return null;
-		}
-		else {
-			String resolvedStartupScript = startupScript;
-			ExecutionSystem executionSystem = getExecutionSystem();
-			for (StartupScriptSystemVariableType macro: StartupScriptSystemVariableType.values()) {
-				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForSystem(executionSystem));
-			}
-			
-			 for (StartupScriptJobVariableType macro: StartupScriptJobVariableType.values()) {
-				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
-			}
-			
-			return resolvedStartupScript;
-		}
-	}
-    
-    /**
      * Returns the command to run on the remote host prior to the wrapper script is run so that the
      * {@link ExecutionSystem#getStartupScript()} is sourced prior to job submission. The
      * {@link ExecutionSystem#getStartupScript()} can be templatized with job macros, so this method will
      * resolve those prior to building the command.
+     *
+     * Unlike the comparable {@link AbstractJobLauncher#getStartupScriptCommand(String)} method, if no startup
+     * script is defined, an empty string is returned. This is to avoid blowing up the log file for long-running jobs.
+     * We also write the output to /dev/null rather than the job's {@code .agave.log}  file for the same reason.
+     *
 	 * @return the resolved command, or empty if the {@link ExecutionSystem#getStartupScript()} is not defined.
-     * @throws SystemUnavailableException when the execution system is not available
+     * @throws JobMacroResolutionException when the startup script cannot be resolved. This is usually due ot the system not being available
+     * @see StartupScriptJobMacroResolver
 	 */
-	public String getStartupScriptCommand() throws SystemUnavailableException {
-		String command = "";
-		String resolvedstartupScript = resolveStartupScriptMacros(getExecutionSystem().getStartupScript());
-		if (resolvedstartupScript != null) {
-            command = String.format("echo $(source %s 2>&1) >> /dev/null ; ", resolvedstartupScript);
-		}
-		return command;
+	public String getStartupScriptCommand() throws JobMacroResolutionException {
+		String resolvedstartupScript = new StartupScriptJobMacroResolver(getJob()).resolve();
+
+		return resolvedstartupScript == null ? "" :
+                String.format("echo $(source %s 2>&1) >> /dev/null ; ", resolvedstartupScript);
 	}
 
     /**

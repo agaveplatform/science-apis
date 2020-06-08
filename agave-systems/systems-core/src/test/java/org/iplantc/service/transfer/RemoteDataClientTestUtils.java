@@ -36,17 +36,17 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
     /**
      * Returns a {@link JSONObject} representing the system to test.
      *
-     * @return
-     * @throws JSONException
-     * @throws IOException
+     * @return the system definition marshalled to json
+     * @throws JSONException if the system definition cannot be parsed
+     * @throws IOException if the system json definition cannot be read
      */
     protected abstract JSONObject getSystemJson() throws JSONException, IOException;
 
     /**
-     * Gets remote data client from current current thread
-     * @return
-     * @throws RemoteCredentialException
-     * @throws RemoteDataException
+     * Gets remote data client from current current thread with unique home directory
+     * @return threadlocal {@link RemoteDataClient}
+     * @throws RemoteCredentialException when the system credentials are invalid
+     * @throws RemoteDataException when the system failed to initialize
      */
     protected RemoteDataClient getClient()
     {
@@ -85,8 +85,7 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
                 storageConfig.getDefaultAuthConfig().getUsername();
 
         SystemDao dao = Mockito.mock(SystemDao.class);
-        Mockito.when(dao.findBySystemId(Mockito.anyString()))
-            .thenReturn(system);
+        Mockito.when(dao.findBySystemId(Mockito.anyString())).thenReturn(system);
     }
 
     @AfterClass(alwaysRun=true)
@@ -142,7 +141,7 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
      * file not found exceptions.
      *
      * @param shouldExist Whether the path should exist.
-     * @return
+     * @return a path on the remote system taht should be forbidden. It may or may not exist.
      * @throws RemoteDataException
      */
     protected abstract String getForbiddenDirectoryPath(boolean shouldExist) throws RemoteDataException;

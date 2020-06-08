@@ -41,7 +41,6 @@ public class NotificationListener extends AbstractTransferTaskListener {
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
 
-			// TODO: fix this horrific mess of a data structure
 			NotificationMessageContext messageBodyContext = new NotificationMessageContext(
 					MessageType.TRANSFERTASK_CANCELED_COMPLETED, body.encode(), body.getString("uuid"));
 

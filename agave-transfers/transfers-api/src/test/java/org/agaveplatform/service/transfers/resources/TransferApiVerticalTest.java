@@ -106,7 +106,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
     }
 
     @Test
-    @Disabled
+    //@Disabled
     @DisplayName("List web root says hello")
     void register(Vertx vertx, VertxTestContext ctx) {
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -145,6 +145,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
 
     @Test
     @DisplayName("Create new transfer task")
+    //@Disabled
     void create(Vertx vertx, VertxTestContext ctx) {
         TransferTask tt = _createTestTransferTask();
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -194,6 +195,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
 
     @Test
     @DisplayName("List transfer tasks by admin")
+    //@Disabled
     void getAllForAdmin(Vertx vertx, VertxTestContext ctx) {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -262,6 +264,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
 
     @Test
     @DisplayName("List transfer tasks by user")
+    //@Disabled
     void getAllForUser(Vertx vertx, VertxTestContext ctx) {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);
@@ -346,6 +349,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
 
     @Test
     @DisplayName("Delete transfer task by admin")
+    //@Disabled
     void deleteForAdmin(Vertx vertx, VertxTestContext ctx) {
 
         DeploymentOptions options = new DeploymentOptions().setConfig(config);

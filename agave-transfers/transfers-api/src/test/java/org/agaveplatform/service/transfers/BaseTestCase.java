@@ -94,9 +94,9 @@ public abstract class BaseTestCase {
                     Path publicKey = Files.write(Files.createTempFile("public", "pem"), cryptoHelper.getPublicKey().getBytes());
 
                     config.put("transfertask.http.port", getPort())
-                            .put("transfertask.jwt.auth", true)
-                            .put("transfertask.jwt.public_key", publicKey.toAbsolutePath().toString())
-                            .put("transfertask.jwt.private_key", privateKey.toAbsolutePath().toString());
+                            .put("transfertask.jwt.auth", true);
+//                            .put("transfertask.jwt.public_key", publicKey.toAbsolutePath().toString())
+//                            .put("transfertask.jwt.private_key", privateKey.toAbsolutePath().toString());
 
                     handler.handle(Future.succeededFuture(config));
                 } catch (IOException e) {

@@ -250,7 +250,6 @@
                     <locations>
                         <location>filesystem:target/classes/db/migration</location>
                         <location>classpath:org.iplantc.service.common.migration</location>
-                        <location>classpath:org.iplantc.service.common.migration</location>
                     </locations>
                 </configuration>
             </plugin>

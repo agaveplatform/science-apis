@@ -41,9 +41,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import static org.restlet.data.Status.*;
 
 @Test(groups={"integration"})
-public class NotificationResourceImplTest extends AbstractNotificationTest {
+public class NotificationResourceImplIT extends AbstractNotificationTest {
 
-	private static Logger log = Logger.getLogger(NotificationResourceImplTest.class);
+	private static Logger log = Logger.getLogger(NotificationResourceImplIT.class);
 	private Component comp = new Component();
 	private ServletJaxRsApplication application = null;
 	private NotificationResourceImpl service;
@@ -69,12 +69,7 @@ public class NotificationResourceImplTest extends AbstractNotificationTest {
 	public void beforeClass() throws Exception {
 		initRestletServer();
 		requestBin = RequestBin.getInstance();
-//	}
-//
-//	@BeforeMethod
-//	protected void beforeMethod() {
-		// create a notification so we have something to reference in the web service 
-		// interactions.
+
 		referenceNotification = new Notification("SENT", "help@agaveplatform.org");
 		referenceNotification.setAssociatedUuid(referenceNotification.getUuid());
 		referenceNotification.setOwner(TEST_USER);
@@ -91,8 +86,7 @@ public class NotificationResourceImplTest extends AbstractNotificationTest {
 		comp.stop();
 	}
 	
-	private JsonNode verifyResponse(Representation representation, boolean shouldSucceed) 
-	throws JSONException, IOException 
+	private JsonNode verifyResponse(Representation representation, boolean shouldSucceed) throws IOException
 	{
 		String responseBody = representation.getText();
 		
@@ -392,16 +386,8 @@ public class NotificationResourceImplTest extends AbstractNotificationTest {
 	public void fireNotification(String uuid, String errorMessage, boolean shouldThrowException)
 	{
 		JsonNode json = null;
-//		Notification notification = null;
-		try 
+		try
 		{
-//			Tenant tenant = new TenantDao().findByTenantId("agave.dev");
-//			notification = createWebhookNotification();
-//			notification.setAssociatedUuid(tenant.getUuid());
-//			notification.setEvent("UPDATED");
-//
-//			dao.persist(notification);
-
 			ClientResource resource = new ClientResource("http://localhost:8182/" + uuid);
 			resource.setReferrerRef("http://test.example.com");
 			resource.getRequest().getHeaders().add("X-JWT-ASSERTION-AGAVE_DEV", JWTClient.createJwtForTenantUser(TEST_USER, "agave.dev", false));

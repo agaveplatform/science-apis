@@ -3,9 +3,8 @@ package org.iplantc.service.apps.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import junit.framework.Assert;
-
 import org.iplantc.service.apps.exceptions.SoftwareException;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 

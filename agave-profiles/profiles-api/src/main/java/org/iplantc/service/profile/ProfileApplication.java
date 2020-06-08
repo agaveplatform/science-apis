@@ -11,7 +11,7 @@ import org.iplantc.service.profile.resource.impl.ProfileResourceImpl;
 public class ProfileApplication extends Application 
 {	
 	/**
-	 * @see javax.ws.rs.core.ApplicationConfig#getResourceClasses()
+	 * @see javax.ws.rs.core.Application#getClasses()
 	 */
 	@Override
     public Set<Class<?>> getClasses() {

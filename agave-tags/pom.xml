@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>tags</artifactId>
-	<name>Agave Platform Science API Tags Service Parent POM</name>
+	<name>Agave Platform Tags Service Parent POM</name>
 	<description>This is the parent project for the tags service.</description>
 	<packaging>pom</packaging>
 

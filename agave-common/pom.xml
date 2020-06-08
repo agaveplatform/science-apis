@@ -10,7 +10,7 @@
 	</parent>
 
 	<artifactId>common</artifactId>
-	<name>Agave Platform Common Services Parent</name>
+	<name>Agave Platform Common Parent</name>
 	<description>Parent pom for the Agave common services.</description>
 	<packaging>pom</packaging>
 

@@ -210,11 +210,5 @@ public class TransferApplication {
                 log.error("Error retrieving configuration.");
             }
         });
-
-
-
-
-
-
     }
 }

@@ -134,6 +134,7 @@ public abstract class BaseTestCase {
 
                     handler.handle(Future.succeededFuture(jwtAuth));
                 } catch (IOException e) {
+                    log.error("Unable to locate pub sec key on disk: " + e.getMessage());
                     handler.handle(Future.failedFuture(e));
                 }
             } else {

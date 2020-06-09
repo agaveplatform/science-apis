@@ -1,5 +1,8 @@
 package org.agaveplatform.service.transfers;
 
+/**
+ * String literal constants representing the keys to the service's config file.
+ */
 public class TransferTaskConfigProperties {
     public static final String CONFIG_TRANSFERTASK_HTTP_PORT = "transfertask.http.port";
     public static final String CONFIG_TRANSFERTASK_JWT_AUTH = "transfertask.jwt.auth";

@@ -78,5 +78,15 @@
             <version>2.0</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
+            <version>${jaxb.version}</version>
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.sun.xml.bind</groupId>-->
+<!--            <artifactId>jaxb-core</artifactId>-->
+<!--            <version>${jaxb.version}</version>-->
+<!--        </dependency>-->
     </dependencies>
 </project>

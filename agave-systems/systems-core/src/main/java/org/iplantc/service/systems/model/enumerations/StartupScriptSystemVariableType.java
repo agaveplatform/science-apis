@@ -36,7 +36,6 @@ public enum StartupScriptSystemVariableType
 	 */
 	public String resolveForSystem(ExecutionSystem system)
 	{
-		
 		if (this == SYSTEM_ID)
 		{
 			return system.getSystemId();

@@ -99,7 +99,7 @@
         <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
         <flyway-maven-plugin.version>4.0</flyway-maven-plugin.version>
         <flyway-maven-plugin.versionRange>[4.0,)</flyway-maven-plugin.versionRange>
-        <jaxb.version>2.3.0</jaxb.version>
+        <jaxb.version>2.2.11</jaxb.version>
         <jacoco.version>0.8.1</jacoco.version>
         <jgitflow-maven-plugin.version>1.0-m5.1</jgitflow-maven-plugin.version>
         <maven-antrun-plugin.version>1.8</maven-antrun-plugin.version>
@@ -303,6 +303,9 @@
                         <debug>true</debug>
                         <source>${java-source.version}</source>
                         <target>${java-target.version}</target>
+                        <compilerArgs>
+                            <arg>--add-modules=java.xml.bind</arg>
+                        </compilerArgs>
                     </configuration>
                 </plugin>
 
@@ -320,8 +323,8 @@
                     <configuration>
                         <argLine>--illegal-access=permit </argLine>
                         <skipTests>${skip.unit.tests}</skipTests>
-                        <groups>unit</groups>
-                        <excludedGroups>broken,notReady</excludedGroups>
+<!--                        <groups>unit</groups>-->
+<!--                        <excludedGroups>broken,notReady</excludedGroups>-->
                         <systemPropertyVariables>
                             <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
                             </log4j.configuration>
@@ -608,8 +611,8 @@
 
                 <skip.integration.tests>false</skip.integration.tests>
 
-                <foundation.smtp.token>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</foundation.smtp.token>
-                <slack.webhook.url>https://hooks.slack.com/services/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</slack.webhook.url>
+                <foundation.smtp.token></foundation.smtp.token>
+                <slack.webhook.url></slack.webhook.url>
             </properties>
         </profile>
         <profile>

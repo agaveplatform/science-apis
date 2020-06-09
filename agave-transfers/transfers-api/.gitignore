@@ -141,3 +141,6 @@ fabric.properties
 !/src/test/main/resources/public_key.pem
 !/src/test/resources/private.pem
 !/src/test/resources/private_key.pem
+/public_key.pem
+/private_key.pem
+/private.pem

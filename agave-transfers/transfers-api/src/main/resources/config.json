@@ -1,8 +1,8 @@
 {
   "transfertask.http.port": 8085,
   "transfertask.jwt.auth": true,
-  "transfertask.jwt.private_key": "private_key.pem",
-  "transfertask.jwt.public_key": "public_key.pem",
+  "transfertask.jwt.private_key": "src/main/resources/private_key.pem",
+  "transfertask.jwt.public_key": "src/main/resources/public_key.pem",
   "transfertask.jdbc.database": "${foundation.db.database}",
   "transfertask.jdbc.driver_class": "org.hsqldb.jdbcDriver",
   "transfertask.jdbc.url": "jdbc:hsqldb:mem:dev?shutdown=true",

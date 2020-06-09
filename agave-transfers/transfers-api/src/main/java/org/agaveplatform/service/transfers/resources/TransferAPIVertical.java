@@ -139,7 +139,9 @@ public class TransferAPIVertical extends AbstractVerticle {
                 .handler(this::updateOne);
 
         router.errorHandler(500, ctx -> {
-            ctx.response().end(
+            ctx.response()
+                .putHeader("content-type", "application/json")
+                .end(
                     AgaveResponseBuilder.getInstance(ctx)
                             .setStatus(AgaveResponse.RequestStatus.error)
                             .setMessage(ctx.failure().getMessage())
@@ -183,7 +185,9 @@ public class TransferAPIVertical extends AbstractVerticle {
         if (user.isAdminRoleExists()) {
             dbService.getAll(tenantId, limit, offset, reply -> {
                 if (reply.succeeded()) {
-                    routingContext.response().end(
+                    routingContext.response()
+                            .putHeader("content-type", "application/json")
+                            .end(
                             AgaveResponseBuilder.getInstance(routingContext)
                                     .setResult(reply.result())
                                     .build()
@@ -213,7 +217,9 @@ public class TransferAPIVertical extends AbstractVerticle {
 
         dbService.getAllForUser(tenantId, username, limit, offset, reply -> {
             if (reply.succeeded()) {
-                routingContext.response().end(
+                routingContext.response()
+                        .putHeader("content-type", "application/json")
+                        .end(
                         AgaveResponseBuilder.getInstance(routingContext)
                             .setResult(reply.result())
                             .build()
@@ -250,6 +256,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                 TransferTask tt = new TransferTask(reply.result());
                 _doPublishEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
                 routingContext.response()
+                        .putHeader("content-type", "application/json")
                             .setStatusCode(201)
                             .end(AgaveResponseBuilder.getInstance(routingContext)
                                     .setResult(tt.toJson())
@@ -286,7 +293,9 @@ public class TransferAPIVertical extends AbstractVerticle {
                         dbService.delete(tenantId, uuid, deleteReply -> {
                             if (deleteReply.succeeded()) {
                                 _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
-                                routingContext.response().setStatusCode(203).end();
+                                routingContext.response()
+                                        .putHeader("content-type", "application/json")
+                                        .setStatusCode(203).end();
                             } else {
                                 // delete failed
                                 routingContext.fail(deleteReply.cause());
@@ -331,7 +340,9 @@ public class TransferAPIVertical extends AbstractVerticle {
                         TransferTask transferTask = new TransferTask(getByIdReply.result());
 
                         // format and return the result
-                        routingContext.response().end(
+                        routingContext.response()
+                                .putHeader("content-type", "application/json")
+                                .end(
                                 responseBuilder
                                     .setResult(transferTask.toJson())
                                     .build()

@@ -19,6 +19,7 @@ import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.managers.launchers.parsers.CondorJobIdParser;
 import org.iplantc.service.jobs.model.Job;
@@ -133,6 +134,11 @@ public class CondorLauncher  extends AbstractJobLauncher {
 	        condorSubmitFile = new File(tempAppDir, submitFileName);
         
             FileUtils.writeStringToFile(condorSubmitFile, condorSubmitFileContents);
+        }
+        catch (JobMacroResolutionException e) {
+            String msg = "Unable to resolve macros in the submit script: " + e.getMessage();
+            log.error(msg);
+            throw new JobException(msg, e);
         }
         catch (JobException e) {
         	String msg = "Unable to create condor submit file.";
@@ -358,6 +364,10 @@ public class CondorLauncher  extends AbstractJobLauncher {
         	log.error(msg);
             throw new JobException(msg, e);
         }
+        catch(JobMacroResolutionException e) {
+            log.error(e);
+            throw new JobException(e.getMessage(), e);
+        }
 		catch (URISyntaxException e) {
 			String msg = "Failed to parse input URI.";
 			log.error(msg, e);
@@ -383,7 +393,7 @@ public class CondorLauncher  extends AbstractJobLauncher {
 	 * @throws URISyntaxException
 	 */
 	protected String resolveTemplateMacros(String appTemplate)
-	throws JobException, URISyntaxException {
+	throws JobException, URISyntaxException, JobMacroResolutionException {
 		// replace the parameters with their passed in values
 		JsonNode jobParameters = getJob().getParametersAsJsonObject();
 		
@@ -457,8 +467,8 @@ public class CondorLauncher  extends AbstractJobLauncher {
 		
 		// Replace all the runtime callback notifications
 		appTemplate = resolveRuntimeNotificationMacros(appTemplate);
-							
-		// Replace all the iplant template tags
+
+        // Replace all the agave job attribute macros
 		appTemplate = resolveMacros(appTemplate);
 		return appTemplate;
 	}

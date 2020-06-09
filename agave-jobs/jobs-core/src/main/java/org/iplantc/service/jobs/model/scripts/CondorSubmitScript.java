@@ -19,6 +19,7 @@ import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.exceptions.JobProcessingException;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
@@ -63,7 +64,7 @@ public class CondorSubmitScript extends AbstractSubmitScript {
      * @return String contents of a Condor Submit file
      */
     @Override
-    public String getScriptText() throws JobException
+    public String getScriptText() throws JobException, JobMacroResolutionException
     {
     	try {
 	        StringBuilder sb = new StringBuilder();

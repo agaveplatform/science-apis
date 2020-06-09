@@ -4,6 +4,7 @@
 package org.iplantc.service.jobs.model.scripts;
 
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.model.Job;
 
 /**
@@ -31,7 +32,7 @@ public class TorqueSubmitScript extends AbstractSubmitScript {
 	 * For parallel applications, half the processor value of nodes is requested
 	 * with two cores per node.
 	 */
-	public String getScriptText()
+	public String getScriptText() throws JobMacroResolutionException
 	{
 		// #!/bin/bash
 		// #PBS -q batch

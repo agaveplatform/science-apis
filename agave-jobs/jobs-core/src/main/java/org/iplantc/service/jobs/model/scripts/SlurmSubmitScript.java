@@ -4,6 +4,7 @@
 package org.iplantc.service.jobs.model.scripts;
 
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.model.Job;
 
 /**
@@ -29,8 +30,7 @@ public class SlurmSubmitScript extends AbstractSubmitScript {
 	 * that the number of nodes used will be the ceiling of the number of 
 	 * processors requested divided by 16. For serial jobs, an entire node is requested.
 	 */
-	public String getScriptText()
-	{
+	public String getScriptText() throws JobMacroResolutionException {
 		String result = "#!/bin/bash\n" 
 				+ DIRECTIVE_PREFIX + "-J " + name + "\n"
 				+ DIRECTIVE_PREFIX + "-o " + standardOutputFile + "\n" 

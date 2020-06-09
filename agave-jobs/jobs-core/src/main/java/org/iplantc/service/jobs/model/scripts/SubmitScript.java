@@ -5,6 +5,7 @@ package org.iplantc.service.jobs.model.scripts;
 
 import org.iplantc.service.apps.model.enumerations.ParallelismType;
 import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 
 /**
  * @author dooley
@@ -12,7 +13,7 @@ import org.iplantc.service.jobs.exceptions.JobException;
  */
 public interface SubmitScript {
 
-	public String getScriptText() throws JobException;
+	public String getScriptText() throws JobException, JobMacroResolutionException;
 	
 	/**
 	 * @return the name

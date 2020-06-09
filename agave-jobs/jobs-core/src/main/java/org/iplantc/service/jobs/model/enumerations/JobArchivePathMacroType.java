@@ -3,16 +3,21 @@ package org.iplantc.service.jobs.model.enumerations;
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.cfg.NotYetImplementedException;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.util.Slug;
+import org.iplantc.service.systems.model.BatchQueue;
+import org.iplantc.service.systems.model.ExecutionSystem;
+import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.StorageSystem;
 import org.joda.time.DateTime;
 
 
 /**
  * Defines the template variables supported in the job archive path.
- * By leveraging these variables in the {@link Job#archivePath}, field
+ * By leveraging these variables in the {@link Job#getArchivePath()}, field
  * of a job request, dynamic archive paths can be created based on
  * runtime values of the job. For example, one could specify the following
  * to route the archived output to a different folder based on the owner,
@@ -30,17 +35,17 @@ import org.joda.time.DateTime;
 public enum JobArchivePathMacroType implements WrapperTemplateVariableType
 {
 	/**
-     * Name of the app run by this job. This is the {@link Software#uniqueName}.
+     * Name of the app run by this job. This is the {@link Software#getUniqueName()}.
      */
     APP_ID,
 	
 	/**
-     * {@link RemoteSystem#systemId} of the {@link ExecutionSystem} on which the job ran 
+     * {@link RemoteSystem#getSystemId()} of the {@link ExecutionSystem} on which the job ran
      */
     EXECUTION_SYSTEM,
 	
 	/**
-     * {@link BatchQueue#name} on the remote {@link ExecutionSystem} to which 
+     * {@link BatchQueue#getName()} on the remote {@link ExecutionSystem} to which
      * the job was submitted 
      */
     BATCH_QUEUE,
@@ -105,7 +110,7 @@ public enum JobArchivePathMacroType implements WrapperTemplateVariableType
 	JOB_OWNER,
 	
 	/**
-	 * {@link RemoteSystem#systemId} of the {@link StorageSystem} to which this job was archived.
+	 * {@link RemoteSystem#getSystemId()} of the {@link StorageSystem} to which this job was archived.
 	 */
 	ARCHIVE_SYSTEM,
 	
@@ -117,7 +122,6 @@ public enum JobArchivePathMacroType implements WrapperTemplateVariableType
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.jobs.model.enumerations.WrapperTemplateVariableType#resolveForJob(org.iplantc.service.jobs.model.Job)
 	 */
-	@Override
 	public String resolveForJob(Job job)
 	{
 	    if (this == APP_ID) 

@@ -10,6 +10,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
 
@@ -52,7 +53,7 @@ public class CustomCondorSubmitScript extends AbstractSubmitScript {
      * @return String contents of a Condor Submit file
      */
     @Override
-    public String getScriptText() throws JobException
+    public String getScriptText() throws JobException, JobMacroResolutionException
     {
         StringBuilder sb = new StringBuilder();
         if (!StringUtils.isEmpty(queue.getCustomDirectives())) {
@@ -68,7 +69,7 @@ public class CustomCondorSubmitScript extends AbstractSubmitScript {
         sb.append("should_transfer_files  = " + shouldTransferFiles + "\n");
         sb.append("when_to_transfer_output = " + whenToTransferOutput+"\n");
         
-        List<String> inputs = new ArrayList<String>();
+        List<String> inputs = new ArrayList<>();
         try 
         {
         	// add the job inputs

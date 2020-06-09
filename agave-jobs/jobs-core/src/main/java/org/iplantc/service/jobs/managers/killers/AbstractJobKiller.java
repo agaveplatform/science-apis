@@ -5,7 +5,9 @@ package org.iplantc.service.jobs.managers.killers;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.exceptions.JobTerminationException;
+import org.iplantc.service.jobs.managers.launchers.StartupScriptJobMacroResolver;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType;
 import org.iplantc.service.remote.RemoteSubmissionClient;
@@ -102,62 +104,27 @@ public abstract class AbstractJobKiller implements JobKiller {
 		    try { remoteSubmissionClient.close(); } catch (Throwable e) {}
 		}
 	}
-	
+
 	/**
-     * @param startupScript
-     * @return
-     * @throws SystemUnavailableException
-     */
-    public String resolveStartupScriptMacros(String startupScript) 
-	throws SystemUnavailableException 
-	{
-		if (StringUtils.isBlank(startupScript)) {
-			return null;
-		}
-		else {
-			String resolvedStartupScript = startupScript;
-			for (StartupScriptSystemVariableType macro: StartupScriptSystemVariableType.values()) {
-				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForSystem(getExecutionSystem()));
-			}
-			
-			for (StartupScriptJobVariableType macro: StartupScriptJobVariableType.values()) {
-				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
-			}
-			
-			return resolvedStartupScript;
-		}
-	}
-	
-	/**
-	 * @return
-	 * @throws SystemUnavailableException
+	 * Generates the command to source the {@link ExecutionSystem#getStartupScript()}. Response is written to /dev/null.
+	 *
+	 * @return the properly escaped command to be run on the remote system.
+	 * @throws JobMacroResolutionException when the startup script cannot be resolved. This is usually due ot the system not being available
 	 */
-	public String getStartupScriptCommand() throws SystemUnavailableException {
-		String startupScriptCommand = "";
-		if (!StringUtils.isEmpty(getExecutionSystem().getStartupScript())) {
-			String resolvedstartupScript = resolveStartupScriptMacros(getExecutionSystem().getStartupScript());
-			
-			if (resolvedstartupScript != null) {
-//				startupScriptCommand = String.format("echo $(source %s 2>&1) >> %s/.agave.log ; ",
-//					resolvedstartupScript,
-//					remoteDataClient.resolvePath(job.getWorkPath()));
-				startupScriptCommand = String.format("echo $(source %s 2>&1) >> /dev/null ",
-						resolvedstartupScript);
-			}
+	public String getStartupScriptCommand() throws JobMacroResolutionException {
+		String resolvedStartupScript = new StartupScriptJobMacroResolver(getJob()).resolve();
+		if (resolvedStartupScript != null) {
+			return String.format("echo $(source %s 2>&1) >> /dev/null ", resolvedStartupScript);
+		} else {
+			return String.format("echo 'No startup script defined. Skipping...' >> /dev/null ");
 		}
-		
-		if (StringUtils.isEmpty(startupScriptCommand)) {
-			startupScriptCommand = String.format("echo 'No startup script defined. Skipping...' >> /dev/null ");
-		}
-		
-		return startupScriptCommand;
 	}
 	
 	/**
      * Provides the actual command that should be invoked on the remote
      * system to kill the job.
      * 
-     * @return 
+     * @return command to run
      */
     protected abstract String getCommand();
     

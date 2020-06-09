@@ -4,6 +4,7 @@
 package org.iplantc.service.jobs.model.scripts;
 
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.model.Job;
 
 /**
@@ -26,7 +27,7 @@ public class CustomGridEngineSubmitScript extends SgeSubmitScript
 	}
 	
 	@Override
-	public String getScriptText()
+	public String getScriptText() throws JobMacroResolutionException
 	{			
 		if (StringUtils.isEmpty(queue.getCustomDirectives())) {
 			return super.getScriptText();

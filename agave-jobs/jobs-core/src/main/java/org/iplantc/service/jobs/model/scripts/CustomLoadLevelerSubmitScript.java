@@ -5,7 +5,9 @@ package org.iplantc.service.jobs.model.scripts;
 
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.model.enumerations.ParallelismType;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.systems.model.BatchQueue;
 
 /**
  * Concreate class for fully custom LoadLeveler batch submit scripts. This behaves 
@@ -30,14 +32,13 @@ public class CustomLoadLevelerSubmitScript extends LoadLevelerSubmitScript {
 	/**
 	 * Serializes the object to a batch submit script using a predefined 
 	 * job name error, and output directive and whatever was provided in the
-	 * {@link BatchQueue#getCustomDirectives()} for the queue assigned to 
+	 * {@link BatchQueue#getCustomDirectives()} for the queue assigned to
 	 * the associated job.
 	 * 
 	 * @return serialized scheduler directives for appending to the job *.ipcexe script
 	 */
 	@Override
-	public String getScriptText()
-	{
+	public String getScriptText() throws JobMacroResolutionException {
 		if (StringUtils.isEmpty(queue.getCustomDirectives())) {
 			return super.getScriptText();
 		}

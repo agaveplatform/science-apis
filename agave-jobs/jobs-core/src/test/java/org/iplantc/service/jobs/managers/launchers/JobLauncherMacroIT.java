@@ -15,6 +15,7 @@ import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.exceptions.SoftwareUnavailableException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
@@ -31,7 +32,6 @@ import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.SchedulerType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.json.JSONObject;
-import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
@@ -45,17 +45,17 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 /**
  * Tests macro resolution in software wrapper templates by a {@link JobLauncher}
  * implementation. This class is parameterized in the constructor so it can be 
- * initialized and used in the {@link JobLauncherMacroTestFactory} factory class.
+ * initialized and used in the {@link JobLauncherMacroITFactory} factory class.
  * @author dooley
  *
  */
 @Test(groups={"integration"})
-public class JobLauncherMacroTest extends AbstractJobSubmissionTest {
+public class JobLauncherMacroIT extends AbstractJobSubmissionTest {
 
 	private Software software;
 	private SchedulerType schedulerType;
 	
-	public JobLauncherMacroTest(SchedulerType schedulerType) {
+	public JobLauncherMacroIT(SchedulerType schedulerType) {
 		super();
 		this.schedulerType = schedulerType;
 	}
@@ -207,15 +207,17 @@ public class JobLauncherMacroTest extends AbstractJobSubmissionTest {
 		List<Software> testApps = SoftwareDao.getUserApps(SYSTEM_OWNER, false);
 		
 		Job job = createJob(testApps.get(0));
-		
+		ExecutionSystem executionSystem = testApps.get(0).getExecutionSystem();
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(job);
+
 		Object[][] testData = new Object[WrapperTemplateAttributeVariableType.values().length + WrapperTemplateStatusVariableType.values().length + 1][3];
 		int i = 0;
 		for (WrapperTemplateAttributeVariableType macro: WrapperTemplateAttributeVariableType.values()) {
-			testData[i++] = new Object[] { job, macro.name(), macro.resolveForJob(job), true };
+			testData[i++] = new Object[] { job, macro.name(), resolver.resolveJobAttributeMacro(executionSystem, macro), true };
 		}
 		
 		for (WrapperTemplateStatusVariableType macro: WrapperTemplateStatusVariableType.values()) {
-			testData[i++] = new Object[] { job, macro.name(), macro.resolveForJob(job), true };
+			testData[i++] = new Object[] { job, macro.name(), resolver.resolveJobCallbackMacro(executionSystem, macro), true };
 		}
 		
 		testData[i++] = new Object[] { job, WrapperTemplateAttributeVariableType.AGAVE_JOB_ARCHIVE_URL.name(), "", false  };
@@ -223,9 +225,9 @@ public class JobLauncherMacroTest extends AbstractJobSubmissionTest {
 		return testData;
 	}
 	
-	@Test(groups = { "job", "launcher", "macros" }, dataProvider = "resolveMacrosProvider", enabled = true)
+	@Test(dataProvider = "resolveMacrosProvider", enabled = true)
 	public void resolveMacros(Job job, String macro, String expectedValue, boolean archive) 
-	throws JobException, SystemUnavailableException, SoftwareUnavailableException 
+	throws JobMacroResolutionException
 	{
 		JobLauncher launcher = getTestJobLauncher(job);
 		
@@ -236,30 +238,30 @@ public class JobLauncherMacroTest extends AbstractJobSubmissionTest {
 	protected Object[][] resolveNotificationsMacrosProvider() throws Exception {
 		
 		Job job = createJob(software);
-		
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(job);
 		return new Object[][] { 
-			{job, "", 
-				WrapperTemplateStatusVariableType.resolveNotificationEventMacro(job, null, null), 
+			{job, "",
+					resolver.resolveNotificationEventMacro(null, null),
 				false  },
 			{job, "HOME", 
-				WrapperTemplateStatusVariableType.resolveNotificationEventMacro(job, null, new String[]{"HOME"}), 
+				resolver.resolveNotificationEventMacro(null, new String[]{"HOME"}),
 				false  },
 			{job, "HOME,HOSTNAME,SHELL", 
-				WrapperTemplateStatusVariableType.resolveNotificationEventMacro(job, null, new String[]{"HOME","HOSTNAME","SHELL"}), 
+				resolver.resolveNotificationEventMacro(null, new String[]{"HOME","HOSTNAME","SHELL"}),
 				false  },
 			{job, "MY_EVENT|", 
-				WrapperTemplateStatusVariableType.resolveNotificationEventMacro(job, "MY_EVENT", new String[]{}), 
+				resolver.resolveNotificationEventMacro("MY_EVENT", new String[]{}),
 				false  },
 			{job, "MY_EVENT|HOME", 
-				WrapperTemplateStatusVariableType.resolveNotificationEventMacro(job, "MY_EVENT", new String[]{"HOME"}), 
+				resolver.resolveNotificationEventMacro("MY_EVENT", new String[]{"HOME"}),
 				false  },
 			{job, "MY_EVENT|HOME,HOSTNAME,SHELL", 
-				WrapperTemplateStatusVariableType.resolveNotificationEventMacro(job, "MY_EVENT", new String[]{"HOME","HOSTNAME","SHELL"}), 
+				resolver.resolveNotificationEventMacro("MY_EVENT", new String[]{"HOME","HOSTNAME","SHELL"}),
 				false  },
 		};
 	}
 
-	@Test(groups = { "job", "launcher", "macros" }, dataProvider = "resolveNotificationsMacrosProvider", dependsOnMethods = { "resolveMacros" }, enabled = true)
+	@Test(dataProvider = "resolveNotificationsMacrosProvider", dependsOnMethods = { "resolveMacros" }, enabled = true)
 	public void resolveNotificationMacros(Job job, String macroVars, String expectedValue, boolean archive) 
 	throws JobException, SystemUnavailableException, SoftwareUnavailableException 
 	{

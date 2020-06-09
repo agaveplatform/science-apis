@@ -13,6 +13,8 @@ import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.enumerations.StartupScriptSystemVariableType;
 
+import javax.validation.constraints.NotNull;
+
 /**
  * Class to handle resolution of the job macros available in the wrapper template, startup script, job request, etc.
  */
@@ -23,7 +25,7 @@ public class StartupScriptJobMacroResolver {
     private final Job job;
     private ExecutionSystem executionSystem;
 
-    public StartupScriptJobMacroResolver(Job job) {
+    public StartupScriptJobMacroResolver(@NotNull Job job) {
         this.job = job;
     }
 
@@ -39,26 +41,34 @@ public class StartupScriptJobMacroResolver {
     {
         try {
             ExecutionSystem executionSystem = getExecutionSystem();
-
-            if (StringUtils.isBlank(executionSystem.getStartupScript())) {
+            String startupScript = executionSystem.getStartupScript();
+            if (StringUtils.isBlank(startupScript)) {
                 return null;
             }
             else {
-                String resolvedStartupScript = executionSystem.getStartupScript();
+                String resolvedStartupScript = startupScript;
 
                 for (StartupScriptSystemVariableType systemMacro: StartupScriptSystemVariableType.values()) {
-                    resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + systemMacro.name() + "}", resolveStartupScriptSystemMacros(executionSystem, systemMacro));
+                    String escapedSystemMacro = "${" + systemMacro.name() + "}";
+                    // checking for existence first so we can skip resolving the value when not necessary
+                    if (resolvedStartupScript.contains(escapedSystemMacro)) {
+                        resolvedStartupScript = StringUtils.replace(resolvedStartupScript, escapedSystemMacro, resolveStartupScriptSystemMacros(executionSystem, systemMacro));
+                    }
                 }
 
                 for (StartupScriptJobVariableType jobMacro: StartupScriptJobVariableType.values()) {
-                    resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + jobMacro.name() + "}", resolveStartupScriptJobMacro(getJob(), executionSystem, jobMacro));
+                    String escapedJobMacro = "${" + jobMacro.name() + "}";
+                    // checking for existence first so we can skip resolving the value when not necessary
+                    if (resolvedStartupScript.contains(escapedJobMacro)) {
+                        resolvedStartupScript = StringUtils.replace(resolvedStartupScript, escapedJobMacro, resolveStartupScriptJobMacro(getJob(), executionSystem, jobMacro));
+                    }
                 }
 
                 return resolvedStartupScript;
             }
         } catch (SystemUnavailableException e) {
-            throw new JobMacroResolutionException("Execution system " + job.getSystem() +
-                    " is no longer available to resolve batch queue for job " + job.getUuid());
+            throw new JobMacroResolutionException("Execution system " + getJob().getSystem() +
+                    " is no longer available to resolve batch queue for job " + getJob().getUuid());
         }
     }
 
@@ -74,32 +84,32 @@ public class StartupScriptJobMacroResolver {
     protected String resolveStartupScriptJobMacro(Job job, ExecutionSystem executionSystem, StartupScriptJobVariableType startupScriptVariable) throws JobMacroResolutionException {
         switch (startupScriptVariable) {
             case AGAVE_JOB_NAME:
-                return Slug.toSlug(job.getName());
+                return Slug.toSlug(getJob().getName());
             case AGAVE_JOB_ID:
-                return StringUtils.isNotEmpty(job.getUuid()) ? job.getUuid() : "";
+                return StringUtils.isNotEmpty(getJob().getUuid()) ? getJob().getUuid() : "";
             case AGAVE_JOB_APP_ID:
-                return job.getSoftwareName();
+                return getJob().getSoftwareName();
             case AGAVE_JOB_EXECUTION_SYSTEM:
-                return StringUtils.isNotEmpty(job.getSystem()) ? job.getSystem() : "";
+                return StringUtils.isNotEmpty(getJob().getSystem()) ? getJob().getSystem() : "";
             case AGAVE_JOB_BATCH_QUEUE:
-                return job.getBatchQueue();
+                return getJob().getBatchQueue();
             case AGAVE_JOB_BATCH_QUEUE_EFFECTIVE_NAME:
-                BatchQueue queue = executionSystem.getQueue(job.getBatchQueue());
+                BatchQueue queue = executionSystem.getQueue(getJob().getBatchQueue());
                 if (queue != null) {
                     return queue.getEffectiveMappedName();
                 } else {
-                    throw new JobMacroResolutionException("Batch queue " + job.getBatchQueue() +
-                            " is no longer available on system " + job.getSystem() +
-                            " to resolve effective batch queue name for job " + job.getUuid());
+                    throw new JobMacroResolutionException("Batch queue " + getJob().getBatchQueue() +
+                            " is no longer available on system " + getJob().getSystem() +
+                            " to resolve effective batch queue name for job " + getJob().getUuid());
                 }
             case AGAVE_JOB_ARCHIVE_PATH:
-                return (StringUtils.isNotEmpty(job.getArchivePath()) ? job.getArchivePath() : "");
+                return (StringUtils.isNotEmpty(getJob().getArchivePath()) ? getJob().getArchivePath() : "");
             case AGAVE_JOB_OWNER:
-                return job.getOwner();
+                return getJob().getOwner();
             case AGAVE_JOB_TENANT:
-                return job.getTenantId();
+                return getJob().getTenantId();
             case AGAVE_JOB_WORK_PATH:
-                return job.getWorkPath();
+                return getJob().getWorkPath();
             default:
                 throw new NotYetImplementedException("The startupScript variable " + startupScriptVariable.name() + " is not yet supported.");
         }

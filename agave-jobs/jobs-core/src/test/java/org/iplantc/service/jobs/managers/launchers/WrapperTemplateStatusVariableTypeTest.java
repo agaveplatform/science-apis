@@ -1,15 +1,21 @@
-package org.iplantc.service.jobs.model.enumerations;
+package org.iplantc.service.jobs.managers.launchers;
 
 import java.util.Arrays;
 import java.util.HashSet;
 
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.jobs.Settings;
+import org.iplantc.service.jobs.managers.launchers.WrapperTemplateMacroResolver;
 import org.iplantc.service.jobs.model.Job;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"unit"})
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+@Test(groups={"unit", "broken"})
 public class WrapperTemplateStatusVariableTypeTest {
 
 	@DataProvider 
@@ -21,11 +27,14 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(groups={"broken"}, dataProvider="resolveNotificationEventMacroAddsCustomEventToCallbackDataProvider")
+	@Test(dataProvider="resolveNotificationEventMacroAddsCustomEventToCallbackDataProvider")
 	public void resolveNotificationEventMacroAddsCustomEventToCallbackData(String providedEventName, String expectedCallbackEventName, String message) {
-		Job job = new Job();
-		String resolvedWrapperCode = WrapperTemplateStatusVariableType
-				.resolveNotificationEventMacro(job, providedEventName, new String[] {});
+		Job job = new Job();WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
+		when(resolver.getJob()).thenReturn(job);
+		when(resolver.resolveNotificationEventMacro(any(),any())).thenCallRealMethod();
+		when(resolver.resolveTenantJobUrl(any())).thenReturn(Settings.IPLANT_JOB_SERVICE);
+
+		String resolvedWrapperCode = resolver.resolveNotificationEventMacro(providedEventName, new String[]{});
 		
 		Assert.assertTrue(resolvedWrapperCode.contains("\"CUSTOM_USER_JOB_EVENT_NAME\": \"" + expectedCallbackEventName + "\""), message);
 	}
@@ -42,11 +51,15 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(groups={"broken"}, dataProvider="resolveNotificationEventMacroAddsCustomDataToCallbackDataProvider")
+	@Test(dataProvider="resolveNotificationEventMacroAddsCustomDataToCallbackDataProvider")
 	public void resolveNotificationEventMacroAddsCustomDataToCallbackData(String[] customVariableNames, String message ) {
 		Job job = new Job();
-		String resolvedWrapperCode = WrapperTemplateStatusVariableType
-				.resolveNotificationEventMacro(job, "", customVariableNames);
+		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
+		when(resolver.getJob()).thenReturn(job);
+		when(resolver.resolveNotificationEventMacro(any(),any())).thenCallRealMethod();
+		when(resolver.resolveTenantJobUrl(any())).thenReturn(Settings.IPLANT_JOB_SERVICE);
+
+		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
 //		System.out.println(resolvedWrapperCode);
 		for (String uniqueName: new HashSet<String>(Arrays.asList(customVariableNames))) {
 			String expectedString = String.format("echo '  \"%s\": '$(printf %%q \"$%s\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n", uniqueName, uniqueName);
@@ -69,11 +82,15 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(groups={"broken"}, dataProvider="resolveNotificationEventMacroTrimsVariableNamesProvider")
+	@Test(dataProvider="resolveNotificationEventMacroTrimsVariableNamesProvider")
 	public void resolveNotificationEventMacroTrimsVariableNames(String[] customVariableNames, String message ) {
 		Job job = new Job();
-		String resolvedWrapperCode = WrapperTemplateStatusVariableType
-				.resolveNotificationEventMacro(job, "", customVariableNames);
+		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
+		when(resolver.getJob()).thenReturn(job);
+		when(resolver.resolveNotificationEventMacro(any(),any())).thenCallRealMethod();
+		when(resolver.resolveTenantJobUrl(any())).thenReturn(Settings.IPLANT_JOB_SERVICE);
+
+		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
 		
 		for (String uniqueName: new HashSet<String>(Arrays.asList(customVariableNames))) {
 			String expectedString = String.format("echo '  \"%s\": '$(printf %%q \"$%s\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n", StringUtils.trim(uniqueName), StringUtils.trim(uniqueName));
@@ -106,11 +123,15 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(groups={"broken"}, dataProvider="resolveNotificationEventMacroStripsEmptyVariableNamesProvider")
+	@Test(dataProvider="resolveNotificationEventMacroStripsEmptyVariableNamesProvider")
 	public void resolveNotificationEventMacroStripsEmptyVariableNames(String[] customVariableNames, String message ) {
 		Job job = new Job();
-		String resolvedWrapperCode = WrapperTemplateStatusVariableType
-				.resolveNotificationEventMacro(job, "", customVariableNames);
+		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
+		when(resolver.getJob()).thenReturn(job);
+		when(resolver.resolveNotificationEventMacro(any(),any())).thenCallRealMethod();
+		when(resolver.resolveTenantJobUrl(any())).thenReturn(Settings.IPLANT_JOB_SERVICE);
+
+		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
 		
 		String expectedString = "echo '  \"null\": '$(printf %%q \"$null\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n";
 		Assert.assertFalse(resolvedWrapperCode.contains(expectedString), message);
@@ -151,11 +172,15 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(groups={"broken"}, dataProvider="resolveNotificationEventMacroStripsBlankVariableNamesProvider")
+	@Test(dataProvider="resolveNotificationEventMacroStripsBlankVariableNamesProvider")
 	public void resolveNotificationEventMacroStripsBlankVariableNames(String[] customVariableNames, String message ) {
 		Job job = new Job();
-		String resolvedWrapperCode = WrapperTemplateStatusVariableType
-				.resolveNotificationEventMacro(job, "", customVariableNames);
+		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
+		when(resolver.getJob()).thenReturn(job);
+		when(resolver.resolveNotificationEventMacro(any(),any())).thenCallRealMethod();
+		when(resolver.resolveTenantJobUrl(any())).thenReturn(Settings.IPLANT_JOB_SERVICE);
+
+		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
 		
 		String expectedString = "echo '  \"null\": '$(printf %%q \"$null\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n";
 		Assert.assertFalse(resolvedWrapperCode.contains(expectedString), message);
@@ -194,11 +219,15 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(groups={"broken"}, dataProvider="resolveNotificationEventMacroStripsNullVariableNamesProvider")
+	@Test(dataProvider="resolveNotificationEventMacroStripsNullVariableNamesProvider")
 	public void resolveNotificationEventMacroStripsNullVariableNames(String[] customVariableNames, String message ) {
 		Job job = new Job();
-		String resolvedWrapperCode = WrapperTemplateStatusVariableType
-				.resolveNotificationEventMacro(job, "", customVariableNames);
+		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
+		when(resolver.getJob()).thenReturn(job);
+		when(resolver.resolveNotificationEventMacro(any(),any())).thenCallRealMethod();
+		when(resolver.resolveTenantJobUrl(any())).thenReturn(Settings.IPLANT_JOB_SERVICE);
+
+		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
 		
 		String expectedString = "echo '  \"null\": '$(printf %%q \"$null\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n";
 		Assert.assertFalse(resolvedWrapperCode.contains(expectedString), message);

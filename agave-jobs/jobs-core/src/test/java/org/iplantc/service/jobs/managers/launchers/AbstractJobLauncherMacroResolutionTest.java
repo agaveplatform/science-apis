@@ -18,6 +18,7 @@ import org.iplantc.service.common.util.Slug;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.jobs.model.JSONTestDataUtil;
@@ -31,7 +32,6 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
 public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJobSubmissionTest
 {
 	private ExecutionSystem executionSystem = null;
@@ -119,7 +119,7 @@ public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJob
 	}
 	
 	@Test(dataProvider="resolveForSystemProvider", enabled=true)
-	public void resolveForSystemProvider(StartupScriptSystemVariableType variable, String startupScriptValue, String expectedValue) {
+	public void resolveForSystemProvider(StartupScriptSystemVariableType variable, String startupScriptValue, String expectedValue) throws JobMacroResolutionException {
 		
 		Job job = Mockito.mock(Job.class);
 		when(job.getUuid()).thenReturn(new AgaveUUID(UUIDType.JOB).toString());
@@ -154,7 +154,7 @@ public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJob
 	}
 	
 	@Test(dataProvider="resolveForSystemJobAttributeProvider", dependsOnMethods={"resolveForSystemProvider"}, enabled=true)
-	public void resolveForSystemJobAttribute(StartupScriptJobVariableType variable, String startupScriptValue, Job job, String expectedValue) {
+	public void resolveForSystemJobAttribute(StartupScriptJobVariableType variable, String startupScriptValue, Job job, String expectedValue) throws JobMacroResolutionException {
 		
 		CLILauncher clilLauncher = new CLILauncher(job);
 		CLILauncher launcher = Mockito.spy(clilLauncher);
@@ -214,6 +214,7 @@ public abstract class AbstractJobLauncherMacroResolutionTest extends AbstractJob
 		when(job.getTenantId()).thenReturn(TenancyHelper.getCurrentTenantId());
 		when(job.getUpdateToken()).thenReturn(UUID.randomUUID().toString());
 		CLILauncher launcher = new CLILauncher(job);
+
 		String resolvedWrapperCode = launcher.resolveRuntimeNotificationMacros(wrapperTemplate);
 //		System.out.println(resolvedWrapperCode);
 		for (String uniqueName: new HashSet<String>(expectedValues)) {

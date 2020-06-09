@@ -13,6 +13,7 @@ import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.exceptions.QuotaViolationException;
 import org.iplantc.service.jobs.exceptions.SchedulerException;
 import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariableType;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.transfer.URLCopy;
@@ -77,8 +78,8 @@ public interface JobLauncher
 	 * Resolves a input JSON value or JSON array of values into a serialized string of variables
 	 * adding in the appropriate argument value(s) and applying enquote as needed.
 	 *  
-	 * @param softwareParameter The SoftwareInput associated with this value.
-	 * @param jsonJobParamValue JsonNode representing value or ArrayNode of values for this input
+	 * @param softwareInput The SoftwareInput associated with this value.
+	 * @param jsonJobInputValue JsonNode representing value or ArrayNode of values for this input
 	 * @return serialized String of space-delimited values after enquoting and adding relevant argument(s) 
 	 * @throws URISyntaxException 
 	 */
@@ -139,7 +140,7 @@ public interface JobLauncher
     public Job getJob();
     
     /**
-     * Replaces all {@link WrapperTemplateStatusVariableType#AGAVE_JOB_CALLBACK_NOTIFICATION} macros in a 
+     * Replaces all {@link WrapperTemplateStatusVariableType#AGAVE_JOB_CALLBACK_NOTIFICATION} macros in a
      * wrapper template with a code snippet that will take a comma-separated list of environment variable 
      * names and post them back to the API to be forwarded as a JSON object to a notification event. 
      * The form of the macros with variables.
@@ -150,7 +151,7 @@ public interface JobLauncher
     public String resolveRuntimeNotificationMacros(String wrapperTemplate);
     
     /**
-	 * Replaces all {@link ExecutionSystem#startupScript} macros with the system and job-specific 
+	 * Replaces all {@link ExecutionSystem#getStartupScript()} macros with the system and job-specific
 	 * values for this job.
 	 *   
 	 * @param startupScript

@@ -376,7 +376,7 @@ public class HPCLauncher extends AbstractJobLauncher
 			// Replace all the runtime callback notifications
 			appTemplate = resolveRuntimeNotificationMacros(appTemplate);
 						
-			// Replace all the iplant template tags
+			// Replace all the agave job attribute macros
 			appTemplate = resolveMacros(appTemplate);
 			
 			batchWriter.write(appTemplate);
@@ -418,7 +418,8 @@ public class HPCLauncher extends AbstractJobLauncher
 			} catch (Exception ignored) {}
         }
     }
-	
+
+
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.jobs.managers.launchers.AbstractJobLauncher#submitJobToQueue()
 	 */

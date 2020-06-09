@@ -3,6 +3,7 @@
  */
 package org.iplantc.service.jobs.model.scripts;
 
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.util.Slug;
 
@@ -26,7 +27,7 @@ public class ForkSubmitScript extends AbstractSubmitScript {
 	 * and ${JOB_NAME}.out files.
 	 */
 	@Override
-	public String getScriptText()
+	public String getScriptText() throws JobMacroResolutionException
 	{
 		String jobSlug = Slug.toSlug(job.getName());
 		return String.format("#!/bin/bash \n"

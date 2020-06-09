@@ -8,9 +8,6 @@ class QueueDescription {
 	int coresPerNode;
 	int[] wayness;
 
-	public QueueDescription()
-	{}
-
 	public QueueDescription(String name, int memoryTotal, int coresPerNode, int[] wayness)
 	{
 		this.name = name;

@@ -5,6 +5,8 @@ import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.apps.model.enumerations.ParallelismType;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
+import org.iplantc.service.jobs.managers.launchers.WrapperTemplateMacroResolver;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateAttributeVariableType;
 import org.iplantc.service.jobs.util.Slug;
@@ -223,22 +225,29 @@ public abstract class AbstractSubmitScript implements SubmitScript {
 	{
 		return batchInstructions;
 	}
-	
+
+	/**
+	 * @return the job being submitted
+	 */
+	public Job getJob() {
+		return job;
+	}
 	/**
 	 * Resolves any user-defined job variables from the input script against the given string.
 	 * This is called as a filter to the {@link BatchQueue#getCustomDirectives()} before 
 	 * adding to the batch script.
 	 * 
-	 * @param wrapperTemplate
-	 * @return
+	 * @param wrapperTemplate the template contents from which any job attribute macros will be resolved
+	 * @return the wrapper template with all job attribute macros resolved.
 	 */
-	public String resolveMacros(String wrapperTemplate) {
-		
-		for (WrapperTemplateAttributeVariableType macro: WrapperTemplateAttributeVariableType.values()) {
-			wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", macro.resolveForJob(job));
-		}
-		
-		return wrapperTemplate;
+	public String resolveMacros(String wrapperTemplate) throws JobMacroResolutionException {
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
+		return resolver.resolveJobAttributeMacros(wrapperTemplate);
+//		for (WrapperTemplateAttributeVariableType macro: WrapperTemplateAttributeVariableType.values()) {
+//			wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", macro.resolveForJob(job));
+//		}
+//
+//		return wrapperTemplate;
 	}
 
 }

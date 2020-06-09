@@ -5,6 +5,7 @@ package org.iplantc.service.jobs.model.scripts;
 
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.model.enumerations.ParallelismType;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.model.Job;
 
 /**
@@ -21,16 +22,8 @@ public class LoadLevelerSubmitScript extends AbstractSubmitScript {
 		super(job);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.iplantcollaborative.service.wrapper.model.AbstractSubmitScript#toString
-	 * ()
-	 */
 	@Override
-	public String getScriptText()
-	{
+	public String getScriptText() throws JobMacroResolutionException {
 
 		// #! /bin/bash -l
 		// ## LoadLeveler script to submit 2 node, 4 task MPI program: hello

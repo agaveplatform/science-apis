@@ -57,8 +57,33 @@ class TransferApplicationTest extends BaseTestCase {
 		return 8085;
 	}
 
-	@BeforeAll //Each
-	protected void beforeEach(Vertx vertx, VertxTestContext ctx) {
+	@BeforeAll
+	@Override
+	public void setUpService(Vertx vertx, VertxTestContext ctx) throws IOException {
+		Checkpoint authCheckpoint = ctx.checkpoint();
+
+		// init the jwt auth used in the api calls
+		initAuth(vertx, resp -> {
+			authCheckpoint.flag();
+			if (resp.succeeded()) {
+				jwtAuth = resp.result();
+				initVerticles(vertx, ctx, vrt -> {
+					ctx.verify(() -> {
+						assertNotNull(jwtAuth);
+						assertNotNull(config);
+						assertTrue(vrt.succeeded());
+						ctx.completeNow();
+					});
+				});
+			} else {
+				ctx.failNow(resp.cause());
+			}
+		});
+
+	}
+
+	protected void initVerticles(Vertx vertx, VertxTestContext ctx, Handler<AsyncResult<Boolean>> handler) {
+
 		System.setProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.SLF4JLogDelegateFactory");
 		Logger log = LoggerFactory.getLogger(TransferApplication.class);
 
@@ -133,75 +158,86 @@ class TransferApplicationTest extends BaseTestCase {
 																																																							localOptions, res13 -> {
 																																																								if (res13.succeeded()) {
 																																																									System.out.println("TransferWatchListener Deployment id is " + res13.result());
+																																																									handler.handle(Future.succeededFuture(true));
 																																																								} else {
 																																																									System.out.println("TransferWatchListener Deployment failed !");
+																																																									handler.handle(Future.failedFuture(res13.cause()));
 																																																								}
 																																																							});
 																																																					System.out.println("TransferHealthcheckListener Deployment id is " + res12.result());
 																																																				} else {
 																																																					System.out.println("TransferHealthcheckListener Deployment failed !");
+																																																					handler.handle(Future.failedFuture(res12.cause()));
 																																																				}
 																																																			});
 																																																	System.out.println("TransferErrorListener Deployment id is " + res11.result());
 																																																} else {
 																																																	System.out.println("TransferErrorListener Deployment failed !");
+																																																	handler.handle(Future.failedFuture(res11.cause()));
 																																																}
 																																															});
 																																													System.out.println("NotificationListener Deployment id is " + res10.result());
 																																												} else {
 																																													System.out.println("NotificationListener Deployment failed !");
+																																													handler.handle(Future.failedFuture(res10.cause()));
 																																												}
 																																											});
 																																									System.out.println("TransferTaskPausedListener Deployment id is " + res9.result());
 																																								} else {
 																																									System.out.println("TransferTaskPausedListener Deployment failed !");
+																																									handler.handle(Future.failedFuture(res9.cause()));
 																																								}
 																																							});
 																																					System.out.println("TransferTaskCancelListener Deployment id is " + res8.result());
 																																				} else {
 																																					System.out.println("TransferTaskCancelListener Deployment failed !");
+																																					handler.handle(Future.failedFuture(res8.cause()));
 																																				}
 																																			});
 																																	System.out.println("TransferFailureHandler Deployment id is " + res7.result());
 																																} else {
 																																	System.out.println("TransferFailureHandler Deployment failed !");
+																																	handler.handle(Future.failedFuture(res7.cause()));
 																																}
 																															});
 																													System.out.println("ErrorTaskListener Deployment id is " + res6.result());
 																												} else {
 																													System.out.println("ErrorTaskListener Deployment failed !");
+																													handler.handle(Future.failedFuture(res6.cause()));
 																												}
 																											});
 																									System.out.println("TransferCompleteTaskListener Deployment id is " + res5.result());
 																								} else {
 																									System.out.println("TransferCompleteTaskListener Deployment failed !");
+																									handler.handle(Future.failedFuture(res5.cause()));
 																								}
 																							});
 																					System.out.println("TransferAllProtocolVertical Deployment id is " + res4.result());
 																				} else {
 																					System.out.println("TransferAllProtocolVertical Deployment failed !");
+																					handler.handle(Future.failedFuture(res4.cause()));
 																				}
 																			});
 																	System.out.println("TransferRetryListener Deployment id is " + res3.result());
 																} else {
 																	System.out.println("TransferRetryListener Deployment failed !");
+																	handler.handle(Future.failedFuture(res3.cause()));
 																}
 															});
 													System.out.println("TransferTaskCreatedListener Deployment id is " + res1.result());
 												} else {
 													System.out.println("TransferTaskCreatedListener Deployment failed !");
+													handler.handle(Future.failedFuture(res1.cause()));
 												}
 											});
 									System.out.println("TransferTaskAssignedListener Deployment id is " + res0.result());
 								} else {
 									System.out.println("TransferTaskAssignedListener Deployment failed !");
+									handler.handle(Future.failedFuture(res0.cause()));
 								}
 							});
 
 
-					ctx.verify(() -> {
-						ctx.completeNow();
-					});
 				} else {
 					System.out.println("TransferApiVertical deployment failed !\n");
 					ctx.verify(() -> {

@@ -83,29 +83,29 @@ public class NotificationAttemptResourceImpl extends AbstractNotificationResourc
 		                    notificationUuid);
 		        } 
 				
-				ObjectMapper mapper = new ObjectMapper();
-				ObjectNode json = mapper.valueToTree(attempt);
-				
-				ObjectNode links = json.putObject("_links");
-	            links.putObject("self")
-	                 .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid() + "/attempts/" + attempt.getUuid());
-	            links.putObject("notification")
-	            	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid() );
-	            links.putObject("profile")
-	        		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + attempt.getOwner());
-	            
-	            try {
-	            	if (!StringUtils.contains("*", notification.getAssociatedUuid()) 
-	            			&& !StringUtils.isEmpty(notification.getAssociatedUuid())) {
-	            		AgaveUUID agaveUUID = new AgaveUUID(notification.getAssociatedUuid());
-	            		links.putObject(agaveUUID.getResourceType().name().toLowerCase())
-	            			.put("href", TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference()));
-	            	}
-	            } catch (UUIDException e) {
-	            	log.debug("Unknown associatedUuid found for notification attempt " + attempt.getUuid());
-	    		} 
+//				ObjectMapper mapper = new ObjectMapper();
+//				ObjectNode json = mapper.valueToTree(attempt);
+//
+//				ObjectNode links = json.putObject("_links");
+//	            links.putObject("self")
+//	                 .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid() + "/attempts/" + attempt.getUuid());
+//	            links.putObject("notification")
+//	            	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid() );
+//	            links.putObject("profile")
+//	        		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + attempt.getOwner());
+//
+//	            try {
+//	            	if (!StringUtils.contains("*", notification.getAssociatedUuid())
+//	            			&& !StringUtils.isEmpty(notification.getAssociatedUuid())) {
+//	            		AgaveUUID agaveUUID = new AgaveUUID(notification.getAssociatedUuid());
+//	            		links.putObject(agaveUUID.getResourceType().name().toLowerCase())
+//	            			.put("href", TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference()));
+//	            	}
+//	            } catch (UUIDException e) {
+//	            	log.debug("Unknown associatedUuid found for notification attempt " + attempt.getUuid());
+//	    		}
 					
-	            return Response.ok(new AgaveSuccessRepresentation()).build();
+	            return Response.ok(new AgaveSuccessRepresentation(attempt.toJson())).build();
 			}
 		}
 		catch (NotificationException e)
@@ -113,9 +113,6 @@ public class NotificationAttemptResourceImpl extends AbstractNotificationResourc
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to retrieve notifications.", e);
 		}
-		catch (ResourceException e) {
-			throw e;
-		} 
 		
 	}
 

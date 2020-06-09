@@ -13,11 +13,16 @@ import javax.persistence.Id;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Past;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.Length;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.model.validation.constraints.MetadataSchemaComplianceConstraint;
 import org.iplantc.service.notification.model.Notification;
 
@@ -247,7 +252,7 @@ public class MetadataItem {
     }
 
     /**
-     * @param associatedUuids the associatedUuids to set
+     * @param associations the associatedUuids to set
      */
     public synchronized void setAssociations(MetadataAssociationList associations) {
         this.associations = associations;
@@ -261,7 +266,7 @@ public class MetadataItem {
     }
 
     /**
-     * @param permissions the permissions to set
+     * @param acl the permissions to set
      */
     public synchronized void setAcl(List<PermissionGrant> acl) {
         this.acl = acl;
@@ -313,40 +318,43 @@ public class MetadataItem {
         this.lastUpdated = lastUpdated;
     }
 
-//    @JsonIgnore
-//    public ObjectNode toObjectNode() {
-//        ObjectMapper mapper = new ObjectMapper();
-//        mapper.registerModule(new JodaModule());
-//
-//        ObjectNode json = mapper.createObjectNode()
-//                .put("name", getName())
-//                .put("value", getValue())
-//                .put("schemaId", getSchemaId())
-//                .put("owner", getOwner())
-//                .put("uuid", getUuid())
-//                .putPOJO("created", getCreated())
-//                .putPOJO("lastUpdated", getLastUpdated())
-//                .putPOJO("associatedUuids", getAssociatedIds());
-//
-//        ObjectNode hal = mapper.createObjectNode();
-//        hal.put("self", mapper.createObjectNode().put("href",
-//                TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE + "data/" + getUuid())));
-//
-//        if (!getAssociatedUuids().isEmpty())
-//        {
-//            hal.putAll(getAssociatedUuids().getReferenceGroupMap());
-//        }
-//
-//        if (StringUtils.isNotEmpty(getSchemaId()))
-//        {
-//            hal.put(UUIDType.SCHEMA.name().toLowerCase(),
-//                    mapper.createObjectNode().put("href",
-//                            TenancyHelper.resolveURLToCurrentTenant(getSchemaId())));
-//        }
-//        json.put("_links", hal);
-//
-//        return json;
-//    }
+    @JsonIgnore
+    public ObjectNode toObjectNode() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JodaModule());
+
+        ObjectNode json = mapper.createObjectNode()
+                .put("name", getName())
+                .put("schemaId", getSchemaId())
+                .put("owner", getOwner())
+                .put("uuid", getUuid())
+                .put("created", getCreated().toInstant().toString())
+                .put("lastUpdated", getLastUpdated().toInstant().toString())
+                .putPOJO("associatedUuids", getAssociations());
+        json.set("value", getValue());
+
+
+        ObjectNode hal = mapper.createObjectNode();
+        hal.set("self", mapper.createObjectNode()
+                .put("href",
+                        TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE + "data/" + getUuid())
+                ));
+
+        if (!getAssociations().isEmpty())
+        {
+            hal.putAll(getAssociations().getReferenceGroupMap());
+        }
+
+        if (StringUtils.isNotEmpty(getSchemaId()))
+        {
+            hal.put(UUIDType.SCHEMA.name().toLowerCase(),
+                    mapper.createObjectNode().put("href",
+                            TenancyHelper.resolveURLToCurrentTenant(getSchemaId())));
+        }
+        json.put("_links", hal);
+
+        return json;
+    }
 
 //    @JsonValue
 //    public String toString() {

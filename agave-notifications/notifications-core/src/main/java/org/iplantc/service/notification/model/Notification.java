@@ -290,7 +290,7 @@ public class Notification
 	{
 		associatedUuid = StringUtils.trimToEmpty(associatedUuid);
 
-		if (StringUtils.isEmpty(associatedUuid)) {
+		if (StringUtils.isBlank(associatedUuid) || StringUtils.equalsIgnoreCase(associatedUuid, "null")) {
 			throw new NotificationException("Invalid notification event. " +
 					"Notification associatedUuid cannot be empty.");
 		}
@@ -316,7 +316,7 @@ public class Notification
 	{
 		event = StringUtils.trimToEmpty(event);
 
-		if (StringUtils.isEmpty(event)) {
+		if (StringUtils.isBlank(event) || StringUtils.equalsIgnoreCase(event, "null")) {
 			throw new NotificationException("Invalid notification event. " +
 					"Notification events cannot be null.");
 		}
@@ -790,7 +790,7 @@ public class Notification
 		}
 		catch (Exception e)
 		{
-			throw new NotificationException("Error producing JSON output for notification", e);
+			throw new NotificationException("Error producing JSON output for notification " + getUuid(), e);
 		}
 
 	}

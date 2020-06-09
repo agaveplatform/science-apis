@@ -225,11 +225,11 @@ public class LoginConfig extends RemoteConfig implements LastUpdatable
 	}
 	
 
-	@Override
-	public boolean testConnection() throws IOException
-	{
-		throw new NotImplementedException();
-	}
+//	@Override
+//	public boolean testConnection() throws IOException
+//	{
+//		throw new NotImplementedException();
+//	}
 	
 	@Override
 	@Transient

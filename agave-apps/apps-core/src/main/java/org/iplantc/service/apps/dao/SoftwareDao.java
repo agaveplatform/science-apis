@@ -101,7 +101,6 @@ public class SoftwareDao
 			Session session = HibernateUtil.getSession();
 			session.clear();
 			Software software = (Software) session.get(Software.class, softwareId);
-//			session.flush();
 			return software;
 		}
 		catch (HibernateException ex)
@@ -117,10 +116,6 @@ public class SoftwareDao
 			{
 			}
 			throw new SoftwareException(ex);
-		}
-		finally
-		{
-//			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
 		}
 	}
 
@@ -890,7 +885,8 @@ public class SoftwareDao
 					+ "     s.name as name, \n"
 					+ "     s.version as version, \n"
 					+ "     s.revisionCount as revisionCount, \n"
-					+ "     system as executionSystem, \n"
+					+ "     s.executionSystem as executionSystem, \n"
+//					+ "     s.storageSystem as storageSystem, \n"
 					+ "     s.shortDescription as shortDescription, \n"
 					+ "     s.longDescription as longDescription, \n"
 					+ "     s.publiclyAvailable as publiclyAvailable, \n"
@@ -903,7 +899,7 @@ public class SoftwareDao
             		hql.append("     ,s.icon as icon, \n" + "     s.parallelism as parallelism, \n" + "     s.defaultProcessorsPerNode as defaultProcessorsPerNode, \n" + "     s.defaultMemoryPerNode as defaultMemoryPerNode, \n" + "     s.defaultNodes as defaultNodes, \n" + "     s.defaultMaxRunTime as defaultMaxRunTime, \n" + "     s.defaultQueue as defaultQueue, \n" + "     s.tags as tags, \n" + "     s.ontology as ontology, \n" + "     s.executionType as executionType, \n" + "     s.deploymentPath as deploymentPath, \n" + "     s.storageSystem as storageSystem, \n" + "     s.executablePath as executablePath, \n" + "     s.testPath as testPath, \n" + "     s.checkpointable as checkpointable, \n" + "     s.modules as modules, \n " + "     s.available as available \n");
             } 
             
-               hql.append(" FROM Software s \n" + "     left join s.inputs input \n" + "     left join s.parameters parameter \n" + "     left join s.outputs output \n" + "     left join s.executionSystem system \n");
+               hql.append(" FROM Software s \n" + "     left join s.inputs input \n" + "     left join s.parameters parameter \n" + "     left join s.outputs output \n" + "     left join s.executionSystem executionSystem \n" + "     left join s.storageSystem storageSystem");
             
             SearchTerm publicSearchTerm = null;
             for (SearchTerm searchTerm: searchCriteria.keySet()) {
@@ -1012,7 +1008,8 @@ public class SoftwareDao
                 {
                     query.setParameter(searchTerm.getSafeSearchField(), 
                             searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)));
-                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "'" +
+							String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
                 }
                 
             }

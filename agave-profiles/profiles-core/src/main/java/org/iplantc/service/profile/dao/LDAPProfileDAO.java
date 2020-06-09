@@ -37,9 +37,7 @@ public class LDAPProfileDAO extends AbstractProfileDAO {
 		
 		try {
 			if (list != null) {
-				for (Iterator<Attributes> iterator = list.iterator(); iterator
-						.hasNext();) {
-					Attributes attrs = (Attributes) iterator.next();
+				for (Attributes attrs : list) {
 					Profile profile = new LdapProfile(attrs);
 					profiles.add(profile);
 				}
@@ -66,11 +64,9 @@ public class LDAPProfileDAO extends AbstractProfileDAO {
 			 */
 			if (attrs == null) {
 				return null;
-			}		
-			
-			Profile profile = new LdapProfile(attrs);
-			
-			return profile;
+			}
+
+			return new LdapProfile(attrs);
 		
 		} catch (Exception e) {
 			throw new RemoteDataException("Failed to retrieve user " + username + " from LDAP", e);

@@ -55,6 +55,7 @@ public class SoftwareSearchFilter extends AgaveResourceSearchFilter
             searchTermMappings.put("defaultprocessorspernode", "%sdefaultProcessorsPerNode");
             searchTermMappings.put("defaultqueue", "%sdefaultQueue");
             searchTermMappings.put("deploymentpath", "%sdeploymentPath");
+            searchTermMappings.put("deploymentsystem", "%sstorageSystem.systemId");
             searchTermMappings.put("templatepath", "%sexecutablePath");
             searchTermMappings.put("executionsystem", "%sexecutionSystem.systemId");
             searchTermMappings.put("executiontype", "%sexecutionType");
@@ -80,7 +81,6 @@ public class SoftwareSearchFilter extends AgaveResourceSearchFilter
             searchTermMappings.put("privateonly", "%spubliclyAvailable");
             searchTermMappings.put("revision", "%srevisionCount");
             searchTermMappings.put("shortdescription", "%sshortDescription");
-            searchTermMappings.put("storagesystem", "%sstorageSystem.systemId");
             searchTermMappings.put("tags", "%stags");
             searchTermMappings.put("testpath", "%stestPath");
             searchTermMappings.put("uuid", "%suuid");
@@ -106,6 +106,7 @@ public class SoftwareSearchFilter extends AgaveResourceSearchFilter
             searchTypeMappings.put("defaultprocessorspernode", Long.class);
             searchTypeMappings.put("defaultqueue", String.class);
             searchTypeMappings.put("deploymentpath", String.class);
+            searchTypeMappings.put("deploymentsystem", String.class);
             searchTypeMappings.put("templatepath", String.class);
             searchTypeMappings.put("executionsystem", String.class);
             searchTypeMappings.put("executiontype", ExecutionType.class);
@@ -129,7 +130,6 @@ public class SoftwareSearchFilter extends AgaveResourceSearchFilter
             searchTypeMappings.put("privateonly", Boolean.class);
             searchTypeMappings.put("revision", Integer.class);
             searchTypeMappings.put("shortdescription", String.class);
-            searchTypeMappings.put("storagesystem", String.class);
             searchTypeMappings.put("tags", String.class);
             searchTypeMappings.put("tenantid", String.class);
             searchTypeMappings.put("testpath", String.class);

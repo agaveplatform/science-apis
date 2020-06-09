@@ -26,6 +26,8 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.remote.RemoteSubmissionClientFactory;
 import org.iplantc.service.systems.Settings;
+import org.iplantc.service.systems.exceptions.EncryptionException;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.model.enumerations.AuthConfigType;
@@ -35,6 +37,8 @@ import org.iplantc.service.systems.model.enumerations.SchedulerType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.systems.util.ServiceUtils;
+import org.iplantc.service.transfer.exceptions.AuthenticationException;
+import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 import org.joda.time.DateTime;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -796,48 +800,58 @@ public class ExecutionSystem extends RemoteSystem implements SerializableSystem 
 							"JSON object representing a valid 'storage' configuration.");
 			}
 			
-			if (ServiceUtils.isValidString(jsonSystem, "scheduler")) 
+			if (ServiceUtils.isValidString(jsonSystem, "scheduler"))
 			{
 				try {
 					SchedulerType schedulerType = SchedulerType.valueOf(jsonSystem.getString("scheduler").toUpperCase());
-					if (system.getExecutionType().equals(ExecutionType.CLI))
-					{ 
-						if (!schedulerType.equals(SchedulerType.FORK)) {
-							throw new SystemArgumentException("Invalid 'scheduler' value. Systems with execution type CLI should have a FORK scheduler type.");
-						}
+					if (system.getExecutionType().getCompatibleSchedulerTypes().contains(schedulerType)) {
+						system.setScheduler(schedulerType);
+					} else {
+						throw new SystemArgumentException("Invalid 'scheduler' value. Please specify one of: " + ServiceUtils.explode(",", system.getExecutionType().getCompatibleSchedulerTypes()));
 					}
-					else if (system.getExecutionType().equals(ExecutionType.CONDOR)) 
-					{
-						if (!schedulerType.equals(SchedulerType.CONDOR)) {
-							throw new SystemArgumentException("Invalid 'scheduler' value. Systems with execution type CONDOR should have a CONDOR scheduler type.");
-						}
-					}
-					else if (system.getExecutionType().equals(ExecutionType.HPC)) 
-					{
-						if (schedulerType.equals(SchedulerType.CONDOR)) {
-							throw new SystemArgumentException("Invalid 'scheduler' value. Systems with scheduler type CONDOR should have a CONDOR execution type.");
-						} else if (schedulerType.equals(SchedulerType.FORK)) {
-							throw new SystemArgumentException("Invalid 'scheduler' value. Systems with scheduler type FORK should have a CLI execution type.");
-						}
-					}
-					else if (system.getExecutionType().equals(ExecutionType.HPC)) {
-						throw new SystemArgumentException("Invalid 'scheduler' value. Atmosphere execution is not supported.");
-					}
-					
-					system.setScheduler(schedulerType);
-				} 
-				catch (Exception e) 
-				{
-					throw new SystemArgumentException("Invalid 'scheduler' value. Please specify one of: " + ServiceUtils.explode(",",Arrays.asList(SchedulerType.values())));
+				} catch (IllegalArgumentException e) {
+					throw new SystemArgumentException("Invalid 'scheduler' value. Please specify one of: " + ServiceUtils.explode(",", system.getExecutionType().getCompatibleSchedulerTypes()));
 				}
+//					if (system.getExecutionType().equals(ExecutionType.CLI))
+//					{
+//						if (!schedulerType.equals(SchedulerType.FORK)) {
+//							throw new SystemArgumentException("Invalid 'scheduler' value. Systems with execution type CLI should have a FORK scheduler type.");
+//						}
+//					}
+//					else if (system.getExecutionType().equals(ExecutionType.CONDOR))
+//					{
+//						if (!schedulerType.equals(SchedulerType.CONDOR)) {
+//							throw new SystemArgumentException("Invalid 'scheduler' value. Systems with execution type CONDOR should have a CONDOR scheduler type.");
+//						}
+//					}
+//					else if (system.getExecutionType().equals(ExecutionType.HPC))
+//					{
+//						if (schedulerType.equals(SchedulerType.CONDOR)) {
+//							throw new SystemArgumentException("Invalid 'scheduler' value. Systems with scheduler type CONDOR should have a CONDOR execution type.");
+//						} else if (schedulerType.equals(SchedulerType.FORK)) {
+//							throw new SystemArgumentException("Invalid 'scheduler' value. Systems with scheduler type FORK should have a CLI execution type.");
+//						}
+//					}
+//					else if (!system.getExecutionType().equals(ExecutionType.ATMOSPHERE)) {
+//						throw new SystemArgumentException("Invalid 'scheduler' value. Atmosphere execution is not supported.");
+//					}
+//
+//					system.setScheduler(schedulerType);
+//				}
+//				catch (Exception e)
+//				{
+//					throw new SystemArgumentException("Invalid 'scheduler' value. Please specify one of: " + ServiceUtils.explode(",",Arrays.asList(SchedulerType.values())));
+//				}
 			} 
-			else if (system.getExecutionType().equals(ExecutionType.CLI))
+			else if (system.getExecutionType().getCompatibleSchedulerTypes().size() == 1)
 			{
-				system.setScheduler(SchedulerType.FORK);
+				// if the execution type only has one possible scheduler type supported, use that
+				system.setScheduler(system.getExecutionType().getCompatibleSchedulerTypes().get(0));
 			}
 			else
 			{
-				throw new SystemArgumentException("Please specify a valid string value for the 'scheduler' field.");
+				throw new SystemArgumentException("Please specify a value for the 'scheduler' field. Valid values are: "
+						+ ServiceUtils.explode(",",system.getExecutionType().getCompatibleSchedulerTypes()));
 			}
 			
 			if (jsonSystem.has("workDir") && !jsonSystem.isNull("workDir"))
@@ -1042,8 +1056,8 @@ public class ExecutionSystem extends RemoteSystem implements SerializableSystem 
 	}
 
 	@Transient
-	public RemoteSubmissionClient getRemoteSubmissionClient(String internalUsername) throws Exception
-	{
+	public RemoteSubmissionClient getRemoteSubmissionClient(String internalUsername)
+			throws AuthenticationException {
 		return new RemoteSubmissionClientFactory().getInstance(this, internalUsername);
 	}
 }

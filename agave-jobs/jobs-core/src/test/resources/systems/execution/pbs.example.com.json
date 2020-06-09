@@ -18,7 +18,7 @@
   ],
   "login": {
     "host": "pbs",
-    "port": 10144,
+    "port": 10188,
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -28,7 +28,7 @@
   },
   "storage": {
     "host": "pbs",
-    "port": 10144,
+    "port": 10188,
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

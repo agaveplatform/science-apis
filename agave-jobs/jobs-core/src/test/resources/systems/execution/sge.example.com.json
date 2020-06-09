@@ -17,7 +17,7 @@
     }
   ],
   "login": {
-    "host": "sge",
+    "host": "gridengine",
     "port": 10166,
     "protocol": "SSH",
     "auth": {
@@ -27,7 +27,7 @@
     }
   },
   "storage": {
-    "host": "sge",
+    "host": "gridengine",
     "port": 10166,
     "protocol": "SFTP",
     "rootDir": "/",

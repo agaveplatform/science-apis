@@ -2,12 +2,14 @@ package org.iplantc.service.notification.events;
 
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.notification.exceptions.UnsupportedUUIDTypeException;
 import org.iplantc.service.notification.model.Notification;
+
+import javax.lang.model.type.UnknownTypeException;
 
 public class EventFilterFactory {
 
-	public static EventFilter getInstance(AgaveUUID uuid, Notification notification, String event, String owner)
-	{
+	public static EventFilter getInstance(AgaveUUID uuid, Notification notification, String event, String owner) {
 		UUIDType eventResourceType = uuid.getResourceType();
 		
 		if (eventResourceType.equals(UUIDType.APP)) {
@@ -39,7 +41,8 @@ public class EventFilterFactory {
 		} else if (eventResourceType.equals(UUIDType.TRANSFER)) {
 			return new TransferNotificationEvent(uuid, notification,event, owner);
 		} else {
-			return null;
+			return new DefaultResourceEventFilter(uuid, notification, event, owner);
+//			throw new UnsupportedUUIDTypeException("No event resource type found for " + eventResourceType.name());
 		}
 	}
 

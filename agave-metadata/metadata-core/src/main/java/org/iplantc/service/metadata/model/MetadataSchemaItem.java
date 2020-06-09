@@ -3,23 +3,26 @@
  */
 package org.iplantc.service.metadata.model;
 
-import java.util.Date;
-
-import javax.persistence.Id;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Past;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonView;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
 import org.hibernate.validator.constraints.Length;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.model.validation.constraints.ValidJsonSchema;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonView;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.databind.JsonNode;
+import javax.persistence.Id;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Past;
+import java.util.Date;
 
 /**
  * @author dooley
@@ -187,40 +190,25 @@ public class MetadataSchemaItem {
         this.lastUpdated = lastUpdated;
     }
 
-//    @JsonIgnore
-//    public ObjectNode toObjectNode() {
-//        ObjectMapper mapper = new ObjectMapper();
-//        mapper.registerModule(new JodaModule());
-//        
-//        ObjectNode json = mapper.createObjectNode()
-//                .put("name", getName())
-//                .put("value", getValue())
-//                .put("schemaId", getSchemaId())
-//                .put("owner", getOwner())
-//                .put("uuid", getUuid())
-//                .putPOJO("created", getCreated())
-//                .putPOJO("lastUpdated", getLastUpdated())
-//                .putPOJO("associatedUuids", getAssociatedIds());
-//        
-//        ObjectNode hal = mapper.createObjectNode();
-//        hal.put("self", mapper.createObjectNode().put("href", 
-//                TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE + "data/" + getUuid())));
-//        
-//        if (!getAssociatedUuids().isEmpty())
-//        {
-//            hal.putAll(getAssociatedUuids().getReferenceGroupMap());
-//        }
-//        
-//        if (StringUtils.isNotEmpty(getSchemaId())) 
-//        {
-//            hal.put(UUIDType.SCHEMA.name().toLowerCase(), 
-//                    mapper.createObjectNode().put("href", 
-//                            TenancyHelper.resolveURLToCurrentTenant(getSchemaId())));
-//        }
-//        json.put("_links", hal);
-//        
-//        return json;
-//    }
+    @JsonIgnore
+    public ObjectNode toObjectNode() {
+        ObjectMapper mapper = new ObjectMapper();
+
+        ObjectNode json = mapper.createObjectNode()
+                .put("owner", getOwner())
+                .put("uuid", getUuid())
+                .put("created", getCreated().toInstant().toString())
+                .put("lastUpdated", getLastUpdated().toInstant().toString());
+        json.set("schema", getSchema());
+
+        ObjectNode hal = mapper.createObjectNode();
+        hal.set("self", mapper.createObjectNode().put("href",
+                TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE + "schemas/" + getUuid())));
+
+        json.set("_links", hal);
+
+        return json;
+    }
     
 //    @JsonValue
 //    public String toString() {

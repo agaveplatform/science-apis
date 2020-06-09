@@ -12,6 +12,7 @@ import org.iplantc.service.monitor.managers.MonitorManager;
 import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.MonitorCheck;
 import org.iplantc.service.monitor.model.enumeration.MonitorStatusType;
+import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.json.JSONException;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -31,7 +32,7 @@ import java.io.IOException;
 @Test(groups={"integration"})
 public class MonitorQueueListenerIT extends AbstractMonitorIT
 {
-	protected MonitorManager manager = new MonitorManager();
+//	protected MonitorManager manager = new MonitorManager();
 	
 	@BeforeMethod
 	public void beforeMethod() throws Exception {
@@ -48,8 +49,7 @@ public class MonitorQueueListenerIT extends AbstractMonitorIT
 	}
 	
 	@DataProvider(name="processMessageProvider")
-	private Object[][] processMessageProvider() throws MonitorException, JSONException, IOException
-	{
+	private Object[][] processMessageProvider() throws MonitorException, JSONException, IOException, SystemArgumentException, SystemArgumentException {
 		Monitor storageMonitor = createStorageMonitor();
 		Monitor executionMonitor = createExecutionMonitor();
 	
@@ -59,50 +59,42 @@ public class MonitorQueueListenerIT extends AbstractMonitorIT
 		};
 	}
 	
-	@Test(dataProvider="processMessageProvider")
-	public void processMessage(Monitor monitor, String errorMessage, boolean shouldThrowException)
+	@Test
+	public void processStorageSystemMonitorMessage()
 	{
 		MonitorQueueListener listener = null;
+		MonitorManager manager = new MonitorManager();
+		Monitor monitor = null;
 		try
 		{
+			monitor = createStorageMonitor();
+
 			dao.persist(monitor);
-			manager.resetNextUpdateTime(monitor);
-			
-			Assert.assertNotNull(monitor.getId(), "Failed to persist monitor.");
-			
+
+			Assert.assertNotNull(monitor.getId(), "Failed to persist monitor prior to test.");
+
 			JsonNode json = new ObjectMapper().createObjectNode()
 					.put("uuid", monitor.getUuid())
 					.put("target", monitor.getSystem().getSystemId())
 					.put("owner", monitor.getOwner());
 			
 			listener = new MonitorQueueListener();
-			
+
 			listener.processMessage(json.toString());
-			
+
 			MonitorCheck check = checkDao.getLastMonitorCheck(monitor.getId());
 			
-			Assert.assertNotNull(check, "No check found for monitor");
-			Assert.assertEquals(check.getResult(), MonitorStatusType.PASSED, "Monitor check did not pass");
-			Assert.assertTrue(monitor.isActive(), "Monitor is still active.");
+			Assert.assertNotNull(check, "No check found for storage monitor after processing message.");
+			Assert.assertEquals(check.getResult(), MonitorStatusType.PASSED, "Storage monitor check did not pass");
+			Assert.assertTrue(monitor.isActive(), "Storage monitor is still active.");
 			
 			monitor = new MonitorDao().findByUuid(monitor.getUuid());
 			
-			Assert.assertNotEquals(monitor.getLastUpdated().getTime(), 
-									monitor.getCreated().getTime(), 
+			Assert.assertTrue(monitor.getLastUpdated().after(monitor.getCreated()),
 									"Monitor last updated time was not updated.");
-			
-			// this is updated on the cron to avoid it being reset if a forced check occurs
-//			Assert.assertTrue(monitor.getNextUpdateTime().getTime() >= 
-//								new DateTime(monitor.getLastUpdated()).plusMinutes(monitor.getFrequency()).toDate().getTime(), 
-//								"Monitor last sent time was not updated.");
-		}
-		catch (MonitorException e) 
-		{
-			if (!shouldThrowException) {
-				Assert.fail(errorMessage, e);
-			}
-		}
-		catch (Exception e) {
+		} catch (MonitorException e) {
+			Assert.fail("Valid monitor check should not throw MonitorException", e);
+		} catch (Exception e) {
 			Assert.fail("Unexpected exception thrown", e);
 		}
 		finally {
@@ -112,11 +104,57 @@ public class MonitorQueueListenerIT extends AbstractMonitorIT
 				}
 			} catch (Exception ignore) {}
 		}
-		
 	}
-	
-	@Test(dependsOnMethods={"processMessage"})
-	public void execute()
+
+	@Test(dependsOnMethods={"processStorageSystemMonitorMessage"})
+	public void processExecutionSystemMonitorMessage()
+	{
+		MonitorQueueListener listener = null;
+		MonitorManager manager = new MonitorManager();
+		Monitor monitor = null;
+		try
+		{
+			monitor = createExecutionMonitor();
+
+			dao.persist(monitor);
+
+			Assert.assertNotNull(monitor.getId(), "Failed to persist execution monitor prior to test.");
+
+			JsonNode json = new ObjectMapper().createObjectNode()
+					.put("uuid", monitor.getUuid())
+					.put("target", monitor.getSystem().getSystemId())
+					.put("owner", monitor.getOwner());
+
+			listener = new MonitorQueueListener();
+
+			listener.processMessage(json.toString());
+
+			MonitorCheck check = checkDao.getLastMonitorCheck(monitor.getId());
+
+			Assert.assertNotNull(check, "No check found for execution monitor after processing message.");
+			Assert.assertEquals(check.getResult(), MonitorStatusType.PASSED, "Execution monitor check did not pass");
+			Assert.assertTrue(monitor.isActive(), "Execution monitor is still active.");
+
+			monitor = new MonitorDao().findByUuid(monitor.getUuid());
+
+			Assert.assertTrue(monitor.getLastUpdated().after(monitor.getCreated()),
+					"Execution monitor last updated time was not updated.");
+		} catch (MonitorException e) {
+			Assert.fail("Valid execution monitor check should not throw MonitorException", e);
+		} catch (Exception e) {
+			Assert.fail("Unexpected exception thrown", e);
+		}
+		finally {
+			try {
+				if (listener != null) {
+					listener.stop();
+				}
+			} catch (Exception ignore) {}
+		}
+	}
+
+	@Test(dependsOnMethods={"processExecutionSystemMonitorMessage"})
+	public void testExecuteReadsMessageFromQueue()
 	{
 		MonitorQueueListener listener = null;
 		MessageQueueClient messageClient = null;
@@ -167,6 +205,7 @@ public class MonitorQueueListenerIT extends AbstractMonitorIT
 					messageClient.stop();
 				}
 			} catch (Exception ignore) {}
+
 			try {
 				if (listener != null) {
 					listener.stop();

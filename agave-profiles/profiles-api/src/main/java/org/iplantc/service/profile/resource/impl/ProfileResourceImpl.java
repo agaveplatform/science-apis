@@ -159,8 +159,6 @@ public class ProfileResourceImpl extends AbstractAgaveResource implements Profil
 			}	
 			
 			return Response.ok(new AgaveSuccessRepresentation(jsonArray.toString())).build();
-			
-//			return Response.ok(profileList).build();
 		}
 		catch (Exception e)
 		{

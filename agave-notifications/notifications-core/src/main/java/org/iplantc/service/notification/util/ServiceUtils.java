@@ -105,27 +105,27 @@ public class ServiceUtils {
 
 	public static boolean isValid(Integer value)
 	{
-		return value != null && value.intValue() >= 0;
+		return value != null && value >= 0;
 	}
 	
 	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
-		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
+		return (node instanceof TextNode) && ((TextNode) node).asText() != null;
 	}
 	
 	public static boolean isValidString(JsonNode node) throws JSONException, JsonProcessingException, IOException {
-		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
+		return (node instanceof TextNode) && ((TextNode) node).asText() != null;
 	}
 	
 	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
-		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
+		return (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode) node).asText());
 	}
 	
 	public static boolean isNonEmptyString(JsonNode node) throws JSONException, JsonProcessingException, IOException {
-		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
+		return (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode) node).asText());
 	}
 
 	/**
@@ -144,28 +144,28 @@ public class ServiceUtils {
 		if (!isValid(s))
 			return false;
 		boolean valid = true;
-		if (s == null || s.indexOf(":") > -1 || s.indexOf(";") > -1
-				|| s.indexOf(",") > -1 || s.indexOf(" ") > -1 ||
-				// s.indexOf("#") > -1 ||
-				s.indexOf("\\") > -1 /*
-									 * || s.indexOf("/") > -1 || s.indexOf("%")
-									 * > -1 || s.indexOf("$") > -1 ||
-									 * s.indexOf("@") > -1 || s.indexOf("!") >
-									 * -1 || s.indexOf("^") > -1 ||
-									 * s.indexOf("&") > -1 || s.indexOf("*") >
-									 * -1 || s.indexOf("(") > -1 ||
-									 * s.indexOf(")") > -1 || s.indexOf("{") >
-									 * -1 || s.indexOf("}") > -1 ||
-									 * s.indexOf("|") > -1 || s.indexOf("'") >
-									 * -1 || s.indexOf("\"") > -1 ||
-									 * s.indexOf("~") > -1 || s.indexOf("`") >
-									 * -1 || s.indexOf("#") > -1 ||
-									 * s.indexOf(".") > -1 || s.indexOf("?") >
-									 * -1 || s.indexOf("<") > -1 ||
-									 * s.indexOf(">") > -1 || //s.indexOf("=") >
-									 * -1 || s.indexOf("+") > -1
-									 */)
-		{
+//		if (s.contains(":") || s.contains(";") > -1
+//				|| s.contains(",") > -1 || s.contains(" ") > -1 ||
+//				// s.indexOf("#") > -1 ||
+//				s.contains("\\") > -1 /*
+//									 * || s.indexOf("/") > -1 || s.indexOf("%")
+//									 * > -1 || s.indexOf("$") > -1 ||
+//									 * s.indexOf("@") > -1 || s.indexOf("!") >
+//									 * -1 || s.indexOf("^") > -1 ||
+//									 * s.indexOf("&") > -1 || s.indexOf("*") >
+//									 * -1 || s.indexOf("(") > -1 ||
+//									 * s.indexOf(")") > -1 || s.indexOf("{") >
+//									 * -1 || s.indexOf("}") > -1 ||
+//									 * s.indexOf("|") > -1 || s.indexOf("'") >
+//									 * -1 || s.indexOf("\"") > -1 ||
+//									 * s.indexOf("~") > -1 || s.indexOf("`") >
+//									 * -1 || s.indexOf("#") > -1 ||
+//									 * s.indexOf(".") > -1 || s.indexOf("?") >
+//									 * -1 || s.indexOf("<") > -1 ||
+//									 * s.indexOf(">") > -1 || //s.indexOf("=") >
+//									 * -1 || s.indexOf("+") > -1
+//									 */)
+		if (StringUtils.containsAny(s, new char[]{':', ';', ',', '\''})) {
 			valid = false;
 		}
 
@@ -284,8 +284,7 @@ public class ServiceUtils {
 	 * Used to wrap all output from the service in a JSON object with two
 	 * attributes "status" and "message." the former is success or failure. The
 	 * latter is the output from a service invocation or the error message.
-	 * 
-	 * @param status
+	 *
 	 * @param json
 	 * @return
 	 */
@@ -299,7 +298,7 @@ public class ServiceUtils {
 	 * attributes "status" and "message." the former is success or failure. The
 	 * latter is the output from a service invocation or the error message.
 	 * 
-	 * @param status
+	 * @param message
 	 * @param json
 	 * @return
 	 */
@@ -357,20 +356,20 @@ public class ServiceUtils {
 			return false;
 		}
         finally {
-        	if (stream != null) try {stream.close();} catch (Exception e){}
+        	if (stream != null) try {stream.close();} catch (Exception ignored){}
         }
 	}
 	
 	public static String explode(String glue, List<?> list)
 	{
 		
-		String explodedList = "";
+		StringBuilder explodedList = new StringBuilder();
 		
-		if (!ServiceUtils.isValid(list)) return explodedList;
+		if (!ServiceUtils.isValid(list)) return explodedList.toString();
 		
 		for(Object field: list) 
 		{
-			explodedList += glue + field.toString();
+			explodedList.append(glue).append(field.toString());
 		}	
 		
 		return explodedList.substring(glue.length());
@@ -391,24 +390,49 @@ public class ServiceUtils {
 			return StringUtils.split(tags, separator);
 		}
 	}
-	
+
 	/**
-	 * Formats a 10 digit phone number into (###) ###-#### format
-	 * 
-	 * @param phone
+	 * Formats a 10 digit phone number into {@code (###) ###-####} format. Note that no validation is done here
+	 * 	 * aside from emby checks.
+	 *
+	 * @param phone the phone number to format
 	 * @return formatted phone number string
 	 */
-	public static String formatPhoneNumber(String phone) 
-	{	
-		if (StringUtils.isEmpty(phone)) { 
+	public static String formatPhoneNumber(String phone)
+	{
+		if (StringUtils.isEmpty(phone)) {
 			return null;
 		}
-		else 
+		else
 		{
 			phone = phone.replaceAll("[^\\d.]", "");
-			return String.format("(%s) %s-%s", 
-					phone.substring(0, 3), 
-					phone.substring(3, 6), 
+			return String.format("(%s) %s-%s",
+					phone.substring(0, 3),
+					phone.substring(3, 6),
+					phone.substring(6, 10));
+		}
+	}
+
+	/**
+	 * Formats a 10 digit phone number into the given {@code format}. This should
+	 * be something akin to {@code ###-###-####}. Note that no validation is done here
+	 * aside from emby checks.
+	 *
+	 * @param phone the phone number to format
+	 * @param format the format to apply the phone number.
+	 * @return formatted phone number string
+	 */
+	public static String formatPhoneNumber(String phone, String format)
+	{
+		if (StringUtils.isEmpty(phone)) {
+			return null;
+		}
+		else
+		{
+			phone = phone.replaceAll("[^\\d.]", "");
+			return String.format(format,
+					phone.substring(0, 3),
+					phone.substring(3, 6),
 					phone.substring(6, 10));
 		}
 	}
@@ -491,7 +515,6 @@ public class ServiceUtils {
      * @return
      */
     public static boolean isValidRealtimeChannel(String callbackUrl, String tenantId) {
-        
         if (StringUtils.isEmpty(callbackUrl)) {
         	return false;
         }
@@ -505,13 +528,8 @@ public class ServiceUtils {
         // agave pushpin server
         else {
         	String tenantRealtimeUrl = TenancyHelper.resolveURLToCurrentTenant("https://realtime.docker.example.com", tenantId);
-            if (StringUtils.startsWith(callbackUrl, tenantRealtimeUrl) 
-        		|| StringUtils.startsWith(callbackUrl, tenantRealtimeUrl.replaceFirst("https", "http"))) {
-            	return true;
-	        }
-	        else {
-	        	return false;
-	        }
+			return StringUtils.startsWith(callbackUrl, tenantRealtimeUrl)
+					|| StringUtils.startsWith(callbackUrl, tenantRealtimeUrl.replaceFirst("https", "http"));
         }
     }
     
@@ -545,7 +563,7 @@ public class ServiceUtils {
         }
         // fanout.io realm
         else {
-        	return callbackUrl.matches("^(?:http|https)://([a-zA-Z0-9]+).fanoutcdn.com/(fpp|bayoux)");
+        	return callbackUrl.matches("^(?:http|https)://([a-zA-Z0-9]+).fanoutcdn.com/(fpp|bayoux)(/[.]*)?");
     	}
     }
 }

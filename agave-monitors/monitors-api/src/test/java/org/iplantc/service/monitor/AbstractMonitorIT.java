@@ -6,11 +6,14 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.common.Settings;
+import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.monitor.dao.MonitorCheckDao;
 import org.iplantc.service.monitor.dao.MonitorDao;
+import org.iplantc.service.monitor.events.DomainEntityEvent;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.model.Monitor;
+import org.iplantc.service.systems.events.SystemHistoryEvent;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
@@ -33,10 +36,10 @@ import static org.iplantc.service.monitor.TestDataHelper.*;
 @Test(groups={"integration"})
 public class AbstractMonitorIT {
 
-	protected static final String TEST_USER = "systest";
+	protected static final String TEST_USER = "testuser";
 	protected static final String TEST_EMAIL = "help@agaveplatform.org";
-	protected static final String TEST_URL = "http://requestbin:5101/11pbi6m1?username=${USERNAME}&status=${STATUS}";
-	
+	protected static final String TEST_URL_QUERY = "?username=${USERNAME}&status=${STATUS}";
+
 	protected ObjectMapper mapper = new ObjectMapper();
 	protected SystemDao systemDao = new SystemDao();
 	protected MonitorDao dao = new MonitorDao();
@@ -62,11 +65,12 @@ public class AbstractMonitorIT {
 	}
 	
 	@AfterClass
-	protected void afterClass() throws MonitorException {
+	protected void afterClass() throws MonitorException, Exception {
 		clearSystems();
 		clearMonitors();
 		clearNotifications();
 		clearQueues();
+
 	}
 	
 	@AfterMethod
@@ -74,7 +78,18 @@ public class AbstractMonitorIT {
 	{
 		clearQueues();
 	}
-	
+
+	private Tenant createTenant(String tenantCode)
+	{
+		Tenant tenant = new Tenant();
+		tenant.setBaseUrl("https://api.example.com");
+		tenant.setTenantCode(tenantCode);
+		tenant.setContactEmail("foo@example.com");
+		tenant.setContactName("Foo Bar");
+		tenant.setStatus("ACTIVE");
+		return tenant;
+	}
+
 	/**
 	 * Creates a persists a test monitor.
 	 * 
@@ -174,7 +189,7 @@ public class AbstractMonitorIT {
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -202,24 +217,29 @@ public class AbstractMonitorIT {
 			catch (Exception ignore) {}
 		}
 	}
-	
-	protected void clearSystems()
-	{
-	    Session session = null;
-        try
-        {
-            HibernateUtil.beginTransaction();
-            session = HibernateUtil.getSession();
-            session.clear();
-            HibernateUtil.disableAllFilters();
 
-            session.createQuery("delete RemoteSystem").executeUpdate();
-            session.flush();
-        }
-        finally
-        {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
-        }
+	protected void clearSystems() throws Exception {
+		Session session = null;
+		try {
+			HibernateUtil.beginTransaction();
+			session = HibernateUtil.getSession();
+			session.clear();
+			HibernateUtil.disableAllFilters();
+
+			session.createQuery("delete RemoteSystem").executeUpdate();
+			session.createQuery("delete BatchQueue").executeUpdate();
+			session.createQuery("delete StorageConfig").executeUpdate();
+			session.createQuery("delete LoginConfig").executeUpdate();
+			session.createQuery("delete AuthConfig").executeUpdate();
+			session.createQuery("delete SystemRole").executeUpdate();
+			session.createQuery("delete CredentialServer").executeUpdate();
+			session.createQuery("delete SystemHistoryEvent").executeUpdate();
+			session.flush();
+		} catch (Throwable t) {
+			t.printStackTrace();
+		} finally {
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
+		}
 	}
 	
 	protected void initSystems() throws Exception 

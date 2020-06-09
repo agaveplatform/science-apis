@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.hibernate.HibernateException;
 import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
@@ -17,76 +19,72 @@ import org.testng.annotations.Test;
 @Test(groups={"broken", "integration"})
 public class JobEventDaoTest extends AbstractDaoTest
 {
-	JobEventDao dao = new JobEventDao();
+//	JobEventDao dao;
 	
-	@BeforeMethod
-	public void setUp() throws Exception {
-		initSystems();
-        initSoftware();
-        SoftwareDao.persist(software);
-		clearJobs();
-	}
-	
-	@AfterMethod
-	public void tearDown() throws Exception {
-		clearJobs();
-		clearSoftware();
-		clearSystems();
-	}
-	
-	@AfterClass
-	public void afterClass() throws Exception {
-		clearJobs();
-		clearSystems();
-		clearSoftware();
+//	@BeforeMethod
+//	public void setUp() throws Exception {
+//		initSystems();
+//        initSoftware();
+//        SoftwareDao.persist(software);
+//		clearJobs();
+//	}
+//
+//	@AfterMethod
+//	public void tearDown() throws Exception {
+//		clearJobs();
+//		clearSoftware();
+//		clearSystems();
+//	}
+//
+//	@AfterClass
+//	public void afterClass() throws Exception {
+//		clearJobs();
+//		clearSystems();
+//		clearSoftware();
+//	}
+
+
+	@Test(expectedExceptions = JobException.class)
+	public void persistFailsWhenJobIsNull(JobEvent event, boolean shouldThrowException, String message) throws Exception
+	{
+
+		JobEvent eventNoJob = new JobEvent(JobStatusType.PENDING.name(), JobStatusType.PENDING.getDescription(), SYSTEM_OWNER);
+		JobEventDao.persist(event);
+
+		Assert.fail("JobEvent without a Job set should fail with a JobException");
 	}
 
-	@DataProvider
-	public Object[][] persistProvider() throws Exception 
+	@Test
+	public void persist()
 	{
-		Job job = createJob(JobStatusType.PENDING);
-		JobDao.persist(job);
-		
-		JobEvent eventNoJob = new JobEvent(JobStatusType.PENDING.name(), JobStatusType.PENDING.getDescription(), job.getOwner());
-		JobEvent eventWithJob = new JobEvent(job, JobStatusType.PENDING, JobStatusType.PENDING.getDescription(), job.getOwner());
-		
-		
-		return new Object[][] {
-			{ eventNoJob, true, "Emtpy job event should fail to persist"},
-			{ eventWithJob, false, "Valid job event should persist"},
-			
-		};
-	}
-
-	@Test(dataProvider="persistProvider")
-	public void persist(JobEvent event, boolean shouldThrowException, String message) 
-	{
-		try 
+		try
 		{
+			Software software = createSoftware();
+			Job job = createJob(JobStatusType.PENDING, software);
+
+			JobEvent event = new JobEvent(job, JobStatusType.PENDING, JobStatusType.PENDING.getDescription(), SYSTEM_OWNER);
+
 			JobEventDao.persist(event);
-			
-			Assert.assertFalse(shouldThrowException, message);
-			Assert.assertNotNull(event.getId(), message);
-		}
-		catch (HibernateException e) {
-			Assert.assertTrue(shouldThrowException, message);
+
+			Assert.fail("Valid job event should persist");
 		}
 		catch (Exception e) {
-			Assert.assertTrue(shouldThrowException, message);
+			Assert.fail("Valid job event should persist", e);
 		}
 	}
 	
 	@Test(dependsOnMethods={"persist"})
 	public void getById() throws Exception
 	{
+		Software software = createSoftware();
 		try 
 		{	
-			Job job1 = createJob(JobStatusType.PENDING);
-			JobDao.persist(job1);
+			Job job = createJob(JobStatusType.PENDING, software);
+			JobDao.persist(job);
 			
-			Assert.assertNotNull(job1.getId(), "Failed to generate a job 1 ID.");
+			Assert.assertNotNull(job.getId(), "Failed to generate a job 1 ID.");
 			
-			JobEvent event1 = new JobEvent(job1, JobStatusType.PENDING, JobStatusType.PENDING.getDescription(), job1.getOwner());
+			JobEvent event1 = new JobEvent(job, JobStatusType.PENDING, JobStatusType.PENDING.getDescription(), job.getOwner());
 			
 			JobEventDao.persist(event1);
 			
@@ -106,14 +104,17 @@ public class JobEventDaoTest extends AbstractDaoTest
 	@Test(dependsOnMethods={"getById"})
 	public void getByJobId() 
 	{
+
 		try 
 		{
-			Job job1 = createJob(JobStatusType.PENDING);
+			Software software = createSoftware();
+
+			Job job1 = createJob(JobStatusType.PENDING, software);
 			JobDao.persist(job1);
 			
 			Assert.assertNotNull(job1.getId(), "Failed to generate a job 1 ID.");
 			
-			Job job2 = createJob(JobStatusType.PENDING);
+			Job job2 = createJob(JobStatusType.PENDING, software);
 			JobDao.persist(job2);
 			
 			Assert.assertNotNull(job2.getId(), "Failed to generate a job 2 ID.");
@@ -147,12 +148,6 @@ public class JobEventDaoTest extends AbstractDaoTest
 			Assert.assertEquals(savedEvents.get(1).getId(), event1.getId(), "Saved job 1 event 1 not found.");
 			
 			Assert.assertEquals(savedEvents.get(2).getId(), event2.getId(), "Saved job 1 event 2 not found.");
-			
-//			JobEvent savedEvent3 = JobEventDao.getById(event3.getId());
-//			Assert.assertFalse(savedEvents.contains(savedEvent3), "Saved job 2 event 3 not found.");
-		}
-		catch (HibernateException e) {
-			Assert.fail("Unexpected failure occurred.", e);
 		}
 		catch (Exception e) {
 			Assert.fail("Unexpected failure occurred.", e);
@@ -163,12 +158,14 @@ public class JobEventDaoTest extends AbstractDaoTest
 	public void getByJobIdAndStatus() {
 		try 
 		{
-			Job job1 = createJob(JobStatusType.PENDING);
+			Software software = createSoftware();
+
+			Job job1 = createJob(JobStatusType.PENDING, software);
 			JobDao.persist(job1);
 			
 			Assert.assertNotNull(job1.getId(), "Failed to generate a job 1 ID.");
 			
-			Job job2 = createJob(JobStatusType.PENDING);
+			Job job2 = createJob(JobStatusType.PENDING, software);
 			JobDao.persist(job2);
 			
 			Assert.assertNotNull(job2.getId(), "Failed to generate a job 2 ID.");
@@ -210,9 +207,6 @@ public class JobEventDaoTest extends AbstractDaoTest
 //			JobEvent savedEvent3 = JobEventDao.getById(event3.getId());
 //			Assert.assertFalse(runningEvents.contains(savedEvent3), "Saved job 2 event 3 was found when it should not have been.");
 		}
-		catch (HibernateException e) {
-			Assert.fail("Unexpected failure occurred.", e);
-		}
 		catch (Exception e) {
 			Assert.fail("Unexpected failure occurred.", e);
 		}
@@ -222,12 +216,14 @@ public class JobEventDaoTest extends AbstractDaoTest
 	public void delete() {
 		try 
 		{
-			Job job1 = createJob(JobStatusType.PENDING);
+			Software software = createSoftware();
+
+			Job job1 = createJob(JobStatusType.PENDING, software);
 			JobDao.persist(job1);
 			
 			Assert.assertNotNull(job1.getId(), "Failed to generate a job 1 ID.");
 			
-			Job job2 = createJob(JobStatusType.PENDING);
+			Job job2 = createJob(JobStatusType.PENDING, software);
 			JobDao.persist(job2);
 			
 			Assert.assertNotNull(job2.getId(), "Failed to generate a job 2 ID.");
@@ -271,9 +267,6 @@ public class JobEventDaoTest extends AbstractDaoTest
 			
 			Assert.assertEquals(savedEvents.size(), 2, "Wrong number of job events found for job 1.");
 		}
-		catch (HibernateException e) {
-			Assert.fail("Unexpected failure occurred.", e);
-		}
 		catch (Exception e) {
 			Assert.fail("Unexpected failure occurred.", e);
 		}
@@ -283,12 +276,14 @@ public class JobEventDaoTest extends AbstractDaoTest
 	public void deleteByJobId() {
 		try 
 		{
-			Job job1 = createJob(JobStatusType.PENDING);
+			Software software = createSoftware();
+
+			Job job1 = createJob(JobStatusType.PENDING, software);
 			JobDao.persist(job1);
 			
 			Assert.assertNotNull(job1.getId(), "Failed to generate a job 1 ID.");
 			
-			Job job2 = createJob(JobStatusType.PENDING);
+			Job job2 = createJob(JobStatusType.PENDING, software);
 			JobDao.persist(job2);
 			
 			Assert.assertNotNull(job2.getId(), "Failed to generate a job 2 ID.");
@@ -339,10 +334,6 @@ public class JobEventDaoTest extends AbstractDaoTest
 			JobEvent savedEvent3 = JobEventDao.getById(eventId3);
 			
 			Assert.assertNotNull(savedEvent3, "Saved event 3 for job 2 was deleted when it should not have been.");
-			
-		}
-		catch (HibernateException e) {
-			Assert.fail("Unexpected failure occurred.", e);
 		}
 		catch (Exception e) {
 			Assert.fail("Unexpected failure occurred.", e);

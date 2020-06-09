@@ -34,14 +34,6 @@ public class SMTPEmailClient implements EmailClient {
 
     protected Map<String, String> customHeaders = new HashMap<String, String>();
     
-    public static void main(String[] args) throws Exception{
-        new SMTPEmailClient().send("Rion", 
-                "agaveapi@gmail.com", 
-                "Test email via smtp", 
-                "This is a simple smtp email fom the java client.",
-                "<p>This is a simple SMTP email fom the <a href=\"http://java.com\">Java</a> client.</p>");
-    }
-    
     /* (non-Javadoc)
      * @see org.iplantc.service.notification.email.EmailClient#send(java.lang.String, java.lang.String, java.lang.String, java.lang.String)
      */

@@ -150,7 +150,6 @@ public class NotificationAttemptProcessor {
 	{
 		// get a client to process the attempt
 		return NotificationAttemptProviderFactory.getInstance(getAttempt());
-					
 	}
 
 
@@ -174,6 +173,7 @@ public class NotificationAttemptProcessor {
 					
 				// if it's active, then set it to completed
 				if (NotificationStatusType.ACTIVE == getNotification().getStatus()) {
+					getNotification().setStatus(NotificationStatusType.COMPLETE);
 					NotificationManager.updateStatus(getAttempt().getNotificationId(), 
 							NotificationStatusType.COMPLETE);
 				}
@@ -251,6 +251,18 @@ public class NotificationAttemptProcessor {
 		else {
 			log.debug("Skipping persistence of failed attempt " + attempt.getUuid() + 
 					" due to notification " + attempt.getNotificationId() + " policy.");
+		}
+
+		// if it's active, then set it to completed
+		if (NotificationStatusType.ACTIVE == getNotification().getStatus()) {
+			try {
+				getNotification().setStatus(NotificationStatusType.FAILED);
+				NotificationManager.updateStatus(getAttempt().getNotificationId(),
+						NotificationStatusType.FAILED);
+			} catch (NotificationException e) {
+				log.error("Failed to update status of notification " + attempt.getNotificationId() +
+						" after failure of attempt " + attempt.getUuid());
+			}
 		}
 	}
 	

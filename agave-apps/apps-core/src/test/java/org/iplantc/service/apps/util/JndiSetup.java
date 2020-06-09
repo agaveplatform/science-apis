@@ -42,26 +42,4 @@ public class JndiSetup
             e.printStackTrace();
         }
     }
-
-    public static void main(String[] args)
-    {
-        JndiSetup.doSetup("iplant_io");
-
-//        DataSource ds;
-//        Statement stmnt;
-//        InitialContext ic = null;
-//
-//        try {
-//            ic = new InitialContext();
-//            ds = (DataSource)ic.lookup("java:/comp/env/jdbc/iplant_io");
-//            Connection connection = ds.getConnection();
-//            stmnt = connection.createStatement();
-//            boolean b = stmnt.execute("select * from `iplant-api`.`jobs`;");
-//            assert b;
-//        } catch (NamingException e) {
-//            e.printStackTrace();
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//        }
-    }
 }

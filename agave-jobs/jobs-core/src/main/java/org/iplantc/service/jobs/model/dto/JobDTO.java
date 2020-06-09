@@ -13,16 +13,22 @@ import javax.persistence.Transient;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uri.UrlPathEscaper;
+import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.model.views.View;
+import org.iplantc.service.profile.model.InternalUser;
 import org.iplantc.service.systems.model.BatchQueue;
+import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.enumerations.ExecutionType;
+import org.iplantc.service.systems.model.enumerations.SchedulerType;
 import org.joda.time.DateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -115,14 +121,21 @@ public class JobDTO {
 	private String				error_message;
 	
 	/**
-	 * {@link ExecutionSystem#getSystemId()} on which this job is to be run. 
+	 * {@link ExecutionSystem#getSystemId()} on which this job is to be run.
 	 */
 	@JsonProperty("executionSystem")
 	@JsonView(View.Summary.class)
 	private String				execution_system;
-	
+
 	/**
-	 * {@link ObjectNode} encoded list of {@link JobInput}s
+	 * Serialized {@link ExecutionType} value of the job status.
+	 */
+	@JsonProperty("executionType")
+	@JsonView(View.Summary.class)
+	private String				execution_type;
+
+	/**
+	 * {@link ObjectNode} encoded list of job inputs
 	 */
 	@JsonProperty("inputs")
 	@JsonView(View.Full.class)
@@ -150,7 +163,7 @@ public class JobDTO {
 	@JsonProperty("localJobId")
 	@JsonView(View.Full.class)
 	private String				local_job_id;
-	
+
 	/**
 	 * Requested max run time in HHH:MM:DD format that the job
 	 * should run.
@@ -188,7 +201,7 @@ public class JobDTO {
 	private String				owner;
 	
 	/**
-	 * {@link ObjectNode} encoded list of {@link JobParameter}s
+	 * {@link ObjectNode} encoded list of job parameter values
 	 */
 	@JsonProperty("parameters")
 	@JsonView(View.Full.class)
@@ -215,6 +228,13 @@ public class JobDTO {
 	@JsonProperty("retries")
 	@JsonView(View.Full.class)
 	private int					retries;
+
+	/**
+	 * Serialized {@link SchedulerType} value of the job status.
+	 */
+	@JsonProperty("schedulerType")
+	@JsonView(View.Summary.class)
+	private String				scheduler_type;
 
 	/**
 	 * Serialized {@link JobStatusType} value of the job status.
@@ -253,7 +273,7 @@ public class JobDTO {
 	private Date				submit_time;		
 	
 	/**
-	 * {@link Tenant#getCode} to which this job is bound.
+	 * {@link Tenant#getTenantCode()} to which this job is bound.
 	 */
 //	@JsonProperty("tenantId")
 	@JsonIgnore
@@ -477,6 +497,8 @@ public class JobDTO {
 			.put("archive", isArchive_output())
 			.put("retries", retries)
 			.put("localId", local_job_id)
+		//	.put("executionType", executionType.name())
+		//	.put("schedulerType", schedulerType.name())
 			.put("created", new DateTime(created).toString());
 			
 		if (isArchive_output())
@@ -606,7 +628,7 @@ public class JobDTO {
 	 * @param charge the charge to set
 	 */
 	public void setCharge(Double charge) {
-		this.charge = charge == null ? 0 : charge.doubleValue();
+		this.charge = charge == null ? 0D : charge;
 	}
 
 	/**
@@ -746,7 +768,7 @@ public class JobDTO {
 	 * @param memory_request the memory_request to set
 	 */
 	public void setMemory_request(Double memory_request) {
-		this.memory_request = memory_request == null ? 0 : memory_request.doubleValue();
+		this.memory_request = memory_request == null ? 0D : memory_request;
 	}
 
 	/**
@@ -774,7 +796,7 @@ public class JobDTO {
 	 * @param node_count the node_count to set
 	 */
 	public void setNode_count(Integer node_count) {
-		this.node_count = node_count == null ? 0 : node_count.intValue();
+		this.node_count = node_count == null ? 0 : node_count;
 	}
 
 	/**
@@ -816,7 +838,7 @@ public class JobDTO {
 	 * @param processor_count the processor_count to set
 	 */
 	public void setProcessor_count(Integer processor_count) {
-		this.processor_count = processor_count == null ? 0 : processor_count.intValue();
+		this.processor_count = processor_count == null ? 0 : processor_count;
 	}
 
 	/**
@@ -844,7 +866,7 @@ public class JobDTO {
 	 * @param retries the retries to set
 	 */
 	public void setRetries(Integer retries) {
-		this.retries = retries == null ? 0 : retries.intValue();
+		this.retries = retries == null ? 0 : retries;
 	}
 
 	/**
@@ -862,6 +884,34 @@ public class JobDTO {
 	}
 
 	/**
+	 * @return the execution_type
+	 */
+	public String getExecution_type() {
+		return execution_type;
+	}
+
+	/**
+	 * @param execution_type the execution_type to set
+	 */
+	public void setExecution_type(String execution_type) {
+		this.execution_type = execution_type;
+	}
+
+	/**
+	 * @return the scheduler_type
+	 */
+	public String getScheduler_type() {
+		return scheduler_type;
+	}
+
+	/**
+	 * @param scheduler_type the scheduler_type to set
+	 */
+	public void setScheduler_type(String scheduler_type) {
+		this.scheduler_type = scheduler_type;
+	}
+
+	/**
 	 * @return the status_checks
 	 */
 	public int getStatus_checks() {
@@ -872,7 +922,7 @@ public class JobDTO {
 	 * @param status_checks the status_checks to set
 	 */
 	public void setStatus_checks(Integer status_checks) {
-		this.status_checks = status_checks == null ? 0 : status_checks.intValue();
+		this.status_checks = status_checks == null ? 0 : status_checks;
 	}
 
 	/**
@@ -969,7 +1019,7 @@ public class JobDTO {
 	}
 	
 	/**
-	 * @return
+	 * @return true if visible, false otherwise
 	 */
 	@JsonIgnore
 	private boolean getVisible() {

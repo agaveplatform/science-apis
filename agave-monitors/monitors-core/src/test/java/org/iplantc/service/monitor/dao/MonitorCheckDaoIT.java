@@ -1,25 +1,45 @@
 package org.iplantc.service.monitor.dao;
 
+import com.jcabi.immutable.Array;
 import org.apache.commons.lang.ArrayUtils;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.monitor.AbstractMonitorIT;
+import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.MonitorCheck;
 import org.iplantc.service.monitor.model.enumeration.MonitorCheckType;
 import org.iplantc.service.monitor.model.enumeration.MonitorStatusType;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 @Test(singleThreaded=true, groups={"integration"})
 public class MonitorCheckDaoIT extends AbstractMonitorIT {
-	
+
+	@BeforeClass
+	public void beforeClass() throws Exception
+	{
+		super.beforeClass();
+	}
+
+	@AfterClass
+	public void afterClass() throws MonitorException {
+		super.afterClass();
+	}
+
 	@AfterMethod
-	protected void afterMethod() throws Exception {
+	public void afterMethod() throws Exception {
 		clearNotifications();
 		clearMonitors();
+		clearSystems();
+	}
+
+	@BeforeMethod
+	public void beforeMethod() throws Exception {
+		initSystems();
 	}
 	
 	@Test
@@ -35,7 +55,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 			Assert.assertNotNull(check.getId(), "Failed to save monitor check");
 		}
 		catch (Exception e) {
-			Assert.fail("No exception shoudl be thrown from a valid check persistence.", e);
+			Assert.fail("No exception should be thrown from a valid check persistence.", e);
 		}
 	}
 	
@@ -56,11 +76,11 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 			Assert.assertEquals(queryCheck.getUuid(), check.getUuid(), "UUID of reutrned monitor check did not match the queried uuid.");
 		}
 		catch (Exception e) {
-			Assert.fail("No exception shoudl be thrown from a valid check persistence.", e);
+			Assert.fail("No exception should be thrown from a valid check persistence.", e);
 		}
 	}
 
-	@Test(dependsOnMethods = { "findByUuid" })
+	@Test//(dependsOnMethods = { "findByUuid" })
 	public void delete() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor = null;
@@ -81,7 +101,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 		}
 	}
 
-	@Test(dependsOnMethods = { "delete" })
+	@Test//(dependsOnMethods = { "delete" })
 	public void getAll() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor1 = null;
@@ -108,7 +128,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 		}
 	}
 
-	@Test(dependsOnMethods = { "getAll" })
+	@Test//(dependsOnMethods = { "getAll" })
 	public void getAllChecksByMonitorId() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor1 = null;
@@ -146,7 +166,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 		}
 	}
 
-	@Test(dependsOnMethods = { "getAllChecksByMonitorId" })
+	@Test//(dependsOnMethods = { "getAllChecksByMonitorId" })
 	public void getLastMonitorCheck() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor1 = null;
@@ -169,7 +189,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 		}
 	}
 
-	@Test(dependsOnMethods = { "getLastMonitorCheck" }, groups={"broken"})
+	@Test//(dependsOnMethods = { "getLastMonitorCheck" }, groups={"broken"})
 	public void getPaginatedByIdAndRange() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor1 = null;
@@ -179,7 +199,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 			monitor2 = createAndSavePendingExecutionMonitor();
 			int totalChecks = 10;
 			int checkCount = 5;
-			Object[] expectedCheckUUIDs = new Object[checkCount];
+			List<String> expectedCheckUUIDs = new ArrayList<String>();
 			
 			for (int i=0; i<totalChecks; i++) {
 				MonitorCheck check1 = new MonitorCheck(monitor1, i % 2 == 0 ? MonitorStatusType.FAILED : MonitorStatusType.PASSED, UUID.randomUUID().toString(), MonitorCheckType.STORAGE);
@@ -187,7 +207,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 				Assert.assertNotNull(check1.getId(), "Failed to save monitor check");
 				
 				if (i < checkCount) {
-					expectedCheckUUIDs[i] = check1.getUuid();
+					expectedCheckUUIDs.add(check1.getUuid());
 				}
 				
 				MonitorCheck check2 = new MonitorCheck(monitor2, i % 2 == 0 ? MonitorStatusType.PASSED : MonitorStatusType.FAILED, UUID.randomUUID().toString(), MonitorCheckType.STORAGE);
@@ -195,16 +215,13 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 				Assert.assertNotNull(check2.getId(), "Failed to save monitor check");
 			}
 			
-			List<MonitorCheck> check1s = checkDao.getPaginatedByIdAndRange(monitor1.getId(), null, null, null, null, checkCount, 0);
-			Assert.assertEquals(check1s.size(), checkCount, "Invalid number of checks for first monitor returned by getAll.");
-		
-			for (MonitorCheck check: check1s) {
-				
-				Object[] remainingChecks = ArrayUtils.removeElement(expectedCheckUUIDs, check.getUuid());
-				
-				Assert.assertNotEquals(remainingChecks.length, expectedCheckUUIDs.length, "Check returned from getPaginatedByIdAndRange was not in the correct set of checks for the given range.");
-				
-				expectedCheckUUIDs = remainingChecks;
+			List<MonitorCheck> paginatedChecks = checkDao.getPaginatedByIdAndRange(monitor1.getId(), null, null, null, null, checkCount, 0);
+			Assert.assertEquals(paginatedChecks.size(), expectedCheckUUIDs.size(), "Invalid number of checks for first monitor returned by getAll.");
+
+
+			for (MonitorCheck check: paginatedChecks) {
+				Assert.assertTrue(expectedCheckUUIDs.contains(check.getUuid()),
+						"Check returned from getPaginatedByIdAndRange was not in the correct set of checks for the given range.");
 			}
 			
 		}

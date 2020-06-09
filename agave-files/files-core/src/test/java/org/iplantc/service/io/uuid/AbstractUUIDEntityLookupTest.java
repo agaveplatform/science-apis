@@ -131,12 +131,17 @@ public abstract class AbstractUUIDEntityLookupTest<T> implements AbstractUUIDTes
 	protected Object[][] resolveLogicalFilePathProvider() throws IOException {
 		T testEntity = createEntity();
 		return new Object[][] { 
-				{ getEntityType(), getEntityUuid(testEntity), getUrlFromEntityJson(serializeEntityToJSON(testEntity)) } };
+				{ } };
 	}
 
-	@Test(dataProvider = "resolveLogicalFilePathProvider")
-	public void getResourceUrl(UUIDType uuidType, String uuid, String expectedUrl) {
-		 _getResourceUrl(uuidType, uuid, expectedUrl);
+	@Test//(dataProvider = "resolveLogicalFilePathProvider")
+	public void testGetResourceUrl() {
+		T testEntity = createEntity();
+		try {
+			_getResourceUrl(getEntityType(), getEntityUuid(testEntity), getUrlFromEntityJson(serializeEntityToJSON(testEntity)) );
+		} catch (IOException e) {
+			Assert.fail("Logical file should resolve by uuid", e);
+		}
 	}
 	
 	protected void _getResourceUrl(UUIDType uuidType, String uuid, String expectedUrl) {

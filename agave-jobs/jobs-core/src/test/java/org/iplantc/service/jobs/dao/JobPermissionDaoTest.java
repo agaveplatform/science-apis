@@ -4,8 +4,10 @@ import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_OWNER;
 import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_SHARED_OWNER;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobPermission;
@@ -19,39 +21,22 @@ import org.testng.annotations.Test;
 @Test(groups={"broken", "integration"})
 public class JobPermissionDaoTest extends AbstractDaoTest {
 
-	private Job job = null;
-
-	@BeforeMethod
-	public void setUpJob() throws Exception
-	{
-		initSystems();
-        initSoftware();
-        SoftwareDao.persist(software);
-		clearJobs();
-		job = createJob(JobStatusType.PENDING);
-		JobDao.persist(job);
-		Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
-	}
-
-	@AfterMethod
-	public void tearDownJob() throws Exception
-	{
-		clearJobs();
-		clearSoftware();
-		clearSystems();
-	}
-
 	@Test
 	public void persist() throws Exception
 	{
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
 		JobPermission pem = new JobPermission(job, TEST_OWNER, PermissionType.READ);
 		JobPermissionDao.persist(pem);
 		Assert.assertNotNull(pem.getId(), "Job permission did not persist.");
 	}
 
 	@Test(dependsOnMethods={"persist", "getByJobId"})
-	public void delete() throws JobException
+	public void delete() throws Exception
 	{
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
+		
 		JobPermission pem = new JobPermission(job, TEST_OWNER, PermissionType.READ);
 		JobPermissionDao.persist(pem);
 		Assert.assertNotNull(pem.getId(), "Job permission did not persist.");
@@ -64,23 +49,31 @@ public class JobPermissionDaoTest extends AbstractDaoTest {
 	@Test(dependsOnMethods={"persist"})
 	public void getByJobId() throws Exception
 	{
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
+		
 		JobPermission pem = new JobPermission(job, TEST_OWNER, PermissionType.READ);
 		JobPermissionDao.persist(pem);
 		Assert.assertNotNull(pem.getId(), "Job permission did not persist.");
 		
-		Job job2 = createJob(JobStatusType.PENDING);
+		Job job2 = createJob(JobStatusType.PENDING, software);
 		JobDao.persist(job2);
 		Assert.assertNotNull(job2.getId(), "Failed to generate a job ID.");
 		
-		List<JobPermission> pems = JobPermissionDao.getByJobId(job.getId());
-		Assert.assertNotNull(pems, "getByJobId did not return any permissions.");
-		Assert.assertEquals(pems.size(), 1, "getByJobId did not return the correct number of permissions.");
-		Assert.assertFalse(pems.contains(job2), "getByJobId returned a permission from another job.");
+		List<JobPermission> jobPermissions = JobPermissionDao.getByJobId(job.getId());
+		Assert.assertNotNull(jobPermissions, "getByJobId did not return any permissions.");
+		Assert.assertEquals(jobPermissions.size(), 1, "getByJobId did not return the correct number of permissions.");
+		for(JobPermission p: jobPermissions) {
+			Assert.assertEquals(pem.getJobId(), job.getId(), "getByJobId returned a permission from another job.");
+		}
 	}
 
 	@Test(dependsOnMethods={"persist","delete"})
 	public void getByUsernameAndJobId() throws Exception
 	{
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
+		
 		JobPermission pem1 = new JobPermission(job, TEST_OWNER, PermissionType.READ);
 		JobPermissionDao.persist(pem1);
 		Assert.assertNotNull(pem1.getId(), "Job permission 1 did not persist.");

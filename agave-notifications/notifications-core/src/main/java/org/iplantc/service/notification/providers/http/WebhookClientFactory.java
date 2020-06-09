@@ -27,7 +27,7 @@ public class WebhookClientFactory {
     /**
      * Creates a new {@link WebhookClient} for the {@link NotificationAttempt}.
      * 
-     * @param the {@link NotificationAttempt} being made buy the returned client
+     * @param attempt the {@link NotificationAttempt} being made buy the returned client
      * @return an {@link WebhookClient} which supports the given {@code provider}.
      * @throws NotImplementedException if no client can be found.
      */

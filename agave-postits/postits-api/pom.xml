@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.agaveplatform</groupId>
 		<artifactId>postits</artifactId>
-		<version>2.2.24</version>
+		<version>2.2.27</version>
 	</parent>
 	<artifactId>postits-api</artifactId>
 	<name>Agave Platform PostIts Service API Endpoints</name>
@@ -58,12 +58,12 @@
 				</configuration>
 			</plugin>
 
- 			<!--  The web assemby -->
+			<!--  The web assemby -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
 				<configuration>
-                    <skipAssembly>true</skipAssembly>
+					<skipAssembly>true</skipAssembly>
 				</configuration>
 			</plugin>
 
@@ -76,10 +76,10 @@
 				</configuration>
 			</plugin>
 
-            <!-- ************************************ -->
-            <!-- ***           DEPLOYMENT          ** -->
-            <!-- ************************************ -->
-            <!-- Don't deploy the war -->
+			<!-- ************************************ -->
+			<!-- ***           DEPLOYMENT          ** -->
+			<!-- ************************************ -->
+			<!-- Don't deploy the war -->
 			<plugin>
 			  	<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-deploy-plugin</artifactId>
@@ -88,7 +88,7 @@
 				</configuration>
 			</plugin>
 
-            <!-- ***** skip installing empty java assets from php project ***** -->
+			<!-- ***** skip installing empty java assets from php project ***** -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-install-plugin</artifactId>

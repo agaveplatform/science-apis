@@ -391,20 +391,3 @@ public class Profile {
 		return output;
 	}	
 }
-
-@JsonSerialize(using=ProfileSerializer.class)
-class ProfileSerializer extends JsonSerializer<Profile> {
-    @Override
-    public void serialize(Profile profile, JsonGenerator jsonGenerator, 
-            SerializerProvider serializerProvider) throws IOException {
-    	
-    	try
-		{
-			jsonGenerator.writeRaw(profile.toJSON());
-		}
-		catch (ProfileException e)
-		{
-			throw new IOException(e);
-		}
-    }
-}

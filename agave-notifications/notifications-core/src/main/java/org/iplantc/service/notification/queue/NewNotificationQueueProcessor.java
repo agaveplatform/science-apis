@@ -4,6 +4,7 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
+import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.messaging.MessageClientFactory;
 import org.iplantc.service.common.messaging.MessageQueueClient;
@@ -45,6 +46,7 @@ public class NewNotificationQueueProcessor implements InterruptableJob, MessageQ
 {
 	private static final Logger	log	= Logger.getLogger(NewNotificationQueueProcessor.class);
 	private NotificationDao dao = new NotificationDao();
+
 	private MessageQueueClient messageClient = null;
 	private JobExecutionContext context = null;
 	
@@ -64,14 +66,14 @@ public class NewNotificationQueueProcessor implements InterruptableJob, MessageQ
 		try
 		{
 			do {
-				messageClient = MessageClientFactory.getMessageClient();
+
 				
 				Message message = null;
 				try
 				{
-					message = messageClient.pop(Settings.NOTIFICATION_TOPIC, Settings.NOTIFICATION_QUEUE);
+					message = getMessageClient().pop(Settings.NOTIFICATION_TOPIC, Settings.NOTIFICATION_QUEUE);
 					processMessage(message.getMessage());
-					messageClient.delete(Settings.NOTIFICATION_TOPIC, Settings.NOTIFICATION_QUEUE, message.getId());
+					getMessageClient().delete(Settings.NOTIFICATION_TOPIC, Settings.NOTIFICATION_QUEUE, message.getId());
 				} 
 				catch (MessageProcessingException e) 
 				{	
@@ -80,12 +82,12 @@ public class NewNotificationQueueProcessor implements InterruptableJob, MessageQ
 					if (message != null) {
 						if (e.isExpired()) 
 						{
-							messageClient.delete(Settings.NOTIFICATION_TOPIC, Settings.NOTIFICATION_QUEUE, message.getId());
+							getMessageClient().delete(Settings.NOTIFICATION_TOPIC, Settings.NOTIFICATION_QUEUE, message.getId());
 						}
 						// something happend, just return it to the queue.
 						else 
 						{
-							messageClient.reject(Settings.NOTIFICATION_TOPIC, 
+							getMessageClient().reject(Settings.NOTIFICATION_TOPIC,
 												Settings.NOTIFICATION_QUEUE, 
 												message.getId(), 
 												message.getMessage());
@@ -127,7 +129,7 @@ public class NewNotificationQueueProcessor implements InterruptableJob, MessageQ
 			}
 		}
 		finally {
-			try { messageClient.stop(); } catch (Exception e) {}
+			try { getMessageClient().stop(); } catch (Exception e) {}
 		}
 	}
 	
@@ -218,17 +220,16 @@ public class NewNotificationQueueProcessor implements InterruptableJob, MessageQ
             throw new MessageProcessingException(true, e);
         }
         catch (Throwable e) {
-            log.error(e);
-            throw new MessageProcessingException("Message processing failed.", e);
-        }
-        
+			log.error(e);
+			throw new MessageProcessingException("Message processing failed.", e);
+		}
     }
 	
 	@Override
 	public synchronized void stop()
 	{
 		try {
-			messageClient.stop();
+			getMessageClient().stop();
 		} catch (Exception e) {
 			log.error("Failed to stop message client.",e);
 		}
@@ -255,4 +256,25 @@ public class NewNotificationQueueProcessor implements InterruptableJob, MessageQ
 	public void setContext(JobExecutionContext context) {
 		this.context = context;
 	}
+
+	public NotificationDao getDao() {
+		return dao;
+	}
+
+	public void setDao(NotificationDao dao) {
+		this.dao = dao;
+	}
+
+	public MessageQueueClient getMessageClient() throws MessagingException {
+		if (messageClient == null) {
+			messageClient = MessageClientFactory.getMessageClient();
+		}
+		return messageClient;
+	}
+
+	public void setMessageClient(MessageQueueClient messageClient) {
+		this.messageClient = messageClient;
+	}
+
+
 }

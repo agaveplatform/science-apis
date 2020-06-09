@@ -29,7 +29,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration", "broken"})
+@Test(groups={"integration"}, singleThreaded = true)
 public class SoftwareSearchIT extends AbstractDaoTest {
 
 	@BeforeClass
@@ -40,42 +40,18 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 		super.beforeClass();
 	}
 	
-	@AfterClass
-	@Override
-	public void afterClass() throws Exception
-	{
-		super.afterClass();
-	}
-	
-	@BeforeMethod
-	public void setUp() throws Exception {
-//		initSystems();
-		clearSoftware();
-        this.software = createSoftware();
-	}
-	
 	@AfterMethod
-	public void tearDown() throws Exception {
+	public void afterMethod() throws Exception {
 		clearSoftware();
-//		clearSystems();
+		clearSystems();
 	}
-	
-	protected Software createSoftware() throws JSONException, IOException {
-	    JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
-        software = Software.fromJSON(json, TEST_OWNER);
-        software.setExecutionSystem(privateExecutionSystem);
-        software.setOwner(TEST_OWNER);
-        software.setVersion("1.0.1");
-        software.setChecksum("abc12345");
-        return software;
-	}
-	
+
 	@DataProvider
-	public Object[][] softwaresProvider() throws Exception
+	public Object[][] findMatchingProvider() throws Exception
 	{
 	    Software software = createSoftware();
 	    
-		return new Object[][] {
+		Object[][] testCases = new Object[][] {
 	        { "available", software.isAvailable() },
 	        { "checkpointable", software.isCheckpointable() },
 	        { "checksum", software.getChecksum() },
@@ -85,6 +61,7 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 	        { "defaultProcessorsPerNode", software.getDefaultProcessorsPerNode() },
 	        { "defaultQueue", software.getDefaultQueue() },
 	        { "deploymentPath", software.getDeploymentPath() },
+			{ "deploymentSystem", software.getStorageSystem().getSystemId() },
 	        { "executionSystem", software.getExecutionSystem().getSystemId() },
 	        { "executionType", software.getExecutionType() },
 	        { "helpURI", software.getHelpURI() },
@@ -100,8 +77,8 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 	        { "parallelism", software.getParallelism() },
 	        { "parameters.id", software.getParameters().get(0).getKey() },
 	        { "public", software.isPubliclyAvailable() },
-	        { "publicOnly", true },
-	        { "privateOnly", false },
+	        { "publicOnly", Boolean.TRUE },
+	        { "privateOnly", Boolean.FALSE },
 	        { "revision", software.getRevisionCount() },
 	        { "shortDescription", software.getShortDescription() },
 	        { "storageSystem", software.getStorageSystem().getSystemId() },
@@ -110,9 +87,13 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 	        { "uuid", software.getUuid() },
 	        { "version", software.getVersion() },
 		};
+
+		SoftwareDao.delete(software);
+
+		return testCases;
 	}
 	
-	@Test(dataProvider="softwaresProvider")
+	@Test(dataProvider="findMatchingProvider", enabled = false)
 	public void findMatching(String attribute, Object value) throws Exception
 	{
 		Software software = createSoftware();
@@ -127,10 +108,20 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 		Map<String, String> map = new HashMap<String, String>();
 		if (StringUtils.equals(attribute, "uuid")) {
 		    map.put(attribute, software.getUuid());
+		} else if (StringUtils.equals(attribute, "executionSystem")) {
+			map.put(attribute, software.getExecutionSystem().getSystemId());
+		} else if (StringUtils.equals(attribute, "deploymentSystem")) {
+			map.put(attribute, software.getStorageSystem().getSystemId());
+		} else if (StringUtils.equals(attribute, "storageSystem")) {
+			map.put(attribute, software.getStorageSystem().getSystemId());
+		} else if (StringUtils.equals(attribute, "id")) {
+			map.put(attribute, software.getUniqueName());
+		} else if (StringUtils.equals(attribute, "name")) {
+			map.put(attribute, software.getName());
 		} else {
 		    map.put(attribute, String.valueOf(value));
 		}
-		
+
 		List<Software> softwares = SoftwareDao.findMatching(software.getOwner(), new SoftwareSearchFilter().filterCriteria(map), false);
 		Assert.assertNotNull(softwares, "findMatching failed to find any software.");
 		Assert.assertEquals(softwares.size(), 1, "findMatching returned the wrong number of software for search by " + attribute);
@@ -164,7 +155,7 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 		return testCases.toArray(new Object[][]{});
 	}
 
-	@Test(dataProvider = "findMatchingOntologyProvider")
+	@Test(dataProvider = "findMatchingOntologyProvider", enabled=false)
 	public void findMatchingOntology(JsonArray ontologies, String attribute, String value, boolean shouldMatch) throws Exception
 	{
 		Software software = createSoftware();
@@ -216,7 +207,7 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 		return testCases.toArray(new Object[][]{});
 	}
 
-	@Test(dataProvider = "findMatchingTagProvider")
+	@Test(dataProvider = "findMatchingTagProvider",enabled=false)
 	public void findMatchingTag(JsonArray ontologies, String attribute, String value, boolean shouldMatch) throws Exception
 	{
 		Software software = createSoftware();
@@ -241,7 +232,7 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 		}
 	}
 	
-	@Test
+	@Test(enabled=false)
     public void findMatchingTime() throws Exception
     {
 	    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
@@ -267,7 +258,7 @@ public class SoftwareSearchIT extends AbstractDaoTest {
         Assert.assertTrue(softwares.contains(software), "findMatching did not return the saved software when searching by created.");
     }
 	
-	@Test(dataProvider="softwaresProvider")
+	@Test(dataProvider="findMatchingProvider")
 	public void findMatchingCaseInsensitive(String attribute, Object value) throws Exception
 	{
 		Software software = createSoftware();
@@ -278,13 +269,25 @@ public class SoftwareSearchIT extends AbstractDaoTest {
         } 
 		SoftwareDao.persist(software);
 		Assert.assertNotNull(software.getId(), "Failed to generate a software ID.");
-		
+
+		// The software object used to create the test was deleted prior to method invocation, so the
+		// check for interanally assiged values such as uuid and system id will fail.
 		Map<String, String> map = new HashMap<String, String>();
 		if (StringUtils.equals(attribute, "uuid")) {
-            map.put(attribute, software.getUuid());
-        } else {
-            map.put(attribute, String.valueOf(value));
-        }
+			map.put(attribute, software.getUuid());
+		} else if (StringUtils.equals(attribute, "executionSystem")) {
+			map.put(attribute, software.getExecutionSystem().getSystemId());
+		} else if (StringUtils.equals(attribute, "deploymentSystem")) {
+			map.put(attribute, software.getStorageSystem().getSystemId());
+		} else if (StringUtils.equals(attribute, "storageSystem")) {
+			map.put(attribute, software.getStorageSystem().getSystemId());
+		} else if (StringUtils.equals(attribute, "id")) {
+			map.put(attribute, software.getUniqueName());
+		} else if (StringUtils.equals(attribute, "name")) {
+			map.put(attribute, software.getName());
+		} else {
+			map.put(attribute, String.valueOf(value));
+		}
 		
 		List<Software> softwares = SoftwareDao.findMatching(software.getOwner(), new SoftwareSearchFilter().filterCriteria(map), false);
 		Assert.assertNotNull(softwares, "findMatching failed to find any softwares.");
@@ -351,7 +354,7 @@ public class SoftwareSearchIT extends AbstractDaoTest {
 	    return testCases.toArray(new Object[][] {});
 	}
 	
-	@Test(dataProvider="dateSearchExpressionTestProvider")
+	@Test(dataProvider="dateSearchExpressionTestProvider", enabled = false)
 	public void dateSearchExpressionTest(String attribute, String dateFormattedString, boolean shouldSucceed) throws Exception
     {
 	    Software software = createSoftware();

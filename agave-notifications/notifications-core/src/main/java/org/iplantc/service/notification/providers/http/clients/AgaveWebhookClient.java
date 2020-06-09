@@ -105,8 +105,7 @@ public class AgaveWebhookClient extends AbstractWebhookClient {
 	 * contains authorization informaiton, HTTP Basic auth is attempted with the
 	 * given credentials.
 	 * 
-	 * @param attempt the attempt to make
-	 * @return contains the http response code and interpreted message from the response. 
+	 * @return contains the http response code and interpreted message from the response.
 	 * @throws NotificationException
 	 */
 	@Override

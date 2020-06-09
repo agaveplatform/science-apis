@@ -132,6 +132,7 @@
 				<foundation.smtp.host>localhost</foundation.smtp.host>
 				<foundation.smtp.port></foundation.smtp.port>
 				<foundation.smtp.auth>false</foundation.smtp.auth>
+				<foundation.smtp.token></foundation.smtp.token>
 				<foundation.smtp.from.name>Agave Notification Service</foundation.smtp.from.name>
 				<foundation.smtp.from.address>noreply@agaveplatform.org</foundation.smtp.from.address>
 

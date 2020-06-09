@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.agaveplatform</groupId>
 		<artifactId>tenants</artifactId>
-		<version>2.2.24</version>
+		<version>2.2.27</version>
 	</parent>
 	<artifactId>tenants-api</artifactId>
 	<name>Agave Platform Tenants Service API Endpoints</name>
@@ -57,68 +57,16 @@
 		</testResources>
 
 		<plugins>
-			<!-- ************************************ -->
-			<!-- *** WAR BUILDER *** -->
-			<!-- ************************************ -->
-
-			<!-- Build war here and replace all the properties in the config file. 
-				pick the desired profile above or specify it at the command line to select 
-				the appropriate set of values -->
+			<!-- Dont' build jar for php assets -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-war-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>prepare-war</id>
-						<phase>prepare-package</phase>
-						<goals>
-							<goal>war</goal>
-						</goals>
-					</execution>
-				</executions>
+				<artifactId>maven-jar-plugin</artifactId>
 				<configuration>
 					<skip>true</skip>
-					<warName>${service.war.name}</warName>
-					<useCache>true</useCache>
-					<nonFilteredFileExtensions>
-						<nonFilteredFileExtension>jar</nonFilteredFileExtension>
-						<nonFilteredFileExtension>flt</nonFilteredFileExtension>
-					</nonFilteredFileExtensions>
-					<packagingExcludes>
-						WEB-INF/lib/servlet-api-*.jar
-					</packagingExcludes>
-					<archive>
-						<manifest>
-							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
-						</manifest>
-						<manifestEntries>
-							<Implementation-Build>$\{buildNumber}</Implementation-Build>
-						</manifestEntries>
-					</archive>
-					<webResources>
-						<resource>
-							<directory>src/main/php</directory>
-							<targetPath>/</targetPath>
-							<filtering>true</filtering>
-							<excludes>
-								<exclude>**/*.java</exclude>
-							</excludes>
-						</resource>
-						<resource>
-							<directory>src/main/resources</directory>
-							<targetPath>/</targetPath>
-							<filtering>true</filtering>
-						</resource>
-						<resource>
-							<directory>src/test/webapp</directory>
-							<targetPath>/</targetPath>
-							<filtering>true</filtering>
-						</resource>
-					</webResources>
 				</configuration>
 			</plugin>
 
-			<!-- The web assemby -->
+			<!--  The web assemby -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
@@ -127,15 +75,18 @@
 				</configuration>
 			</plugin>
 
+			<!-- Skip site generation -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-site-plugin</artifactId>
+				<configuration>
+					<skipDeploy>true</skipDeploy>
+				</configuration>
 			</plugin>
 
 			<!-- ************************************ -->
-			<!-- *** DEPLOYMENT ** -->
+			<!-- ***           DEPLOYMENT          ** -->
 			<!-- ************************************ -->
-			<!-- ***** deploy plugin properties ***** -->
 			<!-- Don't deploy the war -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
@@ -145,7 +96,7 @@
 				</configuration>
 			</plugin>
 
-			<!-- ***** install plugin properties ***** -->
+			<!-- ***** skip installing empty java assets from php project ***** -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-install-plugin</artifactId>

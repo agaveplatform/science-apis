@@ -15,7 +15,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class AgaveErrorRepresentation extends AgaveRepresentation {
 
 	/**
-	 * @param jsonObject
+	 * @param errorMessage the error message
 	 */
 	public AgaveErrorRepresentation(String errorMessage)
 	{

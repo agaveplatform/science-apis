@@ -2,6 +2,7 @@ package org.iplantc.service.remote.local;
 
 import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.remote.exceptions.RemoteExecutionException;
+import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 
 /**
  * Forks a command to the local system using ProcessBuilder.
@@ -17,9 +18,9 @@ public class LocalSubmissionClient implements RemoteSubmissionClient
 	}
 	
 	@Override
-	public void close() {}
+	public void close() throws Exception {}
 	
-	public String runCommand(String command) throws Exception
+	public String runCommand(String command) throws RemoteExecutionException, RemoteConnectionException
 	{	
 		CmdLineProcessHandler processHandler = null;
 		CmdLineProcessOutput processOutput = null;
@@ -35,18 +36,15 @@ public class LocalSubmissionClient implements RemoteSubmissionClient
 	        processOutput = processHandler.getProcessOutput();
 	        
 	        return processOutput.getOutString();
-		} 
-		catch (RemoteExecutionException e) {
+		} catch (RemoteExecutionException e) {
 			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteExecutionException("Failed to execute command on " + hostname, e);
 		}
 	}
 
 	@Override
-	public boolean canAuthentication()
-	{
+	public boolean canAuthentication() {
 		return true;
 	}
 

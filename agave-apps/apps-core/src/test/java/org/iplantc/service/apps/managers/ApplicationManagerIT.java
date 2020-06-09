@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.iplantc.service.apps.dao.AbstractDaoTest;
 import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.model.JSONTestDataUtil;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwarePermission;
 import org.json.JSONException;
@@ -23,9 +24,9 @@ import org.testng.annotations.Test;
 @Test(groups={"integration"})
 public class ApplicationManagerIT extends AbstractDaoTest
 {
-	private Software privateSoftware;
-	private Software publicSoftware;
-	private Software clonedSoftware;
+//	private Software privateSoftware;
+//	private Software publicSoftware;
+//	private Software clonedSoftware;
 	
 //	@AfterClass
 //	public void tearDown() throws Exception
@@ -35,28 +36,15 @@ public class ApplicationManagerIT extends AbstractDaoTest
 //	}
 	
 	@BeforeMethod
-	public void beforeMethod() throws Exception  
-	{
-		initSystems();
-		initSoftware();
+	public void beforeMethod() throws Exception {
+		clearSystems();
+		clearSoftware();
 	}
 
-//	@AfterMethod
-//	public void afterMethod() throws Exception
-//	{
-//		clearSystems();
-//		clearSoftware();
-//	}
-	
-	protected void initSoftware() throws Exception
-	{
-		clearSoftware(); 
-		
-		JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
-		software = Software.fromJSON(json, TEST_OWNER);
-		software.setExecutionSystem(privateExecutionSystem);
-		software.setOwner(TEST_OWNER);
-		software.setVersion(software.getVersion());
+	@AfterMethod
+	public void afterMethod() throws Exception {
+		clearSystems();
+		clearSoftware();
 	}
 
 	@DataProvider
@@ -154,14 +142,14 @@ public class ApplicationManagerIT extends AbstractDaoTest
 	throws Exception
 	{
 		try {
-			
-			JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
-			Software oldSoftware = Software.fromJSON(json, TEST_OWNER);
-			oldSoftware.setExecutionSystem(privateExecutionSystem);
-			oldSoftware.setOwner(TEST_OWNER);
-			oldSoftware.setVersion(software.getVersion());
-			
-			SoftwareDao.persist(oldSoftware);
+
+			Software oldSoftware = createSoftware();
+			JSONObject json = JSONTestDataUtil.getInstance().getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
+			json.put("name", oldSoftware.getName());
+			json.put("version", oldSoftware.getVersion());
+			json.put("executionSystem", oldSoftware.getExecutionSystem().getSystemId());
+			json.put("deploymentSystem", oldSoftware.getStorageSystem().getSystemId());
+
 			ApplicationManager manager = Mockito.spy(new ApplicationManager());
 			
 			Mockito.doReturn(Boolean.TRUE)
@@ -179,7 +167,8 @@ public class ApplicationManagerIT extends AbstractDaoTest
 			Assert.assertTrue(newSoftware.getLastUpdated().after(oldSoftware.getLastUpdated()),
 					"lastUpdated timestamp should not be equal before and after processing");
 
-			Assert.assertTrue(newSoftware.getRevisionCount() == (oldSoftware.getRevisionCount() + 1),
+			Assert.assertEquals(newSoftware.getRevisionCount().intValue(),
+					oldSoftware.getRevisionCount() + 1,
 					"revision count was not incremented on update");
 			
 			for (SoftwarePermission oldPem : oldSoftware.getPermissions()) {
@@ -204,9 +193,9 @@ public class ApplicationManagerIT extends AbstractDaoTest
 			
 			Assert.assertNotNull(newSoftwareResult,
 					"Search for new software by unique name should return new software.");
-			
-			
-			List<Software> nameResults = SoftwareDao.getByName(newSoftware.getName(), false, true);
+
+			List<Software> nameResults =
+					SoftwareDao.getByName(newSoftware.getName(), false, true);
 			
 			Assert.assertEquals(nameResults.size(), 1,
 					"Search for new software by name should return only the new software object.");
@@ -234,14 +223,13 @@ public class ApplicationManagerIT extends AbstractDaoTest
 	throws Exception
 	{
 		try {
-			
-			JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
-			Software oldSoftware = Software.fromJSON(json, TEST_OWNER);
-			oldSoftware.setExecutionSystem(privateExecutionSystem);
-			oldSoftware.setOwner(TEST_OWNER);
-			oldSoftware.setVersion(software.getVersion());
-			
-			SoftwareDao.persist(oldSoftware);
+			Software oldSoftware = createSoftware();
+			JSONObject json = JSONTestDataUtil.getInstance().getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
+			json.put("name", oldSoftware.getName());
+			json.put("version", oldSoftware.getVersion());
+			json.put("executionSystem", oldSoftware.getExecutionSystem().getSystemId());
+			json.put("deploymentSystem", oldSoftware.getStorageSystem().getSystemId());
+
 			ApplicationManager manager = Mockito.spy(new ApplicationManager());
 			
 			Mockito.doReturn(Boolean.TRUE)
@@ -259,15 +247,16 @@ public class ApplicationManagerIT extends AbstractDaoTest
 				
 				Assert.assertTrue(newSoftware.getLastUpdated().after(oldSoftware.getLastUpdated()),
 						"lastUpdated timestamp should not be equal before and after processing");
-	
-				Assert.assertTrue(newSoftware.getRevisionCount() == (i + 2),
+
+				Assert.assertEquals((i + 2), (int) newSoftware.getRevisionCount(),
 						"revision count was not incremented on update");
 				
 				for (SoftwarePermission oldPem : oldSoftware.getPermissions()) {
 					Assert.assertTrue(newSoftware.getPermissions().contains(oldPem),
 							"All permissions should be carried over after processing.");
 				}
-				
+
+//				Long oldSoftareId = oldSoftware.getId();
 				SoftwareDao.replace(oldSoftware, newSoftware);
 				
 				// search for new and old software objects

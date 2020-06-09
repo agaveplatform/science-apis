@@ -3,74 +3,81 @@
 # 
 # These are the compute containers needed for basic unit testing.
 ###############################################################
+version: '3.7'
 
-ssh:
-  image: agaveapi/centos-base:latest
-  hostname: docker.example.com
-  ports:
-    - '10111:22'
+volumes: {}
 
-sshtunnel:
- image: agaveapi/centos-base
- hostname: tunnel.example.com
- privileged: true
- links: 
-   - sshhidden
- ports:
-   - '10199:22'
-   
-sshhidden:
- image: agaveapi/centos-base
- hostname: sshhidden
- privileged: true
- links: 
-   - ssh   
+services:
+  ssh:
+   image: agaveplatform/sshd:latest
+   command: "-p 10111"
+   restart: on-failure
+   links:
+     - sshhidden
+   ports:
+     - '10111:10111'
+
+  sshhidden:
+    image: agaveplatform/sshd:latest
+    command: "-p 10044"
+    restart: on-failure
+    ports:
+      - '10044:10044'
+
       
-gsissh:
-  image: agaveapi/gridftp:5
-  hostname: docker.example.com
-  ports:
-    - '2222:2222'
-    - '2022:22'
-    - '7515:7512'
+#  gsissh:
+#    image: agaveplatform/gridftp:5
+#    hostname: docker.example.com
+#    ports:
+#      - '2222:2222'
+#      - '2022:22'
+#      - '7515:7512'
 
-slurm:
-  image: agaveapi/slurm:latest
-  hostname: docker.example.com
-  ports:
-    - '10133:22'
+  slurm:
+    image: agaveplatform/slurm:latest
+    hostname: docker.example.com
+    ports:
+      - '10133:22'
 
-torque:
-  image: agaveapi/torque:latest
-  hostname: docker.example.com
-  privileged: true
-  ports:
-    - '10144:22'
+  torque:
+    image: agaveplatform/torque:6.1.3
+    hostname: docker
+    privileged: true
+    environment:
+      - "HOSTNAME=docker"
+    ports:
+      - '10144:22'
 
-htcondor:
-  image: agaveapi/htcondor:latest
-  hostname: docker.example.com
-  ports:
-    - '10155:22'
+  pbs:
+    image: agaveplatform/pbspro:9.1.2
+    hostname: docker
+    ports:
+      - '10144:22'
 
-gridengine:
-  image: agaveapi/gridengine:latest
-  hostname: docker.example.com
-  environment:
-    - "HOSTNAME=docker.example.com"
-  privileged: true
-  ports:
-    - '10166:22'
-    - '6444:6444'
-    - '6445:6445'
-    
-openlava:
-  image: agaveapi/openlava:3.3
-  hostname: docker.example.com
-  ports:
-    - '10177:22' 
-    - '6879:6879'
-    - '6878:6878'
-    - '6882:6882'
-    - '6881:6881'
+  htcondor:
+    image: agaveplatform/htcondor:8.4.9
+    hostname: docker.example.com
+    ports:
+      - '10155:22'
+
+  gridengine:
+    image: agaveplatform/gridengine:6.2
+    hostname: docker.example.com
+    environment:
+      - "HOSTNAME=docker.example.com"
+    privileged: true
+    ports:
+      - '10166:22'
+      - '6444:6444'
+      - '6445:6445'
+
+  openlava:
+    image: agaveplatform/openlava:3.3
+    hostname: docker.example.com
+    ports:
+      - '10177:22'
+      - '6879:6879'
+      - '6878:6878'
+      - '6882:6882'
+      - '6881:6881'
 

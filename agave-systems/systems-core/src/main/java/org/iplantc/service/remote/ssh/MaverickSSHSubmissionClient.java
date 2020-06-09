@@ -17,6 +17,7 @@ import org.iplantc.service.remote.ssh.net.SocketWrapper;
 import org.iplantc.service.remote.ssh.shell.Shell;
 import org.iplantc.service.remote.ssh.shell.ShellProcess;
 import org.iplantc.service.systems.Settings;
+import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.sftp.MaverickSFTPLogger;
 import org.iplantc.service.transfer.sftp.MultiFactorKBIRequestHandler;
@@ -445,7 +446,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
      * @see org.iplantc.service.remote.RemoteSubmissionClient#runCommand(java.lang.String)
      */
     @Override
-    public String runCommand(String command) throws Exception {
+    public String runCommand(String command) throws RemoteExecutionException, RemoteConnectionException {
         Shell shell = null;
         try {
             if (log.isDebugEnabled())
@@ -511,22 +512,15 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
                      * Now that the local proxy tunnel is running, make the call to
                      * the target server through the tunnel.
                      */
-                    MaverickSSHSubmissionClient proxySubmissionClient = null;
                     String proxyResponse = null;
-                    try {
-                        proxySubmissionClient = new MaverickSSHSubmissionClient("127.0.0.1", randomlyChosenTunnelPort, username,
-                                password, null, proxyPort, publicKey, privateKey);
+                    try (MaverickSSHSubmissionClient proxySubmissionClient = new MaverickSSHSubmissionClient("127.0.0.1", randomlyChosenTunnelPort, username,
+                            password, null, proxyPort, publicKey, privateKey)) {
                         proxyResponse = proxySubmissionClient.runCommand(command);
                         return proxyResponse;
-                    } catch (RemoteDataException e) {
+                    } catch (RemoteExecutionException e) {
                         throw e;
                     } catch (Exception e) {
-                        throw new RemoteDataException("Failed to connect to destination server " + hostname + ":" + port, e);
-                    } finally {
-                        try {
-                            proxySubmissionClient.close();
-                        } catch (Exception ignored) {
-                        }
+                        throw new RemoteConnectionException("Failed to connect to destination server " + hostname + ":" + port, e);
                     }
 
 //					if (sessionStarted) {
@@ -603,7 +597,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
                         // was a timeout.  A new mapping will be inserted and its value incremented
                         // to 1 if the key doesn't already appear in the map.  If key already exists
                         // in the map, its value is incremented.
-                        if ((emsg != null) && (emsg.indexOf("connection timed out") > -1))
+                        if ((emsg != null) && (emsg.contains("connection timed out")))
                             _attemptMap.computeIfAbsent(attemptKey, k -> new AtomicInteger()).incrementAndGet();
 
                         throw e;
@@ -620,7 +614,9 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
                     try {
                         // no idea why, but this fails if we don't wait for 8 seconds
                         long start = System.currentTimeMillis();
-                        while (process.isActive() && (System.currentTimeMillis() - start) < (Settings.MAX_REMOTE_OPERATION_TIME * 1000)) {
+                        while (process != null &&
+                                process.isActive() &&
+                                (System.currentTimeMillis() - start) < (Settings.MAX_REMOTE_OPERATION_TIME * 1000)) {
                             if (log.isDebugEnabled())
                                 log.debug("Process has succeeded: " + process.hasSucceeded() + "\n"
                                         + "Process exit code: " + process.getExitCode() + "\n"
@@ -647,20 +643,20 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
             } else {
                 throw new RemoteExecutionException("Failed to authenticate to " + hostname);
             }
-        } catch (RemoteExecutionException e) {
+        } catch (RemoteConnectionException|RemoteExecutionException e) {
             throw e;
         } catch (Throwable t) {
-            String msg = "Failed to execute command on " + hostname + " due to " +
-                    t.getClass().getSimpleName() + " exception.";
-            log.error(msg + ": " + t.getMessage());
+            String msg = String.format("Failed to execute command \"%s\" on %s:%d: %s",
+                    command, hostname, port, t.getMessage());
+            log.error(msg);
             throw new RemoteExecutionException(msg, t);
         } finally {
-            close();
+            try { close(); } catch (Exception ignored) {}
         }
     }
 
     @Override
-    public void close() {
+    public void close() throws Exception {
         // Disconnect all communication links.
         try {
             if (ssh2 != null) ssh2.disconnect();
@@ -695,7 +691,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
         } catch (RemoteExecutionException e) {
             return false;
         } finally {
-            close();
+            try { close(); } catch (Exception ignored) {}
         }
     }
 

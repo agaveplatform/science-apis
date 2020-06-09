@@ -21,6 +21,7 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.notification.exceptions.BadCallbackException;
 import org.iplantc.service.notification.exceptions.NotificationException;
+import org.iplantc.service.notification.exceptions.UnsupportedUUIDTypeException;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.notification.model.NotificationAttempt;
 import org.iplantc.service.notification.model.NotificationPolicy;
@@ -75,20 +76,24 @@ public class NotificationMessageProcessor
 			}
 			
 			AgaveUUID uuid = new AgaveUUID(targetUuid);
-			
-			EventFilter event = 
+
+			// Each UUIDType has an EventFilter defined which handles the serialization of the event body into
+			// the various destination formats. Here we use a factory to get the instance for type of the associatedUuid
+			// registered with the notification.
+			EventFilter eventFilter =
 					EventFilterFactory.getInstance(uuid, notification, eventName, owner);
+
+			eventFilter.setCustomNotificationMessageContextData(customNotificationMessageContextData);
 			
-			event.setCustomNotificationMessageContextData(customNotificationMessageContextData);
 			
-			
-			NotificationAttempt attempt = createNotificationAttemptFromEvent(event);
+			NotificationAttempt attempt = createNotificationAttemptFromEvent(eventFilter);
 			log.debug(String.format("Attempt [%s]: Beginning to process notification %s for %s event on %s entity with associatedUuid %s", 
 					attempt.getAttemptNumber(),
 					attempt.getNotificationId(),
 					attempt.getEventName(),
 					uuid.getResourceType().name(),
 					attempt.getAssociatedUuid()));
+
 			NotificationAttemptProcessor processor = new NotificationAttemptProcessor(attempt);
 			
 			processor.fire();
@@ -101,7 +106,7 @@ public class NotificationMessageProcessor
 					processor.getAttempt().getAssociatedUuid()));
 			
 			return processor.getAttempt();
-		} 
+		}
 		catch (UUIDException e) {
 			throw new NotificationException("Could not identify associated resource from notification uuid. Trigger cannot be processed.");
 		}

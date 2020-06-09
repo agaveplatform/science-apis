@@ -20,7 +20,7 @@ import org.testng.annotations.Test;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-@Test(groups={"integration"})
+@Test(groups={"integration","notReady"})
 public class FanoutRealtimeClientTest extends AbstractNotificationTest {
 
 	@BeforeClass

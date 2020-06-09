@@ -8,11 +8,13 @@ import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.hibernate.HibernateException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
+import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.monitor.Settings;
 import org.iplantc.service.monitor.dao.MonitorDao;
 import org.iplantc.service.monitor.events.MonitorEventProcessor;
@@ -21,14 +23,17 @@ import org.iplantc.service.monitor.managers.MonitorPermissionManager;
 import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.enumeration.MonitorEventType;
 import org.iplantc.service.monitor.resources.MonitorCollection;
+import org.iplantc.service.monitor.search.MonitorSearchFilter;
 import org.iplantc.service.monitor.util.ServiceUtils;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.search.SystemSearchFilter;
 import org.joda.time.DateTime;
 import org.restlet.Request;
+import org.restlet.data.Form;
 import org.restlet.data.Status;
 import org.restlet.ext.fileupload.RestletFileUpload;
 import org.restlet.representation.Representation;
@@ -38,7 +43,9 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorAdd;
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorsList;
@@ -78,8 +85,12 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 				includeActive = Boolean.parseBoolean(active);
 				includeInactive = !Boolean.parseBoolean(active);
 			}
-			
-			monitors = dao.getUserMonitors(getAuthenticatedUsername(), includeActive, includeInactive, systemId);
+
+			//			Request.getCurrent().getResourceRef().getQueryAsForm().getValuesMap()
+			Map<SearchTerm, Object> searchCriteria = getQueryParameters();
+
+			monitors = dao.findMatching(getAuthenticatedUsername(), searchCriteria, getLimit(), getOffset(), hasJsonPathFilters());
+//			monitors = dao.getUserMonitors(getAuthenticatedUsername(), includeActive, includeInactive, systemId);
 			
 			ObjectMapper mapper = new ObjectMapper();
 			ArrayNode arrayNode = mapper.createArrayNode();
@@ -156,12 +167,31 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			ObjectMapper mapper = new ObjectMapper();
 			ObjectNode jsonMonitor = mapper.createObjectNode()
 					.put("target", systemId)
-					.put("frequency", Integer.parseInt(frequency))
-					.put("updateSystemStatus", StringUtils.equalsIgnoreCase(updateSystemStatus, "true") ||
-							StringUtils.equalsIgnoreCase(updateSystemStatus, "1"))
-					.put("internalUsername", internalUsername)
-					.put("active", StringUtils.equalsIgnoreCase(active, "true") ||
-							StringUtils.equalsIgnoreCase(active, "1"));
+					.put("internalUsername", "null".equalsIgnoreCase(internalUsername) ? null : internalUsername);
+
+			// Form submissions come in as strings. Fields will be properly validated on the backend, but we
+			// need to properly convert the value to the proper type
+			if (NumberUtils.isNumber(updateSystemStatus)) {
+				jsonMonitor.put("updateSystemStatus", NumberUtils.toFloat(updateSystemStatus));
+			} else if (updateSystemStatus != null) {
+				jsonMonitor.put("updateSystemStatus", updateSystemStatus);
+			}
+
+			// form submissions come in as strings. Frequency will be properly validated on the backend, but we
+			// need to properly convert the value to the proper numberic type
+			if (NumberUtils.isNumber(active)) {
+				jsonMonitor.put("active", NumberUtils.toFloat(active));
+			} else if (active != null) {
+				jsonMonitor.put("active", frequency);
+			}
+
+			// form submissions come in as strings. Frequency will be properly validated on the backend, but we
+			// need to properly convert the value to the proper numberic type
+			if (NumberUtils.isNumber(frequency)) {
+				jsonMonitor.put("frequency", NumberUtils.toFloat(frequency));
+			} else if (frequency != null) {
+				jsonMonitor.put("frequency", frequency);
+			}
 
 			Monitor monitor = Monitor.fromJSON(jsonMonitor, null, getAuthenticatedUsername());
 			monitor.setOwner(getAuthenticatedUsername());
@@ -180,13 +210,13 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 					.build();
 		} catch (MonitorException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					e.getLocalizedMessage(), e);
+					e.getLocalizedMessage());
 		} catch (NumberFormatException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					"Unable to save monitor: " + e.getMessage(), e);
+					"Unable to save monitor: " + e.getMessage());
 		} catch (NotificationException e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-					"Failed to save monitor: " + e.getMessage(), e);
+					"Failed to save monitor: " + e.getMessage());
 		}
 	}
 	
@@ -320,12 +350,12 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			}
 		} 
 		catch (MonitorException e) {
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					e.getMessage(), e);
+			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST.getCode(),
+					e, e.getMessage(), e.getMessage());
 		}
 		catch (IllegalArgumentException e) {
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					"Unable to save monitor. " + e.getMessage(), e);
+			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST.getCode(),
+					e, "Unable to save monitor. " + e.getMessage(), e.getMessage());
 	    } 
 		catch (HibernateException e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
@@ -425,6 +455,20 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 					try { Thread.sleep(5); } catch (Exception ignored){}
 				}
 			}
+		}
+	}
+
+	/**
+	 * Parses url query looking for a search string
+	 * @return
+	 */
+	protected Map<SearchTerm, Object> getQueryParameters()
+	{
+		Form form = Request.getCurrent().getResourceRef().getQueryAsForm();
+		if (form != null && !form.isEmpty()) {
+			return new MonitorSearchFilter().filterCriteria(form.getValuesMap());
+		} else {
+			return new HashMap<SearchTerm, Object>();
 		}
 	}
 }

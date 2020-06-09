@@ -204,8 +204,8 @@ public class JobEventDao {
 	}
 
 	/**
-	 * Saves a new job permission. Upates existing ones.
-	 * @param pem
+	 * Saves a new job event. Updates existing ones.
+	 * @param event The object to persist
 	 * @throws JobException
 	 */
 	public static void persist(JobEvent event) throws JobException

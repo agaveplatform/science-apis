@@ -157,9 +157,21 @@ public class DatabaseProfileDAO extends AbstractProfileDAO {
 			throw new RemoteDataException("Failed to query remote profile database", ex);
 		} 
     	finally {
-			try { rs.close(); } catch (Exception e) {}
-            try { ps.close(); } catch (Exception e) {}
-            try { conn.close(); } catch (Exception e) {}
+			try {
+				if (rs != null) {
+					rs.close();
+				}
+			} catch (Exception ignored) {}
+            try {
+				if (ps != null) {
+					ps.close();
+				}
+			} catch (Exception ignored) {}
+            try {
+				if (conn != null) {
+					conn.close();
+				}
+			} catch (Exception ignored) {}
         }
         
         return profiles;

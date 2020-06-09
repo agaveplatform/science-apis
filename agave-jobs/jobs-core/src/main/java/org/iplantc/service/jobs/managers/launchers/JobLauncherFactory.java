@@ -24,22 +24,36 @@ import org.iplantc.service.transfer.RemoteDataClient;
 public class JobLauncherFactory 
 {
 	private static final Logger log = Logger.getLogger(JobLauncherFactory.class);
-	
+
+	protected JobManager jobManager = null;
+
+	/**
+	 * Basic getter for job manager instance. Useful for testing
+	 * @return JobManager instance
+	 */
+	protected JobManager getJobManager() {
+		if (jobManager == null) {
+			jobManager = new JobManager();
+		}
+
+		return jobManager;
+	}
+
 	/**
 	 * Returns an intance of a {@link JobLauncher} based on the parameters of the job.
-	 * Prior to creating the {@link JobLaunch}, this method validates the availability 
+	 * Prior to creating the {@link JobLauncher}, this method validates the availability
 	 * of the {@link Software} and {@link ExecutionSystem}.
 	 * 
-	 * @param job
+	 * @param job the job to launch
 	 * @return
 	 * @throws JobException
 	 * @throws SystemUnavailableException
 	 * @throws SoftwareUnavailableException
 	 */
-	public static JobLauncher getInstance(Job job) throws JobException, SystemUnavailableException, SoftwareUnavailableException
+	public JobLauncher getInstance(Job job) throws JobException, SystemUnavailableException, SoftwareUnavailableException
 	{
 	    Software software = SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName());
-		ExecutionSystem executionSystem = JobManager.getJobExecutionSystem(job);
+		ExecutionSystem executionSystem = getJobManager().getJobExecutionSystem(job);
 		
 		// if the system is unavailable or missing...
 		if (!executionSystem.isAvailable()) {
@@ -142,7 +156,7 @@ public class JobLauncherFactory
 				throw new JobException(msg, e);
 			} 
 			finally {
-				try { remoteDataClient.disconnect(); } catch(Exception e) {}
+				try { if (remoteDataClient != null) remoteDataClient.disconnect(); } catch(Exception ignored) {}
 			}
 		}
 

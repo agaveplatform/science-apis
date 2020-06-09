@@ -24,9 +24,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class SoftwareNotificationEvent extends AbstractEventFilter {
 
 	private static final Logger log = Logger.getLogger(SoftwareNotificationEvent.class);
-	
+
 	/**
+	 *
+	 * @param associatedUuid
 	 * @param notification
+	 * @param event
+	 * @param owner
 	 */
 	public SoftwareNotificationEvent(AgaveUUID associatedUuid, Notification notification, String event, String owner)
 	{

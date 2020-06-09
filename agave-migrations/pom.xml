@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.agaveplatform</groupId>
         <artifactId>science-apis</artifactId>
-        <version>2.2.24</version>
+        <version>2.2.27</version>
     </parent>
 
     <artifactId>agave-migrations</artifactId>
@@ -59,12 +59,20 @@
                 <groupId>com.spotify</groupId>
                 <artifactId>docker-maven-plugin</artifactId>
                 <version>${docker-maven-plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>javax.activation</groupId>
+                        <artifactId>javax.activation-api</artifactId>
+                        <version>1.2.0</version>
+                        <scope>compile</scope>
+                    </dependency>
+                </dependencies>
                 <configuration>
                     <!-- Standard build will build an image without the prefix so we don't
                         force conventions on folks. -->
                     <imageName>${project.artifactId}</imageName>
                     <dockerDirectory>${basedir}/target/docker</dockerDirectory>
-                    <skipDocker>${skip.migrations}</skipDocker>
+                    <skipDocker>${skip.integration.tests}</skipDocker>
                 </configuration>
                 <executions>
                     <execution>
@@ -158,7 +166,7 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <skip>${skip.migrations}</skip>
+                            <skip>${skip.integration.tests}</skip>
                             <executable>docker</executable>
                             <workingDirectory>${basedir}</workingDirectory>
                             <arguments>
@@ -179,7 +187,6 @@
                 <groupId>com.dkanejs.maven.plugins</groupId>
                 <artifactId>docker-compose-maven-plugin</artifactId>
                 <configuration>
-
                     <projectName>${project.artifactId}</projectName>
                     <composeFiles>
                         <composeFile>${basedir}/target/classes/docker-compose.yml</composeFile>
@@ -196,7 +203,7 @@
                         <configuration>
                             <services>mysql</services>
                             <detachedMode>true</detachedMode>
-                            <skip>${skip.migrations}</skip>
+                            <skip>${skip.integration.tests}</skip>
                         </configuration>
                     </execution>
                     <execution>
@@ -208,7 +215,7 @@
                         <configuration>
                             <services>migrate</services>
                             <detachedMode>false</detachedMode>
-                            <skip>${skip.migrations}</skip>
+                            <skip>${skip.integration.tests}</skip>
                         </configuration>
                     </execution>
                     <execution>
@@ -218,7 +225,7 @@
                             <goal>down</goal>
                         </goals>
                         <configuration>
-                            <skip>${skip.migrations}</skip>
+                            <skip>${skip.integration.tests}</skip>
                         </configuration>
                     </execution>
                 </executions>
@@ -234,17 +241,16 @@
                 <version>${flyway-maven-plugin.version}</version>
                 <configuration>
                     <driver>${foundation.db.driver}</driver>
-                    <table>migrations</table>
                     <url>${foundation.db.url}</url>
                     <user>${foundation.db.username}</user>
                     <password>${foundation.db.password}</password>
+                    <table>flyway_schema_history</table>
                     <baselineVersion>${project.version}</baselineVersion>
                     <baselineDescription>Base Migration</baselineDescription>
                     <locations>
-                        <location>filesystem:src/main/resources/db/migration</location>
-                        <location>classpath:org/iplantc/service/common/migration</location>
+                        <location>filesystem:target/classes/db/migration</location>
+                        <location>classpath:org.iplantc.service.common.migration</location>
                     </locations>
-                    <skip>${skip.migrations}</skip>
                 </configuration>
             </plugin>
         </plugins>

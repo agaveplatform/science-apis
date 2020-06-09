@@ -27,6 +27,18 @@ public class SGEJobIdParser implements RemoteJobIdParser {
 		{
 			return matcher.group(1);
 		}
+		else if (output.toLowerCase().contains("error")) {
+			for (String line : output.split("\\r?\\n|\\r")) {
+				if (line.contains("sbatch: error") ||
+						line.contains("slurm_load_jobs error") ||
+						line.contains("slurm_load_jobs error") ||
+						line.contains("ERROR: Unknown project")) {
+					throw new SchedulerException(output);
+				}
+			}
+			// no obvious scheduler error was found. we fail with a generic job exception and continue to retry
+			throw new JobException(output);
+		}
 		// otherwise, see what we can learn about the cause of the failure.
 		else if (output.contains("You have exceeded the max job time limit.")) {
 			throw new JobException(output);

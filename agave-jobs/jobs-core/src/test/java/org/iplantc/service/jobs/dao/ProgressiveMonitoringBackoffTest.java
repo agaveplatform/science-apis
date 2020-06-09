@@ -8,12 +8,7 @@ import static org.iplantc.service.jobs.model.enumerations.JobStatusType.PAUSED;
 import static org.iplantc.service.jobs.model.enumerations.JobStatusType.QUEUED;
 import static org.iplantc.service.jobs.model.enumerations.JobStatusType.RUNNING;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Hashtable;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,8 +23,10 @@ import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.jobs.model.JSONTestDataUtil;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
+import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
@@ -56,113 +53,137 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
     String[] usernames = new String[] {"user-0", "user-1", "user-2"};
     String[] systemsIds = new String[] {"execute1.example.com", "execute2.example.com", "execute3.example.com"};
     String[] queues = new String[] {"short", "medium", "long"};
-    
-	@BeforeClass
-	@Override
-	public void beforeClass() throws Exception
-	{
-		super.beforeClass();
-	}
-	
-	@AfterClass
-	@Override
-	public void afterClass() throws Exception
-	{
-		super.afterClass();
-	}
-	
-	@BeforeMethod
+    //			ExecutionSystem executionSystem = createExecutionSystem();
+//			StorageSystem storageSystem = createStorageSystem();
+//          Software software = createSoftware(executionSystem, storageSystem);
+
+//	@BeforeClass
+//	@Override
+//	public void beforeClass() throws Exception
+//	{
+//		super.beforeClass();
+//	}
+//
+//	@AfterClass
+//	@Override
+//	public void afterClass() throws Exception
+//	{
+//		super.afterClass();
+//	}
+//
+//	@BeforeMethod
+//	public void beforeMethod() throws Exception {
+//		initSystems();
+//        initSoftware();
+//        SoftwareDao.persist(software);
+//		clearJobs();
+//
+//	}
+//
+//	@AfterMethod
+//	public void afterMethod() throws Exception {
+//		clearJobs();
+//		clearSoftware();
+//		clearSystems();
+//	}
+
+    @BeforeMethod
 	public void beforeMethod() throws Exception {
-		initSystems();
-        initSoftware();
-        SoftwareDao.persist(software);
-		clearJobs();
-		
-	}
-	
-	@AfterMethod
-	public void afterMethod() throws Exception {
-		clearJobs();
-		clearSoftware();
-		clearSystems();
-	}
-	
-	@Override
-    protected void initSystems() throws Exception {
-        clearSystems();
-        
-        JSONObject exeSystemJson = jtd.getTestDataObject(TEST_EXECUTION_SYSTEM_FILE);
-        privateExecutionSystem = ExecutionSystem.fromJSON(exeSystemJson);
-        privateExecutionSystem.setOwner(TEST_OWNER);
-        privateExecutionSystem.setType(RemoteSystemType.EXECUTION);
-        privateExecutionSystem.getBatchQueues().clear();
-        privateExecutionSystem.addBatchQueue(unlimitedQueue.clone());
-        privateExecutionSystem.addBatchQueue(mediumQueue.clone());
-        privateExecutionSystem.addBatchQueue(longQueue.clone());
-        systemDao.persist(privateExecutionSystem);
-        
-        for (String tenantId: tenantIds) {
-            for(String systemId: systemsIds) {
-//                for (int i =0; i< 3; i++) {
-                    ExecutionSystem exeSystem = ExecutionSystem.fromJSON(exeSystemJson);
-                    exeSystem.setOwner(TEST_OWNER);
-                    exeSystem.getBatchQueues().clear();
-                    exeSystem.addBatchQueue(dedicatedQueue.clone());
-                    exeSystem.addBatchQueue(longQueue.clone());
-                    exeSystem.addBatchQueue(mediumQueue.clone());
-                    exeSystem.addBatchQueue(shortQueue.clone());
-                    exeSystem.setPubliclyAvailable(true);
-                    exeSystem.setType(RemoteSystemType.EXECUTION);
-                    exeSystem.setTenantId(tenantId);
-                    exeSystem.setSystemId(tenantId + "-" + systemId);
-                    log.debug("Inserting execution system " + exeSystem.getSystemId());
-                    systemDao.persist(exeSystem);
-//                }
-            }
-        }
-        
-        privateStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(TEST_STORAGE_SYSTEM_FILE));
-        privateStorageSystem.setOwner(TEST_OWNER);
-        privateStorageSystem.setType(RemoteSystemType.STORAGE);
+        SystemDao systemDao = new SystemDao();
+
+        StorageSystem privateStorageSystem = createStorageSystem();
         privateStorageSystem.setGlobalDefault(true);
         privateStorageSystem.setPubliclyAvailable(true);
         log.debug("Inserting public storage system " + privateStorageSystem.getSystemId());
         systemDao.persist(privateStorageSystem);
-    }
 
-    protected void initSoftware() throws Exception {
-        clearSoftware(); 
-        
-        JSONObject json = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
-        this.software = Software.fromJSON(json, TEST_OWNER);
-        this.software.setPubliclyAvailable(true);
-        this.software.setOwner(TEST_OWNER);
-        this.software.setDefaultQueue(unlimitedQueue.getName());
-        this.software.setDefaultMaxRunTime(null);
-        this.software.setDefaultMemoryPerNode(null);
-        this.software.setDefaultNodes(null);
-        this.software.setDefaultProcessorsPerNode(null);
-        
-        for (RemoteSystem exeSystem: systemDao.getAllExecutionSystems()) 
-        {
-            if (exeSystem.getSystemId().equals(privateExecutionSystem.getSystemId())) continue;
-            
-            for(BatchQueue q: ((ExecutionSystem)exeSystem).getBatchQueues()) 
-            {
-                Software software = this.software.clone();
-                software.setExecutionSystem((ExecutionSystem)exeSystem);
-                software.setName("test-" + exeSystem.getSystemId() + "-" + q.getName() );
-                software.setDefaultQueue(q.getName());
-                software.setDefaultMaxRunTime(q.getMaxRequestedTime());
-                software.setDefaultMemoryPerNode(q.getMaxMemoryPerNode());
-                software.setDefaultNodes(q.getMaxNodes());
-                software.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode());
-                log.debug("Adding software " + software.getUniqueName());
-                SoftwareDao.persist(software);
+        ExecutionSystem privateExecutionSystem = createExecutionSystem();
+        privateExecutionSystem.setOwner(TEST_OWNER);
+        privateExecutionSystem.setType(RemoteSystemType.EXECUTION);
+        privateExecutionSystem.getBatchQueues().clear();
+        log.debug("Inserting private execution system " + privateExecutionSystem.getSystemId());
+        systemDao.persist(privateExecutionSystem);
+        privateExecutionSystem.addBatchQueue(UNLIMITED_QUEUE.clone());
+        privateExecutionSystem.addBatchQueue(MEDIUM_QUEUE.clone());
+        privateExecutionSystem.addBatchQueue(LONG_QUEUE.clone());
+        systemDao.persist(privateExecutionSystem);
+
+        Software baseSoftware = createSoftware(privateExecutionSystem, privateStorageSystem);
+        baseSoftware.setPubliclyAvailable(true);
+        baseSoftware.setOwner(privateExecutionSystem.getOwner());
+        baseSoftware.setDefaultQueue(UNLIMITED_QUEUE.getName());
+        baseSoftware.setDefaultMaxRunTime(null);
+        baseSoftware.setDefaultMemoryPerNode(null);
+        baseSoftware.setDefaultNodes(null);
+        baseSoftware.setDefaultProcessorsPerNode(null);
+
+        JSONObject execSystemJson = JSONTestDataUtil.getInstance().getTestDataObject(TEST_EXECUTION_SYSTEM_FILE);
+        for (String tenantId: tenantIds) {
+            for(String systemId: systemsIds) {
+                execSystemJson.put("id", UUID.randomUUID().toString());
+                ExecutionSystem execSystem = ExecutionSystem.fromJSON(execSystemJson);
+                execSystem.setOwner(SYSTEM_OWNER);
+                systemDao.persist(execSystem);
+                execSystem.setOwner(TEST_OWNER);
+                execSystem.getBatchQueues().clear();
+                execSystem.addBatchQueue(DEDICATED_QUEUE.clone());
+                execSystem.addBatchQueue(LONG_QUEUE.clone());
+                execSystem.addBatchQueue(MEDIUM_QUEUE.clone());
+                execSystem.addBatchQueue(SHORT_QUEUE.clone());
+                execSystem.setPubliclyAvailable(true);
+                execSystem.setType(RemoteSystemType.EXECUTION);
+                execSystem.setTenantId(tenantId);
+                execSystem.setSystemId(createNonce() + tenantId + "-" + systemId);
+                log.debug("Inserting execution system " + privateExecutionSystem.getSystemId());
+                systemDao.persist(execSystem);
+
+                for(BatchQueue q: execSystem.getBatchQueues())
+                {
+                    Software testSoftware = createSoftware(execSystem, privateStorageSystem);
+                    testSoftware.setName(createNonce() + execSystem.getSystemId() + "-" + q.getName() );
+                    testSoftware.setDefaultQueue(q.getName());
+                    testSoftware.setDefaultMaxRunTime(q.getMaxRequestedTime());
+                    testSoftware.setDefaultMemoryPerNode(q.getMaxMemoryPerNode());
+                    testSoftware.setDefaultNodes(q.getMaxNodes());
+                    testSoftware.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode());
+                    log.debug("Adding software " + testSoftware.getUniqueName());
+                    SoftwareDao.persist(testSoftware);
+                }
             }
         }
     }
-    
+
+//    protected void initSoftware() throws Exception {
+//
+//        Software baseSoftware = createSoftware();
+//        baseSoftware.setPubliclyAvailable(true);
+//        baseSoftware.setOwner(TEST_OWNER);
+//        baseSoftware.setDefaultQueue(UNLIMITED_QUEUE.getName());
+//        baseSoftware.setDefaultMaxRunTime(null);
+//        baseSoftware.setDefaultMemoryPerNode(null);
+//        baseSoftware.setDefaultNodes(null);
+//        baseSoftware.setDefaultProcessorsPerNode(null);
+//
+//        for (RemoteSystem exeSystem: systemDao.getAllExecutionSystems())
+//        {
+//            if (exeSystem.getSystemId().equals(baseSoftware.getExecutionSystem().getSystemId())) continue;
+//
+//            for(BatchQueue q: ((ExecutionSystem)exeSystem).getBatchQueues())
+//            {
+//                Software software = baseSoftware.clone();
+//                software.setExecutionSystem((ExecutionSystem)exeSystem);
+//                software.setName(createNonce() + exeSystem.getSystemId() + "-" + q.getName() );
+//                software.setDefaultQueue(q.getName());
+//                software.setDefaultMaxRunTime(q.getMaxRequestedTime());
+//                software.setDefaultMemoryPerNode(q.getMaxMemoryPerNode());
+//                software.setDefaultNodes(q.getMaxNodes());
+//                software.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode());
+//                log.debug("Adding software " + software.getUniqueName());
+//                SoftwareDao.persist(software);
+//            }
+//        }
+//    }
+//
     @Test()
 	public void getNextExecutingJobUuidReturnsEmptyWhenNotExecutingJobs() 
 	{
@@ -170,11 +191,15 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
 		{	
 			DateTime dummyLastUpdated = new DateTime();
 			dummyLastUpdated = dummyLastUpdated.minusDays(2);
-			for(JobStatusType status: JobStatusType.values())
+
+            Software software = createSoftware();
+
+            for(JobStatusType status: JobStatusType.values())
 			{
 				if (!JobStatusType.isExecuting(status))
 				{
-					Job notExecutingJob = createJob(status);
+
+					Job notExecutingJob = createJob(status, software);
 					notExecutingJob.setCreated(dummyLastUpdated.toDate());
 					notExecutingJob.setLastUpdated(notExecutingJob.getCreated());
 					notExecutingJob.setStatusChecks(0);
@@ -190,9 +215,6 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
 		} 
 		catch (Exception e) {
 			Assert.fail("Unexpected error occurred running test for next running job with status QUEUED", e);
-		}
-		finally {
-//			try { clearJobs(); } catch (Exception e) {}
 		}
 	}
 	
@@ -219,12 +241,14 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
 		{
 			DateTime dummyLastUpdated = new DateTime();
 			dummyLastUpdated = dummyLastUpdated.minusDays(2);
-			
+
+            Software software = createSoftware();
+
 			for(JobStatusType status: JobStatusType.values())
 			{
 				if (!JobStatusType.isExecuting(status))
 				{
-					Job notExecutingJob = createJob(status);
+					Job notExecutingJob = createJob(status, software);
 					notExecutingJob.setCreated(dummyLastUpdated.toDate());
 					notExecutingJob.setLastUpdated(dummyLastUpdated.toDate());
 					notExecutingJob.setStatusChecks(0);
@@ -234,7 +258,7 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
 				}
 			}
 			
-			Job executingJob = createJob(testStatus);
+			Job executingJob = createJob(testStatus, software);
 			executingJob.setCreated(dummyLastUpdated.toDate());
 			executingJob.setLastUpdated(dummyLastUpdated.plusDays(1).toDate());
 			executingJob.setStatusChecks(0);
@@ -246,9 +270,6 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
 			
 		} catch (Exception e) {
 			Assert.fail("Unexpected error occurred running test for next running job with status QUEUED", e);
-		}
-		finally {
-//			try { clearJobs(); } catch (Exception e) {}
 		}
 	}
 	
@@ -281,8 +302,9 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
 		// create job with status RUNNING
 		Job executingJob;
 		try 
-		{	
-			executingJob = createJob(JobStatusType.QUEUED);
+		{
+            Software software = createSoftware();
+			executingJob = createJob(JobStatusType.QUEUED, software);
 			executingJob.setCreated(lastUpdated.minusSeconds(30).toDate());
 			executingJob.setLastUpdated(lastUpdated.toDate());
 			executingJob.setStatusChecks(numberOfChecks);
@@ -329,10 +351,11 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
         // create job with status RUNNING
         Job executingJob;
         try 
-        {   
+        {
+            Software software = createSoftware();
             for (JobStatusType testStatus: new JobStatusType[]{QUEUED, RUNNING, PAUSED})
             {
-                executingJob = createJob(testStatus);
+                executingJob = createJob(testStatus, software);
                 executingJob.setCreated(lastUpdated.minusSeconds(30).toDate());
                 executingJob.setLastUpdated(lastUpdated.toDate());
                 executingJob.setStatusChecks(numberOfChecks);
@@ -369,13 +392,13 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
         Hashtable<String, Long> uuidSelections = new Hashtable<String, Long>();
         
         try 
-        {   
-            
+        {
+            Software software = createSoftware();
             // initialize several jobs from each status
             Date created = new DateTime().minusMinutes(30).toDate();
             Date lastUpdated = new DateTime().minusSeconds(30).toDate();
             
-            Job job = createJob(QUEUED);
+            Job job = createJob(QUEUED, software);
             
             for (String tenantId: tenantIds) {
                 Hashtable<String, Integer> tenantJobHits = new Hashtable<String,Integer>();
@@ -460,12 +483,13 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
         Hashtable<String, Long> uuidSelections = new Hashtable<String, Long>();
         
         try 
-        {   
+        {
+            Software software = createSoftware();
             // initialize several jobs from each status
             Date created = new DateTime().minusMinutes(30).toDate();
             Date lastUpdated = new DateTime().minusSeconds(30).toDate();
             
-            Job job = createJob(QUEUED);
+            Job job = createJob(QUEUED, software);
             
             for (String tenantId: tenantIds) {
                 Hashtable<String, Integer> tenantJobHits = new Hashtable<String,Integer>();
@@ -577,13 +601,13 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
         Hashtable<String, Long> uuidSelections = new Hashtable<String, Long>();
         
         try 
-        {   
-            
+        {
+            Software software = createSoftware();
             // initialize several jobs from each status
             Date created = new DateTime().minusMinutes(30).toDate();
             Date lastUpdated = new DateTime().minusSeconds(30).toDate();
             
-            Job job = createJob(QUEUED);
+            Job job = createJob(QUEUED, software);
             
             for (String tenantId: tenantIds) {
                 Hashtable<String, Integer> tenantJobHits = new Hashtable<String,Integer>();
@@ -786,9 +810,6 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
         catch (Exception e) {
             Assert.fail("Unexpected error occurred running test for next running job with status QUEUED", e);
         }
-        finally {
-//            try { clearJobs(); } catch (Exception e) {}
-        }
     }
 	
 	@Test(dependsOnMethods={"getNextExecutingJobUuidSelectsHonorsDedicatedParameters"})
@@ -801,13 +822,13 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
         Hashtable<String, Long> uuidSelections = new Hashtable<String, Long>();
         
         try 
-        {   
-            
+        {
+            Software software = createSoftware();
             // initialize several jobs from each status
             Date created = new DateTime().minusMinutes(30).toDate();
             Date lastUpdated = new DateTime().minusSeconds(30).toDate();
-            
-            Job job = createJob(QUEUED);
+
+            Job job = createJob(QUEUED, software);
             
             for (String tenantId: tenantIds) {
                 Hashtable<String, Integer> tenantJobHits = new Hashtable<String,Integer>();
@@ -997,18 +1018,17 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
         catch (Exception e) {
             Assert.fail("Unexpected error occurred running test for next running job with status QUEUED", e);
         }
-        finally {
-//            try { clearJobs(); } catch (Exception e) {}
-        }
     }
 	
 	//@Test(dependsOnMethods={"getNextExecutingJobUuid"})
 	public void getNextExecutingJobUuidConcurrencyTest() throws Exception 
 	{
-		DateTime dummyLastUpdated = new DateTime();
+        Software software = createSoftware();
+        Job executingJob = createJob(JobStatusType.QUEUED, software);
+
+        DateTime dummyLastUpdated = new DateTime();
 		dummyLastUpdated = dummyLastUpdated.minusDays(2);
-		
-		Job executingJob = createJob(JobStatusType.QUEUED);
+
 		executingJob.setCreated(dummyLastUpdated.minusSeconds(30).toDate());
 		executingJob.setLastUpdated(dummyLastUpdated.toDate());
 		executingJob.setStatusChecks(0);

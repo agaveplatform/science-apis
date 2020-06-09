@@ -216,9 +216,9 @@ public class SystemRoleManager {
 	 * Returns effective {@link SystemRole} of user after adjusting for 
 	 * resource scope, public, and world user roles.
 	 * 
-	 * @param username
-	 * @return
-	 * @throws SystemRoleException 
+	 * @param username the username of the user to check
+	 * @return the role the user has or {@link RoleType#NONE} if they have no role.
+	 * @throws SystemRoleException if roles cannot be fetched from the db
 	 */
 	public SystemRole getUserRole(String username) throws SystemRoleException {
 		try {

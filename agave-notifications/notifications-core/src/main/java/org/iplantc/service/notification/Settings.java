@@ -80,7 +80,7 @@ public class Settings
     public static String 						SMTP_AUTH_PWD;
     public static String 						SMTP_FROM_NAME;
     public static String 						SMTP_FROM_ADDRESS;
-	
+	public static String						SMTP_AUTH_TOKEN;
 	/* General policy settings */
 	public static int 							MAX_NOTIFICATION_RETRIES;
 	public static int 							MAX_NOTIFICATION_TASKS;
@@ -184,8 +184,9 @@ public class Settings
 		    log.error("Invalid email provider specified. Defaulting to localhost.");
 		    EMAIL_PROVIDER = EmailProviderType.LOCAL;
 		}
-		finally {}
-		
+
+		SMTP_AUTH_TOKEN = (String) props.getProperty("mail.smtps.token");
+
 		SMTP_AUTH_REQUIRED = Boolean.parseBoolean((String) props.getProperty("mail.smtps.auth", "false"));
 		
 		if (SMTP_AUTH_REQUIRED) {

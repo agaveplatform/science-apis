@@ -29,7 +29,7 @@ public enum SchedulerType
 	 * Custom scheduling directives are supported, allowing for overriding the default agave directives to interact with
 	 * advanced scheduler features.
 	 * <p>
-	 * Currently integration tested against OpenLava 3.3, IBM Spectrum LSF Suite Community Edition 10.2.0.6
+	 * Currently integration tested against 	OpenLava 3.3, IBM Spectrum LSF Suite Community Edition 10.2.0.6
 	 */
 	CUSTOM_LSF,
 	/**
@@ -48,15 +48,17 @@ public enum SchedulerType
 	 */
 	CUSTOM_LOADLEVELER,
 	/**
-	 * Supports interaction with OpenPBS and PBSPro, currently developed by Moab. PBS itself is no longer actively
-	 * developed. This is an alias to the active fork, {@link #TORQUE}.
-	 * @deprecated
+	 * Supports interaction with PBS Professional and PBS Professional Community Edition, both currently developed by
+	 * Adaptive Computing. PBS and OpenPBS are no longer actively developed.
+	 *
+	 * Last tested against verion 19.1.2 of PBS Profesional Community Edition.
 	 */
 	PBS,
 	/**
-	 * Supports interaction with OpenPBS and PBSPro, currently developed by Moab. PBS itself is no longer actively
-	 * developed. This is an alias to the active fork, {@link #CUSTOM_TORQUE}.
-	 * @deprecated
+	 * Supports interaction with PBS Professional and PBS Professional Community Edition, both currently developed by
+	 * Adaptive Computing. PBS and OpenPBS are no longer actively developed.
+	 *
+	 * Last tested against verion 19.1.2 of PBS Profesional Community Edition.
 	 */
 	CUSTOM_PBS,
 	/**
@@ -75,14 +77,14 @@ public enum SchedulerType
 	 * supported, allowing for overriding the default agave directives to interact with advanced scheduler
 	 * features.
 	 * <p>
-	 * Last tested against verion 6.2.
+	 * Last tested against version 6.2.
 	 */
 	CUSTOM_GRIDENGINE,
 	/**
 	 * Supports interaction with <a href="https://research.cs.wisc.edu/htcondor/">HTCondor</a>.
 	 * Default scheduling directives are used representing common configurations portable across schedulers.
 	 * <p>
-	 * Last tested against verion 8.4.9.
+	 * Last tested against version 8.4.9.
 	 * license.
 	 */
 	CONDOR,
@@ -98,7 +100,7 @@ public enum SchedulerType
 	 * Fork execution will inherit the authenticated user's default shell unless otherwise specified in the Software
 	 * definition.
 	 * <p>
-	 * Last tested against verion 8.4.9.
+	 * Last tested against ubuntu 18.04, centos 6.5, and centos 7.2.
 	 */
 	FORK,
 	/**
@@ -107,7 +109,7 @@ public enum SchedulerType
 	 * OpenPBS and retains the basic syntax. Thus, this Torque is currently an alias for {@link #PBS} and {@link #MOAB}.
 	 * Default scheduling directives are used representing common configurations portable across schedulers.
 	 * <p>
-	 * Last tested against verion 5.0.0. Currently looking for a dockerized integration test container or
+	 * Last tested against verion 5.0.0, 5.1.2, and 6.1.2. Currently looking for a dockerized integration test container or
 	 * open source license.
 	 */
 	TORQUE,
@@ -118,7 +120,7 @@ public enum SchedulerType
 	 * Custom scheduling directives are supported, allowing for overriding the default agave directives to interact with
 	 * advanced scheduler features.
 	 * <p>
-	 * Last tested against verion 5.0.0. Currently looking for a dockerized integration test container or
+	 * Last tested against verion 5.0.0, 5.1.2, and 6.1.2. Currently looking for a dockerized integration test container or
 	 * open source license.
 	 */
 	CUSTOM_TORQUE,
@@ -129,7 +131,7 @@ public enum SchedulerType
 	 * focus on the Torque and PBS support in our integration and expose it as an alias to {@link #TORQUE}. Default
 	 * scheduling directives are used representing common configurations portable across schedulers.
 	 * <p>
-	 * Last tested against torque verion 5.0.0. Currently looking for a dockerized integration test container or
+	 * Last tested against torque verion 5.0.0, 5.1.2, and 6.1.2. Currently looking for a dockerized integration test container or
 	 * open source license.
 	 */
 	MOAB,
@@ -141,7 +143,7 @@ public enum SchedulerType
 	 * scheduling directives are supported, allowing for overriding the default agave directives to interact with
 	 * advanced scheduler features.
 	 * <p>
-	 * Last tested against torque verion 5.0.0. Currently looking for a dockerized integration test container or
+	 * Last tested against torque verion 5.0.0, 5.1.2, and 6.1.2. Currently looking for a dockerized integration test container or
 	 * open source license.
 	 */
 	CUSTOM_MOAB,
@@ -150,7 +152,7 @@ public enum SchedulerType
 	 * Slurm is actively developed as a FOSS project by SchedMD. Default scheduling directives are used representing
 	 * common configurations portable across schedulers.
 	 * <p>
-	 * Last tested against torque verion 14.03.9.
+	 * Last tested against slurm verion 14.03.9.
 	 */
 	SLURM,
 	/**
@@ -185,15 +187,16 @@ public enum SchedulerType
 				return "llsub";
 			case TORQUE:
 			case CUSTOM_TORQUE:
-			case CUSTOM_PBS:
 			case MOAB:
+            case CUSTOM_MOAB:
 			case PBS:
+			case CUSTOM_PBS:
 			case SGE:
 			case CUSTOM_GRIDENGINE:
 				return "qsub";
-			case CUSTOM_CONDOR:
 			case CONDOR:
-				return "condor_submit";
+            case CUSTOM_CONDOR:
+                return "condor_submit";
 			case UNKNOWN:
 			case FORK:
 				return "";
@@ -224,15 +227,16 @@ public enum SchedulerType
 				return "llcancel ";
 			case TORQUE:
 			case CUSTOM_TORQUE:
-			case CUSTOM_PBS:
 			case MOAB:
-			case PBS:
-			case SGE:
+            case CUSTOM_MOAB:
+            case PBS:
+            case CUSTOM_PBS:
+            case SGE:
 			case CUSTOM_GRIDENGINE:
 				return "qdel ";
-			case CUSTOM_CONDOR:
 			case CONDOR:
-				return "condor_rm ";
+            case CUSTOM_CONDOR:
+                return "condor_rm ";
 			case UNKNOWN:
 			case FORK:
 				return "kill -9 ";
@@ -263,24 +267,28 @@ public enum SchedulerType
 		{
 			case LSF:
 			case CUSTOM_LSF:
-				return "bhist";
+				return "bjobs -w -noheader ";
 			case LOADLEVELER:
 			case CUSTOM_LOADLEVELER:
-				return "llq";
-			case PBS:
-			case CUSTOM_PBS:
+				return "llq -l ";
+			case SGE:
+			case CUSTOM_GRIDENGINE:
+				return "qstat -ext -urg -xml ";
 			case TORQUE:
 			case CUSTOM_TORQUE:
 			case MOAB:
-			case SGE:
-			case CUSTOM_GRIDENGINE:
-				return "qstat -a | grep ";
-			case CUSTOM_CONDOR:
+			case CUSTOM_MOAB:
+//				return "qstat -f -1 ";
+				return "qstat -a | grep ^";
+			case PBS:
+			case CUSTOM_PBS:
+				return "qstat -x -f ";
 			case CONDOR:
+			case CUSTOM_CONDOR:
 				return "condor_q -format '%d'  JobStatus";
 			case UNKNOWN:
 			case FORK:
-				return "ps -o pid= -o comm= -p ";
+				return "ps -o pid= -o user= -o stat= -o time= -o comm= -p ";
 			case SLURM:
 			case CUSTOM_SLURM:
 				return "sacct -p -o 'JOBID,State,ExitCode' -n -j ";

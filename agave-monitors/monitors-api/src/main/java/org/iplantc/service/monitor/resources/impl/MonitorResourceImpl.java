@@ -144,14 +144,10 @@ public class MonitorResourceImpl extends AbstractAgaveResource implements Monito
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 					e.getMessage(), e);
 		}
-		catch (IllegalArgumentException e) {
+		catch (HibernateException|IllegalArgumentException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, 
 					"Unable to save monitor: " + e.getMessage(), e);
 	    } 
-		catch (HibernateException e) {
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, 
-					"Unable to save monitor: " + e.getMessage(), e);
-	    }
 		catch (ResourceException e) {
 			throw e;
 		} 

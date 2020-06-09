@@ -58,9 +58,10 @@ public class ServiceUtils {
 	}
 	
 	/**
-	 * Formats a 10 digit phone number into (###) ###-#### format
+	 * Formats a 10 digit phone number into {@code (###) ###-####} format. Note that no validation is done here
+	 * aside from emby checks.
 	 * 
-	 * @param phone
+	 * @param phone the phone number to format
 	 * @return formatted phone number string
 	 */
 	public static String formatPhoneNumber(String phone) 
@@ -74,6 +75,30 @@ public class ServiceUtils {
 			return String.format("(%s) %s-%s", 
 					phone.substring(0, 3), 
 					phone.substring(3, 6), 
+					phone.substring(6, 10));
+		}
+	}
+
+	/**
+	 * Formats a 10 digit phone number into the given {@code format}. This should
+	 * be something akin to {@code ###-###-####}. Note that no validation is done here
+	 * aside from emby checks.
+	 *
+	 * @param phone the phone number to format
+	 * @param format the format to apply the phone number.
+	 * @return formatted phone number string
+	 */
+	public static String formatPhoneNumber(String phone, String format)
+	{
+		if (StringUtils.isEmpty(phone)) {
+			return null;
+		}
+		else
+		{
+			phone = phone.replaceAll("[^\\d.]", "");
+			return String.format(format,
+					phone.substring(0, 3),
+					phone.substring(3, 6),
 					phone.substring(6, 10));
 		}
 	}

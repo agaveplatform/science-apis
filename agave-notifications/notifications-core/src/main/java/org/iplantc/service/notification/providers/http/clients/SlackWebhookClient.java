@@ -35,7 +35,7 @@ public class SlackWebhookClient extends AbstractWebhookClient {
 	 * Filters the content into a JSON formatted incoming webhook body
 	 * suitable for posting to Slack. 
 	 * 
-	 * @see https://api.slack.com/incoming-webhooks
+	 * @see <a href="https://api.slack.com/incoming-webhooks" target="_blank">Incoming Webhooks</a>
 	 * @param content the original {@link NotificationAttempt#getContent()}
 	 * @return
 	 */

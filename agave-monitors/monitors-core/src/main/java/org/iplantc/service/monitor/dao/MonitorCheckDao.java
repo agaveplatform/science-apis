@@ -44,8 +44,7 @@ public class MonitorCheckDao extends AbstractDao
 	/**
 	 * Gets all checks for a monitor.
 	 * 
-	 * @param username
-	 * @param uuid
+	 * @param monitorId
 	 * @return
 	 * @throws MonitorException
 	 */
@@ -77,20 +76,19 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Gets all checks for a monitor.
 	 * 
-	 * @param username
-	 * @param uuid
+	 * @param monitorId the db id of the monitor
 	 * @return
 	 * @throws MonitorException
 	 */
@@ -127,21 +125,21 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Finds check by uuid within a tenant
 	 * 
-	 * @param apiUsername
-	 * @return
-	 * @throws MonitorException
+	 * @param uuid the monitor uuid to find
+	 * @return the monitor with the given uuid or null if not found
+	 * @throws MonitorException when unable to query the db
 	 */
 	public MonitorCheck findByUuid(String uuid) throws MonitorException
 	{
@@ -167,12 +165,12 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -269,12 +267,12 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -305,7 +303,7 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException("Failed to save monitor check", ex);
 		}
@@ -343,12 +341,12 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException("Failed to delete monitor check", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -377,12 +375,12 @@ public class MonitorCheckDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MonitorException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}	
 }

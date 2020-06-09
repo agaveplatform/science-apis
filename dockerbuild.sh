@@ -24,8 +24,9 @@ set -e
 set -u
 set -o pipefail
 
-export javamodules="apps files jobs legacy-jobs metadata monitors notifications profiles realtime systems tags uuids"
+export javamodules="apps files jobs metadata monitors notifications profiles systems tags uuids"
 export phpmodules="postits logging tenants usage apidocs"
+export gomodules="sftp-relay"
 
 delete_docker_image_if_exists()
 {
@@ -51,6 +52,9 @@ clean()
   delete_docker_image_if_exists  $1/${phpmodule}-api:$2 
  done 
 
+ for gomodule in ${gomodules}; do
+   delete_docker_image_if_exists $1/${gomodule}:$2
+ done
 
  rm -f docker/migrations/conf/flyway.conf
  rm -f docker/migrations/lib/*
@@ -58,36 +62,36 @@ clean()
  rm -f docker/migrations/drivers/*
  rm -f docker/migrations/docker-entrypoint.sh
  rm -f docker/migrations/Dockerfile
- delete_docker_image_if_exists  $1/agave-migrations:$2 
+ delete_docker_image_if_exists  agave-migrations:$2
+ delete_docker_image_if_exists  $1/agave-migrations:$2
+ delete_docker_image_if_exists  agave-mariadb:$2
+ delete_docker_image_if_exists  $1/agave-mariadb:$2
  echo "Cleaned all the modules..."
 
 }
 
 create_agave_migrations_image() {
   
- image=$1/agave-migrations:$2
+ migration_image=$1/agave-migrations:$2
+ db_image=$1/agave-mariadb:$2
 
- if [[ "$(docker images -q ${image} 2> /dev/null)" == "" || "${overwrite}" = true ]]; then
+ if [[ "$(docker images -q ${migration_image} 2> /dev/null)" == "" || "$(docker images -q "${db_image}" 2> /dev/null)" == "" ||  "${overwrite}" = true ]]; then
 
-  cp -f agave-migrations/target/classes/flyway.conf docker/migrations/conf
-  rsync -av --exclude='mysql*.jar' --exclude='flyway*.jar' agave-migrations/target/dependency/* docker/migrations/lib
-  cp -rf agave-migrations/target/classes/db/migration/*.sql  docker/migrations/sql
-  cp -rf agave-migrations/target/dependency/mysql*.jar docker/migrations/drivers
-  cp -rf agave-migrations/target/classes/docker-entrypoint.sh  docker/migrations/
-  cp -rf agave-migrations/target/agave-migrations*.jar  docker/migrations/lib
-  cp -f agave-migrations/target/classes/Dockerfile docker/migrations/
+  echo "Building migration images"
+  mvn -P agave,dev,integration-test -Dskip.migrations=false verify -pl agave-migrations
 
-  echo "Building image for migrations"
-  docker build docker/migrations -t ${image}
+  docker tag agave-migrations:$2 $migration_image
+  docker tag agave-mariadb:$2 $db_image
+
  else
-  echo "Already ${image} exists not rebuilding"
+  echo "${migration_image} and ${db_image} already exist. Skipping rebuild."
  fi
 
 }
 
 build()
 {
- echo "Recreating the docker in workspace"
+ echo "Rebuilding docker images"
 
  for javamodule in ${javamodules}; do
 
@@ -98,7 +102,7 @@ build()
    cp agave-${javamodule}/${javamodule}-api/target/*.war docker/${javamodule}
    docker build docker/${javamodule} -t ${image}
   else
-   echo "Already ${image} exists not rebuilding"
+   echo "${image} already exists. Skipping rebuild."
   fi
 
  done
@@ -112,7 +116,23 @@ build()
    cp -rf agave-${phpmodule}/${phpmodule}-api/target/html docker/${phpmodule}
    docker build docker/${phpmodule} -t ${image}
   else
-   echo "Already ${image} exists not rebuilding"
+   echo "${image} already exists. Skipping rebuild."
+  fi
+
+ done
+
+ for gomodule in ${gomodules}; do
+
+  image=$1/${gomodule}:$2
+
+  if [[ "$(docker images -q ${image} 2> /dev/null)" == "" || "${overwrite}" = true ]]; then
+   echo "Building image for ${gomodule}"
+   pushd agave-transfers/${gomodule} >> /dev/null
+   make image
+   docker tag ${gomodule}:develop ${image}
+   popd >> /dev/null
+  else
+   echo "${image} already exists. Skipping rebuild."
   fi
 
  done
@@ -144,7 +164,7 @@ pull_image()
 
 publish()
 {
- echo "Recreating the docker in workspace"
+ echo "Publishing docker images."
 
  for javamodule in ${javamodules}; do
   push_if_exists $1/${javamodule}-api:$2
@@ -154,6 +174,10 @@ publish()
   push_if_exists $1/${phpmodule}-api:$2
  done
 
+ for gomodule in ${gomodules}; do
+  push_if_exists $1/${gomodule}:$2
+ done
+
  #finally agave migrations
  push_if_exists $1/agave-migrations:$2
 
@@ -161,7 +185,7 @@ publish()
 
 retag()
 {
- echo "Retagging the images.."
+ echo "Retagging docker images..."
 
  for javamodule in ${javamodules}; do
    docker tag $1/${javamodule}-api:$2 $3/${javamodule}-api:$4
@@ -171,13 +195,17 @@ retag()
    docker tag $1/${phpmodule}-api:$2 $3/${phpmodule}-api:$4
  done
 
+ for gomodule in ${gomodules}; do
+   docker tag $1/${gomodule}:$2 $3/${gomodule}:$4
+ done
+
  #finally agave migrations
  docker tag $1/agave-migrations:$2 $3/agave-migrations:$4
 }
 
 pull()
 {
- echo "Pulling the images.."
+ echo "Pulling docker images..."
 
  for javamodule in ${javamodules}; do
   pull_image $1/${javamodule}-api:$2
@@ -185,6 +213,10 @@ pull()
 
  for phpmodule in ${phpmodules}; do
   pull_image $1/${phpmodule}-api:$2
+ done
+
+ for gomodule in ${gomodules}; do
+  pull_image $1/${gomodule}-api:$2
  done
 
  #finally agave migrations

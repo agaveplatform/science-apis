@@ -2,27 +2,28 @@ package org.iplantc.service.jobs.model.enumerations;
 
 public enum JobStatusType
 {
-	PAUSED("Job execution paused by user"), 
-	
-	PENDING("Job accepted and queued for submission."), 
+	PENDING("Job accepted and queued for submission."),
 	PROCESSING_INPUTS("Identifying input files for staging"), 
 	STAGING_INPUTS("Transferring job input data to execution system"), 
 	STAGED("Job inputs staged to execution system"), 
 	
 	STAGING_JOB("Staging runtime assets to execution system"), 
 	SUBMITTING("Preparing job for execution and staging assets to execution system"), 
-	QUEUED("Job successfully placed into queue"), 
-	RUNNING("Job started running"), 
-	
+
+	QUEUED("Job successfully placed into queue"),
+	RUNNING("Job started running"),
+	PAUSED("Job execution paused by user"),
+
+
 	CLEANING_UP("Job completed execution"), 
-	ARCHIVING("Transferring job output to archive system"), 
+ 	ARCHIVING("Transferring job output to archive system"),
 	ARCHIVING_FINISHED("Job archiving complete"), 
 	ARCHIVING_FAILED("Job archiving failed"),
 	
 	FINISHED("Job complete"), 
 	KILLED("Job execution killed at user request"), 
 	STOPPED("Job execution intentionally stopped"), 
-	FAILED("Job failed"), 
+	FAILED("Job failed"),
 	
 	HEARTBEAT("Job heartbeat received");
 	
@@ -38,7 +39,6 @@ public enum JobStatusType
 	
 	public static boolean isRunning(JobStatusType status)
 	{
-
 		return ( status.equals(PENDING) || status.equals(STAGING_INPUTS)
 				|| status.equals(STAGING_JOB) || status.equals(RUNNING)
 				|| status.equals(PAUSED) || status.equals(QUEUED)
@@ -60,8 +60,7 @@ public enum JobStatusType
 				|| status.equals(STAGING_INPUTS)
 				|| status.equals(STAGING_JOB)  
 				|| status.equals(SUBMITTING)  
-				|| status.equals(STAGED) 
-				|| status.equals(STAGING_JOB));
+				|| status.equals(STAGED));
 	}
 
 	public static boolean isFinished(JobStatusType status)

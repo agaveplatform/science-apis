@@ -32,13 +32,29 @@ public class JobEventProcessor {
     private static final Logger log = Logger.getLogger(JobEventProcessor.class);
 
     private JobEvent event;
-    
+    private JobManager jobManager;
+
     public JobEventProcessor() {}
     
     public JobEventProcessor(JobEvent event) throws JobEventProcessingException {
         this.setEvent(event);
     }
 
+    /**
+     * Basic getter for job manager instance. Useful for testing
+     * @return JobManager instance
+     */
+    protected JobManager getJobManager() {
+        if (jobManager == null) {
+            jobManager = new JobManager();
+        }
+
+        return jobManager;
+    }
+
+    /**
+     * Processes the {@link JobEvent} associated with this instance.
+     */
     public void process() {
 
         ObjectMapper mapper = new ObjectMapper();
@@ -131,8 +147,8 @@ public class JobEventProcessor {
     /**
      * Constructs message content and sends message for the execution system on
      * which a job event occurs.
-     * @param eventName
-     * @param jsonJob
+     * @param eventName the name of the event being raised
+     * @param jsonJob the json representation of the job
      * @return true if sent, false otherwise
      */
     protected boolean processJobExecutionSystemEvent(String eventName, JsonNode jsonJob) 
@@ -184,9 +200,9 @@ public class JobEventProcessor {
     /**
      * Constructs message content and sends message for the execution system on
      * which a job event occurs.
-     * 
-     * @param eventName
-     * @param jsonJob
+     *
+     * @param eventName the name of the event being raised
+     * @param jsonJob the json representation of the job
      * @return true if sent, false otherwise
      */
     protected boolean processJobSoftwareEvent(String eventName, JsonNode jsonJob) 
@@ -196,7 +212,7 @@ public class JobEventProcessor {
     	ObjectNode jsonContent = mapper.createObjectNode();
         try 
     	{
-        	software = JobManager.getJobSoftwarem(getEvent().getJob());
+        	software = getJobManager().getJobSoftware(getEvent().getJob());
             jsonContent.set("job", jsonJob);
             if (software == null) {
             	throw new UnknownSoftwareException("No software found for id " + getEvent().getJob().getSoftwareName());

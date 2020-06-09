@@ -16,6 +16,7 @@ import static org.quartz.TriggerBuilder.newTrigger;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -31,6 +32,7 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
+import org.iplantc.service.notification.model.NotificationPolicy;
 import org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType;
 import org.iplantc.service.notification.model.enumerations.NotificationStatusType;
 import org.iplantc.service.notification.model.enumerations.RetryStrategyType;
@@ -40,27 +42,35 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.SimpleTrigger;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
 import com.surftools.BeanstalkClientImpl.ClientImpl;
 
-@Test(groups={"integration"})
 public class AbstractNotificationTest {
 
-	protected static final String TEST_USER = "ipcservices";
+	protected static final String TEST_USER = "testuser";
 	protected static final String TEST_EMAIL = "help@agaveplatform.org";
 	protected static final String TEST_URL_QUERY = "?username=${USERNAME}&status=${STATUS}";
 	protected static final String SPECIFIC_ASSOCIATED_UUID = new AgaveUUID(UUIDType.PROFILE).toString();
 	protected static final String DECOY_ASSOCIATED_UUID = new AgaveUUID(UUIDType.PROFILE).toString();
 	protected static final String WILDCARD_ASSOCIATED_UUID = "*";
-	
+	protected final String TEST_SLACK_WEBHOOK_URL;
 	protected NotificationDao dao = null;
 	protected TestDataHelper dataHelper;
 	protected RequestBin requestBin;
 	protected Scheduler sched;
 	protected SimpleTrigger trigger;
-	
+
+	public AbstractNotificationTest() {
+		dataHelper = TestDataHelper.getInstance();
+		dao = new NotificationDao();
+
+		Properties props = org.iplantc.service.common.Settings.loadRuntimeProperties();
+		TEST_SLACK_WEBHOOK_URL = props.getProperty("test.slack.webhook.url");
+	}
+
 	protected void addNotifications(int instances, NotificationStatusType status, String associatedUuid, boolean stranger, NotificationCallbackProviderType type) 
 	throws Exception
 	{
@@ -105,13 +115,16 @@ public class AbstractNotificationTest {
 		notification.setCallbackUrl("ftp://foo.example.com");
 		notification.setOwner(NOTIFICATION_CREATOR);
 		notification.getPolicy().setRetryStrategyType(RetryStrategyType.NONE);
+		notification.setPersistent(false);
 		return notification;
 	}
 	
-	protected Notification createEmailNotification() throws NotificationException, IOException
+	public Notification createEmailNotification() throws NotificationException, IOException
 	{
 		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_EMAIL_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
+		notification.setPersistent(false);
+		notification.getPolicy().setRetryStrategyType(RetryStrategyType.NONE);
 		
 		return notification;
 	}
@@ -124,6 +137,7 @@ public class AbstractNotificationTest {
 		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_WEBHOOK_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
 		notification.setCallbackUrl(requestBin.toString() + TEST_URL_QUERY);
+		notification.setPersistent(false);
 		notification.getPolicy().setRetryStrategyType(RetryStrategyType.NONE);
 		
 		return notification;
@@ -136,7 +150,8 @@ public class AbstractNotificationTest {
 		}
 		Notification notification = Notification.fromJSON(dataHelper.getTestDataObject(TEST_WEBHOOK_NOTIFICATION));
 		notification.setOwner(NOTIFICATION_CREATOR);
-		notification.setCallbackUrl("https://hooks.slack.com/services/TTTTTTTTT/BBBBBBBBB/1234567890123456789012345");
+		notification.setCallbackUrl(TEST_SLACK_WEBHOOK_URL);
+		notification.setPersistent(false);
 		notification.getPolicy().setRetryStrategyType(RetryStrategyType.NONE);
 		return notification;
 	}
@@ -173,7 +188,7 @@ public class AbstractNotificationTest {
 		return createRealtimeNotification(null);
 	}
 	
-	protected void clearNotifications() throws NotificationException
+	public void clearNotifications() throws NotificationException
 	{
 		try
 		{
@@ -213,7 +228,6 @@ public class AbstractNotificationTest {
 	
 	/**
 	 * Flushes the messaging tube of any and all existing jobs.
-	 * @param queueName
 	 */
 	@AfterMethod
 	protected void drainQueue() 

@@ -9,24 +9,16 @@ import static org.mockito.Mockito.spy;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.apps.model.SoftwareParameterEnumeratedValue;
 import org.iplantc.service.apps.model.enumerations.SoftwareParameterType;
-import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.jobs.dao.AbstractDaoTest;
 import org.iplantc.service.jobs.exceptions.JobProcessingException;
 import org.iplantc.service.jobs.model.JSONTestDataUtil;
@@ -37,6 +29,7 @@ import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
+import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -44,7 +37,6 @@ import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -54,7 +46,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.surftools.BeanstalkClientImpl.ClientImpl;
 
 @Test(groups={"broken", "integration"})
 public class JobMangerRequestProcessingTest extends AbstractDaoTest 
@@ -72,118 +63,22 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	@BeforeClass
 	public void beforeClass() throws Exception {
 		super.beforeClass();
-		stageRemoteSoftwareAssets();
-		SoftwareDao.persist(software);
 		drainQueue();
 	}
 
 	@AfterClass
 	public void afterClass() throws Exception {
-		clearJobs();
-		clearSoftware();
-		clearSystems();
+		super.afterClass();
 		drainQueue();
-		deleteRemoteSoftwareAssets();
-	}	
-	
-	/**
-	 * Flushes the messaging tube of any and all existing jobs.
-	 * @param queueName
-	 */
-	@AfterMethod
-	public void drainQueue() 
-	{
-		ClientImpl client = null;
-	
-		try {
-			// drain the message queue
-			client = new ClientImpl(Settings.MESSAGING_SERVICE_HOST,
-					Settings.MESSAGING_SERVICE_PORT);
-			client.watch(Settings.NOTIFICATION_QUEUE);
-			client.useTube(Settings.NOTIFICATION_QUEUE);
-			client.kick(Integer.MAX_VALUE);
-			
-			com.surftools.BeanstalkClient.Job beanstalkJob = null;
-			do {
-				try {
-					beanstalkJob = client.peekReady();
-					if (beanstalkJob != null)
-						client.delete(beanstalkJob.getJobId());
-				} catch (Throwable e) {
-					e.printStackTrace();
-				}
-			} while (beanstalkJob != null);
-			do {
-				try {
-					beanstalkJob = client.peekBuried();
-					if (beanstalkJob != null)
-						client.delete(beanstalkJob.getJobId());
-				} catch (Throwable e) {
-					e.printStackTrace();
-				}
-			} while (beanstalkJob != null);
-			do {
-				try {
-					beanstalkJob = client.peekDelayed();
-					
-					if (beanstalkJob != null)
-						client.delete(beanstalkJob.getJobId());
-				} catch (Throwable e) {
-					e.printStackTrace();
-				}
-			} while (beanstalkJob != null);
-		} catch (Throwable e) {
-			e.printStackTrace();
-		}
-		finally {
-			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable e) {}
-			try { client.close(); } catch (Throwable e) {}
-			client = null;
-		}
 	}
-	
+
 	/**
-	 * Counts number of messages in the queue.
+	 * Adds or updates a value in a Restlet request form.
 	 * 
-	 * @param queueName
-	 * @return int totoal message count
-	 */
-	public int getMessageCount(String queueName) throws MessagingException
-	{
-		ClientImpl client = null;
-		
-		try {
-			// drain the message queue
-			client = new ClientImpl(Settings.MESSAGING_SERVICE_HOST,
-					Settings.MESSAGING_SERVICE_PORT);
-			client.watch(queueName);
-			client.useTube(queueName);
-			Map<String,String> stats = client.statsTube(queueName);
-			String totalJobs = stats.get("current-jobs-ready");
-			if (NumberUtils.isNumber(totalJobs)) {
-				return NumberUtils.toInt(totalJobs);
-			} else {
-				throw new MessagingException("Failed to find total job count for queue " + queueName);
-			}
-		} catch (MessagingException e) {
-			throw e;
-		} catch (Throwable e) {
-			throw new MessagingException("Failed to read jobs from queue " + queueName, e);
-		}
-		finally {
-			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable e) {}
-			try { client.close(); } catch (Throwable e) {}
-			client = null;
-		}
-	}
-	
-	/**
-	 * Adds or updates a value in a Restlet form.
-	 * 
-	 * @param form
-	 * @param field
-	 * @param value
-	 * @return
+	 * @param jobRequestMap the request form submission map
+	 * @param field the field to add to the map
+	 * @param value the value of the field being added
+	 * @return the updated request map
 	 */
 	private Map<String, Object> updateJobRequestMap(Map<String, Object> jobRequestMap, String field, Object value) 
 	{
@@ -204,9 +99,9 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	/**
 	 * Sets an field in a ObjectNode object, determining the proper type on the fly.
 	 * 
-	 * @param json
-	 * @param field
-	 * @param value
+	 * @param json the object posted to the job reqeust
+	 * @param field the field to add to the object
+	 * @param value the value of the field
 	 * @return the updated ObjectNode
 	 */
 	private ObjectNode updateObjectNode(ObjectNode json, String field, Object value)
@@ -234,20 +129,34 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			for (Object o: (Collection)value) {
 				if (o instanceof ArrayNode)
 					arrayNode.addArray().addAll((ArrayNode)o);
-				else if (o instanceof ObjectNode)
+				else if (o instanceof ObjectNode) {
+					assert value instanceof ObjectNode;
 					arrayNode.add((ObjectNode)value);
-				else if (o instanceof Long)
+				}
+				else if (o instanceof Long) {
+					assert value instanceof Long;
 					arrayNode.add((Long)value);
-				else if (o instanceof Integer)
+				}
+				else if (o instanceof Integer) {
+					assert value instanceof Long;
 					arrayNode.add((Long)value);
-				else if (o instanceof Float)
+				}
+				else if (o instanceof Float) {
+					assert value instanceof Long;
 					arrayNode.add((Long)value);
-				else if (o instanceof Double)
+				}
+				else if (o instanceof Double) {
+					assert value instanceof Long;
 					arrayNode.add((Long)value);
-				else if (o instanceof Boolean)
+				}
+				else if (o instanceof Boolean) {
+					assert value instanceof Boolean;
 					arrayNode.add((Boolean)value);
-				else if (o instanceof String)
+				}
+				else if (o instanceof String) {
+					assert value instanceof String;
 					arrayNode.add((String)value);
+				}
 				else
 					arrayNode.addObject();
 			}
@@ -267,26 +176,24 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	}
 	
 	/**
-	 * Creates a JsonNode representation of a job notification without the persistent field
-	 * @param url
-	 * @param event
-	 * @return
+	 * Creates a JsonNode representation of a job notification that expires after first delivery
+	 * @param url the url target of the notification
+	 * @param event the name of the event to which to subscribe
+	 * @return a json representation of the notification
 	 */
 	private JsonNode createJsonNotification(Object url, Object event) 
 	{
-		ObjectNode json = updateObjectNode(mapper.createObjectNode(), "url", url);
-		json = updateObjectNode(json, "event", event);
-		return json;
+		return createJsonNotification(url, event, false);
 	}
 	
 	/**
 	 * Creates a JsonNode representation of a job notification using the supplied values 
 	 * and determining the types on the fly.
 	 * 
-	 * @param url
-	 * @param event
-	 * @param persistent
-	 * @return
+	 * @param url the url target of the notification
+	 * @param event the name of the event to which to subscribe
+	 * @param persistent true if the notification should persist after firing once.
+	 * @return a json representation of the notification
 	 */
 	private JsonNode createJsonNotification(Object url, Object event, boolean persistent) 
 	{
@@ -304,14 +211,14 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	 * @throws IOException 
 	 * @throws JsonProcessingException 
 	 */
-	private ObjectNode createJobJsonNode()
+	private ObjectNode createJobJsonNode(Software software)
 	{
 		ObjectMapper mapper = new ObjectMapper();
 		ObjectNode json = mapper.createObjectNode();
 		
 		try 
 		{
-			json.put("name", "processJsonJobWithNotifications");
+			json.put("name", UUID.randomUUID().toString());
 			json.put("appId", software.getUniqueName());
 			ObjectNode jsonInput = mapper.createObjectNode();
 			for (SoftwareInput input: software.getInputs()) {
@@ -333,7 +240,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 					jsonParameter.putArray(parameter.getKey()).addAll(parameter.getDefaultValueAsJsonArray());
 //				}
 			}
-			json.put("parameters", jsonParameter);
+			json.set("parameters", jsonParameter);
 		} catch (Exception e) {
 			Assert.fail("Failed to read in software description to create json job object", e);
 		}
@@ -345,7 +252,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	 * Creates a bare bones Form representing a job submission.
 	 * @return Map with minimal set of job attributes.
 	 */
-	private Map<String, Object> createJobRequestMap()
+	private Map<String, Object> createJobRequestMap(Software software)
 	{
 	    Map<String, Object> jobRequestMap = new HashMap<String, Object>();
 		try 
@@ -370,7 +277,17 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		
 		return jobRequestMap;
 	}
-	
+
+	/**
+	 * Creates a {@link SoftwareParameter} with teh given constraints, validator, etc.
+	 * @param key the key of the parameter
+	 * @param type the type of the parameter
+	 * @param defaultValue the default value of the parameter
+	 * @param validator the validator to use on job requests with this parameter
+	 * @param required whether the parameter is required
+	 * @param visible whether the parameter should be visible
+	 * @return a software parameter with the given constraints
+	 */
 	private SoftwareParameter createParameter(String key, String type, Object defaultValue, String validator, boolean required, boolean visible) throws JsonProcessingException, IOException
 	{
 		SoftwareParameter param = new SoftwareParameter();
@@ -379,7 +296,8 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		param.setDefaultValue(defaultValue == null ? null : defaultValue.toString());
 		param.setRequired(required);
 		param.setVisible(visible);
-		if (type.equals(SoftwareParameterType.enumeration.name())) {
+		if (type.equalsIgnoreCase(SoftwareParameterType.enumeration.name())) {
+			assert defaultValue != null;
 			String val = ((ArrayNode)defaultValue).get(0).textValue();
 			List<SoftwareParameterEnumeratedValue> enums = new ArrayList<SoftwareParameterEnumeratedValue>();
 			enums.add(new SoftwareParameterEnumeratedValue(val, val, param));
@@ -393,7 +311,16 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		}
 		return param;
 	}
-	
+
+	/**
+	 * Creates a {@link SoftwareInput} with teh given constraints, validator, etc.
+	 * @param key the key of the input
+	 * @param defaultValue the default value of the input
+	 * @param validator the validator to use on job requests with this input
+	 * @param required whether the input is required
+	 * @param visible whether the input should be visible
+	 * @return a software input with the given constraints
+	 */
 	private SoftwareInput createInput(String key, String defaultValue, String validator, boolean required, boolean visible)
 	{
 		SoftwareInput input = new SoftwareInput();
@@ -441,17 +368,17 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				{ queueMinimal, null, null, null, null, fail,
 						"Everything null should fail" },
 				// node checks
-				{ queueMinimal, new Long(-1),
+				{ queueMinimal, (long) -1,
 						queueMinimal.getMaxProcessorsPerNode(),
 						queueMinimal.getMaxMemoryPerNode(),
 						queueMinimal.getMaxRequestedTime(), pass,
 						"Nodes unbounded, everything else at limits should pass" },
-				{ queueMinimal, new Long(-2),
+				{ queueMinimal, (long) -2,
 						queueMinimal.getMaxProcessorsPerNode(),
 						queueMinimal.getMaxMemoryPerNode(),
 						queueMinimal.getMaxRequestedTime(), fail,
 						"Nodes negative, everything else at limits should fail" },
-				{ queueMinimal, new Long(0),
+				{ queueMinimal, 0L,
 						queueMinimal.getMaxProcessorsPerNode(),
 						queueMinimal.getMaxMemoryPerNode(),
 						queueMinimal.getMaxRequestedTime(), fail,
@@ -466,15 +393,15 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 						queueMinimal.getMaxRequestedTime(), fail,
 						"Nodes over, everything else at limits should fail" },
 				// proc checks
-				{ queueMinimal, queueMinimal.getMaxNodes(), new Long(-1),
+				{ queueMinimal, queueMinimal.getMaxNodes(), (long) -1,
 						queueMinimal.getMaxMemoryPerNode(),
 						queueMinimal.getMaxRequestedTime(), pass,
 						"Procs unbounded, everything else at limits should pass" },
-				{ queueMinimal, queueMinimal.getMaxNodes(), new Long(-2),
+				{ queueMinimal, queueMinimal.getMaxNodes(), (long) -2,
 						queueMinimal.getMaxMemoryPerNode(),
 						queueMinimal.getMaxRequestedTime(), fail,
 						"Procs negative, everything else at limits should fail" },
-				{ queueMinimal, queueMinimal.getMaxNodes(), new Long(0),
+				{ queueMinimal, queueMinimal.getMaxNodes(), 0L,
 						queueMinimal.getMaxMemoryPerNode(),
 						queueMinimal.getMaxRequestedTime(), fail,
 						"Procs zero, everything else at limits should fail" },
@@ -489,15 +416,15 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 						"Procs over, everything else at limits should fail" },
 				// memory checks
 				{ queueMinimal, queueMinimal.getMaxNodes(),
-						queueMinimal.getMaxProcessorsPerNode(), new Double(-1),
+						queueMinimal.getMaxProcessorsPerNode(), (double) -1,
 						queueMinimal.getMaxRequestedTime(), pass,
 						"Memory unbounded, everything else at limits should pass" },
 				{ queueMinimal, queueMinimal.getMaxNodes(),
-						queueMinimal.getMaxProcessorsPerNode(), new Double(-2),
+						queueMinimal.getMaxProcessorsPerNode(), (double) -2,
 						queueMinimal.getMaxRequestedTime(), fail,
 						"Memory negative, everything else at limits should fail" },
 				{ queueMinimal, queueMinimal.getMaxNodes(),
-						queueMinimal.getMaxProcessorsPerNode(), new Double(0),
+						queueMinimal.getMaxProcessorsPerNode(), (double) 0,
 						queueMinimal.getMaxRequestedTime(), fail,
 						"Memory zero, everything else at limits should fail" },
 				{ queueMinimal, queueMinimal.getMaxNodes(),
@@ -541,25 +468,25 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 						queueUnbounded.getMaxMemoryPerNode(),
 						queueUnbounded.getMaxRequestedTime(), pass,
 						"Everything at unbounded limits should pass" },
-				{ queueUnbounded, new Long(1), new Long(1), new Double(1),
+				{ queueUnbounded, 1L, 1L, 1d,
 						"00:01:00", pass,
 						"Everything under unbounded limits should pass" },
 				{ queueUnbounded, null, null, null, null, fail,
 						"Everything null should fail" },
-				{ queueUnbounded, new Long(-2), new Long(-2), new Double(-2),
+				{ queueUnbounded, (long) -2, (long) -2, (double) -2,
 						"00:01:00", fail, "Everything negative should fail" },
 				// node checks
-				{ queueUnbounded, new Long(1),
+				{ queueUnbounded, 1L,
 						queueUnbounded.getMaxProcessorsPerNode(),
 						queueUnbounded.getMaxMemoryPerNode(),
 						queueUnbounded.getMaxRequestedTime(), pass,
 						"Nodes under, everything else unbounded should pass" },
-				{ queueUnbounded, new Long(-2),
+				{ queueUnbounded, (long) -2,
 						queueUnbounded.getMaxProcessorsPerNode(),
 						queueUnbounded.getMaxMemoryPerNode(),
 						queueUnbounded.getMaxRequestedTime(), fail,
 						"Nodes negative, everything else unbounded should fail" },
-				{ queueUnbounded, new Long(0),
+				{ queueUnbounded, 0L,
 						queueUnbounded.getMaxProcessorsPerNode(),
 						queueUnbounded.getMaxMemoryPerNode(),
 						queueUnbounded.getMaxRequestedTime(), fail,
@@ -571,20 +498,20 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 						"Nodes null, everything else unbounded should fail" },
 				// proc checks
 				{ queueUnbounded, 
-						queueUnbounded.getMaxNodes(), 
-						new Long(1),
+						queueUnbounded.getMaxNodes(),
+						1L,
 						queueUnbounded.getMaxMemoryPerNode(),
 						queueUnbounded.getMaxRequestedTime(), pass,
 						"Procs under, everything else unbounded should pass" },
 				{ queueUnbounded, 
-						queueUnbounded.getMaxNodes(), 
-						new Long(-2),
+						queueUnbounded.getMaxNodes(),
+						(long) -2,
 						queueUnbounded.getMaxMemoryPerNode(),
 						queueUnbounded.getMaxRequestedTime(), fail,
 						"Procs negative, everything else unbounded should fail" },
 				{ queueUnbounded, 
-						queueUnbounded.getMaxNodes(), 
-						new Long(0),
+						queueUnbounded.getMaxNodes(),
+						0L,
 						queueUnbounded.getMaxMemoryPerNode(),
 						queueUnbounded.getMaxRequestedTime(), fail,
 						"Procs zero, everything else unbounded should fail" },
@@ -598,19 +525,19 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				{ queueUnbounded, 
 						queueUnbounded.getMaxNodes(),
 						queueUnbounded.getMaxProcessorsPerNode(),
-						new Double(1), 
+						1d,
 						queueUnbounded.getMaxRequestedTime(), pass,
 						"Memory under, everything else unbounded should fail" },
 				{ queueUnbounded, 
 						queueUnbounded.getMaxNodes(),
 						queueUnbounded.getMaxProcessorsPerNode(),
-						new Double(-2), 
+						(double) -2,
 						queueUnbounded.getMaxRequestedTime(), fail,
 						"Memory negative, everything else unbounded should fail" },
 				{ queueUnbounded, 
 						queueUnbounded.getMaxNodes(),
 						queueUnbounded.getMaxProcessorsPerNode(),
-						new Double(0), 
+						(double) 0,
 						queueUnbounded.getMaxRequestedTime(), fail,
 						"Memory zero, everything else unbounded should fail" },
 				{ queueUnbounded, 
@@ -639,15 +566,14 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 						null, fail,
 						"Time null, everything else unbounded should fail" }, };
 	}
-	
-	
+
 	/**
 	 * Generic method to run the JobManager.processJob(JsonNode, String, String) method.
-	 * @param json
-	 * @param shouldThrowException
-	 * @param message
+	 * @param json the json object representing the job request
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the assertion message to be returned if the test fails
 	 */
-	private Job genericProcessJsonJob(ObjectNode json, boolean shouldThrowException, String message)
+	private Job _genericProcessJsonJob(ObjectNode json, boolean shouldThrowException, String message)
 	{
 		Job job = null;
 		try 
@@ -677,18 +603,15 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		catch (Exception e) {
 			Assert.fail("Unexpected failed to process job", e);
 		}
-		finally {
-			try { clearJobs(); } catch (Throwable t) {} 
-		}
 		
 		return job;
 	}
 	
 	/**
 	 * Generic method to run the JobManager.processJob(Form, String, String) method.
-	 * @param form
-	 * @param shouldThrowException
-	 * @param message
+	 * @param jobRequestMap the request form submission map
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the assertion message to be returned if the test fails
 	 */
 	private Job genericProcessFormJob(Map<String, Object> jobRequestMap, boolean shouldThrowException, String message)
 	{
@@ -720,9 +643,6 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		} catch (Exception e) {
 			Assert.fail("Unexpected failed to process job", e);
 		}
-		finally {
-			try { clearJobs(); } catch (Throwable t) {} 
-		}
 		
 		return job;
 	}
@@ -731,15 +651,15 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	 * Tests that batch submit parameters given in a job description are validated 
 	 * properly against the limits of a given queue.
 	 * 
-	 * @param queue
-	 * @param nodes
-	 * @param processors
-	 * @param memory
-	 * @param requestedTime
-	 * @param shouldPass
-	 * @param message
+	 * @param queue the queue to which to submit the job
+	 * @param nodes the number of nodes to request
+	 * @param processors the number of processors to request
+	 * @param memory the amount of memory to request
+	 * @param requestedTime the amount of time to request
+	 * @param shouldPass true if the validation should succeed
+	 * @param message the assertion message to be returned if the test fails
 	 */
-	//@Test(dataProvider = "validateBatchSubmitParametersProvider")
+	@Test(dataProvider = "validateBatchSubmitParametersProvider")
 	public void validateBatchSubmitParameters(BatchQueue queue, Long nodes, Long processors, Double memory, String requestedTime, boolean shouldPass, String message) 
 	{
 		Assert.assertEquals(shouldPass, 
@@ -790,20 +710,21 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	 * Tests whether the JobManager.selectQueue method returns the expected queue
 	 * given a set of inputs.
 	 * 
-	 * @param executionSystem
-	 * @param nodes
-	 * @param memory
-	 * @param requestedTime
-	 * @param queueName
-	 * @param message
+	 * @param testQueues the queues to assign to the execution system for use in the test
+	 * @param nodes the number of nodes to request
+	 * @param memory the amount of memory to request
+	 * @param requestedTime the amount of time to request
+	 * @param expectedQueueName the name of the queue that should be selected
+	 * @param message the assertion message to be returned if the test fails
 	 */
-	//@Test(dataProvider = "selectQueueLimitTestProvider", dependsOnMethods = { "validateBatchSubmitParameters" })
+	@Test(dataProvider = "selectQueueLimitTestProvider", dependsOnMethods = { "validateBatchSubmitParameters" })
 	public void selectQueueLimitTest(BatchQueue[] testQueues, Long nodes, Double memory, String requestedTime, String expectedQueueName, String message) 
 	{
 		try 
 		{
-			ExecutionSystem testSystem = privateExecutionSystem.clone();
+			ExecutionSystem testSystem = createExecutionSystem();
 			testSystem.getBatchQueues().clear();
+
 			for (BatchQueue testQueue: testQueues) {
 				testSystem.addBatchQueue(testQueue);
 			}
@@ -828,141 +749,141 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				{ "name", "", fail, "Empty name should throw exception" },
 				{ "name", new Object(), fail, "Object for name should throw exception" },
 				{ "name", new ArrayList<String>(), fail, "Array for name should throw exception" },
-				{ "name", new Long(1), fail, "Long for name should throw exception" },
-				{ "name", new Float(1.0), fail, "Float for name should throw exception" },
-				{ "name", new Double(1.0), fail, "Double for name should throw exception" },
-				{ "name", new Integer(1), fail, "Integer for name should throw exception" },
+				{ "name", 1L, fail, "Long for name should throw exception" },
+				{ "name", 1.0f, fail, "Float for name should throw exception" },
+				{ "name", 1.0, fail, "Double for name should throw exception" },
+				{ "name", 1, fail, "Integer for name should throw exception" },
 				{ "name", new BigDecimal(1), fail, "BigDecimal  for name should throw exception" },
 				{ "name", StringUtils.rightPad("h", 64, "h"), fail, "name must be under 64 characters" },
-				{ "name", new Boolean(false), fail, "Boolean for name should throw exception" },
-				{ "name", new Boolean(true), fail, "Boolean for name should throw exception" },
+				{ "name", Boolean.FALSE, fail, "Boolean for name should throw exception" },
+				{ "name", Boolean.TRUE, fail, "Boolean for name should throw exception" },
 				// maybe add tests for special characters, chinese characters, etc.
 				
 				{ "jobName", null, fail, "Null jobName should throw exception" },
 				{ "jobName", "", fail, "Empty jobName should throw exception" },
 				{ "jobName", new Object(), fail, "Object for jobName should throw exception" },
 				{ "jobName", new ArrayList<String>(), fail, "Array for jobName should throw exception" },
-				{ "jobName", new Long(1), fail, "Long for jobName should throw exception" },
-				{ "jobName", new Float(1.0), fail, "Float for jobName should throw exception" },
-				{ "jobName", new Double(1.0), fail, "Double for jobName should throw exception" },
-				{ "jobName", new Integer(1), fail, "Integer for jobName should throw exception" },
+				{ "jobName", 1L, fail, "Long for jobName should throw exception" },
+				{ "jobName", 1.0f, fail, "Float for jobName should throw exception" },
+				{ "jobName", 1.0, fail, "Double for jobName should throw exception" },
+				{ "jobName", 1, fail, "Integer for jobName should throw exception" },
 				{ "jobName", new BigDecimal(1), fail, "BigDecimal  for jobName should throw exception" },
 				{ "jobName", StringUtils.rightPad("h", 65, "h"), fail, "jobName must be under 64 characters" },
-				{ "jobName", new Boolean(false), fail, "Boolean for jobName should throw exception" },
-				{ "jobName", new Boolean(true), fail, "Boolean for jobName should throw exception" },
+				{ "jobName", Boolean.FALSE, fail, "Boolean for jobName should throw exception" },
+				{ "jobName", Boolean.TRUE, fail, "Boolean for jobName should throw exception" },
 				
 				{ "appId", null, fail, "Null appId should throw exception" },
 				{ "appId", "", fail, "Empty appId should throw exception" },
 				{ "appId", new Object(), fail, "Object for appId should throw exception" },
 				{ "appId", new ArrayList<String>(), fail, "Array for appId should throw exception" },
-				{ "appId", new Long(1), fail, "Long for appId should throw exception" },
-				{ "appId", new Float(1.0), fail, "Float for appId should throw exception" },
-				{ "appId", new Double(1.0), fail, "Double for appId should throw exception" },
-				{ "appId", new Integer(1), fail, "Integer for appId should throw exception" },
+				{ "appId", 1L, fail, "Long for appId should throw exception" },
+				{ "appId", 1.0f, fail, "Float for appId should throw exception" },
+				{ "appId", 1.0, fail, "Double for appId should throw exception" },
+				{ "appId", 1, fail, "Integer for appId should throw exception" },
 				{ "appId", new BigDecimal(1), fail, "BigDecimal  for appId should throw exception" },
 				{ "appId", StringUtils.rightPad("h", 81, "h"), fail, "appId must be under 80 characters" },
-				{ "appId", new Boolean(false), fail, "Boolean for appId should throw exception" },
-				{ "appId", new Boolean(true), fail, "Boolean for appId should throw exception" },
+				{ "appId", Boolean.FALSE, fail, "Boolean for appId should throw exception" },
+				{ "appId", Boolean.TRUE, fail, "Boolean for appId should throw exception" },
 				
 				{ "softwareName", null, fail, "Null softwareName should throw exception" },
 				{ "softwareName", "", fail, "Empty softwareName should throw exception" },
 				{ "softwareName", new Object(), fail, "Object for softwareName should throw exception" },
 				{ "softwareName", new ArrayList<String>(), fail, "Array for softwareName should throw exception" },
-				{ "softwareName", new Long(1), fail, "Long for softwareName should throw exception" },
-				{ "softwareName", new Float(1.0), fail, "Float for softwareName should throw exception" },
-				{ "softwareName", new Double(1.0), fail, "Double for softwareName should throw exception" },
-				{ "softwareName", new Integer(1), fail, "Integer for softwareName should throw exception" },
+				{ "softwareName", 1L, fail, "Long for softwareName should throw exception" },
+				{ "softwareName", 1.0f, fail, "Float for softwareName should throw exception" },
+				{ "softwareName", 1.0, fail, "Double for softwareName should throw exception" },
+				{ "softwareName", 1, fail, "Integer for softwareName should throw exception" },
 				{ "softwareName", new BigDecimal(1), fail, "BigDecimal for softwareName should throw exception" },
 				{ "softwareName", StringUtils.rightPad("h", 81, "h"), fail, "softwareName must be under 80 characters" },
-				{ "softwareName", new Boolean(false), fail, "Boolean for softwareName should throw exception" },
-				{ "softwareName", new Boolean(true), fail, "Boolean for softwareName should throw exception" },
+				{ "softwareName", Boolean.FALSE, fail, "Boolean for softwareName should throw exception" },
+				{ "softwareName", Boolean.TRUE, fail, "Boolean for softwareName should throw exception" },
 				
 				{ "executionSystem", null, fail, "Null executionSystem should throw exception" },
 				{ "executionSystem", "", fail, "Empty executionSystem should throw exception" },
 				{ "executionSystem", new Object(), fail, "Object for executionSystem should throw exception" },
 				{ "executionSystem", new ArrayList<String>(), fail, "Array for executionSystem should throw exception" },
-				{ "executionSystem", new Long(1), fail, "Long for executionSystem should throw exception" },
-				{ "executionSystem", new Float(1.0), fail, "Float for executionSystem should throw exception" },
-				{ "executionSystem", new Double(1.0), fail, "Double for executionSystem should throw exception" },
-				{ "executionSystem", new Integer(1), fail, "Integer for executionSystem should throw exception" },
+				{ "executionSystem", 1L, fail, "Long for executionSystem should throw exception" },
+				{ "executionSystem", 1.0f, fail, "Float for executionSystem should throw exception" },
+				{ "executionSystem", 1.0, fail, "Double for executionSystem should throw exception" },
+				{ "executionSystem", 1, fail, "Integer for executionSystem should throw exception" },
 				{ "executionSystem", new BigDecimal(1), fail, "BigDecimal for executionSystem should throw exception" },
 				{ "executionSystem", StringUtils.rightPad("h", 81, "h"), fail, "executionSystem must be under 80 characters" },
-				{ "executionSystem", new Boolean(false), fail, "Boolean for executionSystem should throw exception" },
-				{ "executionSystem", new Boolean(true), fail, "Boolean for executionSystem should throw exception" },
+				{ "executionSystem", Boolean.FALSE, fail, "Boolean for executionSystem should throw exception" },
+				{ "executionSystem", Boolean.TRUE, fail, "Boolean for executionSystem should throw exception" },
 				
 				{ "executionHost", null, fail, "Null executionHost should throw exception" },
 				{ "executionHost", "", fail, "Empty executionHost should throw exception" },
 				{ "executionHost", new Object(), fail, "Object for executionHost should throw exception" },
 				{ "executionHost", new ArrayList<String>(), fail, "Array for executionHost should throw exception" },
-				{ "executionHost", new Long(1), fail, "Long for executionHost should throw exception" },
-				{ "executionHost", new Float(1.0), fail, "Float for executionHost should throw exception" },
-				{ "executionHost", new Double(1.0), fail, "Double for executionHost should throw exception" },
-				{ "executionHost", new Integer(1), fail, "Integer for executionHost should throw exception" },
+				{ "executionHost", 1L, fail, "Long for executionHost should throw exception" },
+				{ "executionHost", 1.0f, fail, "Float for executionHost should throw exception" },
+				{ "executionHost", 1.0, fail, "Double for executionHost should throw exception" },
+				{ "executionHost", 1, fail, "Integer for executionHost should throw exception" },
 				{ "executionHost", new BigDecimal(1), fail, "BigDecimal for executionHost should throw exception" },
 				{ "executionHost", StringUtils.rightPad("h", 81, "h"), fail, "executionHost must be under 80 characters" },
-				{ "executionHost", new Boolean(false), fail, "Boolean for executionHost should throw exception" },
-				{ "executionHost", new Boolean(true), fail, "Boolean for executionHost should throw exception" },
+				{ "executionHost", Boolean.FALSE, fail, "Boolean for executionHost should throw exception" },
+				{ "executionHost", Boolean.TRUE, fail, "Boolean for executionHost should throw exception" },
 				
 				{ "batchQueue", null, fail, "Null batchQueue should throw exception" },
 				{ "batchQueue", "", fail, "Empty batchQueue should throw exception" },
 				{ "batchQueue", new Object(), fail, "Object for batchQueue should throw exception" },
 				{ "batchQueue", new ArrayList<String>(), fail, "Array for batchQueue should throw exception" },
-				{ "batchQueue", new Long(1), fail, "Long for batchQueue should throw exception" },
-				{ "batchQueue", new Float(1.0), fail, "Float for batchQueue should throw exception" },
-				{ "batchQueue", new Double(1.0), fail, "Double for batchQueue should throw exception" },
-				{ "batchQueue", new Integer(1), fail, "Integer for batchQueue should throw exception" },
+				{ "batchQueue", 1L, fail, "Long for batchQueue should throw exception" },
+				{ "batchQueue", 1.0f, fail, "Float for batchQueue should throw exception" },
+				{ "batchQueue", 1.0, fail, "Double for batchQueue should throw exception" },
+				{ "batchQueue", 1, fail, "Integer for batchQueue should throw exception" },
 				{ "batchQueue", new BigDecimal(1), fail, "BigDecimal for batchQueue should throw exception" },
-				{ "batchQueue", new Boolean(false), fail, "Boolean for batchQueue should throw exception" },
-				{ "batchQueue", new Boolean(true), fail, "Boolean for batchQueue should throw exception" },
+				{ "batchQueue", Boolean.FALSE, fail, "Boolean for batchQueue should throw exception" },
+				{ "batchQueue", Boolean.TRUE, fail, "Boolean for batchQueue should throw exception" },
 				
 				{ "queue", null, fail, "Null queue should throw exception" },
 				{ "queue", "", fail, "Empty queue should throw exception" },
 				{ "queue", new Object(), fail, "Object for queue should throw exception" },
 				{ "queue", new ArrayList<String>(), fail, "Array for queue should throw exception" },
-				{ "queue", new Long(1), fail, "Long for queue should throw exception" },
-				{ "queue", new Float(1.0), fail, "Float for queue should throw exception" },
-				{ "queue", new Double(1.0), fail, "Double for queue should throw exception" },
-				{ "queue", new Integer(1), fail, "Integer for queue should throw exception" },
+				{ "queue", 1L, fail, "Long for queue should throw exception" },
+				{ "queue", 1.0f, fail, "Float for queue should throw exception" },
+				{ "queue", 1.0, fail, "Double for queue should throw exception" },
+				{ "queue", 1, fail, "Integer for queue should throw exception" },
 				{ "queue", new BigDecimal(1), fail, "BigDecimal for queue should throw exception" },
 				{ "queue", StringUtils.rightPad("h", 129, "h"),fail, "queue must be under 128 characters" },
-				{ "queue", new Boolean(false), fail, "Boolean for queue should throw exception" },
-				{ "queue", new Boolean(true), fail, "Boolean for queue should throw exception" },
+				{ "queue", Boolean.FALSE, fail, "Boolean for queue should throw exception" },
+				{ "queue", Boolean.TRUE, fail, "Boolean for queue should throw exception" },
 				
 				{ "nodeCount", null, fail, "Null nodeCount should throw exception" },
 				{ "nodeCount", "", fail, "Empty nodeCount should throw exception" },
 				{ "nodeCount", new Object(), fail, "Object for nodeCount should throw exception" },
 				{ "nodeCount", new ArrayList<String>(), fail, "Array for nodeCount should throw exception" },
-				{ "nodeCount", new Long(1), pass, "Long for nodeCount should pass" },
-				{ "nodeCount", new Float(1.0), fail, "Float for nodeCount should fail" },
-				{ "nodeCount", new Double(1.0), fail, "Double for nodeCount should fail" },
-				{ "nodeCount", new Integer(1), pass, "Integer for nodeCount should pass" },
+				{ "nodeCount", 1L, pass, "Long for nodeCount should pass" },
+				{ "nodeCount", 1.0f, fail, "Float for nodeCount should fail" },
+				{ "nodeCount", 1.0, fail, "Double for nodeCount should fail" },
+				{ "nodeCount", 1, pass, "Integer for nodeCount should pass" },
 				{ "nodeCount", new BigDecimal(1), pass, "BigDecimal for nodeCount should pass" },
-				{ "nodeCount", new Boolean(false), fail, "Boolean for nodeCount should throw exception" },
-				{ "nodeCount", new Boolean(true), fail, "Boolean for nodeCount should throw exception" },
+				{ "nodeCount", Boolean.FALSE, fail, "Boolean for nodeCount should throw exception" },
+				{ "nodeCount", Boolean.TRUE, fail, "Boolean for nodeCount should throw exception" },
 				
 				{ "processorsPerNode", null, fail, "Null processorsPerNode should throw exception" },
 				{ "processorsPerNode", "", fail, "Empty processorsPerNode should throw exception" },
 				{ "processorsPerNode", new Object(), fail, "Object for processorsPerNode should throw exception" },
 				{ "processorsPerNode", new ArrayList<String>(), fail, "Array for processorsPerNode should throw exception" },
-				{ "processorsPerNode", new Long(1), pass, "Long for processorsPerNode should throw exception" },
-				{ "processorsPerNode", new Float(1.0), fail, "Float for processorsPerNode should fail" },
-				{ "processorsPerNode", new Double(1.0), fail, "Double for processorsPerNode should fail" },
-				{ "processorsPerNode", new Integer(1), pass, "Integer for processorsPerNode should pass" },
+				{ "processorsPerNode", 1L, pass, "Long for processorsPerNode should throw exception" },
+				{ "processorsPerNode", 1.0f, fail, "Float for processorsPerNode should fail" },
+				{ "processorsPerNode", 1.0, fail, "Double for processorsPerNode should fail" },
+				{ "processorsPerNode", 1, pass, "Integer for processorsPerNode should pass" },
 				{ "processorsPerNode", new BigDecimal(1), pass, "BigDecimal for processorsPerNode should pass" },
-				{ "processorsPerNode", new Boolean(false), fail, "Boolean for processorsPerNode should throw exception" },
-				{ "processorsPerNode", new Boolean(true), fail, "Boolean for processorsPerNode should throw exception" },
+				{ "processorsPerNode", Boolean.FALSE, fail, "Boolean for processorsPerNode should throw exception" },
+				{ "processorsPerNode", Boolean.TRUE, fail, "Boolean for processorsPerNode should throw exception" },
 				
 				{ "processorCount", null, fail, "Null processorCount should throw exception" },
 				{ "processorCount", "", fail, "Empty processorCount should throw exception" },
 				{ "processorCount", new Object(), fail, "Object for processorCount should throw exception" },
 				{ "processorCount", new ArrayList<String>(), fail, "Array for processorCount should throw exception" },
-				{ "processorCount", new Long(1), pass, "Long for processorCount should throw exception" },
-				{ "processorCount", new Float(1.0), fail, "Float for processorCount should fail" },
-				{ "processorCount", new Double(1.0), fail, "Double for processorCount should fail" },
-				{ "processorCount", new Integer(1), pass, "Integer for processorCount should pass" },
+				{ "processorCount", 1L, pass, "Long for processorCount should throw exception" },
+				{ "processorCount", 1.0f, fail, "Float for processorCount should fail" },
+				{ "processorCount", 1.0, fail, "Double for processorCount should fail" },
+				{ "processorCount", 1, pass, "Integer for processorCount should pass" },
 				{ "processorCount", new BigDecimal(1), pass, "BigDecimal for processorCount should pass" },
-				{ "processorCount", new Boolean(false), fail, "Boolean for processorCount should throw exception" },
-				{ "processorCount", new Boolean(true), fail, "Boolean for processorCount should throw exception" },
+				{ "processorCount", Boolean.FALSE, fail, "Boolean for processorCount should throw exception" },
+				{ "processorCount", Boolean.TRUE, fail, "Boolean for processorCount should throw exception" },
 				
 				{ "memoryPerNode", null, fail, "Null memoryPerNode should throw exception" },
 				{ "memoryPerNode", "", fail, "Empty memoryPerNode should throw exception" },
@@ -970,13 +891,13 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				{ "memoryPerNode", "1GB", pass, "Vaid string memoryPerNode string should pass" },
 				{ "memoryPerNode", new Object(), fail, "Object for memoryPerNode should throw exception" },
 				{ "memoryPerNode", new ArrayList<String>(), fail, "Array for memoryPerNode should throw exception" },
-				{ "memoryPerNode", new Long(1), pass, "Long for memoryPerNode should pass" },
-				{ "memoryPerNode", new Float(1.0), pass, "Float for memoryPerNode should pass" },
-				{ "memoryPerNode", new Double(1.0), pass, "Double for memoryPerNode should pass" },
-				{ "memoryPerNode", new Integer(1), pass, "Integer for memoryPerNode should pass" },
+				{ "memoryPerNode", 1L, pass, "Long for memoryPerNode should pass" },
+				{ "memoryPerNode", 1.0f, pass, "Float for memoryPerNode should pass" },
+				{ "memoryPerNode", 1.0, pass, "Double for memoryPerNode should pass" },
+				{ "memoryPerNode", 1, pass, "Integer for memoryPerNode should pass" },
 				{ "memoryPerNode", new BigDecimal(1), pass, "BigDecimal for memoryPerNode should pass" },
-				{ "memoryPerNode", new Boolean(false), fail, "Boolean for memoryPerNode should throw exception" },
-				{ "memoryPerNode", new Boolean(true), fail, "Boolean for memoryPerNode should throw exception" },
+				{ "memoryPerNode", Boolean.FALSE, fail, "Boolean for memoryPerNode should throw exception" },
+				{ "memoryPerNode", Boolean.TRUE, fail, "Boolean for memoryPerNode should throw exception" },
 				
 				{ "maxMemory", null, fail, "Null maxMemory should throw exception" },
 				{ "maxMemory", "", fail, "Empty maxMemory should throw exception" },
@@ -984,13 +905,13 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				{ "maxMemory", "1GB", pass, "Vaid string maxMemory string should oass" },
 				{ "maxMemory", new Object(), fail, "Object for maxMemory should throw exception" },
 				{ "maxMemory", new ArrayList<String>(), fail, "Array for maxMemory should throw exception" },
-				{ "maxMemory", new Long(1), pass, "Long for maxMemory should pass" },
-				{ "maxMemory", new Float(1.0), pass, "Float for maxMemory should pass" },
-				{ "maxMemory", new Double(1.0), pass, "Double for maxMemory should pass" },
-				{ "maxMemory", new Integer(1), pass, "Integer for maxMemory should pass" },
+				{ "maxMemory", 1L, pass, "Long for maxMemory should pass" },
+				{ "maxMemory", 1.0f, pass, "Float for maxMemory should pass" },
+				{ "maxMemory", 1.0, pass, "Double for maxMemory should pass" },
+				{ "maxMemory", 1, pass, "Integer for maxMemory should pass" },
 				{ "maxMemory", new BigDecimal(1), pass, "BigDecimal for maxMemory pass" },
-				{ "maxMemory", new Boolean(false), fail, "Boolean for maxMemory should throw exception" },
-				{ "maxMemory", new Boolean(true), fail, "Boolean for maxMemory should throw exception" },
+				{ "maxMemory", Boolean.FALSE, fail, "Boolean for maxMemory should throw exception" },
+				{ "maxMemory", Boolean.TRUE, fail, "Boolean for maxMemory should throw exception" },
 				
 				{ "maxRunTime", null, fail, "Null maxRunTime should throw exception" },
 				{ "maxRunTime", "", fail, "Empty maxRunTime should throw exception" },
@@ -998,13 +919,13 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				{ "maxRunTime", "00:00:01", pass, "Invalid string maxRunTime should pass" },
 				{ "maxRunTime", new Object(), fail, "Object for maxRunTime should throw exception" },
 				{ "maxRunTime", new ArrayList<String>(), fail, "Array for maxRunTime should throw exception" },
-				{ "maxRunTime", new Long(1), fail, "Long for maxRunTime should throw exception" },
-				{ "maxRunTime", new Float(1.0), fail, "Float for maxRunTime should throw exception" },
-				{ "maxRunTime", new Double(1.0), fail, "Double for maxRunTime should throw exception" },
-				{ "maxRunTime", new Integer(1), fail, "Integer for maxRunTime should throw exception" },
+				{ "maxRunTime", 1L, fail, "Long for maxRunTime should throw exception" },
+				{ "maxRunTime", 1.0f, fail, "Float for maxRunTime should throw exception" },
+				{ "maxRunTime", 1.0, fail, "Double for maxRunTime should throw exception" },
+				{ "maxRunTime", 1, fail, "Integer for maxRunTime should throw exception" },
 				{ "maxRunTime", new BigDecimal(1), fail, "BigDecimal for maxRunTime should throw exception" },
-				{ "maxRunTime", new Boolean(false), fail, "Boolean for maxRunTime should throw exception" },
-				{ "maxRunTime", new Boolean(true), fail, "Boolean for maxRunTime should throw exception" },
+				{ "maxRunTime", Boolean.FALSE, fail, "Boolean for maxRunTime should throw exception" },
+				{ "maxRunTime", Boolean.TRUE, fail, "Boolean for maxRunTime should throw exception" },
 				
 				{ "requestedTime", null, fail, "Null requestedTime should throw exception" },
 				{ "requestedTime", "", fail, "Empty requestedTime should throw exception" },
@@ -1012,112 +933,110 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				{ "requestedTime", "00:00:01", pass, "Valid string requestedTime should pass" },
 				{ "requestedTime", new Object(), fail, "Object for requestedTime should throw exception" },
 				{ "requestedTime", new ArrayList<String>(), fail, "Array for requestedTime should throw exception" },
-				{ "requestedTime", new Long(1), fail, "Long for requestedTime should throw exception" },
-				{ "requestedTime", new Float(1.0), fail, "Float for requestedTime should throw exception" },
-				{ "requestedTime", new Double(1.0), fail, "Double for requestedTime should throw exception" },
-				{ "requestedTime", new Integer(1), fail, "Integer for requestedTime should throw exception" },
+				{ "requestedTime", 1L, fail, "Long for requestedTime should throw exception" },
+				{ "requestedTime", 1.0f, fail, "Float for requestedTime should throw exception" },
+				{ "requestedTime", 1.0, fail, "Double for requestedTime should throw exception" },
+				{ "requestedTime", 1, fail, "Integer for requestedTime should throw exception" },
 				{ "requestedTime", new BigDecimal(1), fail, "BigDecimal for requestedTime should throw exception" },
-				{ "requestedTime", new Boolean(false), fail, "Boolean for requestedTime should throw exception" },
-				{ "requestedTime", new Boolean(true), fail, "Boolean for requestedTime should throw exception" },
+				{ "requestedTime", Boolean.FALSE, fail, "Boolean for requestedTime should throw exception" },
+				{ "requestedTime", Boolean.TRUE, fail, "Boolean for requestedTime should throw exception" },
 				
 				{ "dependencies", null, fail, "Null dependencies should throw exception" },
 				{ "dependencies", "", fail, "Empty dependencies should throw exception" },
 				{ "dependencies", "dependencies", fail, "String dependencies should throw exception" },
 				{ "dependencies", new Object(), fail, "Object for dependencies should throw exception" },
 				{ "dependencies", new ArrayList<String>(), fail, "Array for dependencies should throw exception" },
-				{ "dependencies", new Long(1), fail, "Long for dependencies should throw exception" },
-				{ "dependencies", new Float(1.0), fail, "Float for dependencies should throw exception" },
-				{ "dependencies", new Double(1.0), fail, "Double for dependencies should throw exception" },
-				{ "dependencies", new Integer(1), fail, "Integer for dependencies should throw exception" },
+				{ "dependencies", 1L, fail, "Long for dependencies should throw exception" },
+				{ "dependencies", 1.0f, fail, "Float for dependencies should throw exception" },
+				{ "dependencies", 1.0, fail, "Double for dependencies should throw exception" },
+				{ "dependencies", 1, fail, "Integer for dependencies should throw exception" },
 				{ "dependencies", new BigDecimal(1), fail, "BigDecimal for dependencies should throw exception" },
-				{ "dependencies", new Boolean(false), fail, "Boolean for dependencies should throw exception" },
-				{ "dependencies", new Boolean(true), fail, "Boolean for dependencies should throw exception" },
+				{ "dependencies", Boolean.FALSE, fail, "Boolean for dependencies should throw exception" },
+				{ "dependencies", Boolean.TRUE, fail, "Boolean for dependencies should throw exception" },
 				
 				{ "archive", null, fail, "Null archive should throw exception" },
 				{ "archive", "", fail, "Empty archive should throw exception" },
 				{ "archive", "archive", fail, "String archive should throw exception" },
 				{ "archive", new Object(), fail, "Object for archive should throw exception" },
 				{ "archive", new ArrayList<String>(), fail, "Array for archive should throw exception" },
-				{ "archive", new Long(1), fail, "Long for archive should throw exception" },
-				{ "archive", new Float(1.0), fail, "Float for archive should throw exception" },
-				{ "archive", new Double(1.0), fail, "Double for archive should throw exception" },
-				{ "archive", new Integer(1), fail, "Integer for archive should throw exception" },
+				{ "archive", 1L, fail, "Long for archive should throw exception" },
+				{ "archive", 1.0f, fail, "Float for archive should throw exception" },
+				{ "archive", 1.0, fail, "Double for archive should throw exception" },
+				{ "archive", 1, fail, "Integer for archive should throw exception" },
 				{ "archive", new BigDecimal(1), fail, "BigDecimal for archive should throw exception" },
-				{ "archive", new Boolean(false), pass, "Boolean for archive should pass" },
-				{ "archive", new Boolean(true), pass, "Boolean for archive should pass" },
+				{ "archive", Boolean.FALSE, pass, "Boolean for archive should pass" },
+				{ "archive", Boolean.TRUE, pass, "Boolean for archive should pass" },
 				
 				{ "archiveSystem", null, fail, "Null archiveSystem should throw exception" },
 				{ "archiveSystem", "", fail, "Empty archiveSystem should throw exception" },
 				{ "archiveSystem", new Object(), fail, "Object for archiveSystem should throw exception" },
 				{ "archiveSystem", new ArrayList<String>(), fail, "Array for archiveSystem should throw exception" },
-				{ "archiveSystem", new Long(1), fail, "Long for archiveSystem should throw exception" },
-				{ "archiveSystem", new Float(1.0), fail, "Float for archiveSystem should throw exception" },
-				{ "archiveSystem", new Double(1.0), fail, "Double for archiveSystem should throw exception" },
-				{ "archiveSystem", new Integer(1), fail, "Integer for archiveSystem should throw exception" },
+				{ "archiveSystem", 1L, fail, "Long for archiveSystem should throw exception" },
+				{ "archiveSystem", 1.0f, fail, "Float for archiveSystem should throw exception" },
+				{ "archiveSystem", 1.0, fail, "Double for archiveSystem should throw exception" },
+				{ "archiveSystem", 1, fail, "Integer for archiveSystem should throw exception" },
 				{ "archiveSystem", new BigDecimal(1), fail, "BigDecimal for archiveSystem should throw exception" },
-				{ "archiveSystem", new Boolean(false), fail, "Boolean for archiveSystem should throw exception" },
-				{ "archiveSystem", new Boolean(true), fail, "Boolean for archiveSystem should throw exception" },
+				{ "archiveSystem", Boolean.FALSE, fail, "Boolean for archiveSystem should throw exception" },
+				{ "archiveSystem", Boolean.TRUE, fail, "Boolean for archiveSystem should throw exception" },
 				
 				{ "archivePath", null, fail, "Null archivePath should throw exception" },
 				{ "archivePath", "", fail, "Empty archivePath should throw exception" },
 				{ "archivePath", new Object(), fail, "Object for archivePath should throw exception" },
 				{ "archivePath", new ArrayList<String>(), fail, "Array for archivePath should throw exception" },
-				{ "archivePath", new Long(1), fail, "Long for archivePath should throw exception" },
-				{ "archivePath", new Float(1.0), fail, "Float for archivePath should throw exception" },
-				{ "archivePath", new Double(1.0), fail, "Double for archivePath should throw exception" },
-				{ "archivePath", new Integer(1), fail, "Integer for archivePath should throw exception" },
+				{ "archivePath", 1L, fail, "Long for archivePath should throw exception" },
+				{ "archivePath", 1.0f, fail, "Float for archivePath should throw exception" },
+				{ "archivePath", 1.0, fail, "Double for archivePath should throw exception" },
+				{ "archivePath", 1, fail, "Integer for archivePath should throw exception" },
 				{ "archivePath", new BigDecimal(1), fail, "BigDecimal for archivePath should throw exception" },
 				{ "archivePath", StringUtils.rightPad("h", 81, "h"), fail, "archivePath must be under 80 characters" },
-				{ "archivePath", new Boolean(false), fail, "Boolean for archivePath should throw exception" },
-				{ "archivePath", new Boolean(true), fail, "Boolean for archivePath should throw exception" },
+				{ "archivePath", Boolean.FALSE, fail, "Boolean for archivePath should throw exception" },
+				{ "archivePath", Boolean.TRUE, fail, "Boolean for archivePath should throw exception" },
 				
 				{ "inputs", null, fail, "Null inputs should throw exception" },
 				{ "inputs", "", fail, "Empty inputs should throw exception" },
 				{ "inputs", new ArrayList<String>(), fail, "Array for inputs should throw exception" },
-				{ "inputs", new Long(1), fail, "Long for inputs should throw exception" },
-				{ "inputs", new Float(1.0), fail, "Float for inputs should throw exception" },
-				{ "inputs", new Double(1.0), fail, "Double for inputs should throw exception" },
-				{ "inputs", new Integer(1), fail, "Integer for inputs should throw exception" },
+				{ "inputs", 1L, fail, "Long for inputs should throw exception" },
+				{ "inputs", 1.0f, fail, "Float for inputs should throw exception" },
+				{ "inputs", 1.0, fail, "Double for inputs should throw exception" },
+				{ "inputs", 1, fail, "Integer for inputs should throw exception" },
 				{ "inputs", new BigDecimal(1), fail, "BigDecimal for inputs should throw exception" },
-				{ "inputs", new Boolean(false), fail, "Boolean for inputs should throw exception" },
-				{ "inputs", new Boolean(true), fail, "Boolean for inputs should throw exception" },
+				{ "inputs", Boolean.FALSE, fail, "Boolean for inputs should throw exception" },
+				{ "inputs", Boolean.TRUE, fail, "Boolean for inputs should throw exception" },
 				
 				{ "parameters", null, fail, "Null parameters should throw exception" },
 				{ "parameters", "", fail, "Empty parameters should throw exception" },
 				{ "parameters", new ArrayList<String>(), fail, "Array for parameters should throw exception" },
-				{ "parameters", new Long(1), fail, "Long for parameters should throw exception" },
-				{ "parameters", new Float(1.0), fail, "Float for parameters should throw exception" },
-				{ "parameters", new Double(1.0), fail, "Double for parameters should throw exception" },
-				{ "parameters", new Integer(1), fail, "Integer for parameters should throw exception" },
+				{ "parameters", 1L, fail, "Long for parameters should throw exception" },
+				{ "parameters", 1.0f, fail, "Float for parameters should throw exception" },
+				{ "parameters", 1.0, fail, "Double for parameters should throw exception" },
+				{ "parameters", 1, fail, "Integer for parameters should throw exception" },
 				{ "parameters", new BigDecimal(1), fail, "BigDecimal for parameters should throw exception" },
-				{ "parameters", new Boolean(false), fail, "Boolean for parameters should throw exception" },
-				{ "parameters", new Boolean(true), fail, "Boolean for parameters should throw exception" },
+				{ "parameters", Boolean.FALSE, fail, "Boolean for parameters should throw exception" },
+				{ "parameters", Boolean.TRUE, fail, "Boolean for parameters should throw exception" },
 				
 		};
 	}
 	
 	/**
 	 * Tests basic field validation on jobs submitted as json
-	 * 
-	 * @param field
-	 * @param value
-	 * @param internalUsername
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param field the field to add to the map
+	 * @param value the value of the field being added
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the assertion message to be returned if the test fails
 	 */
 	//@Test(dataProvider = "processJsonJobProvider")//, dependsOnMethods = { "selectQueueLimitTest" })
 	public void processJsonJob(String field, Object value, boolean shouldThrowException, String message) 
 	{
 		try
 		{
-			ObjectNode json = createJobJsonNode();
-			
+			Software software = createSoftware();
+			ObjectNode json = createJobJsonNode(software);
 			json = updateObjectNode(json, field, value);
-		
-			genericProcessJsonJob(json, shouldThrowException, message);
-		} 
-		finally {
-			try { clearJobs(); } catch (Throwable e) {}
+			_genericProcessJsonJob(json, shouldThrowException, message);
+		}
+		catch (Exception e) {
+			Assert.fail("Software creation should not fail", e);
 		}
 	}
 	
@@ -1125,10 +1044,13 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	private Object[][] processMultipleJobInputsProvider() throws Exception
 	{
 		ObjectMapper mapper = new ObjectMapper();
-		
-		SoftwareInput input = software.getInputs().iterator().next();
-		String inputKey = input.getKey();
-		String inputDefaultValue = input.getDefaultValueAsJsonArray().iterator().next().asText();
+
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject input = softwareJson.getJSONArray("inputs").getJSONObject(0);
+
+//		SoftwareInput input = software.getInputs().iterator().next();
+		String inputKey = input.getString("id");
+		String inputDefaultValue = input.getJSONObject("value").getString("default");
 		String inputDefaultValue2 = inputDefaultValue + "2";
 		String inputDefaultValue3 = inputDefaultValue + "3";
 		String inputDefaultValue4 = inputDefaultValue + "4";
@@ -1144,7 +1066,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		ObjectNode multipleRedundantValueArrayObject = mapper.createObjectNode();
 		multipleRedundantValueArrayObject.putArray(inputKey).add(inputDefaultValue).add(inputDefaultValue);
 		
-		ObjectNode multipleDelimitedValueObject = mapper.createObjectNode().put(input.getKey(), String.format("%1$s;%1$s", inputDefaultValue, inputDefaultValue2));
+		ObjectNode multipleDelimitedValueObject = mapper.createObjectNode().put(inputKey, String.format("%1$s;%1$s", inputDefaultValue, inputDefaultValue2));
 		
 		ObjectNode multipleValueArrayObject = mapper.createObjectNode();
 		multipleValueArrayObject.putArray(inputKey).add(inputDefaultValue).add(inputDefaultValue2);
@@ -1166,8 +1088,6 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		
 		ObjectNode quadValueArrayObject = mapper.createObjectNode();
 		quadValueArrayObject.putArray(inputKey).add(inputDefaultValue).add(inputDefaultValue2).add(inputDefaultValue3).add(inputDefaultValue4);
-		
-		
 		
 		boolean pass = false;
 		boolean fail = true;
@@ -1267,38 +1187,41 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	/**
 	 * Tests job app input cardinality on jobs submitted as json
 	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 * @param jobInputs test validation of multiple inputs in a job request
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleJobInputsProvider", dependsOnMethods={"processJsonJob"})
 	public void processMultipleJobInputs(int minCardinality, int maxCardinality, ObjectNode jobInputs, boolean shouldThrowException, String message) 
 	{
-		Software sw = software.clone();
-		sw.setName("processMultipleJobInputsProvider");
-		sw.getInputs().iterator().next().setValidator(null);
-		sw.getInputs().iterator().next().setMaxCardinality(maxCardinality);
-		sw.getInputs().iterator().next().setMinCardinality(minCardinality);
 		try {
-			SoftwareDao.persist(sw);
-			ObjectNode json = createJobJsonNode();
-			json.put("appId", sw.getUniqueName());
-			json.put("inputs", jobInputs);
-			genericProcessJsonJob(json, shouldThrowException, message);
+			Software software = createSoftware();
+			software.getInputs().iterator().next().setValidator(null);
+			software.getInputs().iterator().next().setMaxCardinality(maxCardinality);
+			software.getInputs().iterator().next().setMinCardinality(minCardinality);
+			SoftwareDao.persist(software);
+
+			ObjectNode json = createJobJsonNode(software);
+			json.put("appId", software.getUniqueName());
+			json.set("inputs", jobInputs);
+			_genericProcessJsonJob(json, shouldThrowException, message);
+		} catch (Exception e) {
+			Assert.fail("Test setup should not fail", e);
 		}
-		finally {
-			try { SoftwareDao.delete(sw);} catch (Exception e) {}
-		}
+
 	}
 	
 	@DataProvider
 	private Object[][] processMultipleJobNullInputsProvider() throws Exception
 	{
 		ObjectMapper mapper = new ObjectMapper();
-		
-		SoftwareInput input = software.getInputs().iterator().next();
-		String inputKey = input.getKey();
-		String inputDefaultValue = input.getDefaultValueAsJsonArray().iterator().next().asText();
+
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject input = softwareJson.getJSONArray("inputs").getJSONObject(0);
+
+//		SoftwareInput input = software.getInputs().iterator().next();
+		String inputKey = input.getString("id");
+		String inputDefaultValue = input.getJSONObject("value").getString("default");
 		String inputDefaultValue2 = inputDefaultValue + "2";
 		String inputDefaultValue3 = inputDefaultValue + "3";
 		
@@ -1307,7 +1230,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		ObjectNode singleNullValueArrayObject = mapper.createObjectNode();
 		singleNullValueArrayObject.putArray(inputKey).addNull();
 		
-		ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(input.getKey(), String.format("%1$s;", inputDefaultValue, inputDefaultValue2));
+		ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(inputKey, String.format("%1$s;", inputDefaultValue, inputDefaultValue2));
 		
 		ObjectNode multipleValueArrayWithNullObject = mapper.createObjectNode();
 		multipleValueArrayWithNullObject.putArray(inputKey).add(inputDefaultValue).addNull();
@@ -1405,133 +1328,177 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	
 	/**
 	 * Tests job app input cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param minCardinality the min cardinality of the test input
+	 * @param maxCardinality the max cardinality of the test input
+	 * @param jobInputs test validation of multiple inputs in a job request
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleJobNullInputsProvider", dependsOnMethods={"processMultipleJobInputs"})
-	public void processMultipleJobNullInputs(int minCardinality, int maxCardinality, ObjectNode jobInputs, boolean shouldThrowException, String message) 
+	public void processMultipleJobNullInputs(int minCardinality, int maxCardinality, ObjectNode jobInputs, boolean shouldThrowException, String message)
 	{
-		Software sw = software.clone();
-		sw.setName("processMultipleJobNullInputs");
-		sw.getInputs().iterator().next().setValidator(null);
-		sw.getInputs().iterator().next().setMaxCardinality(maxCardinality);
-		sw.getInputs().iterator().next().setMinCardinality(minCardinality);
+		Software software;
 		try {
-			SoftwareDao.persist(sw);
-			ObjectNode json = createJobJsonNode();
-			json.put("appId", sw.getUniqueName());
-			json.put("inputs", jobInputs);
-			genericProcessJsonJob(json, shouldThrowException, message);
-		}
-		finally {
-			try { SoftwareDao.delete(sw);} catch (Exception e) {}
+			software = createSoftware();
+			software.setName("processMultipleJobNullInputs");
+			software.getInputs().iterator().next().setValidator(null);
+			software.getInputs().iterator().next().setMaxCardinality(maxCardinality);
+			software.getInputs().iterator().next().setMinCardinality(minCardinality);
+
+			SoftwareDao.persist(software);
+
+			ObjectNode json = createJobJsonNode(software);
+			json.put("appId", software.getUniqueName());
+			json.set("inputs", jobInputs);
+			_genericProcessJsonJob(json, shouldThrowException, message);
+		} catch (Exception e) {
+			Assert.fail("Test setup should not fail", e);
 		}
 	}
-	
+
+	/**
+	 * Default software takes a {@link SoftwareInput}. Here we generate tests for different values of that
+	 * {@link SoftwareInput).
+	 * @return test cases
+	 * @throws IOException
+	 * @throws JSONException
+	 */
 	@DataProvider
-	public Object[][] processJsonJobInputsProvider() 
-	{
+	public Object[][] processJsonJobInputsProvider() throws IOException, JSONException {
+
 		ObjectMapper mapper = new ObjectMapper();
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		String key = softwareJson.getJSONArray("inputs").getJSONObject(0).getString("id");
 		
-		SoftwareInput input = software.getInputs().iterator().next();
 		boolean pass = false;
 		boolean fail = true;
 		// need to verify cardinality
 		return new Object[][] {
-				{ mapper.createObjectNode().put(input.getKey(), "/path/to/folder"), pass, "absolute path should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "path/to/folder"), pass, "relative path should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "folder"), pass, "relative file should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "http://example.com"), pass, "HTTP uri schema should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "https://example.com"), pass, "HTTPS uri schema should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "http://foo:bar@example.com"), pass, "HTTP with basic auth uri schema should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "https://foo:bar@example.com"), pass, "HTTP with basic auth uri schema should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "sftp://asasfasdfasdfasdfasdgasdfasdf.asdfasdfa"), fail, "SFTP uri should fail without credentials" },
-				{ mapper.createObjectNode().put(input.getKey(), "sftp://foo:bar@asasfasdfasdfasdfasdgasdfasdf.asdfasdfa/"), fail, "SFTP uri should fail on invalid hostname" },
-				{ mapper.createObjectNode().put(input.getKey(), "sftp://testuser:testuser@docker.example.com:22"), fail, "SFTP uri should fail on invalid host and invalid port" },
-				{ mapper.createObjectNode().put(input.getKey(), "sftp://testuser:testuser@docker.example.com"), fail, "SFTP uri should fail on valid host and invalid port" },
-				{ mapper.createObjectNode().put(input.getKey(), "sftp://foo:bar@docker.example.com:10022"), fail, "SFTP with basic auth uri schema should fail on invalid credentials" },
-				{ mapper.createObjectNode().put(input.getKey(), "sftp://testuser:testuser@docker.example.com:10022"), pass, "SFTP with basic auth uri schema should fail on invalid credentials" },
-				{ mapper.createObjectNode().put(input.getKey(), "agave://example.com"), fail, "invalid system id in agave uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "agave://" + privateExecutionSystem.getSystemId() + "/"), pass, "agave uri schema should pass" },
+				{ mapper.createObjectNode().put(key, "/path/to/folder"), pass, "absolute path should pass" },
+				{ mapper.createObjectNode().put(key, "path/to/folder"), pass, "relative path should pass" },
+				{ mapper.createObjectNode().put(key, "folder"), pass, "relative file should pass" },
+				{ mapper.createObjectNode().put(key, "http://example.com"), pass, "HTTP uri schema should pass" },
+				{ mapper.createObjectNode().put(key, "https://example.com"), pass, "HTTPS uri schema should pass" },
+				{ mapper.createObjectNode().put(key, "http://foo:bar@example.com"), pass, "HTTP with basic auth uri schema should pass" },
+				{ mapper.createObjectNode().put(key, "https://foo:bar@example.com"), pass, "HTTP with basic auth uri schema should pass" },
+				{ mapper.createObjectNode().put(key, "sftp://asasfasdfasdfasdfasdgasdfasdf.asdfasdfa"), fail, "SFTP uri should fail without credentials" },
+				{ mapper.createObjectNode().put(key, "sftp://foo:bar@asasfasdfasdfasdfasdgasdfasdf.asdfasdfa/"), fail, "SFTP uri should fail on invalid hostname" },
+				{ mapper.createObjectNode().put(key, "sftp://testuser:testuser@docker.example.com:22"), fail, "SFTP uri should fail on invalid host and invalid port" },
+				{ mapper.createObjectNode().put(key, "sftp://testuser:testuser@docker.example.com"), fail, "SFTP uri should fail on valid host and invalid port" },
+				{ mapper.createObjectNode().put(key, "sftp://foo:bar@docker.example.com:10022"), fail, "SFTP with basic auth uri schema should fail on invalid credentials" },
+				{ mapper.createObjectNode().put(key, "sftp://testuser:testuser@docker.example.com:10022"), pass, "SFTP with basic auth uri schema should fail on invalid credentials" },
+				{ mapper.createObjectNode().put(key, "agave://example.com"), fail, "invalid system id in agave uri schema should fail" },
 				
-				{ mapper.createObjectNode().put(input.getKey(), "HTTP://example.com"), pass, "HTTP uri schema is case insensitive and should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "HTTPS://example.com"), pass, "HTTPS uri schema should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "HTTP://foo:bar@example.com"), pass, "HTTP with basic auth uri schema is case insensitive and should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "HTTPS://foo:bar@example.com"), pass, "HTTP with basic auth uri schema is case insensitive and should pass" },
-				{ mapper.createObjectNode().put(input.getKey(), "SFTP://asasfasdfasdfasdfasdgasdfasdf.asdfasdfa"), fail, "SFTP uri should fail without credentials" },
-				{ mapper.createObjectNode().put(input.getKey(), "SFTP://foo:bar@asasfasdfasdfasdfasdgasdfasdf.asdfasdfa/"), fail, "SFTP uri should fail on invalid hostname" },
-				{ mapper.createObjectNode().put(input.getKey(), "SFTP://testuser:testuser@docker.example.com:22"), fail, "SFTP uri should fail on invalid host and invalid port" },
-				{ mapper.createObjectNode().put(input.getKey(), "SFTP://testuser:testuser@docker.example.com"), fail, "SFTP uri should fail on valid host and invalid port" },
-				{ mapper.createObjectNode().put(input.getKey(), "SFTP://foo:bar@docker.example.com:10022"), fail, "SFTP with basic auth uri schema should fail on invalid credentials" },
-				{ mapper.createObjectNode().put(input.getKey(), "SFTP://testuser:testuser@docker.example.com:10022"), pass, "SFTP with basic auth uri schema should fail on invalid credentials" },
-				{ mapper.createObjectNode().put(input.getKey(), "AGAVE://example.com"), fail, "invalid system id in agave uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "AGAVE://" + privateExecutionSystem.getSystemId() + "/"), pass, "agave uri schema is case insensitive and should pass" },
+				{ mapper.createObjectNode().put(key, "HTTP://example.com"), pass, "HTTP uri schema is case insensitive and should pass" },
+				{ mapper.createObjectNode().put(key, "HTTPS://example.com"), pass, "HTTPS uri schema should pass" },
+				{ mapper.createObjectNode().put(key, "HTTP://foo:bar@example.com"), pass, "HTTP with basic auth uri schema is case insensitive and should pass" },
+				{ mapper.createObjectNode().put(key, "HTTPS://foo:bar@example.com"), pass, "HTTP with basic auth uri schema is case insensitive and should pass" },
+				{ mapper.createObjectNode().put(key, "SFTP://asasfasdfasdfasdfasdgasdfasdf.asdfasdfa"), fail, "SFTP uri should fail without credentials" },
+				{ mapper.createObjectNode().put(key, "SFTP://foo:bar@asasfasdfasdfasdfasdgasdfasdf.asdfasdfa/"), fail, "SFTP uri should fail on invalid hostname" },
+				{ mapper.createObjectNode().put(key, "SFTP://testuser:testuser@docker.example.com:22"), fail, "SFTP uri should fail on invalid host and invalid port" },
+				{ mapper.createObjectNode().put(key, "SFTP://testuser:testuser@docker.example.com"), fail, "SFTP uri should fail on valid host and invalid port" },
+				{ mapper.createObjectNode().put(key, "SFTP://foo:bar@docker.example.com:10022"), fail, "SFTP with basic auth uri schema should fail on invalid credentials" },
+				{ mapper.createObjectNode().put(key, "SFTP://testuser:testuser@docker.example.com:10022"), pass, "SFTP with basic auth uri schema should fail on invalid credentials" },
+				{ mapper.createObjectNode().put(key, "AGAVE://example.com"), fail, "invalid system id in agave uri schema should fail" },
 				
 				// unsupported schemas
-				{ mapper.createObjectNode().put(input.getKey(), "file:///path/to/folder"), fail, "FILE uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "ftp://example.com"), fail, "FTP uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "ftp://foo:bar@example.com/"), fail, "FTP with basic auth uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "ftps://example.com"), fail, "FTPS uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "ftps://foo:bar@example.com/"), fail, "FTPS with basic auth uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "gsiftp://example.com"), fail, "GSIFTP uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "gsiftp://foo:bar@example.com/"), fail, "GSIFTP with basic auth uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "gridftp://example.com"), fail, "gridftp uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "gridftp://foo:bar@example.com/"), fail, "GRIDFTP with basic auth uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "s3://s3.amazon.com/abced"), fail, "s3 uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "s3://foo:bar@s3.amazon.com/abced"), fail, "s3 with basic auth uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "file:///path/to/folder"), fail, "FILE uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "ftp://example.com"), fail, "FTP uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "ftp://foo:bar@example.com/"), fail, "FTP with basic auth uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "ftps://example.com"), fail, "FTPS uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "ftps://foo:bar@example.com/"), fail, "FTPS with basic auth uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "gsiftp://example.com"), fail, "GSIFTP uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "gsiftp://foo:bar@example.com/"), fail, "GSIFTP with basic auth uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "gridftp://example.com"), fail, "gridftp uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "gridftp://foo:bar@example.com/"), fail, "GRIDFTP with basic auth uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "s3://s3.amazon.com/abced"), fail, "s3 uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "s3://foo:bar@s3.amazon.com/abced"), fail, "s3 with basic auth uri schema should fail" },
 				
-				{ mapper.createObjectNode().put(input.getKey(), "FILE:///path/to/folder"), fail, "FILE uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "FTP://example.com"), fail, "FTP uri schema is case insensitive and should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "FTP://foo:bar@example.com/"), fail, "FTP with basic auth uri schema is case insensitive and should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "FTPS://example.com"), fail, "FTPS uri schema is case insensitive and should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "FTPS://foo:bar@example.com/"), fail, "FTPS with basic auth uri schema is case insensitive and should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "GSIFTP://example.com"), fail, "GSIFTP uri schema is case insensitive and should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "GSIFTP://foo:bar@example.com/"), fail, "GSIFTP with basic auth uri schema is case insensitive and should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "GRIDFTP://example.com"), fail, "gridftp uri schema is case insensitive and should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "GRIDFTP://foo:bar@example.com/"), fail, "GRIDFTP with basic auth uri schema is case insensitive and should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "S3://s3.amazon.com/abced"), fail, "s3 uri schema is case insensitive and should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "S3://foo:bar@s3.amazon.com/abced"), fail, "s3 with basic auth uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "FILE:///path/to/folder"), fail, "FILE uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "FTP://example.com"), fail, "FTP uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "FTP://foo:bar@example.com/"), fail, "FTP with basic auth uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "FTPS://example.com"), fail, "FTPS uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "FTPS://foo:bar@example.com/"), fail, "FTPS with basic auth uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "GSIFTP://example.com"), fail, "GSIFTP uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "GSIFTP://foo:bar@example.com/"), fail, "GSIFTP with basic auth uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "GRIDFTP://example.com"), fail, "gridftp uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "GRIDFTP://foo:bar@example.com/"), fail, "GRIDFTP with basic auth uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "S3://s3.amazon.com/abced"), fail, "s3 uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "S3://foo:bar@s3.amazon.com/abced"), fail, "s3 with basic auth uri schema is case insensitive and should fail" },
 				
-				{ mapper.createObjectNode().put(input.getKey(), "abba://example.com"), fail, "Unknown uri schema should fail" },
-				{ mapper.createObjectNode().put(input.getKey(), "ABBA://example.com"), fail, "Unknown uri schema is case insensitive and should fail" },
+				{ mapper.createObjectNode().put(key, "abba://example.com"), fail, "Unknown uri schema should fail" },
+				{ mapper.createObjectNode().put(key, "ABBA://example.com"), fail, "Unknown uri schema is case insensitive and should fail" },
 		};
 		
 	}
 	
 	/**
 	 * Tests job app input validation on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param jobInputs test validation of multiple inputs in a job request
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processJsonJobInputsProvider", dependsOnMethods={"processJsonJob"})
-	public void processJsonJobInputs(ObjectNode jobInputs, boolean shouldThrowException, String message) 
+	public void processJsonJobInputs(ObjectNode jobInputs, boolean shouldThrowException, String message) throws Exception
 	{
-		ObjectNode json = createJobJsonNode();
-		json.put("inputs", jobInputs);
-		genericProcessJsonJob(json, shouldThrowException, message);
+		Software software = createSoftware();
+		ObjectNode json = createJobJsonNode(software);
+		json.set("inputs", jobInputs);
+		_genericProcessJsonJob(json, shouldThrowException, message);
+	}
+
+	@DataProvider
+	public Object[][] processJsonJobInputsAcceptsCaseInsensitiveAgaveURLProvider() {
+		return new Object[][]{
+				{"agave", "Lower case Agave uri schema should pass"},
+				{"AGAVE", "Upper case Agave uri schema should pass"},
+				{"AGaVe", "Mixed case Agave uri schema should pass"}
+		};
 	}
 
 	/**
 	 * Tests job app input validation on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param caseInsensitiveTestSchema permutation on case insensitive "agave" scheme
+	 * @param message the message to assert for a failed test
+	 */
+	@Test(dataProvider = "processJsonJobInputsAcceptsCaseInsensitiveAgaveURLProvider", dependsOnMethods={"processJsonJob"})
+	public void processJsonJobInputsAcceptsCaseInsensitiveAgaveURL(String caseInsensitiveTestSchema, String message)
+	{
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			Software software = createSoftware();
+
+			// key of the first and only input for the software instance
+			String key = software.getInputs().get(0).getKey();
+			// agave url built from test schema used to test
+			String inputUrl = String.format("%s://%s/", caseInsensitiveTestSchema, software.getStorageSystem().getSystemId());
+
+			ObjectNode json = createJobJsonNode(software);
+			json.set("inputs", mapper.createObjectNode().put(key, inputUrl));
+
+			Job job = _genericProcessJsonJob(json, false, message);
+		} catch (Exception e) {
+			Assert.fail(message);	
+		}
+	}
+
+	/**
+	 * Tests job app input validation on jobs submitted as json
 	 */
 //	@Test(dependsOnMethods={"processJsonJobInputs"})
 	public void processJsonJobInputDefaults() 
 	{
-		Software testSoftware = null;
+		Software software = null;
 		
 		try {
-			testSoftware = software.clone();
-			testSoftware.setOwner(JSONTestDataUtil.TEST_OWNER);
-			testSoftware.setName("processJsonJobInputDefaults");
-			testSoftware.getInputs().clear();
+			software = createSoftware();
+			software.setOwner(JSONTestDataUtil.TEST_OWNER);
+			software.setName("processJsonJobInputDefaults");
+			software.getInputs().clear();
+			SoftwareDao.persist(software);
 			
 //			SoftwareInput input1 = new SoftwareInput();
 //			input1.setDefaultValue("/usr/bin/date");
@@ -1544,33 +1511,33 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			input2.setKey("hiddenTime");
 			input2.setVisible(false);
 			input2.setRequired(true);
-			testSoftware.addInput(input2);
+			software.addInput(input2);
 			
 			SoftwareInput input3 = new SoftwareInput();
 			input3.setDefaultValue("/usr/bin/mkdir");
 			input3.setKey("optionalKey1");
 			input3.setRequired(false);
-			testSoftware.addInput(input3);
+			software.addInput(input3);
 			
 			SoftwareInput input4 = new SoftwareInput();
 			input4.setDefaultValue("/usr/bin/top");
 			input4.setKey("requiredKey2");
 			input4.setRequired(true);
-			testSoftware.addInput(input4);
+			software.addInput(input4);
 			
 			SoftwareInput input5 = new SoftwareInput();
 			input5.setDefaultValue("/usr/bin/ls");
 			input5.setKey("optionalKey2");
 			input5.setRequired(false);
-			testSoftware.addInput(input5);
+			software.addInput(input5);
 			
-			SoftwareDao.persist(testSoftware);
+			SoftwareDao.persist(software);
 			
-			ObjectNode json = createJobJsonNode();
-			json.put("appId", testSoftware.getUniqueName());
-			json.put("inputs", new ObjectMapper().createObjectNode().put(input5.getKey(), "wazzup").put(input4.getKey(), "top").put("dummyfield", "something"));
+			ObjectNode json = createJobJsonNode(software);
+			json.put("appId", software.getUniqueName());
+			json.set("inputs", new ObjectMapper().createObjectNode().put(input5.getKey(), "wazzup").put(input4.getKey(), "top").put("dummyfield", "something"));
 			
-			Job job = genericProcessJsonJob(json, false, "Hidden and required inputs should be added by default.");
+			Job job = _genericProcessJsonJob(json, false, "Hidden and required inputs should be added by default.");
 			
 //			Assert.assertTrue(job.getInputsAsMap().containsKey(input1.getKey()), "Required fields should be added if not specified and a default exists");
 //			Assert.assertEquals(job.getInputsAsMap().get(input1.getKey()), input1.getDefaultValue(), "Required fields should be added if not specified and a default exists");
@@ -1590,31 +1557,29 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		} catch (Exception e) {
 			Assert.fail("Failed to process job", e);
 		}
-		finally {
-			try { SoftwareDao.delete(testSoftware); } catch (Throwable t) {}
-			try { clearJobs(); } catch (Throwable t) {}
-		}
 	}
 	
 	@DataProvider
 	public Object[][] processJsonJobParametersProvider() throws JSONException, IOException
 	{
-		
-		SoftwareParameter parameter = software.getParameters().iterator().next();
-		String paramName = parameter.getKey();
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+		String paramKey = parameter.getString("id");
+		String parameterDefaultValue = parameter.getJSONObject("value").getString("default");
+
 		// need to verify cardinality
 		Map<SoftwareParameterType, Object> defaultValues = new HashMap<SoftwareParameterType, Object>();
 		defaultValues.put(SoftwareParameterType.flag, Boolean.TRUE);
 		defaultValues.put(SoftwareParameterType.bool, Boolean.TRUE);
 		defaultValues.put(SoftwareParameterType.enumeration, new ObjectMapper().createArrayNode().add("ALPHA"));
-		defaultValues.put(SoftwareParameterType.number, new Long(512));
+		defaultValues.put(SoftwareParameterType.number, 512L);
 		defaultValues.put(SoftwareParameterType.string, "somedefaultvalue");
 		
 		Map<SoftwareParameterType, Object> validTestValues = new HashMap<SoftwareParameterType, Object>();
 		validTestValues.put(SoftwareParameterType.flag, Boolean.FALSE);
 		validTestValues.put(SoftwareParameterType.bool, Boolean.FALSE);
 		validTestValues.put(SoftwareParameterType.enumeration, new ObjectMapper().createArrayNode().add("BETA"));
-		validTestValues.put(SoftwareParameterType.number, new Long(215));
+		validTestValues.put(SoftwareParameterType.number, 215L);
 		validTestValues.put(SoftwareParameterType.string, "anoteruservalue");
 		
 		Map<SoftwareParameterType, List<Object>> invalidTestValues = new HashMap<SoftwareParameterType, List<Object>>();
@@ -1638,68 +1603,68 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			if (type.equals(SoftwareParameterType.flag) || type.equals(SoftwareParameterType.bool)) 
 			{
 														//	name			type		default					validator	required	visible
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		false), mapper.createObjectNode().put(paramName, (Boolean)validTestValues.get(type)), null										  , fail, "Hidden param should fail if user provides value" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		false), mapper.createObjectNode().put(paramName, (Boolean)validTestValues.get(type)), null										  , fail, "Hidden param should fail if user provides value" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		false), null, 														 		 mapper.createObjectNode().put(paramName, (Boolean)defaultValues.get(type)), pass, "Hidden param should use default." });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		false), null, 																 mapper.createObjectNode().put(paramName, (Boolean)defaultValues.get(type)), pass, "Hidden param should use default." });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		false), mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)), null										  , fail, "Hidden param should fail if user provides value" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		false), mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)), null										  , fail, "Hidden param should fail if user provides value" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		false), null, 														 		 mapper.createObjectNode().put(paramKey, (Boolean)defaultValues.get(type)), pass, "Hidden param should use default." });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		false), null, 																 mapper.createObjectNode().put(paramKey, (Boolean)defaultValues.get(type)), pass, "Hidden param should use default." });
 				
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		true), null, 																 null, pass, "Visible param not required should not use default when no user data given" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		true), null, 																 mapper.createObjectNode().put(paramName, (Boolean)defaultValues.get(type)), fail, "Required param should fail if not supplied" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		true), mapper.createObjectNode().put(paramName, (Boolean)validTestValues.get(type)),  mapper.createObjectNode().put(paramName, (Boolean)validTestValues.get(type)), pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		true), mapper.createObjectNode().put(paramName, (Boolean)validTestValues.get(type)),  mapper.createObjectNode().put(paramName, (Boolean)validTestValues.get(type)), pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		true), null, 																 null, pass, "Visible param not required should not use default when no user data given" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		true), null, 																 mapper.createObjectNode().put(paramKey, (Boolean)defaultValues.get(type)), fail, "Required param should fail if not supplied" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		true), mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)),  mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)), pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		true), mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)),  mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)), pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
 				
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		true), mapper.createObjectNode().put(paramName, Boolean.TRUE),  mapper.createObjectNode().put(paramName, true), pass, "User supplied value TRUE should be used for visible optional values of " + type.name() + " parameter" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		true), mapper.createObjectNode().put(paramName, Boolean.TRUE),  mapper.createObjectNode().put(paramName, true), pass, "User supplied value TRUE should be used for visible required values of " + type.name() + " parameter" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		true), mapper.createObjectNode().put(paramName, Boolean.FALSE),  mapper.createObjectNode().put(paramName, false), pass, "User supplied value false should be used for visible optional values of " + type.name() + " parameter" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		true), mapper.createObjectNode().put(paramName, Boolean.FALSE),  mapper.createObjectNode().put(paramName, false), pass, "User supplied value false should be used for visible required values of " + type.name() + " parameter" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		true), mapper.createObjectNode().put(paramKey, Boolean.TRUE),  mapper.createObjectNode().put(paramKey, true), pass, "User supplied value TRUE should be used for visible optional values of " + type.name() + " parameter" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		true), mapper.createObjectNode().put(paramKey, Boolean.TRUE),  mapper.createObjectNode().put(paramKey, true), pass, "User supplied value TRUE should be used for visible required values of " + type.name() + " parameter" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		true), mapper.createObjectNode().put(paramKey, Boolean.FALSE),  mapper.createObjectNode().put(paramKey, false), pass, "User supplied value false should be used for visible optional values of " + type.name() + " parameter" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		true), mapper.createObjectNode().put(paramKey, Boolean.FALSE),  mapper.createObjectNode().put(paramKey, false), pass, "User supplied value false should be used for visible required values of " + type.name() + " parameter" });
 			}
 			else if (type.equals(SoftwareParameterType.enumeration))
 			{
 				ObjectNode expectedDefault = mapper.createObjectNode();
-				expectedDefault.putArray(paramName).add("ALPHA");
+				expectedDefault.putArray(paramKey).add("ALPHA");
 				
 				ObjectNode expectedValid = mapper.createObjectNode();
-				expectedValid.putArray(paramName).add("BETA");
+				expectedValid.putArray(paramKey).add("BETA");
 														//	name			type		default					validator	required	visible
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		false), expectedValid, null										  , fail, "Hidden param should fail if user provides value" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		false), expectedValid, null										  , fail, "Hidden param should fail if user provides value" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		false), null, 														 		 expectedDefault, pass, "Hidden param should use default." });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		false), null, 																 expectedDefault, pass, "Hidden param should use default." });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		false), expectedValid, null										  , fail, "Hidden param should fail if user provides value" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		false), expectedValid, null										  , fail, "Hidden param should fail if user provides value" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		false), null, 														 		 expectedDefault, pass, "Hidden param should use default." });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		false), null, 																 expectedDefault, pass, "Hidden param should use default." });
 				
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		true), null, 																 null, pass, "Visible param not required should not use default when no user data given" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		true), null, 																 expectedDefault, fail, "Required param should fail if not supplied" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		true), expectedValid,  expectedValid, pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		true), expectedValid,  expectedValid, pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		true), null, 																 null, pass, "Visible param not required should not use default when no user data given" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		true), null, 																 expectedDefault, fail, "Required param should fail if not supplied" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		true), expectedValid,  expectedValid, pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		true), expectedValid,  expectedValid, pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
 				
 				// validate all enumerated values will work
-				SoftwareParameter p = createParameter(paramName, type.name(), defaultValues.get(type), null, 		true, 		true);
+				SoftwareParameter p = createParameter(paramKey, type.name(), defaultValues.get(type), null, 		true, 		true);
 				for (String enumValue: p.getEnumeratedValuesAsList()) 
 				{
 					expectedValid = mapper.createObjectNode();
-					expectedValid.putArray(paramName).add(enumValue);
-					testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), null, 		true, 		true), expectedValid, expectedValid, pass, "Valid required enumerated value of " + enumValue + " is within the available values of " + p.getEnumeratedValues().toString() + " and should pass" });
+					expectedValid.putArray(paramKey).add(enumValue);
+					testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), null, 		true, 		true), expectedValid, expectedValid, pass, "Valid required enumerated value of " + enumValue + " is within the available values of " + p.getEnumeratedValues().toString() + " and should pass" });
 				}
 			}
 			else
 			{
 														//	name			type		default					validator	required	visible
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		false), mapper.createObjectNode().put(paramName, validTestValues.get(type).toString()), null										  , fail, "Hidden param should fail if user provides value" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		false), mapper.createObjectNode().put(paramName, validTestValues.get(type).toString()), null										  , fail, "Hidden param should fail if user provides value" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		false), null, 														 		 mapper.createObjectNode().put(paramName, defaultValues.get(type).toString()), pass, "Hidden param should use default." });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		false), null, 																 mapper.createObjectNode().put(paramName, defaultValues.get(type).toString()), pass, "Hidden param should use default." });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		false), mapper.createObjectNode().put(paramKey, validTestValues.get(type).toString()), null										  , fail, "Hidden param should fail if user provides value" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		false), mapper.createObjectNode().put(paramKey, validTestValues.get(type).toString()), null										  , fail, "Hidden param should fail if user provides value" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		false), null, 														 		 mapper.createObjectNode().put(paramKey, defaultValues.get(type).toString()), pass, "Hidden param should use default." });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		false), null, 																 mapper.createObjectNode().put(paramKey, defaultValues.get(type).toString()), pass, "Hidden param should use default." });
 				
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		true), null, 																 null, pass, "Visible param not required should not use default when no user data given" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		true), null, 																 mapper.createObjectNode().put(paramName, defaultValues.get(type).toString()), fail, "Required param should fail if not supplied" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		true), mapper.createObjectNode().put(paramName, validTestValues.get(type).toString()),  mapper.createObjectNode().put(paramName, validTestValues.get(type).toString()), pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
-				testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		true), mapper.createObjectNode().put(paramName, validTestValues.get(type).toString()),  mapper.createObjectNode().put(paramName, validTestValues.get(type).toString()), pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		true), null, 																 null, pass, "Visible param not required should not use default when no user data given" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		true), null, 																 mapper.createObjectNode().put(paramKey, defaultValues.get(type).toString()), fail, "Required param should fail if not supplied" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		true), mapper.createObjectNode().put(paramKey, validTestValues.get(type).toString()),  mapper.createObjectNode().put(paramKey, validTestValues.get(type).toString()), pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
+				testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		true), mapper.createObjectNode().put(paramKey, validTestValues.get(type).toString()),  mapper.createObjectNode().put(paramKey, validTestValues.get(type).toString()), pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
 			}
 			
 			if (!type.equals(SoftwareParameterType.string))
 			{
 				for (Object invalidValue: invalidTestValues.get(type)) {
 					if (!type.equals(SoftwareParameterType.number)) {
-						testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		true, 		true), mapper.createObjectNode().put(paramName, invalidValue.toString()),  null, fail, "Invalid required value " + invalidValue + " should fail for " + type.name() + " parameter" });
-						testData.add(new Object[] { createParameter(paramName, type.name(), defaultValues.get(type), 	null, 		false, 		true), mapper.createObjectNode().put(paramName, invalidValue.toString()),  null, fail, "Invalid optional value " + invalidValue + " should fail for " + type.name() + " parameter" });
+						testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		true, 		true), mapper.createObjectNode().put(paramKey, invalidValue.toString()),  null, fail, "Invalid required value " + invalidValue + " should fail for " + type.name() + " parameter" });
+						testData.add(new Object[] { createParameter(paramKey, type.name(), defaultValues.get(type), 	null, 		false, 		true), mapper.createObjectNode().put(paramKey, invalidValue.toString()),  null, fail, "Invalid optional value " + invalidValue + " should fail for " + type.name() + " parameter" });
 					}
 				}
 			}
@@ -1709,39 +1674,34 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	
 	/**
 	 * Tests job app parameter validation on jobs submitted as json
-	 * 
-	 * @param jobParameters
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param appParameter the app parameter to test
+	 * @param jobParameters the job parameters under test
+	 * @param expectedParameters the job parameters after processing
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processJsonJobParametersProvider", dependsOnMethods={"processJsonJobInputDefaults"})
 	public void processJsonJobParameters(SoftwareParameter appParameter, ObjectNode jobParameters, ObjectNode expectedParameters, boolean shouldThrowException, String message) 
 	{
-		Software testSoftware = null;
+		Software software = null;
 		
 		try {
-			JSONObject swJson = jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE);
-			testSoftware = Software.fromJSON(swJson, TEST_OWNER);
-			testSoftware.setExecutionSystem(privateExecutionSystem);
-			testSoftware.setName("pjjp"+ System.currentTimeMillis());
-			testSoftware.setVersion(software.getVersion());
-			testSoftware.setOwner(TEST_OWNER);
-			
-			
+			software = createSoftware();
+
 			List<SoftwareParameter> params = new ArrayList<SoftwareParameter>();
 			if (appParameter != null) {
 				params.add(appParameter);
 			}
-			testSoftware.setParameters(params);
+			software.setParameters(params);
 			
-			SoftwareDao.persist(testSoftware);
+			SoftwareDao.persist(software);
 			
-			ObjectNode jobJson = createJobJsonNode();
-			jobJson.put("appId", testSoftware.getUniqueName());
+			ObjectNode jobJson = createJobJsonNode(software);
 			if (jobParameters == null) {
 				jobJson.remove("parameters");
 			} else {
-				jobJson.put("parameters", jobParameters);
+				jobJson.set("parameters", jobParameters);
 			}
 			
 			Job job = JobManager.processJob(jobJson, JSONTestDataUtil.TEST_OWNER, null);
@@ -1754,6 +1714,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				{
 					String fieldName = fieldNamesIterator.next();
 					Assert.assertTrue(job.getParametersAsJsonObject().has(fieldName), message);
+					assert appParameter != null;
 					JsonNode foundParameterJson = job.getParametersAsJsonObject().get(appParameter.getKey());
 					String foundParameter;
 					if (foundParameterJson.isArray()) {
@@ -1778,7 +1739,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			}
 			else
 			{
-				Assert.assertTrue(job.getParametersAsJsonObject().size() == 0, message);
+				Assert.assertEquals(job.getParametersAsJsonObject().size(), 0, message);
 			}
 		} catch (JobProcessingException e) {
 			if (!shouldThrowException) {
@@ -1788,20 +1749,16 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			e.printStackTrace();
 			Assert.fail("Failed to process job", e);
 		}
-		finally {
-			try { SoftwareDao.delete(testSoftware); } catch (Throwable t) {}
-			try { clearJobs(); } catch (Throwable t) {}
-		}
 	}
 	
 	@DataProvider
 	private Object[][] processMultipleStringJobParametersProvider() throws Exception
 	{
 		ObjectMapper mapper = new ObjectMapper();
-		
-		SoftwareParameter parameter = software.getParameters().iterator().next();
-		String parameterKey = parameter.getKey();
-		String parameterDefaultValue = parameter.getDefaultValueAsJsonArray().iterator().next().asText();
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+		String parameterKey = parameter.getString("id");
+		String parameterDefaultValue = parameter.getJSONObject("value").getString("default");
 		String parameterDefaultValue2 = parameterDefaultValue + "2";
 		String parameterDefaultValue3 = parameterDefaultValue + "3";
 		String parameterDefaultValue4 = parameterDefaultValue + "4";
@@ -1937,7 +1894,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	}
 	
 	/** 
-	 * Test data for long numeric values
+	 * Test data for long numeric job parameter values
 	 * @return long numeric test cases
 	 * @throws Exception
 	 */
@@ -1945,13 +1902,13 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	private Object[][] processMultipleLongJobParametersProvider() throws Exception
 	{
 		ObjectMapper mapper = new ObjectMapper();
-		
-		SoftwareParameter parameter = software.getParameters().iterator().next();
-		String parameterKey = parameter.getKey();
-		Long parameterDefaultValue = new Long(2);
-		Long parameterDefaultValue2 = new Long(3);
-		Long parameterDefaultValue3 = new Long(4);
-		Long parameterDefaultValue4 = new Long(5);
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+		String parameterKey = parameter.getString("id");
+		Long parameterDefaultValue = 2L;
+		Long parameterDefaultValue2 = 3L;
+		Long parameterDefaultValue3 = 4L;
+		Long parameterDefaultValue4 = 5L;
 		
 		ObjectNode emptyInputObject = mapper.createObjectNode();
 		
@@ -2092,13 +2049,13 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	@DataProvider
 	private Object[][] processMultipleDoubleJobParametersProvider() throws Exception {
 		ObjectMapper mapper = new ObjectMapper();
-		
-		SoftwareParameter parameter = software.getParameters().iterator().next();
-		String parameterKey = parameter.getKey();
-		Double parameterDefaultValue = new Double(1.1);
-		Double parameterDefaultValue2 = new Double(2.2);
-		Double parameterDefaultValue3 = new Double(3.3);
-		Double parameterDefaultValue4 = new Double(4.4);
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+		String parameterKey = parameter.getString("id");
+		Double parameterDefaultValue = 1.1;
+		Double parameterDefaultValue2 = 2.2;
+		Double parameterDefaultValue3 = 3.3;
+		Double parameterDefaultValue4 = 4.4;
 		
 		ObjectNode emptyInputObject = mapper.createObjectNode();
 		
@@ -2239,10 +2196,10 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	private Object[][] processMultipleBooleanJobParametersProvider() throws Exception
 	{
 		ObjectMapper mapper = new ObjectMapper();
-		
-		SoftwareParameter parameter = software.getParameters().iterator().next();
-		String parameterKey = parameter.getKey();
-		
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+		String parameterKey = parameter.getString("id");
+
 		ObjectNode emptyInputObject = mapper.createObjectNode();
 		
 		ObjectNode singleValueObject = mapper.createObjectNode().put(parameterKey, Boolean.TRUE);
@@ -2355,52 +2312,54 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	}
 	
 	/** 
-	 * Private utility class to process multiple job parameters of all type
-	 * @param type
-	 * @param minCardinality
-	 * @param maxCardinality
-	 * @param jobParameters
-	 * @param shouldThrowException
-	 * @param message
+	 * Private utility class to process multiple job parameters of all types
+	 * @param type the parameter type under test
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
-	private void _processMultipleJobParameters(SoftwareParameterType type, int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
+	private void _processMultipleJobParameters(SoftwareParameterType type, int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message)
 	{
-		Software sw = software.clone();
-		sw.setName("processMultipleJobParametersProvider");
+		Software software = createSoftware();
+		software.setName("processMultipleJobParametersProvider");
+
 		SoftwareParameter parameter = null;
-		
-		for (Iterator<SoftwareParameter> iter = sw.getParameters().iterator(); iter.hasNext();) 
-		{
-			SoftwareParameter p = iter.next();
-			parameter = p.clone(sw);
-			
+		for (SoftwareParameter p : software.getParameters()) {
+			parameter = p.clone(software);
+
 			parameter.setValidator(null);
 			parameter.setMaxCardinality(maxCardinality);
 			parameter.setMinCardinality(minCardinality);
 			parameter.setType(type);
-			sw.getParameters().remove(p);
-			sw.addParameter(parameter);
+			software.getParameters().remove(p);
+			software.addParameter(parameter);
 			break;
 		}
+
 		try {
-			SoftwareDao.persist(sw);
-			ObjectNode json = createJobJsonNode();
-			json.put("appId", sw.getUniqueName());
+			SoftwareDao.persist(software);
+			ObjectNode json = createJobJsonNode(software);
+			json.put("appId", software.getUniqueName());
+			assert parameter != null;
 			JsonNode jobParamValue = jobParameters.path(parameter.getKey());
 			((ObjectNode)json.path("parameters")).put(parameter.getKey(), jobParamValue);
-			genericProcessJsonJob(json, shouldThrowException, message);
+			_genericProcessJsonJob(json, shouldThrowException, message);
 		}
 		finally {
-			try { SoftwareDao.delete(sw);} catch (Exception e) {}
+			try { SoftwareDao.delete(software);} catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Tests string job app parameter cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleStringJobParametersProvider", dependsOnMethods={"processJsonJobParameters"})
 	public void processMultipleStringJobParameters(SoftwareParameterType type, int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
@@ -2410,10 +2369,12 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	
 	/**
 	 * Tests integer job app parameter cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleLongJobParametersProvider", dependsOnMethods={"processMultipleStringJobParameters"})
 	public void processMultipleLongJobParameters(SoftwareParameterType type, int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
@@ -2423,10 +2384,12 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	
 	/**
 	 * Tests decimal job app parameter cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleDoubleJobParametersProvider", dependsOnMethods={"processMultipleLongJobParameters"})
 	public void processMultipleDoubleJobParameters(SoftwareParameterType type, int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
@@ -2436,10 +2399,12 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	
 	/**
 	 * Tests boolean job app parameter cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleBooleanJobParametersProvider", dependsOnMethods={"processMultipleDoubleJobParameters"})
 	public void processMultipleBooleanJobParameters(SoftwareParameterType type, int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
@@ -2449,10 +2414,12 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	
 	/**
 	 * Tests flag job app parameter cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleBooleanJobParametersProvider", dependsOnMethods={"processMultipleBooleanJobParameters"})
 	public void processMultipleFlagJobParameters(SoftwareParameterType type, int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
@@ -2469,10 +2436,10 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	private Object[][] processMultipleNullStringJobParametersProvider() throws Exception
 	{
 		ObjectMapper mapper = new ObjectMapper();
-		
-		SoftwareParameter parameter = software.getParameters().iterator().next();
-		String parameterKey = parameter.getKey();
-		String parameterDefaultValue = parameter.getDefaultValueAsJsonArray().iterator().next().asText();
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+		String parameterKey = parameter.getString("id");
+		String parameterDefaultValue = parameter.getJSONObject("value").getString("default");
 		String parameterDefaultValue2 = parameterDefaultValue + "2";
 		
 		ObjectNode singleNullValueObject = mapper.createObjectNode().putNull(parameterKey);
@@ -2480,7 +2447,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		ObjectNode singleNullValueArrayObject = mapper.createObjectNode();
 		singleNullValueArrayObject.putArray(parameterKey).addNull();
 		
-		ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(parameter.getKey(), String.format("%1$s;", parameterDefaultValue, parameterDefaultValue2));
+		ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(parameterKey, String.format("%1$s;", parameterDefaultValue, parameterDefaultValue2));
 		
 		ObjectNode multipleValueArrayWithNullObject = mapper.createObjectNode();
 		multipleValueArrayWithNullObject.putArray(parameterKey).add(parameterDefaultValue).addNull();
@@ -2585,18 +2552,18 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	private Object[][] processMultipleNullLongJobParametersProvider() throws Exception
 	{
 		ObjectMapper mapper = new ObjectMapper();
-		
-		SoftwareParameter parameter = software.getParameters().iterator().next();
-		String parameterKey = parameter.getKey();
-		Long parameterDefaultValue = new Long(2);
-		Long parameterDefaultValue2 = new Long(3);
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+		String parameterKey = parameter.getString("id");
+		Long parameterDefaultValue = 2L;
+		Long parameterDefaultValue2 = 3L;
 		
 		ObjectNode singleNullValueObject = mapper.createObjectNode().putNull(parameterKey);
 		
 		ObjectNode singleNullValueArrayObject = mapper.createObjectNode();
 		singleNullValueArrayObject.putArray(parameterKey).addNull();
 		
-		ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(parameter.getKey(), String.format("%1$s;", parameterDefaultValue, parameterDefaultValue2));
+		ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(parameterKey, String.format("%1$s;", parameterDefaultValue, parameterDefaultValue2));
 		
 		ObjectNode multipleValueArrayWithNullObject = mapper.createObjectNode();
 		multipleValueArrayWithNullObject.putArray(parameterKey).add(parameterDefaultValue).addNull();
@@ -2701,18 +2668,18 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	private Object[][] processMultipleNullDoubleJobParametersProvider() throws Exception
 	{
 		ObjectMapper mapper = new ObjectMapper();
-		
-		SoftwareParameter parameter = software.getParameters().iterator().next();
-		String parameterKey = parameter.getKey();
-		Double parameterDefaultValue = new Double(2.2);
-		Double parameterDefaultValue2 = new Double(3.3);
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+		String parameterKey = parameter.getString("id");
+		Double parameterDefaultValue = 2.2;
+		Double parameterDefaultValue2 = 3.3;
 		
 		ObjectNode singleNullValueObject = mapper.createObjectNode().putNull(parameterKey);
 		
 		ObjectNode singleNullValueArrayObject = mapper.createObjectNode();
 		singleNullValueArrayObject.putArray(parameterKey).addNull();
 		
-		ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(parameter.getKey(), String.format("%1$s;", parameterDefaultValue, parameterDefaultValue2));
+		ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(parameterKey, String.format("%1$s;", parameterDefaultValue, parameterDefaultValue2));
 		
 		ObjectNode multipleValueArrayWithNullObject = mapper.createObjectNode();
 		multipleValueArrayWithNullObject.putArray(parameterKey).add(parameterDefaultValue).addNull();
@@ -2817,16 +2784,16 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	private Object[][] processMultipleNullBooleanJobParametersProvider() throws Exception
 	{
 		ObjectMapper mapper = new ObjectMapper();
-		
-		SoftwareParameter parameter = software.getParameters().iterator().next();
-		String parameterKey = parameter.getKey();
+		JSONObject softwareJson = getDefaultSoftwareJson();
+		JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+		String parameterKey = parameter.getString("id");
 		
 		ObjectNode singleNullValueObject = mapper.createObjectNode().putNull(parameterKey);
 		
 		ObjectNode singleNullValueArrayObject = mapper.createObjectNode();
 		singleNullValueArrayObject.putArray(parameterKey).addNull();
 		
-		ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(parameter.getKey(), String.format("%1$s;", Boolean.TRUE));
+		ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(parameterKey, String.format("%1$s;", Boolean.TRUE));
 		
 		ObjectNode multipleValueArrayWithNullObject = mapper.createObjectNode();
 		multipleValueArrayWithNullObject.putArray(parameterKey).add(Boolean.TRUE).addNull();
@@ -2923,11 +2890,13 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	}
 	
 	/**
-	 * Tests job app parameter cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 * Tests null parameter values on jobs submitted as json
+	 *
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleNullStringJobParametersProvider", dependsOnMethods={"processMultipleFlagJobParameters"})
 	public void processMultipleNullStringJobParameters(int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
@@ -2937,10 +2906,12 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	
 	/**
 	 * Tests integer job app parameter cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleNullLongJobParametersProvider", dependsOnMethods={"processMultipleNullStringJobParameters"})
 	public void processMultipleNullLongJobParameters(int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
@@ -2950,10 +2921,12 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	
 	/**
 	 * Tests decimal job app parameter cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleNullDoubleJobParametersProvider", dependsOnMethods={"processMultipleNullLongJobParameters"})
 	public void processMultipleNullDoubleJobParameters(int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
@@ -2963,23 +2936,27 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	
 	/**
 	 * Tests boolean job app parameter cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleNullBooleanJobParametersProvider", dependsOnMethods={"processMultipleNullDoubleJobParameters"})
 	public void processMultipleNullBooleanJobParameters(int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
 	{
 		_processMultipleJobParameters(SoftwareParameterType.bool, minCardinality, maxCardinality, jobParameters, shouldThrowException, message);
 	}
-	
+
 	/**
 	 * Tests flag job app parameter cardinality on jobs submitted as json
-	 * 
-	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param minCardinality the min parameter cardinality
+	 * @param maxCardinality the max parameter cardinality
+	 * @param jobParameters the parameters to submit to the job processor
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processMultipleNullBooleanJobParametersProvider", dependsOnMethods={"processMultipleNullBooleanJobParameters"})
 	public void processMultipleNullFlagJobParameters(int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) 
@@ -2988,11 +2965,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	}
 
 	/**
-	 * Tests job app parameter validation on jobs submitted as json
-	 * 
-	 * @param jobParameters
-	 * @param shouldThrowException
-	 * @param message
+	 * Tests hidden {@link SoftwareParameter} throws an exception when included in the job request
 	 */
 	//@Test(dependsOnMethods={"processMultipleNullFlagJobParameters"})
 	public void processJsonJobHiddenParametersThrowExceptionWhenProvided() 
@@ -3000,20 +2973,18 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		Software testSoftware = null;
 		
 		try {
-			testSoftware = software.clone();
-			testSoftware.setOwner(JSONTestDataUtil.TEST_OWNER);
+			testSoftware = createSoftware();
 			testSoftware.setName("processJsonJobHiddenParameters");
 			testSoftware.getParameters().clear();
+			SoftwareDao.persist(testSoftware);
 			SoftwareParameter param = createParameter("hiddenparam", SoftwareParameterType.bool.name(), "true", 	null, 		true, 		false);
 			testSoftware.addParameter(param);
-			
 			SoftwareDao.persist(testSoftware);
 			
-			ObjectNode json = createJobJsonNode();
-			json.put("appId", testSoftware.getUniqueName());
-			json.put("parameters", mapper.createObjectNode().put(param.getKey(), true));
+			ObjectNode json = createJobJsonNode(testSoftware);
+			json.set("parameters", mapper.createObjectNode().put(param.getKey(), true));
 			
-			JobManager.processJob(json, JSONTestDataUtil.TEST_OWNER, null);
+			JobManager.processJob(json, testSoftware.getOwner(), null);
 					
 			Assert.fail("User supplied value for a hidden parameter should fail.");
 		}
@@ -3023,24 +2994,24 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			Assert.fail("Unexpected exception parsing job", e);
 		}
 		finally {
-			try { SoftwareDao.delete(testSoftware); } catch (Throwable t) {}
-			try { clearJobs(); } catch (Throwable t) {}
+			try { SoftwareDao.delete(testSoftware); } catch (Throwable ignored) {}
+			try { clearJobs(); } catch (Throwable ignored) {}
 		}
 	}
 	
 	/**
 	 * Test data for job notification test values
-	 * @return
+	 * @return job notification test cases
 	 */
 	@DataProvider
 	public Object[][] processJsonJobWithNotificationsProvider()
 	{
 		ObjectMapper mapper = new ObjectMapper();
 		Object[] validUrls = { "http://example.com", "http://foo@example.com", "http://foo:bar@example.com", "http://example.com/job/${JOB_ID}/${JOB_STATUS}", "http://example.com?foo=${JOB_ID}", "foo@example.com"};
-		Object[] invalidWebhookUrls = { "example.com", "example", "", null, new Long(1), mapper.createArrayNode(), mapper.createObjectNode() };
+		Object[] invalidWebhookUrls = { "example.com", "example", "", null, 1L, mapper.createArrayNode(), mapper.createObjectNode() };
 		Object[] invalidEmailAddresses = { "@example.com", "@example", "foo@example", "foo@", "@.com", "foo@.com" };
 		Object[] validEvents = { JobStatusType.RUNNING.name(), JobStatusType.RUNNING.name().toLowerCase() };
-		Object[] invalidEvents = { "", null, new Long(1),  mapper.createArrayNode(), mapper.createObjectNode() };
+		Object[] invalidEvents = { "", null, 1L,  mapper.createArrayNode(), mapper.createObjectNode() };
 		
 		boolean pass = false;
 		boolean fail = true;
@@ -3132,15 +3103,15 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	/**
 	 * Tests job notifications validation on jobs submitted as json
 	 * 
-	 * @param notificationsJsonArray
-	 * @param shouldThrowException
-	 * @param message
+	 * @param notificationsJsonArray the array of json objects to be added to the job
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processJsonJobWithNotificationsProvider", dependsOnMethods={"processJsonJobHiddenParametersThrowExceptionWhenProvided"})
 	public void processJsonJobWithNotifications(ArrayNode notificationsJsonArray, boolean shouldThrowException, String message) 
 	{
-		
-		ObjectNode json = createJobJsonNode();
+		Software software = createSoftware();
+		ObjectNode json = createJobJsonNode(software);
 		json.putArray("notifications").addAll(notificationsJsonArray);
 		Job job = null;
 		try {
@@ -3157,8 +3128,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			}
 			
 			try {
-				if (job != null && notificationsJsonArray != null) 
-				{
+				if (job != null) {
 					List<Notification> notifications = new NotificationDao().getActiveUserNotificationsForUuid(job.getOwner(), job.getUuid());
 					Assert.assertEquals(notifications.size(), notificationsJsonArray.size(), "Unexpected notification count. Found " + notifications.size() + " expected " + notificationsJsonArray.size());
 					
@@ -3190,7 +3160,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			}
 		}
 		finally {
-			try { clearJobs(); } catch (Throwable e) {}
+			try { clearJobs(); } catch (Throwable ignored) {}
 		}
 		
 	}
@@ -3200,17 +3170,14 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	 * 
 	 * @param field
 	 * @param value
-	 * @param internalUsername
-	 * @param shouldThrowException
-	 * @param message
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	@Test(dataProvider = "processJsonJobProvider")//, dependsOnMethods={"processJsonJobWithNotifications"})
 	public void processFormJob(String field, Object value, boolean shouldThrowException, String message) 
 	{
-	    Map<String, Object> jobRequestMap = createJobRequestMap();
-		
-	    jobRequestMap = updateJobRequestMap(jobRequestMap, field, value);
-		
+		Software software = createSoftware();
+		Map<String, Object> jobRequestMap = updateJobRequestMap(createJobRequestMap(software), field, value);
 		genericProcessFormJob(jobRequestMap, shouldThrowException, message);
 	}
 	
@@ -3219,7 +3186,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	{
 		ObjectMapper mapper = new ObjectMapper();
 		Object[] validUrls = { "http://example.com", "http://foo@example.com", "http://foo:bar@example.com", "http://example.com/job/${JOB_ID}/${JOB_STATUS}", "http://example.com?foo=${JOB_ID}"};
-		Object[] invalidWebhookUrls = { "example.com", "example", new Long(1), mapper.createArrayNode(), mapper.createObjectNode() };
+		Object[] invalidWebhookUrls = { "example.com", "example", 1L, mapper.createArrayNode(), mapper.createObjectNode() };
 		Object[] validEmailAddresses = { "foo@example.com", "foo+bar@example.com", "foo.bar@example.com" };
 		Object[] invalidEmailAddresses = { "@example.com", "@example", "foo@example", "foo@", "@.com", "foo@.com" };
 		Object[] emptyUrls = { "", null };
@@ -3248,15 +3215,16 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	/** 
 	 * Tests job notifications validation on jobs submitted as form
 	 * 
-	 * @param notificationsJsonArray
-	 * @param shouldThrowException
-	 * @param message
+	 * @param webhookUrlOrEmail the target of the notification
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processFormJobWithNotificationsProvider", dependsOnMethods={"processFormJob"})
 	public void processFormJobWithNotifications(Object webhookUrlOrEmail, boolean shouldThrowException, String message) 
 	{
-	    Map<String, Object> jobRequestMap = createJobRequestMap();
-		jobRequestMap = updateJobRequestMap(jobRequestMap, "notifications", webhookUrlOrEmail);
+		Software software = createSoftware();
+		Map<String, Object> jobRequestMap = updateJobRequestMap(createJobRequestMap(software), "notifications", webhookUrlOrEmail);
+
 		Job job = null;
 		try {
 			try 
@@ -3298,26 +3266,22 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			}
 		}
 		finally {
-			try { clearJobs(); } catch (Throwable e) {}
+			try { clearJobs(); } catch (Throwable ignored) {}
 		}
 	}
 	
 	/** 
 	 * Tests empty job notifications validation on jobs submitted as form
-	 * 
-	 * @param notificationsJsonArray
-	 * @param shouldThrowException
-	 * @param message
 	 */
 	//@Test(dependsOnMethods={"processFormJobWithNotifications"})
 	public void processFormJobWithEmptyNotifications() 
 	{
 		Job job = null;
-		
+		Software software = createSoftware();
+
 		for (String callbackUrl: new String[]{"", null}) 
 		{
-		    Map<String, Object> jobRequestMap = createJobRequestMap();
-		    jobRequestMap = updateJobRequestMap(jobRequestMap, "notifications", callbackUrl);
+			Map<String, Object> jobRequestMap = updateJobRequestMap(createJobRequestMap(software), "notifications", callbackUrl);
 			
 			try 
 			{
@@ -3331,7 +3295,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				Assert.fail("Unexpected failed to process job", e);
 			}
 			finally {
-				try { clearJobs(); } catch (Throwable e) {}
+				try { clearJobs(); } catch (Throwable ignored) {}
 			}
 		}	
 	}
@@ -3339,15 +3303,15 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	/** 
 	 * Tests job notifications validation on jobs submitted as form
 	 * 
-	 * @param notificationsJsonArray
-	 * @param shouldThrowException
-	 * @param message
+	 * @param webhookUrlOrEmail the target of the notification
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processFormJobWithNotificationsProvider", dependsOnMethods={"processFormJobWithEmptyNotifications"})
 	public void processFormJobCallbackUrlTest(Object webhookUrlOrEmail, boolean shouldThrowException, String message) 
 	{
-	    Map<String, Object> jobRequestMap = createJobRequestMap();
-	    jobRequestMap = updateJobRequestMap(jobRequestMap, "notifications", webhookUrlOrEmail);
+		Software software = createSoftware();
+	    Map<String, Object> jobRequestMap = updateJobRequestMap(createJobRequestMap(software), "notifications", webhookUrlOrEmail);
 		genericProcessFormJob(jobRequestMap, fail, "Use of callbackUrl in a job description should fail.");
 	}
 	
@@ -3362,7 +3326,6 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				{ "http://foo:bar@example.com", "HTTP with basic auth uri schema should pass" },
 				{ "https://foo:bar@example.com", "HTTP with basic auth uri schema should pass" },
 				{ "sftp://testuser:testuser@docker.example.com:10022", "SFTP with basic auth and port should pass" },
-				{ "agave://" + privateExecutionSystem.getSystemId() + "/", "agave uri schema should pass" },
 				{ "http://example.com;http://example.com", "Semicolon separated lists of inputs are allowed" },
 				{ "http://example.com;;http://example.com", "Double semicolons should be ignored and treated as a single semicolon" },
 				
@@ -3371,7 +3334,6 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 				{ "HTTP://foo:bar@example.com", "HTTP with basic auth uri schema is case insensitive and should pass" },
 				{ "HTTPS://foo:bar@example.com", "HTTP with basic auth uri schema is case insensitive and should pass" },
 				{ "SFTP://testuser:testuser@docker.example.com:10022/", "SFTP with basic auth and port should pass" },
-				{ "AGAVE://" + privateExecutionSystem.getSystemId() + "/", "agave uri schema is case insensitive and should pass" },
 		};
 		
 		Object[][] invalidTestValues = { 		
@@ -3451,31 +3413,29 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 	 * Tests job app input validation on jobs submitted as form
 	 * 
 	 * @param jobInputs
-	 * @param shouldThrowException
-	 * @param message
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processFormJobInputsProvider", dependsOnMethods={"processFormJobCallbackUrlTest"})
 	public void processFormJobInputs(SoftwareInput softwareInput, ObjectNode jobInputs, ObjectNode expectedInputs, boolean shouldThrowException, String message) 
 	{
-	    Software testSoftware = null;
+	    Software software = null;
 		try {
-		    testSoftware = software.clone();
-		    testSoftware.setName("test-" + testSoftware.getName());
-		    testSoftware.setOwner(JSONTestDataUtil.TEST_OWNER);
-		    testSoftware.setInputs(new ArrayList<SoftwareInput>());
+		    software = createSoftware();
+		    software.setInputs(new ArrayList<SoftwareInput>());
 			
 		    if (softwareInput != null) {
-			    testSoftware.addInput(softwareInput);
+			    software.addInput(softwareInput);
 			}
 			
-			SoftwareDao.persist(testSoftware);
+			SoftwareDao.persist(software);
 			
-			Map<String, Object> jobRequestMap = createJobRequestMap();
+			Map<String, Object> jobRequestMap = createJobRequestMap(software);
 	        
-			for (SoftwareInput input: software.getInputs()) {
-			    jobRequestMap.remove(input.getKey());
-			}
-			jobRequestMap = updateJobRequestMap(jobRequestMap, "appId", testSoftware.getUniqueName());
+//			for (SoftwareInput input: software.getInputs()) {
+//			    jobRequestMap.remove(input.getKey());
+//			}
+			jobRequestMap = updateJobRequestMap(jobRequestMap, "appId", software.getUniqueName());
 			
 			if (jobInputs != null) {
 				for (Iterator<String> inputKeys = jobInputs.fieldNames(); inputKeys.hasNext();){
@@ -3483,7 +3443,6 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 					jobRequestMap = updateJobRequestMap(jobRequestMap, key, jobInputs.get(key).textValue());
 				}
 			}
-			
 			
 			Job job = JobManager.processJob(jobRequestMap, JSONTestDataUtil.TEST_OWNER, null);
 			
@@ -3503,7 +3462,7 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			}
 			else
 			{
-				Assert.assertTrue(job.getInputsAsJsonObject().size() == 0, message);
+				Assert.assertEquals(job.getInputsAsJsonObject().size(), 0, message);
 			}
 		} catch (JobProcessingException e) {
 			if (!shouldThrowException) {
@@ -3513,18 +3472,84 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			e.printStackTrace();
 			Assert.fail("Failed to process job", e);
 		}
-		finally {
-			try { SoftwareDao.delete(testSoftware); } catch (Throwable t) {}
-			try { clearJobs(); } catch (Throwable t) {}
+	}
+
+	@DataProvider
+	public Object[][] processFormJobInputsAcceptsCaseInsensitiveAgaveURLProvider() {
+		return new Object[][]{
+				{"agave", "Lower case Agave uri schema should pass"},
+				{"AGAVE", "Upper case Agave uri schema should pass"},
+				{"AGaVe", "Mixed case Agave uri schema should pass"}
+		};
+	}
+
+	/**
+	 * Tests job app input validation on jobs submitted as form
+	 *
+	 * @param jobInputs
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
+	 */
+	//@Test(dataProvider = "processFormJobInputsAcceptsCaseInsensitiveAgaveURLProvider", dependsOnMethods={"processFormJobInputs"})
+	public void processFormJobInputsAcceptsCaseInsensitiveAgaveURL(SoftwareInput softwareInput, ObjectNode jobInputs, ObjectNode expectedInputs, boolean shouldThrowException, String message)
+	{
+		Software software = null;
+		try {
+			software = createSoftware();
+			software.setInputs(new ArrayList<SoftwareInput>());
+
+			if (softwareInput != null) {
+				software.addInput(softwareInput);
+			}
+
+			SoftwareDao.persist(software);
+
+			Map<String, Object> jobRequestMap = createJobRequestMap(software);
+
+//			for (SoftwareInput input: software.getInputs()) {
+//			    jobRequestMap.remove(input.getKey());
+//			}
+			jobRequestMap = updateJobRequestMap(jobRequestMap, "appId", software.getUniqueName());
+
+			if (jobInputs != null) {
+				for (Iterator<String> inputKeys = jobInputs.fieldNames(); inputKeys.hasNext();){
+					String key = inputKeys.next();
+					jobRequestMap = updateJobRequestMap(jobRequestMap, key, jobInputs.get(key).textValue());
+				}
+			}
+
+			Job job = JobManager.processJob(jobRequestMap, JSONTestDataUtil.TEST_OWNER, null);
+
+			Assert.assertNotNull(job.getId(), "Job was not saved after processing.");
+
+			if (expectedInputs != null) {
+				for (Iterator<String> fieldNamesIterator = expectedInputs.fieldNames(); fieldNamesIterator.hasNext();)
+				{
+					String fieldName = fieldNamesIterator.next();
+					Assert.assertTrue(job.getInputsAsJsonObject().has(fieldName), message);
+					String foundValue = job.getInputsAsJsonObject().get(fieldName).asText();
+					String expectedValue = expectedInputs.get(fieldName).textValue();
+					Assert.assertEquals(foundValue, expectedValue,
+							"Unexpected value for field " + fieldName + " found. Expected " + expectedValue +
+									" found " + foundValue);
+				}
+			}
+			else
+			{
+				Assert.assertEquals(job.getInputsAsJsonObject().size(), 0, message);
+			}
+		} catch (Exception e) {
+			Assert.fail("Failed to process job", e);
 		}
 	}
-	
+
 	/**
 	 * Tests job app parameter validation on jobs submitted as form
-	 * 
-	 * @param jobParameters
-	 * @param shouldThrowException
-	 * @param message
+	 * @param appParameter the software parameter under test
+	 * @param jobParameters the parameter to assign to the job
+	 * @param expectedParameters the expected parameter to be present in the processed job
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processJsonJobParametersProvider", dependsOnMethods={"processFormJobInputs"})
 	public void processFormJobParameters(SoftwareParameter appParameter, ObjectNode jobParameters, ObjectNode expectedParameters, boolean shouldThrowException, String message) 
@@ -3532,22 +3557,18 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		Software testSoftware = null;
 		
 		try {
-			testSoftware = software.clone();
-			testSoftware.setOwner(JSONTestDataUtil.TEST_OWNER);
-			testSoftware.setName("processJsonJobInputDefaults");
+			testSoftware = createSoftware();
 			testSoftware.getParameters().clear();
 			SoftwareDao.persist(testSoftware);
 			if (appParameter != null) {
 				testSoftware.addParameter(appParameter);
 			}
-			
-			SoftwareDao.merge(testSoftware);
-			
-			Map<String, Object> jobRequestMap = createJobRequestMap();
-			jobRequestMap = updateJobRequestMap(jobRequestMap, "appId", testSoftware.getUniqueName());
-			for (SoftwareParameter parameter: software.getParameters()) {
-			    jobRequestMap.remove(parameter.getKey());
-			}
+			SoftwareDao.persist(testSoftware);
+
+			Map<String, Object> jobRequestMap = createJobRequestMap(testSoftware);
+//			for (SoftwareParameter parameter: software.getParameters()) {
+//			    jobRequestMap.remove(parameter.getKey());
+//			}
 			
 			if (jobParameters != null) {
 				for (Iterator<String> inputKeys = jobParameters.fieldNames(); inputKeys.hasNext();){
@@ -3562,10 +3583,10 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			
 			if (expectedParameters != null) {
 				Iterator<String> fieldNamesIterator = expectedParameters.fieldNames();
-				while (fieldNamesIterator.hasNext())
-				{
+				while (fieldNamesIterator.hasNext()) {
 					String fieldName = fieldNamesIterator.next();
 					Assert.assertTrue(job.getParametersAsJsonObject().has(fieldName), message);
+					assert appParameter != null;
 					String foundParameter = job.getParametersAsJsonObject().get(appParameter.getKey()).asText();
 					String expectedParameter = expectedParameters.get(fieldName).asText();
 					if (appParameter.getType().equals(SoftwareParameterType.number)) {
@@ -3576,10 +3597,8 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 							"Unexpected value for field " + fieldName + " found. Expected " + expectedParameter + 
 							" found " + foundParameter);
 				}
-			}
-			else
-			{
-				Assert.assertTrue(job.getParametersAsJsonObject().size() == 0, message);
+			} else {
+				Assert.assertEquals(job.getParametersAsJsonObject().size(), 0, message);
 			}
 		} catch (JobProcessingException e) {
 			if (!shouldThrowException) {
@@ -3589,8 +3608,8 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 			Assert.fail("Failed to process job", e);
 		}
 		finally {
-			try { SoftwareDao.delete(testSoftware); } catch (Throwable t) {}
-			try { clearJobs(); } catch (Throwable t) {}
+			try { SoftwareDao.delete(testSoftware); } catch (Throwable ignored) {}
+			try { clearJobs(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -3679,14 +3698,25 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		
 		return testData.toArray(new Object[][]{});
 	}
-					
+
 	/**
 	 * Tests job batch queue parameter validation on jobs submitted as json. This should provide coverage over
 	 * all possible permutations of user parameters, app defaults, and batch queue limits.
-	 * 
-	 * @param batchQueueParameters
-	 * @param shouldThrowException
-	 * @param message
+	 *
+	 * @param batchQueues the array of batch queues to process
+	 * @param jobQueue the queue to which the job will be submitted
+	 * @param jobNodes the number of nodes to request
+	 * @param jobMemory the amount of memory to request
+	 * @param jobRequestedTime the time to request
+	 * @param jobProcessors the number of processors to request
+	 * @param appQueue the default queue to assign to the app
+	 * @param appNodes the default number of nodes to assign to the app
+	 * @param appMemory the default amount of memory to assign to the app
+	 * @param appRequestedTime  the default amount of time to assign to the app
+	 * @param appProcessors the default number of processors to assign to the app
+	 * @param expectedJobQueueName the name of the queue expected to be selected by the job
+	 * @param shouldThrowException true if processing should throw an exception
+	 * @param message the message to assert for a failed test
 	 */
 	//@Test(dataProvider = "processJsonJobBatchQueueParametersProvider", dependsOnMethods={"processFormJobInputs"})
 	public void processJsonJobBatchQueueParameters(BatchQueue[] batchQueues, 
@@ -3699,49 +3729,27 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		SystemDao systemDao = new SystemDao();
 		try 
 		{
-			testSystem = (ExecutionSystem)systemDao.findBySystemId("BatchQueueTest");
-			if (testSystem == null )
-			{
-				JSONObject systemJson = jtd.getTestDataObject(TEST_EXECUTION_SYSTEM_FILE);
-				systemJson.remove("id");
-				systemJson.remove("type");
-				systemJson.put("id", "BatchQueueTest");
-				systemJson.put("type", RemoteSystemType.EXECUTION.name());
-				
-				testSystem = ExecutionSystem.fromJSON(systemJson);
-				testSystem.getUsersUsingAsDefault().add(TEST_OWNER);
-				testSystem.setType(RemoteSystemType.EXECUTION);
-				testSystem.setOwner(JSONTestDataUtil.TEST_OWNER);
-			}
-			
-			testSystem.getBatchQueues().clear();
-			systemDao.persist(testSystem);
-			for (BatchQueue testQueue: batchQueues) {
-				testSystem.addBatchQueue(testQueue);
-			}
-			systemDao.merge(testSystem);
-			Assert.assertNotNull(testSystem.getId(), "Execution system was not saved.");
-			
-			testSoftware = Software.fromJSON(jtd.getTestDataObject(TEST_SOFTWARE_SYSTEM_FILE), TEST_OWNER);
-			testSoftware.setExecutionSystem(testSystem);
-			testSoftware.setOwner(TEST_OWNER);
-			testSoftware.setVersion(software.getVersion());
-			testSoftware.setOwner(JSONTestDataUtil.TEST_OWNER);
-			testSoftware.setName("processJsonJobInputDefaults");
+			testSoftware = createSoftware();
 			testSoftware.setDefaultQueue(appQueue);
 			testSoftware.setDefaultNodes(appNodes);
 			testSoftware.setDefaultMemoryPerNode(appMemory);
 			testSoftware.setDefaultProcessorsPerNode(appProcessors);
 			testSoftware.setDefaultMaxRunTime(appRequestedTime);
-			testSoftware.setExecutionSystem(testSystem);
 			SoftwareDao.persist(testSoftware);
-			Assert.assertNotNull(testSoftware.getId(), "Software was not saved.");
-			
-			
+
+			testSystem = testSoftware.getExecutionSystem();
+			testSystem.getUsersUsingAsDefault().add(testSystem.getOwner());
+			testSystem.getBatchQueues().clear();
+			systemDao.persist(testSystem);
+			for (BatchQueue testQueue: batchQueues) {
+				testSystem.addBatchQueue(testQueue);
+			}
+			systemDao.persist(testSystem);
+
 			// set up queue(s) on executionsystem
 			// set up app defaults and map to the execution system
 			// create job for the app with test fields
-			ObjectNode json = createJobJsonNode();
+			ObjectNode json = createJobJsonNode(testSoftware);
 			json = updateObjectNode(json, "appId", testSoftware.getUniqueName());
 			if (!StringUtils.isEmpty(jobQueue))
 				json = updateObjectNode(json, "batchQueue", jobQueue);
@@ -3771,11 +3779,6 @@ public class JobMangerRequestProcessingTest extends AbstractDaoTest
 		catch (Exception e) 
 		{
 			Assert.fail("Failed to process job", e);
-		}
-		finally {
-			try { clearJobs(); } catch (Throwable t) {}
-			try { SoftwareDao.delete(testSoftware); } catch (Throwable t) {}
-			try { systemDao.remove(testSystem); } catch (Throwable t) {}
 		}
 	}
 	

@@ -27,7 +27,7 @@
     }
   ],
   "login": {
-    "host": "lsf",
+    "host": "openlava",
     "port": 10177,
     "protocol": "SSH",
     "auth": {
@@ -37,7 +37,7 @@
     }
   },
   "storage": {
-    "host": "lsf",
+    "host": "openlava",
     "port": 10177,
     "protocol": "SFTP",
     "rootDir": "/",

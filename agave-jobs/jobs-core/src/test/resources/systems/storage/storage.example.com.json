@@ -1,5 +1,5 @@
 {
-   "id": "sftp.example.com",
+   "id": "storage.example.com",
    "name": "SFTP Example",
    "status": "UP",
    "type": "STORAGE",

@@ -37,25 +37,25 @@ public class PostItNotificationEvent extends AbstractEventFilter {
 	{
 		String body = null;
 		if (StringUtils.equalsIgnoreCase(event, "created")) {
-			body = "PostIt ${NONCE} was created.\n\n" + 
-					"Token: ${NONCE}\n" +
-					"Created: ${CREATED}\n" +
-					"Renewed: ${RENEWED}\n" + 
-					"Expires: ${EXPIRES}\n" +
-					"Target URL: ${TARGET_URL}\n" +
-					"Target method: ${TARGET_METHOD}\n" +
-					"PostIt URL: ${POSTIT}\n" +
-					"Remaining uses: ${REMAINING_USES}\n";
-		} else if (StringUtils.equalsIgnoreCase(event, "deleted")) {
-			body = "PostIt ${NONCE} was deleted";
-		} else if (StringUtils.equalsIgnoreCase(event, "expired")) {
-			body = "PostIt ${NONCE} expired";
-		} else if (StringUtils.equalsIgnoreCase(event, "redeemed")) {
-			body = "PostIt ${NONCE} was redeemed";
-		} else {
-			body = "PostIt ${NONCE} recieved a(n) ${EVENT} event";
-		}
-		
+		body = "PostIt ${NONCE} was created.\n\n" +
+				"Token: ${NONCE}\n" +
+				"Created: ${CREATED}\n" +
+				"Renewed: ${RENEWED}\n" +
+				"Expires: ${EXPIRES}\n" +
+				"Target URL: ${TARGET_URL}\n" +
+				"Target method: ${TARGET_METHOD}\n" +
+				"PostIt URL: ${POSTIT}\n" +
+				"Remaining uses: ${REMAINING_USES}\n";
+	} else if (StringUtils.equalsIgnoreCase(event, "deleted")) {
+		body = "PostIt ${NONCE} was deleted";
+	} else if (StringUtils.equalsIgnoreCase(event, "expired")) {
+		body = "PostIt ${NONCE} expired";
+	} else if (StringUtils.equalsIgnoreCase(event, "redeemed")) {
+		body = "PostIt ${NONCE} was redeemed";
+	} else {
+		body = "PostIt ${NONCE} recieved a(n) ${EVENT} event";
+	}
+
 		return resolveMacros(body, false);
 	}
 	

@@ -17,7 +17,7 @@
         }
     ],
 	"login": {
-		"host": "condorhq",
+		"host": "htcondor",
 		"port": 10155,
 		"protocol": "SSH",
 		"auth":{
@@ -27,7 +27,7 @@
       }
 	},
 	"storage":{
-      "host":"condorhq",
+      "host":"htcondor",
       "port":10155,
       "protocol":"SFTP",
       "rootDir":"/",

@@ -7,11 +7,11 @@
     <parent>
         <groupId>org.agaveplatform</groupId>
         <artifactId>science-apis</artifactId>
-        <version>2.2.24</version>
+        <version>2.2.27</version>
     </parent>
 
     <artifactId>protos</artifactId>
-    <version>2.2.24</version>
+    <version>2.2.27</version>
     <name>Agave Platform Protobuffer Parent POM</name>
     <description>Proto file generation for all Agave grpc services</description>
     <packaging>pom</packaging>

@@ -15,12 +15,16 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-
+/**
+ * Provides a Data Access Object implementation backed by the CyVerse Trellis API. This is not useful outside of the
+ * Cyverse project.
+ */
 public class TrellisProfileDAO extends AbstractProfileDAO {
 
 	public TrellisProfileDAO() {}
 	
 	private static final String URL_ENCODING_FORMAT = "utf-8";
+
 	@Override
 	public Profile getByUsername(String username)
 	throws RemoteDataException 
@@ -77,7 +81,13 @@ public class TrellisProfileDAO extends AbstractProfileDAO {
 		}
 		return fetchResults(Settings.QUERY_URL + "username/" + username);
 	}
-	
+
+	/**
+	 * Makes API call to CyVerse Trellis API for profile info.
+	 * @param trellisUrl the fully qualified url to the Trellis API
+	 * @return a list of Profile objects mappeed from the query response of the Trellis API
+	 * @throws RemoteDataException if Trellis is unavailable.
+	 */
 	private List<Profile> fetchResults(String trellisUrl) throws RemoteDataException 
 	{
 		List<Profile> profiles = new ArrayList<Profile>();

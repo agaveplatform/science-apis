@@ -16,14 +16,22 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 import javax.persistence.Transient;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.notification.Settings;
+import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.joda.time.DateTime;
 
 /**
  * A scheduled attempt to send a {@link Notification} message to a webhook 
@@ -169,7 +177,7 @@ public class NotificationAttempt {
 	}
 
 	/**
-	 * @param fireTime the fireTime to set
+	 * @param startTime the fireTime to set
 	 */
 	public void setStartTime(Date startTime) {
 		this.startTime = startTime;
@@ -366,5 +374,61 @@ public class NotificationAttempt {
 	@JsonIgnore
 	public boolean isSuccess() {
 		return getResponse().getCode() >= 200 && getResponse().getCode() < 300;
+	}
+
+	public JsonNode toJson() throws NotificationException {
+		ObjectMapper mapper = new ObjectMapper();
+		try {
+			ObjectNode json = mapper.createObjectNode()
+					.put("id", this.getUuid())
+					.put("url", this.getCallbackUrl())
+					.put("event", this.getEventName())
+					.put("associatedUuid", this.getAssociatedUuid())
+					.put("notificationId", this.getNotificationId())
+					.put("startTime", this.getStartTime() == null ? null : new DateTime(this.getStartTime()).toString())
+					.put("endTime", this.getEndTime() == null ? null : new DateTime(this.getEndTime()).toString());
+			json.set("response", mapper.valueToTree(this.getResponse()));
+
+
+			ObjectNode links = json.putObject("_links");
+			links.putObject("self")
+					.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + this.getNotificationId() + "/attempts/" + this.getUuid());
+			links.putObject("notification")
+					.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + this.getNotificationId());
+			links.putObject("profile")
+					.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + this.getOwner());
+
+			// don't resolve wildcard associatedUuid
+			if (!StringUtils.contains("*", getAssociatedUuid())
+					&& !StringUtils.isEmpty(getAssociatedUuid())) {
+				AgaveUUID agaveUUID = null;
+				try {
+					agaveUUID = new AgaveUUID(getAssociatedUuid());
+					links.putObject(agaveUUID.getResourceType().name().toLowerCase())
+							.put("href", TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference()));
+				} catch (UUIDException e) {
+					if (agaveUUID != null) {
+						links.putObject(agaveUUID.getResourceType().name().toLowerCase())
+								.putNull("href")
+								.put("rel", getAssociatedUuid());
+					} else {
+						throw e;
+					}
+				}
+			}
+
+			return json;
+		} catch (UUIDException e) {
+			throw new NotificationException("Invalid associatedUuid, " + this.getAssociatedUuid() +
+					", found for attempt " + this.getUuid(), e);
+		} catch (Exception e) {
+			throw new NotificationException("Error producing JSON output for notification attempt " + this.getUuid(), e);
+		}
+	}
+
+	public String toJSON() throws NotificationException {
+		return toJson().toString();
+
+
 	}
 }

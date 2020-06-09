@@ -83,20 +83,20 @@ public interface EventFilter {
 	/**
 	 * Creates an appropriate email subject for the given event. Notification event macros
 	 * are resolved properly prior to returning.
-	 * @return
+	 * @return filtered email subject
 	 */
 	public abstract String getEmailSubject();
 	
 	/**
 	 * Creates an appropriate email plain text body for the given event. Notification event macros
 	 * are resolved properly prior to returning.
-	 * @return
+	 * @return filtered email body
 	 */
 	public abstract String getEmailBody();
 
 	
 	/**
-	 * Handles default conversion of {@link NotificationEvent#getEmailBody()} into HTML 
+	 * Handles default conversion of {@link #getEmailBody()} into HTML
 	 * for templates who have not implemented the method by wrapping in a 
 	 * <pre>&lt;div&gt;&lt;pre&gt;&lt;/pre&gt;%lt;/div&gt;</pre> 
 	 * @return

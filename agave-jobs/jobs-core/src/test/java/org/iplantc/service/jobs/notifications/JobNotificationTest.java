@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.common.Settings;
@@ -79,19 +80,13 @@ public class JobNotificationTest extends AbstractDaoTest
 	@BeforeClass
 	public void beforeClass() throws Exception {
 		super.beforeClass();
-		stageRemoteSoftwareAssets();
-        SoftwareDao.persist(software);
-        drainQueue();
-		
+
 		startTestNotificationScheduler();
 	}
 
 	@AfterClass
 	public void afterClass() throws Exception {
-		clearJobs();
-		clearSoftware();
-		clearSystems();
-		drainQueue();
+		super.afterClass();
 		sched.clear();
 		sched.shutdown();
 	}
@@ -226,79 +221,80 @@ public class JobNotificationTest extends AbstractDaoTest
 		}
 	}
 	
-	/**
-	 * Counts number of messages in the queue.
-	 * 
-	 * @param queueName
-	 * @return int totoal message count
-	 */
-	public int getMessageCount(String queueName) throws MessagingException
-	{
-		ClientImpl client = null;
-		
-		try {
-			// drain the message queue
-			client = new ClientImpl(Settings.MESSAGING_SERVICE_HOST,
-					Settings.MESSAGING_SERVICE_PORT);
-			client.watch(queueName);
-			client.useTube(queueName);
-			Map<String,String> stats = client.statsTube(queueName);
-			String totalJobs = stats.get("current-jobs-ready");
-			if (NumberUtils.isNumber(totalJobs)) {
-				return NumberUtils.toInt(totalJobs);
-			} else {
-				throw new MessagingException("Failed to find total job count for queue " + queueName);
-			}
-		} catch (MessagingException e) {
-			throw e;
-		} catch (Throwable e) {
-			throw new MessagingException("Failed to read jobs from queue " + queueName, e);
-		}
-		finally {
-			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable e) {}
-			try { client.close(); } catch (Throwable e) {}
-			client = null;
-		}
-	}
-	
-	/**
-	 * Creates a bare bones Job object.
-	 * @return Job with minimal set of attributes.
-	 * @throws JobProcessingException
-	 */
-	private Job createJob() throws JobProcessingException
-	{
-		ObjectMapper mapper = new ObjectMapper();
-		ObjectNode json = mapper.createObjectNode();
-		
-		try 
-		{
-			json.put("name", "processJsonJobWithNotifications");
-			json.put("appId", software.getUniqueName());
-			ObjectNode jsonInput = mapper.createObjectNode();
-			for (SoftwareInput input: software.getInputs()) {
-				jsonInput.put(input.getKey(), input.getDefaultValueAsJsonArray());
-			}
-			json.put("inputs", jsonInput);
-			
-			ObjectNode jsonParameter = mapper.createObjectNode();
-			for (SoftwareParameter parameter: software.getParameters()) {
-				jsonParameter.put(parameter.getKey(), parameter.getDefaultValueAsJsonArray());
-			}
-			json.put("parameters", jsonParameter);
-		} catch (Exception e) {
-			Assert.fail("Failed to read in software description to create json job object", e);
-		}
-		
-		return JobManager.processJob(json, software.getOwner(), null);
-	}
+//	/**
+//	 * Counts number of messages in the queue.
+//	 *
+//	 * @param queueName
+//	 * @return int totoal message count
+//	 */
+//	public int getMessageCount(String queueName) throws MessagingException
+//	{
+//		ClientImpl client = null;
+//
+//		try {
+//			// drain the message queue
+//			client = new ClientImpl(Settings.MESSAGING_SERVICE_HOST,
+//					Settings.MESSAGING_SERVICE_PORT);
+//			client.watch(queueName);
+//			client.useTube(queueName);
+//			Map<String,String> stats = client.statsTube(queueName);
+//			String totalJobs = stats.get("current-jobs-ready");
+//			if (NumberUtils.isNumber(totalJobs)) {
+//				return NumberUtils.toInt(totalJobs);
+//			} else {
+//				throw new MessagingException("Failed to find total job count for queue " + queueName);
+//			}
+//		} catch (MessagingException e) {
+//			throw e;
+//		} catch (Throwable e) {
+//			throw new MessagingException("Failed to read jobs from queue " + queueName, e);
+//		}
+//		finally {
+//			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable e) {}
+//			try { client.close(); } catch (Throwable e) {}
+//			client = null;
+//		}
+//	}
+//
+//	/**
+//	 * Creates a bare bones Job object.
+//	 * @return Job with minimal set of attributes.
+//	 * @throws JobProcessingException
+//	 */
+//	private Job createJob() throws JobProcessingException
+//	{
+//		ObjectMapper mapper = new ObjectMapper();
+//		ObjectNode json = mapper.createObjectNode();
+//		Software software = getSoftware();
+//		try
+//		{
+//			json.put("name", "processJsonJobWithNotifications");
+//			json.put("appId", software.getUniqueName());
+//			ObjectNode jsonInput = mapper.createObjectNode();
+//			for (SoftwareInput input: software.getInputs()) {
+//				jsonInput.put(input.getKey(), input.getDefaultValueAsJsonArray());
+//			}
+//			json.put("inputs", jsonInput);
+//
+//			ObjectNode jsonParameter = mapper.createObjectNode();
+//			for (SoftwareParameter parameter: software.getParameters()) {
+//				jsonParameter.put(parameter.getKey(), parameter.getDefaultValueAsJsonArray());
+//			}
+//			json.put("parameters", jsonParameter);
+//		} catch (Exception e) {
+//			Assert.fail("Failed to read in software description to create json job object", e);
+//		}
+//
+//		return JobManager.processJob(json, software.getOwner(), null);
+//	}
 
 	@Test
 	public void testJobSetStatusNotificationProcessed() throws Exception
 	{
-		Job job = createJob();
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
 		//NotificationQueueListener queueListener = new NotificationQueueListener();
-		job.setStatus(JobStatusType.QUEUED, JobStatusType.QUEUED.getDescription());
+//		job.setStatus(JobStatusType.QUEUED, JobStatusType.QUEUED.getDescription());
 		Map<JobStatusType, String> nids = new HashMap<JobStatusType, String>();
 		NotificationDao nDao = new NotificationDao();
 		for(JobStatusType status: JobStatusType.values()) {
@@ -308,7 +304,7 @@ public class JobNotificationTest extends AbstractDaoTest
 			nids.put(status, notification.getUuid());
 		}
 		
-		JobDao.persist(job);
+//		JobDao.persist(job);
 		
 		for(JobStatusType status: JobStatusType.values()) 
 		{
@@ -338,8 +334,9 @@ public class JobNotificationTest extends AbstractDaoTest
 	@Test(dependsOnMethods={"testJobSetStatusNotificationProcessed"})
 	public void testJobManagerUpdateStatusNotificationProcessed() throws Exception
 	{
-		Job job = createJob();
-		job.setStatus(JobStatusType.PENDING, "We are just getting started");
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
+//		job.setStatus(JobStatusType.PENDING, "We are just getting started");
 		Map<JobStatusType, String> nids = new HashMap<JobStatusType, String>();
 		NotificationDao nDao = new NotificationDao();
 		for(JobStatusType status: JobStatusType.values()) {
@@ -349,7 +346,7 @@ public class JobNotificationTest extends AbstractDaoTest
 			nids.put(status, notification.getUuid());
 		}
 		
-		JobDao.persist(job);
+//		JobDao.persist(job);
 		
 		for(JobStatusType status: JobStatusType.values()) 
 		{
@@ -375,9 +372,10 @@ public class JobNotificationTest extends AbstractDaoTest
 	@Test(dependsOnMethods={"testJobManagerUpdateStatusNotificationProcessed"})
 	public void testJobManagerUpdateStatusWithMessageEmailNotificationProcessed() throws Exception
 	{
-		Job job = createJob();
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
 		//NotificationQueueListener queueListener = new NotificationQueueListener();
-		job.setStatus(JobStatusType.PENDING, "We are just getting started");
+//		job.setStatus(JobStatusType.PENDING, "We are just getting started");
 		Map<JobStatusType, String> nids = new HashMap<JobStatusType, String>();
 		NotificationDao nDao = new NotificationDao();
 		for(JobStatusType status: JobStatusType.values()) {
@@ -387,7 +385,7 @@ public class JobNotificationTest extends AbstractDaoTest
 			nids.put(status, notification.getUuid());
 		}
 		
-		JobDao.persist(job);
+//		JobDao.persist(job);
 		
 		for(JobStatusType status: JobStatusType.values()) 
 		{
@@ -413,9 +411,10 @@ public class JobNotificationTest extends AbstractDaoTest
 	@Test(dependsOnMethods={"testJobManagerUpdateStatusWithMessageEmailNotificationProcessed"})
 	public void testJobManagerUpdateStatusWithMessageURLNotificationProcessed() throws Exception
 	{
-		Job job = createJob();
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.QUEUED, software);
 		//NotificationQueueListener queueListener = new NotificationQueueListener();
-		job.setStatus(JobStatusType.QUEUED, JobStatusType.QUEUED.getDescription());
+//		job.setStatus(JobStatusType.QUEUED, JobStatusType.QUEUED.getDescription());
 		Map<JobStatusType, String> nids = new HashMap<JobStatusType, String>();
 		NotificationDao nDao = new NotificationDao();
 		for(JobStatusType status: JobStatusType.values()) {
@@ -425,7 +424,7 @@ public class JobNotificationTest extends AbstractDaoTest
 			nids.put(status, notification.getUuid());
 		}
 		
-		JobDao.persist(job);
+//		JobDao.persist(job);
 		
 		for(JobStatusType status: JobStatusType.values()) 
 		{
@@ -451,11 +450,12 @@ public class JobNotificationTest extends AbstractDaoTest
 	@Test(dependsOnMethods={"testJobManagerUpdateStatusWithMessageURLNotificationProcessed"})
 	public void testJobManagerUpdateStatusWithWildcardEmailNotificationProcessed() throws Exception
 	{
-		Job job = createJob();
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.PENDING, software);
 		//NotificationQueueListener queueListener = new NotificationQueueListener();
-		job.setStatus(JobStatusType.PENDING, "We are just getting started");
+//		job.setStatus(JobStatusType.PENDING, "We are just getting started");
 		
-		JobDao.persist(job);
+//		JobDao.persist(job);
 		
 		NotificationDao nDao = new NotificationDao();
 		
@@ -487,12 +487,14 @@ public class JobNotificationTest extends AbstractDaoTest
 	@Test(dependsOnMethods={"testJobManagerUpdateStatusWithWildcardEmailNotificationProcessed"})
 	public void testJobManagerUpdateStatusWithWildcardURLNotificationProcessed() throws Exception
 	{
-		Job job = createJob();
+		Software software = createSoftware();
+		Job job = createJob(JobStatusType.QUEUED, software);
 		//NotificationQueueListener queueListener = new NotificationQueueListener();
-		job.setStatus(JobStatusType.QUEUED, JobStatusType.QUEUED.getDescription());
+//		job.setStatus(JobStatusType.QUEUED, JobStatusType.QUEUED.getDescription());
+
 //		job.addNotification("*", TEST_NOTIFICATION_URL, true);
 		
-		JobDao.persist(job);
+//		JobDao.persist(job);
 		
 		NotificationDao nDao = new NotificationDao();
 		

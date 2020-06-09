@@ -405,11 +405,17 @@ public class HPCLauncher extends AbstractJobLauncher
 		} 
         finally {
             try {
-                batchWriter.close();
-            } catch (IOException e) {
+				if (batchWriter != null) {
+					batchWriter.close();
+				}
+			} catch (IOException e) {
                 log.warn("Failed to close batchWriter.", e);
             }
-            try {remoteExecutionDataClient.disconnect();} catch (Exception e) {}
+            try {
+				if (remoteExecutionDataClient != null) {
+					remoteExecutionDataClient.disconnect();
+				}
+			} catch (Exception ignored) {}
         }
     }
 	
@@ -485,7 +491,7 @@ public class HPCLauncher extends AbstractJobLauncher
 			throw e;
 		}
 		catch (SchedulerException e) {
-			log.error("Error submitting job " + getJob().getUuid() + ".", e);
+			log.error("Error returned from remote scheduler while submitting job " + getJob().getUuid() + ".", e);
 			throw e;
 		}
 		catch (Exception e)
@@ -496,8 +502,12 @@ public class HPCLauncher extends AbstractJobLauncher
 		}
 		finally
 		{
-			try { submissionClient.close(); } catch (Exception e){}
-			try {remoteExecutionDataClient.disconnect();} catch (Exception e){}
+			try { submissionClient.close(); } catch (Exception ignored){}
+			try {
+				if (remoteExecutionDataClient != null) {
+					remoteExecutionDataClient.disconnect();
+				}
+			} catch (Exception e){}
 		}
 	}
 }

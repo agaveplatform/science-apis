@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>org.agaveplatform</groupId>
 		<artifactId>protos</artifactId>
-		<version>2.2.24</version>
+		<version>2.2.27</version>
 	</parent>
 	<artifactId>protos-java</artifactId>
 	<name>Agave Platform Protobuffer Java Bindings</name>

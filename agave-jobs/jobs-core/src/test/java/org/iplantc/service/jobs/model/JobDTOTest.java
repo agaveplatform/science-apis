@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.jobs.dao.AbstractDaoTest;
 import org.iplantc.service.jobs.dao.JobDao;
@@ -25,40 +26,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @Test(groups={"integration"})
 public class JobDTOTest extends AbstractDaoTest {
 
-	@BeforeClass
-	@Override
-	public void beforeClass() throws Exception
-	{
-		HibernateUtil.getConfiguration().getProperties().setProperty("hibernate.show_sql", "false");
-		super.beforeClass();
-		SoftwareDao.persist(software);
-	}
-	
-	@AfterClass
-	@Override
-	public void afterClass() throws Exception
-	{
-		super.afterClass();
-	}
-	
-	@BeforeMethod
-	public void setUp() throws Exception {
-		initSystems();
-        initSoftware();
-        clearJobs();
-	}
-	
-	@AfterMethod
-	public void tearDown() throws Exception {
-		clearJobs();
-		clearSoftware();
-		clearSystems();
-	}
-	
 	@Test
     public void toJSONTest() throws Exception
-    {   
-        Job job = createJob(JobStatusType.RUNNING);
+    {
+    	Software software = createSoftware();
+        Job job = createJob(JobStatusType.RUNNING, software);
         JobDao.persist(job);
         
         Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");

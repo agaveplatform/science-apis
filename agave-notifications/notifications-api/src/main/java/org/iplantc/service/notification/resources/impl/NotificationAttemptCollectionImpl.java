@@ -103,33 +103,33 @@ public class NotificationAttemptCollectionImpl extends AbstractNotificationColle
 	        
             for (NotificationAttempt attempt: attempts) 
             {   
-                ObjectNode json = mapper.createObjectNode()
-                    .put("id", attempt.getUuid())
-                    .put("url", attempt.getCallbackUrl())
-                    .put("event", attempt.getEventName())
-                    .put("associatedUuid", attempt.getAssociatedUuid())
-                    .put("startTime", attempt.getStartTime() == null ? null : new DateTime(attempt.getStartTime()).toString())
-                    .put("endTime", attempt.getEndTime() == null ? null : new DateTime(attempt.getEndTime()).toString());
-                json.put("response", mapper.valueToTree(attempt.getResponse()));
-                
-                
-                ObjectNode links = json.putObject("_links");
-                links.putObject("self")
-                     .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid() + "/attempts/" + attempt.getUuid());
-                links.putObject("notification")
-                	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid());
-                links.putObject("profile")
-            		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + attempt.getOwner());
-                
-                try {
-                	AgaveUUID agaveUUID = new AgaveUUID(notification.getAssociatedUuid());
-                    links.putObject(agaveUUID.getResourceType().name().toLowerCase())
-                         .put("href", TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference()));
-                } catch (UUIDException e) {
-                    log.debug("Unknown associatedUuid found for notification attempt " + attempt.getUuid());
-                }
-                
-                jsonAttempts.add(json);
+//                ObjectNode json = mapper.createObjectNode()
+//                    .put("id", attempt.getUuid())
+//                    .put("url", attempt.getCallbackUrl())
+//                    .put("event", attempt.getEventName())
+//                    .put("associatedUuid", attempt.getAssociatedUuid())
+//                    .put("startTime", attempt.getStartTime() == null ? null : new DateTime(attempt.getStartTime()).toString())
+//                    .put("endTime", attempt.getEndTime() == null ? null : new DateTime(attempt.getEndTime()).toString());
+//                json.put("response", mapper.valueToTree(attempt.getResponse()));
+//
+//
+//                ObjectNode links = json.putObject("_links");
+//                links.putObject("self")
+//                     .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid() + "/attempts/" + attempt.getUuid());
+//                links.putObject("notification")
+//                	.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + notification.getUuid());
+//                links.putObject("profile")
+//            		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + attempt.getOwner());
+//
+//                try {
+//                	AgaveUUID agaveUUID = new AgaveUUID(notification.getAssociatedUuid());
+//                    links.putObject(agaveUUID.getResourceType().name().toLowerCase())
+//                         .put("href", TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference()));
+//                } catch (UUIDException e) {
+//                    log.debug("Unknown associatedUuid found for notification attempt " + attempt.getUuid());
+//                }
+//
+                jsonAttempts.add(attempt.toJson());
             }
             
             return Response.ok(new AgaveSuccessRepresentation(jsonAttempts.toString())).build();
@@ -295,19 +295,15 @@ public class NotificationAttemptCollectionImpl extends AbstractNotificationColle
 					getAuthenticatedUsername(), 
 					notification.toJSON());
 			
-			return Response.ok(new AgaveSuccessRepresentation(mapper.writeValueAsString(attempt))).build();
+			return Response.ok(new AgaveSuccessRepresentation(attempt.toJson())).build();
 		}
 		catch (UUIDException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 					"associatedUuid must be a valid Agave resource UUID", e);
 		}
-		catch (NotificationException e) {
+		catch (NotificationException|BadCallbackException e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 					e.getMessage(), e);
-		}
-		catch (BadCallbackException e) {
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-				e.getMessage(), e);
 		}
 		catch (ResourceException e) {
 			throw e;

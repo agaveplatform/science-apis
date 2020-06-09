@@ -600,8 +600,8 @@
     <profiles>
         <profile>
             <!-- *********************************************************************
-                **	turns off tests and build of docker containers                      **
-                ***********************************************************************-->
+                **	turns off tests and build of docker containers                  **
+                **********************************************************************-->
             <id>dev</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -612,29 +612,29 @@
 
                 <skip.unit.tests>false</skip.unit.tests>
 
-                <slack.webhook.url></slack.webhook.url>
                 <foundation.smtp.token></foundation.smtp.token>
+                <slack.webhook.url></slack.webhook.url>
             </properties>
         </profile>
         <profile>
             <id>integration-test</id>
             <!-- *********************************************************************
-                **	turns off unit tests and enables migrated db image build            **
-                ***********************************************************************-->
+                 **	turns off unit tests and enables dockerized integration tests   **
+                 *********************************************************************-->
             <properties>
                 <force.check.update>false</force.check.update>
                 <force.check.version>false</force.check.version>
 
                 <skip.integration.tests>false</skip.integration.tests>
 
-                <foundation.smtp.token>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</foundation.smtp.token>
-                <slack.webhook.url>https://hooks.slack.com/services/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</slack.webhook.url>
+                <foundation.smtp.token></foundation.smtp.token>
+                <slack.webhook.url>https://hooks.slack.com/services/SLACK_INCOMING_WEBHOOK</slack.webhook.url>
             </properties>
         </profile>
         <profile>
             <id>coverage</id>
-            <!-- *********************************************************************
-                **	Enabled Jacoco coverage reporting on unit and integration tests     **
+            <!-- **********************************************************************
+                **	Enabled Jacoco coverage reporting on unit and integration tests  **
                 ***********************************************************************-->
             <build>
                 <plugins>

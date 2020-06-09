@@ -129,8 +129,6 @@ public class ProcessMonitor extends AbstractJobMonitor {
 				return this.job;
 			} catch (ClosedByInterruptException | RemoteJobMonitoringException | UnresolvableObjectException e) {
 				throw e;
-			} catch (SystemUnavailableException e) {
-				throw new RemoteJobMonitoringException("", e);
 			} catch (Throwable e) {
 				throw new RemoteJobMonitoringException("Failed to query status of job " + job.getUuid(), e);
 			}

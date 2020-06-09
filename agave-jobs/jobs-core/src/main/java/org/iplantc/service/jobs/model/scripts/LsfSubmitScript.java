@@ -6,6 +6,7 @@ package org.iplantc.service.jobs.model.scripts;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.model.enumerations.ParallelismType;
 import org.iplantc.service.common.util.TimeUtils;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.model.Job;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
@@ -33,8 +34,7 @@ public class LsfSubmitScript extends AbstractSubmitScript {
 	 * Serializes the object to a bsub submit script.
 	 */
 	@Override
-	public String getScriptText()
-	{
+	public String getScriptText() throws JobMacroResolutionException {
 
 		String result = "#!/bin/bash \n" 
 			+ DIRECTIVE_PREFIX + "-J " + name + "\n"

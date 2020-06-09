@@ -16,6 +16,7 @@ import org.testng.annotations.Test;
 import java.util.UUID;
 
 import static org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType.*;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -86,6 +87,7 @@ public class StartupScriptJobMacroResolverTest {
 			when(resolver.getExecutionSystem()).thenReturn(executionSystem);
 			when(resolver.resolveStartupScriptJobMacro(eq(job), eq(executionSystem), eq(AGAVE_JOB_BATCH_QUEUE_EFFECTIVE_NAME))).thenCallRealMethod();
 
+			resolver.resolveStartupScriptJobMacro(job, executionSystem, AGAVE_JOB_BATCH_QUEUE_EFFECTIVE_NAME);
 			Assert.fail("Unknown batch queue for job system should cause JobMacroResolutionException to be thrown");
 		} catch (SystemUnavailableException | JobException e) {
 			Assert.fail("Unexpected system exception when initializing startup script test data", e);
@@ -107,6 +109,8 @@ public class StartupScriptJobMacroResolverTest {
 			when(resolver.getJob()).thenReturn(job);
 			when(resolver.getExecutionSystem()).thenReturn(executionSystem);
 			when(resolver.resolveStartupScriptJobMacro(eq(job), eq(executionSystem), eq(AGAVE_JOB_BATCH_QUEUE_EFFECTIVE_NAME))).thenCallRealMethod();
+
+			resolver.resolveStartupScriptJobMacro(job, executionSystem, AGAVE_JOB_BATCH_QUEUE_EFFECTIVE_NAME);
 
 			Assert.fail("Unknown batch queue for job system should cause JobMacroResolutionException to be thrown");
 		} catch (SystemUnavailableException | JobException e) {
@@ -190,10 +194,11 @@ public class StartupScriptJobMacroResolverTest {
 			job.setArchivePath(String.format("/%s/%s/%s", UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString()));
 			job.setOwner(JSONTestDataUtil.TEST_OWNER);
 			job.setTenantId(UUID.randomUUID().toString());
+			job.setWorkPath(String.format("/scratch/work/%s/job-%s", job.getOwner(), job.getUuid()));
 
 			testData = new Object[][] {
 					{job, "~/.bashrc", "~/.bashrc"},
-					{job, "${AGAVE_JOB_WORK_DIR}/startup.sh", String.format("%s/startup.sh", job.getWorkPath())},
+					{job, "${AGAVE_JOB_WORK_PATH}/startup.sh", String.format("%s/startup.sh", job.getWorkPath())},
 					{job, "$HOME/${SYSTEM_ID}.sh", String.format("$HOME/%s.sh", job.getSystem())}
 			};
 
@@ -226,6 +231,8 @@ public class StartupScriptJobMacroResolverTest {
 			StartupScriptJobMacroResolver resolver = mock(StartupScriptJobMacroResolver.class);
 			when(resolver.getJob()).thenReturn(job);
 			when(resolver.getExecutionSystem()).thenReturn(executionSystem);
+			when(resolver.resolveStartupScriptSystemMacros(eq(executionSystem), any())).thenCallRealMethod();
+			when(resolver.resolveStartupScriptJobMacro(eq(job), eq(executionSystem), any())).thenCallRealMethod();
 			when(resolver.resolve()).thenCallRealMethod();
 
 			String result = resolver.resolve();

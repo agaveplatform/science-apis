@@ -206,7 +206,19 @@ public abstract class AbstractJobLauncher implements JobLauncher
 //
 //        return wrapperTemplate;
 	}
-	
+
+	/**
+	 * Filters out runtime internal status macros that are not allowed for the user leverage due to conflicts with the
+	 * job's lifecycle management.
+	 * @param appTemplate the wrapper template to filter
+	 * @return the wrapper template resolved of all runtime status macros
+	 */
+	protected String filterRuntimeStatusMacros(String appTemplate) {
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
+		return resolver.removeReservedJobStatusMacros(appTemplate);
+	}
+
+
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.jobs.managers.launchers.JobLauncher#resolveMacros(java.lang.String)
 	 */

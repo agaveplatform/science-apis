@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.iplantc.service.systems.model.enumerations.SchedulerType;
-import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Factory;
 
 /**
@@ -16,7 +14,7 @@ import org.testng.annotations.Factory;
  * @author dooley
  *
  */
-public class JobLauncherMacroTestFactory
+public class JobLauncherMacroITFactory
 {
 	@Factory
     public Object[] createInstances() {
@@ -29,7 +27,7 @@ public class JobLauncherMacroTestFactory
     			// don't have containers for them yet.
     			continue;
     		}
-    		testCases.add(new JobLauncherMacroTest(scheduler));
+    		testCases.add(new JobLauncherMacroIT(scheduler));
     	}
     	
         return testCases.toArray();

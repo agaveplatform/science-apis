@@ -19,6 +19,7 @@ import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.joda.time.DateTime;
 
+import javax.validation.constraints.NotNull;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -38,7 +39,7 @@ public class WrapperTemplateMacroResolver {
     private final Job job;
     private ExecutionSystem executionSystem;
 
-    public WrapperTemplateMacroResolver(Job job) {
+    public WrapperTemplateMacroResolver(@NotNull Job job) {
         this.job = job;
     }
 
@@ -78,8 +79,8 @@ public class WrapperTemplateMacroResolver {
 //                return resolvedStartupScript;
 //            }
 //        } catch (SystemUnavailableException e) {
-//            throw new JobMacroResolutionException("Execution system " + job.getSystem() +
-//                    " is no longer available to resolve batch queue for job " + job.getUuid());
+//            throw new JobMacroResolutionException("Execution system " + getJob().getSystem() +
+//                    " is no longer available to resolve batch queue for job " + getJob().getUuid());
 //        }
     }
 
@@ -99,15 +100,19 @@ public class WrapperTemplateMacroResolver {
             }
             else {
                 String resolvedTemplate = wrapperTemplate;
-                for (WrapperTemplateAttributeVariableType jobMacro : WrapperTemplateAttributeVariableType.values()) {
-                    resolvedTemplate = StringUtils.replace(resolvedTemplate, "${" + jobMacro.name() + "}", resolveJobAttributeMacro(executionSystem, jobMacro));
+                for (WrapperTemplateAttributeVariableType jobAttributeMacro : WrapperTemplateAttributeVariableType.values()) {
+                    String escapedJobAttributeMacro = "${" + jobAttributeMacro.name() + "}";
+                    // checking for existence first so we can skip resolving the value when not necessary
+                    if (resolvedTemplate.contains(escapedJobAttributeMacro)) {
+                        resolvedTemplate = StringUtils.replace(resolvedTemplate, escapedJobAttributeMacro, resolveJobAttributeMacro(executionSystem, jobAttributeMacro));
+                    }
                 }
 
                 return resolvedTemplate;
             }
         } catch (SystemUnavailableException e) {
-            throw new JobMacroResolutionException("Execution system " + job.getSystem() +
-                    " is no longer available to resolve batch queue for job " + job.getUuid());
+            throw new JobMacroResolutionException("Execution system " + getJob().getSystem() +
+                    " is no longer available to resolve batch queue for job " + getJob().getUuid());
         }
     }
 
@@ -127,15 +132,19 @@ public class WrapperTemplateMacroResolver {
             }
             else {
                 String resolvedTemplate = wrapperTemplate;
-                for (WrapperTemplateStatusVariableType jobStatusMacro : WrapperTemplateStatusVariableType.values()) {
-                    resolvedTemplate = StringUtils.replace(resolvedTemplate, "${" + jobStatusMacro.name() + "}", resolveJobCallbackMacro(executionSystem, jobStatusMacro));
+                for (WrapperTemplateStatusVariableType jobStatusCallbackMacro : WrapperTemplateStatusVariableType.values()) {
+                    String escapedJobStatusCallbackMacro = "${" + jobStatusCallbackMacro.name() + "}";
+                    // checking for existence first so we can skip resolving the value when not necessary
+                    if (resolvedTemplate.contains(escapedJobStatusCallbackMacro)) {
+                        resolvedTemplate = StringUtils.replace(resolvedTemplate, escapedJobStatusCallbackMacro, resolveJobCallbackMacro(executionSystem, jobStatusCallbackMacro));
+                    }
                 }
 
                 return resolvedTemplate;
             }
         } catch (SystemUnavailableException e) {
-            throw new JobMacroResolutionException("Execution system " + job.getSystem() +
-                    " is no longer available to resolve batch queue for job " + job.getUuid());
+            throw new JobMacroResolutionException("Execution system " + getJob().getSystem() +
+                    " is no longer available to resolve batch queue for job " + getJob().getUuid());
         }
     }
 
@@ -252,6 +261,7 @@ public class WrapperTemplateMacroResolver {
      * <ul>
      *     <li>{@code JOB_RUNTIME_CALLBACK_EVENT}: an empty callback equal to a {@link JobStatusType#HEARTBEAT}  callback.</li>
      *     <li>{@code JOB_RUNTIME_CALLBACK_EVENT:}</li>
+     * </ul>
      * @param wrapperTemplate
      * @return
      */

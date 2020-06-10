@@ -1,41 +1,24 @@
-package org.agaveplatform.service.transfers.listener;
+package org.agaveplatform.service.transfers;
 
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
-import io.vertx.config.ConfigRetriever;
-import io.vertx.config.ConfigRetrieverOptions;
-import io.vertx.config.ConfigStoreOptions;
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.AuthProvider;
-import io.vertx.ext.auth.PubSecKeyOptions;
-import io.vertx.ext.auth.jwt.JWTAuth;
-import io.vertx.ext.auth.jwt.JWTAuthOptions;
-import io.vertx.ext.jwt.JWTOptions;
-import io.vertx.ext.web.handler.impl.AgaveJWTAuthProviderImpl;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import io.vertx.reactivex.ext.web.client.WebClient;
-import org.agaveplatform.service.transfers.BaseTestCase;
-import org.agaveplatform.service.transfers.TransferApplication;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.resources.TransferAPIVertical;
-import org.agaveplatform.service.transfers.resources.TransferApiVerticalTest;
-import org.agaveplatform.service.transfers.util.CryptoHelper;
-import org.aspectj.lang.annotation.Before;
-import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.restassured.RestAssured.given;
 import static java.util.Arrays.asList;
@@ -47,14 +30,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("TransferApplication Tests")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-//@Disabled
+@Disabled
 class TransferApplicationTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferApplicationTest.class);
 	private TransferTaskDatabaseService dbService;
 
 	@Override
 	public int getPort() {
-		return 8085;
+		return 38085;
 	}
 
 	@BeforeAll
@@ -67,13 +50,19 @@ class TransferApplicationTest extends BaseTestCase {
 			authCheckpoint.flag();
 			if (resp.succeeded()) {
 				jwtAuth = resp.result();
+
 				initVerticles(vertx, ctx, vrt -> {
-					ctx.verify(() -> {
-						assertNotNull(jwtAuth);
-						assertNotNull(config);
-						assertTrue(vrt.succeeded());
-						ctx.completeNow();
-					});
+					if (vrt.succeeded()) {
+						ctx.verify(() -> {
+							assertNotNull(jwtAuth);
+							assertNotNull(config);
+							assertTrue(vrt.succeeded());
+							ctx.completeNow();
+						});
+					} else {
+						log.error("Application deployment failed: {}", vrt.cause().getMessage(), vrt.cause());
+						ctx.failNow(vrt.cause());
+					}
 				});
 			} else {
 				ctx.failNow(resp.cause());
@@ -99,14 +88,14 @@ class TransferApplicationTest extends BaseTestCase {
 				if (apiId != null) {
 					log.info("TransferAPIVertical ({}) started on port {}", apiId, getPort());
 
-					DeploymentOptions localOptions = new DeploymentOptions()
+					DeploymentOptions localOptions = new DeploymentOptions().setConfig(config)
 							.setWorkerPoolName("streaming-task-worker-pool")
 							.setWorkerPoolSize(poolSize)
 							.setInstances(instanceSize)
 							.setWorker(true);
 
 					//Deploy the TransferTaskAssignedListener vertical
-					vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener",
+					vertx.deployVerticle(TransferTaskAssignedListener.class.getName(),
 							localOptions, res0 -> {
 								if (res0.succeeded()) {
 									// Deployment TransferTaskCreatedListener verticle
@@ -126,7 +115,7 @@ class TransferApplicationTest extends BaseTestCase {
 																							localOptions, res5 -> {
 																								if (res5.succeeded()) {
 																									// Deploy the TransferErrorTaskListener vertical
-																									vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferErrorTaskListener",
+																									vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferErrorListener",
 																											localOptions, res6 -> {
 																												if (res6.succeeded()) {
 																													// Deploy the TransferFailureHandler vertical
@@ -255,13 +244,12 @@ class TransferApplicationTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("testEndToEndTaskAssignmentSmoke")
-	//@Disabled
 	void testEndToEndTaskAssignmentSmoke(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = _createTestTransferTask();
 
 		RequestSpecification requestSpecification = new RequestSpecBuilder()
-				.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+				//.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
 				.setBaseUri("http://localhost:" + getPort() + "/")
 				.build();
 
@@ -295,7 +283,6 @@ class TransferApplicationTest extends BaseTestCase {
 		ctx.completeNow();
 	}
 
-
 	@Test
 	@DisplayName("testEndToEndTaskAssignment_CancelTest")
 	void testEndToEndTaskAssignment_CancelTest(Vertx vertx, VertxTestContext ctx) {
@@ -303,7 +290,7 @@ class TransferApplicationTest extends BaseTestCase {
 		TransferTask tt = _createTestTransferTask();
 
 		RequestSpecification requestSpecification = new RequestSpecBuilder()
-				.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+				//.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
 				.setBaseUri("http://localhost:" + getPort() + "/")
 				.build();
 
@@ -346,7 +333,7 @@ class TransferApplicationTest extends BaseTestCase {
 		TransferTask tt = _createTestTransferTask();
 
 		RequestSpecification requestSpecification = new RequestSpecBuilder()
-				.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+				//.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
 				.setBaseUri("http://localhost:" + getPort() + "/")
 				.build();
 
@@ -389,7 +376,7 @@ class TransferApplicationTest extends BaseTestCase {
 		TransferTask tt = _createTestTransferTask();
 
 		RequestSpecification requestSpecification = new RequestSpecBuilder()
-				.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+				//.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
 				.setBaseUri("http://localhost:" + getPort() + "/")
 				.build();
 

@@ -109,12 +109,9 @@ class TransferTaskAssignedListenerTest {
 			ctx.completeNow();
 		});
 
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		try {
-			ta.processTransferTask(body);
-		} catch (InterruptableTransferTaskException e) {
-			e.printStackTrace();
-		}
+		TransferTaskAssignedListener tta = new TransferTaskAssignedListener(vertx);
+		tta.processTransferTask(body);
+
 
 		String protocolSelected = "http";
 		assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
@@ -135,13 +132,8 @@ class TransferTaskAssignedListenerTest {
 		});
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		try {
-			ta.processTransferTask(body);
-		} catch (InterruptableTransferTaskException e) {
-			e.printStackTrace();
-		}
+		ta.processTransferTask(body);
 
-		String protocolSelected = "http";
 		assertEquals(StorageProtocolType.HTTP.name().toLowerCase(), protocolSelected.toLowerCase(), "Protocol used should have been " + StorageProtocolType.SFTP.name().toLowerCase());
 		ctx.completeNow();
 	}
@@ -154,19 +146,18 @@ class TransferTaskAssignedListenerTest {
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(Vertx.vertx(), "transfertask.assigned");
-		try {
-			ta.interruptedTasks.add(tt.getUuid());
-			assertTrue(ta.checkTaskInterrupted(tt), "UUID of tt present in interruptedTasks list should return true");
-			ta.interruptedTasks.remove(tt.getUuid());
-			ta.interruptedTasks.add(tt.getParentTaskId());
-			assertTrue(ta.checkTaskInterrupted(tt), "UUID of tt parent present in interruptedTasks list should return true");
-			ta.interruptedTasks.remove(tt.getParentTaskId());
-			ta.interruptedTasks.add(tt.getRootTaskId());
-			assertTrue(ta.checkTaskInterrupted(tt), "UUID of tt root present in interruptedTasks list should return true");
-		} catch (InterruptableTransferTaskException e) {
-			e.printStackTrace();
-		}
+		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx, "transfertask.assigned");
+
+		ta.interruptedTasks.add(tt.getUuid());
+		assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in interruptedTasks list should indicate task is interrupted");
+		ta.interruptedTasks.remove(tt.getUuid());
+
+		ta.interruptedTasks.add(tt.getParentTaskId());
+		assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in interruptedTasks list should indicate task is interrupted");
+		ta.interruptedTasks.remove(tt.getParentTaskId());
+
+		ta.interruptedTasks.add(tt.getRootTaskId());
+		assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in interruptedTasks list should indicate task is interrupted");
 		ta.interruptedTasks.remove(tt.getRootTaskId());
 
 		ctx.completeNow();

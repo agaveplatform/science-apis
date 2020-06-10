@@ -32,7 +32,6 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({ JDBCClient.class })
 class TransferFailureHandlerTest extends BaseTestCase {
-
 	private static final Logger log = LoggerFactory.getLogger(TransferFailureHandlerTest.class);
 
 	protected TransferFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) {
@@ -62,6 +61,7 @@ class TransferFailureHandlerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 
 		TransferFailureHandler failureHandler = getMockTransferFailureHandlerInstance(Vertx.vertx());
+		doNothing().when(failureHandler)._doPublishEvent(any(), any());
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);

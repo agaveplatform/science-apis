@@ -22,23 +22,21 @@ public class TransferHealthcheckListener extends AbstractTransferTaskListener {
 
 	protected static final String EVENT_CHANNEL = TRANSFERTASK_HEALTHCHECK;
 
-	public TransferHealthcheckListener(Vertx vertx) {
-		super(vertx);
+	public TransferHealthcheckListener() {
+		super();
 	}
 
-	public String getDefaultEventChannel() {
-		return this.EVENT_CHANNEL;
+	public TransferHealthcheckListener(Vertx vertx) {
+		super(vertx);
 	}
 
 	public TransferHealthcheckListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
-//
-//	@Override
-//	public String getEventChannel(){
-//			return this.eventChannel;
-//	}
 
+	public String getDefaultEventChannel() {
+		return this.EVENT_CHANNEL;
+	}
 
 	@Override
 	public void start() {

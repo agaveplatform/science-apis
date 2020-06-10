@@ -11,18 +11,16 @@ import org.slf4j.LoggerFactory;
 
 @Deprecated
 public class InteruptEventListener extends AbstractTransferTaskListener {
-	private final Logger logger = LoggerFactory.getLogger(InteruptEventListener.class);
+	private static final Logger logger = LoggerFactory.getLogger(InteruptEventListener.class);
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_INTERUPTED;
 
-
+	public InteruptEventListener() { super(); }
 	public InteruptEventListener(Vertx vertx) {
 		super(vertx);
 	}
-
 	public InteruptEventListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
-
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_INTERUPTED;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;

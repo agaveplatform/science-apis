@@ -19,13 +19,19 @@ import static org.agaveplatform.service.transfers.enumerations.TransferStatusTyp
 
 public class TransferCompleteTaskListener extends AbstractTransferTaskListener {
 	private final static Logger logger = LoggerFactory.getLogger(TransferCompleteTaskListener.class);
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_COMPLETED;
 
 	private TransferTaskDatabaseService dbService;
 	protected List<String>  parentList = new ArrayList<String>();
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_COMPLETED;
+	public TransferCompleteTaskListener() { super(); }
 
 	public TransferCompleteTaskListener(Vertx vertx) {
+		setVertx(vertx);
+	}
+
+	public TransferCompleteTaskListener(Vertx vertx, String eventChannel) {
+		super(vertx, eventChannel);
 	}
 
 	public String getDefaultEventChannel() {
@@ -34,7 +40,6 @@ public class TransferCompleteTaskListener extends AbstractTransferTaskListener {
 
 	@Override
 	public void start() {
-
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);

@@ -19,9 +19,21 @@ public enum TransferStatusType
 		return Arrays.asList(PAUSED, QUEUED, RETRYING, TRANSFERRING);
 	}
 
+	/**
+	 * Checks that the status is cancelled or failed.
+	 * @return true if cancelled or failed.
+	 */
 	public boolean isCancelled()
 	{
-		return (this.equals(TransferStatusType.CANCELLED) ||
-				this.equals(TransferStatusType.FAILED) );
+		return this == CANCELLED || this == FAILED;
+	}
+
+	/**
+	 * Checks that the status is not in a terminal state
+	 * @return true if not in a terminal state
+	 */
+	public boolean isActive()
+	{
+		return ! (this == CANCELLED || this == FAILED || this == COMPLETED);
 	}
 }

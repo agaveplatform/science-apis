@@ -1,4 +1,4 @@
-package org.agaveplatform.service.transfers.listener;
+package org.agaveplatform.service.transfers;
 
 
 import io.restassured.builder.RequestSpecBuilder;
@@ -6,28 +6,22 @@ import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
-import io.vertx.ext.auth.jwt.JWTAuthOptions;
-import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.exception.TransferException;
+import org.agaveplatform.service.transfers.listener.*;
 import org.agaveplatform.service.transfers.model.TransferTask;
 //import org.agaveplatform.service.transfers.resources.FileTransferCreateServiceImpl;
 import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
 import org.agaveplatform.service.transfers.resources.TransferAPIVertical;
 //import org.agaveplatform.service.transfers.resources.TransferTaskUnaryImpl;
 //import org.agaveplatform.service.transfers.streaming.StreamingFileTaskImpl;
-import org.agaveplatform.service.transfers.util.CryptoHelper;
-import org.iplantc.service.common.Settings;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
@@ -38,7 +32,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static io.restassured.RestAssured.given;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;

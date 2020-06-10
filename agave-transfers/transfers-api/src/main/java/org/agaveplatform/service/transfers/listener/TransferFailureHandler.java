@@ -14,7 +14,12 @@ import org.slf4j.LoggerFactory;
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 
 public class TransferFailureHandler extends AbstractTransferTaskListener implements Handler<RoutingContext> {
-	private final Logger log = LoggerFactory.getLogger(TransferFailureHandler.class);
+	private static final Logger log = LoggerFactory.getLogger(TransferFailureHandler.class);
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_FAILED;
+
+	private TransferTaskDatabaseService dbService;
+
+	public TransferFailureHandler() { super(); }
 
 	public TransferFailureHandler(Vertx vertx) {
 		super(vertx);
@@ -23,8 +28,6 @@ public class TransferFailureHandler extends AbstractTransferTaskListener impleme
 	public TransferFailureHandler(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
-
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_FAILED;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -39,7 +42,7 @@ public class TransferFailureHandler extends AbstractTransferTaskListener impleme
 	private void recordError(Throwable throwable){
 		log.info("failed: {}", throwable.getMessage());
 	}
-	private TransferTaskDatabaseService dbService;
+
 
 	@Override
 	public void start() {
@@ -52,45 +55,51 @@ public class TransferFailureHandler extends AbstractTransferTaskListener impleme
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
 
+			log.info("Transfer task {} failed: {}: {}",
+					body.getString("uuid"), body.getString("cause"), body.getString("message"));
+
 			processFailure(body);
-
-			log.error("Transfer task {} failed: {}: {}",
-					body.getString("id"), body.getString("cause"), body.getString("message"));
-
-			_doPublishEvent(MessageType.TRANSFERTASK_FAILED, body);
 		});
 
 	}
 
-
-	protected Future<Boolean> processFailure(JsonObject body){
-
+	protected Future<Boolean> processFailure(JsonObject body) {
 		Promise<Boolean> promise = Promise.promise();
+		try {
+//			String id = body.getValue("id");
+			String uuid = body.getString("uuid");
+			String tenantId = body.getString("tenantId");
 
-		String id = body.getString("id");
-		String uuid = body.getString("uuid");
-		String tenantId = body.getString("tenantId");
+			body.remove("cause");
+			body.remove("message");
+			body.remove("id");
 
-		body.remove("cause");
-		body.remove("message");
-		body.remove("id");
+			TransferTask bodyTask = new TransferTask(body);
+			bodyTask.setStatus(TransferStatusType.FAILED);
 
-		TransferTask bodyTask = new TransferTask(body);
-		bodyTask.setStatus(TransferStatusType.FAILED);
-
-		getDbService().update(tenantId, uuid, bodyTask, updateBody -> {
-			if (updateBody.succeeded()) {
-				//log.info("Transfer task  updated.");
-				promise.handle(Future.succeededFuture(Boolean.TRUE));
-			} else {
-				JsonObject json = new JsonObject()
-						.put("cause", updateBody.cause().getClass().getName())
-						.put("message", updateBody.cause().getMessage())
-						.mergeIn(body);
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-				promise.handle(Future.failedFuture(updateBody.cause()));
-			}
-		});
+			getDbService().update(tenantId, uuid, bodyTask, updateBody -> {
+				if (updateBody.succeeded()) {
+					log.info("Transfer task {} successfully marked as {}.", uuid,
+							updateBody.result().getString("status"));
+					promise.handle(Future.succeededFuture(Boolean.TRUE));
+				} else {
+					JsonObject json = new JsonObject()
+							.put("cause", updateBody.cause().getClass().getName())
+							.put("message", updateBody.cause().getMessage())
+							.mergeIn(body);
+					promise.handle(Future.failedFuture(updateBody.cause()));
+					// infinite loop if we publish an error event here
+					// TODO: we need a wrapper object around our event bodies so we can record things like the number
+					// 	of attempts to process a given event, last event time, and whether to keep trying indefinitely
+					//  or not.
+				}
+			});
+		}
+		catch (Throwable t) {
+			log.error("Failed to process failure event for transfer task {}: {}",
+					body.getValue("id"), t.getMessage());
+			promise.handle(Future.failedFuture(t));
+		}
 
 		return promise.future();
 	}

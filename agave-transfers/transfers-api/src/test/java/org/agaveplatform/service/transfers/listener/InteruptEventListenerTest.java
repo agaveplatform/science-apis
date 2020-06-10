@@ -24,7 +24,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("Interrupt Event Listener All tests")
 @Disabled
 class InteruptEventListenerTest extends BaseTestCase {
-	private final Logger logger = LoggerFactory.getLogger(InteruptEventListenerTest.class);
+	private static final Logger logger = LoggerFactory.getLogger(InteruptEventListenerTest.class);
 
 	protected InteruptEventListener getMockInteruptEventListenerInstance(Vertx vertx) {
 		InteruptEventListener ttc = mock(InteruptEventListener.class );

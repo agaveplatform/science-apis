@@ -17,31 +17,37 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELLED;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_PAUSED;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskCancelListener extends AbstractTransferTaskListener {
     private static final Logger logger = LoggerFactory.getLogger(TransferTaskCancelListener.class);
+    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CANCELLED;
 
+    private TransferTaskDatabaseService dbService;
+    private List<TransferTask> ttTree = new ArrayList<TransferTask>();
+
+    public TransferTaskCancelListener() {
+        super();
+    }
     public TransferTaskCancelListener(Vertx vertx) {
         super(vertx);
     }
-
     public TransferTaskCancelListener(Vertx vertx, String eventChannel) {
         super(vertx, eventChannel);
     }
 
-    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CANCELLED;
-
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
-    private TransferTaskDatabaseService dbService;
-    private List<TransferTask> ttTree = new ArrayList<TransferTask>();
 
     @Override
     public void start() {
+        // init our db connection from the pool
+        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+        dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+
         EventBus bus = vertx.eventBus();
         bus.<JsonObject>consumer(getEventChannel(), msg -> {
             JsonObject body = msg.body();
@@ -64,8 +70,6 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
     }
 
     protected void processCancelRequest(JsonObject body, Handler<AsyncResult<Boolean>> resultHandler) {
-       // Promise<Boolean> promise = Promise.promise();
-
         String tenantId = body.getString("tenantId");
         String uuid = body.getString("uuid");
         String status = body.getString("status");
@@ -73,110 +77,61 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
 
         Long id = 0L;
 
-            // lookup the transfer task from the db
-            getDbService().getById(tenantId, uuid, gTTResult -> {
-                //try {
-                    if (gTTResult.succeeded()) {
-                        logger.info("got transfer task uuid {}", uuid);
-                        TransferTask tt = new TransferTask(gTTResult.result());
-                        logger.info("The root id is {}", tt.getRootTaskId());
-                        // if it's not already in a terminal state, process the cancell requrest
-                        if (! StringUtils.isEmpty(tt.getRootTaskId()) || !StringUtils.isEmpty(tt.getParentTaskId())) {
-                            logger.info("The root id is {} and the parentID is {}",tt.getRootTaskId(), tt.getParentTaskId());
-                            // TODO: think through cancel requests that are not on root tasks. This should never be able
-                            //   to happen because the request should have been validated at whatever process created the
-                            //   cancel request (probably the API vertical).
-                            //failure
-                            JsonObject json = new JsonObject()
-                                    .put("cause", "Cannot cancel non-root transfer tasks.")
-                                    .put("message", "Cannot cancel non-root transfer tasks.")
-                                    .mergeIn(body);
+        // lookup the transfer task from the db
+        getDbService().getById(tenantId, uuid, getByIdReply -> {
+            if (getByIdReply.succeeded()) {
+                logger.trace("Retrieved transfer task {}: {}", uuid, getByIdReply.result());
+                TransferTask cancelTransferTask = new TransferTask(getByIdReply.result());
+                logger.info("Transfer task {} has root id {}", uuid, cancelTransferTask.getRootTaskId());
 
-                            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                            resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
-                        } else if ( ! List.of(CANCELLED,COMPLETED,FAILED).contains(tt.getStatus())) {
+                // if it's not already in a terminal state, process the cancell requrest
+                if (! StringUtils.isEmpty(cancelTransferTask.getRootTaskId()) || !StringUtils.isEmpty(cancelTransferTask.getParentTaskId())) {
+                    logger.info("The root id is {} and the parentID is {}",cancelTransferTask.getRootTaskId(), cancelTransferTask.getParentTaskId());
+                    // TODO: think through cancel requests that are not on root tasks. This should never be able
+                    //   to happen because the request should have been validated at whatever process created the
+                    //   cancel request (probably the API vertical).
+                    //failure
+                    JsonObject json = new JsonObject()
+                            .put("cause", TransferException.class.getName())
+                            .put("message", "Cannot cancel non-root transfer tasks.")
+                            .mergeIn(body);
 
-    //                        getDbService().updateStatus(tenantId, uuid, CANCELLED.name(), reply -> {
-    //                            if (reply.succeeded()) {
-    //                                logger.debug("Transfer task {} status updated to PAUSED", uuid);
-    //                                _doPublishEvent(TRANSFERTASK_CANCELLED, body);
-    //
-    //                                if (parentTaskId != null) {
-    //                                    //logger.debug("Checking parent task {} for paused transfer task {}.", parentTaskId, uuid);
-    //                                    processParentEvent(tenantId, parentTaskId, ttResult -> {
-    //                                        if (ttResult.succeeded()) {
-    //                                            //logger.debug("Check for parent task {} for paused transfer task {} done.", parentTaskId, uuid);
-    //                                            // send notification events? or should listeners listen to the existing events?
-    //                                            //_doPublishEvent("transfertask.notification", body);
-    //                                            resultHandler.handle(Future.succeededFuture(ttResult.result()));
-    //                                        } else {
-    //                                            JsonObject json = new JsonObject()
-    //                                                    .put("cause", ttResult.cause().getClass().getName())
-    //                                                    .put("message", ttResult.cause().getMessage())
-    //                                                    .mergeIn(body);
-    //
-    //                                            _doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
-    //                                            resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
-    //                                        }
-    //                                    });
-    //                                }
-    //                                else {
-    //                                    logger.debug("Transfer task {} has no parent task to process.", uuid);
-    //                                    resultHandler.handle(Future.succeededFuture(Boolean.TRUE));
-    //                                }
-    //                            }
-    //                            else {
-    //                                logger.error("Failed to set status of transfertask {} to paused. error: {}", uuid, reply.cause());
-    //                                JsonObject json = new JsonObject()
-    //                                        .put("cause", reply.cause().getClass().getName())
-    //                                        .put("message", reply.cause().getMessage())
-    //                                        .mergeIn(body);
-    //
-    //                                _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-    //                                resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
-    //                            }
-    //                        });
+                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+                    resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
+                } else if (cancelTransferTask.getStatus().isActive()) {
+                    // push the event transfer task onto the queue. this will cause all listening verticals
+                    // actively processing any of its children to cancel their existing work and ack.
+                    // the ack responses will bubble back up, eventually reaching the root, at which time,
+                    // the root transfer task will be marked as cancelled.
+                   logger.debug("Sending cancel sync event for transfer task {}", uuid);
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
+                    resultHandler.handle(Future.succeededFuture(Boolean.TRUE));
+                } else {
+                    // if the root is not in an active state, then there is nothing needed at this time. we
+                    // choose to send the sync event anyway so we can ensure that any subtasks still running will
+                    // be cleaned up. This is a bit of an aggressive way to override eventual consistency.
+                    logger.info("Transfer task {} is not in an active state. " +
+                            "Sending cancel sync event to ensure children are cleaned up.", uuid);
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
+                    resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
+                //} else {
+                    // TODO: think through cancel requests that are not on root tasks
+                  //  _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, body);
+                    //resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
+                }
+            } else {
+                // failure
+                String msg = "Unable to verify the current status of transfer task " + uuid + ". " + getByIdReply.cause();
+                JsonObject json = new JsonObject()
+                        .put("cause", getByIdReply.cause().getClass().getName())
+                        .put("message", msg)
+                        .mergeIn(body);
 
-                            // push the event transfer task onto the queue. this will cause all listening verticals
-                            // actively processing any of its children to cancel their existing work and ack.
-                            // the ack responses will bubble back up, eventually reaching the root, at which time,
-                            // the root transfer task will be marked as cancelled.
-                            _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, gTTResult.result());
-                            resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
-                        } else {
-                            // if the root is not in an active state, then there is nothing needed at this time. we
-                            // choose to send the sync event anyway so we can ensure that any subtasks still running will
-                            // be cleaned up. This is a bit of an aggressive way to override eventual consistency.
-                            logger.info("Status returned a Canceled, Complete or Failed. Return TRUE if everything is ok uuid {}", uuid);
-                            _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, gTTResult.result());
-                            resultHandler.handle(Future.succeededFuture(Boolean.TRUE));
-                        //} else {
-                            // TODO: think through cancel requests that are not on root tasks
-                          //  _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, body);
-                            //resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
-                        }
-                    } else {
-                        //failure
-                        JsonObject json = new JsonObject()
-                                .put("cause", gTTResult.cause().getClass().getName())
-                                .put("message", gTTResult.cause().getMessage())
-                                .mergeIn(body);
+                _doPublishEvent(TRANSFERTASK_ERROR, json);
 
-                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                        //return promise.future();
-                        resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
-                    }
-//                } catch (Exception e) {
-//                    logger.error(e.getMessage());
-//                    JsonObject json = new JsonObject()
-//                            .put("cause", e.getClass().getName())
-//                            .put("message", e.getMessage())
-//                            .mergeIn(body);
-//
-//                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-//                    resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
-//                }
-            });
+                resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
+            }
+        });
     }
 
     /**
@@ -195,15 +150,9 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
      */
     protected void processCancelAck(JsonObject body, Handler<AsyncResult<Boolean>> resultHandler) {
         String parentTaskId = body.getString("parentTask");
-//        if (StringUtils.isEmpty(body.getString("parentTaskId"))) {
-//            parentTaskId = "";
-//        } else {
-//            parentTaskId = body.getString("parentTaskId");
-//        }
         String uuid = body.getString("uuid");
         String tenantId = body.getString("tenantId");
 
-        //Promise<Boolean> promise = Promise.promise();
         logger.info("getting into allChildren");
         // if this task has children and all are cancelled or completed, then we can
         // mark this task as cancelled.
@@ -228,12 +177,16 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                             logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);
                             processParentAck(tenantId, parentTaskId, processParentResp -> {
                                 if (processParentResp.succeeded()) {
-                                    logger.debug("Check for parent task {} for completed transfer task {} done.", parentTaskId, uuid);
+                                    logger.trace("Completed parent check for parent transfer task {} after cancel " +
+                                            "ack of transfer task {}.", parentTaskId, uuid);
                                     resultHandler.handle(Future.succeededFuture(processParentResp.result()));
                                 } else {
+                                    String msg = String.format("Unable to process parent cancel ack for transfer task " +
+                                            "%s after completing the cancel ack for child task %s: %s",
+                                            parentTaskId, uuid, processParentResp.cause().getMessage());
                                     JsonObject json = new JsonObject()
                                             .put("cause", processParentResp.cause().getClass().getName())
-                                            .put("message", processParentResp.cause().getMessage())
+                                            .put("message", msg)
                                             .mergeIn(body);
 
                                     _doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
@@ -241,16 +194,17 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                                 }
                             });
                         } else {
-                            logger.info("Skipping parent.  Proccess complete for uuid {}", uuid);
+                            logger.info("Skipping parent proccess complete for transfer task {}", uuid);
                             resultHandler.handle(Future.succeededFuture(Boolean.TRUE));
                         }
-
                     } else {
                         // update failed on current task
-                        logger.debug("Error with ProcessCancelAck.  We couldn't update the transfer task uuid {}", uuid );
+                        String msg = String.format("Unable to update the status of transfer task %s to cancelled. %s",
+                                uuid, setTransferTaskCanceledIfNotCompletedReso.cause().getMessage());
+                        logger.error(msg);
                         JsonObject json = new JsonObject()
                                 .put("cause", setTransferTaskCanceledIfNotCompletedReso.cause().getClass().getName())
-                                .put("message", setTransferTaskCanceledIfNotCompletedReso.cause().getMessage())
+                                .put("message", msg)
                                 .mergeIn(body);
 
                         _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
@@ -258,17 +212,19 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                     }
                 });
             } else {
+                String msg = String.format("Unable to check the status of transfer task %s children. " +
+                        "No acknowledgement will be sent. %s", uuid,
+                        allChildrenCancelledOrCompletedResp.cause().getMessage());
+                logger.error(msg);
                 JsonObject json = new JsonObject()
                         .put("cause", allChildrenCancelledOrCompletedResp.cause().getClass().getName())
-                        .put("message", allChildrenCancelledOrCompletedResp.cause().getMessage())
+                        .put("message", msg)
                         .mergeIn(body);
 
                 _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
                 resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
             }
         });
-
-//        return resultHandler.handle(Future.succeededFuture(Boolean.TRUE));
     }
 
     /**
@@ -313,7 +269,6 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                     resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
                 }
             } else {
-                // failure to lookup parent
                 resultHandler.handle(Future.failedFuture(ttResult.cause()));
             }
         });
@@ -384,23 +339,22 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
     }
 
     /**
+     * Fetches a {@link TransferTask} by id, logging any exception that comes up.
      * @deprecated
-     * @param tenantId
-     * @param uuid
-     * @param resultHandler
+     * @param tenantId tenant in which the transfer task should exist
+     * @param uuid uuid of the transfer task
+     * @param resultHandler callback to pass the returned transfertask
      */
     protected void getTransferTask(String tenantId, String uuid, Handler<AsyncResult<TransferTask>> resultHandler) {
         getDbService().getById(tenantId, uuid, getTaskById -> {
             if (getTaskById.succeeded()) {
                 TransferTask tt = new TransferTask(getTaskById.result());
-
                 resultHandler.handle(Future.succeededFuture(tt));
             } else {
-                logger.info("");
+                logger.info("Failed to lookup transfer task {}", uuid);
                 resultHandler.handle(Future.failedFuture(getTaskById.cause()));
             }
         });
-        //return (TransferTask) promise.future();
     }
 
     public TransferTaskDatabaseService getDbService() {

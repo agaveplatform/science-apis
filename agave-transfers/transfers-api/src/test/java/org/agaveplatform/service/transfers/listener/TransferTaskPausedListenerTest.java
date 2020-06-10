@@ -73,13 +73,20 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
 		//doAnswer((Answer )).when(listener.getTransferTask(anyString(), anyString(), any()));
-		when(listener.getTransferTask(eq(transferTask.getParentTaskId()), eq(transferTask.getUuid()), any() ) ).thenReturn(transferTask);
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
+
+		JsonObject expectedgetByIdAck = transferTask.toJson();
+		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
+					.handle(updateGetById);
+			return null;
+		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(anyObject()) );
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
@@ -149,13 +156,21 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 		TransferTaskPausedListener listener = getMockListenerInstance(vertx);
 		//doAnswer((Answer )).when(listener.getTransferTask(anyString(), anyString(), any()));
-		when(listener.getTransferTask(eq(parentTask.getParentTaskId()), eq(parentTask.getUuid()), any() ) ).thenReturn(parentTask);
+//		when(listener.getTransferTask(eq(parentTask.getParentTaskId()), eq(parentTask.getUuid()), any() ) ).thenReturn(parentTask);
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
+
+		JsonObject expectedgetByIdAck = parentTask.toJson();
+		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
+					.handle(updateGetById);
+			return null;
+		}).when(dbService).getById(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), eq(anyObject()) );
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = parentTask.toJson()

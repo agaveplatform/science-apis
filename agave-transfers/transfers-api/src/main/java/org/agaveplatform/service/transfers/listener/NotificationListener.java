@@ -15,19 +15,18 @@ import org.slf4j.LoggerFactory;
 
 
 public class NotificationListener extends AbstractTransferTaskListener {
-	private final Logger logger = LoggerFactory.getLogger(NotificationListener.class);
+	private static final Logger logger = LoggerFactory.getLogger(NotificationListener.class);
+	protected static final String EVENT_CHANNEL = MessageType.NOTIFICATION ;
 
 	protected String eventChannel = MessageType.NOTIFICATION ;
 
+	public NotificationListener() { super(); }
 	public NotificationListener(Vertx vertx) {
 		super(vertx);
 	}
-
 	public NotificationListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
-
-	protected static final String EVENT_CHANNEL = MessageType.NOTIFICATION ;
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
@@ -64,7 +63,7 @@ public class NotificationListener extends AbstractTransferTaskListener {
 			JsonObject body = msg.body();
 			//JsonObject notificationMessage = new NotificationMessageBody();
 
-			logger.info("Transfer task {} completed.", body.getString("id"));
+			logger.info("Transfer task {} completed.", body.getString("uuid"));
 
 			_doPublishEvent(MessageType.NOTIFICATION_CANCELLED, body);
 		});
@@ -72,7 +71,7 @@ public class NotificationListener extends AbstractTransferTaskListener {
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_COMPLETED, msg -> {
 			JsonObject body = msg.body();
 
-			logger.info("Transfer task {} completed.", body.getString("id"));
+			logger.info("Transfer task {} completed.", body.getString("uuid"));
 
 			getVertx().eventBus().publish(MessageType.NOTIFICATION_COMPLETED, body);
 		});
@@ -80,7 +79,7 @@ public class NotificationListener extends AbstractTransferTaskListener {
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CREATED, msg -> {
 			JsonObject body = msg.body();
 
-			logger.info("Transfer task {} created.", body.getString("id"));
+			logger.info("Transfer task {} created.", body.getString("uuid"));
 
 		});
 
@@ -88,27 +87,27 @@ public class NotificationListener extends AbstractTransferTaskListener {
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
 			JsonObject body = msg.body();
 
-			logger.info("Transfer task {} created.", body.getString("id"));
+			logger.info("Transfer task {} created.", body.getString("uuid"));
 
 		});
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_ERROR, msg -> {
 			JsonObject body = msg.body();
 
-			logger.info("Transfer task {} created.", body.getString("id"));
+			logger.info("Transfer task {} created.", body.getString("uuid"));
 
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
 			JsonObject body = msg.body();
 
-			logger.info("Transfer task {} created.", body.getString("id"));
+			logger.info("Transfer task {} created.", body.getString("uuid"));
 
 		});
 	}
 
 	protected boolean notificationEventProcess(JsonObject body) {
-		logger.info(body.getString("id"), body.encode(), body.getString("owner"));
-		NotificationManager.process(body.getString("id"), body.encode(), body.getString("owner"));
+		logger.info(body.getString("uuid"), body.encode(), body.getString("owner"));
+		NotificationManager.process(body.getString("uuid"), body.encode(), body.getString("owner"));
 		return true;
 	}
 

@@ -26,8 +26,14 @@ public class TransferWatchListener extends AbstractTransferTaskListener {
 
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_HEALTHCHECK;
 
+	public TransferWatchListener() {
+		super();
+	}
 	public TransferWatchListener(Vertx vertx) {
 		super(vertx);
+	}
+	public TransferWatchListener(Vertx vertx, String eventChannel) {
+		super(vertx, eventChannel);
 	}
 
 	public String getDefaultEventChannel() {
@@ -46,23 +52,31 @@ public class TransferWatchListener extends AbstractTransferTaskListener {
 		});
 	}
 
+	/**
+	 * Handles generation of health check events for each active transfer task every 10 seconds.
+	 * @return future with boolean result of the batch scheduling operation
+	 */
 	public Future<Boolean> processEvent() {
 		Promise<Boolean> promise = Promise.promise();
 
-		getDbService().getActiveRootTaskIds(getActiveRootTaskIds -> {
-			if (getActiveRootTaskIds.succeeded()) {
-				logger.info("Found {} active transfer tasks", getActiveRootTaskIds.result().size());
-				getActiveRootTaskIds.result().getList().forEach(parentTask -> {
-					logger.debug("[{}] Running health check on transfer task {}",
-							((JsonObject)parentTask).getString("tenantId"),
-							((JsonObject)parentTask).getString("uuid"));
-					_doPublishEvent(TRANSFERTASK_HEALTHCHECK, parentTask);
+		logger.debug("Looking up active transfer tasks...");
+		getDbService().getActiveRootTaskIds(reply -> {
+			if (reply.succeeded()) {
+				logger.info("Found {} active transfer tasks", reply.result().size());
+				reply.result().getList().forEach(rootTask -> {
+					try {
+						logger.debug("Scheduling health check on transfer task {}",
+								((JsonObject) rootTask).getString("uuid"));
+						_doPublishEvent(TRANSFERTASK_HEALTHCHECK, rootTask);
+					} catch (Throwable t) {
+						logger.error("Failed to schedule health check for transfer task {}", rootTask);
+					}
 				});
 				promise.handle(Future.succeededFuture(Boolean.TRUE));
 			}
 			else {
-				logger.error("Unable to retrieve list of active transfer tasks: {}", getActiveRootTaskIds.cause());
-				promise.handle(Future.failedFuture(getActiveRootTaskIds.cause()));
+				logger.error("Unable to retrieve list of active transfer tasks: {}", reply.cause().getMessage());
+				promise.handle(Future.failedFuture(reply.cause()));
 			}
 		});
 

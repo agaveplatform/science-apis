@@ -1,16 +1,20 @@
 package org.agaveplatform.service.transfers.protocol;
 
-import io.vertx.core.*;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.exception.InterruptableTransferTaskException;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.apache.commons.lang.NotImplementedException;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.URLCopy;
@@ -20,6 +24,7 @@ import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
@@ -27,22 +32,21 @@ import java.util.Date;
 
 public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	private final Logger logger = LoggerFactory.getLogger(TransferAllProtocolVertical.class);
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_ALL;
 
+	public TransferAllProtocolVertical() {
+		super();
+	}
 	public TransferAllProtocolVertical(Vertx vertx) {
 		super(vertx);
 	}
-
 	public TransferAllProtocolVertical(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 
-	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_ALL;
-
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
 	}
-
-	//boolean killOrPauseJob = false;
 
 	@Override
 	public void start() {
@@ -96,6 +100,13 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		});
 	}
 
+	/**
+	 * Handles processing of the actual transfer operation using the {@link URLCopy} class to manage the transfer.
+	 * A promise is returned wiht the result of the operation. Note that this use of {@link URLCopy} will not create
+	 * and update legacy {@link org.iplantc.service.transfer.model.TransferTask} records as it goes.
+	 * @param body the transfer all event body
+	 * @return a boolean future with the success of the operation.
+	 */
 	public Future<Boolean> processEvent(JsonObject body) {
 		Promise<Boolean> promise = Promise.promise();
 
@@ -126,13 +137,13 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 				// pull the system out of the url. system id is the hostname in an agave uri
 				logger.debug("Creating source remote data client to {} for transfer task {}", srcUri.getHost(), tt.getUuid());
-				if (false) srcClient = getRemoteDataClient(body.getString("owner"), srcUri);
+				if (false) srcClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), srcUri);
 
 				logger.debug("Creating dest remote data client to {} for transfer task {}", destUri.getHost(), tt.getUuid());
 				// pull the dest system out of the url. system id is the hostname in an agave uri
-				if (false) destClient = getRemoteDataClient(body.getString("owner"), destUri);
+				if (false) destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
 
-				if( ! super.checkTaskInterrupted(tt)) {
+				if (taskIsNotInterrupted(tt)) {
 					legacyTransferTask =
 							new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
 
@@ -161,13 +172,14 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
 					logger.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
 				} else {
-					logger.info("Job was Canceled or Paused {}", tt.getUuid());
+					logger.info("Transfer task {} was interrupted", tt.getUuid());
 				}
 			}
 
 			logger.debug("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 			logger.debug("Completed transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
 
+			_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 		} catch (RemoteDataException e){
 			logger.error("RemoteDataException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
@@ -175,9 +187,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			Future.succeededFuture(Boolean.FALSE);
-			//return false;
-
+			promise.fail(e);
 		} catch (RemoteCredentialException e){
 			logger.error("RemoteCredentialException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
@@ -185,8 +195,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-			Future.succeededFuture(Boolean.FALSE);
-//			return e.toString();
+			promise.fail(e);
 		} catch (IOException e){
 			logger.error("IOException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
@@ -194,8 +203,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					.put("message", e.getMessage())
 					.mergeIn(body);
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-			Future.succeededFuture(Boolean.FALSE);
-//			return e.toString();
+			promise.fail(e);
 		} catch (Exception e){
 			logger.error("Unexpected Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
@@ -204,14 +212,10 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					.mergeIn(body);
 
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			Future.succeededFuture(Boolean.FALSE);
-//			return e.toString();
-		} catch (InterruptableTransferTaskException e) {
-			e.printStackTrace();
+			promise.fail(e);
 		}
 
-		_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
-		return Future.succeededFuture(Boolean.TRUE);
+		return promise.future();
 	}
 
 	protected Boolean processCopyRequest(String source, RemoteDataClient srcClient, String dest, RemoteDataClient destClient, org.iplantc.service.transfer.model.TransferTask legacyTransferTask)
@@ -225,21 +229,27 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	}
 
 	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient){
-		URLCopy urlCopy = new URLCopy(srcClient,destClient);
-		return urlCopy;
+		return new URLCopy(srcClient,destClient);
 	}
 
 	/**
-	 * Returns a valid {@link RemoteDataClient} pointing at the system/endpoint represented by the URI. We break
-	 * this out into a separate method for easier testing.
-	 * @param apiUsername
-	 * @param uri
-	 * @return
+	 * Obtains a new {@link RemoteDataClient} for the given {@code uri}. The schema and hostname are used to identify
+	 * agave {@link RemoteSystem} URI vs externally accesible URI. Tenancy is honored.
+	 * @param tenantId the tenant whithin which any system lookups should be made
+	 * @param username the user for whom the system looks should be made
+	 * @param target the uri from which to parse the system info
+	 * @return a new instance of a {@link RemoteDataClient} for the given {@code target}
+	 * @throws SystemUnknownException if the sytem is unknown
+	 * @throws AgaveNamespaceException if the URI does match any known agave uri pattern
+	 * @throws RemoteCredentialException if the credentials for the system represented by the URI cannot be found/refreshed/obtained
+	 * @throws PermissionException when the user does not have permission to access the {@code target}
+	 * @throws FileNotFoundException when the remote {@code target} does not exist
+	 * @throws RemoteDataException when a connection cannot be made to the {@link RemoteSystem}
+	 * @throws NotImplementedException when the schema is not supported
 	 */
-	protected RemoteDataClient getRemoteDataClient(String apiUsername, URI uri) throws
-			SystemUnknownException, AgaveNamespaceException, RemoteCredentialException,
-			PermissionException, FileNotFoundException, RemoteDataException {
-		return new RemoteDataClientFactory().getInstance(apiUsername, null, uri);
+	private RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
+		TenancyHelper.setCurrentTenantId(tenantId);
+		return new RemoteDataClientFactory().getInstance(username, null, target);
 	}
 
 }

@@ -58,8 +58,15 @@ public abstract class BaseTestCase {
     }
 
     /**
+     * @return the name of the config file. This can be overridden for integration tests
+     */
+    protected String getConfigFileName() {
+        return "config-test.json";
+    }
+
+    /**
      * Creates a legacy {@link org.iplantc.service.transfer.model.TransferTask} for use when mocking URLCopy operations
-     * @return
+     * @return a legacy transfertask object
      */
     protected org.iplantc.service.transfer.model.TransferTask _createTestTransferTaskIPC() {
         return new org.iplantc.service.transfer.model.TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USER, null, null);
@@ -72,7 +79,7 @@ public abstract class BaseTestCase {
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
                 .setType("file")
                 .setOptional(true)
-                .setConfig(new JsonObject().put("path", "config.json"));
+                .setConfig(new JsonObject().put("path", getConfigFileName()));
 
         ConfigStoreOptions envPropsStore = new ConfigStoreOptions().setType("env");
 

@@ -86,11 +86,26 @@
                     </argLine>
                 </configuration>
             </plugin>
+
+            <!-- Starts and stops integration test containers with Docker Compose -->
+            <plugin>
+                <groupId>com.dkanejs.maven.plugins</groupId>
+                <artifactId>docker-compose-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Performs a wait and rediness check for integration test container startup -->
+            <plugin>
+                <groupId>org.agaveplatform.ops</groupId>
+                <artifactId>await-maven-plugin</artifactId>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${maven-failsafe-plugin.version}</version>
             </plugin>
+
+
         </plugins>
     </build>
 

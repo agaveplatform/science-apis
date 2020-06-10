@@ -50,6 +50,8 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
 
     JDBCClient dbClient = JDBCClient.createShared(getVertx(), new JsonObject()
       .put("url", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:hsqldb:mem:db/dev"))
+      .put("username", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_USERNAME))
+      .put("password", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_PASSWORD))
       .put("driver_class", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "org.hsqldb.jdbcDriver"))
       .put("max_pool_size", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)), "agave-io");
 

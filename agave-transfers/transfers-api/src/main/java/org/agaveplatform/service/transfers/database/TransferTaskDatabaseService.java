@@ -46,10 +46,10 @@ public interface TransferTaskDatabaseService {
   TransferTaskDatabaseService getAllForUser(String tenantId, String username, int limit, int offset, Handler<AsyncResult<JsonArray>> resultHandler);
 
   @Fluent
-  TransferTaskDatabaseService getAllChildrenCanceledOrCompleted(String uuid, Handler<AsyncResult<JsonArray>> resultHandler);
+  TransferTaskDatabaseService getAllChildrenCanceledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<JsonArray>> resultHandler);
 
   @Fluent
-  TransferTaskDatabaseService getTransferTaskTree(String uuid, Handler<AsyncResult<JsonArray>> resultHandler);
+  TransferTaskDatabaseService getTransferTaskTree(String tenantId, String uuid, Handler<AsyncResult<JsonArray>> resultHandler);
 
   @Fluent
   TransferTaskDatabaseService setTransferTaskCanceledWhereNotCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler);

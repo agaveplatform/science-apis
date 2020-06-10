@@ -25,6 +25,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
+import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.Settings;
 import org.slf4j.Logger;
@@ -68,9 +69,12 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
 
 //  getTransferTaskTree
   @Override
-  public TransferTaskDatabaseService getTransferTaskTree(String uuid, Handler<AsyncResult<JsonArray>> resultHandler) {
+  public TransferTaskDatabaseService getTransferTaskTree(String tenantId, String uuid, Handler<AsyncResult<JsonArray>> resultHandler) {
     JsonArray data = new JsonArray()
-            .add(uuid);
+            .add(uuid)
+            .add(tenantId)
+            .add(uuid)
+            .add(tenantId);
 
     dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK_TREE), data, res -> {
       if (res.succeeded()) {
@@ -85,8 +89,9 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
   @Override
-  public TransferTaskDatabaseService getAllChildrenCanceledOrCompleted(String uuid, Handler<AsyncResult<JsonArray>> resultHandler) {
+  public TransferTaskDatabaseService getAllChildrenCanceledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<JsonArray>> resultHandler) {
     JsonArray data = new JsonArray()
+            .add(tenantId)
             .add(uuid);
 
     dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_CHILDREN_CANCELED_OR_COMPLETED), data, res -> {
@@ -349,7 +354,11 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonArray params = new JsonArray().add(uuid).add(tenantId);
         dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
           if (ar.succeeded()) {
-            resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+            if (ar.result().getRows().isEmpty()) {
+              resultHandler.handle(Future.failedFuture(new ObjectNotFoundException("Transform task was deleted by another process after the update completed successfully. ")));
+            } else {
+              resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+            }
           } else {
             LOGGER.error("Database query error", res.cause());
             resultHandler.handle(Future.failedFuture(res.cause()));

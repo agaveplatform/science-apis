@@ -9,6 +9,8 @@ public class TransferTaskConfigProperties {
     public static final String CONFIG_TRANSFERTASK_JWT_PUBLIC_KEY = "transfertask.jwt.public_key";
     public static final String CONFIG_TRANSFERTASK_JWT_PRIVATE_KEY= "transfertask.jwt.private_key";
     public static final String CONFIG_TRANSFERTASK_DB_JDBC_URL = "transfertask.jdbc.url";
+    public static final String CONFIG_TRANSFERTASK_DB_JDBC_USERNAME = "transfertask.jdbc.username";
+    public static final String CONFIG_TRANSFERTASK_DB_JDBC_PASSWORD = "transfertask.jdbc.password";
     public static final String CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS = "transfertask.jdbc.driver_class";
     public static final String CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE = "transfertask.jdbc.max_pool_size";
     public static final String CONFIG_TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE = "transfertask.sqlqueries.resource.file";

@@ -5,8 +5,6 @@ package org.iplantc.service.common.uri;
 
 import java.net.URI;
 
-import org.iplantc.service.common.exceptions.AgaveNamespaceException;
-
 /**
  * Utility class to parse URLs and transform API urls into their various
  * API references.
@@ -23,12 +21,11 @@ public class AgaveUriUtil {
 	 * defined as those which have the <code>agave</code> schema or the URL
 	 * is an service URL
 	 *
-	 * @param inputUri
-	 * @return
-	 * @throws AgaveNamespaceException
+	 * @param target the url to match
+	 * @return true if the url matches an agave schema.
 	 */
-	public static boolean isInternalURI(URI inputUri) throws AgaveNamespaceException
+	public static boolean isInternalURI(URI target)
 	{
-	    return AgaveUriRegex.matchesAny(inputUri);
+	    return AgaveUriRegex.matchesAny(target);
 	}
 }

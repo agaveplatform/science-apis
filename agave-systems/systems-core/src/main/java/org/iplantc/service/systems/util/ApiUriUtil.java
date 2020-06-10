@@ -3,11 +3,6 @@
  */
 package org.iplantc.service.systems.util;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.regex.Matcher;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -15,11 +10,13 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uri.AgaveUriRegex;
 import org.iplantc.service.common.uri.AgaveUriUtil;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
+
+import java.net.URI;
+import java.util.regex.Matcher;
 
 /**
  * Utility class to parse URLs and transform API urls into their various
@@ -35,14 +32,14 @@ public class ApiUriUtil {
 	 * if the URI has the <code>agave</code> schema or the URL is an IO 
 	 * service URL
 	 * 
-	 * @param inputUri
-	 * @return
+	 * @param inputUri the uri to check
+	 * @return true if the target uri matches an agave URI pattern. false otherwise
 	 */
 	public static boolean isInternalURI(URI inputUri)
 	{
 		try {
 			return AgaveUriUtil.isInternalURI(inputUri);
-		} catch (AgaveNamespaceException e) {
+		} catch (Exception e) {
 			return false;
 		}
 	}
@@ -53,10 +50,9 @@ public class ApiUriUtil {
 	 * path after the content type. In the case of an internal URI, the entire path
 	 * is returned.
 	 *  
-	 * @param inputUri
-	 * @return
-	 * @throws IOException 
-	 * @throws URISyntaxException 
+	 * @param inputUri the uri to check
+	 * @return the agave-relevant path in the {@code inputUri}
+	 * @throws AgaveNamespaceException if the {@code inputUri} does nto match a known internal uri pattern.
 	 */
 	public static String getPath(URI inputUri) throws AgaveNamespaceException
 	{
@@ -89,8 +85,8 @@ public class ApiUriUtil {
 	 * storage system will be returned. Note that the owner must have a role on
 	 * the given system to for this to work.
 	 * 
-	 * @param owner
-	 * @param inputUri
+	 * @param owner the system owner to check system permissions for
+	 * @param inputUri the uri to check
 	 * @return RemoteSystem 
 	 * @throws AgaveNamespaceException if the URI is not a valid URI
 	 * @throws SystemUnknownException if no available system can be found for the user and uri 
@@ -100,7 +96,7 @@ public class ApiUriUtil {
 	throws AgaveNamespaceException, SystemUnknownException, PermissionException
 	{
 		SystemDao dao = new SystemDao();
-		RemoteSystem system = null;
+		RemoteSystem system;
 		
 		Matcher matcher = AgaveUriRegex.getMatcher(inputUri);
         
@@ -187,8 +183,8 @@ public class ApiUriUtil {
 	 * Returns the absolute path on a remote system for the given {@code inputUri}.
 	 * This is done by calling the {@link RemoteDataClient#resolvePath(String)} method with 
 	 * the value from {@link #getPath(URI)}.
-	 * @param inputUri
-	 * @return
+	 * @param inputUri the uri to check
+	 * @return the actual remote absolute path for the agave URI on the remote system
 	 * @throws AgaveNamespaceException if the URI is not a valid URI
 	 * @throws SystemUnknownException if no available system can be found for the user and uri 
 	 * @throws PermissionException if the user does not have access to the system represented by the uri

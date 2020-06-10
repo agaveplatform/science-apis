@@ -253,12 +253,13 @@ public class RemoteDataClientFactory {
 	 * @param internalUsername
 	 * @param uri
 	 * @return
-	 * @throws RemoteDataException
-	 * @throws RemoteCredentialException
-	 * @throws PermissionException
-	 * @throws SystemUnknownException if no system can be found for the uri and user
-	 * @throws AgaveNamespaceException
-	 * @throws FileNotFoundException 
+	 * @throws SystemUnknownException if the sytem is unknown
+	 * @throws AgaveNamespaceException if the URI does match any known agave uri pattern
+	 * @throws RemoteCredentialException if the credentials for the system represented by the URI cannot be found/refreshed/obtained
+	 * @throws PermissionException when the user does not have permission to access the {@code target}
+	 * @throws FileNotFoundException when the remote {@code target} does not exist
+	 * @throws RemoteDataException when a connection cannot be made to the {@link RemoteSystem}
+	 * @throws NotImplementedException when the schema is not supported
 	 */
 	public RemoteDataClient getInstance(String apiUsername, String internalUsername, URI uri) 
 	throws RemoteDataException, RemoteCredentialException, PermissionException, 

@@ -147,7 +147,7 @@ public class TransferRateHelper {
                             + "/media/system/" + endpointUri.getHost() + endpointUri.getPath();
                 }
             }
-        } catch (AgaveNamespaceException e) {
+        } catch (Exception e) {
             // ignoring this and returning the original endpoint
         }
 

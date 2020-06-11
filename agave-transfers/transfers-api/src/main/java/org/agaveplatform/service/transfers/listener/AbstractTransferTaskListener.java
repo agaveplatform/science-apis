@@ -11,7 +11,7 @@ import java.util.HashSet;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
 
-public abstract class AbstractTransferTaskListener extends AbstractVerticle  {
+public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTransferTaskListener.class);
 
     String address;
@@ -146,9 +146,10 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle  {
 //            throw new InterruptableTransferTaskException(
 //                    String.format("Transfer task %s interrupted due to cancel event", transferTask.getUuid()));
         }
-
-        return false;
+        return true;
     }
+
+
 
     /**
      * Sets the vertx instance for this listener

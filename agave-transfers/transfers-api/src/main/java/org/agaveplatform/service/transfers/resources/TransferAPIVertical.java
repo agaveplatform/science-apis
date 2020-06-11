@@ -236,8 +236,7 @@ public class TransferAPIVertical extends AbstractVerticle {
      *
      * @param routingContext the current rounting context for the request
      */
-    private void addOne(RoutingContext routingContext) {
-        Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
+    private void addOne(RoutingContext routingContext) { Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
         JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");

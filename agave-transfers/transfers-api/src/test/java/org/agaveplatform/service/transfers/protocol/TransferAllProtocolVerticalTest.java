@@ -98,8 +98,8 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		// pull in the mock for TransferAllProtocolVertical
 		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(null);
 		// mock out everything call, but not being tested in the method
-		when(txfrAllVert.getRemoteDataClient(eq(TEST_USERNAME), eq(srcUri)) ).thenReturn(srcRemoteDataClientMock);
-		when(txfrAllVert.getRemoteDataClient(eq(TEST_USERNAME), eq(destUri)) ).thenReturn(destRemoteDataClientMock);
+		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(srcUri)) ).thenReturn(srcRemoteDataClientMock);
+		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(destUri)) ).thenReturn(destRemoteDataClientMock);
 		when(txfrAllVert.getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock)).thenReturn(urlCopyMock);
 		// make the actual call to our method under test
 		when(txfrAllVert.processCopyRequest(any(), any(), any(), any(), any())).thenCallRealMethod();
@@ -107,9 +107,9 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		// now actually call the mehtod under test
 		Boolean result = txfrAllVert.processCopyRequest(srcUri.getPath(), srcRemoteDataClientMock, destUri.getPath(), destRemoteDataClientMock, legacyTransferTask);
 		// this shouldn't be called because we're passing in the src rdc
-		verify(txfrAllVert, never()).getRemoteDataClient(TEST_USERNAME, srcUri);
+		verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, srcUri);
 		// this shouldn't be called because we're passing in the dest rdc
-		verify(txfrAllVert, never()).getRemoteDataClient(TEST_USERNAME, destUri);
+		verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, destUri);
 		// this should be called as the method get
 		verify(txfrAllVert).getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock);
 		// verify the URLCopy#copy method was called
@@ -153,8 +153,8 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		// pull in the mock for TransferAllProtocolVertical
 		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(null);
 		// mock out everything call, but not being tested in the method
-		when(txfrAllVert.getRemoteDataClient(eq(TEST_USERNAME), eq(srcUri)) ).thenReturn(srcRemoteDataClientMock);
-		when(txfrAllVert.getRemoteDataClient(eq(TEST_USERNAME), eq(destUri)) ).thenReturn(destRemoteDataClientMock);
+		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(srcUri)) ).thenReturn(srcRemoteDataClientMock);
+		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(destUri)) ).thenReturn(destRemoteDataClientMock);
 		when(txfrAllVert.getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock)).thenReturn(urlCopyMock);
 		// make the actual call to our method under test
 		when(txfrAllVert.processCopyRequest(any(), any(), any(), any(), any())).thenCallRealMethod();
@@ -169,9 +169,9 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 			// prior to the exception
 
 			// this shouldn't be called because we're passing in the src rdc
-			verify(txfrAllVert, never()).getRemoteDataClient(TEST_USERNAME, srcUri);
+			verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, srcUri);
 			// this shouldn't be called because we're passing in the dest rdc
-			verify(txfrAllVert, never()).getRemoteDataClient(TEST_USERNAME, destUri);
+			verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, destUri);
 			// this should be called as the method get
 			verify(txfrAllVert).getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock);
 			// verify the URLCopy#copy method was called

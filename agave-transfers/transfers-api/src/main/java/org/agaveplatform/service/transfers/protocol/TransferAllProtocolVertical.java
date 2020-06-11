@@ -247,7 +247,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	 * @throws RemoteDataException when a connection cannot be made to the {@link RemoteSystem}
 	 * @throws NotImplementedException when the schema is not supported
 	 */
-	private RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
+	protected RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
 		TenancyHelper.setCurrentTenantId(tenantId);
 		return new RemoteDataClientFactory().getInstance(username, null, target);
 	}

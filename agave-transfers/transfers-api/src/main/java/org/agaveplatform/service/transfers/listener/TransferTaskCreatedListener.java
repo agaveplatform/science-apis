@@ -56,6 +56,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
     public void start() {
         EventBus bus = vertx.eventBus();
         bus.<JsonObject>consumer(getEventChannel(), msg -> {
+            logger.info("Recieved the TRANSFERTASK_CREATED message");
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
             String source = body.getString("source");

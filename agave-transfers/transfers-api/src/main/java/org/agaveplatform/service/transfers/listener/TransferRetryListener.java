@@ -1,5 +1,8 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -59,7 +62,17 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 			String source = body.getString("source");
 			String dest = body.getString("dest");
 			log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-			processRetryTransferTask(body);
+			//processRetryTransferTask(body);
+			processRetryTransferTask(body, resp -> {
+				if (resp.succeeded()){
+					log.error("Succeeded with the procdessTransferTask in the assigning of the event {}", uuid);
+					_doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
+				} else {
+					log.error("Error with return from creating the event {}", uuid);
+					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+				}
+			});
+
 		});
 
 		// cancel tasks
@@ -102,7 +115,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 	 * task assignment after incrementing the attempt count.
 	 * @param body the retry message body.
 	 */
-	protected void processRetryTransferTask(JsonObject body) {
+	protected void processRetryTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
 		String uuid = body.getString("uuid");
 		String tenantId = body.getString("tenantId");
 		Integer attempts = body.getInteger("attempts");
@@ -128,7 +141,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 							if (updateBody.succeeded()) {
 								log.debug("Beginning attempt {} for transfer task {}", tenantId, uuid);
 								processRetry(new TransferTask(updateBody.result()));
-//								promise.handle(Future.succeededFuture(Boolean.TRUE));
+								handler.handle(Future.succeededFuture(Boolean.TRUE));
 							} else {
 								log.error("[{}] Task {} update failed: {}",
 										tenantId, uuid, reply.cause());
@@ -137,7 +150,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 										.put("message", updateBody.cause().getMessage())
 										.mergeIn(body);
 								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-//								promise.handle(Future.failedFuture(updateBody.cause()));
+								handler.handle(Future.succeededFuture(false));
 							}
 						});
 					} else {
@@ -149,10 +162,12 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 								.mergeIn(body);
 
 						_doPublishEvent(TRANSFERTASK_FAILED, json);
+						handler.handle(Future.succeededFuture(false));
 					}
 				} else {
 					log.debug("Skipping retry of transfer task {}. Task has a status of {} and is no longer in an active state.",
 							uuid, transferTaskDb.getStatus().name());
+					handler.handle(Future.succeededFuture(true));
 				}
 			} else {
 				String msg = "Unable to verify the current status of transfer task " + uuid + ". " + reply.cause();
@@ -162,14 +177,16 @@ public class TransferRetryListener extends AbstractTransferTaskListener{
 						.mergeIn(body);
 
 				_doPublishEvent(TRANSFERTASK_ERROR, json);
+				handler.handle(Future.succeededFuture(false));
 			}
 
 		});
+		handler.handle(Future.succeededFuture(true));
 	}
 
 	/**
 	 * Handles the reassignment of this task. This is nearly identical to what happens in the
-	 * {@link TransferTaskAssignedListener#processTransferTask(JsonObject)} method
+	 * {@link TransferTaskAssignedListener#processRetry(TransferTask)} method
 	 * @param retryTransferTask the updated transfer task to retry
 	 */
 	public void processRetry(TransferTask retryTransferTask) {

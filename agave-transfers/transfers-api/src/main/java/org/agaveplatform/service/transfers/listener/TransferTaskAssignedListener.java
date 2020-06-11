@@ -1,8 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
@@ -55,7 +53,15 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             String dest = body.getString("dest");
             log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
-            processTransferTask(body);
+            processTransferTask(body, resp -> {
+                if (resp.succeeded()){
+                    log.error("Succeeded with the procdessTransferTask in the assigning of the event {}", uuid);
+                    _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
+                } else {
+                    log.error("Error with return from creating the event {}", uuid);
+                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                }
+            });
         });
 
         // cancel tasks
@@ -93,8 +99,8 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         });
     }
 
-    protected Future<Boolean> processTransferTask(JsonObject body) {
-        Promise<Boolean> promise = Promise.promise();
+    protected void processTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
+        //Promise<Boolean> promise = Promise.promise();
         String uuid = body.getString("uuid");
         String source = body.getString("source");
 		String dest =  body.getString("dest");
@@ -231,12 +237,12 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                             srcUri.getScheme(), uuid);
                     throw new RemoteDataSyntaxException(msg);
                 }
-                promise.complete(true);
+                handler.handle(Future.succeededFuture(true));
             } else {
                 // task was interrupted, so don't attempt a retry
                 log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
                 _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
-                promise.complete(false);
+                handler.handle(Future.succeededFuture(false));
             }
         }
         catch (RemoteDataSyntaxException e) {
@@ -247,7 +253,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     .mergeIn(body);
 
             _doPublishEvent(TRANSFERTASK_FAILED, json);
-            promise.fail(e);
+            handler.handle(Future.failedFuture(e));
         }
         catch (Exception e) {
             log.error(e.getMessage());
@@ -257,7 +263,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     .mergeIn(body);
 
             _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-            promise.fail(e);
+            handler.handle(Future.failedFuture(e));
         }
         finally {
             // cleanup the remote data client connections
@@ -265,7 +271,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             try { if (destClient != null) destClient.disconnect(); } catch (Exception ignored) {}
         }
 
-        return promise.future();
+        handler.handle(Future.succeededFuture(true));
     }
 
     /**

@@ -63,7 +63,15 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             String dest = body.getString("dest");
             logger.info("Transfer task {} created: {} -> {}", uuid, source, dest);
 
-            assignTransferTask(body, resp -> {});
+            assignTransferTask(body, resp -> {
+                if (resp.succeeded()){
+                    logger.error("Succeeded with the assignTransferTask in the creation of the event {}", uuid);
+                    _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
+                } else {
+                    logger.error("Error with return from creating the event {}", uuid);
+                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                }
+            });
         });
 
         // cancel tasks

@@ -86,7 +86,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
 					.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(anyObject()) );
+		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
@@ -170,7 +170,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
 					.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), eq(anyObject()) );
+		}).when(dbService).getById(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), anyObject() );
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = parentTask.toJson()

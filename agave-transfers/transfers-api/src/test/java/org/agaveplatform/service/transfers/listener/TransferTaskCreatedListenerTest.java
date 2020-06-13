@@ -10,12 +10,15 @@ import org.iplantc.service.systems.exceptions.SystemRoleException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.enumerations.RoleType;
+import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.URI;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -35,7 +38,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
 		when(ttc.getVertx()).thenReturn(vertx);
 		when(ttc.getRemoteSystemAO()).thenCallRealMethod();
-		when(ttc.taskIsNotInterrupted(any())).thenCallRealMethod();
+		when(ttc.taskIsNotInterrupted(any())).thenReturn(true);
 		doCallRealMethod().when(ttc).assignTransferTask(any(), any());
 
 		return ttc;
@@ -51,6 +54,12 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
+		//when(RemoteDataClientFactory.isSchemeSupported(any())).thenCallRealMethod();
+		// the interrupt behavior should be tested independently of the happy pth test happening here.
+		when(ttc.taskIsNotInterrupted(eq(transferTask))).thenReturn(true);
+
+		doNothing().when(ttc)._doPublishEvent(any(), any());
+
 		try {
 			// return true on permission checks for this test
 			when(ttc.userHasMinimumRoleOnSystem(eq(transferTask.getTenantId()), eq(transferTask.getOwner()), anyString(), any(RoleType.class))).thenReturn(true);
@@ -62,8 +71,9 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 			ctx.verify(() -> {
 				assertTrue(isAssigned);
 				verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
-				verify(ttc, never())._doPublishEvent(TRANSFERTASK_ERROR, any(JsonObject.class));
-				verify(ttc,times(2)).userHasMinimumRoleOnSystem(any(),any(),any(),any());
+				verify(ttc, never())._doPublishEvent(TRANSFERTASK_ERROR, new JsonObject());
+				//verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getSource()).getHost(), RoleType.GUEST);
+				verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getDest()).getHost(), RoleType.USER);
 				ctx.completeNow();
 			});
 		}));

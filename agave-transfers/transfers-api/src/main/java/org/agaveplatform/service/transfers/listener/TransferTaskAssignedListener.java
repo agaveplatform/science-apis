@@ -140,7 +140,6 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                         // get a remote data client for the system
                         srcClient = getRemoteDataClient(tenantId, username, srcUri);
 
-
 //                        // pull the dest system out of the url. system id is the hostname in an agave uri
 //                        RemoteSystem destSystem = new SystemDao().findBySystemId(destUri.getHost());
 //                        destClient = destSystem.getRemoteDataClient();
@@ -289,7 +288,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
      * @throws RemoteDataException when a connection cannot be made to the {@link RemoteSystem}
      * @throws NotImplementedException when the schema is not supported
      */
-    private RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
+    protected RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
         TenancyHelper.setCurrentTenantId(tenantId);
         return new RemoteDataClientFactory().getInstance(username, null, target);
     }

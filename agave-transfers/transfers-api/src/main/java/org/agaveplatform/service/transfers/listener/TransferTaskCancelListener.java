@@ -9,7 +9,6 @@ import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.apache.commons.lang3.StringUtils;
 
-import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -245,7 +244,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
             if (ttResult.succeeded()) {
                 TransferTask parentTask = ttResult.result();
                 // if the parent is still active
-                if (TransferStatusType.getActiveStatusValues().contains(parentTask.getStatus())) {
+                if (TransferStatusType.getActive().contains(parentTask.getStatus())) {
                     // check to see if it has active children
                     getDbService().allChildrenCancelledOrCompleted(tenantId, parentTaskId, parentChildCancelledOrCompleteResult -> {
                         if (parentChildCancelledOrCompleteResult.succeeded()) {

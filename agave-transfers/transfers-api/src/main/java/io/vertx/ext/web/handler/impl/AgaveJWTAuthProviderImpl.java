@@ -3,7 +3,6 @@ package io.vertx.ext.web.handler.impl;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
 import io.vertx.core.file.FileSystemException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -31,7 +30,8 @@ public class AgaveJWTAuthProviderImpl implements JWTAuth {
     private final String permissionsClaimKey;
     private final JWTOptions jwtOptions;
 
-    public AgaveJWTAuthProviderImpl(Vertx vertx, JWTAuthOptions config) {
+    @SuppressWarnings( "deprecation") // because the upstream JWTAuthOption class is in flux right now.
+    public AgaveJWTAuthProviderImpl(JWTAuthOptions config) {
         this.permissionsClaimKey = config.getPermissionsClaimKey();
         this.jwtOptions = config.getJWTOptions();
 
@@ -56,7 +56,9 @@ public class AgaveJWTAuthProviderImpl implements JWTAuth {
         try {
             final JsonObject payload = jwt.decode(authInfo.getString("jwt"));
 
-            if (jwt.isExpired(payload, jwtOptions)) {
+            try {
+                jwt.isExpired(payload, jwtOptions);
+            } catch(RuntimeException e) {
                 resultHandler.handle(Future.failedFuture("Expired JWT token."));
                 return;
             }

@@ -1,6 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.junit5.Checkpoint;
@@ -10,20 +13,15 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.listener.TransferCompleteTaskListener;
-
-import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
-import org.apache.xmlbeans.impl.xb.xsdschema.Public;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import java.time.Instant;
+
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.mockito.Mockito.*;
 
@@ -32,7 +30,7 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({ JDBCClient.class })
 class TransferCompleteTaskListenerTest extends BaseTestCase {
-    private static final Logger log = LoggerFactory.getLogger(TransferCompleteTaskListenerTest.class);
+//    private static final Logger log = LoggerFactory.getLogger(TransferCompleteTaskListenerTest.class);
 
     @AfterAll
     public void tearDown(Vertx vertx, VertxTestContext ctx) {
@@ -60,7 +58,6 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // get the JsonObject to pass back and forth between verticles
         JsonObject json = transferTask.toJson();
-        String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferCompleteTaskListener transferCompleteTaskListener = getMockTransferCompleteListenerInstance(vertx);
@@ -77,8 +74,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into updateStatus
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-            ((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-                    .handle(updateStatusHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
             return null;
         }).when(dbService).updateStatus(any(), any(), any(), any());
 
@@ -87,8 +85,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
 //        // mock the handler passed into processParentEvent
         doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-            ((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-                    .handle(processParentEventHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(processParentEventHandler);
             return null;
         }).when(transferCompleteTaskListener).processParentEvent(any(), any(), any());
 
@@ -137,7 +136,6 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // get the JsonObject to pass back and forth between verticles
         JsonObject json = transferTask.toJson();
-        String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
@@ -154,8 +152,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into updateStatus
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-            ((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-                    .handle(updateStatusHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
             return null;
         }).when(dbService).updateStatus(any(), any(), any(), any());
 
@@ -164,8 +163,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into processParentEvent
         doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-            ((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-                    .handle(processParentEventHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(processParentEventHandler);
             return null;
         }).when(ttc).processParentEvent(any(), any(), any());
 
@@ -217,7 +217,6 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // get the JsonObject to pass back and forth between verticles
         JsonObject json = transferTask.toJson();
-        String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
@@ -233,8 +232,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into updateStatus
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-            ((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-                    .handle(updateStatusHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
             return null;
         }).when(dbService).updateStatus(any(), any(), any(), any());
 
@@ -243,8 +243,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into processParentEvent
         doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-            ((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-                    .handle(processParentEventHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(processParentEventHandler);
             return null;
         }).when(ttc).processParentEvent(any(), any(), any());
 
@@ -295,7 +296,6 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // get the JsonObject to pass back and forth between verticles
         JsonObject json = transferTask.toJson();
-        String parentTaskId = json.getString("parentTaskId");
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
@@ -311,8 +311,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into updateStatus
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-            ((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-                    .handle(updateStatusHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
             return null;
         }).when(dbService).updateStatus(any(), any(), any(), any());
 
@@ -322,8 +323,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into processParentEvent
         doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-            ((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-                    .handle(processParentEventHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(processParentEventHandler);
             return null;
         }).when(ttc).processParentEvent(any(), any(), any());
 
@@ -398,8 +400,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
             // mock the handler passed into getById
             doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-                ((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-                        .handle(getByAnyHandler);
+                @SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(getByAnyHandler);
                 return null;
             }).when(dbService).getById(any(), any(), any());
 
@@ -408,8 +411,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
             // mock the handler passed into allChildrenCancelledOrCompletedHandler
             doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-                ((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-                        .handle(allChildrenCancelledOrCompletedHandler);
+                @SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
                 return null;
             }).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
 
@@ -483,8 +487,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into getById
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-            ((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-                    .handle(getByAnyHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(getByAnyHandler);
             return null;
         }).when(dbService).getById(any(), any(), any());
 
@@ -493,8 +498,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into allChildrenCancelledOrCompletedHandler
         doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-            ((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-                    .handle(allChildrenCancelledOrCompletedHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
             return null;
         }).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
 
@@ -568,8 +574,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into getById
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-            ((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-                    .handle(getByAnyHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(getByAnyHandler);
             return null;
         }).when(dbService).getById(any(), any(), any());
 
@@ -578,8 +585,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into allChildrenCancelledOrCompletedHandler
         doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-            ((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-                    .handle(allChildrenCancelledOrCompletedHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
             return null;
         }).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
 
@@ -654,8 +662,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into getById
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-            ((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-                    .handle(getByAnyHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(getByAnyHandler);
             return null;
         }).when(dbService).getById(any(), any(), any());
 
@@ -664,8 +673,9 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
         // mock the handler passed into allChildrenCancelledOrCompletedHandler
         doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-            ((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-                    .handle(allChildrenCancelledOrCompletedHandler);
+            @SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
             return null;
         }).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
 

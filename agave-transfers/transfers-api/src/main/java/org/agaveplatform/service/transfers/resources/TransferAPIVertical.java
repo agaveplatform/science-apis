@@ -1,8 +1,5 @@
 package org.agaveplatform.service.transfers.resources;
 
-import com.google.common.base.CharMatcher;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -16,19 +13,16 @@ import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.api.validation.HTTPRequestValidationHandler;
-
-import io.vertx.ext.web.api.validation.ValidationException;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
-
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthProviderImpl;
 import io.vertx.ext.web.handler.impl.Wso2JwtUser;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.model.TransferTaskRequest;
 import org.agaveplatform.service.transfers.model.TransferUpdate;
 import org.agaveplatform.service.transfers.util.AgaveSchemaFactory;
-import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
 import org.apache.commons.lang.StringUtils;
@@ -37,8 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
@@ -50,25 +42,17 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANS
  */
 public class TransferAPIVertical extends AbstractVerticle {
 
-    private static Logger log = LoggerFactory.getLogger(TransferAPIVertical.class);
+    private final static Logger log = LoggerFactory.getLogger(TransferAPIVertical.class);
 
-    private HttpServer server;
     private JWTAuth authProvider;
-    private JWTAuth jwtAuth;
-
     private TransferTaskDatabaseService dbService;
     protected String eventChannel = TRANSFERTASK_DB_QUEUE;
 
     public TransferAPIVertical(){super();}
 
     public TransferAPIVertical(Vertx vertx) {
-        this(vertx, null);
-    }
-
-    public TransferAPIVertical(Vertx vertx, String eventChannel) {
         super();
         setVertx(vertx);
-        setEventChannel(eventChannel);
     }
 
     /**
@@ -138,19 +122,17 @@ public class TransferAPIVertical extends AbstractVerticle {
                 // Mount primary handler
                 .handler(this::updateOne);
 
-        router.errorHandler(500, ctx -> {
-            ctx.response()
-                .putHeader("content-type", "application/json")
-                .end(
-                    AgaveResponseBuilder.getInstance(ctx)
-                            .setStatus(AgaveResponse.RequestStatus.error)
-                            .setMessage(ctx.failure().getMessage())
-                            .build()
-                            .toString());
-            });
+        router.errorHandler(500, ctx -> ctx.response()
+            .putHeader("content-type", "application/json")
+            .end(
+                AgaveResponseBuilder.getInstance(ctx)
+                        .setStatus(AgaveResponse.RequestStatus.error)
+                        .setMessage(ctx.failure().getMessage())
+                        .build()
+                        .toString()));
 
         int portNumber = config().getInteger(CONFIG_TRANSFERTASK_HTTP_PORT, 8080);
-        server = vertx.createHttpServer();
+        HttpServer server = vertx.createHttpServer();
         server
             .requestHandler(router)
             .listen(portNumber, ar -> {
@@ -433,6 +415,7 @@ public class TransferAPIVertical extends AbstractVerticle {
     public JWTAuth getAuthProvider() {
         if (authProvider == null) {
             try {
+                @SuppressWarnings("deprecation")
                 JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
                         .setJWTOptions(new JWTOptions()
                                 .setLeeway(30)
@@ -442,7 +425,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                                 .setAlgorithm("RS256")
                                 .setPublicKey(CryptoHelper.publicKey(config().getString("transfertask.jwt.public_key"))));
 
-                authProvider = new AgaveJWTAuthProviderImpl(vertx, jwtAuthOptions);
+                authProvider = new AgaveJWTAuthProviderImpl(jwtAuthOptions);
 
             } catch (IOException e) {
                 log.error("Failed to load public key from file.", e);
@@ -459,22 +442,6 @@ public class TransferAPIVertical extends AbstractVerticle {
      */
     private void setVertx(Vertx vertx) {
         this.vertx = vertx;
-    }
-
-    /**
-     * @return the message type to listen to
-     */
-    public String getEventChannel() {
-        return eventChannel;
-    }
-
-    /**
-     * Sets the message type for which to listen
-     *
-     * @param eventChannel
-     */
-    public void setEventChannel(String eventChannel) {
-        this.eventChannel = eventChannel;
     }
 
     /**

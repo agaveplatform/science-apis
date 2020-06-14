@@ -12,8 +12,6 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
@@ -22,9 +20,6 @@ import org.mockito.stubbing.Answer;
 import java.time.Instant;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_PARENT_ERROR;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.*;
@@ -83,8 +78,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		JsonObject expectedgetByIdAck = transferTask.toJson();
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(updateGetById);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
 			return null;
 		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
 
@@ -97,8 +93,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-					.handle(updateStatusHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
 			return null;
 		}).when(dbService).updateStatus(any(), any(), any(), any());
 
@@ -108,8 +105,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 		// mock the handler passed into processParentEvent
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(processPauseRequest);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(processPauseRequest);
 			return null;
 		}).when(listener).processParentEvent(any(), any(), any());
 
@@ -167,8 +165,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		JsonObject expectedgetByIdAck = parentTask.toJson();
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(updateGetById);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
 			return null;
 		}).when(dbService).getById(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), anyObject() );
 
@@ -181,8 +180,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-					.handle(updateStatusHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
 			return null;
 		}).when(dbService).updateStatus(any(), any(), any(), any());
 
@@ -192,8 +192,9 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 		// mock the handler passed into processParentEvent
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(processPauseRequest);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(processPauseRequest);
 			return null;
 		}).when(listener).processParentEvent(any(), any(), any());
 

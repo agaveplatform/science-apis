@@ -176,27 +176,27 @@ class TransferTaskAssignedListenerTest {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - isTaskInterruptedTest")
-	//@Disabled
 	void isTaskInterruptedTest(Vertx vertx, VertxTestContext ctx){
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx, "transfertask.assigned");
+		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
+		ctx.verify(() -> {
+			ta.interruptedTasks.add(tt.getUuid());
+			assertTrue(ta.taskIsNotInterrupted(tt), "UUID of tt present in interruptedTasks list should indicate task is interrupted");
+			ta.interruptedTasks.remove(tt.getUuid());
 
-		ta.interruptedTasks.add(tt.getUuid());
-		assertTrue(ta.taskIsNotInterrupted(tt), "UUID of tt present in interruptedTasks list should indicate task is interrupted");
-		ta.interruptedTasks.remove(tt.getUuid());
+			ta.interruptedTasks.add(tt.getParentTaskId());
+			assertTrue(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in interruptedTasks list should indicate task is interrupted");
+			ta.interruptedTasks.remove(tt.getParentTaskId());
 
-		ta.interruptedTasks.add(tt.getParentTaskId());
-		assertTrue(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in interruptedTasks list should indicate task is interrupted");
-		ta.interruptedTasks.remove(tt.getParentTaskId());
+			ta.interruptedTasks.add(tt.getRootTaskId());
+			assertTrue(ta.taskIsNotInterrupted(tt), "UUID of tt root present in interruptedTasks list should indicate task is interrupted");
+			ta.interruptedTasks.remove(tt.getRootTaskId());
 
-		ta.interruptedTasks.add(tt.getRootTaskId());
-		assertTrue(ta.taskIsNotInterrupted(tt), "UUID of tt root present in interruptedTasks list should indicate task is interrupted");
-		ta.interruptedTasks.remove(tt.getRootTaskId());
-
-		ctx.completeNow();
+			ctx.completeNow();
+		});
 	}
 
 }

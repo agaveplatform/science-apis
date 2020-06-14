@@ -1,12 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.*;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
-import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,14 +12,13 @@ import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
-import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 
 public class TransferWatchListener extends AbstractTransferTaskListener {
-	private final static Logger logger = LoggerFactory.getLogger(TransferWatchListener.class);
+	private final static Logger log = LoggerFactory.getLogger(TransferWatchListener.class);
 
 	private TransferTaskDatabaseService dbService;
-	protected List<String>  parentList = new ArrayList<String>();
+	protected List<String>  parentList = new ArrayList<>();
 
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_HEALTHCHECK;
 
@@ -48,7 +44,13 @@ public class TransferWatchListener extends AbstractTransferTaskListener {
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
 		getVertx().setPeriodic(10000, resp -> {
-			processEvent();
+			processEvent(batchResp -> {
+				if (batchResp.succeeded()) {
+					log.debug("Periodic transfer task watch starting");
+				} else {
+					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
+				}
+			});
 		});
 	}
 
@@ -56,31 +58,30 @@ public class TransferWatchListener extends AbstractTransferTaskListener {
 	 * Handles generation of health check events for each active transfer task every 10 seconds.
 	 * @return future with boolean result of the batch scheduling operation
 	 */
-	public Future<Boolean> processEvent() {
-		Promise<Boolean> promise = Promise.promise();
-
-		logger.debug("Looking up active transfer tasks...");
-		getDbService().getActiveRootTaskIds(reply -> {
-			if (reply.succeeded()) {
-				logger.info("Found {} active transfer tasks", reply.result().size());
-				reply.result().getList().forEach(rootTask -> {
-					try {
-						logger.debug("Scheduling health check on transfer task {}",
-								((JsonObject) rootTask).getString("uuid"));
-						_doPublishEvent(TRANSFERTASK_HEALTHCHECK, rootTask);
-					} catch (Throwable t) {
-						logger.error("Failed to schedule health check for transfer task {}", rootTask);
-					}
-				});
-				promise.handle(Future.succeededFuture(Boolean.TRUE));
-			}
-			else {
-				logger.error("Unable to retrieve list of active transfer tasks: {}", reply.cause().getMessage());
-				promise.handle(Future.failedFuture(reply.cause()));
-			}
-		});
-
-		return promise.future();
+	public void processEvent(Handler<AsyncResult<Boolean>> handler) {
+		try {
+			log.debug("Looking up active transfer tasks...");
+			getDbService().getActiveRootTaskIds(reply -> {
+				if (reply.succeeded()) {
+					log.info("Found {} active transfer tasks", reply.result().size());
+					reply.result().stream().forEach(jsonResult -> {
+						try {
+							log.debug("Scheduling health check on transfer task {}",
+									((JsonObject)jsonResult).getString("uuid"));
+							_doPublishEvent(TRANSFERTASK_HEALTHCHECK, jsonResult);
+						} catch (Throwable t) {
+							log.error("Failed to schedule health check for transfer task {}", jsonResult);
+						}
+					});
+					handler.handle(Future.succeededFuture(Boolean.TRUE));
+				} else {
+					log.error("Unable to retrieve list of active transfer tasks: {}", reply.cause().getMessage());
+					handler.handle(Future.failedFuture(reply.cause()));
+				}
+			});
+		} catch (Throwable t) {
+			handler.handle(Future.failedFuture(t));
+		}
 	}
 
 

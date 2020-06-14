@@ -289,6 +289,14 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${maven-compiler-plugin.version}</version>
+                    <configuration>
+<!--                        <proc>none</proc>-->
+                        <source>${java-source.version}</source>
+                        <target>${java-target.version}</target>
+                        <compilerArgs>
+                            <arg>--add-modules=java.xml.bind</arg>
+                        </compilerArgs>
+                    </configuration>
                     <executions>
                         <execution>
                             <id>default-compile</id>
@@ -298,15 +306,6 @@
                             </goals>
                         </execution>
                     </executions>
-                    <configuration>
-                        <proc>none</proc>
-                        <debug>true</debug>
-                        <source>${java-source.version}</source>
-                        <target>${java-target.version}</target>
-                        <compilerArgs>
-                            <arg>--add-modules=java.xml.bind</arg>
-                        </compilerArgs>
-                    </configuration>
                 </plugin>
 
                 <plugin>

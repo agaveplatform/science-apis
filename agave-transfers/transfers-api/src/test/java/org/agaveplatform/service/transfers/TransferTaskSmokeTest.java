@@ -186,7 +186,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		RequestSpecification requestSpecification = new RequestSpecBuilder()
-				//								.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+				//								//.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
 				.setBaseUri("http://localhost:" + port + "/")
 				.build();
 
@@ -283,7 +283,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 								completedDeploymentCheckpoint.flag();
 
 								RequestSpecification requestSpecification = new RequestSpecBuilder()
-										//								.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+										//								//.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
 										.setBaseUri("http://localhost:" + port + "/")
 										.build();
 

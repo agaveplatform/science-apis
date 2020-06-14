@@ -1,16 +1,21 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.transfer.Settings;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_TRIES;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
@@ -43,12 +48,16 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
 
-			log.error("Transfer task {} failed: {}: {}",
+			log.info("Transfer task {} error: {}: {}",
 					body.getString("uuid"), body.getString("cause"), body.getString("message"));
 
-			_doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
-
-			boolean result = processError(body);
+			processError(body, resp -> {
+				if (resp.succeeded()) {
+					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
+				} else {
+					log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
+				}
+			});
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
@@ -56,53 +65,55 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 
 			log.error("Transfer task {} failed to check it's parent task {} for copmletion: {}: {}",
 					body.getString("uuid"), body.getString("parentTaskId"), body.getString("cause"), body.getString("message"));
-
 		});
 	}
 
-	protected boolean processError(JsonObject body){
-		//String id = body.getString("id");
-		String cause = body.getString("cause");
-		String message = body.getString("message");
-		int attempts = body.getInteger("attempts");
+	protected void processError(JsonObject body, Handler<AsyncResult<Boolean>> handler){
+		try {
+			TransferTask tt = new TransferTask(body);
+			String cause = body.getString("cause", null);
+			String message = body.getString("message", "");
+			int attempts = body.getInteger("attempts", Integer.MAX_VALUE);
+			int maxTries = config().getInteger(TRANSFERTASK_MAX_TRIES, Settings.MAX_STAGING_RETRIES);
 
-		TransferTask tt = new TransferTask();
-		tt.setUuid(body.getString("uuid"));
-		tt.setStatus(TransferStatusType.valueOf(body.getString("status")));
-		tt.setParentTaskId(body.getString("parentTaskId"));
-		tt.setRootTaskId(body.getString("rootTaskId"));
-
-		//int maxTries = 3;
-		int maxTries = config().getInteger(TRANSFERTASK_MAX_TRIES, 3);
-
-		// check the retry count on the transfer task. if it has not yet tapped out, exame the error to see if
-		// we should retry the transfer
-		if ( attempts <= maxTries ) {
-			if (body.getString("cause").equals(RemoteDataException.class.getName()) ||
-					body.getString("cause").equals(IOException.class.getName()) ||
-					body.getString("cause").equals(InterruptedException.class.getName())) {
-				// check to see if the job was canceled so we don't retry a cancelled task
-				if (taskIsNotInterrupted(tt)) {
-					// now check its status
-					if (tt.getStatus().isActive()) {
-						log.error("Transfer task {} experienced a non-terminal error and will be retried. The error was {}", tt.getUuid(), message);
-						_doPublishEvent(TRANSFER_RETRY, body);
-						return true;
+			// check the retry count on the transfer task. if it has not yet tapped out, examine the error to see if
+			// we should retry the transfer
+			if (attempts <= maxTries) {
+				if (List.of(RemoteDataException.class.getName(),
+						IOException.class.getName(),
+						InterruptedException.class.getName()).contains(cause)) {
+					// check to see if the job was canceled so we don't retry a cancelled task
+					if (taskIsNotInterrupted(tt)) {
+						// now check its status
+						if (tt.getStatus().isActive()) {
+							log.error("Transfer task {} experienced a non-terminal error and will be retried. The error was {}", tt.getUuid(), message);
+							_doPublishEvent(TRANSFER_RETRY, body);
+							handler.handle(Future.succeededFuture(true));
+							return;
+						} else {
+							// skip any new message as the task was already done, so this was a redundant operation
+							log.info("Skipping retry of transfer task {} as the job was already in a terminal state.", tt.getUuid());
+							handler.handle(Future.succeededFuture(false));
+						}
+					} else {
+						// task was interrupted, so don't attempt a retry
+						log.info("Skipping retry of transfer task {} due to interrupt event.", tt.getUuid());
 					}
 				} else {
-					// task was interrupted, so don't attempt a retry
-					log.info("Skipping retry of transfer task {} due to interrupt event.", body.getString("uuid"));
+					log.info("Unrecoverable exception occurred while processing transfer task {}. " +
+							"No further retries will be attempted.", tt.getUuid());
 				}
 			} else {
-				log.info("Unrecoverable exception occurred while processing transfer task {}. " +
-								"No further retries will be attempted.", body.getString("uuid"));
+				log.info("Maximum attempts have been exceeded for transfer task {}. No further retries will be attempted.",
+						tt.getUuid());
 			}
-		} else {
-			log.info("Maximum attempts have been exceeded for transfer task {}. No further retries will be attempted.",
-				body.getString("uuid"));
+			// anything getting to this point will not be retried and was not already done. we fail the transfer task
+			// at this point with no expectation of futher efort to recover.
+			_doPublishEvent(TRANSFER_FAILED, body);
+			handler.handle(Future.succeededFuture(false));
+		} catch (Throwable t) {
+			// fail the processing if there is any kind of issue
+			handler.handle(Future.failedFuture(t));
 		}
-
-		_doPublishEvent(TRANSFER_FAILED, body);
-		return false;
 	}
 }

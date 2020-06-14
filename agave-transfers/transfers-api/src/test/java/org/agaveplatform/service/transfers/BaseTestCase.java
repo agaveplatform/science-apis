@@ -10,7 +10,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.AuthProvider;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
 import io.vertx.ext.jwt.JWTOptions;
@@ -30,7 +29,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -101,9 +99,9 @@ public abstract class BaseTestCase {
                     Path publicKey = Files.write(Files.createTempFile("public", "pem"), cryptoHelper.getPublicKey().getBytes());
 
                     config.put("transfertask.http.port", getPort())
-                            .put("transfertask.jwt.auth", true);
-//                            .put("transfertask.jwt.public_key", publicKey.toAbsolutePath().toString())
-//                            .put("transfertask.jwt.private_key", privateKey.toAbsolutePath().toString());
+                            .put("transfertask.jwt.auth", true)
+                            .put("transfertask.jwt.public_key", publicKey.toAbsolutePath().toString())
+                            .put("transfertask.jwt.private_key", privateKey.toAbsolutePath().toString());
 
                     handler.handle(Future.succeededFuture(config));
                 } catch (IOException e) {
@@ -125,6 +123,7 @@ public abstract class BaseTestCase {
         initConfig(vertx, resp -> {
             if (resp.succeeded()) {
                 try {
+                    @SuppressWarnings("deprecation")
                     JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
                             .setJWTOptions(new JWTOptions()
                                     .setLeeway(30)
@@ -137,7 +136,7 @@ public abstract class BaseTestCase {
 
                     config = resp.result();
 
-                    AgaveJWTAuthProviderImpl jwtAuth = new AgaveJWTAuthProviderImpl(vertx, jwtAuthOptions);
+                    AgaveJWTAuthProviderImpl jwtAuth = new AgaveJWTAuthProviderImpl(jwtAuthOptions);
 
                     handler.handle(Future.succeededFuture(jwtAuth));
                 } catch (IOException e) {
@@ -341,7 +340,6 @@ public abstract class BaseTestCase {
 
         return asyncResult;
     }
-
 
     public int getPort() {
         return port;

@@ -68,8 +68,9 @@ class TransferHealthcheckListenerTest extends BaseTestCase {
 
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-					.handle(updateStatusHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
 			return null;
 		}).when(dbService).updateStatus(any(), any(), any(), any());
 
@@ -77,8 +78,9 @@ class TransferHealthcheckListenerTest extends BaseTestCase {
 
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(allChildrenCancelledOrCompletedHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
 			return null;
 		}).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
 

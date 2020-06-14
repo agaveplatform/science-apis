@@ -10,13 +10,10 @@ import org.iplantc.service.systems.exceptions.SystemRoleException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.enumerations.RoleType;
-import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 
@@ -31,7 +28,7 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TransferTaskCreatedListenerTest extends BaseTestCase {
 
-	private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListenerTest.class);
+//	private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListenerTest.class);
 
 	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) {
 		TransferTaskCreatedListener ttc = Mockito.mock(TransferTaskCreatedListener.class);
@@ -67,16 +64,14 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 			ctx.failNow(e);
 		}
 
-		ttc.assignTransferTask(json, ctx.succeeding(isAssigned -> {
-			ctx.verify(() -> {
-				assertTrue(isAssigned);
-				verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
-				verify(ttc, never())._doPublishEvent(TRANSFERTASK_ERROR, new JsonObject());
-				//verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getSource()).getHost(), RoleType.GUEST);
-				verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getDest()).getHost(), RoleType.USER);
-				ctx.completeNow();
-			});
-		}));
+		ttc.assignTransferTask(json, ctx.succeeding(isAssigned -> ctx.verify(() -> {
+			assertTrue(isAssigned);
+			verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
+			verify(ttc, never())._doPublishEvent(TRANSFERTASK_ERROR, new JsonObject());
+			//verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getSource()).getHost(), RoleType.GUEST);
+			verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getDest()).getHost(), RoleType.USER);
+			ctx.completeNow();
+		})));
 	}
 
 	@Test
@@ -97,20 +92,18 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 			ctx.failNow(e);
 		}
 
-		ttc.assignTransferTask(json, ctx.failing(cause -> {
-			ctx.verify(() -> {
-				assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
-				verify(ttc, never())._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
-				verify(ttc,never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
+		ttc.assignTransferTask(json, ctx.failing(cause -> ctx.verify(() -> {
+			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
+			verify(ttc, never())._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
+			verify(ttc,never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
-				JsonObject errorBody = new JsonObject()
-						.put("cause", cause.getClass().getName())
-						.put("message", cause.getMessage())
-						.mergeIn(json);
-				verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ERROR, errorBody);
-				ctx.completeNow();
-			});
-		}));
+			JsonObject errorBody = new JsonObject()
+					.put("cause", cause.getClass().getName())
+					.put("message", cause.getMessage())
+					.mergeIn(json);
+			verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ERROR, errorBody);
+			ctx.completeNow();
+		})));
 	}
 
 }

@@ -120,7 +120,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
             apiDeploymentCheckpoint.flag();
 
             RequestSpecification requestSpecification = new RequestSpecBuilder()
-                    .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+                    //.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
                     .setBaseUri("http://localhost:" + port + "/")
                     .build();
 
@@ -160,7 +160,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
                 apiDeploymentCheckpoint.flag();
 
                 RequestSpecification requestSpecification = new RequestSpecBuilder()
-                        .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+                        //.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
                         .setBaseUri("http://localhost:" + port + "/")
                         .build();
 
@@ -224,7 +224,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
                         apiDeploymentCheckpoint.flag();
 
                         RequestSpecification requestSpecification = new RequestSpecBuilder()
-                                .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+                                //.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
                                 .setBaseUri("http://localhost:" + port + "/")
                                 .build();
 
@@ -293,7 +293,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
                         apiDeploymentCheckpoint.flag();
 
                         RequestSpecification requestSpecification = new RequestSpecBuilder()
-                                .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+                                //.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
                                 .setBaseUri("http://localhost:" + port + "/")
                                 .build();
 
@@ -377,7 +377,7 @@ public class TransferApiVerticalTest extends BaseTestCase {
                         apiDeploymentCheckpoint.flag();
 
                         RequestSpecification requestSpecification = new RequestSpecBuilder()
-                                .addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+                                //.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
                                 .setBaseUri("http://localhost:" + port + "/")
                                 .build();
 

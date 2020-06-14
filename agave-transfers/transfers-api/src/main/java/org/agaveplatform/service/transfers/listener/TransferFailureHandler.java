@@ -58,36 +58,41 @@ public class TransferFailureHandler extends AbstractTransferTaskListener impleme
 			log.info("Transfer task {} failed: {}: {}",
 					body.getString("uuid"), body.getString("cause"), body.getString("message"));
 
-			processFailure(body);
+			processFailure(body, resp -> {
+				if (resp.succeeded()) {
+					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
+				} else {
+					log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
+				}
+			});
 		});
 
 	}
 
-	protected Future<Boolean> processFailure(JsonObject body) {
-		Promise<Boolean> promise = Promise.promise();
+	protected void processFailure(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
 		try {
-//			String id = body.getValue("id");
-			String uuid = body.getString("uuid");
-			String tenantId = body.getString("tenantId");
-
 			body.remove("cause");
 			body.remove("message");
 			body.remove("id");
 
-			TransferTask bodyTask = new TransferTask(body);
-			bodyTask.setStatus(TransferStatusType.FAILED);
+			TransferTask failedTask = new TransferTask(body);
+			failedTask.setStatus(TransferStatusType.FAILED);
 
-			getDbService().update(tenantId, uuid, bodyTask, updateBody -> {
+			getDbService().update(failedTask.getTenantId(), failedTask.getUuid(), failedTask, updateBody -> {
 				if (updateBody.succeeded()) {
-					log.info("Transfer task {} successfully marked as {}.", uuid,
-							updateBody.result().getString("status"));
-					promise.handle(Future.succeededFuture(Boolean.TRUE));
+					TransferTask savedTask = new TransferTask(updateBody.result());
+					log.info("Transfer task {} successfully marked as {}.", failedTask.getUuid(), savedTask.getStatus().name());
+					handler.handle(Future.succeededFuture(Boolean.TRUE));
 				} else {
+					String msg = String.format("Unable to update status of failed transfer task {}. {}",
+							failedTask.getUuid(), updateBody.cause().getMessage());
+					log.error(msg);
 					JsonObject json = new JsonObject()
 							.put("cause", updateBody.cause().getClass().getName())
-							.put("message", updateBody.cause().getMessage())
+							.put("message", msg)
 							.mergeIn(body);
-					promise.handle(Future.failedFuture(updateBody.cause()));
+					handler.handle(Future.failedFuture(updateBody.cause()));
+
 					// infinite loop if we publish an error event here
 					// TODO: we need a wrapper object around our event bodies so we can record things like the number
 					// 	of attempts to process a given event, last event time, and whether to keep trying indefinitely
@@ -98,10 +103,8 @@ public class TransferFailureHandler extends AbstractTransferTaskListener impleme
 		catch (Throwable t) {
 			log.error("Failed to process failure event for transfer task {}: {}",
 					body.getValue("id"), t.getMessage());
-			promise.handle(Future.failedFuture(t));
+			handler.handle(Future.failedFuture(t));
 		}
-
-		return promise.future();
 	}
 
 	public TransferTaskDatabaseService getDbService() {

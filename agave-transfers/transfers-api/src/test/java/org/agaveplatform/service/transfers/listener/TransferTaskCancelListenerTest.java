@@ -72,8 +72,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		JsonObject expectedgetByIdAck = transferTask.toJson();
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(updateGetById);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
 			return null;
 		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(anyObject()) );
 
@@ -139,8 +140,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		JsonObject expectedgetByIdAck = transferTask.toJson();
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(updateGetById);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
 			return null;
 		}).when(dbService).getById(any(), any(), any());
 
@@ -212,8 +214,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		JsonObject expectedgetByIdAck = transferTask.toJson();
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(updateGetById);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
 			return null;
 		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), anyObject());
 
@@ -277,8 +280,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		JsonObject expectedgetByIdAck = transferTask.toJson();
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(updateGetById);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
 			return null;
 		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject());
 
@@ -342,8 +346,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		JsonObject expectedgetByIdAck = transferTask.toJson();
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(updateGetById);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
 			return null;
 		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject());
 
@@ -408,8 +413,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		JsonObject expectedgetByIdAck = transferTask.toJson();
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(updateGetById);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
 			return null;
 		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject());
 
@@ -480,8 +486,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<Boolean> updateAllChildHandler = getMockAsyncResult(Boolean.TRUE);
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(updateAllChildHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateAllChildHandler);
 			return null;
 		}).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
 
@@ -489,8 +496,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<Boolean> setTransferTaskCanceledIfNotCompletedNotHandler = getMockAsyncResult(Boolean.TRUE);
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
 			return null;
 		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), any());
 
@@ -503,8 +511,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				.put("endTime", Instant.now());
 		AsyncResult<JsonObject> updateGetByIdAck = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(updateGetByIdAck);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetByIdAck);
 			return null;
 		}).when(dbService).getById(any(), any(), any());
 
@@ -514,16 +523,18 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		// mock the processParenetEvent process
 		AsyncResult<Boolean> setTransferTaskCanceledProcessParentAckHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(setTransferTaskCanceledProcessParentAckHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledProcessParentAckHandler);
 			return null;
 		}).when(ttc).processParentAck( eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
 		// mock getTransferTask
 		AsyncResult<TransferTask> transferTaskHandler = getMockAsyncResult(parentTask);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<TransferTask>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(transferTaskHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<TransferTask>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(transferTaskHandler);
 			return null;
 		}).when(ttc).getTransferTask(any(), any(), any());
 
@@ -577,24 +588,27 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-					.handle(updateStatusHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
 			return null;
 		}).when(dbService).updateStatus(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), eq(TransferStatusType.CANCELLED.name()), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> setTransferTaskCanceledIfNotCompletedNotHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
 			return null;
 		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(allChildrenCancelledOrCompletedHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
 			return null;
 		}).when(dbService).allChildrenCancelledOrCompleted( any(), any(), any());
 
@@ -659,24 +673,27 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-					.handle(updateStatusHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
 			return null;
 		}).when(dbService).updateStatus(any(), any(), any(), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> setTransferTaskCanceledIfNotCompletedNotHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
 			return null;
 		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(allChildrenCancelledOrCompletedHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
 			return null;
 		}).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
 
@@ -750,8 +767,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-					.handle(updateStatusHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
 			return null;
 		}).when(dbService).updateStatus(any(), any(), any(), any());
 
@@ -759,8 +777,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<Boolean> processCancelRequest = getMockAsyncResult(Boolean.FALSE);
 		// mock the handler passed into processParentEvent
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(1, Handler.class))
-					.handle(processCancelRequest);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(1, Handler.class);
+			handler.handle(processCancelRequest);
 			return null;
 		}).when(listener).processCancelAck( anyObject(), any());
 
@@ -830,8 +849,9 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-					.handle(updateStatusHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
 			return null;
 		}).when(dbService).updateStatus(any(), any(), any(), any());
 
@@ -898,24 +918,27 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-					.handle(updateStatusHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(updateStatusHandler);
 			return null;
 		}).when(dbService).updateStatus(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), eq(TransferStatusType.CANCELLED.name()), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> setTransferTaskCanceledIfNotCompletedNotHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
 			return null;
 		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(allChildrenCancelledOrCompletedHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
 			return null;
 		}).when(dbService).allChildrenCancelledOrCompleted( any(), any(), any());
 
@@ -990,16 +1013,18 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(setTransferTaskCanceledGetByIdHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledGetByIdHandler);
 			return null;
 		}).when(dbService).getById(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(2, Handler.class))
-					.handle(allChildrenCancelledOrCompletedHandler);
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
 			return null;
 		}).when(dbService).allChildrenCancelledOrCompleted( any(), any(), any());
 

@@ -1,7 +1,8 @@
 package org.agaveplatform.service.transfers.protocol;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -31,7 +32,7 @@ import java.net.URI;
 import java.util.Date;
 
 public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
-	private final Logger logger = LoggerFactory.getLogger(TransferAllProtocolVertical.class);
+	private final Logger log = LoggerFactory.getLogger(TransferAllProtocolVertical.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_ALL;
 
 	public TransferAllProtocolVertical() {
@@ -56,10 +57,15 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 			String source = body.getString("source");
 			String dest = body.getString("dest");
-			TransferTask tt = new TransferTask(body);
 
-			logger.info("Transfer task {} transferring: {} -> {}", uuid, source, dest);
-			processEvent(body);
+			log.info("Transfer task {} transferring: {} -> {}", uuid, source, dest);
+			processEvent(body, resp -> {
+				if (resp.succeeded()) {
+					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), uuid);
+				} else {
+					log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
+				}
+			});
 		});
 
 		// cancel tasks
@@ -67,7 +73,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
-			logger.info("Transfer task {} cancel detected", uuid);
+			log.info("Transfer task {} cancel detected", uuid);
 			//this.interruptedTasks.add(uuid);
 			super.processInterrupt("add", body);
 
@@ -77,7 +83,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
-			logger.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
+			log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
 			super.processInterrupt("remove", body);
 			//this.interruptedTasks.remove(uuid);
 		});
@@ -87,7 +93,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
-			logger.info("Transfer task {} paused detected", uuid);
+			log.info("Transfer task {} paused detected", uuid);
 			super.processInterrupt("add", body);
 		});
 
@@ -95,7 +101,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
-			logger.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
+			log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
 			super.processInterrupt("remove", body);
 		});
 	}
@@ -105,11 +111,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	 * A promise is returned wiht the result of the operation. Note that this use of {@link URLCopy} will not create
 	 * and update legacy {@link org.iplantc.service.transfer.model.TransferTask} records as it goes.
 	 * @param body the transfer all event body
-	 * @return a boolean future with the success of the operation.
+	 * @param handler the callback receiving the result of the event processing
 	 */
-	public Future<Boolean> processEvent(JsonObject body) {
-		Promise<Boolean> promise = Promise.promise();
-
+	public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
 		TransferTask tt = new TransferTask(body);
 		String source = tt.getSource();
 		String dest = tt.getDest();
@@ -132,14 +136,14 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			// smoke test this method with real object. We'll port the url copy class
 			// over in the coming week to handle current transfertask objects so we
 			// don' tneed this shim
-			org.iplantc.service.transfer.model.TransferTask legacyTransferTask = null;
+			org.iplantc.service.transfer.model.TransferTask legacyTransferTask;
 			if (false) {
 
 				// pull the system out of the url. system id is the hostname in an agave uri
-				logger.debug("Creating source remote data client to {} for transfer task {}", srcUri.getHost(), tt.getUuid());
+				log.debug("Creating source remote data client to {} for transfer task {}", srcUri.getHost(), tt.getUuid());
 				if (false) srcClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), srcUri);
 
-				logger.debug("Creating dest remote data client to {} for transfer task {}", destUri.getHost(), tt.getUuid());
+				log.debug("Creating dest remote data client to {} for transfer task {}", destUri.getHost(), tt.getUuid());
 				// pull the dest system out of the url. system id is the hostname in an agave uri
 				if (false) destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
 
@@ -168,54 +172,56 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 						legacyTransferTask.setRootTask(legacyRootTask);
 					}
 
-					logger.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+					log.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 					result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
-					logger.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
+
+					handler.handle(Future.succeededFuture(result));
+					log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
 				} else {
-					logger.info("Transfer task {} was interrupted", tt.getUuid());
+					log.info("Transfer task {} was interrupted", tt.getUuid());
+					handler.handle(Future.succeededFuture(false));
 				}
+			} else {
+				log.debug("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+				log.debug("Completed transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
+
+				_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
+				handler.handle(Future.succeededFuture(true));
 			}
-
-			logger.debug("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
-			logger.debug("Completed transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
-
-			_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 		} catch (RemoteDataException e){
-			logger.error("RemoteDataException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
+			log.error("RemoteDataException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			promise.fail(e);
+			handler.handle(Future.failedFuture(e));
 		} catch (RemoteCredentialException e){
-			logger.error("RemoteCredentialException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
+			log.error("RemoteCredentialException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-			promise.fail(e);
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+			handler.handle(Future.failedFuture(e));
 		} catch (IOException e){
-			logger.error("IOException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
+			log.error("IOException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-			promise.fail(e);
+			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+			handler.handle(Future.failedFuture(e));
 		} catch (Exception e){
-			logger.error("Unexpected Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
+			log.error("Unexpected Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
 					.put("message", e.getMessage())
 					.mergeIn(body);
 
 			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			promise.fail(e);
+			handler.handle(Future.failedFuture(e));
 		}
-
-		return promise.future();
 	}
 
 	protected Boolean processCopyRequest(String source, RemoteDataClient srcClient, String dest, RemoteDataClient destClient, org.iplantc.service.transfer.model.TransferTask legacyTransferTask)

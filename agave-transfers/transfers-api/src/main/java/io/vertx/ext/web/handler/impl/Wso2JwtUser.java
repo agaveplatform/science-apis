@@ -1,11 +1,5 @@
 package io.vertx.ext.web.handler.impl;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -17,6 +11,10 @@ import io.vertx.ext.auth.AbstractUser;
 import io.vertx.ext.auth.AuthProvider;
 import org.apache.commons.lang.StringUtils;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+@SuppressWarnings("deprecation") // Currently no replacement until vertx 4 release
 public class Wso2JwtUser extends AbstractUser {
 
     private static final Logger log = LoggerFactory.getLogger(io.vertx.ext.auth.jwt.impl.JWTUser.class);

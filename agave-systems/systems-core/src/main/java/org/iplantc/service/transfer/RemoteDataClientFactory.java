@@ -42,12 +42,11 @@ public class RemoteDataClientFactory {
 	 * Creates a pre-configured {@link RemoteDataClient} for the given {@link RemoteSystem} 
 	 * that can be used to connect to remote systems.
 	 * 
-	 * @param system
-	 * @param internalUsername
-	 * @return RemoteDataClient
-	 * @throws EncryptionException
-	 * @throws AuthConfigException 
-	 * @throws RemoteDataException 
+	 * @param system the system from which to generate a {@link RemoteDataClient}
+	 * @param internalUsername the internal username of the user requesting the client.
+	 * @return a valid instance of a {@link RemoteDataClient} for the schema of the given {@code uri}.
+	 * @throws RemoteCredentialException if the credentials for the system represented by the URI cannot be found/refreshed/obtained
+	 * @throws RemoteDataException when a connection cannot be made to the {@link RemoteSystem}
 	 */
 	public RemoteDataClient getInstance(RemoteSystem system, String internalUsername) 
 	throws RemoteDataException, RemoteCredentialException
@@ -230,7 +229,7 @@ public class RemoteDataClientFactory {
 	 * If an Agave URL is given, {@code agave://my-demo-system//some/file/path}, the 
 	 * hostname will be used to look up an existing registered system. The path will be 
 	 * resolved to obtain the path on the system. This is logically the same as specifying
-	 * {@code https://dev.tenants.agaveeapi.co/files/media/system/my-demo-system//some/file/path}.
+	 * {@code https://dev.tenants.agaveplatform.org/files/media/system/my-demo-system//some/file/path}.
 	 * 
 	 * In the event the URL self-references an Agave endpoint, it is resolved 
 	 * into an Agave URI and parsed to get the {@link RemoteSystem} and path. As with
@@ -238,7 +237,7 @@ public class RemoteDataClientFactory {
 	 * URL. 
 	 * <ol>
 	 * <li>Canonical Files API URL: these are full file endpoint URL as given above. 
-	 * (ex.{@code https://dev.tenants.agaveeapi.co/files/media/system/my-demo-system//some/file/path})</li>
+	 * (ex.{@code https://dev.tenants.agaveplatform.org/files/media/system/my-demo-system//some/file/path})</li>
 	 * <li>Convenience Files API URL: these are shortened forms of the canonical file URL, but 
 	 * exclude the system id and use the implied default storage system for the requesting user.</li>
 	 * <li>Job output URL: these are convenience URL which reference the output directories of 
@@ -248,11 +247,11 @@ public class RemoteDataClientFactory {
 	 * Standard URL are also supported which provide both public and authenticated access to
 	 * resources. See {@link #isSchemeSupported(URI)} for more information on supported schema.
 	 * 
-	 * @see {@link #isSchemeSupported(URI)}
-	 * @param apiUsername
-	 * @param internalUsername
-	 * @param uri
-	 * @return
+	 * @see #isSchemeSupported(URI)
+	 * @param apiUsername the user making the requet
+	 * @param internalUsername the internal user of the {@code apiUsername} making the request
+	 * @param uri the {@link URI} for which a {@link RemoteDataClient} will be generated
+	 * @return a valid instance of a {@link RemoteDataClient} for the schema of the given {@code uri}.
 	 * @throws SystemUnknownException if the sytem is unknown
 	 * @throws AgaveNamespaceException if the URI does match any known agave uri pattern
 	 * @throws RemoteCredentialException if the credentials for the system represented by the URI cannot be found/refreshed/obtained
@@ -341,36 +340,69 @@ public class RemoteDataClientFactory {
 	}
 	
 	/**
-	 * Tells whether the URI is supported based on the scheme
+	 * Tells whether the URI is supported based on the scheme. {@code agave} schema are resolved to
+	 * {@link RemoteSystem}. URI with {@code http} and {@code https} schema are checked against known resource URI
+	 * within the current tenant and accepted if a match is found. For all other schemas, the response is based upon
+	 * agave's ability to authenticate to the remote system using basic username and password found in the standard
+	 * {@link URI#getAuthority()} content.
 	 * 
-	 * @param uri
-	 * @return
+	 * @param uri the {@link URI} for which to check the schema
+	 * @return true if the schema is supported directly or through reference to an internal api URI
 	 */
-	public static boolean isSchemeSupported(URI uri) 
+	public static boolean isSchemeSupported(URI uri) {
+		String scheme = uri.getScheme();
+		if (StringUtils.isEmpty(scheme)) return false;
+
+		switch (scheme.toLowerCase()) {
+			case "agave":
+			case "http":
+			case "https":
+			case "ftp":
+			case "sftp":
+				return true;
+			case "gsiftp":
+			case "gridftp":
+			case "azure":
+			case "s3":
+			case "irods":
+				return false;
+			default:
+				return ApiUriUtil.isInternalURI(uri);
+		}
+	}
+
+	/**
+	 * Tells whether the URI is supported based on the scheme. {@code agave} schema are resolved to
+	 * {@link RemoteSystem}. URI with {@code http} and {@code https} schema are checked against known resource URI
+	 * within the current tenant and accepted if a match is found. For all other schemas, the response is based upon
+	 * agave's ability to authenticate to the remote system using basic username and password found in the standard
+	 * {@link URI#getAuthority()} content.
+	 *
+	 * @param uri the {@link URI} for which to check the schema
+	 * @return true if the schema is supported directly or through reference to an internal api URI
+	 */
+	public static boolean isSchemeSupported(URI uri, String tenantId)
 	{
 		String scheme = uri.getScheme();
-		
-		if (StringUtils.equalsIgnoreCase(scheme,  "agave")) 
-		    return true;
-		else if (StringUtils.equalsIgnoreCase(scheme,"http")) 
-			return true;
-		else if (StringUtils.equalsIgnoreCase(scheme,"https")) 
-			return true;
-		else if (StringUtils.equalsIgnoreCase(scheme,"ftp")) 
-			return true;
-		else if (StringUtils.equalsIgnoreCase(scheme,"sftp")) 
-			return true;
-		else if (StringUtils.equalsIgnoreCase(scheme,"gsiftp") || StringUtils.equalsIgnoreCase(scheme,"gridftp")) 
-			return false;
-		else if (StringUtils.equalsIgnoreCase(scheme,"azure")) 
-			return false;
-		else if (StringUtils.equalsIgnoreCase(scheme,"s3")) 
-			return false;
-		else if (StringUtils.equalsIgnoreCase(scheme,"irods")) 
-			return false;
-		else if (ApiUriUtil.isInternalURI(uri)) 
-			return true;
-		else 
-			return false;
+		switch (scheme.toLowerCase()) {
+			case "agave":
+			case "http":
+			case "https":
+			case "ftp":
+//			case "ftps":
+			case "sftp":
+				return true;
+			case "gsiftp":
+			case "gridftp":
+			case "azure":
+			case "s3":
+			case "irods":
+//			case "irods4":
+//			case "irods3":
+				return false;
+			default:
+				try { return AgaveUriRegex.matchesAny(uri, tenantId); }
+				catch (Throwable t) { return false; }
+		}
 	}
 }

@@ -55,7 +55,13 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
 
             processTransferTask(body, resp -> {
                 if (resp.succeeded()){
-                    log.error("Succeeded with the procdessTransferTask in the assigning of the event {}", uuid);
+                    log.debug("Succeeded with the procdessTransferTask in the assigning of the event {}", uuid);
+                    // TODO: codify our notification behavior here. Do we rewrap? How do we ensure ordering? Do we just
+                    //   throw it over the fence to Camel and forget about it? Boy, that would make things easier,
+                    //   thought not likely faster.
+                    // TODO: This seems like the correct pattery. Handler sent to the processing function, then
+                    //   only send the notification on success. We can add a failure and error notification to the
+                    //   respective listeners in the same way.
                     _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
                 } else {
                     log.error("Error with return from creating the event {}", uuid);

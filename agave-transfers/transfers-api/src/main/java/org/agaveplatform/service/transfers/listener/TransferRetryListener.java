@@ -16,7 +16,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.RemoteSystem;
@@ -65,21 +64,24 @@ public class TransferRetryListener extends AbstractTransferTaskListener {
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
+
 		EventBus bus = vertx.eventBus();
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 			String source = body.getString("source");
 			String dest = body.getString("dest");
-			log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
-			//processRetryTransferTask(body);
+			log.info("Transfer task {} retry: {} -> {}", uuid, source, dest);
+
 			try {
 				processRetryTransferTask(body, resp -> {
 					if (resp.succeeded()) {
-						log.error("Succeeded with the procdessTransferTask in the assigning of the event {}", uuid);
+						log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
+						// TODO: retry won't be reflected in the message body, so what are we listening to here? At
+						//   this point
 						_doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
 					} else {
-						log.error("Error with return from creating the event {}", uuid);
+						log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
 						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
 					}
 				});
@@ -131,75 +133,85 @@ public class TransferRetryListener extends AbstractTransferTaskListener {
 	 * @param body the retry message body.
 	 */
 	protected void processRetryTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
-		String uuid = body.getString("uuid");
-		String tenantId = body.getString("tenantId");
-		Integer attempts = body.getInteger("attempts");
+		try {
+			String uuid = body.getString("uuid");
+			String tenantId = body.getString("tenantId");
+			Integer attempts = body.getInteger("attempts");
 
-		// check to see if the uuid is Canceled or Completed
-		getDbService().getById(tenantId, uuid, reply -> {
-			if (reply.succeeded()) {
-				TransferTask transferTaskDb = new TransferTask(new JsonObject(String.valueOf(reply)));
-				if (transferTaskDb.getStatus() != TransferStatusType.CANCELLED ||
-						transferTaskDb.getStatus() != TransferStatusType.COMPLETED ||
-						transferTaskDb.getStatus() != TransferStatusType.FAILED ||
-						transferTaskDb.getStatus() != TransferStatusType.TRANSFERRING) {
-					// we're good to to go forward.
+			// check to see if the uuid is Canceled or Completed
+			getDbService().getById(tenantId, uuid, reply -> {
+				if (reply.succeeded()) {
+					TransferTask transferTaskToRetry = new TransferTask(new JsonObject(String.valueOf(reply)));
+					if (transferTaskToRetry.getStatus().isActive()) {
+						// we're good to to go forward.
 
-					// the status is not in the states above.  Now check to see if the # of attempts exceeds the max
-					int configMaxTries = config().getInteger("transfertask.max.tries");
-					if (configMaxTries <= transferTaskDb.getAttempts()) {
-						// # of retries is less.
+						// the status is not in the states above.  Now check to see if the # of attempts exceeds the max
+						int configMaxTries = config().getInteger("transfertask.max.tries");
+						if (configMaxTries <= transferTaskToRetry.getAttempts()) {
+							// # of retries is less.
 
-						// increment the attempts
-						transferTaskDb.setAttempts(attempts + 1);
-						getDbService().update(tenantId, uuid, transferTaskDb, updateBody -> {
-							if (updateBody.succeeded()) {
-								log.debug("Beginning attempt {} for transfer task {}", tenantId, uuid);
-								processRetry(new TransferTask(updateBody.result()), handler);
-							} else {
-								log.error("[{}] Task {} update failed: {}",
-										tenantId, uuid, reply.cause());
-								JsonObject json = new JsonObject()
-										.put("cause", updateBody.cause().getClass().getName())
-										.put("message", updateBody.cause().getMessage())
-										.mergeIn(body);
-								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-								handler.handle(Future.succeededFuture(false));
-							}
-						});
+							// increment the attempts
+							transferTaskToRetry.setAttempts(attempts + 1);
+							getDbService().update(tenantId, uuid, transferTaskToRetry, updateBody -> {
+								if (updateBody.succeeded()) {
+									log.debug("Beginning attempt {} for transfer task {}", tenantId, uuid);
+									processRetry(new TransferTask(updateBody.result()), handler);
+								} else {
+									log.error("[{}] Task {} update failed: {}",
+											tenantId, uuid, reply.cause());
+									JsonObject json = new JsonObject()
+											.put("cause", updateBody.cause().getClass().getName())
+											.put("message", updateBody.cause().getMessage())
+											.mergeIn(body);
+									_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+									handler.handle(Future.succeededFuture(false));
+								}
+							});
+						} else {
+							String msg = "Maximum attempts have been exceeded for transfer task " + uuid + ". " +
+									"No further retries will be attempted.";
+							JsonObject json = new JsonObject()
+									.put("cause", MaxTransferTaskAttemptsExceededException.class.getName())
+									.put("message", msg)
+									.mergeIn(body);
+
+							_doPublishEvent(TRANSFERTASK_FAILED, json);
+							handler.handle(Future.succeededFuture(false));
+						}
 					} else {
-						String msg = "Maximum attempts have been exceeded for transfer task " + uuid + ". " +
-								"No further retries will be attempted.";
-						JsonObject json = new JsonObject()
-								.put("cause", MaxTransferTaskAttemptsExceededException.class.getName())
-								.put("message", msg)
-								.mergeIn(body);
-
-						_doPublishEvent(TRANSFERTASK_FAILED, json);
-						handler.handle(Future.succeededFuture(false));
+						log.debug("Skipping retry of transfer task {}. Task has a status of {} and is no longer in an active state.",
+								uuid, transferTaskToRetry.getStatus().name());
+						handler.handle(Future.succeededFuture(true));
 					}
 				} else {
-					log.debug("Skipping retry of transfer task {}. Task has a status of {} and is no longer in an active state.",
-							uuid, transferTaskDb.getStatus().name());
-					handler.handle(Future.succeededFuture(true));
+					String msg = "Unable to verify the current status of transfer task " + uuid + ". " + reply.cause();
+					JsonObject json = new JsonObject()
+							.put("cause", reply.cause().getClass().getName())
+							.put("message", msg)
+							.mergeIn(body);
+
+					_doPublishEvent(TRANSFERTASK_ERROR, json);
+					handler.handle(Future.succeededFuture(false));
 				}
-			} else {
-				String msg = "Unable to verify the current status of transfer task " + uuid + ". " + reply.cause();
-				JsonObject json = new JsonObject()
-						.put("cause", reply.cause().getClass().getName())
-						.put("message", msg)
-						.mergeIn(body);
 
-				_doPublishEvent(TRANSFERTASK_ERROR, json);
-				handler.handle(Future.succeededFuture(false));
-			}
+			});
+			handler.handle(Future.succeededFuture(true));
+		} catch (Throwable t) {
 
-		});
-		handler.handle(Future.succeededFuture(true));
+			// fail the processing if there is any kind of issue
+			JsonObject json = new JsonObject()
+					.put("cause", t.getClass().getName())
+					.put("message", t.getMessage())
+					.mergeIn(body);
+			_doPublishEvent(TRANSFERTASK_ERROR, json);
+
+			handler.handle(Future.failedFuture(t));
+		}
 	}
 
 	/**
-	 * Handles the reassignment of this task. This is nearly identical to what happens in the
+	 * Handles the execution of the retry behavior. This is essentially the same code as
+	 * {@link TransferTaskAssignedListener#processTransferTask(JsonObject, Handler)},
 	 * {@link TransferTaskAssignedListener#processTransferTask(JsonObject, Handler)} method
 	 *
 	 * @param retryTransferTask the updated transfer task to retry
@@ -225,15 +237,22 @@ public class TransferRetryListener extends AbstractTransferTaskListener {
 			if (taskIsNotInterrupted(retryTransferTask)) {
 
 				// basic sanity check on uri again
-				if (RemoteDataClientFactory.isSchemeSupported(srcUri)) {
+				if (!RemoteDataClientFactory.isSchemeSupported(srcUri)) {
+					String msg = String.format("Failing transfer task %s due to invalid scheme in source URI, %s",
+							retryTransferTask.getUuid(), retryTransferTask.getSource());
+					throw new RemoteDataSyntaxException(msg);
+				} else if (!RemoteDataClientFactory.isSchemeSupported(destUri)) {
+					String msg = String.format("Failing transfer task %s due to invalid scheme in destination URI, %s",
+							retryTransferTask.getUuid(), retryTransferTask.getDest());
+					throw new RemoteDataSyntaxException(msg);
+				} else {
 					// if it's an "agave://" uri, look up the connection info, get a rdc, and process the remote
 					// file item
-					// TODO: examine whether we want to collapse this condition and expand out all transfers regardless
-					//   of system registration or not. By not doing that, the protocol vertical has to do directory
-					//   copies every time
-					if (srcUri.getScheme().equalsIgnoreCase("agave")) {
+//					if (srcUri.getScheme().equalsIgnoreCase("agave")) {
 						// get a remote data client for the source and dest system
 						srcClient = getRemoteDataClient(retryTransferTask.getTenantId(), retryTransferTask.getOwner(), srcUri);
+//					}
+						// should we check writability here?
 						destClient = getRemoteDataClient(retryTransferTask.getTenantId(), retryTransferTask.getOwner(), destUri);
 
 						// stat the remote path to check its type
@@ -290,11 +309,6 @@ public class TransferRetryListener extends AbstractTransferTaskListener {
 											String childSource = retryTransferTask.getSource() + "/" + childFileItem.getName();
 											String childDest = retryTransferTask.getDest() + "/" + childFileItem.getName();
 
-//											// create the remote directory to ensure it's present when the transfers begin. This
-//											// also allows us to check for things like permissions ahead of time and save the
-//											// traversal in the event it's not allowed.
-//											boolean isDestCreated = destClient.mkdirs(destUri.getPath() + "/" + childFileItem.getName());
-
 											TransferTask transferTask = new TransferTask(childSource, childDest, retryTransferTask.getTenantId());
 											transferTask.setTenantId(retryTransferTask.getTenantId());
 											transferTask.setOwner(retryTransferTask.getOwner());
@@ -313,17 +327,13 @@ public class TransferRetryListener extends AbstractTransferTaskListener {
 								}
 							}
 						}
-					}
-					// it's not an agave uri, so we forward on the raw uri as we know that we can
-					// handle it from the wrapping if statement check
-					else {
-						_doPublishEvent(TRANSFER_ALL, retryTransferTask.toJson());
-					}
-				} else {
-					String msg = String.format("Unknown source schema %s for the transfertask %s",
-							srcUri.getScheme(), retryTransferTask.getUuid());
-					throw new RemoteDataSyntaxException(msg);
 				}
+//					// it's not an agave uri, so we forward on the raw uri as we know that we can
+//					// handle it from the wrapping if statement check
+//					else {
+//						_doPublishEvent(TRANSFER_ALL, retryTransferTask.toJson());
+//					}
+
 				handler.handle(Future.succeededFuture(true));
 			} else {
 				// task was interrupted, so don't attempt a retry
@@ -332,11 +342,9 @@ public class TransferRetryListener extends AbstractTransferTaskListener {
 				handler.handle(Future.succeededFuture(false));
 			}
 		} catch (RemoteDataSyntaxException e) {
-			String message = String.format("Failing transfer task %s due to invalid source syntax. %s",
-					retryTransferTask.getUuid(), e.getMessage());
 			JsonObject json = new JsonObject()
 					.put("cause", e.getClass().getName())
-					.put("message", message)
+					.put("message", e.getMessage())
 					.mergeIn(retryTransferTask.toJson());
 
 			_doPublishEvent(TRANSFERTASK_FAILED, json);

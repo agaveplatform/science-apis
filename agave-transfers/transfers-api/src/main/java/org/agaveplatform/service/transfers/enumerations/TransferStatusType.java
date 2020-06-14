@@ -1,39 +1,62 @@
 package org.agaveplatform.service.transfers.enumerations;
 
 
+import org.agaveplatform.service.transfers.model.TransferTask;
+import org.agaveplatform.service.transfers.util.ServiceUtils;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
+
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * These represent the states comprising the state machine of a{@link TransferTask}.
+ */
 public enum TransferStatusType
 {
 	CANCELLED, COMPLETED, FAILED, PAUSED, QUEUED, RETRYING, TRANSFERRING;
 
-	public static String supportedValuesAsString()
-	{
-		return CANCELLED + ", " + COMPLETED + ", " + FAILED + ", " +
-				PAUSED + ", " + QUEUED + ", " + RETRYING + ", " + TRANSFERRING;
-	}
-
-	public static List<TransferStatusType> getActiveStatusValues()
-	{
-		return Arrays.asList(PAUSED, QUEUED, RETRYING, TRANSFERRING);
+	/**
+	 * Turns {@link #values()} into a comma separated string
+	 * @return the values joined by ", "
+	 */
+	public static String supportedValuesAsString() {
+		return StringUtils.join(values(), ", ");
 	}
 
 	/**
-	 * Checks that the status is cancelled or failed.
-	 * @return true if cancelled or failed.
+	 * Returns {@link TransferStatusType} that represent active statuses
+	 * @return immutable list of the active {@link TransferStatusType}
 	 */
-	public boolean isCancelled()
-	{
-		return this == CANCELLED || this == FAILED;
+	public static List<TransferStatusType> getActive() {
+		return List.of(PAUSED, QUEUED, RETRYING, TRANSFERRING);
 	}
 
 	/**
-	 * Checks that the status is not in a terminal state
-	 * @return true if not in a terminal state
+	 * Returns {@link TransferStatusType} that represent stopped statuses. These are tasks that were cancelled
+	 * or failed due to outside interference.
+	 * @return immutable list of the active {@link TransferStatusType}
 	 */
-	public boolean isActive()
-	{
-		return ! (this == CANCELLED || this == FAILED || this == COMPLETED);
+	public static List<TransferStatusType> getStopped() {
+		return List.of(CANCELLED, FAILED);
+	}
+
+	/**
+	 * Checks that the status is one of the stopped states.
+	 * @return true if this {@link TransferStatusType} is present in {@link #getStopped()}, false otherwise
+	 * @see #getStopped()
+	 */
+	public boolean isCancelled() {
+		return getStopped().contains(this);
+	}
+
+	/**
+	 * Checks that the status is one of the active states.
+	 * @return true if this {@link TransferStatusType} is present in {@link #getActive()}, false otherwise
+	 * @see #getActive()
+	 */
+	public boolean isActive() {
+		return getActive().contains(this);
 	}
 }

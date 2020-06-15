@@ -15,7 +15,7 @@ import java.util.List;
  */
 public enum TransferStatusType
 {
-	CANCELLED, COMPLETED, FAILED, PAUSED, QUEUED, RETRYING, TRANSFERRING;
+	CANCELLED, COMPLETED, COMPLETED_WITH_ERRORS, FAILED, PAUSED, QUEUED, RETRYING, TRANSFERRING, ERROR, CREATED, CANCELING_WAITING;
 
 	/**
 	 * Turns {@link #values()} into a comma separated string

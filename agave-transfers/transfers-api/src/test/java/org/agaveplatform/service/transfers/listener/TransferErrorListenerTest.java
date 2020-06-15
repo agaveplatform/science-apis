@@ -51,7 +51,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 
 		log.info("Starting process of notificationEventProcess.");
 		JsonObject body = new JsonObject(tt.toJSON());
-		body.put("id", new AgaveUUID(UUIDType.TRANSFER).toString());
+		body.put("id",4);
 		body.put("cause", RemoteDataException.class.getName());
 		body.put("message", "Error Message");
 
@@ -75,7 +75,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 
 		log.info("Starting process of notificationEventProcess.");
 		JsonObject body = new JsonObject(tt.toJSON());
-		body.put("id", new AgaveUUID(UUIDType.TRANSFER).toString());
+		body.put("id", 3);
 		body.put("cause", IOException.class.getName());
 		body.put("message", "Error Message");
 
@@ -94,14 +94,15 @@ class TransferErrorListenerTest extends BaseTestCase {
 	@DisplayName("TransferErrorListener.processError IOException and Status= COMPLETED test")
 	//@Disabled
 	protected void processErrorIOE_COMPLETE_test(Vertx vertx, VertxTestContext ctx) {
+
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 		JsonObject body = tt.toJson();
 
 		log.info("Starting process of notificationEventProcess.");
-		body.put("id", new AgaveUUID(UUIDType.TRANSFER).toString());
+		body.put("id", 1);
 		body.put("cause", IOException.class.getName());
 		body.put("message", "Error Message");
-		body.put("status", "COMPLETED");
+		//body.put("status", "COMPLETED");
 
 		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		doCallRealMethod().when(txfrErrorListener).processError(any(JsonObject.class), any());
@@ -123,7 +124,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 
 		log.info("Starting process of notificationEventProcess.");
 		JsonObject body = new JsonObject(tt.toJSON());
-		body.put("id", new AgaveUUID(UUIDType.TRANSFER).toString());
+		body.put("id", 2);
 		body.put("cause", "java.lang.InterruptedException");
 		body.put("message", "Error Message");
 		body.put("status", "FAILED");

@@ -53,7 +53,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC Lstn - pCR fail DB")
-	@Disabled
+	//@Disabled
 	public void processCancelRequestFailDBTest(Vertx vertx, VertxTestContext ctx) {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();
@@ -76,7 +76,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(anyObject()) );
+		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
@@ -187,7 +187,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC Lstn - pCR w/ Parent/Root Txfr")
-	@Disabled
+	//@Disabled
 	public void processCancelRequestParentTest(Vertx vertx, VertxTestContext ctx) {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();

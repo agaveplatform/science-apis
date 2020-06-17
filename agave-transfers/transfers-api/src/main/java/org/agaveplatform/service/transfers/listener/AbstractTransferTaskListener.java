@@ -149,8 +149,6 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
         return true;
     }
 
-
-
     /**
      * Sets the vertx instance for this listener
      * @param vertx the current instance of vertx

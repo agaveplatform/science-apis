@@ -6,6 +6,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -31,9 +32,13 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Date;
 
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
+
 public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	private final Logger log = LoggerFactory.getLogger(TransferAllProtocolVertical.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_ALL;
+	private TransferTaskDatabaseService dbService;
 
 	public TransferAllProtocolVertical() {
 		super();
@@ -52,6 +57,11 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	@Override
 	public void start() {
 		EventBus bus = vertx.eventBus();
+
+		// init our db connection from the pool
+		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
@@ -173,6 +183,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					}
 
 					log.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+
+
 					result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
 
 					handler.handle(Future.succeededFuture(result));
@@ -184,6 +196,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			} else {
 				log.debug("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 				log.debug("Completed transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
+
 
 				_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 				handler.handle(Future.succeededFuture(true));
@@ -227,6 +240,15 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	protected Boolean processCopyRequest(String source, RemoteDataClient srcClient, String dest, RemoteDataClient destClient, org.iplantc.service.transfer.model.TransferTask legacyTransferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
 
+		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
+			if (updateReply.succeeded()) {
+				Future.succeededFuture(Boolean.TRUE);
+			} else {
+				// update failed
+				Future.succeededFuture(Boolean.FALSE);
+			}
+		});
+
 		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 
 		legacyTransferTask = urlCopy.copy(source, dest, legacyTransferTask);
@@ -256,6 +278,14 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	protected RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
 		TenancyHelper.setCurrentTenantId(tenantId);
 		return new RemoteDataClientFactory().getInstance(username, null, target);
+	}
+
+	public TransferTaskDatabaseService getDbService() {
+		return dbService;
+	}
+
+	public void setDbService(TransferTaskDatabaseService dbService) {
+		this.dbService = dbService;
 	}
 
 }

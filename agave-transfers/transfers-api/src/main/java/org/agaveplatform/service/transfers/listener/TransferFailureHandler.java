@@ -97,6 +97,8 @@ public class TransferFailureHandler extends AbstractTransferTaskListener impleme
 					// TODO: we need a wrapper object around our event bodies so we can record things like the number
 					// 	of attempts to process a given event, last event time, and whether to keep trying indefinitely
 					//  or not.
+
+					//TODO check the parent for completeness and if not then check option and ether fail everything or fail this task or complete
 				}
 			});
 		}

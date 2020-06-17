@@ -33,7 +33,7 @@ import static javax.persistence.GenerationType.IDENTITY;
 public class TransferTask {
     
     private static final Logger log = LoggerFactory.getLogger(TransferTask.class);
-    
+
 	private Long id;
 	private String source;
 	private String dest;
@@ -56,6 +56,11 @@ public class TransferTask {
 	private Instant created = Instant.now();
 	private Instant lastUpdated = Instant.now();
 	private String uuid;
+	private String message;
+	private String cause;
+
+
+
 
 	public TransferTask() {
 		setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -164,6 +169,7 @@ public class TransferTask {
 			this.setTotalSkippedFiles(json.getLong("totalSkippedFiles", 0L));
 		}
 
+
 	}
 
 	public TransferTask(String source, String dest, String tenantId)
@@ -200,6 +206,23 @@ public class TransferTask {
 	public void setId(Long id)
 	{
 		this.id = id;
+	}
+
+
+	public String getMessage() {
+		return message;
+	}
+
+	public void setMessage(String message) {
+		this.message = message;
+	}
+
+	public String getCause() {
+		return cause;
+	}
+
+	public void setCause(String cause) {
+		this.cause = cause;
 	}
 
 	/**

@@ -6,6 +6,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -17,9 +18,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_TRIES;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_RETRY;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public class TransferErrorListener extends AbstractTransferTaskListener {
 	protected static final Logger log = LoggerFactory.getLogger(TransferErrorListener.class);
@@ -41,23 +42,33 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 		return EVENT_CHANNEL;
 	}
 
+	private TransferTaskDatabaseService dbService;
+
 	@Override
 	public void start() {
 		EventBus bus = vertx.eventBus();
 		//final String err ;
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
+			// init our db connection from the pool
+			String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+			dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
 			log.info("Transfer task {} error: {}: {}",
 					body.getString("uuid"), body.getString("cause"), body.getString("message"));
 
-			processError(body, resp -> {
-				if (resp.succeeded()) {
-					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
-				} else {
-					log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
-				}
-			});
+			try {
+				processError(body, resp -> {
+					if (resp.succeeded()) {
+						log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
+					} else {
+						log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
+					}
+				});
+			}catch (Exception e){
+				log.error(e.getMessage());
+			}
+
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
@@ -71,10 +82,24 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 	protected void processError(JsonObject body, Handler<AsyncResult<Boolean>> handler){
 		try {
 			TransferTask tt = new TransferTask(body);
+
 			String cause = body.getString("cause", null);
 			String message = body.getString("message", "");
 			int attempts = body.getInteger("attempts", Integer.MAX_VALUE);
 			int maxTries = config().getInteger(TRANSFERTASK_MAX_TRIES, Settings.MAX_STAGING_RETRIES);
+			//String status = body.getString("COMPLETED", null);
+			String tenantId = body.getString("tenantId", null);
+			String uuid = body.getString("uuid", null);
+
+			// update dt DB status here
+			getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.toString(), updateReply -> {
+				if (updateReply.succeeded()) {
+					Future.succeededFuture(Boolean.TRUE);
+				} else {
+					// update failed
+					Future.succeededFuture(Boolean.FALSE);
+				}
+			});
 
 			// check the retry count on the transfer task. if it has not yet tapped out, examine the error to see if
 			// we should retry the transfer
@@ -116,4 +141,14 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 			handler.handle(Future.failedFuture(t));
 		}
 	}
+
+	public TransferTaskDatabaseService getDbService() {
+		return dbService;
+	}
+
+	public void setDbService(TransferTaskDatabaseService dbService) {
+		this.dbService = dbService;
+	}
+
+
 }

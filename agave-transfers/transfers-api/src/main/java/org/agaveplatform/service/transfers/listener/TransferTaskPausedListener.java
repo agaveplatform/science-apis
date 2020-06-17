@@ -91,6 +91,16 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 
 		getDbService().updateStatus(tenantId, uuid, TransferStatusType.PAUSED.name(), reply -> {
 			if (reply.succeeded()) {
+				// update dt DB status here
+				getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.toString(), updateReply -> {
+					if (updateReply.succeeded()) {
+						Future.succeededFuture(Boolean.TRUE);
+					} else {
+						// update failed
+						Future.succeededFuture(Boolean.FALSE);
+					}
+				});
+
 				logger.info("Transfer task {} status updated to PAUSED", uuid);
 				_doPublishEvent(TRANSFERTASK_PAUSED, body);
 
@@ -148,6 +158,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 		String parentTaskId = body.getString("parentTaskId");
 		String rootTaskId = body.getString("rootTaskId");
 		String tenantId = body.getString("owner");
+
 
 		// if this task has children and all are cancelled or completed, then we can
 		// mark this task as cancelled.
@@ -311,9 +322,8 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 		this.dbService = dbService;
 	}
 
-	public void processInterrupt(JsonObject body, io.vertx.core.Handler<io.vertx.core.AsyncResult<Boolean>> handler) {
+	public void processInterrupt(JsonObject body, io.vertx.core.Handler<io.vertx.core.AsyncResult<Boolean>> handler) {}
 
-	}
 }
 
 

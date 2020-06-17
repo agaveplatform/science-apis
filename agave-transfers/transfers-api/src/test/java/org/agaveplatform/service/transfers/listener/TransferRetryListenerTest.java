@@ -136,9 +136,9 @@ class TransferRetryListenerTest  extends BaseTestCase {
 		}));
 
 
-		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
+		TransferTask tta = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
-		JsonObject body = tt.toJson();
+		JsonObject body = tta.toJson();
 
 		vertx.eventBus().consumer("transfertask.sftp", msg -> {
 			JsonObject bodyRec = (JsonObject) msg.body();
@@ -146,7 +146,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 			ctx.completeNow();
 		});
 
-		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+		//TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
 		//ta.processRetryTransferTask(body);
 		ta.processRetryTransferTask(body, resp -> {
 			if (resp.succeeded()){

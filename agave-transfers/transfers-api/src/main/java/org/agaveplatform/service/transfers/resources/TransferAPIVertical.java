@@ -106,14 +106,6 @@ public class TransferAPIVertical extends AbstractVerticle {
         router.post("/api/transfers")
                 // Mount validation handler to ensure the posted json is valid prior to adding
                 .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
-//                .failureHandler(routingContext -> {
-//                    Throwable failure = routingContext.failure();
-//                    if (failure instanceof ValidationException) {
-//                        // Something went wrong during validation!
-//                        String validationErrorMessage = failure.getMessage();
-//                        routingContext.response().setStatusCode(400).end(validationErrorMessage);
-//                    }
-//                })
                 // Mount primary handler
                 .handler(this::addOne);
         router.put("/api/transfers/:uuid")
@@ -487,4 +479,11 @@ public class TransferAPIVertical extends AbstractVerticle {
         }
     }
 
+    public TransferTaskDatabaseService getDbService() {
+        return dbService;
+    }
+
+    public void setDbService(TransferTaskDatabaseService dbService) {
+        this.dbService = dbService;
+    }
 }

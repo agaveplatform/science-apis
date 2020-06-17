@@ -76,6 +76,16 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
 
         Long id = 0L;
 
+        // update dt DB status here
+        getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.toString(), updateReply -> {
+            if (updateReply.succeeded()) {
+                Future.succeededFuture(Boolean.TRUE);
+            } else {
+                // update failed
+                Future.succeededFuture(Boolean.FALSE);
+            }
+        });
+
         // lookup the transfer task from the db
         getDbService().getById(tenantId, uuid, getByIdReply -> {
             if (getByIdReply.succeeded()) {

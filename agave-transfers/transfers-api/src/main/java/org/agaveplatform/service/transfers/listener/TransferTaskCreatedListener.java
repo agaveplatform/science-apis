@@ -6,8 +6,11 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.agaveplatform.service.transfers.resources.AgaveResponseBuilder;
 import org.agaveplatform.service.transfers.util.RemoteSystemAO;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -28,20 +31,19 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
 
 public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
     private static final Logger logger = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
 
+    private TransferTaskDatabaseService dbService;
+
     public TransferTaskCreatedListener() {
         super();
     }
-
-    public TransferTaskCreatedListener(Vertx vertx) {
-        this(vertx, null);
-    }
-
+    public TransferTaskCreatedListener(Vertx vertx) {super(vertx); }
     public TransferTaskCreatedListener(Vertx vertx, String eventChannel) {
         super();
         setVertx(vertx);
@@ -55,6 +57,11 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
     @Override
     public void start() {
         EventBus bus = vertx.eventBus();
+
+        // init our db connection from the pool
+        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+        dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+
         bus.<JsonObject>consumer(getEventChannel(), msg -> {
             logger.info("Recieved the TRANSFERTASK_CREATED message");
             JsonObject body = msg.body();
@@ -179,9 +186,19 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                         destUri.getScheme(), uuid));
             }
 
-
             // check for interrupted before proceeding
             if (taskIsNotInterrupted(createdTransferTask)) {
+                // update dt DB status here
+                getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateReply -> {
+                    if (updateReply.succeeded()) {
+                        _doPublishEvent(TRANSFERTASK_ASSIGNED, updateReply.result());
+                        Future.succeededFuture(Boolean.TRUE);
+                    } else {
+                        // update failed
+                        Future.succeededFuture(Boolean.FALSE);
+                    }
+                });
+
                 // continue assigning the task and return
                 logger.info("Assigning transfer task {} for processing.", uuid);
                 _doPublishEvent(TRANSFERTASK_ASSIGNED, body);
@@ -223,5 +240,12 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
         return new RemoteSystemAO();
     }
 
+    public TransferTaskDatabaseService getDbService() {
+        return dbService;
+    }
+
+    public void setDbService(TransferTaskDatabaseService dbService) {
+        this.dbService = dbService;
+    }
 
 }

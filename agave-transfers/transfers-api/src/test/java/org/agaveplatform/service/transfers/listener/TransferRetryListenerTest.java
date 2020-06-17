@@ -90,7 +90,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 
 	@Test
 	@DisplayName("Process processTransferTaskPublishesChildTasksForDirectory")
-	@Disabled
+//	@Disabled
 	public void processTransferTaskPublishesChildTasksForDirectory(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = _createTestTransferTask();
@@ -114,17 +114,6 @@ class TransferRetryListenerTest  extends BaseTestCase {
 			handler.handle(processRetryHandler);
 			return null;
 		}).when(ta).processRetry(any(TransferTask.class), any());
-
-//		try {
-//			// allow the first one to succeed since it's not an agave URI
-//			when(ta.getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource()))))
-//					.thenReturn(srcClient);
-//			// force the second one to fail since it is an agave URI and can result in a bad syste lookup.
-//			when(ta.getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getDest()))))
-//					.thenThrow(new SystemUnknownException("THis should be thrown during the test and propagated back as the handler.cause() method."));
-//		} catch (Exception e) {
-//			ctx.failNow(e);
-//		}
 
 		ta.processRetryTransferTask(tt.toJson(), resp -> ctx.verify(() -> {
 			assertFalse(resp.succeeded(), "processRetry should fail when system is unknown");
@@ -264,6 +253,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
 
 		doCallRealMethod().when(ta).processRetry(any(), any());
+
 		try {
 			// force the source one to fail since it is an agave URI and can result in a bad syste lookup.
 			when(ta.getRemoteDataClient(eq(tt.getTenantId()), eq(tt.getOwner()), eq(URI.create(tt.getSource()))))

@@ -1,6 +1,8 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.*;
+import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -49,9 +51,31 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
 
     public void _doPublishEvent(String event, Object body) {
         logger.debug("Publishing {} event: {}", event, body);
-        getVertx().eventBus().publish(event, body);
+        getVertx().eventBus().request(event, body, new DeliveryOptions(), new Handler<AsyncResult<Message<JsonObject>>>() {
+            int retries = 0;
+            /**
+             * Response from the remote subscriber. We only care about failure acks.
+             *
+             * @param event the event to handle
+             */
+            @Override
+            public void handle(AsyncResult<Message<JsonObject>> event) {
+                if (event.failed()) {
+                    if (retries < 3) {
+                        logger.error("Unable to send {} event after {} retries. No further attempts will be made.",
+                                event, retries);
+                        retries++;
+                    } else {
+                        logger.error("Unable to send {} event after {} retries for message {}. No further attempts will be made.",
+                                event, retries, event.result().body().encode(), event.cause());
+                    }
+                } else {
+                    getVertx().eventBus().send(TRANSFERTASK_NOTIFICATION, body);
+                }
+            }
+        });
 
-        getVertx().eventBus().send(TRANSFERTASK_NOTIFICATION, body);
+
     }
 
 //    /**

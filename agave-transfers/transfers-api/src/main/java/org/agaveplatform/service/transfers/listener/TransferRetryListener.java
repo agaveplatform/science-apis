@@ -152,6 +152,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener {
 
 							// increment the attempts
 							transferTaskToRetry.setAttempts(attempts + 1);
+							transferTaskToRetry.setStatus(TransferStatusType.RETRYING);
 							getDbService().update(tenantId, uuid, transferTaskToRetry, updateBody -> {
 								if (updateBody.succeeded()) {
 									log.debug("Beginning attempt {} for transfer task {}", tenantId, uuid);
@@ -321,7 +322,16 @@ public class TransferRetryListener extends AbstractTransferTaskListener {
 									} else {
 										// interrupt happened wild processing children. skip the rest.
 										log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", retryTransferTask.getUuid());
-										_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+										getDbService().updateStatus(retryTransferTask.getTenantId(), retryTransferTask.getUuid(), org.iplantc.service.transfer.model.enumerations.TransferStatusType.CANCELLED.name(), updateReply -> {
+											if (updateReply.succeeded()) {
+												handler.handle(Future.succeededFuture(false));
+												_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+											} else {
+												handler.handle(Future.failedFuture(updateReply.cause()));
+												_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+											}
+										});
+
 										break;
 									}
 								}

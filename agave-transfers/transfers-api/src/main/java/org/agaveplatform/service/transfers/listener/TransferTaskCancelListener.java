@@ -77,20 +77,10 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
         Long id = 0L;
 
         // update dt DB status here
-        getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.toString(), updateReply -> {
+        getDbService().updateStatus(tenantId, uuid, CANCELING_WAITING.toString(), updateReply -> {
             if (updateReply.succeeded()) {
-                Future.succeededFuture(Boolean.TRUE);
-            } else {
-                // update failed
-                Future.succeededFuture(Boolean.FALSE);
-            }
-        });
-
-        // lookup the transfer task from the db
-        getDbService().getById(tenantId, uuid, getByIdReply -> {
-            if (getByIdReply.succeeded()) {
-                logger.trace("Retrieved transfer task {}: {}", uuid, getByIdReply.result());
-                TransferTask cancelTransferTask = new TransferTask(getByIdReply.result());
+                logger.trace("Retrieved transfer task {}: {}", uuid, updateReply.result());
+                TransferTask cancelTransferTask = new TransferTask(updateReply.result());
                 logger.info("Transfer task {} has root id {}", uuid, cancelTransferTask.getRootTaskId());
 
                 // if it's not already in a terminal state, process the cancell requrest
@@ -112,8 +102,8 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                     // actively processing any of its children to cancel their existing work and ack.
                     // the ack responses will bubble back up, eventually reaching the root, at which time,
                     // the root transfer task will be marked as cancelled.
-                   logger.debug("Sending cancel sync event for transfer task {}", uuid);
-                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
+                    logger.debug("Sending cancel sync event for transfer task {}", uuid);
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, updateReply.result());
                     resultHandler.handle(Future.succeededFuture(Boolean.TRUE));
                 } else {
                     // if the root is not in an active state, then there is nothing needed at this time. we
@@ -121,18 +111,18 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                     // be cleaned up. This is a bit of an aggressive way to override eventual consistency.
                     logger.info("Transfer task {} is not in an active state. " +
                             "Sending cancel sync event to ensure children are cleaned up.", uuid);
-                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, updateReply.result());
                     resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
-                //} else {
+                    //} else {
                     // TODO: think through cancel requests that are not on root tasks
-                  //  _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, body);
+                    //  _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, body);
                     //resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
                 }
             } else {
                 // failure
-                String msg = "Unable to verify the current status of transfer task " + uuid + ". " + getByIdReply.cause();
+                String msg = "Unable to verify the current status of transfer task " + uuid + ". " + updateReply.cause();
                 JsonObject json = new JsonObject()
-                        .put("cause", getByIdReply.cause().getClass().getName())
+                        .put("cause", updateReply.cause().getClass().getName())
                         .put("message", msg)
                         .mergeIn(body);
 

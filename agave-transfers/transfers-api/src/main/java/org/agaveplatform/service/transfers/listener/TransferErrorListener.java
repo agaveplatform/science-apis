@@ -47,6 +47,7 @@ public class TransferErrorListener extends AbstractTransferTaskListener {
 	@Override
 	public void start() {
 		EventBus bus = vertx.eventBus();
+
 		//final String err ;
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();

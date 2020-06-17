@@ -3,10 +3,14 @@ package org.agaveplatform.service.transfers.listener;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.streams.Pipe;
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -25,11 +29,13 @@ import java.io.FileNotFoundException;
 import java.net.URI;
 import java.util.List;
 
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskAssignedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ASSIGNED;
+    private TransferTaskDatabaseService dbService;
 
     public TransferTaskAssignedListener() {super();}
     public TransferTaskAssignedListener(Vertx vertx) {
@@ -45,7 +51,12 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
 
     @Override
     public void start() {
+        // init our db connection from the pool
+        String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
+        dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
+
         EventBus bus = vertx.eventBus();
+
         bus.<JsonObject>consumer(getEventChannel(), msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
@@ -54,7 +65,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
             processTransferTask(body, resp -> {
-                if (resp.succeeded()){
+                if (resp.succeeded()) {
                     log.debug("Succeeded with the procdessTransferTask in the assigning of the event {}", uuid);
                     // TODO: codify our notification behavior here. Do we rewrap? How do we ensure ordering? Do we just
                     //   throw it over the fence to Camel and forget about it? Boy, that would make things easier,
@@ -66,6 +77,8 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                 } else {
                     log.error("Error with return from creating the event {}", uuid);
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+
+                    msg.reply(resp.cause());
                 }
             });
         });
@@ -138,29 +151,26 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     // if it's an "agave://" uri, look up the connection info, get a rdc, and process the remote
                     // file item
                     if (srcUri.getScheme().equalsIgnoreCase("agave")) {
-//                        // pull the system out of the url. system id is the hostname in an agave uri
-//                        RemoteSystem srcSystem = new SystemDao().findBySystemId();
-//                        // get a remote data client for the system
-//                        srcClient = srcSystem.getRemoteDataClient();
-//
-                        // get a remote data client for the system
+                        // get a remote data client for the source target
                         srcClient = getRemoteDataClient(tenantId, username, srcUri);
-
-//                        // pull the dest system out of the url. system id is the hostname in an agave uri
-//                        RemoteSystem destSystem = new SystemDao().findBySystemId(destUri.getHost());
-//                        destClient = destSystem.getRemoteDataClient();
-
+                        // get a remote data client for the dest target
                         destClient = getRemoteDataClient(tenantId, username, destUri);
-                        // stat the remote path to check its type
+
+                        // stat the remote path to check its type and existence
                         RemoteFileInfo fileInfo = srcClient.getFileInfo(srcUri.getPath());
 
                         // if the path is a file, then we can move it directly, so we raise an event telling the protocol
                         // listener to move the file item
                         if (fileInfo.isFile()) {
-                            // write to the catchall transfer event channel.
+                            // write to the catchall transfer event channel. Nothing to update in the transfer task
+                            // as the status will be updated when the transfer begins.
                             _doPublishEvent(TRANSFER_ALL, body);
-                        } else {
-                            // path is a directory, so walk the first level of the directory
+                        }
+                        // the path is a directory, so walk the first level of the directory, spawning new child transfer
+                        // tasks for every file item found. folders will be put back on the created queue for further
+                        // traversal in depth. files will be forwarded to the transfer channel for immediate processing
+                        else {
+                            // list the remote directory
                             List<RemoteFileInfo> remoteFileInfoList = srcClient.ls(srcUri.getPath());
 
                             // if the directory is emnpty, mark as complete and exit
@@ -175,57 +185,79 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                 // traversal in the event it's not allowed.
                                 destClient.mkdirs(destUri.getPath());
 
-                                for (RemoteFileInfo childFileItem : remoteFileInfoList) {
-                                    // if the assigned or ancestor transfer task were cancelled while this was running,
-                                    // skip the rest.
-                                    if (taskIsNotInterrupted(assignedTransferTask)) {
-                                        // if it's a file, we can process this as we would if the original path were a file
-                                        if (childFileItem.isFile()) {
-                                            // build the child paths
-                                            String childSource = body.getString("source") + "/" + childFileItem.getName();
-                                            String childDest = body.getString("dest") + "/" + childFileItem.getName();
+                                // if the created transfertask does not have a rootTask, it is the rootTask of all
+                                // the child tasks we create processing the directory listing
+                                final String rootTaskId = StringUtils.isEmpty(body.getString("rootTask")) ?
+                                        body.getString("uuid") : body.getString("rootTaskId");
 
-                                            TransferTask transferTask = new TransferTask(childSource, childDest, tenantId);
-                                            transferTask.setTenantId(tenantId);
-                                            transferTask.setOwner(username);
-                                            transferTask.setParentTaskId(uuid);
-                                            if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
-                                                transferTask.setRootTaskId(body.getString("rootTaskId"));
-                                            }
-                                            _doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
+//                                for (RemoteFileInfo childFileItem : remoteFileInfoList) {
+                                MutableBoolean ongoing = new MutableBoolean(true);
+                                remoteFileInfoList.stream().takeWhile(t -> ongoing.booleanValue()).forEach(childFileItem -> {
+                                    // build the child paths
+                                    String childSource = source + "/" + childFileItem.getName();
+                                    String childDest = dest + "/" + childFileItem.getName();
 
-                                            //                                            _doPublishEvent("transfertask." + srcSystem.getType(),
-                                            //                                                    "agave://" + srcSystem.getSystemId() + "/" + srcUri.getPath() + "/" + childFileItem.getName());
+                                    try {
+                                        // if the assigned or ancestor transfer task were cancelled while this was running,
+                                        // skip the rest.
+                                        if (taskIsNotInterrupted(assignedTransferTask)) {
+
+                                            TransferTask childTransferTask = new TransferTask(childSource, childDest, tenantId);
+                                            childTransferTask.setTenantId(tenantId);
+                                            childTransferTask.setOwner(username);
+                                            childTransferTask.setParentTaskId(uuid);
+                                            childTransferTask.setRootTaskId(rootTaskId);
+                                            childTransferTask.setStatus(TransferStatusType.QUEUED);
+
+                                            getDbService().createOrUpdateChildTransferTask(tenantId, childTransferTask, childResult -> {
+                                                String fileItemType = childFileItem.isFile() ? "file" : "directory";
+                                                if (childResult.succeeded()) {
+                                                    String childMessageType = childFileItem.isFile() ? TRANSFER_ALL : TRANSFERTASK_CREATED;
+
+                                                    log.debug("Finished processing child {} transfer tasks for {}: {} => {}",
+                                                            fileItemType,
+                                                            childResult.result().getString("uuid"),
+                                                            childSource,
+                                                            childDest);
+
+                                                    _doPublishEvent(childMessageType, childResult.result());
+                                                }
+                                                // we couldn't create a new task and none previously existed for this child, so we must
+                                                // fail the transfer for this transfertask. The decision about whether to delete the entire
+                                                // root transfer task will be made based on the TransferPolicy assigned to the root task in
+                                                // the failed handler.
+                                                else {
+                                                    // this will break the stream processing and exit the loop without completing the
+                                                    // remaining RemoteFileItem in the listing.
+                                                    ongoing.setFalse();
+
+                                                    String message = String.format("Error creating new child file transfer task for %s: %s -> %s. %s",
+                                                            uuid, childSource, childDest, childResult.cause().getMessage());
+
+                                                    doHandleFailure(childResult.cause(), message, body, handler);
+                                                }
+                                            });
+                                        } else {
+                                            // interrupt happened while processing children. skip the rest.
+                                            // TODO: How do we know it wasn't a pause?
+                                            log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
+                                            _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
+
+                                            // this will break the stream processing and exit the loop without completing the
+                                            // remaining RemoteFileItem in the listing.
+                                            ongoing.setFalse();
                                         }
-                                        // if a directory, then create a new transfer task to repeat this process,
-                                        // keep the association between this transfer task, the original, and the children
-                                        // in place for traversal in queries later on.
-                                        else {
-                                            // build the child paths
-                                            String childSource = body.getString("source") + "/" + childFileItem.getName();
-                                            String childDest = body.getString("dest") + "/" + childFileItem.getName();
+                                    } catch (Throwable t) {
+                                        // this will break the stream processing and exit the loop without completing the
+                                        // remaining RemoteFileItem in the listing.
+                                        ongoing.setFalse();
 
-//                                            // create the remote directory to ensure it's present when the transfers begin. This
-//                                            // also allows us to check for things like permissions ahead of time and save the
-//                                            // traversal in the event it's not allowed.
-//                                            boolean isDestCreated = destClient.mkdirs(destUri.getPath() + "/" + childFileItem.getName());
+                                        String message = String.format("Failed processing child file transfer task for %s: %s -> %s. %s",
+                                                uuid, childSource, childDest, t.getMessage());
 
-                                            TransferTask transferTask = new TransferTask(childSource, childDest, tenantId);
-                                            transferTask.setTenantId(tenantId);
-                                            transferTask.setOwner(username);
-                                            transferTask.setParentTaskId(uuid);
-                                            if (StringUtils.isNotEmpty(body.getString("rootTask"))) {
-                                                transferTask.setRootTaskId(body.getString("rootTaskId"));
-                                            }
-                                            _doPublishEvent(MessageType.TRANSFERTASK_CREATED, transferTask.toJson());
-                                        }
-                                    } else {
-                                        // interrupt happened wild processing children. skip the rest.
-                                        log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
-                                        _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
-                                        break;
+                                        doHandleFailure(t, message, body, handler);
                                     }
-                                }
+                                });
                             }
                         }
                     }
@@ -252,23 +284,11 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         }
         catch (RemoteDataSyntaxException e) {
             String message = String.format("Failing transfer task %s due to invalid source syntax. %s", uuid, e.getMessage());
-            JsonObject json = new JsonObject()
-                    .put("cause", e.getClass().getName())
-                    .put("message", message)
-                    .mergeIn(body);
-
-            _doPublishEvent(TRANSFERTASK_FAILED, json);
-            handler.handle(Future.failedFuture(e));
+            doHandleFailure(e, message, body, handler);
         }
         catch (Exception e) {
             log.error(e.getMessage());
-            JsonObject json = new JsonObject()
-                    .put("cause", e.getClass().getName())
-                    .put("message", e.getMessage())
-                    .mergeIn(body);
-
-            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-            handler.handle(Future.failedFuture(e));
+            doHandleError(e, e.getMessage(), body, handler);
         }
         finally {
             // cleanup the remote data client connections
@@ -277,6 +297,58 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         }
 
         handler.handle(Future.succeededFuture(true));
+    }
+
+    /**
+     * Convenience method to handles generation of failed transfer messages, raising of failed event, and calling of handler with the
+     * passed exception.
+     * @param throwable the exception that was thrown
+     * @param failureMessage the human readable message to send back
+     * @param originalMessageBody the body of the original message that caused that failed
+     * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
+     */
+    protected void doHandleFailure(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
+        JsonObject json = new JsonObject()
+                .put("cause", throwable.getClass().getName())
+                .put("message", failureMessage)
+                .mergeIn(originalMessageBody);
+
+        _doPublishEvent(TRANSFERTASK_FAILED, json);
+
+        // propagate the exception back to the calling method
+        if (handler != null) {
+            handler.handle(Future.failedFuture(throwable));
+        }
+    }
+
+    /**
+     * Convenience method to handles generation of errored out transfer messages, raising of error event, and calling of handler with the
+     * passed exception.
+     * @param throwable the exception that was thrown
+     * @param failureMessage the human readable message to send back
+     * @param originalMessageBody the body of the original message that caused that failed
+     * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
+     */
+    protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
+        JsonObject json = new JsonObject()
+                .put("cause", throwable.getClass().getName())
+                .put("message", failureMessage)
+                .mergeIn(originalMessageBody);
+
+        _doPublishEvent(TRANSFERTASK_ERROR, json);
+
+        // propagate the exception back to the calling method
+        if (handler != null) {
+            handler.handle(Future.failedFuture(throwable));
+        }
+    }
+
+    public TransferTaskDatabaseService getDbService() {
+        return dbService;
+    }
+
+    public void setDbService(TransferTaskDatabaseService dbService) {
+        this.dbService = dbService;
     }
 
     /**
@@ -298,4 +370,5 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         TenancyHelper.setCurrentTenantId(tenantId);
         return new RemoteDataClientFactory().getInstance(username, null, target);
     }
+
 }

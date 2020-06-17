@@ -71,7 +71,8 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
 				.put("status", TransferStatusType.FAILED.name())
-				.put("endTime", Instant.now());
+//				.put("endTime", Instant.now())
+				.put("lastUpdated", Instant.now());
 
 		AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
 

@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
+import org.agaveplatform.service.transfers.listener.TransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang.NotImplementedException;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
@@ -34,6 +35,7 @@ import java.util.Date;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
 
 public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	private final Logger log = LoggerFactory.getLogger(TransferAllProtocolVertical.class);
@@ -191,7 +193,15 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
 				} else {
 					log.info("Transfer task {} was interrupted", tt.getUuid());
-					handler.handle(Future.succeededFuture(false));
+					getDbService().updateStatus(tt.getTenantId(), tt.getUuid(),TransferStatusType.CANCELLED.name(), updateReply -> {
+						if (updateReply.succeeded()) {
+							_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
+							handler.handle(Future.succeededFuture(false));
+						} else {
+							handler.handle(Future.failedFuture(updateReply.cause()));
+						}
+					});
+
 				}
 			} else {
 				log.debug("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
@@ -250,7 +260,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		});
 
 		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
-
+		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for
+		//   interrupts in this method upon updates from the transfer thread and interrupt it. Alternatively, we can
+		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
 		legacyTransferTask = urlCopy.copy(source, dest, legacyTransferTask);
 
 		return legacyTransferTask.getStatus() == TransferStatusType.COMPLETED;

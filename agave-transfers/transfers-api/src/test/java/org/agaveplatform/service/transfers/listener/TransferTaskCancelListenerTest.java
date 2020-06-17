@@ -204,8 +204,6 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				.mergeIn(transferTask.toJson());
 
 		TransferTaskCancelListener listener = getMockListenerInstance(vertx);
-		//doAnswer((Answer )).when(listener.getTransferTask(anyString(), anyString(), any()));
-		doCallRealMethod().when(listener).getTransferTask(anyString(), anyString(), any());
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -220,14 +218,26 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			return null;
 		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), anyObject());
 
+		// mock a successful outcome with updated json transfer task result from updateStatus
+		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
+				.put("status", TransferStatusType.FAILED.name())
+//				.put("endTime", Instant.now())
+				.put("lastUpdated", Instant.now());
+
+		AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
+			handler.handle(expectedUpdateStatusHandler);
+			return null;
+		}).when(dbService).updateStatus( eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(transferTask.getStatus().toString()), anyObject() );
+
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
-		// mock a successful outcome with a puased result from processCancelRequest indicating the child has no active parents
-		//AsyncResult<Boolean> processCancelRequest = getMockAsyncResult(Boolean.TRUE);
 
 		// mock the handler passed into processCancelRequest
 		doCallRealMethod().when(listener).processCancelRequest(anyObject(), any() );
-
 
 		// now we run the actual test using our test transfer task data
 		listener.processCancelRequest(transferTask.toJson(), results -> {

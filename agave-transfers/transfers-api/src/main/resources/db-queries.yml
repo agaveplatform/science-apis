@@ -95,7 +95,13 @@ get_transfertask_tree: |
   WHERE "uuid" = ?
   AND root_task IS NULL
   AND "tenant_id" = ?
-
+find_transfertask_by_root_task_id_src_dest: |
+  SELECT *
+  FROM transfertasks
+  WHERE "rootTask" = ?
+    AND "source" = ?
+    AND "dest" = ?
+    AND "tenant_id" = ?
 
 
 

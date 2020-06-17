@@ -25,6 +25,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.Settings;
@@ -339,6 +340,48 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
           }
         });
       });
+    });
+    return this;
+  }
+
+  @Override
+  public TransferTaskDatabaseService findChildTransferTask(String tenantId, String rootTaskId, String src, String dest, Handler<AsyncResult<JsonObject>> resultHandler) {
+    JsonArray data = new JsonArray()
+            .add(rootTaskId)
+            .add(src)
+            .add(dest)
+            .add(tenantId);
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.FIND_TRANSFERTASK_BY_ROOT_TASK_ID_SRC_DEST), data, fetch -> {
+      if (fetch.succeeded()) {
+        ResultSet resultSet = fetch.result();
+        if (resultSet.getNumRows() == 0) {
+          resultHandler.handle(Future.succeededFuture(null));
+        } else {
+          resultHandler.handle(Future.succeededFuture(resultSet.getRows().get(0)));
+        }
+      } else {
+        LOGGER.error("Database query error", fetch.cause());
+        resultHandler.handle(Future.failedFuture(fetch.cause()));
+      }
+    });
+    return this;
+  }
+
+  @Override
+  public TransferTaskDatabaseService createOrUpdateChildTransferTask(String tenantId, TransferTask childTransferTask, Handler<AsyncResult<JsonObject>> resultHandler) {
+    findChildTransferTask(tenantId, childTransferTask.getRootTaskId(), childTransferTask.getSource(), childTransferTask.getDest(), fetch -> {
+      if (fetch.succeeded()) {
+        // no match. we need to create a new TransferTask
+        if (fetch.result() == null) {
+          create(tenantId, childTransferTask, resultHandler);
+        } else {
+          // found a match, just need to update the status
+          updateStatus(tenantId, fetch.result().getString("uuid"), childTransferTask.getStatus().name(), resultHandler);
+        }
+      } else {
+        LOGGER.error("Database query error", fetch.cause());
+        resultHandler.handle(Future.failedFuture(fetch.cause()));
+      }
     });
     return this;
   }

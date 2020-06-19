@@ -27,11 +27,11 @@ import static org.mockito.Mockito.when;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({ JDBCClient.class })
 //@Disabled
-class NotificationListenerTest extends BaseTestCase {
-	private static final Logger log = LoggerFactory.getLogger(NotificationListenerTest.class);
+class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
+	private static final Logger log = LoggerFactory.getLogger(TransferTaskTransferTaskNotificationListenerTest.class);
 
-	protected NotificationListener getMockNotificationListenerInstance(Vertx vertx) {
-		NotificationListener ttc = mock(NotificationListener.class );
+	protected TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) {
+		TransferTaskNotificationListener ttc = mock(TransferTaskNotificationListener.class );
 		when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_NOTIFICATION);
 		when(ttc.getVertx()).thenReturn(vertx);
 
@@ -45,10 +45,10 @@ class NotificationListenerTest extends BaseTestCase {
 		JsonObject body = new JsonObject(_createTestTransferTask().toJSON());
 		body.put("id", new AgaveUUID(UUIDType.TRANSFER).toString());
 
-		NotificationListener txfrNotificationListener = getMockNotificationListenerInstance(vertx);
-		when(txfrNotificationListener.notificationEventProcess(any())).thenReturn(true);
+		TransferTaskNotificationListener txfrTransferTaskNotificationListener = getMockNotificationListenerInstance(vertx);
+		when(txfrTransferTaskNotificationListener.notificationEventProcess(any())).thenReturn(true);
 
-		boolean result = txfrNotificationListener.notificationEventProcess(body);
+		boolean result = txfrTransferTaskNotificationListener.notificationEventProcess(body);
 
 		assertTrue(result, "notificationEventProcess should return true when the notificationEventProcess returned");
 		ctx.completeNow();

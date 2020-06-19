@@ -91,15 +91,6 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 
 		getDbService().updateStatus(tenantId, uuid, TransferStatusType.PAUSED.name(), reply -> {
 			if (reply.succeeded()) {
-				// update dt DB status here
-				getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.toString(), updateReply -> {
-					if (updateReply.succeeded()) {
-						Future.succeededFuture(Boolean.TRUE);
-					} else {
-						// update failed
-						Future.succeededFuture(Boolean.FALSE);
-					}
-				});
 
 				logger.info("Transfer task {} status updated to PAUSED", uuid);
 				_doPublishEvent(TRANSFERTASK_PAUSED, body);
@@ -136,6 +127,17 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 						.put("cause", reply.cause().getClass().getName())
 						.put("message", message)
 						.mergeIn(body);
+
+				// update dt DB status here
+				getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.toString(), updateReply -> {
+					if (updateReply.succeeded()) {
+
+						Future.succeededFuture(Boolean.TRUE);
+					} else {
+						// update failed
+						Future.succeededFuture(Boolean.FALSE);
+					}
+				});
 
 				_doPublishEvent(TRANSFERTASK_ERROR, json);
 				promise.fail(reply.cause());

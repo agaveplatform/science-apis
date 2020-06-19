@@ -25,10 +25,10 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers Watch Listener Test")
-class TransferWatchListenerTest extends BaseTestCase {
+class TransferTaskWatchListenerTest extends BaseTestCase {
 
-	TransferWatchListener getMockListenerInstance(Vertx vertx) {
-		TransferWatchListener twc = Mockito.mock(TransferWatchListener.class);
+	TransferTaskWatchListener getMockListenerInstance(Vertx vertx) {
+		TransferTaskWatchListener twc = Mockito.mock(TransferTaskWatchListener.class);
 		when(twc.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(twc.getVertx()).thenReturn(vertx);
 		when(twc.config()).thenReturn(config);
@@ -41,7 +41,7 @@ class TransferWatchListenerTest extends BaseTestCase {
 	public void processEvent(Vertx vertx, VertxTestContext ctx) {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
-		TransferWatchListener twc = getMockListenerInstance(vertx);
+		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
 		doCallRealMethod().when(twc).processEvent(any());
 
 		// mock out the db service so we can can isolate method logic rather than db
@@ -75,7 +75,7 @@ class TransferWatchListenerTest extends BaseTestCase {
 	public void processEventHandlesASingleActiveTask(Vertx vertx, VertxTestContext ctx) {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
-		TransferWatchListener twc = getMockListenerInstance(vertx);
+		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
 		doCallRealMethod().when(twc).processEvent(any());
 
 		JsonArray activeTasks = new JsonArray();
@@ -117,7 +117,7 @@ class TransferWatchListenerTest extends BaseTestCase {
 	public void processEventHandlesMultipleActiveTasks(Vertx vertx, VertxTestContext ctx) {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
-		TransferWatchListener twc = getMockListenerInstance(vertx);
+		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
 		doCallRealMethod().when(twc).processEvent(any());
 
 		JsonArray activeTasks = new JsonArray();

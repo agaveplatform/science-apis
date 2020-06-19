@@ -72,12 +72,12 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
         String tenantId = body.getString("tenantId");
         String uuid = body.getString("uuid");
         String status = body.getString("status");
-        String parentTaskId = body.getString("parentTaskId");
+        String parentTaskId = body.getString("parentTask");
 
         Long id = 0L;
 
         // update dt DB status here
-        getDbService().updateStatus(tenantId, uuid, CANCELING_WAITING.toString(), updateReply -> {
+        getDbService().updateStatus(tenantId, uuid, CANCELING_WAITING.name(),  updateReply -> {
             if (updateReply.succeeded()) {
                 logger.trace("Retrieved transfer task {}: {}", uuid, updateReply.result());
                 TransferTask cancelTransferTask = new TransferTask(updateReply.result());
@@ -288,7 +288,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
     void processParentEvent(String tenantId, String parentTaskId, Handler<AsyncResult<Boolean>> resultHandler) {
 //		Promise<Boolean> promise = Promise.promise();
         // lookup parent transfertask
-        getDbService().getById(tenantId, parentTaskId, getTaskById -> {
+        getDbService().updateStatus(tenantId, parentTaskId, CANCELING_WAITING.name(), getTaskById -> {
             if (getTaskById.succeeded()) {
                 // check whether it's active or not by its status
                 TransferTask parentTask = new TransferTask(getTaskById.result());
@@ -345,7 +345,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
      * @param resultHandler callback to pass the returned transfertask
      */
     protected void getTransferTask(String tenantId, String uuid, Handler<AsyncResult<TransferTask>> resultHandler) {
-        getDbService().getById(tenantId, uuid, getTaskById -> {
+        getDbService().updateStatus(tenantId, uuid, ERROR.name(), getTaskById -> {
             if (getTaskById.succeeded()) {
                 TransferTask tt = new TransferTask(getTaskById.result());
                 resultHandler.handle(Future.succeededFuture(tt));

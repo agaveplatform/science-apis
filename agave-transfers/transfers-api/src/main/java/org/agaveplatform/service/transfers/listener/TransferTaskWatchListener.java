@@ -14,21 +14,21 @@ import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.C
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
 
 
-public class TransferWatchListener extends AbstractTransferTaskListener {
-	private final static Logger log = LoggerFactory.getLogger(TransferWatchListener.class);
+public class TransferTaskWatchListener extends AbstractTransferTaskListener {
+	private final static Logger log = LoggerFactory.getLogger(TransferTaskWatchListener.class);
 
 	private TransferTaskDatabaseService dbService;
 	protected List<String>  parentList = new ArrayList<>();
 
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_HEALTHCHECK;
 
-	public TransferWatchListener() {
+	public TransferTaskWatchListener() {
 		super();
 	}
-	public TransferWatchListener(Vertx vertx) {
+	public TransferTaskWatchListener(Vertx vertx) {
 		super(vertx);
 	}
-	public TransferWatchListener(Vertx vertx, String eventChannel) {
+	public TransferTaskWatchListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 

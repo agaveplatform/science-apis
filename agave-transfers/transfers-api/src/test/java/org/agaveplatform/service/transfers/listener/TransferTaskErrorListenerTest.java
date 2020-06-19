@@ -32,16 +32,16 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("TransferErrorListener test")
 //@Disabled
-class TransferErrorListenerTest extends BaseTestCase {
-	private static final Logger log = LoggerFactory.getLogger(TransferErrorListener.class);
+class TransferTaskErrorListenerTest extends BaseTestCase {
+	private static final Logger log = LoggerFactory.getLogger(TransferTaskErrorListener.class);
 
 	@AfterAll
 	public void finish(Vertx vertx, VertxTestContext ctx) {
 		vertx.close(ctx.completing());
 	}
 
-	protected TransferErrorListener getMockTransferErrorListenerInstance(Vertx vertx) {
-		TransferErrorListener ttc = mock(TransferErrorListener.class );
+	protected TransferTaskErrorListener getMockTransferErrorListenerInstance(Vertx vertx) {
+		TransferTaskErrorListener ttc = mock(TransferTaskErrorListener.class );
 		when(ttc.config()).thenReturn(config);
 		when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_ERROR);
 		when(ttc.getVertx()).thenReturn(vertx);
@@ -62,7 +62,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 
 		log.info("Cause: = {}", body.getString("cause"));
-		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		doCallRealMethod().when(txfrErrorListener).processError(any(JsonObject.class), any());
 		when(txfrErrorListener.taskIsNotInterrupted(tt)).thenCallRealMethod();
 
@@ -109,7 +109,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 
 		log.info("Cause: = {}", body.getString("cause"));
-		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		doCallRealMethod().when(txfrErrorListener).processError(any(JsonObject.class), any());
 		when(txfrErrorListener.taskIsNotInterrupted(tt)).thenCallRealMethod();
 
@@ -156,7 +156,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 		//body.put("status", "COMPLETED");
 
-		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		doCallRealMethod().when(txfrErrorListener).processError(any(JsonObject.class), any());
 		when(txfrErrorListener.taskIsNotInterrupted(tt)).thenCallRealMethod();
 
@@ -205,7 +205,7 @@ class TransferErrorListenerTest extends BaseTestCase {
 		body.put("status", "FAILED");
 
 		log.info("Cause: = {}", body.getString("cause"));
-		TransferErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 		doCallRealMethod().when(txfrErrorListener).processError(any(JsonObject.class), any());
 		when(txfrErrorListener.taskIsNotInterrupted(tt)).thenCallRealMethod();
 

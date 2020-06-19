@@ -18,8 +18,6 @@ import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.time.Instant;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
@@ -31,14 +29,14 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfers Watch Listener Test")
-class TransferHealthcheckListenerTest extends BaseTestCase {
+class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 
 	private TransferTaskDatabaseService dbService;
 	private Vertx vertx;
 	private JWTAuth jwtAuth;
 
-	TransferHealthcheckListener getMockListenerInstance(Vertx vertx) {
-		TransferHealthcheckListener thc = Mockito.mock(TransferHealthcheckListener.class);
+	TransferTaskHealthcheckListener getMockListenerInstance(Vertx vertx) {
+		TransferTaskHealthcheckListener thc = Mockito.mock(TransferTaskHealthcheckListener.class);
 		when(thc.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(thc.getVertx()).thenReturn(vertx);
 		when(thc.processEvent(any())).thenCallRealMethod();
@@ -52,7 +50,7 @@ class TransferHealthcheckListenerTest extends BaseTestCase {
 	public void processEvent(Vertx vertx, VertxTestContext ctx) {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
-		TransferHealthcheckListener thc = getMockListenerInstance(vertx);
+		TransferTaskHealthcheckListener thc = getMockListenerInstance(vertx);
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);

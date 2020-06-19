@@ -55,8 +55,8 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 	private TransferTaskDatabaseService dbService;
 	List<String> messages = new ArrayList<String>();
 
-	TransferErrorListener getMockErrListenerInstance(Vertx vertx) {
-		TransferErrorListener listener = spy(new TransferErrorListener(vertx));
+	TransferTaskErrorListener getMockErrListenerInstance(Vertx vertx) {
+		TransferTaskErrorListener listener = spy(new TransferTaskErrorListener(vertx));
 		when(listener.getEventChannel()).thenCallRealMethod();
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.config()).thenReturn(config);
@@ -64,8 +64,8 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		return listener;
 	}
 
-	TransferFailureHandler getMockFailListenerInstance(Vertx vertx) {
-		TransferFailureHandler listener = spy(new TransferFailureHandler(vertx));
+	TransferTaskErrorFailureHandler getMockFailListenerInstance(Vertx vertx) {
+		TransferTaskErrorFailureHandler listener = spy(new TransferTaskErrorFailureHandler(vertx));
 		when(listener.getEventChannel()).thenCallRealMethod();
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.config()).thenReturn(config);
@@ -79,15 +79,15 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
-	NotificationListener getMockNotificationListenerInstance(Vertx vertx) {
+	TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) {
 //		NotificationListener listener = spy(new NotificationListener(vertx));
-		NotificationListener listener = Mockito.spy(new NotificationListener(vertx));
+		TransferTaskNotificationListener listener = Mockito.spy(new TransferTaskNotificationListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
-	TransferCompleteTaskListener getMockTCTListenerInstance(Vertx vertx) {
-		TransferCompleteTaskListener listener = spy(new TransferCompleteTaskListener(vertx));
+	TransferTaskCompleteTaskListener getMockTCTListenerInstance(Vertx vertx) {
+		TransferTaskCompleteTaskListener listener = spy(new TransferTaskCompleteTaskListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
@@ -153,7 +153,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 								log.debug("Completed deploying transfer task assigned verticles");
 								vertx.deployVerticle(TransferAllProtocolVertical.class.getName(), options, httpId -> {
 									log.debug("Completed deploying transfer all verticles");
-									vertx.deployVerticle(TransferCompleteTaskListener.class.getName(), options, completedId -> {
+									vertx.deployVerticle(TransferTaskCompleteTaskListener.class.getName(), options, completedId -> {
 										log.debug("Completed deploying transfer complete verticles");
 
 										ctx.verify(() -> {
@@ -237,10 +237,10 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		TransferTaskCancelListener transferTaskCancelListener = getMockTTCancelListenerInstance(vertx);
 //		TransferSftpVertical transferSftpVertical = getMockSFTPVerticalInstance(vertx);
 		TransferAllProtocolVertical transferAllProtocolVertical = getMockAllProtocolVerticalInstance(vertx);
-		TransferCompleteTaskListener transferCompleteTaskListener = getMockTCTListenerInstance(vertx);
-		TransferErrorListener errorTaskListener = getMockErrListenerInstance(vertx);
+		TransferTaskCompleteTaskListener transferTaskCompleteTaskListener = getMockTCTListenerInstance(vertx);
+		TransferTaskErrorListener errorTaskListener = getMockErrListenerInstance(vertx);
 		InteruptEventListener interuptEventListener = getMockInteruptListenerInstance(vertx);
-		NotificationListener notificationListener = getMockNotificationListenerInstance(vertx);
+		TransferTaskNotificationListener transferTaskNotificationListener = getMockNotificationListenerInstance(vertx);
 		TransferTaskPausedListener transferTaskPausedListener = getMockTTPausedListenerInstance(vertx);
 		//FileTransferCreateServiceImpl fileTransferCreateService = getMockFTCSIVerticalInstance(vertx);
 		TransferAPIVertical transferAPIVertical = getMockTransferAPIVerticalInstance(vertx);
@@ -279,7 +279,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 						vertx.deployVerticle(transferAllProtocolVertical, options, ctx.succeeding(httpId -> {
 							httpDeploymentCheckpoint.flag();
 
-							vertx.deployVerticle(transferCompleteTaskListener, options, ctx.succeeding(completedId -> {
+							vertx.deployVerticle(transferTaskCompleteTaskListener, options, ctx.succeeding(completedId -> {
 								completedDeploymentCheckpoint.flag();
 
 								RequestSpecification requestSpecification = new RequestSpecBuilder()

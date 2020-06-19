@@ -1,7 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -14,17 +12,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class NotificationListener extends AbstractTransferTaskListener {
-	private static final Logger logger = LoggerFactory.getLogger(NotificationListener.class);
+public class TransferTaskNotificationListener extends AbstractTransferTaskListener {
+	private static final Logger logger = LoggerFactory.getLogger(TransferTaskNotificationListener.class);
 	protected static final String EVENT_CHANNEL = MessageType.NOTIFICATION ;
 
 	protected String eventChannel = MessageType.NOTIFICATION ;
 
-	public NotificationListener() { super(); }
-	public NotificationListener(Vertx vertx) {
+	public TransferTaskNotificationListener() { super(); }
+	public TransferTaskNotificationListener(Vertx vertx) {
 		super(vertx);
 	}
-	public NotificationListener(Vertx vertx, String eventChannel) {
+	public TransferTaskNotificationListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 

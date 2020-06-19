@@ -250,14 +250,14 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	protected Boolean processCopyRequest(String source, RemoteDataClient srcClient, String dest, RemoteDataClient destClient, org.iplantc.service.transfer.model.TransferTask legacyTransferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
 
-		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
-			if (updateReply.succeeded()) {
-				Future.succeededFuture(Boolean.TRUE);
-			} else {
-				// update failed
-				Future.succeededFuture(Boolean.FALSE);
-			}
-		});
+//		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
+//			if (updateReply.succeeded()) {
+//				Future.succeededFuture(Boolean.TRUE);
+//			} else {
+//				// update failed
+//				Future.succeededFuture(Boolean.FALSE);
+//			}
+//		});
 
 		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for

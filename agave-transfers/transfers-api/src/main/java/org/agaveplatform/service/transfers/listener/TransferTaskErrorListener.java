@@ -22,19 +22,19 @@ import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.C
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_TRIES;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
-public class TransferErrorListener extends AbstractTransferTaskListener {
-	protected static final Logger log = LoggerFactory.getLogger(TransferErrorListener.class);
+public class TransferTaskErrorListener extends AbstractTransferTaskListener {
+	protected static final Logger log = LoggerFactory.getLogger(TransferTaskErrorListener.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ERROR;
 
 	protected String eventChannel = MessageType.TRANSFERTASK_ERROR;
 
-	public TransferErrorListener() { super(); }
+	public TransferTaskErrorListener() { super(); }
 
-	public TransferErrorListener(Vertx vertx) {
+	public TransferTaskErrorListener(Vertx vertx) {
 		super(vertx);
 	}
 
-	public TransferErrorListener(Vertx vertx, String eventChannel) {
+	public TransferTaskErrorListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 

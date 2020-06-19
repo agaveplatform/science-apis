@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("Transfers completed task listener integration tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({ JDBCClient.class })
-class TransferCompleteTaskListenerTest extends BaseTestCase {
+class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 //    private static final Logger log = LoggerFactory.getLogger(TransferCompleteTaskListenerTest.class);
 
     @AfterAll
@@ -37,8 +37,8 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         vertx.close(ctx.completing());
     }
 
-    protected TransferCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) {
-        TransferCompleteTaskListener ttc = mock(TransferCompleteTaskListener.class );
+    protected TransferTaskCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) {
+        TransferTaskCompleteTaskListener ttc = mock(TransferTaskCompleteTaskListener.class );
         when(ttc.config()).thenReturn(config);
         when(ttc.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
         when(ttc.getVertx()).thenReturn(vertx);
@@ -60,7 +60,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         JsonObject json = transferTask.toJson();
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener transferCompleteTaskListener = getMockTransferCompleteListenerInstance(vertx);
+        TransferTaskCompleteTaskListener transferTaskCompleteTaskListener = getMockTransferCompleteListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -89,13 +89,13 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(processParentEventHandler);
             return null;
-        }).when(transferCompleteTaskListener).processParentEvent(any(), any(), any());
+        }).when(transferTaskCompleteTaskListener).processParentEvent(any(), any(), any());
 
         // mock the dbService getter in our mocked vertical so we don't need to use powermock
-        when(transferCompleteTaskListener.getDbService()).thenReturn(dbService);
+        when(transferTaskCompleteTaskListener.getDbService()).thenReturn(dbService);
 
         // now we run the actual test using our test transfer task data
-        Future<Boolean> result = transferCompleteTaskListener.processEvent(json);
+        Future<Boolean> result = transferTaskCompleteTaskListener.processEvent(json);
 
         ctx.verify(() -> {
             // verify the db service was called to update the task status
@@ -106,14 +106,14 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(transferCompleteTaskListener)._doPublishEvent(TRANSFERTASK_COMPLETED, json);
+            verify(transferTaskCompleteTaskListener)._doPublishEvent(TRANSFERTASK_COMPLETED, json);
 
             // make sure the parent was not processed when none existed for the transfer task
-            verify(transferCompleteTaskListener, never()).processParentEvent(any(), any(), any());
+            verify(transferTaskCompleteTaskListener, never()).processParentEvent(any(), any(), any());
 
             // make sure no error event is ever thrown
-            verify(transferCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-            verify(transferCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+            verify(transferTaskCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+            verify(transferTaskCompleteTaskListener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             Assertions.assertTrue(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
@@ -138,7 +138,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         JsonObject json = transferTask.toJson();
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -219,7 +219,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         JsonObject json = transferTask.toJson();
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -298,7 +298,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         JsonObject json = transferTask.toJson();
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -388,7 +388,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
 
             // mock out the verticle we're testing so we can observe that its methods were called as expected
-            TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+            TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
             // we switch the call chain when we want to pass through a method invocation to a method returning void
             doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -475,7 +475,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         transferTask.setParentTaskId(parentTask.getUuid());
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -562,7 +562,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
         transferTask.setParentTaskId(parentTask.getUuid());
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -650,7 +650,7 @@ class TransferCompleteTaskListenerTest extends BaseTestCase {
 
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
-        TransferCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 

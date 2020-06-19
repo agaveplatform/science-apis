@@ -13,19 +13,19 @@ import org.slf4j.LoggerFactory;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 
-public class TransferFailureHandler extends AbstractTransferTaskListener implements Handler<RoutingContext> {
-	private static final Logger log = LoggerFactory.getLogger(TransferFailureHandler.class);
+public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListener implements Handler<RoutingContext> {
+	private static final Logger log = LoggerFactory.getLogger(TransferTaskErrorFailureHandler.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_FAILED;
 
 	private TransferTaskDatabaseService dbService;
 
-	public TransferFailureHandler() { super(); }
+	public TransferTaskErrorFailureHandler() { super(); }
 
-	public TransferFailureHandler(Vertx vertx) {
+	public TransferTaskErrorFailureHandler(Vertx vertx) {
 		super(vertx);
 	}
 
-	public TransferFailureHandler(Vertx vertx, String eventChannel) {
+	public TransferTaskErrorFailureHandler(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 

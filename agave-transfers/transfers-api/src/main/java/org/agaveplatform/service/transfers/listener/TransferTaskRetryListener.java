@@ -34,23 +34,24 @@ import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.RETRYING;
 
-public class TransferRetryListener extends AbstractTransferTaskListener {
-	private static final Logger log = LoggerFactory.getLogger(TransferRetryListener.class);
+public class TransferTaskRetryListener extends AbstractTransferTaskListener {
+	private static final Logger log = LoggerFactory.getLogger(TransferTaskRetryListener.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_RETRY;
 
 	protected HashSet<String> interruptedTasks = new HashSet<String>();
 	private TransferTaskDatabaseService dbService;
 
-	public TransferRetryListener() {
+	public TransferTaskRetryListener() {
 		super();
 	}
 
-	public TransferRetryListener(Vertx vertx) {
+	public TransferTaskRetryListener(Vertx vertx) {
 		super(vertx);
 	}
 
-	public TransferRetryListener(Vertx vertx, String eventChannel) {
+	public TransferTaskRetryListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 
@@ -139,7 +140,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener {
 			Integer attempts = body.getInteger("attempts");
 
 			// check to see if the uuid is Canceled or Completed
-			getDbService().getById(tenantId, uuid, reply -> {
+			getDbService().updateStatus(tenantId, uuid, TransferStatusType.RETRYING.name(), reply -> {
 				if (reply.succeeded()) {
 					TransferTask transferTaskToRetry = new TransferTask(new JsonObject(String.valueOf(reply)));
 					if (transferTaskToRetry.getStatus().isActive()) {
@@ -152,7 +153,7 @@ public class TransferRetryListener extends AbstractTransferTaskListener {
 
 							// increment the attempts
 							transferTaskToRetry.setAttempts(attempts + 1);
-							transferTaskToRetry.setStatus(TransferStatusType.RETRYING);
+							transferTaskToRetry.setStatus(RETRYING);
 							getDbService().update(tenantId, uuid, transferTaskToRetry, updateBody -> {
 								if (updateBody.succeeded()) {
 									log.debug("Beginning attempt {} for transfer task {}", tenantId, uuid);

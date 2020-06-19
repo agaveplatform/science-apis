@@ -73,10 +73,10 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
+		}).when(dbService).updateStatus(eq(transferTask.getTenantId()), eq(transferTask.getUuid()),eq(TransferStatusType.CANCELING_WAITING.name()), anyObject() );
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
@@ -141,10 +141,10 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(any(), any(), any());
+		}).when(dbService).updateStatus(any(), any(), any(), any());
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
@@ -190,12 +190,14 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 	//@Disabled
 	public void processCancelRequestParentTest(Vertx vertx, VertxTestContext ctx) {
 		// Set up our transfertask for testing
+		String parentUuid = new AgaveUUID(UUIDType.TRANSFER).toString();
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setStatus(TransferStatusType.TRANSFERRING);
-		transferTask.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
-		transferTask.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
+		transferTask.setRootTaskId(parentUuid);
+		transferTask.setParentTaskId(parentUuid);
 		transferTask.setStartTime(Instant.now());
 		transferTask.setEndTime(Instant.now());
+
 
 		TransferTask doneTransferTask = _createTestTransferTask();
 		JsonObject body = new JsonObject()
@@ -208,15 +210,22 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
+		// mock the dbService getter in our mocked vertical so we don't need to use powermock
+		when(listener.getDbService()).thenReturn(dbService);
+
+
+
 		// mock a successful outcome with updated json transfer task result from getById
 		JsonObject expectedgetByIdAck = transferTask.toJson();
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
 			handler.handle(updateGetById);
 			return null;
 		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), anyObject());
+
+
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
@@ -233,11 +242,64 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			return null;
 		}).when(dbService).updateStatus( eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(transferTask.getStatus().toString()), anyObject() );
 
-		// mock the dbService getter in our mocked vertical so we don't need to use powermock
-		when(listener.getDbService()).thenReturn(dbService);
+
+
+		// mock a successful outcome with updated json transfer task result from updateStatus
+		JsonObject allChildrenJsonObject = transferTask.toJson()
+				.put("status", TransferStatusType.FAILED.name())
+				.put("endTime", Instant.now())
+				.put("lastUpdated", Instant.now());
+
+		AsyncResult<JsonObject> allChildrenHandler = getMockAsyncResult(allChildrenJsonObject);
+
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenHandler);
+			return null;
+		}).when(dbService).allChildrenCancelledOrCompleted( eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
+
+
+
+		// mock a successful outcome with updated json transfer task result from updateStatus
+		JsonObject allChildrenTxrJsonObject = transferTask.toJson()
+				.put("status", TransferStatusType.FAILED.name())
+//				.put("endTime", Instant.now())
+				.put("lastUpdated", Instant.now());
+
+		AsyncResult<JsonObject> allChildrenTxrHandler = getMockAsyncResult(allChildrenTxrJsonObject);
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenTxrHandler);
+			return null;
+		}).when(dbService).setTransferTaskCanceledWhereNotCompleted( eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
+
+		doCallRealMethod().when(listener).processParentAck( eq(transferTask.getTenantId()), eq(parentUuid), anyObject() );
+
+
+		// mock a successful outcome with updated json transfer task result from updateStatus
+		JsonObject getTransferTaskObject = transferTask.toJson()
+				.put("status", TransferStatusType.FAILED.name())
+//				.put("endTime", Instant.now())
+				.put("lastUpdated", Instant.now());
+
+		AsyncResult<JsonObject> getTransferTaskHandler = getMockAsyncResult(getTransferTaskObject);
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(getTransferTaskHandler);
+			return null;
+		}).when(listener).getTransferTask( eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
+
 
 		// mock the handler passed into processCancelRequest
 		doCallRealMethod().when(listener).processCancelRequest(anyObject(), any() );
+
+
+
+
+
 
 		// now we run the actual test using our test transfer task data
 		listener.processCancelRequest(transferTask.toJson(), results -> {
@@ -291,10 +353,10 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject());
+		}).when(dbService).updateStatus(eq(transferTask.getTenantId()), eq(transferTask.getUuid()),any(), anyObject());
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
@@ -357,10 +419,10 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject());
+		}).when(dbService).updateStatus(eq(transferTask.getTenantId()), eq(transferTask.getUuid()),any(), anyObject());
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
@@ -427,7 +489,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject());
+		}).when(dbService).updateStatus(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), any(), anyObject());
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
@@ -525,7 +587,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetByIdAck);
 			return null;
-		}).when(dbService).getById(any(), any(), any());
+		}).when(dbService).updateStatus(any(), any(),any(), any());
 
 		// getTransferTask mock
 //		AsyncResult<JsonObject> getTransferTaskMock = getMockAsyncResult(transferTask.toJson());
@@ -1027,7 +1089,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(setTransferTaskCanceledGetByIdHandler);
 			return null;
-		}).when(dbService).getById(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), any());
+		}).when(dbService).updateStatus(eq(parentTask.getTenantId()), eq(parentTask.getUuid()),any(), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);

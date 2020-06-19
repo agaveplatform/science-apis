@@ -132,6 +132,17 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         RemoteDataClient destClient = null;
 
         try {
+
+            getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateReply -> {
+                if (updateReply.succeeded()) {
+                    _doPublishEvent(TRANSFERTASK_ASSIGNED, updateReply.result());
+                    Future.succeededFuture(Boolean.TRUE);
+                } else {
+                    // update failed
+                    Future.succeededFuture(Boolean.FALSE);
+                }
+            });
+
             URI srcUri;
             URI destUri;
             try {

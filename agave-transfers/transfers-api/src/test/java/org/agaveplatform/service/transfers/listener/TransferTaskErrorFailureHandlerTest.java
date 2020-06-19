@@ -34,11 +34,11 @@ import static org.mockito.Mockito.*;
 @DisplayName("TransferFailureHandler integration tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @PrepareForTest({ JDBCClient.class })
-class TransferFailureHandlerTest extends BaseTestCase {
+class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 //	private static final Logger log = LoggerFactory.getLogger(TransferFailureHandlerTest.class);
 
-	protected TransferFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) {
-		TransferFailureHandler ttc = mock(TransferFailureHandler.class );
+	protected TransferTaskErrorFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) {
+		TransferTaskErrorFailureHandler ttc = mock(TransferTaskErrorFailureHandler.class );
 		when(ttc.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
 		when(ttc.getVertx()).thenReturn(vertx);
 		doCallRealMethod().when(ttc).processFailure(any(JsonObject.class), any());
@@ -60,7 +60,7 @@ class TransferFailureHandlerTest extends BaseTestCase {
 		body.put("cause", RemoteDataException.class.getName());
 		body.put("message", "Error Message");
 
-		TransferFailureHandler failureHandler = getMockTransferFailureHandlerInstance(vertx);
+		TransferTaskErrorFailureHandler failureHandler = getMockTransferFailureHandlerInstance(vertx);
 		doNothing().when(failureHandler)._doPublishEvent(any(), any());
 
 		// mock out the db service so we can can isolate method logic rather than db
@@ -100,7 +100,7 @@ class TransferFailureHandlerTest extends BaseTestCase {
 		body.put("cause", RemoteDataException.class.getName());
 		body.put("message", "Error Message");
 
-		TransferFailureHandler failureHandler = getMockTransferFailureHandlerInstance(vertx);
+		TransferTaskErrorFailureHandler failureHandler = getMockTransferFailureHandlerInstance(vertx);
 		doNothing().when(failureHandler)._doPublishEvent(any(), any());
 
 		// mock out the db service so we can can isolate method logic rather than db

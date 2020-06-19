@@ -17,20 +17,20 @@ import java.util.List;
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
-public class TransferCompleteTaskListener extends AbstractTransferTaskListener {
-	private final static Logger logger = LoggerFactory.getLogger(TransferCompleteTaskListener.class);
+public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListener {
+	private final static Logger logger = LoggerFactory.getLogger(TransferTaskCompleteTaskListener.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_COMPLETED;
 
 	private TransferTaskDatabaseService dbService;
 	protected List<String>  parentList = new ArrayList<String>();
 
-	public TransferCompleteTaskListener() { super(); }
+	public TransferTaskCompleteTaskListener() { super(); }
 
-	public TransferCompleteTaskListener(Vertx vertx) {
+	public TransferTaskCompleteTaskListener(Vertx vertx) {
 		setVertx(vertx);
 	}
 
-	public TransferCompleteTaskListener(Vertx vertx, String eventChannel) {
+	public TransferTaskCompleteTaskListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 

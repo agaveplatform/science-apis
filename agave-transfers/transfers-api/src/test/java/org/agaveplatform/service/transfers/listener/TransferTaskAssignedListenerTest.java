@@ -53,10 +53,10 @@ class TransferTaskAssignedListenerTest {
 			ctx.completeNow();
 		});
 
-		vertx.eventBus().consumer("transfertask.error", msg -> {
-			JsonObject bodyRec = (JsonObject) msg.body();
-			ctx.failNow(new Exception(bodyRec.getString("message")));
-		});
+//		vertx.eventBus().consumer("transfertask.error", msg -> {
+//			JsonObject bodyRec = (JsonObject) msg.body();
+//			ctx.failNow(new Exception(bodyRec.getString("message")));
+//		});
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
 //		try {

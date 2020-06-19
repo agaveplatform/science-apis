@@ -4,16 +4,12 @@ import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_COMPLETED;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_INTERUPTED;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -23,8 +19,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("Interrupt Event Listener All tests")
 @Disabled
-class InteruptEventListenerTest extends BaseTestCase {
-	private static final Logger logger = LoggerFactory.getLogger(InteruptEventListenerTest.class);
+class TransferTaskInteruptEventListenerTest extends BaseTestCase {
+	private static final Logger logger = LoggerFactory.getLogger(TransferTaskInteruptEventListenerTest.class);
 
 	protected InteruptEventListener getMockInteruptEventListenerInstance(Vertx vertx) {
 		InteruptEventListener ttc = mock(InteruptEventListener.class );

@@ -34,24 +34,23 @@ import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
-import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.RETRYING;
 
-public class TransferTaskRetryListener extends AbstractTransferTaskListener {
-	private static final Logger log = LoggerFactory.getLogger(TransferTaskRetryListener.class);
+public class TransferRetryListener extends AbstractTransferTaskListener {
+	private static final Logger log = LoggerFactory.getLogger(TransferRetryListener.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_RETRY;
 
 	protected HashSet<String> interruptedTasks = new HashSet<String>();
 	private TransferTaskDatabaseService dbService;
 
-	public TransferTaskRetryListener() {
+	public TransferRetryListener() {
 		super();
 	}
 
-	public TransferTaskRetryListener(Vertx vertx) {
+	public TransferRetryListener(Vertx vertx) {
 		super(vertx);
 	}
 
-	public TransferTaskRetryListener(Vertx vertx, String eventChannel) {
+	public TransferRetryListener(Vertx vertx, String eventChannel) {
 		super(vertx, eventChannel);
 	}
 
@@ -148,7 +147,7 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 			Integer attempts = body.getInteger("attempts");
 
 			// check to see if the uuid is Canceled or Completed
-			getDbService().updateStatus(tenantId, uuid, TransferStatusType.RETRYING.name(), reply -> {
+			getDbService().getById(tenantId, uuid, reply -> {
 				if (reply.succeeded()) {
 					TransferTask transferTaskToRetry = new TransferTask(new JsonObject(String.valueOf(reply)));
 					if (transferTaskToRetry.getStatus().isActive()) {
@@ -161,7 +160,7 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 
 							// increment the attempts
 							transferTaskToRetry.setAttempts(attempts + 1);
-							transferTaskToRetry.setStatus(RETRYING);
+							transferTaskToRetry.setStatus(TransferStatusType.RETRYING);
 							getDbService().update(tenantId, uuid, transferTaskToRetry, updateBody -> {
 								if (updateBody.succeeded()) {
 									log.debug("Beginning attempt {} for transfer task {}", tenantId, uuid);
@@ -247,11 +246,11 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 			if (taskIsNotInterrupted(retryTransferTask)) {
 
 				// basic sanity check on uri again
-				if (!RemoteDataClientFactory.isSchemeSupported(srcUri)) {
+				if (uriSchemeIsNotSupported(srcUri)) {
 					String msg = String.format("Failing transfer task %s due to invalid scheme in source URI, %s",
 							retryTransferTask.getUuid(), retryTransferTask.getSource());
 					throw new RemoteDataSyntaxException(msg);
-				} else if (!RemoteDataClientFactory.isSchemeSupported(destUri)) {
+				} else if (uriSchemeIsNotSupported(destUri)) {
 					String msg = String.format("Failing transfer task %s due to invalid scheme in destination URI, %s",
 							retryTransferTask.getUuid(), retryTransferTask.getDest());
 					throw new RemoteDataSyntaxException(msg);
@@ -278,8 +277,9 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 							// path is a directory, so walk the first level of the directory
 							List<RemoteFileInfo> remoteFileInfoList = srcClient.ls(srcUri.getPath());
 
-							// if the directory is emnpty, mark as complete and exit
-							if (remoteFileInfoList.isEmpty()) {
+							// if the directory is empty, the listing will only contain the target path as the "." folder.
+							// mark as complete and wrap it up.
+							if (remoteFileInfoList.size() <= 1) {
 								_doPublishEvent(TRANSFER_COMPLETED, retryTransferTask.toJson());
 							}
 							// if there are contents, walk the first level, creating directories on the remote side
@@ -347,11 +347,6 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 							}
 						}
 				}
-//					// it's not an agave uri, so we forward on the raw uri as we know that we can
-//					// handle it from the wrapping if statement check
-//					else {
-//						_doPublishEvent(TRANSFER_ALL, retryTransferTask.toJson());
-//					}
 
 				handler.handle(Future.succeededFuture(true));
 			} else {
@@ -361,34 +356,27 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 				handler.handle(Future.succeededFuture(false));
 			}
 		} catch (RemoteDataSyntaxException e) {
-			JsonObject json = new JsonObject()
-					.put("cause", e.getClass().getName())
-					.put("message", e.getMessage())
-					.mergeIn(retryTransferTask.toJson());
-
-			_doPublishEvent(TRANSFERTASK_FAILED, json);
-			handler.handle(Future.failedFuture(e));
+			String message = String.format("Failing transfer task %s due to invalid source syntax. %s", retryTransferTask.getTenantId(), e.getMessage());
+			doHandleFailure(e, message, retryTransferTask.toJson(), handler);
 		} catch (Exception e) {
-			log.error(e.getMessage());
-			JsonObject json = new JsonObject()
-					.put("cause", e.getClass().getName())
-					.put("message", e.getMessage())
-					.mergeIn(retryTransferTask.toJson());
-
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			handler.handle(Future.failedFuture(e));
+			doHandleError(e, e.getMessage(), retryTransferTask.toJson(), handler);
 		} finally {
 			// cleanup the remote data client connections
-			try {
-				if (srcClient != null) srcClient.disconnect();
-			} catch (Exception ignored) {
-			}
-			try {
-				if (destClient != null) destClient.disconnect();
-			} catch (Exception ignored) {
-			}
+			try { if (srcClient != null) srcClient.disconnect(); } catch (Exception ignored) {}
+			try { if (destClient != null) destClient.disconnect(); } catch (Exception ignored) {}
 		}
+
 		handler.handle(Future.succeededFuture(true));
+	}
+
+	/**
+	 * Checks for a supported schema in the URI. 
+	 * @param uri the uri to check
+	 * @return true if supported, false otherwise
+	 * @see RemoteDataClientFactory#isSchemeSupported(URI);
+	 */
+	protected boolean uriSchemeIsNotSupported(URI uri) {
+		return ! RemoteDataClientFactory.isSchemeSupported(uri);
 	}
 
 	public TransferTaskDatabaseService getDbService() {

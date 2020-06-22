@@ -3,6 +3,7 @@ package org.agaveplatform.service.transfers.listener;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
+import io.vertx.core.impl.ConcurrentHashSet;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -10,25 +11,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTransferTaskListener.class);
 
-    String address;
     String eventChannel;
-    public HashSet<String> interruptedTasks = new HashSet<String>();
-    private Object InterruptableTransferTaskListener;
+    final public ConcurrentHashSet<String> cancelledTasks = new ConcurrentHashSet<>();
+    final public ConcurrentHashSet<String> pausedTasks = new ConcurrentHashSet<>();
 
     public AbstractTransferTaskListener() {
         super();
     }
+
     public AbstractTransferTaskListener(Vertx vertx) {
         this(vertx, null);
     }
     public AbstractTransferTaskListener(Vertx vertx, String eventChannel) {
-        super();
+        this();
         setVertx(vertx);
         setEventChannel(eventChannel);
     }
@@ -74,8 +78,50 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
                 }
             }
         });
+    }
 
+    /**
+     * Convenience method to handles generation of failed transfer messages, raising of failed event, and calling of handler with the
+     * passed exception.
+     * @param throwable the exception that was thrown
+     * @param failureMessage the human readable message to send back
+     * @param originalMessageBody the body of the original message that caused that failed
+     * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
+     */
+    protected void doHandleFailure(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
+        JsonObject json = new JsonObject()
+                .put("cause", throwable.getClass().getName())
+                .put("message", failureMessage)
+                .mergeIn(originalMessageBody);
 
+        _doPublishEvent(TRANSFERTASK_FAILED, json);
+
+        // propagate the exception back to the calling method
+        if (handler != null) {
+            handler.handle(Future.failedFuture(throwable));
+        }
+    }
+
+    /**
+     * Convenience method to handles generation of errored out transfer messages, raising of error event, and calling of handler with the
+     * passed exception.
+     * @param throwable the exception that was thrown
+     * @param failureMessage the human readable message to send back
+     * @param originalMessageBody the body of the original message that caused that failed
+     * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
+     */
+    protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
+        JsonObject json = new JsonObject()
+                .put("cause", throwable.getClass().getName())
+                .put("message", failureMessage)
+                .mergeIn(originalMessageBody);
+
+        _doPublishEvent(TRANSFERTASK_ERROR, json);
+
+        // propagate the exception back to the calling method
+        if (handler != null) {
+            handler.handle(Future.failedFuture(throwable));
+        }
     }
 
 //    /**
@@ -107,22 +153,57 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
 //    protected abstract Future<Boolean> _doProcessMessage(JsonObject body);
 
     /**
-     * Sets the state of the process interupt flag
-     * @param state string value "add" or "remove"
-     * @param body Json object
+     * Pushes a new {@link TransferTask} uuid onto the threadsafe set of cancelled tasks
+     * @param uuid the cancelled task uuid
      */
-    public void processInterrupt(String state, JsonObject body) {
-        try {
-            String uuid = body.getString("uuid");
-            if (state.equalsIgnoreCase("add")) {
-                interruptedTasks.add(uuid);
-            } else if (state.equalsIgnoreCase("remove")){
-                interruptedTasks.remove(uuid);
-            }
-        } catch (Exception e){
-            logger.error(e.getMessage());
-        }
+    public synchronized void addCancelledTask(String uuid) {
+        cancelledTasks.add(uuid);
     }
+
+    /**
+     * Removes a {@link TransferTask} uuid from a threadsafe set of cancelled tasks.
+     * @param uuid the cancelled task uuid
+     * @return true if the uuid existed and was removed, false otherwise
+     */
+    public synchronized boolean removeCancelledTask(String uuid) {
+        return cancelledTasks.remove(uuid);
+    }
+
+    /**
+     * Pushes a new {@link TransferTask} uuid onto the threadsafe set of cancelled tasks
+     * @param uuid the cancelled task uuid
+     */
+    public synchronized void addPausedTask(String uuid) {
+        pausedTasks.add(uuid);
+    }
+
+    /**
+     * Removes a {@link TransferTask} uuid from a threadsafe set of cancelled tasks.
+     * @param uuid the cancelled task uuid
+     * @return true if the uuid existed and was removed, false otherwise
+     */
+    public synchronized boolean removePausedTask(String uuid) {
+        return pausedTasks.remove(uuid);
+    }
+
+
+//    /**
+//     * Sets the state of the process interupt flag
+//     * @param state string value "add" or "remove"
+//     * @param body Json object
+//     */
+//    public void processInterrupt(String state, JsonObject body) {
+//        try {
+//            String uuid = body.getString("uuid");
+//            if (state.equalsIgnoreCase("add")) {
+//                interruptedTasks.add(uuid);
+//            } else if (state.equalsIgnoreCase("remove")){
+//                interruptedTasks.remove(uuid);
+//            }
+//        } catch (Exception e){
+//            logger.error(e.getMessage());
+//        }
+//    }
 
 //    /**
 //     * Checks whether the transfer task or any of its children exist in the list of
@@ -150,25 +231,20 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
 
     /**
      * Checks whether the {@code transferTask} has been interrupted by looking for the transfer task or any of its
-     * children exist in the list of interrupted tasks.
+     * children exist in the lists of paused and cancelled tasks.
      *
      * @param transferTask the current task being checked from the running task
-     * @return false if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #interruptedTasks} list
+     * @return false if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #cancelledTasks} or {@link #pausedTasks} list
      */
-    public boolean taskIsNotInterrupted(TransferTask transferTask ) {
-
-        if (this.interruptedTasks.contains(transferTask.getUuid()) ||
-                this.interruptedTasks.contains(transferTask.getParentTaskId()) ||
-                this.interruptedTasks.contains(transferTask.getRootTaskId())) {
+    public boolean taskIsNotInterrupted(TransferTask transferTask) {
+        final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
+        if (cancelledTasks.stream().anyMatch(uuids::contains) || pausedTasks.stream().anyMatch(uuids::contains)) {
             String msg = "Transfer was Canceled or Paused";
             logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
             JsonObject json = new JsonObject()
                     .put("message", msg);
             _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-            return true;
-//            // tell everyone else that you killed this task
-//            throw new InterruptableTransferTaskException(
-//                    String.format("Transfer task %s interrupted due to cancel event", transferTask.getUuid()));
+            return false;
         }
         return true;
     }
@@ -183,7 +259,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
 
     /**
      * Sets the eventChannel on which to listen
-     * @param eventChannel
+     * @param eventChannel the default channel this vertical listens to
      */
     public void setEventChannel(String eventChannel) {
         this.eventChannel = eventChannel;

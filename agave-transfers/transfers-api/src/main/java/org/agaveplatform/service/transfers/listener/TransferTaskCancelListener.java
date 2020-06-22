@@ -1,14 +1,16 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
-
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELLED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskCancelListener extends AbstractTransferTaskListener {
@@ -72,12 +75,12 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
         String tenantId = body.getString("tenantId");
         String uuid = body.getString("uuid");
         String status = body.getString("status");
-        String parentTaskId = body.getString("parentTask");
+        String parentTaskId = body.getString("parentTaskId");
 
         Long id = 0L;
 
         // update dt DB status here
-        getDbService().updateStatus(tenantId, uuid, CANCELING_WAITING.name(),  updateReply -> {
+        getDbService().updateStatus(tenantId, uuid, CANCELING_WAITING.name(), updateReply -> {
             if (updateReply.succeeded()) {
                 logger.trace("Retrieved transfer task {}: {}", uuid, updateReply.result());
                 TransferTask cancelTransferTask = new TransferTask(updateReply.result());
@@ -288,7 +291,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
     void processParentEvent(String tenantId, String parentTaskId, Handler<AsyncResult<Boolean>> resultHandler) {
 //		Promise<Boolean> promise = Promise.promise();
         // lookup parent transfertask
-        getDbService().updateStatus(tenantId, parentTaskId, CANCELING_WAITING.name(), getTaskById -> {
+        getDbService().getById(tenantId, parentTaskId, getTaskById -> {
             if (getTaskById.succeeded()) {
                 // check whether it's active or not by its status
                 TransferTask parentTask = new TransferTask(getTaskById.result());
@@ -345,7 +348,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
      * @param resultHandler callback to pass the returned transfertask
      */
     protected void getTransferTask(String tenantId, String uuid, Handler<AsyncResult<TransferTask>> resultHandler) {
-        getDbService().updateStatus(tenantId, uuid, ERROR.name(), getTaskById -> {
+        getDbService().getById(tenantId, uuid, getTaskById -> {
             if (getTaskById.succeeded()) {
                 TransferTask tt = new TransferTask(getTaskById.result());
                 resultHandler.handle(Future.succeededFuture(tt));

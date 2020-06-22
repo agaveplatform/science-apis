@@ -9,7 +9,6 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
-import org.agaveplatform.service.transfers.listener.TransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang.NotImplementedException;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
@@ -34,7 +33,6 @@ import java.net.URI;
 import java.util.Date;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
 
 public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
@@ -86,9 +84,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} cancel detected", uuid);
-			//this.interruptedTasks.add(uuid);
-			super.processInterrupt("add", body);
-
+			if (uuid != null) {
+				addCancelledTask(uuid);
+			}
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -96,8 +94,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-			super.processInterrupt("remove", body);
-			//this.interruptedTasks.remove(uuid);
+			if (uuid != null) {
+				removeCancelledTask(uuid);
+			}
 		});
 
 		// paused tasks
@@ -106,7 +105,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} paused detected", uuid);
-			super.processInterrupt("add", body);
+			if (uuid != null) {
+				addPausedTask(uuid);
+			}
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -114,7 +115,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-			super.processInterrupt("remove", body);
+			if (uuid != null) {
+				addPausedTask(uuid);
+			}
 		});
 	}
 
@@ -186,7 +189,6 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 					log.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 
-
 					result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
 
 					handler.handle(Future.succeededFuture(result));
@@ -206,7 +208,6 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			} else {
 				log.debug("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 				log.debug("Completed transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
-
 
 				_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 				handler.handle(Future.succeededFuture(true));
@@ -250,14 +251,14 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	protected Boolean processCopyRequest(String source, RemoteDataClient srcClient, String dest, RemoteDataClient destClient, org.iplantc.service.transfer.model.TransferTask legacyTransferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
 
-//		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
-//			if (updateReply.succeeded()) {
-//				Future.succeededFuture(Boolean.TRUE);
-//			} else {
-//				// update failed
-//				Future.succeededFuture(Boolean.FALSE);
-//			}
-//		});
+		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
+			if (updateReply.succeeded()) {
+				Future.succeededFuture(Boolean.TRUE);
+			} else {
+				// update failed
+				Future.succeededFuture(Boolean.FALSE);
+			}
+		});
 
 		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for

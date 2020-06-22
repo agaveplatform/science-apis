@@ -98,7 +98,9 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} cancel detected", uuid);
-			super.processInterrupt("add", body);
+			if (uuid != null) {
+				addCancelledTask(uuid);
+			}
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -106,7 +108,9 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-			super.processInterrupt("remove", body);
+			if (uuid != null) {
+				removeCancelledTask(uuid);
+			}
 		});
 
 		// paused tasks
@@ -115,7 +119,9 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} paused detected", uuid);
-			super.processInterrupt("add", body);
+			if (uuid != null) {
+				addPausedTask(uuid);
+			}
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -123,7 +129,9 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-			super.processInterrupt("remove", body);
+			if (uuid != null) {
+				addPausedTask(uuid);
+			}
 		});
 	}
 

@@ -117,7 +117,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                                             "to sending %s event.",
                                             uuid, CANCELING_WAITING.name(), TRANSFERTASK_CANCELED_SYNC));
                             logger.debug("Sending cancel sync event for transfer task {} to signal children to cancel any active work.", uuid);
-                            _doPublishEvent(TRANSFERTASK_CANCELED_SYNC, updateReply.result());
+                            getVertx().eventBus().publish(TRANSFERTASK_CANCELED_SYNC, updateReply.result());
                             resultHandler.handle(Future.succeededFuture(true));
                         } else {
                             String msg = String.format("Unable to update the status of transfer task %s to %s prior " +
@@ -132,7 +132,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                     // be cleaned up. This is a bit of an aggressive way to override eventual consistency.
                     logger.info("Transfer task {} is not in an active state and will not be updated.", uuid);
                     logger.debug("Sending cancel sync event for transfer task {} to ensure children are cleaned up.", uuid);
-                    _doPublishEvent(TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
+                    getVertx().eventBus().publish(TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
                     resultHandler.handle(Future.succeededFuture(false));
                 }
             } else {

@@ -97,7 +97,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 			if (reply.succeeded()) {
 
 				logger.info("Transfer task {} status updated to PAUSED", uuid);
-				_doPublishEvent(TRANSFERTASK_PAUSED, body);
+//				_doPublishEvent(TRANSFERTASK_PAUSED_SYNC, body);
 
 				// pausing should only happen to root tasks
 				if (parentTaskId != null) {
@@ -174,7 +174,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 										getDbService().getById(tenantId, parentTaskId, parentReply -> {
 											if (parentReply.succeeded()) {
 												logger.info("Sending pause ack event for parent transfer task {}", parentTaskId);
-												_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result());
+												getVertx().eventBus().publish(MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result());
 												handler.handle(Future.succeededFuture(true));
 											} else {
 												String message = String.format("Unable to lookup parent task %s for transfer task %s while processing a pause event. %s",
@@ -190,7 +190,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 											}
 										});
 									} else {
-										logger.debug("Skipping pause ack event for parent transfer task {} due to existing active children.", parentTaskId);
+										logger.debug("Skipping pause due to all children being in a DONE state", parentTaskId);
 										handler.handle(Future.succeededFuture(false));
 									}
 								} else {

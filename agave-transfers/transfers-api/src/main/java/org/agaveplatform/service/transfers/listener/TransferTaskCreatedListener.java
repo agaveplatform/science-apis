@@ -10,20 +10,14 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.resources.AgaveResponseBuilder;
 import org.agaveplatform.service.transfers.util.RemoteSystemAO;
 import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemRoleException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
-import org.iplantc.service.systems.manager.SystemManager;
-import org.iplantc.service.systems.manager.SystemRoleManager;
 import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.SystemRole;
 import org.iplantc.service.systems.model.enumerations.RoleType;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.slf4j.Logger;
@@ -35,7 +29,7 @@ import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.C
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
 
 public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
-    private static final Logger logger = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
+    private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
 
     private TransferTaskDatabaseService dbService;
@@ -45,9 +39,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
     }
     public TransferTaskCreatedListener(Vertx vertx) {super(vertx); }
     public TransferTaskCreatedListener(Vertx vertx, String eventChannel) {
-        super();
-        setVertx(vertx);
-        setEventChannel(eventChannel);
+        super(vertx, eventChannel);
     }
 
     public String getDefaultEventChannel() {
@@ -63,25 +55,25 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         bus.<JsonObject>consumer(getEventChannel(), msg -> {
-            logger.info("Recieved the TRANSFERTASK_CREATED message");
+            log.info("Recieved the TRANSFERTASK_CREATED message");
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
             String source = body.getString("source");
             String dest = body.getString("dest");
-            logger.info("Transfer task {} created: {} -> {}", uuid, source, dest);
+            log.info("Transfer task {} created: {} -> {}", uuid, source, dest);
 
             try {
                 assignTransferTask(body, resp -> {
                     if (resp.succeeded()) {
-                        logger.error("Succeeded with the assignTransferTask in the creation of the event {}", uuid);
+                        log.error("Succeeded with the assignTransferTask in the creation of the event {}", uuid);
                         _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
                     } else {
-                        logger.error("Error with return from creating the event {}", uuid);
+                        log.error("Error with return from creating the event {}", uuid);
                         _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
                     }
                 });
             }catch (Exception e){
-                logger.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", e.getMessage());
+                log.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", e.getMessage());
                 _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
             }
         });
@@ -91,19 +83,20 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
-            logger.info("Transfer task {} cancel detected", uuid);
-            //this.interruptedTasks.add(uuid);
-            processInterrupt("add", body);
-
+            log.info("Transfer task {} cancel detected", uuid);
+            if (uuid != null) {
+                addCancelledTask(uuid);
+            }
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
-            logger.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-            processInterrupt("remove", body);
-            //this.interruptedTasks.remove(uuid);
+            log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
+            if (uuid != null) {
+                removeCancelledTask(uuid);
+            }
         });
 
         // paused tasks
@@ -111,16 +104,20 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
-            logger.info("Transfer task {} paused detected", uuid);
-            processInterrupt("add", body);
+            log.info("Transfer task {} paused detected", uuid);
+            if (uuid != null) {
+                addPausedTask(uuid);
+            }
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
-            logger.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-            processInterrupt("remove", body);
+            log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
+            if (uuid != null) {
+                addPausedTask(uuid);
+            }
         });
 
     }
@@ -189,23 +186,23 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             // check for interrupted before proceeding
             if (taskIsNotInterrupted(createdTransferTask)) {
                 // update dt DB status here
-//                getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateReply -> {
-//                    if (updateReply.succeeded()) {
-//                        _doPublishEvent(TRANSFERTASK_ASSIGNED, updateReply.result());
-//                        Future.succeededFuture(Boolean.TRUE);
-//                    } else {
-//                        // update failed
-//                        Future.succeededFuture(Boolean.FALSE);
-//                    }
-//                });
+                getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateReply -> {
+                    if (updateReply.succeeded()) {
+                        _doPublishEvent(TRANSFERTASK_ASSIGNED, updateReply.result());
+                        Future.succeededFuture(Boolean.TRUE);
+                    } else {
+                        // update failed
+                        Future.succeededFuture(Boolean.FALSE);
+                    }
+                });
 
                 // continue assigning the task and return
-                logger.info("Assigning transfer task {} for processing.", uuid);
+                log.info("Assigning transfer task {} for processing.", uuid);
                 _doPublishEvent(TRANSFERTASK_ASSIGNED, body);
                 handler.handle(Future.succeededFuture(true));
             }
         } catch (Exception e) {
-            logger.info(e.getMessage());
+            log.info(e.getMessage());
             JsonObject json = new JsonObject()
                     .put("cause", e.getClass().getName())
                     .put("message", e.getMessage())

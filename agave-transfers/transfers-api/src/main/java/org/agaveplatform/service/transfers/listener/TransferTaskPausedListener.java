@@ -128,17 +128,6 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 						.put("message", message)
 						.mergeIn(body);
 
-				// update dt DB status here
-				getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.toString(), updateReply -> {
-					if (updateReply.succeeded()) {
-
-						Future.succeededFuture(Boolean.TRUE);
-					} else {
-						// update failed
-						Future.succeededFuture(Boolean.FALSE);
-					}
-				});
-
 				_doPublishEvent(TRANSFERTASK_ERROR, json);
 				promise.fail(reply.cause());
 			}

@@ -21,7 +21,6 @@ import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.net.URI;
-import java.time.Instant;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,14 +36,19 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 //	private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListenerTest.class);
 
 	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) {
-		TransferTaskCreatedListener ttc = Mockito.mock(TransferTaskCreatedListener.class);
-		when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
-		when(ttc.getVertx()).thenReturn(vertx);
-		when(ttc.getRemoteSystemAO()).thenCallRealMethod();
-		when(ttc.taskIsNotInterrupted(any())).thenReturn(true);
-		doCallRealMethod().when(ttc).assignTransferTask(any(), any());
+		TransferTaskCreatedListener listener = Mockito.mock(TransferTaskCreatedListener.class);
+		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
+		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.getRemoteSystemAO()).thenCallRealMethod();
+		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
+		when(listener.uriSchemeIsNotSupported(any())).thenReturn(true);
+		when(listener.getRetryRequestManager()).thenCallRealMethod();
+		doNothing().when(listener)._doPublishEvent(any(), any());
+		doCallRealMethod().when(listener).processEvent(any(), any());
+		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 
-		return ttc;
+		return listener;
 	}
 
 	@Test
@@ -57,31 +61,17 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
-		//when(RemoteDataClientFactory.isSchemeSupported(any())).thenCallRealMethod();
-		// the interrupt behavior should be tested independently of the happy pth test happening here.
-		when(ttc.taskIsNotInterrupted(eq(transferTask))).thenReturn(true);
-
-		doNothing().when(ttc)._doPublishEvent(any(), any());
-
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
-		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
-				.put("status", TransferStatusType.FAILED.name())
-//				.put("endTime", Instant.now())
-				.put("lastUpdated", Instant.now());
-
-		AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
-
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
-			handler.handle(expectedUpdateStatusHandler);
+			handler.handle(getMockAsyncResult(transferTask.toJson().put("status", arguments.getArgumentAt(2, String.class))));
 			return null;
-		}).when(dbService).updateStatus( eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(transferTask.getStatus().toString()), anyObject() );
+		}).when(dbService).updateStatus( eq(transferTask.getTenantId()), eq(transferTask.getUuid()), any(), anyObject() );
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(ttc.getDbService()).thenReturn(dbService);
@@ -94,10 +84,11 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 			ctx.failNow(e);
 		}
 
-		ttc.assignTransferTask(json, ctx.succeeding(isAssigned -> ctx.verify(() -> {
+		ttc.processEvent(json, ctx.succeeding(isAssigned -> ctx.verify(() -> {
 			assertTrue(isAssigned);
-			verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
+			verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ASSIGNED, json.put("status",TransferStatusType.ASSIGNED.name()));
 			verify(ttc, never())._doPublishEvent(TRANSFERTASK_ERROR, new JsonObject());
+			verify(dbService, times(1)).updateStatus(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(TransferStatusType.ASSIGNED.name()), any());
 			//verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getSource()).getHost(), RoleType.GUEST);
 			verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getDest()).getHost(), RoleType.USER);
 			ctx.completeNow();
@@ -115,6 +106,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
+		when(ttc.uriSchemeIsNotSupported(any())).thenReturn(false);
 		try {
 			// return true on permission checks for this test
 			when(ttc.userHasMinimumRoleOnSystem(eq(transferTask.getTenantId()), eq(transferTask.getOwner()), anyString(), any(RoleType.class))).thenReturn(true);
@@ -122,10 +114,43 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 			ctx.failNow(e);
 		}
 
-		ttc.assignTransferTask(json, ctx.failing(cause -> ctx.verify(() -> {
+		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
 			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
 			verify(ttc, never())._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
-			verify(ttc,never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
+			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
+
+			JsonObject errorBody = new JsonObject()
+					.put("cause", cause.getClass().getName())
+					.put("message", cause.getMessage())
+					.mergeIn(json);
+			verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ERROR, errorBody);
+			ctx.completeNow();
+		})));
+	}
+
+	@Test
+	@DisplayName("Transfer Task Created Listener - assignment fails with invalid dest")
+	public void assignTransferTaskFailDestTest(Vertx vertx, VertxTestContext ctx) {
+
+		// get the JsonObject to pass back and forth between verticles
+		TransferTask transferTask = _createTestTransferTask();
+		transferTask.setDest("htt://");
+		JsonObject json = transferTask.toJson();
+
+		// mock out the verticle we're testing so we can observe that its methods were called as expected
+		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
+		when(ttc.uriSchemeIsNotSupported(any())).thenReturn(true, false);
+		try {
+			// return true on permission checks for this test
+			when(ttc.userHasMinimumRoleOnSystem(eq(transferTask.getTenantId()), eq(transferTask.getOwner()), anyString(), any(RoleType.class))).thenReturn(true);
+		} catch (SystemUnknownException | SystemUnavailableException | SystemRoleException e) {
+			ctx.failNow(e);
+		}
+
+		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
+			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
+			verify(ttc, never())._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
+			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
 			JsonObject errorBody = new JsonObject()
 					.put("cause", cause.getClass().getName())

@@ -38,11 +38,15 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 //	private static final Logger log = LoggerFactory.getLogger(TransferFailureHandlerTest.class);
 
 	protected TransferTaskErrorFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) {
-		TransferTaskErrorFailureHandler ttc = mock(TransferTaskErrorFailureHandler.class );
-		when(ttc.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
-		when(ttc.getVertx()).thenReturn(vertx);
-		doCallRealMethod().when(ttc).processFailure(any(JsonObject.class), any());
-		return ttc;
+		TransferTaskErrorFailureHandler listener = mock(TransferTaskErrorFailureHandler.class );
+		when(listener.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
+		when(listener.getVertx()).thenReturn(vertx);
+		doCallRealMethod().when(listener).processFailure(any(JsonObject.class), any());
+		when(listener.getRetryRequestManager()).thenCallRealMethod();
+		doNothing().when(listener)._doPublishEvent(any(), any());
+		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
+		return listener;
 	}
 
 	@AfterAll
@@ -61,7 +65,6 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 
 		TransferTaskErrorFailureHandler failureHandler = getMockTransferFailureHandlerInstance(vertx);
-		doNothing().when(failureHandler)._doPublishEvent(any(), any());
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);

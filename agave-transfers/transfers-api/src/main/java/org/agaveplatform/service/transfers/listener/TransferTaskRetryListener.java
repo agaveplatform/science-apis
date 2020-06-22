@@ -77,7 +77,7 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 						log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
 						// TODO: retry won't be reflected in the message body, so what are we listening to here? At
 						//   this point
-						_doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
+//						_doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
 					} else {
 						log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
 						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
@@ -365,16 +365,6 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 		}
 
 		handler.handle(Future.succeededFuture(true));
-	}
-
-	/**
-	 * Checks for a supported schema in the URI. 
-	 * @param uri the uri to check
-	 * @return true if supported, false otherwise
-	 * @see RemoteDataClientFactory#isSchemeSupported(URI);
-	 */
-	protected boolean uriSchemeIsNotSupported(URI uri) {
-		return ! RemoteDataClientFactory.isSchemeSupported(uri);
 	}
 
 	public TransferTaskDatabaseService getDbService() {

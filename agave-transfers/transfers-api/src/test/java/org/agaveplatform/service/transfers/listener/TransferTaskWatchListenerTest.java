@@ -16,7 +16,7 @@ import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -28,12 +28,15 @@ import static org.mockito.Mockito.*;
 class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	TransferTaskWatchListener getMockListenerInstance(Vertx vertx) {
-		TransferTaskWatchListener twc = Mockito.mock(TransferTaskWatchListener.class);
-		when(twc.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
-		when(twc.getVertx()).thenReturn(vertx);
-		when(twc.config()).thenReturn(config);
-		doNothing().when(twc)._doPublishEvent(anyString(), any(JsonObject.class));
-		return twc;
+		TransferTaskWatchListener listener = Mockito.mock(TransferTaskWatchListener.class);
+		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
+		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.config()).thenReturn(config);
+		when(listener.getRetryRequestManager()).thenCallRealMethod();
+		doNothing().when(listener)._doPublishEvent(any(), any());
+		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
+		return listener;
 	}
 
 	@Test

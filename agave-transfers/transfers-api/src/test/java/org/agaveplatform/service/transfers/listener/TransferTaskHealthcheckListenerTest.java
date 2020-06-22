@@ -36,13 +36,16 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 	private JWTAuth jwtAuth;
 
 	TransferTaskHealthcheckListener getMockListenerInstance(Vertx vertx) {
-		TransferTaskHealthcheckListener thc = Mockito.mock(TransferTaskHealthcheckListener.class);
-		when(thc.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
-		when(thc.getVertx()).thenReturn(vertx);
-		when(thc.processEvent(any())).thenCallRealMethod();
-		when(thc.config()).thenReturn(config);
-		doNothing().when(thc)._doPublishEvent(anyString(), any());
-		return thc;
+		TransferTaskHealthcheckListener listener = Mockito.mock(TransferTaskHealthcheckListener.class);
+		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
+		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.processEvent(any())).thenCallRealMethod();
+		when(listener.config()).thenReturn(config);
+		when(listener.getRetryRequestManager()).thenCallRealMethod();
+		doNothing().when(listener)._doPublishEvent(any(), any());
+		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
+		return listener;
 	}
 
 	@Test

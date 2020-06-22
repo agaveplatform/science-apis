@@ -1,21 +1,20 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.*;
-import io.vertx.core.eventbus.DeliveryOptions;
-import io.vertx.core.eventbus.Message;
 import io.vertx.core.impl.ConcurrentHashSet;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
+import java.net.URI;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
-import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_FAILED;
 
 public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTransferTaskListener.class);
@@ -23,7 +22,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     String eventChannel;
     final public ConcurrentHashSet<String> cancelledTasks = new ConcurrentHashSet<>();
     final public ConcurrentHashSet<String> pausedTasks = new ConcurrentHashSet<>();
-
+    private RetryRequestManager retryRequestManager;
     public AbstractTransferTaskListener() {
         super();
     }
@@ -53,31 +52,16 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
         }
     }
 
-    public void _doPublishEvent(String event, Object body) {
-        logger.debug("Publishing {} event: {}", event, body);
-        getVertx().eventBus().request(event, body, new DeliveryOptions(), new Handler<AsyncResult<Message<JsonObject>>>() {
-            int retries = 0;
-            /**
-             * Response from the remote subscriber. We only care about failure acks.
-             *
-             * @param event the event to handle
-             */
-            @Override
-            public void handle(AsyncResult<Message<JsonObject>> event) {
-                if (event.failed()) {
-                    if (retries < 3) {
-                        logger.error("Unable to send {} event after {} retries. No further attempts will be made.",
-                                event, retries);
-                        retries++;
-                    } else {
-                        logger.error("Unable to send {} event after {} retries for message {}. No further attempts will be made.",
-                                event, retries, event.result().body().encode(), event.cause());
-                    }
-                } else {
-                    getVertx().eventBus().send(TRANSFERTASK_NOTIFICATION, body);
-                }
-            }
-        });
+    /**
+     * Handles event creation and delivery across the existing event bus. Retry is handled by the
+     * {@link RetryRequestManager} up to 3 times. The call will be made asynchronously, so this method
+     * will return immediately.
+     *
+     * @param eventName the name of the event. This doubles as the address in the request invocation.
+     * @param body the message of the body. Currently only {@link JsonObject} are supported.
+     */
+    public void _doPublishEvent(String eventName, JsonObject body) {
+        getRetryRequestManager().request(eventName, body, 3);
     }
 
     /**
@@ -274,4 +258,24 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
 
     public abstract String getDefaultEventChannel();
 
+    public RetryRequestManager getRetryRequestManager() {
+        if (retryRequestManager == null) {
+            retryRequestManager = new RetryRequestManager(getVertx());
+        }
+        return retryRequestManager;
+    }
+
+    public void setRetryRequestManager(RetryRequestManager retryRequestManager) {
+        this.retryRequestManager = retryRequestManager;
+    }
+
+    /**
+     * Checks for a supported schema in the URI.
+     * @param uri the uri to check
+     * @return true if supported, false otherwise
+     * @see RemoteDataClientFactory#isSchemeSupported(URI);
+     */
+    protected boolean uriSchemeIsNotSupported(URI uri) {
+        return ! RemoteDataClientFactory.isSchemeSupported(uri);
+    }
 }

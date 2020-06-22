@@ -6,8 +6,7 @@ import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -19,8 +18,7 @@ import org.slf4j.LoggerFactory;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("Notification listener integration tests")
@@ -31,19 +29,24 @@ class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskTransferTaskNotificationListenerTest.class);
 
 	protected TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) {
-		TransferTaskNotificationListener ttc = mock(TransferTaskNotificationListener.class );
-		when(ttc.getEventChannel()).thenReturn(TRANSFERTASK_NOTIFICATION);
-		when(ttc.getVertx()).thenReturn(vertx);
+		TransferTaskNotificationListener listener = mock(TransferTaskNotificationListener.class );
+		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_NOTIFICATION);
+		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.getRetryRequestManager()).thenCallRealMethod();
+		doNothing().when(listener)._doPublishEvent(any(), any());
+		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 
-		return ttc;
+		return listener;
 	}
 
 	@Test
 	@DisplayName("notificationEventProcess Test")
 	void notificationEventProcess(Vertx vertx, VertxTestContext ctx) {
 		log.info("Starting process of notificationEventProcess.");
-		JsonObject body = new JsonObject(_createTestTransferTask().toJSON());
-		body.put("id", new AgaveUUID(UUIDType.TRANSFER).toString());
+		TransferTask transferTask = _createTestTransferTask();
+		JsonObject body = transferTask.toJson();
+		body.put("id", 1);
 
 		TransferTaskNotificationListener txfrTransferTaskNotificationListener = getMockNotificationListenerInstance(vertx);
 		when(txfrTransferTaskNotificationListener.notificationEventProcess(any())).thenReturn(true);

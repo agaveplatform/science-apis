@@ -18,7 +18,6 @@ import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.enumerations.RoleType;
-import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,16 +62,16 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             log.info("Transfer task {} created: {} -> {}", uuid, source, dest);
 
             try {
-                assignTransferTask(body, resp -> {
+                processEvent(body, resp -> {
                     if (resp.succeeded()) {
-                        log.error("Succeeded with the assignTransferTask in the creation of the event {}", uuid);
-                        _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
+                        log.error("Succeeded with the processing transfer created event for transfer task {}", uuid);
+//                        _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
                     } else {
                         log.error("Error with return from creating the event {}", uuid);
                         _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
                     }
                 });
-            }catch (Exception e){
+            } catch (Exception e){
                 log.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", e.getMessage());
                 _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
             }
@@ -127,7 +126,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
      * @param body the transfer task event body
      * @param handler callback to recieve a boolean response with the result of the assigned event processing.
      */
-    public void assignTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
+    public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
         String uuid = body.getString("uuid");
         String source = body.getString("source");
         String dest = body.getString("dest");
@@ -143,13 +142,13 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                 srcUri = URI.create(source);
                 destUri = URI.create(dest);
             } catch (Exception e) {
-                String msg = String.format("Unable to parse source uri %s for transfertask %s: %s",
+                String msg = String.format("Unable to parse source uri %s for transfer task %s: %s",
                         source, uuid, e.getMessage());
                 throw new RemoteDataSyntaxException(msg, e);
             }
 
             // ensure we can make the transfer based on protocol
-            if (RemoteDataClientFactory.isSchemeSupported(srcUri)) {
+            if (uriSchemeIsNotSupported(srcUri)) {
                 // look up the system to check permissions
                 if (srcUri.getScheme().equalsIgnoreCase("agave")) {
                     // TODO: ensure user has access to the system. We may need to look up file permissions her as well.
@@ -162,11 +161,11 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     }
                 }
             } else {
-                throw new RemoteDataSyntaxException(String.format("Unknown source schema %s for the transfertask %s",
+                throw new RemoteDataSyntaxException(String.format("Unknown source schema %s for the transfer task %s",
                                         destUri.getScheme(), uuid));
             }
 
-            if (RemoteDataClientFactory.isSchemeSupported(destUri)) {
+            if (uriSchemeIsNotSupported(destUri)) {
                 SystemDao systemDao = new SystemDao();
                 if (destUri.getScheme().equalsIgnoreCase("agave")) {
                     // TODO: ensure user has access to the system. We may need to look up file permissions her as well.
@@ -179,37 +178,33 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     }
                 }
             } else {
-                throw new RemoteDataSyntaxException(String.format("Unknown destination schema %s for the transfertask %s",
+                throw new RemoteDataSyntaxException(String.format("Unknown destination schema %s for the transfer task %s",
                         destUri.getScheme(), uuid));
             }
 
             // check for interrupted before proceeding
             if (taskIsNotInterrupted(createdTransferTask)) {
                 // update dt DB status here
-                getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateReply -> {
-                    if (updateReply.succeeded()) {
-                        _doPublishEvent(TRANSFERTASK_ASSIGNED, updateReply.result());
-                        Future.succeededFuture(Boolean.TRUE);
+                getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateResult -> {
+                    if (updateResult.succeeded()) {
+                        // continue assigning the task and return
+                        log.info("Assigning transfer task {} for processing.", uuid);
+                        _doPublishEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
+                        handler.handle(Future.succeededFuture(true));
                     } else {
                         // update failed
-                        Future.succeededFuture(Boolean.FALSE);
+                        String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
+                                uuid, updateResult.cause().getMessage());
+                        doHandleError(updateResult.cause(), msg, body, handler);
                     }
                 });
-
-                // continue assigning the task and return
-                log.info("Assigning transfer task {} for processing.", uuid);
-                _doPublishEvent(TRANSFERTASK_ASSIGNED, body);
-                handler.handle(Future.succeededFuture(true));
+            } else {
+                log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
+                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
+                handler.handle(Future.succeededFuture(false));
             }
         } catch (Exception e) {
-            log.info(e.getMessage());
-            JsonObject json = new JsonObject()
-                    .put("cause", e.getClass().getName())
-                    .put("message", e.getMessage())
-                    .mergeIn(body);
-
-            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-            handler.handle(Future.failedFuture(e));
+            doHandleError(e, e.getMessage(), body, handler);
         }
     }
 

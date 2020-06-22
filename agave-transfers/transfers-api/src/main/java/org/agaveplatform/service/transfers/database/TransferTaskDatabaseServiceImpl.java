@@ -25,7 +25,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
-import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.Settings;
@@ -356,9 +355,10 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
       if (fetch.succeeded()) {
         ResultSet resultSet = fetch.result();
         if (resultSet.getNumRows() == 0) {
+          LOGGER.debug("No child transfer task found with root task {}, {} -> {} in tenant {}.", rootTaskId, src, dest, tenantId);
           resultHandler.handle(Future.succeededFuture(null));
         } else {
-          LOGGER.error(data.encodePrettily());
+          LOGGER.debug("Matching child transfer task found with root task {}, {} -> {} in tenant {}.", rootTaskId, src, dest, tenantId);
           resultHandler.handle(Future.succeededFuture(resultSet.getRows().get(0)));
         }
       } else {
@@ -375,7 +375,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
       if (fetch.succeeded()) {
         // no match. we need to create a new TransferTask
         if (fetch.result() == null) {
-          LOGGER.debug("No matching record found for transfer task with root task {}, {} -> {} in tenant {}. Transfer task will be created.", childTransferTask.getRootTaskId(), childTransferTask.getSource(), childTransferTask.getDest(), tenantId);
+          LOGGER.debug("Creating child transfer task with root task {}, {} -> {} in tenant {}", childTransferTask.getRootTaskId(), childTransferTask.getSource(), childTransferTask.getDest(), tenantId);
           create(tenantId, childTransferTask, resultHandler);
         } else {
           // found a match, just need to update the status

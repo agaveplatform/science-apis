@@ -1,7 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -20,6 +19,8 @@ import org.mockito.stubbing.Answer;
 import java.time.Instant;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.*;
@@ -36,8 +37,11 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		TransferTaskPausedListener listener = Mockito.mock(TransferTaskPausedListener.class);
 		when(listener.getEventChannel()).thenReturn(MessageType.TRANSFERTASK_PAUSED);
 		when(listener.getVertx()).thenReturn(vertx);
-		doCallRealMethod().when(listener).processPauseRequest(anyObject());
-
+		when(listener.getRetryRequestManager()).thenCallRealMethod();
+		doNothing().when(listener)._doPublishEvent(any(), any());
+		doCallRealMethod().when(listener).processPauseRequest(any(), any());
+		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;
 	}
 
@@ -112,30 +116,33 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		}).when(listener).processParentEvent(any(), any(), any());
 
 		// now we run the actual test using our test transfer task data
-		Future<Boolean> result = listener.processPauseRequest(transferTask.toJson());
+		listener.processPauseRequest(transferTask.toJson(), result -> {
+			ctx.verify(() -> {
+				assertTrue(result.succeeded(), "Call to processPauseRequest should succeed for active task");
+				assertTrue(result.result(), "Response from processPauseRequest should be true when task is active root task");
 
-		ctx.verify(() -> {
-			// verify the db service was called to update the task status
-			verify(dbService).updateStatus(eq(transferTask.getTenantId()),
-					eq(transferTask.getUuid()), eq(TransferStatusType.PAUSED.name()), any());
+				// verify the db service was called to update the task status
+				verify(dbService).updateStatus(eq(transferTask.getTenantId()),
+						eq(transferTask.getUuid()), eq(TransferStatusType.PAUSED.name()), any());
 
-			// verify that the completed event was created. this should always be throws
-			// if the updateStatus result succeeds.
-			verify(listener)._doPublishEvent(TRANSFERTASK_PAUSED, transferTask.toJson());
+				// verify that the completed event was created. this should always be throws
+				// if the updateStatus result succeeds.
+				verify(listener)._doPublishEvent(eq(TRANSFERTASK_PAUSED), eq(transferTask.toJson()));
 
-			// make sure the parent was not processed when none existed for the transfer task
-			verify(listener, never()).processParentEvent(any(), any(), any());
+				// make sure the parent was not processed when none existed for the transfer task
+				verify(listener, never()).processParentEvent(any(), any(), any());
 
-			// make sure no error event is ever thrown
-			verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-			verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				// make sure no error event is ever thrown
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
-			Assertions.assertTrue(result.result(),
-					"TransferTask response should be true indicating the task completed successfully.");
+				assertTrue(result.result(),
+						"TransferTask response should be true indicating the task completed successfully.");
 
-			Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
+				assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
-			ctx.completeNow();
+				ctx.completeNow();
+			});
 		});
 	}
 
@@ -199,30 +206,34 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		}).when(listener).processParentEvent(any(), any(), any());
 
 		// now we run the actual test using our test transfer task data
-		Future<Boolean> result = listener.processPauseRequest(parentTask.toJson());
+		listener.processPauseRequest(parentTask.toJson(), result -> {
+			ctx.verify(() -> {
+				assertTrue(result.succeeded(), "Call to processPauseRequest should succeed for active task");
+				assertFalse(result.result(), "Response from processPauseRequest should be false when task is not an active root task");
 
-		ctx.verify(() -> {
-			// verify the db service was called to update the task status
-			verify(dbService).updateStatus(eq(parentTask.getTenantId()),
-					eq(parentTask.getUuid()), eq(TransferStatusType.PAUSED.name()), any());
+				// verify the db service was called to update the task status
+				verify(dbService).updateStatus(eq(parentTask.getTenantId()),
+						eq(parentTask.getUuid()), eq(TransferStatusType.PAUSED.name()), any());
 
-			// verify that the completed event was created. this should always be throws
-			// if the updateStatus result succeeds.
-			verify(listener)._doPublishEvent(TRANSFERTASK_PAUSED, parentTask.toJson());
+				// verify that the completed event was created. this should always be throws
+				// if the updateStatus result succeeds.
+				verify(listener)._doPublishEvent(eq(TRANSFERTASK_PAUSED), eq(parentTask.toJson()));
 
-			// make sure the parent was processed at least one time
-			verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
+				// make sure the parent was processed at least one time
+				// TODO: why is this at least once? Do we know how many times it should be called?
+				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
-			// make sure no error event is ever thrown
-			verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
-			verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+				// make sure no error event is ever thrown
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
-//			Assertions.assertTrue(result.result(),
-//					"TransferTask response should be true indicating the task completed successfully.");
+				//			Assertions.assertTrue(result.result(),
+				//					"TransferTask response should be true indicating the task completed successfully.");
 
-			Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
+				assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
-			ctx.completeNow();
+				ctx.completeNow();
+			});
 		});
 	}
 

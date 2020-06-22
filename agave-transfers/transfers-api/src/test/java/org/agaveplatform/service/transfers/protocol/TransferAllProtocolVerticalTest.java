@@ -19,7 +19,6 @@ import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
-import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,10 +43,12 @@ import static org.mockito.Mockito.*;
 class TransferAllProtocolVerticalTest  extends BaseTestCase {
 
 	TransferAllProtocolVertical getMockAllProtocolVerticalInstance(Vertx vertx) {
-		TransferAllProtocolVertical txfrAllVert = Mockito.mock(TransferAllProtocolVertical.class);
-		when(txfrAllVert.getEventChannel()).thenReturn(TRANSFER_ALL);
-		when(txfrAllVert.getVertx()).thenReturn(vertx);
-		return txfrAllVert;
+		TransferAllProtocolVertical listener = Mockito.mock(TransferAllProtocolVertical.class);
+		when(listener.getEventChannel()).thenReturn(TRANSFER_ALL);
+		when(listener.getVertx()).thenReturn(vertx);
+//		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+//		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
+		return listener;
 	}
 
 	URLCopy getMockUrlCopyInstance(RemoteDataClient sourceClient, RemoteDataClient destClient) throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {

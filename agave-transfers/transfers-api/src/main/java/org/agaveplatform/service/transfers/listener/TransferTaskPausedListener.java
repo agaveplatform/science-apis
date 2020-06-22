@@ -1,16 +1,16 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.Handler;
-import io.vertx.core.AsyncResult;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
-
-import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +58,9 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 
 			logger.info("Transfer task {} pause detected.", uuid);
 
-			processPauseRequest(body);
+			processPauseRequest(body, result -> {
+
+			});
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
@@ -70,7 +72,9 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 
 			logger.info("Transfer task {} ackowledged paused", uuid);
 
-			processPauseAckRequest(body);
+			processPauseAckRequest(body, result -> {
+
+			});
 		});
 	}
 
@@ -79,10 +83,10 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 	 * before sending the parent paused ack event as well.
 	 *
 	 * @param body the original event body
-	 * @return a future with a boolean result of the operations
+	 * @param handler to callback to return the result of the async processing
 	 */
-	protected Future<Boolean> processPauseRequest(JsonObject body) {
-		Promise<Boolean> promise = Promise.promise();
+	protected void processPauseRequest(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
+
 		String tenantId = body.getString("tenantId");
 		String uuid = body.getString("uuid");
 		String status = body.getString("status");
@@ -101,7 +105,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 					processParentEvent(tenantId, parentTaskId, processParentReply -> {
 						if (processParentReply.succeeded()) {
 							logger.debug("Check for parent task {} for paused transfer task {} done.", parentTaskId, uuid);
-							promise.complete(processParentReply.result());
+							handler.handle(Future.succeededFuture(true));
 						} else {
 							String message = String.format("Failed to process paused ack event for parent " +
 									"transfertask %s. %s", parentTaskId, processParentReply.cause());
@@ -112,28 +116,20 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 									.mergeIn(body);
 
 							_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
-							promise.complete(Boolean.FALSE);
+							handler.handle(Future.succeededFuture(false));
 						}
 					});
 				}
 				else {
 					logger.debug("Transfer task {} has no parent task to process.", uuid);
-					promise.complete(Boolean.TRUE);
+					handler.handle(Future.succeededFuture(true));
 				}
 			}
 			else {
 				String message = String.format("Failed to set status of transfertask %s to paused. error: %s", uuid, reply.cause());
-				JsonObject json = new JsonObject()
-						.put("cause", reply.cause().getClass().getName())
-						.put("message", message)
-						.mergeIn(body);
-
-				_doPublishEvent(TRANSFERTASK_ERROR, json);
-				promise.fail(reply.cause());
+				doHandleError(reply.cause(), message, body, handler);
 			}
 		});
-
-		return promise.future();
 	}
 
 	/**
@@ -141,10 +137,9 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 	 * before sending the parent paused ack event as well.
 	 *
 	 * @param body the original event body
-	 * @return a future with a boolean result of the operations
+	 * @param handler to callback to return the result of the async processing
 	 */
-	protected Future<Boolean> processPauseAckRequest(JsonObject body) {
-		Promise<Boolean> promise = Promise.promise();
+	protected void processPauseAckRequest(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
 		String uuid = body.getString("uuid");
 		String parentTaskId = body.getString("parentTaskId");
 		String rootTaskId = body.getString("rootTaskId");
@@ -180,7 +175,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 											if (parentReply.succeeded()) {
 												logger.info("Sending pause ack event for parent transfer task {}", parentTaskId);
 												_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result());
-												promise.complete(true);
+												handler.handle(Future.succeededFuture(true));
 											} else {
 												String message = String.format("Unable to lookup parent task %s for transfer task %s while processing a pause event. %s",
 														parentTaskId, uuid, parentReply.cause().getMessage());
@@ -191,12 +186,12 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 														.mergeIn(body);
 
 												_doPublishEvent(TRANSFERTASK_ERROR, json);
-												promise.fail(parentReply.cause());
+												handler.handle(Future.failedFuture(parentReply.cause()));
 											}
 										});
 									} else {
 										logger.debug("Skipping pause ack event for parent transfer task {} due to existing active children.", parentTaskId);
-										promise.complete(false);
+										handler.handle(Future.succeededFuture(false));
 									}
 								} else {
 									String message = String.format("Unable to lookup child state for parent transfer task %s  while processing a pause event. %s",
@@ -208,39 +203,25 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 											.mergeIn(body);
 
 									_doPublishEvent(TRANSFERTASK_ERROR, json);
-									promise.fail(siblingReply.cause());
+									handler.handle(Future.failedFuture(siblingReply.cause()));
 								}
 							});
 						} else {
 							logger.debug("Skipping processing of parent task for root transfer task {}.", uuid);
-							promise.complete(false);
+							handler.handle(Future.succeededFuture(false));
 						}
 					} else {
 						String message = String.format("Unable to update status of transfer task %s to PAUSED. %s",
 								uuid, updateReply.cause().getMessage());
-						JsonObject json = new JsonObject()
-								.put("cause", updateReply.cause().getClass().getName())
-								.put("message", message)
-								.mergeIn(body);
-
-						_doPublishEvent(TRANSFERTASK_ERROR, json);
-						promise.fail(updateReply.cause());
+						doHandleError(updateReply.cause(), message, body, handler);
 					}
 				});
 			} else {
 				String message = String.format("Unable to lookup child tasks for transfer task %s while processing a pause event. %s",
 						uuid, reply.cause().getMessage());
-				JsonObject json = new JsonObject()
-						.put("cause", reply.cause().getClass().getName())
-						.put("message", message)
-						.mergeIn(body);
-
-				_doPublishEvent(TRANSFERTASK_ERROR, json);
-				promise.fail(reply.cause());
+				doHandleError(reply.cause(), message, body, handler);
 			}
 		});
-
-		return promise.future();
 	}
 
 	/**

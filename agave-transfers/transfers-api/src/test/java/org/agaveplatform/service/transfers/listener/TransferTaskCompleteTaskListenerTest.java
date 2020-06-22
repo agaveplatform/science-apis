@@ -1,7 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -38,13 +37,16 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
     }
 
     protected TransferTaskCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) {
-        TransferTaskCompleteTaskListener ttc = mock(TransferTaskCompleteTaskListener.class );
-        when(ttc.config()).thenReturn(config);
-        when(ttc.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
-        when(ttc.getVertx()).thenReturn(vertx);
-        when(ttc.processEvent(any())).thenCallRealMethod();
-
-        return ttc;
+        TransferTaskCompleteTaskListener listener = mock(TransferTaskCompleteTaskListener.class );
+        when(listener.config()).thenReturn(config);
+        when(listener.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
+        when(listener.getVertx()).thenReturn(vertx);
+       doCallRealMethod().when(listener).processEvent(any(), any());
+        when(listener.getRetryRequestManager()).thenCallRealMethod();
+        doNothing().when(listener)._doPublishEvent(any(), any());
+        doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+        doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
+        return listener;
     }
 
 
@@ -71,7 +73,6 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 .put("endTime", Instant.now());
 
         AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
-
         // mock the handler passed into updateStatus
         doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
             @SuppressWarnings("unchecked")
@@ -95,9 +96,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         when(transferTaskCompleteTaskListener.getDbService()).thenReturn(dbService);
 
         // now we run the actual test using our test transfer task data
-        Future<Boolean> result = transferTaskCompleteTaskListener.processEvent(json);
-
-        ctx.verify(() -> {
+        transferTaskCompleteTaskListener.processEvent(json, result -> ctx.verify(() -> {
             // verify the db service was called to update the task status
             // dont' mix and match raw values with mockito matchers. Hence wrapping the
             // values in the eq() method.
@@ -121,7 +120,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
             ctx.completeNow();
-        });
+        }));
     }
 
     @Test
@@ -173,11 +172,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         when(ttc.getDbService()).thenReturn(dbService);
 
         // now we run the actual test using our test transfer task data
-        Future<Boolean> result = ttc.processEvent(json);
-
-        ctx.verify(() -> {
-
-            verify(ttc).processEvent(json);
+        ttc.processEvent(json, result -> ctx.verify(() -> {
 
             // verify the db service was called to update the task status
             // dont' mix and match raw values with mockito matchers. Hence wrapping the
@@ -202,7 +197,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                     "TransferTask response should be false indicating no activity taken on the parent.");
 
             ctx.completeNow();
-        });
+        }));
     }
 
     @Test
@@ -253,10 +248,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         when(ttc.getDbService()).thenReturn(dbService);
 
         // now we run the actual test using our test transfer task data
-        Future<Boolean> result = ttc.processEvent(json);
-
-        ctx.verify(() -> {
-            verify(ttc).processEvent(json);
+        ttc.processEvent(json, result -> ctx.verify(() -> {
 
             // verify the db service was called to update the task status
             // dont' mix and match raw values with mockito matchers. Hence wrapping the
@@ -266,7 +258,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishEvent(TRANSFERTASK_COMPLETED, json);
+            verify(ttc)._doPublishEvent(eq(TRANSFERTASK_COMPLETED), eq(json));
 
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
@@ -281,13 +273,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
             ctx.completeNow();
-        });
+        }));
     }
 
     @Test
-    @DisplayName("testProcessEventCreatesParentErrorEventWhenParentProcessingFails")
+    @DisplayName("TransferTaskCompleteTaskListener - testProcess creates parent error event when parent processing fails")
     public void testProcessEventCreatesParentErrorEventWhenParentProcessingFails(Vertx vertx, VertxTestContext ctx) {
-        // Set up our transfertask for testing
+        // Set up our transfertask for testings
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
         transferTask.setStartTime(Instant.now());
@@ -333,10 +325,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         when(ttc.getDbService()).thenReturn(dbService);
 
         // now we run the actual test using our test transfer task data
-        Future<Boolean> result = ttc.processEvent(json);
-
-        ctx.verify(() -> {
-            verify(ttc).processEvent(json);
+        ttc.processEvent(json, result -> ctx.verify(() -> {
 
             // verify the db service was called to update the task status
             // dont' mix and match raw values with mockito matchers. Hence wrapping the
@@ -346,7 +335,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishEvent(TRANSFERTASK_COMPLETED, json);
+            verify(ttc)._doPublishEvent(eq(TRANSFERTASK_COMPLETED), eq(json));
 
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
@@ -363,7 +352,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
 
             ctx.completeNow();
-        });
+        }));
     }
 
     ////////////////////////////////////////

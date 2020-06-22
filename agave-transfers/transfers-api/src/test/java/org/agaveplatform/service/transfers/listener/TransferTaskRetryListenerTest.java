@@ -36,13 +36,17 @@ import static org.mockito.Mockito.*;
 class TransferTaskRetryListenerTest extends BaseTestCase {
 
 	protected TransferTaskRetryListener getMockTransferRetryListenerInstance(Vertx vertx) {
-		TransferTaskRetryListener ttc = mock(TransferTaskRetryListener.class );
-		when(ttc.getEventChannel()).thenReturn(TRANSFER_RETRY);
-		when(ttc.getVertx()).thenReturn(vertx);
-		doCallRealMethod().when(ttc).processRetryTransferTask(any(), any());
-		when(ttc.taskIsNotInterrupted(any())).thenReturn(true);
-		doNothing().when(ttc)._doPublishEvent(any(), any());
-		return ttc;
+		TransferTaskRetryListener listener = mock(TransferTaskRetryListener.class );
+		when(listener.getEventChannel()).thenReturn(TRANSFER_RETRY);
+		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
+		when(listener.getRetryRequestManager()).thenCallRealMethod();
+		when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
+		doNothing().when(listener)._doPublishEvent(any(), any());
+		doCallRealMethod().when(listener).processRetryTransferTask(any(), any());
+		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
+		return listener;
 	}
 
 

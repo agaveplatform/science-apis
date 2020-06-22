@@ -23,11 +23,15 @@ class TransferTaskInteruptEventListenerTest extends BaseTestCase {
 	private static final Logger logger = LoggerFactory.getLogger(TransferTaskInteruptEventListenerTest.class);
 
 	protected InteruptEventListener getMockInteruptEventListenerInstance(Vertx vertx) {
-		InteruptEventListener ttc = mock(InteruptEventListener.class );
-		when(ttc.getDefaultEventChannel()).thenReturn(TRANSFERTASK_INTERUPTED);
-		when(ttc.getVertx()).thenReturn(vertx);
+		InteruptEventListener listener = mock(InteruptEventListener.class );
+		when(listener.getDefaultEventChannel()).thenReturn(TRANSFERTASK_INTERUPTED);
+		when(listener.getVertx()).thenReturn(vertx);
+		when(listener.getRetryRequestManager()).thenCallRealMethod();
+		doNothing().when(listener)._doPublishEvent(any(), any());
+		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 
-		return ttc;
+		return listener;
 	}
 
 	@Test

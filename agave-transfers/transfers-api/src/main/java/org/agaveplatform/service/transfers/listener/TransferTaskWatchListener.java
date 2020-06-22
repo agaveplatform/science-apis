@@ -1,6 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
@@ -68,7 +71,7 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 						try {
 							log.debug("Scheduling health check on transfer task {}",
 									((JsonObject)jsonResult).getString("uuid"));
-							_doPublishEvent(TRANSFERTASK_HEALTHCHECK, jsonResult);
+							_doPublishEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult));
 						} catch (Throwable t) {
 							log.error("Failed to schedule health check for transfer task {}", jsonResult);
 						}

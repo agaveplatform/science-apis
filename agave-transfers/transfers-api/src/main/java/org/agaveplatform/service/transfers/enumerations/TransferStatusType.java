@@ -2,12 +2,8 @@ package org.agaveplatform.service.transfers.enumerations;
 
 
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.util.ServiceUtils;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -30,7 +26,7 @@ public enum TransferStatusType
 	 * @return immutable list of the active {@link TransferStatusType}
 	 */
 	public static List<TransferStatusType> getActive() {
-		return List.of(PAUSED, QUEUED, RETRYING, TRANSFERRING);
+		return List.of(ASSIGNED, PAUSED, PAUSE_WAITING, QUEUED, RETRYING, TRANSFERRING, ERROR, CREATED, CANCELING_WAITING);
 	}
 
 	/**

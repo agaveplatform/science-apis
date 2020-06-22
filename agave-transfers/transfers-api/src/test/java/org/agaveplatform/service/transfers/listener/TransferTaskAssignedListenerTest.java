@@ -61,7 +61,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
 		when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
-
+		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
+		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
+		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
 

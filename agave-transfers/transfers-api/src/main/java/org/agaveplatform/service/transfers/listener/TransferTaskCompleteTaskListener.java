@@ -1,6 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.*;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -53,14 +56,13 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 
 			logger.info("Transfer task {} completed: {} -> {}", uuid, source, dest);
 
-			this.processEvent(body);
+			this.processEvent(body, result -> {
+
+			});
 		});
 	}
 
-	public Future<Boolean> processEvent(JsonObject body) {
-		Promise<Boolean> promise = Promise.promise();
-		// udpate transfer task status to completed
-
+	public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
 		//TransferTask bodyTask = new TransferTask(body);
 		body.put("status", TransferStatusType.COMPLETED);
 		String tenantId = body.getString("tenantId");
@@ -81,56 +83,32 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 						processParentEvent(tenantId, parentTaskId, tt -> {
 							if (tt.succeeded()) {
 								logger.debug("Check for parent task {} for completed transfer task {} done.", parentTaskId, uuid);
-								// TODO: send notification events? or should listeners listen to the existing events?
-								//_doPublishEvent("transfertask.notification", body);
-								promise.complete(tt.result());
+								handler.handle(Future.succeededFuture(true));
 							} else {
-//								if (tt.cause() instanceof ObjectNotFoundException) {
-//									logger.error("Unable to process parent transfer task {}: {}",
-//											parentTaskId, tt.cause().getMessage());
-//								} else {
-//									logger.error("Unable to check child status of parent task {}: {}",
-//											parentTaskId, tt.cause().getMessage());
-//								}
-
 								JsonObject json = new JsonObject()
 										.put("cause", tt.cause().getClass().getName())
 										.put("message", tt.cause().getMessage())
 										.mergeIn(body);
 
 								_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
-								promise.complete(Boolean.FALSE);
+								handler.handle(Future.succeededFuture(false));
 							}
 						});
 					}
 					else {
 						logger.debug("Transfer task {} has no parent task to process.", uuid);
-						promise.complete(Boolean.TRUE);
+						handler.handle(Future.succeededFuture(true));
 					}
 				}
 				else {
-					logger.error("Failed to set status of transfertask {} to completed. error: {}", uuid, reply.cause());
-					JsonObject json = new JsonObject()
-							.put("cause", reply.cause().getClass().getName())
-							.put("message", reply.cause().getMessage())
-							.mergeIn(body);
-
-					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-					promise.fail(reply.cause());
+					String msg = String.format("Failed to set status of transfer task %s to completed. error: %s",
+							uuid, reply.cause().getMessage());
+					doHandleError(reply.cause(), msg, body, handler);
 				}
 			});
 		} catch (Exception e) {
-			logger.error(e.getMessage());
-			JsonObject json = new JsonObject()
-					.put("cause", e.getClass().getName())
-					.put("message", e.getMessage())
-					.mergeIn(body);
-
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			promise.fail(e);
+			doHandleError(e, e.getMessage(), body, handler);
 		}
-
-		return promise.future();
 	}
 
 
@@ -145,7 +123,6 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 	 * @param resultHandler the handler to call with a boolean value indicating whether the parent event was found to be incomplete and needed to have a transfer.complete event created.
 	 */
 	void processParentEvent(String tenantId, String parentTaskId, Handler<AsyncResult<Boolean>> resultHandler) {
-//		Promise<Boolean> promise = Promise.promise();
 		// lookup parent transfertask
 		getDbService().getById(tenantId, parentTaskId, getTaskById -> {
 			if (getTaskById.succeeded()) {
@@ -188,13 +165,10 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 					resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
 				}
 			} else {
-//				promise.fail(getTaskById.cause());
 				logger.error("Failed to lookup parent transfer task {}: {}", parentTaskId, getTaskById.cause().getMessage());
 				resultHandler.handle(Future.failedFuture(getTaskById.cause()));
 			}
 		});
-
-//		return promise;
 	}
 
 	public TransferTaskDatabaseService getDbService() {

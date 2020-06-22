@@ -74,12 +74,10 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     // TODO: This seems like the correct pattery. Handler sent to the processing function, then
                     //   only send the notification on success. We can add a failure and error notification to the
                     //   respective listeners in the same way.
-                    _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
+//                    _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
                 } else {
                     log.error("Error with return from creating the event {}", uuid);
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-
-                    msg.reply(resp.cause());
                 }
             });
         });
@@ -380,16 +378,6 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
 
     public void setDbService(TransferTaskDatabaseService dbService) {
         this.dbService = dbService;
-    }
-
-    /**
-     * Checks for a supported schema in the URI.
-     * @param uri the uri to check
-     * @return true if supported, false otherwise
-     * @see RemoteDataClientFactory#isSchemeSupported(URI);
-     */
-    protected boolean uriSchemeIsNotSupported(URI uri) {
-        return ! RemoteDataClientFactory.isSchemeSupported(uri);
     }
 
     /**

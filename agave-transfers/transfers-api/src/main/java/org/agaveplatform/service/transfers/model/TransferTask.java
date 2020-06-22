@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.persistence.*;
 import java.time.Instant;
+import java.util.Objects;
 
 import static javax.persistence.GenerationType.IDENTITY;
 
@@ -56,11 +57,6 @@ public class TransferTask {
 	private Instant created = Instant.now();
 	private Instant lastUpdated = Instant.now();
 	private String uuid;
-	private String message;
-	private String cause;
-
-
-
 
 	public TransferTask() {
 		setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -69,7 +65,7 @@ public class TransferTask {
 	public TransferTask(JsonObject json) {
 		this();
 
-		this.setId(json.getLong("id", 0L));
+		this.setId(json.getLong("id"));
 
 		this.setAttempts(json.getInteger("attempts", 0));
 
@@ -206,23 +202,6 @@ public class TransferTask {
 	public void setId(Long id)
 	{
 		this.id = id;
-	}
-
-
-	public String getMessage() {
-		return message;
-	}
-
-	public void setMessage(String message) {
-		this.message = message;
-	}
-
-	public String getCause() {
-		return cause;
-	}
-
-	public void setCause(String cause) {
-		this.cause = cause;
 	}
 
 	/**
@@ -461,9 +440,6 @@ public class TransferTask {
 	 */
 	public void setTenantId(String tenantId)
 	{
-//		if (tenantId == null || tenantId.trim().equals("")) {
-//			throw new IllegalArgumentException("tenantId must be defined");
-//		}
 		this.tenantId = tenantId;
 	}
 
@@ -575,14 +551,13 @@ public class TransferTask {
                 .put("rootTask", getRootTaskId())
 				.put("status", getStatus().name())
 				.put("uuid", getUuid())
-//				.put("details", new JsonObject()
-					.put("bytesTransferred", getBytesTransferred())
-					.put("startTime", getStartTime())
-					.put("totalFiles", getTotalFiles())
-					.put("transferRate", getTransferRate())
-					.put("totalSize", getTotalSize())
-					.put("tenantId", getTenantId())
-					.put("totalSkippedFiles", getTotalSkippedFiles());
+				.put("bytesTransferred", getBytesTransferred())
+				.put("startTime", getStartTime())
+				.put("totalFiles", getTotalFiles())
+				.put("transferRate", getTransferRate())
+				.put("totalSize", getTotalSize())
+				.put("tenantId", getTenantId())
+				.put("totalSkippedFiles", getTotalSkippedFiles());
 //				.put("_links", new JsonObject()
 //						.put("self", new JsonObject()
 //                    		.put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid()))
@@ -609,18 +584,38 @@ public class TransferTask {
         
     }
 
-    public String toString() 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		TransferTask that = (TransferTask) o;
+		return Objects.equals(id, that.id) &&
+				Objects.equals(source, that.source) &&
+				Objects.equals(dest, that.dest) &&
+				Objects.equals(owner, that.owner) &&
+				status == that.status &&
+				Objects.equals(tenantId, that.tenantId) &&
+				Objects.equals(uuid, that.uuid);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(id, source, dest, owner, status, tenantId, uuid);
+	}
+
+	public String toString()
     {
-        String status = getStatus().name();
-        if (!getStatus().isCancelled()) {
-            if (getTotalSize() == 0) {
-                status += " - ?%";
-            } else {
-                status += " - " + Math.floor(getBytesTransferred() / getTotalSize());
-            }
-        }
-         
-        return String.format("[%s] %s -> %s - %s", status, getSource(), getDest(), getUuid());
+    	return toJSON();
+//        String status = getStatus().name();
+//        if (!getStatus().isCancelled()) {
+//            if (getTotalSize() == 0) {
+//                status += " - ?%";
+//            } else {
+//                status += " - " + Math.floor(getBytesTransferred() / getTotalSize());
+//            }
+//        }
+//
+//        return String.format("[%s] %s -> %s - %s", status, getSource(), getDest(), getUuid());
     }
 
 	public Instant getLastAttempt() {

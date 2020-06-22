@@ -82,7 +82,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonArray response = new JsonArray(res.result().getRows());
         resultHandler.handle(Future.succeededFuture(response));
       } else {
-        LOGGER.error("Database query error", res.cause());
+        LOGGER.error("Failed to fetch the entire transfer task tree for root task {}", uuid, res.cause());
         resultHandler.handle(Future.failedFuture(res.cause()));
       }
     });
@@ -100,7 +100,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonArray response = new JsonArray(res.result().getRows());
         resultHandler.handle(Future.succeededFuture(response));
       } else {
-        LOGGER.error("Database query error", res.cause());
+        LOGGER.error("Failed to fetch all CANCELLED or COMPLETED child transfer tasks of {}.", uuid, res.cause());
         resultHandler.handle(Future.failedFuture(res.cause()));
       }
     });
@@ -118,7 +118,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonArray response = new JsonArray(res.result().getRows());
         resultHandler.handle(Future.succeededFuture(Boolean.TRUE));
       } else {
-        LOGGER.error("Database query error", res.cause());
+        LOGGER.error("Failed to cancel all active child transfer tasks of {}.", uuid, res.cause());
         resultHandler.handle(Future.failedFuture(res.cause()));
       }
     });
@@ -137,7 +137,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonArray response = new JsonArray(res.result().getRows());
         resultHandler.handle(Future.succeededFuture(response));
       } else {
-        LOGGER.error("Database query error", res.cause());
+        LOGGER.error("Failed to fetch paginated transfer tasks.", res.cause());
         resultHandler.handle(Future.failedFuture(res.cause()));
       }
     });
@@ -156,7 +156,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonArray response = new JsonArray(res.result().getRows());
         resultHandler.handle(Future.succeededFuture(response));
       } else {
-        LOGGER.error("Database query error", res.cause());
+        LOGGER.error("Failed to fetch all transfer tasks for user {}.", username, res.cause());
         resultHandler.handle(Future.failedFuture(res.cause()));
       }
     });
@@ -178,7 +178,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
           resultHandler.handle(Future.succeededFuture(resultSet.getRows().get(0)));
         }
       } else {
-        LOGGER.error("Database query error", fetch.cause());
+        LOGGER.error("Failed to query for transfer task {} by uuid.", uuid, fetch.cause());
         resultHandler.handle(Future.failedFuture(fetch.cause()));
       }
     });
@@ -192,7 +192,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonArray response = new JsonArray(fetch.result().getRows());
         resultHandler.handle(Future.succeededFuture(response));
       } else {
-        LOGGER.error("Database query error", fetch.cause());
+        LOGGER.error("Failed to query active root transfer tasks.", fetch.cause());
         resultHandler.handle(Future.failedFuture(fetch.cause()));
       }
     });
@@ -213,7 +213,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         }
         resultHandler.handle(Future.succeededFuture(response));
       } else {
-        LOGGER.error("Database query error", fetch.cause());
+        LOGGER.error("Failed to query for existence of any child transfer tasks of {} not in a CANCELLED or COMPLETED state.", uuid, fetch.cause());
         resultHandler.handle(Future.failedFuture(fetch.cause()));
       }
     });
@@ -234,17 +234,16 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         }
         resultHandler.handle(Future.succeededFuture(response));
       } else {
-        LOGGER.error("Database query error", fetch.cause());
+        LOGGER.error("Failed to query for inactive child transfer tasks of {}.", uuid, fetch.cause());
         resultHandler.handle(Future.failedFuture(fetch.cause()));
       }
     });
     return this;
   }
 
-
   @Override
   public TransferTaskDatabaseService create(String tenantId, TransferTask transferTask, Handler<AsyncResult<JsonObject>> resultHandler) {
-    JsonArray data = new JsonArray()
+    final JsonArray data = new JsonArray()
             .add(transferTask.getAttempts())
             .add(transferTask.getBytesTransferred())
             .add(transferTask.getCreated())
@@ -257,7 +256,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(transferTask.getOwner())
             .add(transferTask.getSource())
             .add(transferTask.getStartTime())
-            .add(transferTask.getStatus())
+            .add(transferTask.getStatus().name())
             .add(tenantId)
             .add(transferTask.getTotalSize())
             .add(transferTask.getTransferRate())
@@ -269,18 +268,20 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     dbClient.updateWithParams(sqlQueries.get(SqlQuery.CREATE_TRANSFERTASK), data, res -> {
       if (res.succeeded()) {
         int transferTaskId = res.result().getKeys().getInteger(0);
-        JsonArray params = new JsonArray().add(transferTask.getUuid()).add(tenantId);
+        JsonArray params = new JsonArray()
+                .add(transferTask.getUuid())
+                .add(tenantId);
         dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
           if (ar.succeeded()) {
             resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
           } else {
-            LOGGER.error("Database query error", ar.cause());
+            LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", ar.cause());
             resultHandler.handle(Future.failedFuture(ar.cause()));
           }
         });
 
       } else {
-        LOGGER.error("Database query error", res.cause());
+        LOGGER.error("Failed to save new transfertask record: {}", res.cause().getMessage(), res.cause());
         resultHandler.handle(Future.failedFuture(res.cause()));
       }
     });
@@ -315,10 +316,10 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
               if (commit.failed()) {
                 conn.result().rollback(rollback -> {
                   if (res.failed()) {
-                    LOGGER.error("Database query error", rollback.cause());
+                    LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", uuid, rollback.cause());
                     resultHandler.handle(Future.failedFuture(rollback.cause()));
                   } else {
-                    LOGGER.error("Database query error", commit.cause());
+                    LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", uuid, commit.cause());
                     resultHandler.handle(Future.failedFuture(commit.cause()));
                   }
                 });
@@ -328,14 +329,14 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
                   if (ar.succeeded()) {
                     resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
                   } else {
-                    LOGGER.error("Database query error", ar.cause());
+                    LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", uuid, ar.cause());
                     resultHandler.handle(Future.failedFuture(ar.cause()));
                   }
                 });
               }
             });
           } else {
-            LOGGER.error("Database query error", update.cause());
+            LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
             resultHandler.handle(Future.failedFuture(update.cause()));
           }
         });
@@ -346,7 +347,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
 
   @Override
   public TransferTaskDatabaseService findChildTransferTask(String tenantId, String rootTaskId, String src, String dest, Handler<AsyncResult<JsonObject>> resultHandler) {
-    JsonArray data = new JsonArray()
+    final JsonArray data = new JsonArray()
             .add(rootTaskId)
             .add(src)
             .add(dest)
@@ -357,10 +358,11 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         if (resultSet.getNumRows() == 0) {
           resultHandler.handle(Future.succeededFuture(null));
         } else {
+          LOGGER.error(data.encodePrettily());
           resultHandler.handle(Future.succeededFuture(resultSet.getRows().get(0)));
         }
       } else {
-        LOGGER.error("Database query error", fetch.cause());
+        LOGGER.error("Failed to query for child transfertask record: {}", fetch.cause().getMessage(), fetch.cause());
         resultHandler.handle(Future.failedFuture(fetch.cause()));
       }
     });
@@ -373,13 +375,15 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
       if (fetch.succeeded()) {
         // no match. we need to create a new TransferTask
         if (fetch.result() == null) {
+          LOGGER.debug("No matching record found for transfer task with root task {}, {} -> {} in tenant {}. Transfer task will be created.", childTransferTask.getRootTaskId(), childTransferTask.getSource(), childTransferTask.getDest(), tenantId);
           create(tenantId, childTransferTask, resultHandler);
         } else {
           // found a match, just need to update the status
+          LOGGER.debug("Found existing transfer task with root task {}, {} -> {} in tenant {}. Task will be updated.", childTransferTask.getRootTaskId(), childTransferTask.getSource(), childTransferTask.getDest(), tenantId);
           updateStatus(tenantId, fetch.result().getString("uuid"), childTransferTask.getStatus().name(), resultHandler);
         }
       } else {
-        LOGGER.error("Database query error", fetch.cause());
+        LOGGER.error("Failed to update child transfertask record: {}", fetch.cause().getMessage(), fetch.cause());
         resultHandler.handle(Future.failedFuture(fetch.cause()));
       }
     });
@@ -424,7 +428,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
       if (res.succeeded()) {
         resultHandler.handle(Future.succeededFuture());
       } else {
-        LOGGER.error("Database query error", res.cause());
+        LOGGER.error("Failed to delete transfer task {}.", uuid, res.cause());
         resultHandler.handle(Future.failedFuture(res.cause()));
       }
     });

@@ -21,15 +21,16 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(VertxExtension.class)
-@DisplayName("Transfers completed task listener integration tests")
+@DisplayName("TransferTask Database Tests")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Disabled
+//@Disabled
 public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
 
     private TransferTaskDatabaseService service;
@@ -70,6 +71,8 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
     }
 
     @Test
+    @DisplayName("TransferTaskDatabaseVerticle - transfer task crud operations")
+//    @Disabled
     public void crudTest(Vertx vertx, VertxTestContext context) {
         TransferTask testTransferTask = _createTestTransferTask();
 
@@ -179,7 +182,179 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
     }
 
     @Test
-    public void crudChildTransferTaskTest(Vertx vertx, VertxTestContext context) {
+    @DisplayName("TransferTaskDatabaseVerticle - find child task returns correct record")
+//    @Disabled
+    public void findChildTransferTaskTest(Vertx vertx, VertxTestContext context) {
+
+        initTestTransferTaskTree(testTreeReply -> {
+            if (testTreeReply.succeeded()) {
+                TransferTask rootTask = testTreeReply.result().get(0);
+                TransferTask parentTask = testTreeReply.result().get(1);
+                TransferTask child1Task = testTreeReply.result().get(2);
+                TransferTask child2Task = testTreeReply.result().get(3);
+
+                List<TransferTask> testTasks = List.of(
+                        child1Task,
+                        child2Task);
+
+                Future<JsonObject> child1Future = futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource(), child1Task.getDest());
+                Future<JsonObject> child2Future = futureFindTransferTask(child2Task.getTenantId(), child2Task.getRootTaskId(), child2Task.getSource(), child2Task.getDest());
+
+                CompositeFuture.all(child1Future, child2Future).setHandler(rh -> {
+                    if (rh.succeeded()) {
+                        CompositeFuture composite = rh.result();
+                        context.verify(() -> {
+                            // iterate over the completed futures adding the result from the db call into our saved tasks array
+                            for (int i = 0; i < composite.size(); i++) {
+
+                                assertNotNull(composite.resultAt(i), "Child task " + i + " should not be null");
+                                assertEquals(testTasks.get(i).getUuid(), ((JsonObject)composite.resultAt(i)).getString("uuid"),
+                                        "Child returned from the db should match the test child transfer task.");
+                            }
+                            context.completeNow();
+                        });
+                    } else {
+                        // fail now. this didn't work
+                        context.failNow(rh.cause());
+                    }
+                });
+
+            } else {
+                context.failNow(testTreeReply.cause());
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - find child task returns null when no match")
+    public void findChildTransferTaskTestReturnsNullOnNoMatch(Vertx vertx, VertxTestContext context) {
+
+        initTestTransferTaskTree(testTreeReply -> {
+            if (testTreeReply.succeeded()) {
+                TransferTask child1Task = testTreeReply.result().get(2);
+                List<Future> testFutures = new ArrayList<>();
+
+                String[] prefixes = new String[]{" ", "  "};//, "prefix-",};
+                String[] suffixes = new String[]{"-suffix"};
+
+                for (String prefix: prefixes) {
+                    for (String suffix: suffixes) {
+                        testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), prefix + child1Task.getSource(), child1Task.getDest()));
+                        testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource() + suffix, child1Task.getDest()));
+                        testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), prefix + child1Task.getSource() + suffix, child1Task.getDest()));
+
+                        testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource(), prefix + child1Task.getDest()));
+                        testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource(), child1Task.getDest() + suffix));
+                        testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource(), prefix + child1Task.getDest() + suffix));
+
+                        testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), prefix + child1Task.getSource(), prefix + child1Task.getDest()));
+                        testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource() + suffix, child1Task.getDest() + suffix));
+                        testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), prefix + child1Task.getSource() + suffix, prefix + child1Task.getDest() + suffix));
+                    }
+                }
+
+                testFutures.add(futureFindTransferTask(null, child1Task.getRootTaskId(), child1Task.getSource(), child1Task.getDest()));
+                testFutures.add(futureFindTransferTask(child1Task.getTenantId(), null, child1Task.getSource(), child1Task.getDest()));
+                testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), null, child1Task.getDest()));
+                testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource(), null));
+                testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), null, null));
+                testFutures.add(futureFindTransferTask(child1Task.getTenantId(), null, null, null));
+                testFutures.add(futureFindTransferTask(null, null, null, null));
+
+                testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource().substring(0, child1Task.getSource().length()-4), child1Task.getDest()));
+                testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), UUID.randomUUID().toString(), child1Task.getDest()));
+                testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource(), UUID.randomUUID().toString()));
+                testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()));
+                testFutures.add(futureFindTransferTask(child1Task.getTenantId(), UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString()));
+                testFutures.add(futureFindTransferTask(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString()));
+
+                CompositeFuture.all(testFutures).setHandler(rh -> {
+                    if (rh.succeeded()) {
+                        CompositeFuture composite = rh.result();
+                        context.verify(() -> {
+                            // iterate over the completed futures adding the result from the db call into our saved tasks array
+                            for (int i = 0; i < composite.size(); i++) {
+                                assertNull(composite.resultAt(i), "Child task " + i + " should be null");
+                            }
+                            context.completeNow();
+                        });
+                    } else {
+                        // fail now. this didn't work
+                        context.failNow(rh.cause());
+                    }
+                });
+
+            } else {
+                context.failNow(testTreeReply.cause());
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - createOrUpdateChildTransferTask creates a new child task when none exists")
+    public void createOrUpdateChildTransferTaskCreatesNewTask(Vertx vertx, VertxTestContext context) {
+        service.create(TENANT_ID, _createTestTransferTask(), createReply -> {
+            if (createReply.succeeded()) {
+                final TransferTask rootTask = new TransferTask(createReply.result());
+                // random paths won't be present on any records in the db, even if we somehow didn't wipe all the data
+                // between tests
+                final TransferTask childTask = _createChildTestTransferTask(rootTask);
+
+                service.createOrUpdateChildTransferTask(rootTask.getTenantId(), childTask, reply -> {
+                    context.verify(() -> {
+                      assertTrue(reply.succeeded(), "create or update should have succeeded for valid file");
+                      assertNotNull(reply.result(), "create or update should return JsonObject representing new/udpated record.");
+                      assertNotNull(reply.result().getValue("id"), "returned record should have a valid id.");
+                      assertEquals(childTask.getUuid(), reply.result().getString("uuid"), "create or update should return JsonObject with same UUID as the provided task when not present in the db");
+                      assertEquals(rootTask.getUuid(), reply.result().getString("root_task"), "create or update should return JsonObject with same root task id as the provided task");
+                      context.completeNow();
+                    });
+                });
+            } else {
+                context.failNow(createReply.cause());
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - createOrUpdateChildTransferTask updates existing child task when none exists")
+    public void createOrUpdateChildTransferTaskUpdatesExistingTask(Vertx vertx, VertxTestContext context) {
+        initTestTransferTaskTree(testTreeReply -> {
+            if (testTreeReply.succeeded()) {
+                TransferTask rootTask = testTreeReply.result().get(0);
+                TransferTask child1Task = testTreeReply.result().get(2);
+
+                // random paths won't be present on any records in the db, even if we somehow didn't wipe all the data
+                // between tests
+                final TransferTask childTask = _createChildTestTransferTask(rootTask);
+                childTask.setStatus(TransferStatusType.TRANSFERRING);
+                childTask.setSource(child1Task.getSource());
+                childTask.setDest(child1Task.getDest());
+
+                service.createOrUpdateChildTransferTask(rootTask.getTenantId(), childTask, reply -> {
+                    context.verify(() -> {
+                        assertTrue(reply.succeeded(), "create or update should have succeeded for valid file");
+                        assertNotNull(reply.result(), "create or update should return JsonObject representing new/udpated record.");
+                        assertNotNull(reply.result().getValue("id"), "returned record should have a valid id.");
+                        assertEquals(childTask.getStatus().name(), reply.result().getString("status"), "create or update should return JsonObject with same status as the provided task when the task already exists");
+                        assertEquals(child1Task.getUuid(), reply.result().getString("uuid"), "create or update should return JsonObject with same UUID as the provided task when the task already exists");
+                        assertEquals(rootTask.getUuid(), reply.result().getString("root_task"), "create or update should return JsonObject with same root task when the task already exists");
+                        context.completeNow();
+                    });
+                });
+            } else {
+                context.failNow(testTreeReply.cause());
+            }
+        });
+    }
+
+
+    /**
+     * Generates a tree of {@link TransferTask} with root, parent, and 2 child tasks. The resolved value will be a list
+     * of the persisted transfer tasks to use in tests.
+     * @param handler the callback to pass the list of persisted {@link TransferTask}
+     */
+    public void initTestTransferTaskTree(Handler<AsyncResult<List<TransferTask>>> handler) {
         final TransferTask rootTransferTask = _createTestTransferTask();
         rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
         rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
@@ -187,28 +362,43 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
 
         // create the task
         final JsonObject[] testTT = new JsonObject[4];
-        service.create(rootTransferTask.getTenantId(), _createChildTestTransferTask(rootTransferTask), t0 -> {
-            testTT[0] = t0.result();
-            service.create(rootTransferTask.getTenantId(), _createChildTestTransferTask(t0.result()), t1 -> {
-                testTT[1] = t1.result();
-                service.create(rootTransferTask.getTenantId(), _createChildTestTransferTask(t1.result()), t2 -> {
-                    testTT[2] = t2.result();
-                    service.create(rootTransferTask.getTenantId(), _createChildTestTransferTask(t1.result()), t3 -> {
-                        testTT[3] = t3.result();
+        service.create(rootTransferTask.getTenantId(), rootTransferTask, rootReply -> {
+            if (rootReply.failed()) {
+                handler.handle(Future.failedFuture(rootReply.cause()));
+            } else {
+                // saved root transfer task
+                final TransferTask rootTask = new TransferTask(rootReply.result());
 
-                        // everything is now saved, we can run our queries against the saved test data
-                        service.findChildTransferTask(rootTransferTask.getTenantId(), testTT[2].getString("rootTask"), testTT[2].getString("source"), testTT[2].getString("dest"), context.succeeding(fetch -> {
-                            context.verify(() -> {
-                                assertEquals(testTT[2], fetch, "Child returned from the db should be identical to the one returned when the record was saved.");
-                            });
-                        }));
-                    });
+                service.create(rootTransferTask.getTenantId(), _createChildTestTransferTask(rootTask), parentReply -> {
+                    if (parentReply.failed()) {
+                        handler.handle(Future.failedFuture(parentReply.cause()));
+                    } else {
+                        // parent transfer task, child to rootTransferTask
+                        final TransferTask parentTask = new TransferTask(parentReply.result());
+
+                        service.create(rootTransferTask.getTenantId(), _createChildTestTransferTask(parentTask), child1Reply -> {
+                            if (child1Reply.failed()) {
+                                handler.handle(Future.failedFuture(child1Reply.cause()));
+                            } else {
+                                // leaf transfer task, child to parentTask, task under test
+                                final TransferTask child1Task = new TransferTask(child1Reply.result());
+
+                                service.create(rootTransferTask.getTenantId(), _createChildTestTransferTask(parentTask), child2Reply -> {
+                                    if (child2Reply.failed()) {
+                                        handler.handle(Future.failedFuture(child2Reply.cause()));
+                                    } else {
+                                        // leaf transfer task, child to parentTask, task under test
+                                        final TransferTask child2Task = new TransferTask(child2Reply.result());
+                                        handler.handle(Future.succeededFuture(List.of(rootTask, parentTask, child1Task, child2Task)));
+                                    }
+                                });
+                            }
+                        });
+                    }
                 });
-            });
+            }
         });
     }
-
-
 
     /**
      * Generates a TransferTask configured with the {@code parentTransferTask} as the parent. The parent's root task id is
@@ -221,6 +411,7 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
         TransferTask child = _createTestTransferTask();
 
         if (parentTransferTask != null) {
+            child.setTenantId(parentTransferTask.getTenantId());
             child.setParentTaskId(parentTransferTask.getUuid());
             child.setRootTaskId(parentTransferTask.getRootTaskId() == null ? parentTransferTask.getUuid() : parentTransferTask.getRootTaskId());
             child.setSource(parentTransferTask.getSource() + "/" + UUID.randomUUID().toString());
@@ -243,7 +434,6 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
     private TransferTask _createChildTestTransferTask(JsonObject parentTransferTask) {
         return _createChildTestTransferTask(new TransferTask(parentTransferTask));
     }
-
 
     /**
      * Async creates {@code count} transfer tasks by calling {@link #addTransferTask(TransferTask)} using a {@link CompositeFuture}.
@@ -293,6 +483,29 @@ public class TransferTaskDatabaseVerticleTest extends BaseTestCase {
                 promise.fail(resp.cause());
             } else {
                 promise.complete(resp.result());
+            }
+        });
+        return promise.future();
+    }
+
+    /**
+     * Creates a promise that resolves when a new {@link TransferTask} is fetched from calling
+     * {@link TransferTaskDatabaseService#findChildTransferTask)}
+     * @param tenantId the tenant
+     * @param rootTaskId the uuid of the root task of the child to search for
+     * @param src the source path of the child to search for
+     * @param dest the dest path of the child to search for
+     * @return a future that resolves the search results.
+     */
+    protected Future<JsonObject> futureFindTransferTask(String tenantId, String rootTaskId, String src, String dest) {
+
+        Promise<JsonObject> promise = Promise.promise();
+
+        service.findChildTransferTask(tenantId, rootTaskId, src, dest, fetch -> {
+            if (fetch.failed()) {
+                promise.fail(fetch.cause());
+            } else {
+                promise.complete(fetch.result());
             }
         });
         return promise.future();

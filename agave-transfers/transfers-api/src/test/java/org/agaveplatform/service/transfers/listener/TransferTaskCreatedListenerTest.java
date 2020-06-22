@@ -71,7 +71,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
 				.put("status", TransferStatusType.FAILED.name())
-				.put("endTime", Instant.now())
+//				.put("endTime", Instant.now())
 				.put("lastUpdated", Instant.now());
 
 		AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
@@ -106,7 +106,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid source")
-	//@Disabled
 	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) {
 
 		// get the JsonObject to pass back and forth between verticles
@@ -116,31 +115,6 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
-
-		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-		// mock out the db service so we can can isolate method logic rather than db
-		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
-
-		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
-				.put("status", TransferStatusType.FAILED.name())
-				.put("endTime", Instant.now())
-				.put("lastUpdated", Instant.now());
-
-		AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
-
-		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
-			handler.handle(expectedUpdateStatusHandler);
-			return null;
-		}).when(dbService).updateStatus( eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(transferTask.getStatus().toString()), anyObject() );
-
-		// mock the dbService getter in our mocked vertical so we don't need to use powermock
-		when(ttc.getDbService()).thenReturn(dbService);
-		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
 		try {
 			// return true on permission checks for this test
 			when(ttc.userHasMinimumRoleOnSystem(eq(transferTask.getTenantId()), eq(transferTask.getOwner()), anyString(), any(RoleType.class))).thenReturn(true);

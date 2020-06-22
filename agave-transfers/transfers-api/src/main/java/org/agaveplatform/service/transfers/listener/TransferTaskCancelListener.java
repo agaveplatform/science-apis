@@ -75,7 +75,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
         String tenantId = body.getString("tenantId");
         String uuid = body.getString("uuid");
         String status = body.getString("status");
-        String parentTaskId = body.getString("parentTaskId");
+        String parentTaskId = body.getString("parentTask");
 
         Long id = 0L;
 

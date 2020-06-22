@@ -22,20 +22,42 @@ create-transfertasks-table: |
       "tenant_id" VARCHAR(128) NOT NULL,
       "total_size" BIGINT DEFAULT 0 NOT NULL,
       "transfer_rate" DOUBLE DEFAULT 0.0 NOT NULL,
-      "parent_task" BIGINT,
-      "root_task" BIGINT,
+      "parent_task" VARCHAR(64),
+      "root_task" VARCHAR(64),
       "uuid" VARCHAR(64) NOT NULL,
       "total_files" BIGINT DEFAULT 0 NOT NULL,
       "total_skipped_files" BIGINT DEFAULT 0 NOT NULL,
-      CONSTRAINT "fk_parent_task" FOREIGN KEY ("parent_task") REFERENCES transfertasks,
-      CONSTRAINT "fk_root_task" FOREIGN KEY ("root_task") REFERENCES transfertasks,
-      CONSTRAINT "uuid" UNIQUE ("uuid")
-  );
+      CONSTRAINT "uuid_tenant" UNIQUE ("uuid", "tenant_id"));
+#  CREATE INDEX "root_task" ON "transfertasks"("root_task");
+#    CREATE INDEX uuid_tenant ON transfertasks("uuid","tenant_id")
+#    CREATE INDEX parent_task_tenant ON transfertasks("parent_task", "tenant_id")
+#  ALTER TABLE transfertasks ADD INDEX uuid_tenant ("uuid","tenant_id");
+
 get-transfertask: |
   SELECT * FROM transfertasks WHERE "uuid" = ? and "tenant_id" = ?
 create-transfertask: |
-  INSERT INTO TransferTasks
-    ("attempts", "bytes_transferred", "created", "dest", "end_time", "event_id", "last_updated", "last_attempt", "next_attempt", "owner", "source", "start_time", "status", "tenant_id", "total_size", "transfer_rate", "parent_task", "root_task", "uuid", "total_files", "total_skipped_files")
+  INSERT INTO TransferTasks (
+    "attempts",
+    "bytes_transferred",
+    "created",
+    "dest",
+    "end_time",
+    "event_id",
+    "last_updated",
+    "last_attempt",
+    "next_attempt",
+    "owner",
+    "source",
+    "start_time",
+    "status",
+    "tenant_id",
+    "total_size",
+    "transfer_rate",
+    "parent_task",
+    "root_task",
+    "uuid",
+    "total_files",
+    "total_skipped_files")
   VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 save-transfertask: |
@@ -98,7 +120,7 @@ get_transfertask_tree: |
 find_transfertask_by_root_task_id_src_dest: |
   SELECT *
   FROM transfertasks
-  WHERE "rootTask" = ?
+  WHERE "root_task" = ?
     AND "source" = ?
     AND "dest" = ?
     AND "tenant_id" = ?

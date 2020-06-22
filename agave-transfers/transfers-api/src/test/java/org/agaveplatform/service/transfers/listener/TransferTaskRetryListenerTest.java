@@ -22,7 +22,8 @@ import java.net.URI;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_RETRY;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
@@ -32,10 +33,10 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("👋 TransferRetryListenerTest test")
 //@Disabled
-class TransferRetryListenerTest  extends BaseTestCase {
+class TransferTaskRetryListenerTest extends BaseTestCase {
 
-	protected TransferRetryListener getMockTransferRetryListenerInstance(Vertx vertx) {
-		TransferRetryListener ttc = mock(TransferRetryListener.class );
+	protected TransferTaskRetryListener getMockTransferRetryListenerInstance(Vertx vertx) {
+		TransferTaskRetryListener ttc = mock(TransferTaskRetryListener.class );
 		when(ttc.getEventChannel()).thenReturn(TRANSFER_RETRY);
 		when(ttc.getVertx()).thenReturn(vertx);
 		doCallRealMethod().when(ttc).processRetryTransferTask(any(), any());
@@ -71,7 +72,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 			ctx.failNow(new Exception(bodyRec.getString("message")));
 		});
 
-		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+		TransferTaskRetryListener ta = getMockTransferRetryListenerInstance(vertx);
 
 		//ta.processRetryTransferTask(body);
 		ta.processRetryTransferTask(body, resp -> {
@@ -90,33 +91,25 @@ class TransferRetryListenerTest  extends BaseTestCase {
 
 	@Test
 	@DisplayName("Process processTransferTaskPublishesChildTasksForDirectory")
-//	@Disabled
+	@Disabled
 	public void processTransferTaskPublishesChildTasksForDirectory(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = _createTestTransferTask();
 
+		TransferTaskRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(tt.toJson());
+
 		// mock a successful outcome from the call to processRetry
 		AsyncResult<Boolean> processRetryHandler = getMockAsyncResult(true);
-		// mock the handler passed into getById
+		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
 			@SuppressWarnings("unchecked")
 			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(1, Handler.class);
 			handler.handle(processRetryHandler);
 			return null;
-		}).when(dbService).getById(any(), any(), any());
-
-
-		// mock our test class
-		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
-		// pass through the call to the method under test
-		doCallRealMethod().when(ta).processRetryTransferTask(any(), any());
-		// attach the mock db service
-		when(ta.getDbService()).thenReturn(dbService);
-		// let the test run method pass through.
-		doCallRealMethod().when(ta).processRetryTransferTask(any(JsonObject.class), any());
-
+		}).when(ta).processRetry(any(TransferTask.class), any());
 
 		ta.processRetryTransferTask(tt.toJson(), resp -> ctx.verify(() -> {
 			assertFalse(resp.succeeded(), "processRetry should fail when system is unknown");
@@ -128,7 +121,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 		}));
 
 
-		TransferTask tta = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
+		TransferTask tta = _createTestTransferTask();
 
 		JsonObject body = tta.toJson();
 
@@ -192,7 +185,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 			ctx.completeNow();
 		});
 
-		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+		TransferTaskRetryListener ta = getMockTransferRetryListenerInstance(vertx);
 
 		when(ta.getDbService().update (eq(TENANT_ID), eq(TEST_USERNAME), eq(tt), any() )).thenCallRealMethod();
 		when(ta.getDbService().getById(eq(TENANT_ID), eq(TEST_USERNAME), any() )).thenCallRealMethod();
@@ -221,7 +214,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 
 		RemoteDataClient srcClient = mock(RemoteDataClient.class);
 
-		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+		TransferTaskRetryListener ta = getMockTransferRetryListenerInstance(vertx);
 
 		doCallRealMethod().when(ta).processRetry(any(), any());
 		try {
@@ -253,7 +246,7 @@ class TransferRetryListenerTest  extends BaseTestCase {
 
 		RemoteDataClient destClient = mock(RemoteDataClient.class);
 
-		TransferRetryListener ta = getMockTransferRetryListenerInstance(vertx);
+		TransferTaskRetryListener ta = getMockTransferRetryListenerInstance(vertx);
 
 		doCallRealMethod().when(ta).processRetry(any(), any());
 
@@ -281,24 +274,35 @@ class TransferRetryListenerTest  extends BaseTestCase {
 	@Test
 	@DisplayName("TransferRetryListener - isTaskInterruptedTest")
 	void isTaskInterrupted(Vertx vertx, VertxTestContext ctx){
-		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
+		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
-		TransferRetryListener ta = new TransferRetryListener(vertx);
-
+		TransferTaskRetryListener ta = new TransferTaskRetryListener(vertx);
 		ctx.verify(() -> {
-			ta.interruptedTasks.add(tt.getUuid());
-			assertTrue(ta.taskIsNotInterrupted(tt), "UUID of tt present in interruptedTasks list should indicate task is interrupted");
-			ta.interruptedTasks.remove(tt.getUuid());
+			ta.addCancelledTask(tt.getUuid());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in cancelledTasks list should indicate task is interrupted");
+			ta.removeCancelledTask(tt.getUuid());
 
-			ta.interruptedTasks.add(tt.getParentTaskId());
-			assertTrue(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in interruptedTasks list should indicate task is interrupted");
-			ta.interruptedTasks.remove(tt.getParentTaskId());
+			ta.addPausedTask(tt.getUuid());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in pausedTasks list should indicate task is interrupted");
+			ta.removePausedTask(tt.getUuid());
 
-			ta.interruptedTasks.add(tt.getRootTaskId());
-			assertTrue(ta.taskIsNotInterrupted(tt), "UUID of tt root present in interruptedTasks list should indicate task is interrupted");
-			ta.interruptedTasks.remove(tt.getRootTaskId());
+			ta.addCancelledTask(tt.getParentTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in cancelledTasks list should indicate task is interrupted");
+			ta.removeCancelledTask(tt.getParentTaskId());
+
+			ta.addPausedTask(tt.getParentTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in pausedTasks list should indicate task is interrupted");
+			ta.removePausedTask(tt.getParentTaskId());
+
+			ta.addCancelledTask(tt.getRootTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in cancelledTasks list should indicate task is interrupted");
+			ta.removeCancelledTask(tt.getRootTaskId());
+
+			ta.addPausedTask(tt.getRootTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in pausedTasks list should indicate task is interrupted");
+			ta.removePausedTask(tt.getRootTaskId());
 
 			ctx.completeNow();
 		});

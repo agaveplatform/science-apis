@@ -7,7 +7,7 @@ _word=$( [ ${MONGODB_ADMIN_PASS} ] && echo "preset" || echo "random" )
 # accounts specified in the docker-compose file and maven settings.
 USERNAME=${MONGODB_USERNAME:-$(echo 'agaveuser')}
 USERPASS=${MONGODB_PASSWORD:-$(echo 'password')}
-DATABASE=${d:-$(echo 'api')}
+DATABASE=${MONGO_DATABASE:-$(echo 'api')}
 
 RET=1
 while [[ RET -ne 0 ]]; do

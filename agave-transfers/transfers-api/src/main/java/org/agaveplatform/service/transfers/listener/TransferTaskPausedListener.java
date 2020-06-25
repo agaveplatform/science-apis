@@ -9,7 +9,6 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
-import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -107,6 +106,8 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 
 //				logger.info("Transfer task {} status updated to PAUSED", uuid);
 //				_doPublishEvent(TRANSFERTASK_PAUSED, body);
+				logger.info("Transfer task {} status updated to PAUSED", uuid);
+//				_doPublishEvent(TRANSFERTASK_PAUSED_SYNC, body);
 
 				// pausing should only happen to root tasks
 				if (StringUtils.isNotBlank(targetTransferTask.getRootTaskId()) ||
@@ -230,7 +231,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 										getDbService().getById(tenantId, parentTaskId, parentReply -> {
 											if (parentReply.succeeded()) {
 												logger.info("Sending pause ack event for parent transfer task {}", parentTaskId);
-												_doPublishEvent(MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result());
+												getVertx().eventBus().publish(MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result());
 												handler.handle(Future.succeededFuture(true));
 											} else {
 												String message = String.format("Unable to lookup parent task %s for transfer task %s while processing a pause event. %s",
@@ -246,7 +247,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 											}
 										});
 									} else {
-										logger.debug("Skipping pause ack event for parent transfer task {} due to existing active children.", parentTaskId);
+										logger.debug("Skipping pause due to all children being in a DONE state", parentTaskId);
 										handler.handle(Future.succeededFuture(false));
 									}
 								} else {

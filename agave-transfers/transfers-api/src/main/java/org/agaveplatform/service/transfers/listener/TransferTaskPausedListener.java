@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -18,8 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_PAUSED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_SYNC;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskPausedListener extends AbstractTransferTaskListener {
@@ -59,7 +60,12 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 			logger.info("Transfer task {} pause detected.", uuid);
 
 			processPauseRequest(body, result -> {
-
+				if (result.succeeded()) {
+					logger.error("Succeeded with the processing the pause transfer event for transfer task {}", uuid);
+				} else {
+					logger.error("Error with return from pausing the event {}", uuid);
+					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+				}
 			});
 		});
 
@@ -93,34 +99,84 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 		String parentTaskId = body.getString("parentTask");
 		logger.debug("Updating status of transfer task {} to PAUSED", uuid);
 
-		getDbService().updateStatus(tenantId, uuid, TransferStatusType.PAUSED.name(), reply -> {
+		getDbService().getById(tenantId, uuid, reply -> {
 			if (reply.succeeded()) {
 
-				logger.info("Transfer task {} status updated to PAUSED", uuid);
-				_doPublishEvent(TRANSFERTASK_PAUSED, body);
+				TransferTask targetTransferTask = new TransferTask(reply.result());
+				String parentTaskId1 = targetTransferTask.getParentTaskId();
+
+//				logger.info("Transfer task {} status updated to PAUSED", uuid);
+//				_doPublishEvent(TRANSFERTASK_PAUSED, body);
 
 				// pausing should only happen to root tasks
-				if (parentTaskId != null) {
-					logger.debug("Checking parent task {} for paused transfer task {}.", parentTaskId, uuid);
-					processParentEvent(tenantId, parentTaskId, processParentReply -> {
-						if (processParentReply.succeeded()) {
-							logger.debug("Check for parent task {} for paused transfer task {} done.", parentTaskId, uuid);
-							handler.handle(Future.succeededFuture(true));
-						} else {
-							String message = String.format("Failed to process paused ack event for parent " +
-									"transfertask %s. %s", parentTaskId, processParentReply.cause());
-							logger.error(message);
-							JsonObject json = new JsonObject()
-									.put("cause", processParentReply.cause().getClass().getName())
-									.put("message", message)
-									.mergeIn(body);
+				if (StringUtils.isNotBlank(targetTransferTask.getRootTaskId()) ||
+						StringUtils.isNotBlank(targetTransferTask.getParentTaskId())) {
+					logger.info("The root id is {} and the parentID is {}", targetTransferTask.getRootTaskId(), targetTransferTask.getParentTaskId());
+					logger.debug("Checking parent task {} for paused transfer task {}.", parentTaskId1, uuid);
 
-							_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
-							handler.handle(Future.succeededFuture(false));
+					if ( StringUtils.equals(targetTransferTask.getRootTaskId(),targetTransferTask.getUuid()) ||
+							StringUtils.equals(targetTransferTask.getParentTaskId(), targetTransferTask.getUuid()) ){
+						JsonObject json = new JsonObject()
+								.put("cause", TransferException.class.getName())
+								.put("message", "Cannot have root task that matches child transfer tasks.")
+								.mergeIn(body);
+
+						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+						handler.handle(Future.succeededFuture(true));
+					}else {
+						JsonObject json = new JsonObject()
+								.put("cause", TransferException.class.getName())
+								.put("message", "Cannot cancel non-root transfer tasks.")
+								.mergeIn(body);
+
+						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+						handler.handle(Future.succeededFuture(true));
+					}
+				} else if (targetTransferTask.getStatus().isActive()) {
+					// push the event transfer task onto the queue. this will cause all listening verticals
+					// actively processing any of its children to pause their existing work and ack.
+					// the ack responses will bubble back up, eventually reaching the root, at which time,
+					// the root transfer task will be marked as paused.
+					logger.debug("Updating status of transfer task {} to {} prior to sending cancel sync event.",
+							uuid, PAUSE_WAITING.name());
+					getDbService().updateStatus(tenantId, uuid, PAUSE_WAITING.name(), updateReply -> {
+						if (updateReply.succeeded()) {
+							processParentEvent(tenantId, uuid, processParentReply -> {
+								if (processParentReply.succeeded()) {
+
+									logger.debug(String.format("Successfully updated the status of transfer task %s to %s prior " +
+													"to sending %s event.",
+											uuid, PAUSE_WAITING.name(), TRANSFERTASK_PAUSED_SYNC));
+									logger.debug("Sending cancel sync event for transfer task {} to signal children to cancel any active work.", uuid);
+									_doPublishEvent(TRANSFERTASK_PAUSED_SYNC, updateReply.result());
+									handler.handle(Future.succeededFuture(true));
+
+								} else {
+									String message = String.format("Failed to process paused ack event for parent " +
+											"transfertask %s. %s", parentTaskId, processParentReply.cause());
+									logger.error(message);
+									JsonObject json = new JsonObject()
+											.put("cause", processParentReply.cause().getClass().getName())
+											.put("message", message)
+											.mergeIn(body);
+
+									_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
+									handler.handle(Future.succeededFuture(false));
+								}
+							});
+
+						} else {
+							String msg = String.format("Unable to update the status of transfer task %s to %s prior " +
+											"to sending %s event. No sync event will be sent.",
+									uuid, CANCELING_WAITING.name(), TRANSFERTASK_CANCELED_SYNC);
+							doHandleError(updateReply.cause(), msg, body, handler);
 						}
 					});
+
 				}
 				else {
+					logger.info("Transfer task {} is not in an active state and will not be updated.", uuid);
+					logger.debug("Sending cancel sync event for transfer task {} to ensure children are cleaned up.", uuid);
 					logger.debug("Transfer task {} has no parent task to process.", uuid);
 					handler.handle(Future.succeededFuture(true));
 				}

@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -118,7 +119,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 					if ( StringUtils.equals(targetTransferTask.getRootTaskId(),targetTransferTask.getUuid()) ||
 							StringUtils.equals(targetTransferTask.getParentTaskId(), targetTransferTask.getUuid()) ){
 						JsonObject json = new JsonObject()
-								.put("cause", TransferException.class.getName())
+								.put("cause", TransferException.class.getName() )
 								.put("message", "Cannot have root task that matches child transfer tasks.")
 								.mergeIn(body);
 
@@ -126,7 +127,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 						handler.handle(Future.succeededFuture(true));
 					}else {
 						JsonObject json = new JsonObject()
-								.put("cause", TransferException.class.getName())
+								.put("cause", TransferException.class.getName() )
 								.put("message", "Cannot cancel non-root transfer tasks.")
 								.mergeIn(body);
 
@@ -296,8 +297,16 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 		// lookup parent transfertask
 		getDbService().getById(tenantId, parentTaskId, getTaskById -> {
 			if (getTaskById.succeeded()) {
-				// check whether it's active or not by its status
+
 				TransferTask parentTask = new TransferTask(getTaskById.result());
+				// double check to see if this is a child task
+				if ( !StringUtils.isEmpty(parentTask.getParentTaskId()) || !StringUtils.isEmpty(parentTask.getRootTaskId())){
+					//This is not a parent.  It is a child task
+					resultHandler.handle(Future.succeededFuture(Boolean.FALSE));
+
+				}
+
+				// check whether it's active or not by its status
 				if ( ! parentTask.getStatus().toString().isEmpty() &&
 						! List.of(CANCELLED, COMPLETED, FAILED).contains(parentTask.getStatus())) {
 

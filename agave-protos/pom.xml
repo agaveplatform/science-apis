@@ -39,6 +39,5 @@
 
     <modules>
         <module>protos-java</module>
-<!--        <module>protos-go</module>-->
     </modules>
 </project>

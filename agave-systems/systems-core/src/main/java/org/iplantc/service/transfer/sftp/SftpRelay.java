@@ -1,11 +1,12 @@
 package org.iplantc.service.transfer.sftp;
 
-import com.google.protobuf.ByteString;
 import com.sshtools.logging.LoggerFactory;
-import com.sshtools.net.ForwardingClient;
 import com.sshtools.publickey.SshPrivateKeyFile;
 import com.sshtools.publickey.SshPrivateKeyFileFactory;
-import com.sshtools.sftp.*;
+import com.sshtools.sftp.DirectoryOperation;
+import com.sshtools.sftp.SftpClient;
+import com.sshtools.sftp.SftpFile;
+import com.sshtools.sftp.SftpStatusException;
 import com.sshtools.ssh.PasswordAuthentication;
 import com.sshtools.ssh.*;
 import com.sshtools.ssh.components.ComponentManager;
@@ -15,7 +16,6 @@ import com.sshtools.ssh2.KBIAuthentication;
 import com.sshtools.ssh2.Ssh2Client;
 import com.sshtools.ssh2.Ssh2Context;
 import com.sshtools.ssh2.Ssh2PublicKeyAuthentication;
-import com.sshtools.util.UnsignedInteger64;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.agaveplatform.transfer.proto.sftp.*;
@@ -23,7 +23,6 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.globus.ftp.FileInfo;
 import org.iplantc.service.remote.ssh.MaverickSSHSubmissionClient;
 import org.iplantc.service.remote.ssh.shell.Shell;
 import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
@@ -41,7 +40,6 @@ import java.net.*;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Generic SFTP client to interact with remote systems.

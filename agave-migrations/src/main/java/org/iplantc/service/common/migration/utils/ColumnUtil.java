@@ -19,7 +19,7 @@ public class ColumnUtil {
      *  
      * @param connection the current database connectino passed in by Flyway
      * @param tableName the table to udpate
-     * @throws Exception
+     * @throws Exception whenever the prepared statement to add a unique index fails.
      */
     public static void addUniqueIndex(Connection connection, String tableName) throws Exception{
         PreparedStatement stmt = connection.prepareStatement("ALTER TABLE " + tableName + " ADD UNIQUE INDEX (`uuid`)");

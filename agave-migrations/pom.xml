@@ -271,6 +271,12 @@
             <version>${mysql-connector-java.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.github.stephenc.eaio-uuid</groupId>
+            <artifactId>uuid</artifactId>
+            <version>${uuid.version}</version>
+        </dependency>
+
         <!-- logging depedencies -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -278,10 +284,5 @@
             <version>${slf4j-log4j12.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>common-core</artifactId>
-            <version>${project.version}</version>
-        </dependency>
     </dependencies>
 </project>

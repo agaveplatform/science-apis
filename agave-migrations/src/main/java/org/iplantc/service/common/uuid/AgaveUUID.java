@@ -1,6 +1,5 @@
 package org.iplantc.service.common.uuid;
 
-import org.codehaus.plexus.util.StringUtils;
 import org.iplantc.service.common.exceptions.UUIDException;
 
 public class AgaveUUID {
@@ -36,12 +35,12 @@ public class AgaveUUID {
 	}
 
 	/**
-	 * @param resourceType
-	 * @throws UUIDException
+	 * @param resourceType the type of resource this should be. References {@link UUIDType}
+	 * @throws UUIDException if the type is invalid
 	 */
 	public void setResourceType(String resourceType) throws UUIDException
 	{
-		if (StringUtils.isEmpty(resourceType)) 
+		if (resourceType == null || resourceType.trim().equals(""))
 			throw new UUIDException("Resource type cannot be null");
 		else {
 			this.resourceType = UUIDType.getInstance(resourceType.toUpperCase());
@@ -67,18 +66,10 @@ public class AgaveUUID {
 	{
 		return uniqueId + "-" + resourceType.getCode();
 	}
-	
-	public String toLegacyString() 
+
+	public String toLegacyString()
 	{
 		return uniqueId + "-" + resourceType.name().toLowerCase();
 	}
-	
-	public String getObjectReference() throws UUIDException 
-	{
-		try {
-			return UUIDEntityLookup.getResourceUrl(resourceType, toString());
-		} catch (UUIDException e) {
-			return UUIDEntityLookup.getResourceUrl(resourceType, toLegacyString());
-		}
-	}
+
 }

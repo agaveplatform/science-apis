@@ -30,8 +30,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
- * Abstract Entity class for persisting events which occur on {@link AgaveDomainEntity}. 
- * This persists select events in a history log for a {@link AgaveDomainEntity} which 
+ * Abstract Entity class for persisting events which occur on {@link AgaveEntityEvent}.
+ * This persists select events in a history log for a {@link AbstractEntityEvent} which
  * can then be queried for more information.
  * 
  * @author dooley

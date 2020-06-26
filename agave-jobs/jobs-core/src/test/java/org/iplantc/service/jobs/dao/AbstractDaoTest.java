@@ -49,6 +49,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
@@ -136,7 +137,7 @@ public class AbstractDaoTest
      *
      * @throws Exception
      */
-    @AfterClass
+    @AfterMethod
     protected void afterMethod() throws Exception
     {
         clearJobs();
@@ -399,7 +400,8 @@ public class AbstractDaoTest
             job.setArchiveOutput(true);
             job.setArchiveSystem(archiveSystem);
             job.setArchivePath(username + "/archive/test-job-999");
-
+            job.setExecutionType(software.getExecutionType());
+            job.setSchedulerType(software.getExecutionSystem().getScheduler());
             job.setSoftwareName(software.getUniqueName());
             job.setSystem(software.getExecutionSystem().getSystemId());
             job.setBatchQueue(queue.getName());

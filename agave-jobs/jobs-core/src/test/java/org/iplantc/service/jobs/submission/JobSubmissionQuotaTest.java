@@ -132,6 +132,8 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 		job.setBatchQueue(longQueue.getEffectiveMappedName());
 		job.setArchivePath("/iplant-test/archive/test-job-999");
 		job.setCreated(new Date());
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		job.setInputsAsJsonObject(mapper.createObjectNode());
 		job.setMemoryPerNode((double)512);
 		job.setOwner(SYSTEM_OWNER);

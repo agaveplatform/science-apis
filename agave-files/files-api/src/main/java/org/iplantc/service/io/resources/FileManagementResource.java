@@ -111,7 +111,7 @@ public class FileManagementResource extends AbstractFileResource
 
     private RemoteDataClient remoteDataClient;
     private SystemDao systemDao;
-    
+
     @Override
 	public void doInit() {
     	
@@ -1586,7 +1586,7 @@ public class FileManagementResource extends AbstractFileResource
 					logicalFile.setInternalUsername(internalUsername);
 					logicalFile.setStatus(StagingTaskStatus.STAGING_COMPLETED);
 				}
-				
+
 				if (operation == MKDIR)
 				{
 					return doMkdirOperation(jsonInput, logicalFile, pm);

@@ -672,6 +672,8 @@ public class AbstractJobSubmissionTest {
         job.setArchiveOutput(true);
         job.setArchiveSystem(archiveSystem);
         job.setArchivePath(username + "/archive/test-job-999");
+        job.setExecutionType(software.getExecutionType());
+        job.setSchedulerType(software.getExecutionSystem().getScheduler());
         
         job.setSoftwareName(software.getUniqueName());
         job.setSystem(executionSystem.getSystemId());

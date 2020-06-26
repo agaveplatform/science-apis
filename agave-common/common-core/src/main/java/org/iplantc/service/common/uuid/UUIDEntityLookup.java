@@ -369,7 +369,7 @@ public class UUIDEntityLookup {
 		}
 		
 		absolutePath = absolutePath.replaceAll("/+", "/");
-		
+
 		return "/" + StringUtils.substringAfter(absolutePath, rootDir);
 	}
 

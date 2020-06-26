@@ -141,6 +141,8 @@ public class ZombieJobWatchTest extends AbstractJobSubmissionTest {
 		job.setArchivePath("/");
 		job.setArchiveSystem(software.getStorageSystem());
 		job.setCreated(new Date());
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		job.setMemoryPerNode((double) 512);
 		job.setOwner(software.getExecutionSystem().getOwner());
 		job.setProcessorsPerNode((long) 1);

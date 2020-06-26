@@ -219,6 +219,8 @@ public class StagingWatchTest extends AbstractJobSubmissionTest
 		job.setName( software.getExecutionSystem().getName() + " test");
 		job.setOwner(software.getOwner());
 		job.setArchiveOutput(false);
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		
 		job.setArchivePath(software.getOwner() + "/archive/jobs/job-" + job.getUuid());
         job.setArchiveSystem(systemDao.getGlobalDefaultSystemForTenant(RemoteSystemType.STORAGE, TenancyHelper.getCurrentTenantId()));

@@ -223,6 +223,8 @@ public class MonitoringWatchTest extends AbstractJobSubmissionTest
 		job.setOwner(software.getOwner());
 		job.setArchiveOutput(false);
 		job.setLocalJobId("23231");
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		
 		
 		job.setArchivePath(software.getOwner() + "/archive/jobs/job-" + job.getUuid());

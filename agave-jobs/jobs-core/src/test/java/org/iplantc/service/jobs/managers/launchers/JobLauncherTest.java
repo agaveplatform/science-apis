@@ -211,6 +211,8 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 		job.setArchivePath("/");
 		job.setArchiveSystem(storageSystem);
 		job.setCreated(new Date());
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		job.setMemoryPerNode((double).5);
 		job.setOwner(software.getOwner());
 		job.setProcessorsPerNode((long)1);

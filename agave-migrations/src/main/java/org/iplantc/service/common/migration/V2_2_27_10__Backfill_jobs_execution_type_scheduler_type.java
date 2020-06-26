@@ -6,9 +6,6 @@ package org.iplantc.service.common.migration;
 import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
-import org.iplantc.service.common.migration.utils.BackfillUtil;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;

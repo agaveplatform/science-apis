@@ -15,6 +15,7 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.iplantc.service.common.exceptions.SearchSyntaxException;
 import org.iplantc.service.common.util.StringToTime;
 import org.joda.time.DateTime;
+import org.joda.time.LocalTime;
 
 public abstract class AgaveResourceSearchFilter {
 	
@@ -225,7 +226,7 @@ public abstract class AgaveResourceSearchFilter {
                     }
                 }
             } else {
-                return time;
+                return new LocalTime((Date)time);
             }
         } else if (searchTermType == Long.class) {
             if (NumberUtils.isNumber(searchValue)) {

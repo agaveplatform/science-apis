@@ -72,15 +72,6 @@ public class FileListingResourcelIT extends BaseTestCase {
 		initSystems();
 	}
 
-//	@AfterClass
-//	public void afterClass() throws Exception
-//	{
-//		for(Notification n: dao.getAll()) {
-//			dao.delete(n);
-//		}
-//		comp.stop();
-//	}
-	
 	private JsonNode verifyResponse(HttpResponse response, boolean shouldSucceed)
 	throws JSONException, IOException 
 	{

@@ -55,10 +55,9 @@ public class UuidResourceImpl extends AbstractUuidResource implements
 			@QueryParam("filter") String filter)
 	throws Exception 
 	{
-		
 		logUsage(AgaveLogServiceClient.ActivityKeys.UuidLookup);
 		
-		Boolean expandResources = BooleanUtils.toBoolean(expand);
+		boolean expandResources = BooleanUtils.toBoolean(expand);
 		
 		try
 		{

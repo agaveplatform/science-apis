@@ -1,33 +1,7 @@
 package org.iplantc.service.transfer.model;
 
-import static javax.persistence.GenerationType.IDENTITY;
-
-import java.math.BigDecimal;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.persistence.Version;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -35,21 +9,25 @@ import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Filters;
 import org.hibernate.annotations.ParamDef;
-import org.iplantc.service.common.exceptions.AgaveNamespaceException;
-import org.iplantc.service.common.exceptions.EntityEventPersistenceException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uri.AgaveUriUtil;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.transfer.Settings;
-import org.iplantc.service.transfer.dao.TransferTaskEventDao;
 import org.iplantc.service.transfer.events.TransferTaskEventProcessor;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.math.BigDecimal;
+import java.net.URI;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static javax.persistence.GenerationType.IDENTITY;
 
 
 /**
@@ -377,7 +355,7 @@ public class TransferTask {
 	
 	/**
 	 * Convenience method to calculate and save the transfer rate.
-	 * calls out to {@ #calculateTransferRate()}
+	 * calls out to {link@ #calculateTransferRate()}
 	 */
 	public void updateTransferRate()
 	{
@@ -410,7 +388,7 @@ public class TransferTask {
 	}
 
 	/**
-	 * @param uuid
+	 * @param uuid the uuid to set
 	 */
 	public void setUuid(String uuid) {
 		this.uuid = uuid;
@@ -479,7 +457,7 @@ public class TransferTask {
 	}
 
 	/**
-	 * @param skippedFiles the skippedFiles to set
+	 * @param totalSkippedFiles the skippedFiles to set
 	 */
 	public void setTotalSkippedFiles(long totalSkippedFiles)
 	{
@@ -505,7 +483,7 @@ public class TransferTask {
 	/**
 	 * Formats bytes into human readable string value
 	 * @param memoryLimit in bytes
-	 * @return
+	 * @return bytes in human readable format
 	 */
 	public static String formatMaxMemory(Long memoryLimit) {
 	    return FileUtils.byteCountToDisplaySize(memoryLimit);
@@ -543,7 +521,7 @@ public class TransferTask {
      * Adds an event to the history of this transfer task. This will automatically
      * be saved with the transfer task when the transfer task is persisted.
      * 
-     * @param event
+     * @param event the event to add
      */
     @Transient
     public void addEvent(TransferTaskEvent event) {
@@ -587,37 +565,37 @@ public class TransferTask {
                 
                 ObjectNode linksObject = mapper.createObjectNode();
                 
-                linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+                linksObject.set("self", mapper.createObjectNode()
                     .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid()));
                 
-                linksObject.put("source", (ObjectNode)mapper.createObjectNode()
+                linksObject.set("source", mapper.createObjectNode()
                         .put("href", resolveEndpointToUrl(getSource())));
                 
-                linksObject.put("dest", (ObjectNode)mapper.createObjectNode()
+                linksObject.set("dest", mapper.createObjectNode()
                         .put("href", resolveEndpointToUrl(getDest())));
                 
                 if (getParentTask() != null) {
-                    linksObject.put("parentTask", mapper.createObjectNode()
+                    linksObject.set("parentTask", mapper.createObjectNode()
                         .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getParentTask().getUuid()));
                 }
                 
                 if (getRootTask() != null) {
-                    linksObject.put("rootTask", mapper.createObjectNode()
+                    linksObject.set("rootTask", mapper.createObjectNode()
                         .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getRootTask().getUuid()));
                 }
                 
 //                if (isParent()) {
-                    linksObject.put("childTasks", (ObjectNode)mapper.createObjectNode()
+                    linksObject.set("childTasks", mapper.createObjectNode()
                         .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid() + "/subtasks"));
 //                }
                 
-                linksObject.put("notifications", mapper.createObjectNode()
+                linksObject.set("notifications", mapper.createObjectNode()
                         .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_NOTIFICATION_SERVICE) + "?associatedUuid=" + getUuid()));
                 
-                linksObject.put("owner", mapper.createObjectNode()
+                linksObject.set("owner", mapper.createObjectNode()
                         .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + getOwner()));
                 
-                json.put("_links", linksObject);
+                json.set("_links", linksObject);
         }
         catch (Exception e) {
         	log.error("Error producing JSON output for transfer task " + getUuid());
@@ -631,23 +609,18 @@ public class TransferTask {
      * Converts an Agave URL to standard HTTP URL for reference in the hypermedia links 
      * included in the JSON response. If the link is not an Agave url, it is returned as is.
      * 
-     * @param String url to resolve. Can be of the form agave:// or http(s)://
+     * @param endpoint to resolve. Can be of the form agave:// or http(s)://
      * @return String resolved url
      */
     public String resolveEndpointToUrl(String endpoint) 
     {
         URI endpointUri = URI.create(endpoint);
-        try {
-            if (AgaveUriUtil.isInternalURI(endpointUri)) {
-                if (StringUtils.equalsIgnoreCase(endpointUri.getScheme(), "agave")) {
-                    return TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_IO_SERVICE) 
-                            + "/media/system/" + endpointUri.getHost() + endpointUri.getPath();
-                }
-            }
-        } catch (AgaveNamespaceException e) {
-            log.error(e.getMessage());
-        }
-        
+		if (AgaveUriUtil.isInternalURI(endpointUri)) {
+			if (StringUtils.equalsIgnoreCase(endpointUri.getScheme(), "agave")) {
+				return TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_IO_SERVICE)
+						+ "/media/system/" + endpointUri.getHost() + endpointUri.getPath();
+			}
+		}
         return endpoint;
     }
 
@@ -658,7 +631,7 @@ public class TransferTask {
             if (getTotalSize() == 0) {
                 status += " - ?%";
             } else {
-                status += " - " + Math.floor(getBytesTransferred() / getTotalSize());
+                status += " - " + Math.floor((double)(getBytesTransferred() / getTotalSize()));
             }
         }
          
@@ -675,9 +648,9 @@ public class TransferTask {
 	 * <li>1TB => 1000</li>
 	 * <li>1GB => 1</li>
 	 * </ul>
-	 * @param memoryLimit
-	 * @return
-	 * @throws NumberFormatException
+	 * @param memoryLimit a human readable memory value
+	 * @return the numeric value of the human readable memory value
+	 * @throws NumberFormatException if the human readable value is not valid
 	 */
 	public static long parseMaxMemory(String memoryLimit) throws NumberFormatException
 	{
@@ -688,16 +661,16 @@ public class TransferTask {
 		memoryLimit = memoryLimit.toUpperCase()
 				.replaceAll(",", "")
 				.replaceAll(" ", "");
-		
-		long returnValue = -1;
-	    Pattern patt = Pattern.compile("([\\d.-]+)([EPTGM]B)", Pattern.CASE_INSENSITIVE);
+
+		Pattern patt = Pattern.compile("([\\d.-]+)([EPTGM]B)", Pattern.CASE_INSENSITIVE);
 	    Matcher matcher = patt.matcher(memoryLimit);
 	    Map<String, Integer> powerMap = new HashMap<String, Integer>();
 	    powerMap.put("XB", 3);
 	    powerMap.put("PB", 2);
 	    powerMap.put("TB", 1);
 	    powerMap.put("GB", 0);
-	    if (matcher.find()) {
+		long returnValue;
+		if (matcher.find()) {
 			String number = matcher.group(1);
 			int pow = powerMap.get(matcher.group(2).toUpperCase());
 			BigDecimal bytes = new BigDecimal(number);

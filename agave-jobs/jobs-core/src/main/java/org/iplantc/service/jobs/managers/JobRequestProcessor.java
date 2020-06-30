@@ -98,8 +98,8 @@ public class JobRequestProcessor {
 		try
 		{
 		    try {
-		            Iterator<String> fields = json.fieldNames();
-		            while(fields.hasNext()) {
+				Iterator<String> fields = json.fieldNames();
+				while(fields.hasNext()) {
 		            String key = fields.next();
 
 				    if (StringUtils.isEmpty(key)) continue;

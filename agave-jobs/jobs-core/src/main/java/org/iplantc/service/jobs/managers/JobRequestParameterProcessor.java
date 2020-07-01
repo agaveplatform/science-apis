@@ -3,27 +3,22 @@
  */
 package org.iplantc.service.jobs.managers;
 
-import java.math.BigDecimal;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.apps.model.enumerations.SoftwareParameterType;
 import org.iplantc.service.apps.util.ServiceUtils;
-import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.exceptions.JobProcessingException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author dooley
@@ -90,18 +85,18 @@ public class JobRequestParameterProcessor {
 				else
 				{
 					String[] explodedParameters = null;
-					 if (jobRequestMap.get(softwareParameter.getKey()) == null) {
-						continue;
+				 	if (jobRequestMap.get(softwareParameter.getKey()) == null) {
+				 		continue;
 					} else if (jobRequestMap.get(softwareParameter.getKey()) instanceof String[]) {
-						 explodedParameters = (String[])jobRequestMap.get(softwareParameter.getKey());
+						// arrays are kept in tact as is null values will be pruned later
+				 		explodedParameters = (String[])jobRequestMap.get(softwareParameter.getKey());
 					} else if (jobRequestMap.get(softwareParameter.getKey()) instanceof String) {
 						String stringVal = (String)jobRequestMap.get(softwareParameter.getKey());
-						// an empty string value will result in an empty array, which would result in the parameter
-						// getting filtered out of the parsed job request parameter list, so we handle that case
-					 	// here to ensure a valid, empty string value can be passed to the job.
-					 	if (StringUtils.isBlank(stringVal)) {
-							explodedParameters = new String[] { (String) jobRequestMap.get(softwareParameter.getKey()) };
-						} else if (stringVal.contains(Settings.AGAVE_SERIALIZED_LIST_DELIMITER)){
+						if (StringUtils.isBlank(stringVal)) {
+							// blank values would be ignored when splitting, so we check for them first and preserve them
+							// as a single value array
+							explodedParameters = new String[]{(String) jobRequestMap.get(softwareParameter.getKey())};
+						} else if (stringVal.contains(Settings.AGAVE_SERIALIZED_LIST_DELIMITER)) {
 							// If the job is submitted via a form and the parameter is provided via a single, semicolon
 							// separated list, then the actual parameter values cannot contain a semicolon, which is
 							// undesirable given that the wrapper scripts are run as shell scripts and the parameter
@@ -112,13 +107,13 @@ public class JobRequestParameterProcessor {
 							// encoded delimiter generated when the server starts up. Here, we search for the delimiter
 							// and, if found, split the concatenated input values on that value, thereby allowing for
 							// the preservation of semicolons in the user's original parameter value.
-							explodedParameters = StringUtils.split((String)jobRequestMap.get(softwareParameter.getKey()), Settings.AGAVE_SERIALIZED_LIST_DELIMITER);
+							explodedParameters = StringUtils.splitByWholeSeparatorPreserveAllTokens(stringVal, Settings.AGAVE_SERIALIZED_LIST_DELIMITER);
 						} else {
 							// Unfortunately, we cannot reliably do this for single value form requests, so in those
 							// situations, we preserve the original value and fall back to the documented behavior of
 							// splitting on semicolon.
-						 	explodedParameters = StringUtils.split((String)jobRequestMap.get(softwareParameter.getKey()), ";");
-						 }
+						 	explodedParameters = StringUtils.splitByWholeSeparatorPreserveAllTokens(stringVal, ";");
+						}
 					} else {
 						explodedParameters = new String[] { String.valueOf(jobRequestMap.get(softwareParameter.getKey())) };
 					}
@@ -160,6 +155,12 @@ public class JobRequestParameterProcessor {
 						{
 							for (String jobParam: explodedParameters)
 							{
+								// skip null values. Since enums are strings, they can legitimately be blank or
+								// padded and still be valid values.
+								if (jobParam == null) {
+									continue;
+								}
+
 								if (validParamValues.contains(jobParam))
 								{
 									if (explodedParameters.length == 1) {
@@ -171,7 +172,7 @@ public class JobRequestParameterProcessor {
 								else
 								{
 									throw new JobProcessingException(400,
-											"Invalid parameter value, " + jobParam + ", for " + softwareParameter.getKey() +
+											"Invalid parameter value, '" + jobParam + "', for " + softwareParameter.getKey() +
 											". Value must be one of: " + ServiceUtils.explode(",  ", validParamValues));
 								}
 							}
@@ -191,28 +192,42 @@ public class JobRequestParameterProcessor {
 									". Boolean and flag parameters do not support multiple values.");
 						}
 						else if (explodedParameters.length == 0) {
+							// ignore empty arrays. This represents no value passed in by the user, so we skip adding
+							// this to the resulting job parameter object and carry on.
 							continue;
 						}
 						else
 						{
-							String inputValue = explodedParameters[0];
-							if (inputValue.toString().equalsIgnoreCase("true")
-									|| inputValue.toString().equals("1")
-									|| inputValue.toString().equalsIgnoreCase("on"))
+							// trim the param since whitespace will break the truthy check
+							String paramValue = StringUtils.stripToEmpty(explodedParameters[0]);
+							if (StringUtils.isBlank(paramValue)) {
+								// ignore empty values for flag and boolean values because they only accept truthy
+								// values. Empty strings and null values get filtered to blank in the previous stanza,
+								// and represent no value passed in by the user, so we skip adding this to the resulting
+								// job parameter object and carry on.
+								continue;
+							}
+							else if (paramValue.toString().equalsIgnoreCase("true")
+									|| paramValue.toString().equals("1")
+									|| paramValue.toString().equalsIgnoreCase("on"))
 							{
+								// case insensitive values of true, on, and 1 are truthy values.
 								getJobParameters().put(softwareParameter.getKey(), true);
 							}
-							else if (inputValue.toString().equalsIgnoreCase("false")
-									|| inputValue.toString().equals("0")
-									|| inputValue.toString().equalsIgnoreCase("off"))
+							else if (paramValue.toString().equalsIgnoreCase("false")
+									|| paramValue.toString().equals("0")
+									|| paramValue.toString().equalsIgnoreCase("off"))
 							{
+								// case insensitive values of false, off, and 0 are falsy values.
 								getJobParameters().put(softwareParameter.getKey(), false);
 							}
 							else
 							{
+								// anything else gets rejected
 								throw new JobProcessingException(400,
 										"Invalid parameter value for " + softwareParameter.getKey() +
-										". Value must be a boolean value. Use 1,0 or true/false as available values.");
+											". Value " + paramValue + " must be a case-insensitive truthy value. 1, on, or true " +
+											"evaluate to true. 0, off, and false evaluate to false.");
 							}
 						}
 					}
@@ -225,6 +240,13 @@ public class JobRequestParameterProcessor {
 						{
 							for (String jobParam: explodedParameters)
 							{
+								// trim the param since whitespace will break the numeric check
+								jobParam = StringUtils.stripToEmpty(jobParam);
+								// skip null and blank values
+								if (StringUtils.isEmpty(jobParam)) {
+									continue;
+								}
+
 								try
 								{
 									if (NumberUtils.isDigits(jobParam))
@@ -238,7 +260,7 @@ public class JobRequestParameterProcessor {
 										} else {
 											throw new JobProcessingException(400,
 													"Invalid parameter value for " + softwareParameter.getKey() +
-													". Value must match the regular expression " +
+													". Value '" + jobParam + "' must match the regular expression " +
 													softwareParameter.getValidator());
 										}
 
@@ -251,18 +273,22 @@ public class JobRequestParameterProcessor {
 											} else {
 												validatedJobParamValueArray.add(new BigDecimal(jobParam).toPlainString());
 											}
-
 										} else {
 											throw new JobProcessingException(400,
 													"Invalid parameter value for " + softwareParameter.getKey() +
-													". Value must match the regular expression " +
+													". Value '" + jobParam + "' must match the regular expression " +
 													softwareParameter.getValidator());
 										}
+									}
+									else {
+										throw new JobProcessingException(400,
+												"Invalid parameter value for " + softwareParameter.getKey() +
+														". Value '" + jobParam + "' must be a number.");
 									}
 								} catch (NumberFormatException e) {
 									throw new JobProcessingException(400,
 											"Invalid parameter value for " + softwareParameter.getKey() +
-											". Value must be a number.");
+											". Value '" + jobParam + "' must be a number.");
 								}
 							}
 
@@ -278,23 +304,16 @@ public class JobRequestParameterProcessor {
 						}
 						else
 						{
-							for (String jobParam: explodedParameters)
-							{
-								if (jobParam == null)
-								{
+							for (String jobParam: explodedParameters) {
+								if (jobParam == null) {
 									continue;
-								}
-								else
-								{
-									if (ServiceUtils.doesValueMatchValidatorRegex(jobParam, softwareParameter.getValidator()))
-									{
+								} else {
+									if (ServiceUtils.doesValueMatchValidatorRegex(jobParam, softwareParameter.getValidator())) {
 										validatedJobParamValueArray.add(jobParam);
-									}
-									else
-									{
+									} else {
 										throw new JobProcessingException(400,
 												"Invalid parameter value for " + softwareParameter.getKey() +
-												". Value must match the regular expression " +
+												". Value '" + jobParam + "' must match the regular expression " +
 												softwareParameter.getValidator());
 									}
 								}
@@ -312,8 +331,7 @@ public class JobRequestParameterProcessor {
 			catch (JobProcessingException e) {
 				throw e;
 			}
-			catch (Exception e)
-			{
+			catch (Exception e) {
 				throw new JobProcessingException(500,
 						"Failed to parse parameter "+ softwareParameter.getKey(), e);
 			}

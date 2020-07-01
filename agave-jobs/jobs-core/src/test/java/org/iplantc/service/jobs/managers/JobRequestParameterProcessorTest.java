@@ -1,9 +1,9 @@
 package org.iplantc.service.jobs.managers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.*;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.apps.model.SoftwareParameterEnumeratedValue;
@@ -15,7 +15,6 @@ import org.iplantc.service.jobs.model.JSONTestDataUtil;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -369,195 +368,21 @@ public class JobRequestParameterProcessorTest {
     }
 
 
-    @DataProvider
-    public Object[][] processJsonJobParametersProvider() throws JSONException, IOException
-    {
-        JSONObject softwareJson = getDefaultSoftwareJson();
-        JSONObject parameter = softwareJson.getJSONArray("parameters").getJSONObject(0);
-        String paramKey = parameter.getString("id");
-        String parameterDefaultValue = parameter.getJSONObject("value").getString("default");
 
-        // need to verify cardinality
-        Map<SoftwareParameterType, Object> defaultValues = new HashMap<SoftwareParameterType, Object>();
-        defaultValues.put(SoftwareParameterType.flag, Boolean.TRUE);
-        defaultValues.put(SoftwareParameterType.bool, Boolean.TRUE);
-        defaultValues.put(SoftwareParameterType.enumeration, new ObjectMapper().createArrayNode().add("ALPHA"));
-        defaultValues.put(SoftwareParameterType.number, 512L);
-        defaultValues.put(SoftwareParameterType.string, "somedefaultvalue");
-
-        Map<SoftwareParameterType, Object> validTestValues = new HashMap<SoftwareParameterType, Object>();
-        validTestValues.put(SoftwareParameterType.flag, Boolean.FALSE);
-        validTestValues.put(SoftwareParameterType.bool, Boolean.FALSE);
-        validTestValues.put(SoftwareParameterType.enumeration, new ObjectMapper().createArrayNode().add("BETA"));
-        validTestValues.put(SoftwareParameterType.number, 215L);
-        validTestValues.put(SoftwareParameterType.string, "anoteruservalue");
-
-        Map<SoftwareParameterType, List<Object>> invalidTestValues = new HashMap<SoftwareParameterType, List<Object>>();
-
-        for (SoftwareParameterType type: SoftwareParameterType.values()) {
-            List<Object> invalidValues = new ArrayList<Object>();
-            for (SoftwareParameterType validType: validTestValues.keySet()) {
-                if (type.equals(validType) ||
-                        (type.equals(SoftwareParameterType.bool) && validType.equals(SoftwareParameterType.flag)) ||
-                        (type.equals(SoftwareParameterType.flag) && validType.equals(SoftwareParameterType.bool)))
-                    continue;
-                else
-                    invalidValues.add(validTestValues.get(validType));
-            }
-            invalidTestValues.put(type, invalidValues);
-        }
-
-        List<Object[]> testData = new ArrayList<Object[]>();
-        for (SoftwareParameterType type: SoftwareParameterType.values())
-        {
-            if (type.equals(SoftwareParameterType.flag) || type.equals(SoftwareParameterType.bool))
-            {
-                                                            //	(name    type		is_default					validator	        is_required	            is_visible),    test value                                                                  expected value                                                         expected result,     failed test message
-////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false, 		true),  mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)), mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)),  pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
-////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 		true),      mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)), mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)),  pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
-////
-////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false, 		true),  mapper.createObjectNode().put(paramKey, Boolean.TRUE),                       mapper.createObjectNode().put(paramKey, true),                             pass, "User supplied value TRUE should be used for visible optional values of " + type.name() + " parameter" });
-////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 		true),      mapper.createObjectNode().put(paramKey, Boolean.TRUE),                       mapper.createObjectNode().put(paramKey, true),                             pass, "User supplied value TRUE should be used for visible required values of " + type.name() + " parameter" });
-////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false, 		true),  mapper.createObjectNode().put(paramKey, Boolean.FALSE),                      mapper.createObjectNode().put(paramKey, false),                            pass, "User supplied value false should be used for visible optional values of " + type.name() + " parameter" });
-////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 		true),      mapper.createObjectNode().put(paramKey, Boolean.FALSE),                      mapper.createObjectNode().put(paramKey, false),                            pass, "User supplied value false should be used for visible required values of " + type.name() + " parameter" });
-//            }
-//            else if (type.equals(SoftwareParameterType.enumeration))
-//            {
-//                ObjectNode expectedDefault = mapper.createObjectNode();
-//                expectedDefault.putArray(paramKey).add("ALPHA");
-//
-//                ObjectNode expectedValid = mapper.createObjectNode();
-//                expectedValid.putArray(paramKey).add("BETA");
-//                //	name			type		default					validator	required	visible
-////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false, 		true),  expectedValid,                                                              expectedValid,                                                                 pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
-////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 		true),      expectedValid,                                                              expectedValid,                                                                 pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
-//
-//                // validate all enumerated values will work
-////                SoftwareParameter p = createParameter(paramKey, type, defaultValues.get(type), null, 		true, 		true);
-////                for (String enumValue: p.getEnumeratedValuesAsList())
-////                {
-////                    expectedValid = mapper.createObjectNode();
-////                    expectedValid.putArray(paramKey).add(enumValue);
-////                    testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), null, 		true, 		true),      expectedValid,                                                              expectedValid,                                                                 pass, "Valid required enumerated value of " + enumValue + " is within the available values of " + p.getEnumeratedValues().toString() + " and should pass" });
-////                }
-//            }
-//            else
-//            {
-//                //	name			type		default					validator	required	visible
-////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false, 		true),  mapper.createObjectNode().put(paramKey,validTestValues.get(type).toString()), mapper.createObjectNode().put(paramKey,validTestValues.get(type).toString()),pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
-////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 		true),      mapper.createObjectNode().put(paramKey,validTestValues.get(type).toString()), mapper.createObjectNode().put(paramKey,validTestValues.get(type).toString()),pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
-//            }
-//
-////            if (!type.equals(SoftwareParameterType.string))
-////            {
-////                for (Object invalidValue: invalidTestValues.get(type)) {
-////                    if (!type.equals(SoftwareParameterType.number)) {
-////                        testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 	true),  mapper.createObjectNode().put(paramKey, invalidValue.toString()),           null,                                                                          fail, "Invalid required value " + invalidValue + " should fail for " + type.name() + " parameter" });
-////                        testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false,	true),  mapper.createObjectNode().put(paramKey, invalidValue.toString()),           null,                                                                          fail, "Invalid optional value " + invalidValue + " should fail for " + type.name() + " parameter" });
-////                    }
-////                }
-            }
-        }
-        return testData.toArray(new Object[][] {});
-    }
-
-    /**
-     * Tests job app parameter validation on jobs submitted as json
-     *
-     * @param appParameter the app parameter to test
-     * @param jobParameters the job parameters under test
-     * @param expectedParameters the job parameters after processing
-     * @param shouldThrowException true if processing should throw an exception
-     * @param message the message to assert for a failed test
-     */
-    @Test(enabled=false, dataProvider = "processJsonJobParametersProvider")
-    public void processJsonJobParameters(SoftwareParameter appParameter, ObjectNode jobParameters, ObjectNode expectedParameters, boolean shouldThrowException, String message) throws JobProcessingException
-    {
-        ObjectMapper mapper = new ObjectMapper();
-
-        // mock out the software object referenced in the JobRequestParameterProcessor
-        Software software = mock(Software.class);
-        when(software.getParameters()).thenReturn(List.of(appParameter));
-
-        // mock out the JobRequestParameterProcessor class
-        JobRequestParameterProcessor jobRequestParameterProcessor = mock(JobRequestParameterProcessor.class);
-        when(jobRequestParameterProcessor.getMapper()).thenReturn(mapper);
-        // mock the job parameters being loaded with teh parsed data as it's mocked and won't be present
-        jobRequestParameterProcessor.jobParameters = mapper.createObjectNode();
-        doNothing().when(jobRequestParameterProcessor).setJobParameters(any());
-        when(jobRequestParameterProcessor.getJobParameters()).thenCallRealMethod();
-
-        // return the software mock when requested
-        when(jobRequestParameterProcessor.getSoftware()).thenReturn(software);
-        // call the actual method under test
-        doCallRealMethod().when(jobRequestParameterProcessor).process(any());
-
-        try {
-            // the map of job request parameters
-            HashMap<String, Object> parameterMap = jsonObjectToMap(appParameter.getKey(), jobParameters);
-
-            // now run the test
-            jobRequestParameterProcessor.process(parameterMap);
-
-            // get the job paramaeters parsed during processing
-            ObjectNode result = jobRequestParameterProcessor.getJobParameters();
-
-            if (expectedParameters != null) {
-                // validate our expectated resulting parameter size
-                assertEquals(result.size(), expectedParameters.size(),
-                        "Unexpected number of software parameters was found in the parsed parameters.");
-                // validate existence of test parameter
-                assertTrue(result.has(appParameter.getKey()), message);
-
-                JsonNode foundParameterJson = result.get(appParameter.getKey());
-                String foundParameter;
-                if (foundParameterJson.isArray()) {
-                    foundParameter = foundParameterJson.iterator().next().asText();
-                } else {
-                    foundParameter = foundParameterJson.asText();
-                }
-
-                String expectedParameter = expectedParameters.get(appParameter.getKey()).asText();
-                if (appParameter.getType().equals(SoftwareParameterType.number)) {
-                    foundParameter = String.valueOf(Double.parseDouble(foundParameter));
-                    expectedParameter = String.valueOf(Double.parseDouble(expectedParameter));
-                } else if (appParameter.getType().equals(SoftwareParameterType.enumeration)) {
-                    expectedParameter = ((ArrayNode) expectedParameters.get(appParameter.getKey())).get(0).asText();
-                } else if (appParameter.getType().equals(SoftwareParameterType.bool) ||
-                        appParameter.getType().equals(SoftwareParameterType.flag)) {
-                    // already serialized to boolean string
-                }
-
-                Assert.assertEquals(foundParameter, expectedParameter,
-                        "Unexpected value for field " + appParameter.getKey() + " found. Expected " +
-                                expectedParameter + " found " + foundParameter);
-
-            } else {
-                assertEquals(result.size(), 0, message);
-            }
-
-        } catch (JobProcessingException e) {
-            if (!shouldThrowException) {
-                fail(message, e);
-            }
-        } catch (Exception e) {
-            fail("Failed to process job", e);
-        }
-    }
 
     @DataProvider
     private Object[][] processMultipleStringJobParametersProvider() throws Exception
     {
         ObjectMapper mapper = new ObjectMapper();
         JSONObject softwareJson = getDefaultSoftwareJson();
-        JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+        JSONObject parameter = softwareJson.getJSONArray("parameters").getJSONObject(0);
         String parameterKey = parameter.getString("id");
         String parameterDefaultValue = parameter.getJSONObject("value").getString("default");
         String parameterDefaultValue2 = parameterDefaultValue + "2";
         String parameterDefaultValue3 = parameterDefaultValue + "3";
         String parameterDefaultValue4 = parameterDefaultValue + "4";
 
-        ObjectNode emptyInputObject = mapper.createObjectNode();
+//        ObjectNode emptyInputObject = mapper.createObjectNode();
 
         ObjectNode singleValueObject = mapper.createObjectNode().put(parameterKey, parameterDefaultValue);
 
@@ -596,8 +421,8 @@ public class JobRequestParameterProcessorTest {
         boolean fail = true;
         // need to verify cardinality
         return new Object[][] {
-                { SoftwareParameterType.string, 0, 1, emptyInputObject, pass, "Empty input value should pass with minCard = 0 and maxCard = 1" },
-                { SoftwareParameterType.string, 0, 1, singleValueObject, pass, "Single input value should pass with minCard = 0 and maxCard = 1" },
+//                { SoftwareParameterType.string, 0, 1, emptyInputObject, pass, "Empty input value should pass with minCard = 0 and maxCard = 1" },
+                { SoftwareParameterType.string, 0, 1, singleValueObject, pass, "Single truthy value should pass with minCard = 0 and maxCard = 1" },
                 { SoftwareParameterType.string, 0, 1, singleValueArrayObject, pass, "Single input array should pass with minCard = 0 and maxCard = 1" },
                 { SoftwareParameterType.string, 0, 1, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 0 and maxCard = 1" },
                 { SoftwareParameterType.string, 0, 1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited input value with redundant values should pass with minCard = 0 and maxCard = 1" },
@@ -606,7 +431,7 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.string, 0, 1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array with redundant values should fail with minCard = 0 and maxCard = 1" },
                 { SoftwareParameterType.string, 0, 1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 0 and maxCard = 1" },
 
-                { SoftwareParameterType.string, 0, -1, emptyInputObject, pass, "Empty input value should pass with minCard = 0 and maxCard = -1" },
+//                { SoftwareParameterType.string, 0, -1, emptyInputObject, pass, "Empty input value should pass with minCard = 0 and maxCard = -1" },
                 { SoftwareParameterType.string, 0, -1, singleValueObject, pass, "Single input value should pass with minCard = 0 and maxCard = -1" },
                 { SoftwareParameterType.string, 0, -1, singleValueArrayObject, pass, "Single input array should pass with minCard = 0 and maxCard = -1" },
                 { SoftwareParameterType.string, 0, -1, multipleDelimitedValueObject, pass, "Multiple delimited input values should pass with minCard = 0 and maxCard = -1" },
@@ -616,7 +441,7 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.string, 0, -1, tripleValueArrayWithRedundantValueObject, pass, "Triple input value array with redundant values should pass with minCard = 0 and maxCard = -1" },
                 { SoftwareParameterType.string, 0, -1, quadValueArrayWithRedundantValueObject, pass, "Quad input value array with redundant values should pass with minCard = 0 and maxCard = -1" },
 
-                { SoftwareParameterType.string, 1, 1, emptyInputObject, fail, "Empty input value should fail with minCard = 1 and maxCard = 1" },
+//                { SoftwareParameterType.string, 1, 1, emptyInputObject, fail, "Empty input value should fail with minCard = 1 and maxCard = 1" },
                 { SoftwareParameterType.string, 1, 1, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = 1" },
                 { SoftwareParameterType.string, 1, 1, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = 1" },
                 { SoftwareParameterType.string, 1, 1, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 1 and maxCard = 1" },
@@ -626,41 +451,41 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.string, 1, 1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 1" },
                 { SoftwareParameterType.string, 1, 1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 1 and maxCard = 1" },
 
-                { SoftwareParameterType.string, 1, -1, emptyInputObject, fail, "Empty input value should fail with minCard = 1 and maxCard = -1" },
+//                { SoftwareParameterType.string, 1, -1, emptyInputObject, fail, "Empty input value should fail with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.string, 1, -1, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.string, 1, -1, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.string, 1, -1, multipleDelimitedValueObject, pass, "Multiple delimited input values should pass with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.string, 1, -1, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited inputs with redundant values should pass with minCard = 1 and maxCard = -1" },
+                { SoftwareParameterType.string, 1, -1, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited parameters with redundant values should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.string, 1, -1, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.string, 1, -1, tripleValueArrayObject, pass, "Triple input value array should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.string, 1, -1, tripleValueArrayWithRedundantValueObject, pass, "Triple input value array should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.string, 1, -1, quadValueArrayWithRedundantValueObject, pass, "Quad input value array with redundant values should pass with minCard = 1 and maxCard = -1" },
 
-                { SoftwareParameterType.string, 1, 2, emptyInputObject, fail, "Empty input value should fail with minCard = 1 and maxCard = 2" },
+//                { SoftwareParameterType.string, 1, 2, emptyInputObject, fail, "Empty input value should fail with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.string, 1, 2, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.string, 1, 2, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.string, 1, 2, multipleDelimitedValueObject, pass, "Multiple delimited input values should pass with minCard = 1 and maxCard = 2" },
-                { SoftwareParameterType.string, 1, 2, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited inputs with redundant values should pass with minCard = 1 and maxCard = 2" },
+                { SoftwareParameterType.string, 1, 2, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited parameters with redundant values should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.string, 1, 2, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.string, 1, 2, tripleValueArrayObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.string, 1, 2, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.string, 1, 2, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 1 and maxCard = 2" },
 
-                { SoftwareParameterType.string, 2, 2, emptyInputObject, fail, "Empty input value should fail with minCard = 2 and maxCard = 2" },
+//                { SoftwareParameterType.string, 2, 2, emptyInputObject, fail, "Empty input value should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.string, 2, 2, singleValueObject, fail, "Single input value should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.string, 2, 2, singleValueArrayObject, fail, "Single input array should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.string, 2, 2, multipleDelimitedValueObject, pass, "Multiple delimited input values should pass with minCard = 2 and maxCard = 2" },
-                { SoftwareParameterType.string, 2, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited inputs with redundant values should fail with minCard = 2 and maxCard = 2" },
+                { SoftwareParameterType.string, 2, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.string, 2, 2, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.string, 2, 2, tripleValueArrayObject, fail, "Triple input value array should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.string, 2, 2, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.string, 2, 2, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 2 and maxCard = 2" },
 
-                { SoftwareParameterType.string, 2, -1, emptyInputObject, fail, "Empty input value should fail with minCard = 2 and maxCard = -1" },
+//                { SoftwareParameterType.string, 2, -1, emptyInputObject, fail, "Empty input value should fail with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.string, 2, -1, singleValueObject, fail, "Single input value should fail with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.string, 2, -1, singleValueArrayObject, fail, "Single input array should fail with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.string, 2, -1, multipleDelimitedValueObject, pass, "Multiple delimited input pass should pass with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.string, 2, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited inputs with redundant values should fail with minCard = 2 and maxCard = -1" },
+                { SoftwareParameterType.string, 2, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.string, 2, -1, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.string, 2, -1, tripleValueArrayObject, pass, "Triple input value array should pass with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.string, 2, -1, tripleValueArrayWithRedundantValueObject, pass, "Triple input value array should pass with minCard = 2 and maxCard = -1" },
@@ -697,7 +522,7 @@ public class JobRequestParameterProcessorTest {
     {
         ObjectMapper mapper = new ObjectMapper();
         JSONObject softwareJson = getDefaultSoftwareJson();
-        JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+        JSONObject parameter = softwareJson.getJSONArray("parameters").getJSONObject(0);
         String parameterKey = parameter.getString("id");
         Long parameterDefaultValue = 2L;
         Long parameterDefaultValue2 = 3L;
@@ -712,6 +537,15 @@ public class JobRequestParameterProcessorTest {
 
         ObjectNode singleValueArrayObject = mapper.createObjectNode();
         singleValueArrayObject.putArray(parameterKey).add(parameterDefaultValue);
+
+        ObjectNode singleLeftPaddedValueArrayObject = mapper.createObjectNode();
+        singleLeftPaddedValueArrayObject.putArray(parameterKey).add(String.format(" %1$s", parameterDefaultValue));
+
+        ObjectNode singleRightPaddedValueArrayObject = mapper.createObjectNode();
+        singleRightPaddedValueArrayObject.putArray(parameterKey).add(String.format("%1$s ", parameterDefaultValue));
+
+        ObjectNode singleLeftRightPaddedValueArrayObject = mapper.createObjectNode();
+        singleLeftRightPaddedValueArrayObject.putArray(parameterKey).add(String.format(" %1$s ", parameterDefaultValue));
 
         ObjectNode multipleRedundantValueArrayObject = mapper.createObjectNode();
         multipleRedundantValueArrayObject.putArray(parameterKey).add(parameterDefaultValue).add(parameterDefaultValue);
@@ -764,6 +598,10 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.number, 0, -1, tripleValueArrayWithRedundantValueObject, pass, "Triple input value array with redundant values should pass with minCard = 0 and maxCard = -1" },
                 { SoftwareParameterType.number, 0, -1, quadValueArrayWithRedundantValueObject, pass, "Quad input value array with redundant values should pass with minCard = 0 and maxCard = -1" },
 
+                { SoftwareParameterType.number, 0, -1, singleLeftPaddedValueArrayObject, pass, "Single parameter array value with left padding should pass with cardinality of zero or more"},
+                { SoftwareParameterType.number, 0, -1, singleRightPaddedValueArrayObject, pass, "Single parameter array value with right padding should pass with cardinality of zero or more"},
+                { SoftwareParameterType.number, 0, -1, singleLeftRightPaddedValueArrayObject, pass, "Single parameter array value with left and right padding should pass with cardinality of zero or more"},
+
                 { SoftwareParameterType.number, 1, 1, emptyInputObject, fail, "Empty input value should fail with minCard = 1 and maxCard = 1" },
                 { SoftwareParameterType.number, 1, 1, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = 1" },
                 { SoftwareParameterType.number, 1, 1, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = 1" },
@@ -778,7 +616,7 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.number, 1, -1, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.number, 1, -1, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.number, 1, -1, multipleDelimitedValueObject, pass, "Multiple delimited input values should pass with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.number, 1, -1, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited inputs with redundant values should pass with minCard = 1 and maxCard = -1" },
+                { SoftwareParameterType.number, 1, -1, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited parameters with redundant values should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.number, 1, -1, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.number, 1, -1, tripleValueArrayObject, pass, "Triple input value array should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.number, 1, -1, tripleValueArrayWithRedundantValueObject, pass, "Triple input value array should pass with minCard = 1 and maxCard = -1" },
@@ -788,7 +626,7 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.number, 1, 2, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.number, 1, 2, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.number, 1, 2, multipleDelimitedValueObject, pass, "Multiple delimited input values should pass with minCard = 1 and maxCard = 2" },
-                { SoftwareParameterType.number, 1, 2, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited inputs with redundant values should pass with minCard = 1 and maxCard = 2" },
+                { SoftwareParameterType.number, 1, 2, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited parameters with redundant values should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.number, 1, 2, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.number, 1, 2, tripleValueArrayObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.number, 1, 2, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 2" },
@@ -798,7 +636,7 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.number, 2, 2, singleValueObject, fail, "Single input value should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.number, 2, 2, singleValueArrayObject, fail, "Single input array should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.number, 2, 2, multipleDelimitedValueObject, pass, "Multiple delimited input values should pass with minCard = 2 and maxCard = 2" },
-                { SoftwareParameterType.number, 2, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited inputs with redundant values should fail with minCard = 2 and maxCard = 2" },
+                { SoftwareParameterType.number, 2, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.number, 2, 2, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.number, 2, 2, tripleValueArrayObject, fail, "Triple input value array should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.number, 2, 2, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 2 and maxCard = 2" },
@@ -808,7 +646,7 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.number, 2, -1, singleValueObject, fail, "Single input value should fail with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.number, 2, -1, singleValueArrayObject, fail, "Single input array should fail with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.number, 2, -1, multipleDelimitedValueObject, pass, "Multiple delimited input pass should pass with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.number, 2, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited inputs with redundant values should fail with minCard = 2 and maxCard = -1" },
+                { SoftwareParameterType.number, 2, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.number, 2, -1, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.number, 2, -1, tripleValueArrayObject, pass, "Triple input value array should pass with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.number, 2, -1, tripleValueArrayWithRedundantValueObject, pass, "Triple input value array should pass with minCard = 2 and maxCard = -1" },
@@ -845,7 +683,7 @@ public class JobRequestParameterProcessorTest {
     {
         ObjectMapper mapper = new ObjectMapper();
         JSONObject softwareJson = getDefaultSoftwareJson();
-        JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+        JSONObject parameter = softwareJson.getJSONArray("parameters").getJSONObject(0);
         String parameterKey = parameter.getString("id");
         Double parameterDefaultValue = 1.1;
         Double parameterDefaultValue2 = 2.2;
@@ -925,7 +763,7 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.number, 1, -1, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.number, 1, -1, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.number, 1, -1, multipleDelimitedValueObject, pass, "Multiple delimited input values should pass with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.number, 1, -1, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited inputs with redundant values should pass with minCard = 1 and maxCard = -1" },
+                { SoftwareParameterType.number, 1, -1, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited parameters with redundant values should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.number, 1, -1, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.number, 1, -1, tripleValueArrayObject, pass, "Triple input value array should pass with minCard = 1 and maxCard = -1" },
                 { SoftwareParameterType.number, 1, -1, tripleValueArrayWithRedundantValueObject, pass, "Triple input value array should pass with minCard = 1 and maxCard = -1" },
@@ -935,7 +773,7 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.number, 1, 2, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.number, 1, 2, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.number, 1, 2, multipleDelimitedValueObject, pass, "Multiple delimited input values should pass with minCard = 1 and maxCard = 2" },
-                { SoftwareParameterType.number, 1, 2, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited inputs with redundant values should pass with minCard = 1 and maxCard = 2" },
+                { SoftwareParameterType.number, 1, 2, mulipleRedundantDelimitedValuesObject, pass, "Multiple delimited parameters with redundant values should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.number, 1, 2, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.number, 1, 2, tripleValueArrayObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 2" },
                 { SoftwareParameterType.number, 1, 2, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 2" },
@@ -945,7 +783,7 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.number, 2, 2, singleValueObject, fail, "Single input value should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.number, 2, 2, singleValueArrayObject, fail, "Single input array should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.number, 2, 2, multipleDelimitedValueObject, pass, "Multiple delimited input values should pass with minCard = 2 and maxCard = 2" },
-                { SoftwareParameterType.number, 2, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited inputs with redundant values should fail with minCard = 2 and maxCard = 2" },
+                { SoftwareParameterType.number, 2, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.number, 2, 2, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.number, 2, 2, tripleValueArrayObject, fail, "Triple input value array should fail with minCard = 2 and maxCard = 2" },
                 { SoftwareParameterType.number, 2, 2, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 2 and maxCard = 2" },
@@ -955,7 +793,7 @@ public class JobRequestParameterProcessorTest {
                 { SoftwareParameterType.number, 2, -1, singleValueObject, fail, "Single input value should fail with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.number, 2, -1, singleValueArrayObject, fail, "Single input array should fail with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.number, 2, -1, multipleDelimitedValueObject, pass, "Multiple delimited input pass should pass with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.number, 2, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited inputs with redundant values should fail with minCard = 2 and maxCard = -1" },
+                { SoftwareParameterType.number, 2, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.number, 2, -1, multipleValueArrayObject, pass, "Multiple input value array should pass with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.number, 2, -1, tripleValueArrayObject, pass, "Triple input value array should pass with minCard = 2 and maxCard = -1" },
                 { SoftwareParameterType.number, 2, -1, tripleValueArrayWithRedundantValueObject, pass, "Triple input value array should pass with minCard = 2 and maxCard = -1" },
@@ -988,122 +826,219 @@ public class JobRequestParameterProcessorTest {
      * @throws Exception
      */
     @DataProvider
-    private Object[][] processMultipleBooleanJobParametersProvider() throws Exception
-    {
+    private Object[][] processMultipleBooleanJobParametersProvider() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         JSONObject softwareJson = getDefaultSoftwareJson();
-        JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+        JSONObject parameter = softwareJson.getJSONArray("parameters").getJSONObject(0);
         String parameterKey = parameter.getString("id");
 
         ObjectNode emptyInputObject = mapper.createObjectNode();
 
-        ObjectNode singleValueObject = mapper.createObjectNode().put(parameterKey, Boolean.TRUE);
-
-        ObjectNode mulipleRedundantDelimitedValuesObject = mapper.createObjectNode().put(parameterKey, String.format("%1$s;%1$s", Boolean.TRUE));
-
-        ObjectNode singleValueArrayObject = mapper.createObjectNode();
-        singleValueArrayObject.putArray(parameterKey).add(Boolean.TRUE);
-
-        ObjectNode multipleRedundantValueArrayObject = mapper.createObjectNode();
-        multipleRedundantValueArrayObject.putArray(parameterKey).add(Boolean.TRUE).add(Boolean.TRUE);
-
-        ObjectNode multipleDelimitedValueObject = mapper.createObjectNode().put(parameterKey, String.format("%1$s;%1$s", Boolean.TRUE, Boolean.FALSE));
-
-        ObjectNode multipleValueArrayObject = mapper.createObjectNode();
-        multipleValueArrayObject.putArray(parameterKey).add(Boolean.TRUE).add(Boolean.FALSE);
-
-        ObjectNode tripleValueArrayWithRedundantValueObject = mapper.createObjectNode();
-        tripleValueArrayWithRedundantValueObject.putArray(parameterKey).add(Boolean.TRUE).add(Boolean.TRUE).add(Boolean.FALSE);
-
-        ObjectNode quadValueArrayWithRedundantValueObject = mapper.createObjectNode();
-        quadValueArrayWithRedundantValueObject.putArray(parameterKey).add(Boolean.TRUE).add(Boolean.TRUE).add(Boolean.FALSE);
-
-        ObjectNode quadValueArrayWithTwoRedundantValueObject = mapper.createObjectNode();
-        quadValueArrayWithTwoRedundantValueObject.putArray(parameterKey).add(Boolean.TRUE).add(Boolean.TRUE).add(Boolean.FALSE).add(Boolean.FALSE);
-
-        ObjectNode quadValueArrayWithSameRedundantValueObject = mapper.createObjectNode();
-        quadValueArrayWithSameRedundantValueObject.putArray(parameterKey).add(Boolean.TRUE).add(Boolean.TRUE).add(Boolean.TRUE).add(Boolean.TRUE);
-
         boolean pass = false;
         boolean fail = true;
-        // need to verify cardinality
-        return new Object[][] {
-                { SoftwareParameterType.bool, 0, 1, emptyInputObject, pass, "Empty input value should pass with minCard = 0 and maxCard = 1" },
-                { SoftwareParameterType.bool, 0, 1, singleValueObject, pass, "Single input value should pass with minCard = 0 and maxCard = 1" },
-                { SoftwareParameterType.bool, 0, 1, singleValueArrayObject, pass, "Single input array should pass with minCard = 0 and maxCard = 1" },
-                { SoftwareParameterType.bool, 0, 1, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 0 and maxCard = 1" },
-                { SoftwareParameterType.bool, 0, 1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited input value with redundant values should fail with minCard = 0 and maxCard = 1" },
-                { SoftwareParameterType.bool, 0, 1, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 0 and maxCard = 1" },
-                { SoftwareParameterType.bool, 0, 1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array with redundant values should fail with minCard = 0 and maxCard = 1" },
-                { SoftwareParameterType.bool, 0, 1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 0 and maxCard = 1" },
+        ArrayList<Object[]> testCases = new ArrayList<>();
 
-                { SoftwareParameterType.bool, 0, -1, emptyInputObject, pass, "Empty input value should pass with minCard = 0 and maxCard = -1" },
-                { SoftwareParameterType.bool, 0, -1, singleValueObject, pass, "Single input value should pass with minCard = 0 and maxCard = -1" },
-                { SoftwareParameterType.bool, 0, -1, singleValueArrayObject, pass, "Single input array should pass with minCard = 0 and maxCard = -1" },
-                { SoftwareParameterType.bool, 0, -1, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 0 and maxCard = -1" },
-                { SoftwareParameterType.bool, 0, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited input values with redundant values should fail with minCard = 0 and maxCard = -1" },
-                { SoftwareParameterType.bool, 0, -1, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 0 and maxCard = -1" },
-                { SoftwareParameterType.bool, 0, -1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array with redundant values should fail with minCard = 0 and maxCard = -1" },
-                { SoftwareParameterType.bool, 0, -1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 0 and maxCard = -1" },
+        // add all combination truthy and falsy values to check
+        for (Object truthy : List.of(Boolean.TRUE, 1L, "true", "TRUE", "tRuE", "1", "on", "ON", "oN")) {
+            for (Object falsy : List.of(Boolean.FALSE, 0L, "false", "FALSE", "fAlSe", "0", "off", "OFF", "oFf")) {
 
-                { SoftwareParameterType.bool, 1, 1, emptyInputObject, fail, "Empty input value should fail with minCard = 1 and maxCard = 1" },
-                { SoftwareParameterType.bool, 1, 1, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = 1" },
-                { SoftwareParameterType.bool, 1, 1, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = 1" },
-                { SoftwareParameterType.bool, 1, 1, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 1 and maxCard = 1" },
-                { SoftwareParameterType.bool, 1, 1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited input values with redundant values should fail with minCard = 1 and maxCard = 1" },
-                { SoftwareParameterType.bool, 1, 1, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 1 and maxCard = 1" },
-                { SoftwareParameterType.bool, 1, 1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 1" },
-                { SoftwareParameterType.bool, 1, 1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 1 and maxCard = 1" },
+                ObjectNode multipleDelimitedValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey, String.format("%1$s;%1$s", truthy, falsy)).toString());
 
-                { SoftwareParameterType.bool, 1, -1, emptyInputObject, fail, "Empty input value should fail with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.bool, 1, -1, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.bool, 1, -1, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.bool, 1, -1, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.bool, 1, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited inputs with redundant values should fail with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.bool, 1, -1, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.bool, 1, -1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.bool, 1, -1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 1 and maxCard = -1" },
+                ObjectNode multipleValueArrayObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                        new JSONArray().put(truthy).put(falsy)).toString());
 
-                { SoftwareParameterType.bool, 1, 2, emptyInputObject, fail, "Empty input value should fail with minCard = 1 and maxCard = 2" },
-                { SoftwareParameterType.bool, 1, 2, singleValueObject, pass, "Single input value should pass with minCard = 1 and maxCard = 2" },
-                { SoftwareParameterType.bool, 1, 2, singleValueArrayObject, pass, "Single input array should pass with minCard = 1 and maxCard = 2" },
-                { SoftwareParameterType.bool, 1, 2, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 1 and maxCard = 2" },
-                { SoftwareParameterType.bool, 1, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited inputs with redundant values should fail with minCard = 1 and maxCard = 2" },
-                { SoftwareParameterType.bool, 1, 2, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 1 and maxCard = 2" },
-                { SoftwareParameterType.bool, 1, 2, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 2" },
-                { SoftwareParameterType.bool, 1, 2, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 1 and maxCard = 2" },
+                ObjectNode tripleValueArrayWithRedundantValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                        new JSONArray().put(truthy).put(truthy).put(falsy)).toString());
 
-                { SoftwareParameterType.bool, 2, 2, emptyInputObject, fail, "Empty input value should fail with minCard = 2 and maxCard = 2" },
-                { SoftwareParameterType.bool, 2, 2, singleValueObject, fail, "Single input value should fail with minCard = 2 and maxCard = 2" },
-                { SoftwareParameterType.bool, 2, 2, singleValueArrayObject, fail, "Single input array should fail with minCard = 2 and maxCard = 2" },
-                { SoftwareParameterType.bool, 2, 2, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 2 and maxCard = 2" },
-                { SoftwareParameterType.bool, 2, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited inputs with redundant values should fail with minCard = 2 and maxCard = 2" },
-                { SoftwareParameterType.bool, 2, 2, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 2 and maxCard = 2" },
-                { SoftwareParameterType.bool, 2, 2, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 2 and maxCard = 2" },
-                { SoftwareParameterType.bool, 2, 2, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 2 and maxCard = 2" },
+                ObjectNode quadValueArrayWithRedundantValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                        new JSONArray().put(truthy).put(truthy).put(truthy).put(falsy)).toString());
 
-                { SoftwareParameterType.bool, 2, -1, emptyInputObject, fail, "Empty input value should fail with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.bool, 2, -1, singleValueObject, fail, "Single input value should fail with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.bool, 2, -1, singleValueArrayObject, fail, "Single input array should fail with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.bool, 2, -1, multipleDelimitedValueObject, fail, "Multiple delimited input pass should fail with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.bool, 2, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited inputs with redundant values should fail with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.bool, 2, -1, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.bool, 2, -1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 2 and maxCard = -1" },
+                ObjectNode quadValueArrayWithTwoRedundantValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                        new JSONArray().put(truthy).put(truthy).put(falsy).put(falsy)).toString());
 
-                { SoftwareParameterType.bool, 2, -1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.bool, 3, -1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 3 and maxCard = -1" },
-                { SoftwareParameterType.bool, 4, -1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 4 and maxCard = -1" },
 
-                { SoftwareParameterType.bool, 2, -1, quadValueArrayWithTwoRedundantValueObject, fail, "Quad input value array with two redundant values should fail with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.bool, 3, -1, quadValueArrayWithTwoRedundantValueObject, fail, "Quad input value array with two redundant values should fail with minCard = 3 and maxCard = -1" },
-                { SoftwareParameterType.bool, 4, -1, quadValueArrayWithTwoRedundantValueObject, fail, "Quad input value array with two redundant values should fail with minCard = 4 and maxCard = -1" },
+                testCases.addAll(Arrays.asList(
+                        new Object[]{SoftwareParameterType.bool, 0, 1, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 0 and maxCard = 1"},
+                        new Object[]{SoftwareParameterType.bool, 0, 1, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 0 and maxCard = 1"},
+                        new Object[]{SoftwareParameterType.bool, 0, 1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array with redundant values should fail with minCard = 0 and maxCard = 1"},
+                        new Object[]{SoftwareParameterType.bool, 0, 1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 0 and maxCard = 1"},
 
-                { SoftwareParameterType.bool, 0, -1, quadValueArrayWithSameRedundantValueObject, fail, "Quad input value array with same redundant value should fail with minCard = 0 and maxCard = -1" },
-                { SoftwareParameterType.bool, 1, -1, quadValueArrayWithSameRedundantValueObject, fail, "Quad input value array with same redundant value should fail with minCard = 1 and maxCard = -1" },
-                { SoftwareParameterType.bool, 2, -1, quadValueArrayWithSameRedundantValueObject, fail, "Quad input value array with same redundant value should fail with minCard = 2 and maxCard = -1" },
-                { SoftwareParameterType.bool, 3, -1, quadValueArrayWithSameRedundantValueObject, fail, "Quad input value array with same redundant value should fail with minCard = 3 and maxCard = -1" },
-                { SoftwareParameterType.bool, 4, -1, quadValueArrayWithSameRedundantValueObject, fail, "Quad input value array with same redundant value should fail with minCard = 4 and maxCard = -1" },
-        };
+                        new Object[]{SoftwareParameterType.bool, 0, -1, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 0 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 0, -1, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 0 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 0, -1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array with redundant values should fail with minCard = 0 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 0, -1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 0 and maxCard = -1"},
+
+                        new Object[]{SoftwareParameterType.bool, 1, 1, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 1 and maxCard = 1"},
+                        new Object[]{SoftwareParameterType.bool, 1, 1, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 1 and maxCard = 1"},
+                        new Object[]{SoftwareParameterType.bool, 1, 1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 1"},
+                        new Object[]{SoftwareParameterType.bool, 1, 1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 1 and maxCard = 1"},
+
+                        new Object[]{SoftwareParameterType.bool, 1, -1, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 1 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 1, -1, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 1 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 1, -1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 1, -1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 1 and maxCard = -1"},
+
+                        new Object[]{SoftwareParameterType.bool, 1, 2, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 1 and maxCard = 2"},
+                        new Object[]{SoftwareParameterType.bool, 1, 2, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 1 and maxCard = 2"},
+                        new Object[]{SoftwareParameterType.bool, 1, 2, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 1 and maxCard = 2"},
+                        new Object[]{SoftwareParameterType.bool, 1, 2, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 1 and maxCard = 2"},
+
+                        new Object[]{SoftwareParameterType.bool, 2, 2, multipleDelimitedValueObject, fail, "Multiple delimited input values should fail with minCard = 2 and maxCard = 2"},
+                        new Object[]{SoftwareParameterType.bool, 2, 2, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 2 and maxCard = 2"},
+                        new Object[]{SoftwareParameterType.bool, 2, 2, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 2 and maxCard = 2"},
+                        new Object[]{SoftwareParameterType.bool, 2, 2, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 2 and maxCard = 2"},
+
+                        new Object[]{SoftwareParameterType.bool, 2, -1, multipleDelimitedValueObject, fail, "Multiple delimited input pass should fail with minCard = 2 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 2, -1, multipleValueArrayObject, fail, "Multiple input value array should fail with minCard = 2 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 2, -1, tripleValueArrayWithRedundantValueObject, fail, "Triple input value array should fail with minCard = 2 and maxCard = -1"},
+
+                        new Object[]{SoftwareParameterType.bool, 2, -1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 2 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 3, -1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 3 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 4, -1, quadValueArrayWithRedundantValueObject, fail, "Quad input value array with redundant values should fail with minCard = 4 and maxCard = -1"},
+
+                        new Object[]{SoftwareParameterType.bool, 2, -1, quadValueArrayWithTwoRedundantValueObject, fail, "Quad input value array with two redundant values should fail with minCard = 2 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 3, -1, quadValueArrayWithTwoRedundantValueObject, fail, "Quad input value array with two redundant values should fail with minCard = 3 and maxCard = -1"},
+                        new Object[]{SoftwareParameterType.bool, 4, -1, quadValueArrayWithTwoRedundantValueObject, fail, "Quad input value array with two redundant values should fail with minCard = 4 and maxCard = -1"})
+                    );
+            }
+
+        }
+
+        // add all truthy only values
+        for (Object truthy : List.of(Boolean.TRUE,  1L, "true", "TRUE", "tRuE", "1", "on", "ON", "oN")) {
+
+            ObjectNode singleValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey, truthy).toString());
+
+            ObjectNode mulipleRedundantDelimitedValuesObject = (ObjectNode) mapper.createObjectNode().put(parameterKey, String.format("%1$s;%1$s", truthy));
+
+            ObjectNode singleValueArrayObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(truthy)).toString());
+
+            ObjectNode multipleRedundantValueArrayObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(truthy).put(truthy)).toString());
+
+            ObjectNode quadValueArrayWithSameRedundantTruthyValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(truthy).put(truthy).put(truthy).put(truthy)).toString());
+
+            testCases.addAll(Arrays.asList(
+                    new Object[]{SoftwareParameterType.bool, 0, 1, singleValueObject, pass, "Single truthy value should pass with minCard = 0 and maxCard = 1"},
+                    new Object[]{SoftwareParameterType.bool, 0, 1, singleValueArrayObject, pass, "Single truthy array should pass with minCard = 0 and maxCard = 1"},
+                    new Object[]{SoftwareParameterType.bool, 0, 1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited input value with redundant values should fail with minCard = 0 and maxCard = 1"},
+
+                    new Object[]{SoftwareParameterType.bool, 0, -1, singleValueObject, pass, "Single truthy value should pass with minCard = 0 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 0, -1, singleValueArrayObject, pass, "Single truthy array should pass with minCard = 0 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 0, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited input values with redundant values should fail with minCard = 0 and maxCard = -1"},
+
+                    new Object[]{SoftwareParameterType.bool, 1, 1, singleValueObject, pass, "Single truthy value should pass with minCard = 1 and maxCard = 1"},
+                    new Object[]{SoftwareParameterType.bool, 1, 1, singleValueArrayObject, pass, "Single truthy array should pass with minCard = 1 and maxCard = 1"},
+                    new Object[]{SoftwareParameterType.bool, 1, 1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited input values with redundant values should fail with minCard = 1 and maxCard = 1"},
+
+                    new Object[]{SoftwareParameterType.bool, 1, -1, singleValueObject, pass, "Single truthy value should pass with minCard = 1 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 1, -1, singleValueArrayObject, pass, "Single truthy array should pass with minCard = 1 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 1, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 1 and maxCard = -1"},
+
+                    new Object[]{SoftwareParameterType.bool, 1, 2, singleValueObject, pass, "Single truthy value should pass with minCard = 1 and maxCard = 2"},
+                    new Object[]{SoftwareParameterType.bool, 1, 2, singleValueArrayObject, pass, "Single truthy array should pass with minCard = 1 and maxCard = 2"},
+                    new Object[]{SoftwareParameterType.bool, 1, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 1 and maxCard = 2"},
+
+                    new Object[]{SoftwareParameterType.bool, 2, 2, singleValueObject, fail, "Single truthy value should fail with minCard = 2 and maxCard = 2"},
+                    new Object[]{SoftwareParameterType.bool, 2, 2, singleValueArrayObject, fail, "Single truthy array should fail with minCard = 2 and maxCard = 2"},
+                    new Object[]{SoftwareParameterType.bool, 2, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 2 and maxCard = 2"},
+
+                    new Object[]{SoftwareParameterType.bool, 2, -1, singleValueObject, fail, "Single truthy value should fail with minCard = 2 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 2, -1, singleValueArrayObject, fail, "Single truthy array should fail with minCard = 2 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 2, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 2 and maxCard = -1"},
+
+                    new Object[]{SoftwareParameterType.bool, 0, -1, quadValueArrayWithSameRedundantTruthyValueObject, fail, "Quad input value array with same redundant truthy value should fail with minCard = 0 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 1, -1, quadValueArrayWithSameRedundantTruthyValueObject, fail, "Quad input value array with same redundant truthy value should fail with minCard = 1 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 2, -1, quadValueArrayWithSameRedundantTruthyValueObject, fail, "Quad input value array with same redundant truthy value should fail with minCard = 2 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 3, -1, quadValueArrayWithSameRedundantTruthyValueObject, fail, "Quad input value array with same redundant truthy value should fail with minCard = 3 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 4, -1, quadValueArrayWithSameRedundantTruthyValueObject, fail, "Quad input value array with same redundant truthy value should fail with minCard = 4 and maxCard = -1"})
+                );
+        }
+
+        // add all falsy only values
+        for (Object falsy : List.of(Boolean.FALSE, 0L, "false", "FALSE", "fAlSe", "0", "off", "OFF", "oFf")) {
+
+            ObjectNode singleValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey, falsy).toString());
+
+            ObjectNode singleLeftPaddedValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(" " + falsy)).toString());
+
+            ObjectNode singleRightPaddedValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(falsy + " ")).toString());
+
+            ObjectNode singleLeftRightPaddedValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(" " + falsy + " ")).toString());
+
+            ObjectNode mulipleRedundantDelimitedValuesObject = (ObjectNode) mapper.createObjectNode().put(parameterKey, String.format("%1$s;%1$s", falsy));
+
+            ObjectNode singleValueArrayObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(falsy)).toString());
+
+            ObjectNode singleLeftPaddedValueArrayObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(" " + falsy)).toString());
+
+            ObjectNode singleRightPaddedValueArrayObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(falsy + " ")).toString());
+
+            ObjectNode singleLeftRightPaddedValueArrayObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(" " + falsy + " ")).toString());
+
+            ObjectNode multipleRedundantValueArrayObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(falsy).put(falsy)).toString());
+
+
+            ObjectNode quadValueArrayWithSameRedundantFalsyValueObject = (ObjectNode) mapper.readTree(new JSONObject().put(parameterKey,
+                    new JSONArray().put(falsy).put(falsy).put(falsy).put(falsy)).toString());
+
+            testCases.addAll(Arrays.asList(
+                    new Object[]{SoftwareParameterType.bool, 0, 1, singleValueObject, pass, "Single falsy value should pass with minCard = 0 and maxCard = 1"},
+                    new Object[]{SoftwareParameterType.bool, 0, -1, singleLeftPaddedValueObject, pass, "Single left padded falsy value should pass with minCard = 0 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 0, -1, singleRightPaddedValueObject, pass, "Single right padded falsy value should pass with minCard = 0 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 0, -1, singleLeftRightPaddedValueObject, pass, "Single left right padded falsy value should pass with minCard = 0 and maxCard = -1"},
+
+                    new Object[]{SoftwareParameterType.bool, 0, 1, singleValueArrayObject, pass, "Single falsy array should pass with minCard = 0 and maxCard = 1"},
+                    new Object[]{SoftwareParameterType.bool, 0, -1, singleLeftPaddedValueArrayObject, pass, "Single left padded falsy array value should pass with minCard = 0 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 0, -1, singleRightPaddedValueArrayObject, pass, "Single right padded falsy array value should pass with minCard = 0 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 0, -1, singleLeftRightPaddedValueArrayObject, pass, "Single left right padded falsy array value should pass with minCard = 0 and maxCard = -1"},
+
+                    new Object[]{SoftwareParameterType.bool, 0, 1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited input value with redundant values should fail with minCard = 0 and maxCard = 1"},
+
+                    new Object[]{SoftwareParameterType.bool, 0, -1, singleValueObject, pass, "Single falsy value should pass with minCard = 0 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 0, -1, singleValueArrayObject, pass, "Single falsy array should pass with minCard = 0 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 0, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited input values with redundant values should fail with minCard = 0 and maxCard = -1"},
+
+
+                    new Object[]{SoftwareParameterType.bool, 1, 1, singleValueObject, pass, "Single falsy value should pass with minCard = 1 and maxCard = 1"},
+                    new Object[]{SoftwareParameterType.bool, 1, 1, singleValueArrayObject, pass, "Single falsy array should pass with minCard = 1 and maxCard = 1"},
+                    new Object[]{SoftwareParameterType.bool, 1, 1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited input values with redundant values should fail with minCard = 1 and maxCard = 1"},
+
+                    new Object[]{SoftwareParameterType.bool, 1, -1, singleValueObject, pass, "Single falsy value should pass with minCard = 1 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 1, -1, singleValueArrayObject, pass, "Single falsy array should pass with minCard = 1 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 1, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 1 and maxCard = -1"},
+
+                    new Object[]{SoftwareParameterType.bool, 1, 2, singleValueObject, pass, "Single falsy value should pass with minCard = 1 and maxCard = 2"},
+                    new Object[]{SoftwareParameterType.bool, 1, 2, singleValueArrayObject, pass, "Single falsy array should pass with minCard = 1 and maxCard = 2"},
+                    new Object[]{SoftwareParameterType.bool, 1, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 1 and maxCard = 2"},
+
+                    new Object[]{SoftwareParameterType.bool, 2, 2, singleValueObject, fail, "Single falsy value should fail with minCard = 2 and maxCard = 2"},
+                    new Object[]{SoftwareParameterType.bool, 2, 2, singleValueArrayObject, fail, "Single falsy array should fail with minCard = 2 and maxCard = 2"},
+                    new Object[]{SoftwareParameterType.bool, 2, 2, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 2 and maxCard = 2"},
+
+                    new Object[]{SoftwareParameterType.bool, 2, -1, singleValueObject, fail, "Single falsy value should fail with minCard = 2 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 2, -1, singleValueArrayObject, fail, "Single falsy array should fail with minCard = 2 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 2, -1, mulipleRedundantDelimitedValuesObject, fail, "Multiple delimited parameters with redundant values should fail with minCard = 2 and maxCard = -1"},
+
+                    new Object[]{SoftwareParameterType.bool, 0, -1, quadValueArrayWithSameRedundantFalsyValueObject, fail, "Quad input value array with same redundant falsy value should fail with minCard = 0 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 1, -1, quadValueArrayWithSameRedundantFalsyValueObject, fail, "Quad input value array with same redundant falsy value should fail with minCard = 1 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 2, -1, quadValueArrayWithSameRedundantFalsyValueObject, fail, "Quad input value array with same redundant falsy value should fail with minCard = 2 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 3, -1, quadValueArrayWithSameRedundantFalsyValueObject, fail, "Quad input value array with same redundant falsy value should fail with minCard = 3 and maxCard = -1"},
+                    new Object[]{SoftwareParameterType.bool, 4, -1, quadValueArrayWithSameRedundantFalsyValueObject, fail, "Quad input value array with same redundant falsy value should fail with minCard = 4 and maxCard = -1"})
+                );
+        }
+
+        return testCases.toArray(new Object[][]{});
     }
 
     /**
@@ -1115,9 +1050,9 @@ public class JobRequestParameterProcessorTest {
      * @param shouldThrowException true if processing should throw an exception
      * @param message the message to assert for a failed test
      */
-    private void _processMultipleJobParameters(SoftwareParameterType type, int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) {
+    private ObjectNode _processMultipleJobParameters(SoftwareParameterType type, int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message) {
         ObjectMapper mapper = new ObjectMapper();
-
+        ObjectNode result = null;
         // mock out the software object referenced in the JobRequestParameterProcessor
         Software software = mock(Software.class);
         try {
@@ -1149,10 +1084,12 @@ public class JobRequestParameterProcessorTest {
             //        when(jobRequestParameterProcessor.getSoftware()).thenReturn(software);
             //        when(software.getParameters()).thenReturn(softwareParameters);
 
-            _genericProcessMultiple(softwareParameters, testParameter.getKey(), jobParameters, shouldThrowException, message);
+            result = _genericProcessMultiple(softwareParameters, testParameter.getKey(), jobParameters, shouldThrowException, message);
         } catch (JSONException e) {
             fail("Failed to parse software json for test parameters", e);
         }
+
+        return result;
 
     }
 
@@ -1210,7 +1147,7 @@ public class JobRequestParameterProcessorTest {
      * @param shouldThrowException true if processing should throw an exception
      * @param message the message to assert for a failed test
      */
-    @Test(enabled=false, dataProvider = "processMultipleBooleanJobParametersProvider")
+    @Test(enabled=true, dataProvider = "processMultipleBooleanJobParametersProvider")
     public void processMultipleBooleanJobParameters(SoftwareParameterType type, int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message)
     {
         _processMultipleJobParameters(SoftwareParameterType.bool, minCardinality, maxCardinality, jobParameters, shouldThrowException, message);
@@ -1234,7 +1171,7 @@ public class JobRequestParameterProcessorTest {
 
     /**
      * Test data for null string numeric values
-     * @return
+     * @return the test data
      * @throws Exception
      */
     @DataProvider
@@ -1245,122 +1182,6 @@ public class JobRequestParameterProcessorTest {
         String parameterKey = parameter.getString("id");
         String parameterDefaultValue = parameter.getJSONObject("value").getString("default");
         String parameterDefaultValue2 = parameterDefaultValue + "2";
-
-        ObjectNode singleNullValueObject = mapper.createObjectNode().putNull(parameterKey);
-
-        ObjectNode singleNullValueArrayObject = mapper.createObjectNode();
-        singleNullValueArrayObject.putArray(parameterKey).addNull();
-
-        ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(parameterKey, String.format("%1$s;", parameterDefaultValue, parameterDefaultValue2));
-
-        ObjectNode multipleValueArrayWithNullObject = mapper.createObjectNode();
-        multipleValueArrayWithNullObject.putArray(parameterKey).add(parameterDefaultValue).addNull();
-
-        ObjectNode tripleValueNullArrayObject = mapper.createObjectNode();
-        tripleValueNullArrayObject.putArray(parameterKey).add(parameterDefaultValue).add(parameterDefaultValue2).addNull();
-
-        ObjectNode tripleValueArrayWithRedundantValueAndOneNullObject = mapper.createObjectNode();
-        tripleValueArrayWithRedundantValueAndOneNullObject.putArray(parameterKey).add(parameterDefaultValue).add(parameterDefaultValue).addNull();
-
-        ObjectNode tripleValueArrayWithValueAndRedundantNullObject = mapper.createObjectNode();
-        tripleValueArrayWithValueAndRedundantNullObject.putArray(parameterKey).add(parameterDefaultValue).addNull().addNull();
-
-        ObjectNode tripleValueArrayWithRedundantNullObject = mapper.createObjectNode();
-        tripleValueArrayWithRedundantNullObject.putArray(parameterKey).addNull().addNull().addNull();
-
-        ObjectNode quadValueArrayWithRedundantValueObject = mapper.createObjectNode();
-        quadValueArrayWithRedundantValueObject.putArray(parameterKey).add(parameterDefaultValue).add(parameterDefaultValue).add(parameterDefaultValue2).addNull();
-
-        boolean pass = false;
-        boolean fail = true;
-        // need to verify cardinality
-        return new Object[][] {
-//                { 0, 1, singleNullValueObject, pass, "Null parameter value should pass with minCard = 0 and maxCard = 1" },
-//                { 0, 1, singleNullValueArrayObject, pass, "Single null parameter array should pass with minCard = 0 and maxCard = 1" },
-//                { 0, 1, multipleDelimitedNullValueObject, fail, "Multiple delimited parameter values with null should fail with minCard = 0 and maxCard = 1" },
-//                { 0, 1, multipleValueArrayWithNullObject, fail, "Multiple parameter value array with null value should pass with minCard = 0 and maxCard = 1" },
-//                { 0, 1, tripleValueNullArrayObject, fail, "Triple parameter value array with one null should fail with minCard = 0 and maxCard = 1" },
-//                { 0, 1, tripleValueArrayWithRedundantValueAndOneNullObject, fail, "Triple parameter value array with redundant value and null should fail with minCard = 0 and maxCard = 1" },
-//                { 0, 1, tripleValueArrayWithValueAndRedundantNullObject, fail, "Triple parameter value array with one value and redundant null should fail with minCard = 0 and maxCard = 1" },
-//                { 0, 1, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 0 and maxCard = 1" },
-//                { 0, 1, quadValueArrayWithRedundantValueObject, fail, "Quad parameter value array with redundant values and null should fail with minCard = 0 and maxCard = 1" },
-//
-//                { 0, -1, singleNullValueObject, pass, "Null parameter value should pass with minCard = 0 and maxCard = -1" },
-//                { 0, -1, singleNullValueArrayObject, pass, "Single null parameter array should pass with minCard = 0 and maxCard = -1" },
-//                { 0, -1, multipleDelimitedNullValueObject, pass, "Multiple delimited parameter values with null should pass with minCard = 0 and maxCard = -1" },
-//                { 0, -1, multipleValueArrayWithNullObject, pass, "Multiple parameter value array with null value should pass with minCard = 0 and maxCard = -1" },
-//                { 0, -1, tripleValueNullArrayObject, pass, "Triple parameter value array with one null should pass with minCard = 0 and maxCard = -1" },
-//                { 0, -1, tripleValueArrayWithRedundantValueAndOneNullObject, pass, "Triple parameter value array with redundant value and null should pass with minCard = 0 and maxCard = -1" },
-//                { 0, -1, tripleValueArrayWithValueAndRedundantNullObject, pass, "Triple parameter value array with one value and redundant null should pass with minCard = 0 and maxCard = -1" },
-//                { 0, -1, tripleValueArrayWithRedundantNullObject, pass, "Triple parameter value array with redundant null values should pass with minCard = 0 and maxCard = -1" },
-//                { 0, -1, quadValueArrayWithRedundantValueObject, pass, "Quad parameter value array with redundant values and null should pass with minCard = 0 and maxCard = -1" },
-//
-//                { 1, 1, singleNullValueObject, fail, "Null parameter value should fail with minCard = 1 and maxCard = 1" },
-//                { 1, 1, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 1 and maxCard = 1" },
-//                { 1, 1, multipleDelimitedNullValueObject, fail, "Multiple delimited parameter values with null should fail with minCard = 1 and maxCard = 1" },
-//                { 1, 1, multipleValueArrayWithNullObject, fail, "Multiple parameter value array with null value should fail with minCard = 1 and maxCard = 1" },
-//                { 1, 1, tripleValueNullArrayObject, fail, "Triple parameter value array with one null should fail with minCard = 1 and maxCard = 1" },
-//                { 1, 1, tripleValueArrayWithRedundantValueAndOneNullObject, fail, "Triple parameter value array with redundant value and null should fail with minCard = 1 and maxCard = 1" },
-//                { 1, 1, tripleValueArrayWithValueAndRedundantNullObject, fail, "Triple parameter value array with one value and redundant null should fail with minCard = 1 and maxCard = 1" },
-//                { 1, 1, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 1 and maxCard = 1" },
-//                { 1, 1, quadValueArrayWithRedundantValueObject, fail, "Quad parameter value array with redundant values and null should fail with minCard = 1 and maxCard = 1" },
-//
-//                { 1, -1, singleNullValueObject, fail, "Null parameter value should fail with minCard = 1 and maxCard = -1" },
-//                { 1, -1, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 1 and maxCard = -1" },
-//                { 1, -1, multipleDelimitedNullValueObject, pass, "Multiple delimited parameter values with null should pass with minCard = 1 and maxCard = -1" },
-//                { 1, -1, multipleValueArrayWithNullObject, pass, "Multiple parameter value array with null value should pass with minCard = 1 and maxCard = -1" },
-//                { 1, -1, tripleValueNullArrayObject, pass, "Triple parameter value array with one null should pass with minCard = 1 and maxCard = -1" },
-//                { 1, -1, tripleValueArrayWithRedundantValueAndOneNullObject, pass, "Triple parameter value array with redundant value and null should pass with minCard = 1 and maxCard = -1" },
-//                { 1, -1, tripleValueArrayWithValueAndRedundantNullObject, pass, "Triple parameter value array with one value and redundant null should pass with minCard = 1 and maxCard = -1" },
-//                { 1, -1, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 1 and maxCard = -1" },
-//                { 1, -1, quadValueArrayWithRedundantValueObject, pass, "Quad parameter value array with redundant values and null should pass with minCard = 1 and maxCard = -1" },
-//
-//                { 1, 2, singleNullValueObject, fail, "Null parameter value should fail with minCard = 1 and maxCard = 2" },
-//                { 1, 2, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 1 and maxCard = 2" },
-//                { 1, 2, multipleDelimitedNullValueObject, pass, "Multiple delimited parameter values with null should pass with minCard = 1 and maxCard = 2" },
-//                { 1, 2, multipleValueArrayWithNullObject, pass, "Multiple parameter value array with null value should pass with minCard = 1 and maxCard = 2" },
-//                { 1, 2, tripleValueNullArrayObject, fail, "Triple parameter value array with one null should pass with minCard = 1 and maxCard = 2" },
-//                { 1, 2, tripleValueArrayWithRedundantValueAndOneNullObject, fail, "Triple parameter value array with redundant value and null should fail with minCard = 1 and maxCard = 2" },
-//                { 1, 2, tripleValueArrayWithValueAndRedundantNullObject, fail, "Triple parameter value array with one value and redundant null should fail with minCard = 1 and maxCard = 2" },
-//                { 1, 2, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 1 and maxCard = 2" },
-//                { 1, 2, quadValueArrayWithRedundantValueObject, fail, "Quad parameter value array with redundant values and null should fail with minCard = 1 and maxCard = 2" },
-//
-//                { 2, 2, singleNullValueObject, fail, "Null parameter value should fail with minCard = 2 and maxCard = 2" },
-//                { 2, 2, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 2 and maxCard = 2" },
-//                { 2, 2, multipleDelimitedNullValueObject, fail, "Multiple delimited parameter values with null should fail with minCard = 2 and maxCard = 2" },
-//                { 2, 2, multipleValueArrayWithNullObject, fail, "Multiple parameter value array with null value should fail with minCard = 2 and maxCard = 2" },
-//                { 2, 2, tripleValueNullArrayObject, fail, "Triple parameter value array with one null should fail with minCard = 2 and maxCard = 2" },
-//                { 2, 2, tripleValueArrayWithRedundantValueAndOneNullObject, fail, "Triple parameter value array with redundant value and null should fail with minCard = 2 and maxCard = 2" },
-//                { 2, 2, tripleValueArrayWithValueAndRedundantNullObject, fail, "Triple parameter value array with one value and redundant null should fail with minCard = 2 and maxCard = 2" },
-//                { 2, 2, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 2 and maxCard = 2" },
-//                { 2, 2, quadValueArrayWithRedundantValueObject, fail, "Quad parameter value array with redundant values and null should fail with minCard = 2 and maxCard = 2" },
-//
-//                { 2, -1, singleNullValueObject, fail, "Null parameter value should fail with minCard = 2 and maxCard = -1" },
-//                { 2, -1, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 2 and maxCard = -1" },
-//                { 2, -1, multipleDelimitedNullValueObject, fail, "Multiple delimited parameter pass should fail with minCard = 2 and maxCard = -1" },
-//                { 2, -1, multipleValueArrayWithNullObject, fail, "Multiple parameter value array with null value should fail with minCard = 2 and maxCard = -1" },
-            { 2, -1, tripleValueNullArrayObject, pass, "Triple parameter value array with one null should pass with minCard = 2 and maxCard = -1" },
-//                { 2, -1, tripleValueArrayWithRedundantValueAndOneNullObject, fail, "Triple parameter value array with redundant value and null should fail with minCard = 2 and maxCard = -1" },
-//                { 2, -1, tripleValueArrayWithValueAndRedundantNullObject, fail, "Triple parameter value array with one value and redundant null should fail with minCard = 2 and maxCard = -1" },
-//                { 2, -1, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 2 and maxCard = -1" },
-            { 2, -1, quadValueArrayWithRedundantValueObject, pass, "Quad parameter value array with redundant values and null should pass with minCard = 2 and maxCard = -1" },
-        };
-    }
-
-    /**
-     * Test data for null long numeric values
-     * @return
-     * @throws Exception
-     */
-    @DataProvider
-    private Object[][] processMultipleNullLongJobParametersProvider() throws Exception
-    {
-        ObjectMapper mapper = new ObjectMapper();
-        JSONObject softwareJson = getDefaultSoftwareJson();
-        JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
-        String parameterKey = parameter.getString("id");
-        Long parameterDefaultValue = 2L;
-        Long parameterDefaultValue2 = 3L;
 
         ObjectNode singleNullValueObject = mapper.createObjectNode().putNull(parameterKey);
 
@@ -1464,18 +1285,19 @@ public class JobRequestParameterProcessorTest {
     }
 
     /**
-     * Test data for null double numeric values
-     * @return test data
-     * @throws Exception
+     * Test data for null long numeric values
+     * @return test cases
+     * @throws Exception 
      */
     @DataProvider
-    private Object[][] processMultipleNullDoubleJobParametersProvider() throws JSONException {
+    private Object[][] processMultipleNullLongJobParametersProvider() throws Exception
+    {
         ObjectMapper mapper = new ObjectMapper();
         JSONObject softwareJson = getDefaultSoftwareJson();
-        JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+        JSONObject parameter = softwareJson.getJSONArray("parameters").getJSONObject(0);
         String parameterKey = parameter.getString("id");
-        Double parameterDefaultValue = 2.2;
-        Double parameterDefaultValue2 = 3.3;
+        Long parameterDefaultValue = 2L;
+        Long parameterDefaultValue2 = 3L;
 
         ObjectNode singleNullValueObject = mapper.createObjectNode().putNull(parameterKey);
 
@@ -1486,6 +1308,15 @@ public class JobRequestParameterProcessorTest {
 
         ObjectNode multipleValueArrayWithNullObject = mapper.createObjectNode();
         multipleValueArrayWithNullObject.putArray(parameterKey).add(parameterDefaultValue).addNull();
+
+        ObjectNode multipleLeftPaddedValueArrayObject = mapper.createObjectNode();
+        multipleLeftPaddedValueArrayObject.putArray(parameterKey).add(String.format(" %1$s", parameterDefaultValue)).addNull();
+
+        ObjectNode multipleRightPaddedValueArrayObject = mapper.createObjectNode();
+        multipleRightPaddedValueArrayObject.putArray(parameterKey).add(String.format("%1$s ", parameterDefaultValue)).addNull();
+
+        ObjectNode multipleLeftRightPaddedValueArrayObject = mapper.createObjectNode();
+        multipleLeftRightPaddedValueArrayObject.putArray(parameterKey).add(String.format(" %1$s ", parameterDefaultValue)).addNull();
 
         ObjectNode tripleValueNullArrayObject = mapper.createObjectNode();
         tripleValueNullArrayObject.putArray(parameterKey).add(parameterDefaultValue).add(parameterDefaultValue2).addNull();
@@ -1525,6 +1356,138 @@ public class JobRequestParameterProcessorTest {
                 { 0, -1, tripleValueArrayWithValueAndRedundantNullObject, pass, "Triple parameter value array with one value and redundant null should pass with minCard = 0 and maxCard = -1" },
                 { 0, -1, tripleValueArrayWithRedundantNullObject, pass, "Triple parameter value array with redundant null values should pass with minCard = 0 and maxCard = -1" },
                 { 0, -1, quadValueArrayWithRedundantValueObject, pass, "Quad parameter value array with redundant values and null should pass with minCard = 0 and maxCard = -1" },
+
+                { 0, -1, multipleLeftPaddedValueArrayObject, pass, "Multiple parameter array value with left padding and a null value should pass with cardinality of zero or more"},
+                { 0, -1, multipleRightPaddedValueArrayObject, pass, "Single parameter array value with right padding and a null value  should pass with cardinality of zero or more"},
+                { 0, -1, multipleLeftRightPaddedValueArrayObject, pass, "Single parameter array value with left and right padding and a null value  should pass with cardinality of zero or more"},
+
+                { 1, 1, singleNullValueObject, fail, "Null parameter value should fail with minCard = 1 and maxCard = 1" },
+                { 1, 1, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 1 and maxCard = 1" },
+                { 1, 1, multipleDelimitedNullValueObject, fail, "Multiple delimited parameter values with null should fail with minCard = 1 and maxCard = 1" },
+                { 1, 1, multipleValueArrayWithNullObject, fail, "Multiple parameter value array with null value should fail with minCard = 1 and maxCard = 1" },
+                { 1, 1, tripleValueNullArrayObject, fail, "Triple parameter value array with one null should fail with minCard = 1 and maxCard = 1" },
+                { 1, 1, tripleValueArrayWithRedundantValueAndOneNullObject, fail, "Triple parameter value array with redundant value and null should fail with minCard = 1 and maxCard = 1" },
+                { 1, 1, tripleValueArrayWithValueAndRedundantNullObject, fail, "Triple parameter value array with one value and redundant null should fail with minCard = 1 and maxCard = 1" },
+                { 1, 1, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 1 and maxCard = 1" },
+                { 1, 1, quadValueArrayWithRedundantValueObject, fail, "Quad parameter value array with redundant values and null should fail with minCard = 1 and maxCard = 1" },
+
+                { 1, -1, singleNullValueObject, fail, "Null parameter value should fail with minCard = 1 and maxCard = -1" },
+                { 1, -1, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 1 and maxCard = -1" },
+                { 1, -1, multipleDelimitedNullValueObject, pass, "Multiple delimited parameter values with null should pass with minCard = 1 and maxCard = -1" },
+                { 1, -1, multipleValueArrayWithNullObject, pass, "Multiple parameter value array with null value should pass with minCard = 1 and maxCard = -1" },
+                { 1, -1, tripleValueNullArrayObject, pass, "Triple parameter value array with one null should pass with minCard = 1 and maxCard = -1" },
+                { 1, -1, tripleValueArrayWithRedundantValueAndOneNullObject, pass, "Triple parameter value array with redundant value and null should pass with minCard = 1 and maxCard = -1" },
+                { 1, -1, tripleValueArrayWithValueAndRedundantNullObject, pass, "Triple parameter value array with one value and redundant null should pass with minCard = 1 and maxCard = -1" },
+                { 1, -1, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 1 and maxCard = -1" },
+                { 1, -1, quadValueArrayWithRedundantValueObject, pass, "Quad parameter value array with redundant values and null should pass with minCard = 1 and maxCard = -1" },
+
+                { 1, 2, singleNullValueObject, fail, "Null parameter value should fail with minCard = 1 and maxCard = 2" },
+                { 1, 2, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 1 and maxCard = 2" },
+                { 1, 2, multipleDelimitedNullValueObject, pass, "Multiple delimited parameter values with null should pass with minCard = 1 and maxCard = 2" },
+                { 1, 2, multipleValueArrayWithNullObject, pass, "Multiple parameter value array with null value should pass with minCard = 1 and maxCard = 2" },
+                { 1, 2, tripleValueNullArrayObject, fail, "Triple parameter value array with one null should pass with minCard = 1 and maxCard = 2" },
+                { 1, 2, tripleValueArrayWithRedundantValueAndOneNullObject, fail, "Triple parameter value array with redundant value and null should fail with minCard = 1 and maxCard = 2" },
+                { 1, 2, tripleValueArrayWithValueAndRedundantNullObject, fail, "Triple parameter value array with one value and redundant null should fail with minCard = 1 and maxCard = 2" },
+                { 1, 2, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 1 and maxCard = 2" },
+                { 1, 2, quadValueArrayWithRedundantValueObject, fail, "Quad parameter value array with redundant values and null should fail with minCard = 1 and maxCard = 2" },
+
+                { 2, 2, singleNullValueObject, fail, "Null parameter value should fail with minCard = 2 and maxCard = 2" },
+                { 2, 2, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 2 and maxCard = 2" },
+                { 2, 2, multipleDelimitedNullValueObject, fail, "Multiple delimited parameter values with null should fail with minCard = 2 and maxCard = 2" },
+                { 2, 2, multipleValueArrayWithNullObject, fail, "Multiple parameter value array with null value should fail with minCard = 2 and maxCard = 2" },
+                { 2, 2, tripleValueNullArrayObject, fail, "Triple parameter value array with one null should fail with minCard = 2 and maxCard = 2" },
+                { 2, 2, tripleValueArrayWithRedundantValueAndOneNullObject, fail, "Triple parameter value array with redundant value and null should fail with minCard = 2 and maxCard = 2" },
+                { 2, 2, tripleValueArrayWithValueAndRedundantNullObject, fail, "Triple parameter value array with one value and redundant null should fail with minCard = 2 and maxCard = 2" },
+                { 2, 2, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 2 and maxCard = 2" },
+                { 2, 2, quadValueArrayWithRedundantValueObject, fail, "Quad parameter value array with redundant values and null should fail with minCard = 2 and maxCard = 2" },
+
+                { 2, -1, singleNullValueObject, fail, "Null parameter value should fail with minCard = 2 and maxCard = -1" },
+                { 2, -1, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 2 and maxCard = -1" },
+                { 2, -1, multipleDelimitedNullValueObject, fail, "Multiple delimited parameter pass should fail with minCard = 2 and maxCard = -1" },
+                { 2, -1, multipleValueArrayWithNullObject, fail, "Multiple parameter value array with null value should fail with minCard = 2 and maxCard = -1" },
+                { 2, -1, tripleValueNullArrayObject, pass, "Triple parameter value array with one null should pass with minCard = 2 and maxCard = -1" },
+                { 2, -1, tripleValueArrayWithRedundantValueAndOneNullObject, fail, "Triple parameter value array with redundant value and null should fail with minCard = 2 and maxCard = -1" },
+                { 2, -1, tripleValueArrayWithValueAndRedundantNullObject, fail, "Triple parameter value array with one value and redundant null should fail with minCard = 2 and maxCard = -1" },
+                { 2, -1, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 2 and maxCard = -1" },
+                { 2, -1, quadValueArrayWithRedundantValueObject, pass, "Quad parameter value array with redundant values and null should pass with minCard = 2 and maxCard = -1" },
+        };
+    }
+
+    /**
+     * Test data for null double numeric values
+     * @return test data
+     * @throws Exception
+     */
+    @DataProvider
+    private Object[][] processMultipleNullDoubleJobParametersProvider() throws JSONException {
+        ObjectMapper mapper = new ObjectMapper();
+        JSONObject softwareJson = getDefaultSoftwareJson();
+        JSONObject parameter = softwareJson.getJSONArray("parameters").getJSONObject(0);
+        String parameterKey = parameter.getString("id");
+        Double parameterDefaultValue = 2.2;
+        Double parameterDefaultValue2 = 3.3;
+
+        ObjectNode singleNullValueObject = mapper.createObjectNode().putNull(parameterKey);
+
+        ObjectNode singleNullValueArrayObject = mapper.createObjectNode();
+        singleNullValueArrayObject.putArray(parameterKey).addNull();
+
+        ObjectNode multipleDelimitedNullValueObject = mapper.createObjectNode().put(parameterKey, String.format("%1$s;", parameterDefaultValue, parameterDefaultValue2));
+
+        ObjectNode multipleValueArrayWithNullObject = mapper.createObjectNode();
+        multipleValueArrayWithNullObject.putArray(parameterKey).add(parameterDefaultValue).addNull();
+
+        ObjectNode multipleLeftPaddedValueArrayObject = mapper.createObjectNode();
+        multipleLeftPaddedValueArrayObject.putArray(parameterKey).add(String.format(" %1$s", parameterDefaultValue)).addNull();
+
+        ObjectNode multipleRightPaddedValueArrayObject = mapper.createObjectNode();
+        multipleRightPaddedValueArrayObject.putArray(parameterKey).add(String.format("%1$s ", parameterDefaultValue)).addNull();
+
+        ObjectNode multipleLeftRightPaddedValueArrayObject = mapper.createObjectNode();
+        multipleLeftRightPaddedValueArrayObject.putArray(parameterKey).add(String.format(" %1$s ", parameterDefaultValue)).addNull();
+
+        ObjectNode tripleValueNullArrayObject = mapper.createObjectNode();
+        tripleValueNullArrayObject.putArray(parameterKey).add(parameterDefaultValue).add(parameterDefaultValue2).addNull();
+
+        ObjectNode tripleValueArrayWithRedundantValueAndOneNullObject = mapper.createObjectNode();
+        tripleValueArrayWithRedundantValueAndOneNullObject.putArray(parameterKey).add(parameterDefaultValue).add(parameterDefaultValue).addNull();
+
+        ObjectNode tripleValueArrayWithValueAndRedundantNullObject = mapper.createObjectNode();
+        tripleValueArrayWithValueAndRedundantNullObject.putArray(parameterKey).add(parameterDefaultValue).addNull().addNull();
+
+        ObjectNode tripleValueArrayWithRedundantNullObject = mapper.createObjectNode();
+        tripleValueArrayWithRedundantNullObject.putArray(parameterKey).addNull().addNull().addNull();
+
+        ObjectNode quadValueArrayWithRedundantValueObject = mapper.createObjectNode();
+        quadValueArrayWithRedundantValueObject.putArray(parameterKey).add(parameterDefaultValue).add(parameterDefaultValue).add(parameterDefaultValue2).addNull();
+
+        boolean pass = false;
+        boolean fail = true;
+        // need to verify cardinality
+        return new Object[][] {
+                { 0, 1, singleNullValueObject, pass, "Null parameter value should pass with minCard = 0 and maxCard = 1" },
+                { 0, 1, singleNullValueArrayObject, pass, "Single null parameter array should pass with minCard = 0 and maxCard = 1" },
+                { 0, 1, multipleDelimitedNullValueObject, fail, "Multiple delimited parameter values with null should fail with minCard = 0 and maxCard = 1" },
+                { 0, 1, multipleValueArrayWithNullObject, fail, "Multiple parameter value array with null value should pass with minCard = 0 and maxCard = 1" },
+                { 0, 1, tripleValueNullArrayObject, fail, "Triple parameter value array with one null should fail with minCard = 0 and maxCard = 1" },
+                { 0, 1, tripleValueArrayWithRedundantValueAndOneNullObject, fail, "Triple parameter value array with redundant value and null should fail with minCard = 0 and maxCard = 1" },
+                { 0, 1, tripleValueArrayWithValueAndRedundantNullObject, fail, "Triple parameter value array with one value and redundant null should fail with minCard = 0 and maxCard = 1" },
+                { 0, 1, tripleValueArrayWithRedundantNullObject, fail, "Triple parameter value array with redundant null values should fail with minCard = 0 and maxCard = 1" },
+                { 0, 1, quadValueArrayWithRedundantValueObject, fail, "Quad parameter value array with redundant values and null should fail with minCard = 0 and maxCard = 1" },
+
+                { 0, -1, singleNullValueObject, pass, "Null parameter value should pass with minCard = 0 and maxCard = -1" },
+                { 0, -1, singleNullValueArrayObject, pass, "Single null parameter array should pass with minCard = 0 and maxCard = -1" },
+                { 0, -1, multipleDelimitedNullValueObject, pass, "Multiple delimited parameter values with null should pass with minCard = 0 and maxCard = -1" },
+                { 0, -1, multipleValueArrayWithNullObject, pass, "Multiple parameter value array with null value should pass with minCard = 0 and maxCard = -1" },
+                { 0, -1, tripleValueNullArrayObject, pass, "Triple parameter value array with one null should pass with minCard = 0 and maxCard = -1" },
+                { 0, -1, tripleValueArrayWithRedundantValueAndOneNullObject, pass, "Triple parameter value array with redundant value and null should pass with minCard = 0 and maxCard = -1" },
+                { 0, -1, tripleValueArrayWithValueAndRedundantNullObject, pass, "Triple parameter value array with one value and redundant null should pass with minCard = 0 and maxCard = -1" },
+                { 0, -1, tripleValueArrayWithRedundantNullObject, pass, "Triple parameter value array with redundant null values should pass with minCard = 0 and maxCard = -1" },
+                { 0, -1, quadValueArrayWithRedundantValueObject, pass, "Quad parameter value array with redundant values and null should pass with minCard = 0 and maxCard = -1" },
+
+                { 0, -1, multipleLeftPaddedValueArrayObject, pass, "Multiple parameter array value with left padding and a null value should pass with cardinality of zero or more"},
+                { 0, -1, multipleRightPaddedValueArrayObject, pass, "Single parameter array value with right padding and a null value  should pass with cardinality of zero or more"},
+                { 0, -1, multipleLeftRightPaddedValueArrayObject, pass, "Single parameter array value with left and right padding and a null value  should pass with cardinality of zero or more"},
 
                 { 1, 1, singleNullValueObject, fail, "Null parameter value should fail with minCard = 1 and maxCard = 1" },
                 { 1, 1, singleNullValueArrayObject, fail, "Single null parameter array should fail with minCard = 1 and maxCard = 1" },
@@ -1588,7 +1551,7 @@ public class JobRequestParameterProcessorTest {
     {
         ObjectMapper mapper = new ObjectMapper();
         JSONObject softwareJson = getDefaultSoftwareJson();
-        JSONObject parameter = softwareJson.getJSONArray("inputs").getJSONObject(0);
+        JSONObject parameter = softwareJson.getJSONArray("parameters").getJSONObject(0);
         String parameterKey = parameter.getString("id");
 
         ObjectNode singleNullValueObject = mapper.createObjectNode().putNull(parameterKey);
@@ -1705,6 +1668,7 @@ public class JobRequestParameterProcessorTest {
     public void processMultipleNullStringJobParameters(int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message)
     {
         _processMultipleJobParameters(SoftwareParameterType.string, minCardinality, maxCardinality, jobParameters, shouldThrowException, message);
+
     }
 
     /**
@@ -1716,7 +1680,7 @@ public class JobRequestParameterProcessorTest {
      * @param shouldThrowException true if processing should throw an exception
      * @param message the message to assert for a failed test
      */
-    @Test(enabled=false, dataProvider = "processMultipleNullLongJobParametersProvider")
+    @Test(enabled=true, dataProvider = "processMultipleNullLongJobParametersProvider")
     public void processMultipleNullLongJobParameters(int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message)
     {
         _processMultipleJobParameters(SoftwareParameterType.number, minCardinality, maxCardinality, jobParameters, shouldThrowException, message);
@@ -1731,7 +1695,7 @@ public class JobRequestParameterProcessorTest {
      * @param shouldThrowException true if processing should throw an exception
      * @param message the message to assert for a failed test
      */
-    @Test(enabled=false, dataProvider = "processMultipleNullDoubleJobParametersProvider")
+    @Test(enabled=true, dataProvider = "processMultipleNullDoubleJobParametersProvider")
     public void processMultipleNullDoubleJobParameters(int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message)
     {
         _processMultipleJobParameters(SoftwareParameterType.number, minCardinality, maxCardinality, jobParameters, shouldThrowException, message);
@@ -1746,10 +1710,11 @@ public class JobRequestParameterProcessorTest {
      * @param shouldThrowException true if processing should throw an exception
      * @param message the message to assert for a failed test
      */
-    @Test(enabled=false, dataProvider = "processMultipleNullBooleanJobParametersProvider")
+    @Test(enabled=true, dataProvider = "processMultipleNullBooleanJobParametersProvider")
     public void processMultipleNullBooleanJobParameters(int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message)
     {
-        _processMultipleJobParameters(SoftwareParameterType.bool, minCardinality, maxCardinality, jobParameters, shouldThrowException, message);
+        ObjectNode result = _processMultipleJobParameters(SoftwareParameterType.bool, minCardinality, maxCardinality, jobParameters, shouldThrowException, message);
+        assertEquals(result.size(), 0, "Null value to boolean software parameter should result in the parameter being excluded from the processed job request parameters.");
     }
 
     /**
@@ -1761,60 +1726,13 @@ public class JobRequestParameterProcessorTest {
      * @param shouldThrowException true if processing should throw an exception
      * @param message the message to assert for a failed test
      */
-    @Test(enabled=false, dataProvider = "processMultipleNullBooleanJobParametersProvider")
+    @Test(enabled=true, dataProvider = "processMultipleNullBooleanJobParametersProvider")
     public void processMultipleNullFlagJobParameters(int minCardinality, int maxCardinality, ObjectNode jobParameters, boolean shouldThrowException, String message)
     {
-        _processMultipleJobParameters(SoftwareParameterType.flag, minCardinality, maxCardinality, jobParameters, shouldThrowException, message);
+        ObjectNode result =_processMultipleJobParameters(SoftwareParameterType.flag, minCardinality, maxCardinality, jobParameters, shouldThrowException, message);
+        assertEquals(result.size(), 0, "Null value to boolean software parameter should result in the parameter being excluded from the processed job request parameters.");
     }
 
-
-    @DataProvider
-    protected Object[][] testProcessProvider() {
-        ObjectMapper mapper = new ObjectMapper();
-
-        ArrayList<Object[]> testData = new ArrayList<>();
-        testData.add(new Object[] { SoftwareParameterType.number, 0, 0 });
-        testData.add(new Object[] { SoftwareParameterType.number, -1, -1 });
-        testData.add(new Object[] { SoftwareParameterType.number, 1.5, 1.5 });
-        testData.add(new Object[] { SoftwareParameterType.number, "0;1;2", mapper.createArrayNode().add(0).add(1).add(2) });
-        return testData.toArray(new Object[][]{});
-    }
-
-    @Test(enabled=false, dataProvider = "testProcessProvider")
-    public void testProcess(SoftwareParameterType parameterType, Object value, Object expectedValue) throws JobProcessingException {
-        String paramKey = "paramName";
-
-        SoftwareParameter testParam = createTestSoftwareParameter(paramKey, parameterType);
-        Software software = mock(Software.class);
-        when(software.getParameters()).thenReturn(List.of(testParam));
-
-        JobRequestParameterProcessor jobRequestParameterProcessor = mock(JobRequestParameterProcessor.class);
-        when(jobRequestParameterProcessor.getSoftware()).thenReturn(software);
-        doCallRealMethod().when(jobRequestParameterProcessor).process(any());
-
-        ObjectMapper mapper = new ObjectMapper();
-        when(jobRequestParameterProcessor.getMapper()).thenReturn(mapper);
-
-        jobRequestParameterProcessor.jobParameters = mapper.createObjectNode();
-        doNothing().when(jobRequestParameterProcessor).setJobParameters(any());
-        when(jobRequestParameterProcessor.getJobParameters()).thenCallRealMethod();
-
-        jobRequestParameterProcessor.process(new HashMap<String, Object>() {{
-            put(testParam.getKey(), value);
-        }});
-
-        ObjectNode result = jobRequestParameterProcessor.getJobParameters();
-
-        assertEquals(result.size(), 1, "Job request parameter for software parameter of type " +
-                parameterType.name() + " should be added to the job params.");
-        assertTrue(result.has(paramKey),
-                "Job request parameter key should be present in the job parameter object after processing.");
-//        assertEquals(result.get(paramKey).getNodeType(), JsonNodeType.NUMBER,
-//                "Job request parameter value should match type of software parameter type.");
-        assertEquals(result.get(paramKey).toString(), String.valueOf(expectedValue),
-                "Job request parameter value did not match expected value.");
-
-    }
 
     /**
      * Shorthand method to generate a test {@link SoftwareParameter} using the given fields. Defaults to min
@@ -1970,5 +1888,230 @@ public class JobRequestParameterProcessorTest {
         }
         return parameterMap;
     }
+
+//    @DataProvider
+//    protected Object[][] testProcessProvider() {
+//        ObjectMapper mapper = new ObjectMapper();
+//
+//        ArrayList<Object[]> testData = new ArrayList<>();
+//        testData.add(new Object[] { SoftwareParameterType.number, 0, 0 });
+//        testData.add(new Object[] { SoftwareParameterType.number, -1, -1 });
+//        testData.add(new Object[] { SoftwareParameterType.number, 1.5, 1.5 });
+//        testData.add(new Object[] { SoftwareParameterType.number, "0;1;2", mapper.createArrayNode().add(0).add(1).add(2) });
+//        return testData.toArray(new Object[][]{});
+//    }
+//
+//    @Test(enabled=false, dataProvider = "testProcessProvider")
+//    public void testProcess(SoftwareParameterType parameterType, Object value, Object expectedValue) throws JobProcessingException {
+//        String paramKey = "paramName";
+//
+//        SoftwareParameter testParam = createTestSoftwareParameter(paramKey, parameterType);
+//        Software software = mock(Software.class);
+//        when(software.getParameters()).thenReturn(List.of(testParam));
+//
+//        JobRequestParameterProcessor jobRequestParameterProcessor = mock(JobRequestParameterProcessor.class);
+//        when(jobRequestParameterProcessor.getSoftware()).thenReturn(software);
+//        doCallRealMethod().when(jobRequestParameterProcessor).process(any());
+//
+//        ObjectMapper mapper = new ObjectMapper();
+//        when(jobRequestParameterProcessor.getMapper()).thenReturn(mapper);
+//
+//        jobRequestParameterProcessor.jobParameters = mapper.createObjectNode();
+//        doNothing().when(jobRequestParameterProcessor).setJobParameters(any());
+//        when(jobRequestParameterProcessor.getJobParameters()).thenCallRealMethod();
+//
+//        jobRequestParameterProcessor.process(new HashMap<String, Object>() {{
+//            put(testParam.getKey(), value);
+//        }});
+//
+//        ObjectNode result = jobRequestParameterProcessor.getJobParameters();
+//
+//        assertEquals(result.size(), 1, "Job request parameter for software parameter of type " +
+//                parameterType.name() + " should be added to the job params.");
+//        assertTrue(result.has(paramKey),
+//                "Job request parameter key should be present in the job parameter object after processing.");
+////        assertEquals(result.get(paramKey).getNodeType(), JsonNodeType.NUMBER,
+////                "Job request parameter value should match type of software parameter type.");
+//        assertEquals(result.get(paramKey).toString(), String.valueOf(expectedValue),
+//                "Job request parameter value did not match expected value.");
+//
+//    }
+//
+
+//    @DataProvider
+//    public Object[][] processJsonJobParametersProvider() throws JSONException, IOException
+//    {
+//        JSONObject softwareJson = getDefaultSoftwareJson();
+//        JSONObject parameter = softwareJson.getJSONArray("parameters").getJSONObject(0);
+//        String paramKey = parameter.getString("id");
+//        String parameterDefaultValue = parameter.getJSONObject("value").getString("default");
+//
+//        // need to verify cardinality
+//        Map<SoftwareParameterType, Object> defaultValues = new HashMap<SoftwareParameterType, Object>();
+//        defaultValues.put(SoftwareParameterType.flag, Boolean.TRUE);
+//        defaultValues.put(SoftwareParameterType.bool, Boolean.TRUE);
+//        defaultValues.put(SoftwareParameterType.enumeration, new ObjectMapper().createArrayNode().add("ALPHA"));
+//        defaultValues.put(SoftwareParameterType.number, 512L);
+//        defaultValues.put(SoftwareParameterType.string, "somedefaultvalue");
+//
+//        Map<SoftwareParameterType, Object> validTestValues = new HashMap<SoftwareParameterType, Object>();
+//        validTestValues.put(SoftwareParameterType.flag, Boolean.FALSE);
+//        validTestValues.put(SoftwareParameterType.bool, Boolean.FALSE);
+//        validTestValues.put(SoftwareParameterType.enumeration, new ObjectMapper().createArrayNode().add("BETA"));
+//        validTestValues.put(SoftwareParameterType.number, 215L);
+//        validTestValues.put(SoftwareParameterType.string, "anoteruservalue");
+//
+//        Map<SoftwareParameterType, List<Object>> invalidTestValues = new HashMap<SoftwareParameterType, List<Object>>();
+//
+//        for (SoftwareParameterType type: SoftwareParameterType.values()) {
+//            List<Object> invalidValues = new ArrayList<Object>();
+//            for (SoftwareParameterType validType: validTestValues.keySet()) {
+//                if (type.equals(validType) ||
+//                        (type.equals(SoftwareParameterType.bool) && validType.equals(SoftwareParameterType.flag)) ||
+//                        (type.equals(SoftwareParameterType.flag) && validType.equals(SoftwareParameterType.bool)))
+//                    continue;
+//                else
+//                    invalidValues.add(validTestValues.get(validType));
+//            }
+//            invalidTestValues.put(type, invalidValues);
+//        }
+//
+//        List<Object[]> testData = new ArrayList<Object[]>();
+//        for (SoftwareParameterType type: SoftwareParameterType.values())
+//        {
+//            if (type.equals(SoftwareParameterType.flag) || type.equals(SoftwareParameterType.bool))
+//            {
+//                //	(name    type		is_default					validator	        is_required	            is_visible),    test value                                                                  expected value                                                         expected result,     failed test message
+//////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false, 		true),  mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)), mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)),  pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
+//////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 		true),      mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)), mapper.createObjectNode().put(paramKey, (Boolean)validTestValues.get(type)),  pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
+//////
+//////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false, 		true),  mapper.createObjectNode().put(paramKey, Boolean.TRUE),                       mapper.createObjectNode().put(paramKey, true),                             pass, "User supplied value TRUE should be used for visible optional values of " + type.name() + " parameter" });
+//////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 		true),      mapper.createObjectNode().put(paramKey, Boolean.TRUE),                       mapper.createObjectNode().put(paramKey, true),                             pass, "User supplied value TRUE should be used for visible required values of " + type.name() + " parameter" });
+//////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false, 		true),  mapper.createObjectNode().put(paramKey, Boolean.FALSE),                      mapper.createObjectNode().put(paramKey, false),                            pass, "User supplied value false should be used for visible optional values of " + type.name() + " parameter" });
+//////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 		true),      mapper.createObjectNode().put(paramKey, Boolean.FALSE),                      mapper.createObjectNode().put(paramKey, false),                            pass, "User supplied value false should be used for visible required values of " + type.name() + " parameter" });
+////            }
+////            else if (type.equals(SoftwareParameterType.enumeration))
+////            {
+////                ObjectNode expectedDefault = mapper.createObjectNode();
+////                expectedDefault.putArray(paramKey).add("ALPHA");
+////
+////                ObjectNode expectedValid = mapper.createObjectNode();
+////                expectedValid.putArray(paramKey).add("BETA");
+////                //	name			type		default					validator	required	visible
+//////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false, 		true),  expectedValid,                                                              expectedValid,                                                                 pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
+//////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 		true),      expectedValid,                                                              expectedValid,                                                                 pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
+////
+////                // validate all enumerated values will work
+//////                SoftwareParameter p = createParameter(paramKey, type, defaultValues.get(type), null, 		true, 		true);
+//////                for (String enumValue: p.getEnumeratedValuesAsList())
+//////                {
+//////                    expectedValid = mapper.createObjectNode();
+//////                    expectedValid.putArray(paramKey).add(enumValue);
+//////                    testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), null, 		true, 		true),      expectedValid,                                                              expectedValid,                                                                 pass, "Valid required enumerated value of " + enumValue + " is within the available values of " + p.getEnumeratedValues().toString() + " and should pass" });
+//////                }
+////            }
+////            else
+////            {
+////                //	name			type		default					validator	required	visible
+//////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false, 		true),  mapper.createObjectNode().put(paramKey,validTestValues.get(type).toString()), mapper.createObjectNode().put(paramKey,validTestValues.get(type).toString()),pass, "User supplied value should be used for visible optional values of " + type.name() + " parameter" });
+//////                testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 		true),      mapper.createObjectNode().put(paramKey,validTestValues.get(type).toString()), mapper.createObjectNode().put(paramKey,validTestValues.get(type).toString()),pass, "User supplied value should be used for visible required values of " + type.name() + " parameter" });
+////            }
+////
+//////            if (!type.equals(SoftwareParameterType.string))
+//////            {
+//////                for (Object invalidValue: invalidTestValues.get(type)) {
+//////                    if (!type.equals(SoftwareParameterType.number)) {
+//////                        testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		true, 	true),  mapper.createObjectNode().put(paramKey, invalidValue.toString()),           null,                                                                          fail, "Invalid required value " + invalidValue + " should fail for " + type.name() + " parameter" });
+//////                        testData.add(new Object[] { createParameter(paramKey, type, defaultValues.get(type), 	null, 		false,	true),  mapper.createObjectNode().put(paramKey, invalidValue.toString()),           null,                                                                          fail, "Invalid optional value " + invalidValue + " should fail for " + type.name() + " parameter" });
+//////                    }
+//////                }
+//            }
+//        }
+//        return testData.toArray(new Object[][] {});
+//    }
+//
+//    /**
+//     * Tests job app parameter validation on jobs submitted as json
+//     *
+//     * @param appParameter the app parameter to test
+//     * @param jobParameters the job parameters under test
+//     * @param expectedParameters the job parameters after processing
+//     * @param shouldThrowException true if processing should throw an exception
+//     * @param message the message to assert for a failed test
+//     */
+//    @Test(enabled=false, dataProvider = "processJsonJobParametersProvider")
+//    public void processJsonJobParameters(SoftwareParameter appParameter, ObjectNode jobParameters, ObjectNode expectedParameters, boolean shouldThrowException, String message) throws JobProcessingException
+//    {
+//        ObjectMapper mapper = new ObjectMapper();
+//
+//        // mock out the software object referenced in the JobRequestParameterProcessor
+//        Software software = mock(Software.class);
+//        when(software.getParameters()).thenReturn(List.of(appParameter));
+//
+//        // mock out the JobRequestParameterProcessor class
+//        JobRequestParameterProcessor jobRequestParameterProcessor = mock(JobRequestParameterProcessor.class);
+//        when(jobRequestParameterProcessor.getMapper()).thenReturn(mapper);
+//        // mock the job parameters being loaded with teh parsed data as it's mocked and won't be present
+//        jobRequestParameterProcessor.jobParameters = mapper.createObjectNode();
+//        doNothing().when(jobRequestParameterProcessor).setJobParameters(any());
+//        when(jobRequestParameterProcessor.getJobParameters()).thenCallRealMethod();
+//
+//        // return the software mock when requested
+//        when(jobRequestParameterProcessor.getSoftware()).thenReturn(software);
+//        // call the actual method under test
+//        doCallRealMethod().when(jobRequestParameterProcessor).process(any());
+//
+//        try {
+//            // the map of job request parameters
+//            HashMap<String, Object> parameterMap = jsonObjectToMap(appParameter.getKey(), jobParameters);
+//
+//            // now run the test
+//            jobRequestParameterProcessor.process(parameterMap);
+//
+//            // get the job paramaeters parsed during processing
+//            ObjectNode result = jobRequestParameterProcessor.getJobParameters();
+//
+//            if (expectedParameters != null) {
+//                // validate our expectated resulting parameter size
+//                assertEquals(result.size(), expectedParameters.size(),
+//                        "Unexpected number of software parameters was found in the parsed parameters.");
+//                // validate existence of test parameter
+//                assertTrue(result.has(appParameter.getKey()), message);
+//
+//                JsonNode foundParameterJson = result.get(appParameter.getKey());
+//                String foundParameter;
+//                if (foundParameterJson.isArray()) {
+//                    foundParameter = foundParameterJson.iterator().next().asText();
+//                } else {
+//                    foundParameter = foundParameterJson.asText();
+//                }
+//
+//                String expectedParameter = expectedParameters.get(appParameter.getKey()).asText();
+//                if (appParameter.getType().equals(SoftwareParameterType.number)) {
+//                    foundParameter = String.valueOf(Double.parseDouble(foundParameter));
+//                    expectedParameter = String.valueOf(Double.parseDouble(expectedParameter));
+//                } else if (appParameter.getType().equals(SoftwareParameterType.enumeration)) {
+//                    expectedParameter = ((ArrayNode) expectedParameters.get(appParameter.getKey())).get(0).asText();
+//                } else if (appParameter.getType().equals(SoftwareParameterType.bool) ||
+//                        appParameter.getType().equals(SoftwareParameterType.flag)) {
+//                    // already serialized to boolean string
+//                }
+//
+//                Assert.assertEquals(foundParameter, expectedParameter,
+//                        "Unexpected value for field " + appParameter.getKey() + " found. Expected " +
+//                                expectedParameter + " found " + foundParameter);
+//
+//            } else {
+//                assertEquals(result.size(), 0, message);
+//            }
+//
+//        } catch (JobProcessingException e) {
+//            if (!shouldThrowException) {
+//                fail(message, e);
+//            }
+//        } catch (Exception e) {
+//            fail("Failed to process job", e);
+//        }
+//    }
 
 }

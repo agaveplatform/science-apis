@@ -326,8 +326,8 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
 
         }
         catch (SystemUnavailableException e) {
-            log.info("Staging task paused while waiting for system availability. " + e.getMessage(), e);
-            file.setStatus(StagingTaskStatus.STAGING_QUEUED.name());
+            log.info("Staging task failed due to system no longer being available. " + e.getMessage(), e);
+            file.setStatus(StagingTaskStatus.STAGING_FAILED.name());
             try {
                 LogicalFileDao.persist(file);
             } catch (Exception e1) {
@@ -338,7 +338,7 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                 throw e1;
             }
 
-            getQueueTask().setStatus(StagingTaskStatus.STAGING_QUEUED);
+            getQueueTask().setStatus(StagingTaskStatus.STAGING_FAILED);
             getQueueTask().setLastUpdated(new Date());
             try {
                 QueueTaskDao.persist(getQueueTask());
@@ -347,7 +347,6 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                 log.error(msg, e);
                 throw e1;
             }
-
         }
         catch (PersistenceException | StaleObjectStateException | UnresolvableObjectException e) {
             // What nonsense.
@@ -380,7 +379,7 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                                             ". This transfer will be attempted " + (Settings.MAX_STAGING_RETRIES - getQueueTask().getRetryCount()) +
                                             " more times before being being abandonded.",
                                     queueTask.getOwner());
-                            FileEventProcessor.processAndSaveContentEvent(file, event);
+                           FileEventProcessor.processAndSaveContentEvent(file, event);
                         } catch (LogicalFileException | FileEventProcessingException e1) {
                             log.error("Failed to send notification of failed staging task " + getQueueTask().getId(), e1);
                         }
@@ -490,7 +489,7 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                 throw new AuthenticationException(msg, e);
             }
 
-            if (!system.isAvailable()) {
+            if(!system.isAvailable()) {
                 String msg = "The source system is currently unavailable.";
                 log.error(msg);
                 throw new SystemUnavailableException(msg);

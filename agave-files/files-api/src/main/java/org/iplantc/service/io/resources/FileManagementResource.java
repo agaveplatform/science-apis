@@ -143,7 +143,14 @@ public class FileManagementResource extends AbstractFileResource
 	   		throw new ResourceException(Status.SERVER_ERROR_INTERNAL, msg, e);
     	}
     }
-    
+
+    @Override
+	protected void doRelease() throws ResourceException {
+    	// regardless of what happens, when the resource releases after the request, close the connection
+		// to the remote data client.
+		try { if (remoteDataClient != null) remoteDataClient.disconnect(); } catch (Exception ignored) {}
+	}
+
     /**
      * On public storage systems, the first token of any relative path will
      * indicate an implied ownership permission for the resource. 
@@ -192,9 +199,9 @@ public class FileManagementResource extends AbstractFileResource
     private RemoteDataClient initRemoteDataClientForSystem(RemoteSystem remoteSystem, String internalUsername) 
     throws ResourceException 
     {
-    	try
+		RemoteDataClient rdc = null;
+		try
         {
-    		RemoteDataClient rdc = null;
     		if (remoteSystem != null) {
     			
     			// get a valid client
@@ -216,11 +223,13 @@ public class FileManagementResource extends AbstractFileResource
 		catch (RemoteDataException e) {
 			String msg = "Failed to connect to the remote system. "+ e.getMessage();
 			log.error(msg, e);
-        	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, msg, e);
+			try { if (rdc != null) rdc.disconnect(); } catch (Exception ignored) {}
+        	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, msg);
 		} catch (RemoteCredentialException | IOException e) {
 			String msg = "Failed to authenticate to the remote system. " + e.getMessage();
 			log.error(msg, e);
-			throw new ResourceException(Status.SERVER_ERROR_BAD_GATEWAY, msg, e);
+			try { if (rdc != null) rdc.disconnect(); } catch (Exception ignored) {}
+			throw new ResourceException(Status.SERVER_ERROR_BAD_GATEWAY, msg);
 		}
     }
 
@@ -1408,14 +1417,14 @@ public class FileManagementResource extends AbstractFileResource
                     } 
                     catch (FileNotFoundException e) {
                     	String msg = "Remote path " + path + " does not exist.";
-                    	log.error(msg, e);
+                    	log.error(msg);
                     	setStatus(Status.CLIENT_ERROR_NOT_FOUND, msg);
                     	return new AgaveErrorRepresentation(msg);
                     }
                     catch (Exception e) {
                     	log.error("Failed to delete file agave://" + systemId + "/" + path, e);
                     	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
-                        		"Failed to delete " + path + " on the remote system.", e);
+                        		"Failed to delete " + path + " on the remote system.");
                         
                     }
                 }
@@ -1434,7 +1443,7 @@ public class FileManagementResource extends AbstractFileResource
                     	String msg = "Failed to retrieve permissions for " + path;
                     	log.error(msg, e);
                         throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, 
-                        		                    msg + ", " + e.getMessage(), e);
+                        		                    msg + ", " + e.getMessage());
                     }
 
                     remoteDataClient.delete(path);
@@ -1461,7 +1470,7 @@ public class FileManagementResource extends AbstractFileResource
                 catch (Throwable e) {
                 	log.error("File deletion failed: " + e.getMessage(), e);
                 	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
-                			"File deletion failed", e);
+                			"File deletion failed");
                     
                 }
             }

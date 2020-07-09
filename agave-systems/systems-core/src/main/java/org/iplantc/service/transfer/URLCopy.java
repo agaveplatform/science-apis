@@ -3,14 +3,6 @@
  */
 package org.iplantc.service.transfer;
 
-import java.io.*;
-import java.net.URI;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -25,6 +17,14 @@ import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.Range;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
+
+import java.io.*;
+import java.net.URI;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Handles the copying of data between one {@link RemoteDataClient} and another. Situations where
@@ -900,10 +900,10 @@ public class URLCopy {
                         getProtocolForClass(destClient.getClass())));
             }
 
-            try { if (bis != null) bis.close(); } catch (Throwable ignored) {}
-            try { if (bos != null) bos.close(); } catch (Throwable ignored) {}
-            try { if (in != null) in.close(); } catch (Throwable ignored) {}
-            try { if (out != null) out.close(); } catch (Throwable ignored) {}
+            try { if (bis != null) bis.close(); bis = null; } catch (Throwable ignored) {}
+            try { if (bos != null) bos.close(); bos = null; } catch (Throwable ignored) {}
+            try { if (in != null) in.close(); in = null; } catch (Throwable ignored) {}
+            try { if (out != null) out.close(); out = null; } catch (Throwable ignored) {}
         }
     }
 

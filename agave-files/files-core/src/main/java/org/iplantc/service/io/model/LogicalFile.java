@@ -3,29 +3,11 @@
  */
 package org.iplantc.service.io.model;
 
-import java.io.File;
-import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.xml.bind.annotation.XmlElement;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -50,11 +32,15 @@ import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.joda.time.DateTime;
 import org.json.JSONException;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import javax.xml.bind.annotation.XmlElement;
+import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -136,7 +122,8 @@ public class LogicalFile {
 	 */
 	@Id
 	@GeneratedValue
-	@Column(name = "id", unique = true, nullable = false)@XmlElement
+	@Column(name = "id", unique = true, nullable = false)
+	@XmlElement
 	public Long getId() {
 		return id;
 	}
@@ -195,7 +182,7 @@ public class LogicalFile {
 	}
 
 	/**
-	 * @param owner
+	 * @param username
 	 *            the owner to set
 	 */
 	public void setOwner(String username) {
@@ -446,7 +433,8 @@ public class LogicalFile {
 	}
 
 	/**
-	 * @param transferTask the transferTask to set
+	 * Override the existing list of {@link FileEvent} for this logical file.
+	 * @param events the transferTask events to set.
 	 */
 	public void setEvents(List<FileEvent> events)
 	{
@@ -472,7 +460,8 @@ public class LogicalFile {
 	 * Adds an event to the history of this job. This will automatically
 	 * be saved with the logicalFile when the logicalFile is persisted.
 	 * 
-	 * @param event
+	 * @param eventType the type of event created
+	 * @param createdBy the user who created the content event
 	 */
 	public void addContentEvent(FileEventType eventType, String createdBy) {
 		FileEvent event = new FileEvent(
@@ -488,8 +477,8 @@ public class LogicalFile {
 	 * Adds an event to the history of this job. This will automatically
 	 * be saved with the logicalFile when the logicalFile is persisted.
 	 * 
-	 * @param event
-	 * @param permission
+	 * @param event the actual permission file event to add
+	 * @param permission the permission applied to the {@link LogicalFile} that raised this {@code event}
 	 */
 	public void addPermissionEvent(FileEvent event, RemoteFilePermission permission) {
 		FileEventProcessor eventProcessor = new FileEventProcessor();
@@ -625,8 +614,8 @@ public class LogicalFile {
 
 	/**
 	 * Serializes to json with notifications embedded in hypermedia response.
-	 * @param notifications
-	 * @return
+	 * @param notifications the list of notifications to add to the json representation of this node
+	 * @return {@link LogicalFile} marshalled to a JSON string with notifications included
 	 */
 	public String toJsonWithNotifications(List<Notification> notifications) {
 		ObjectMapper mapper = new ObjectMapper();

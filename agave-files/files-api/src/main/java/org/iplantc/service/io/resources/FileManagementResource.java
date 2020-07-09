@@ -1,24 +1,7 @@
 package org.iplantc.service.io.resources;
 
-import static org.iplantc.service.io.model.enumerations.FileOperationType.COPY;
-import static org.iplantc.service.io.model.enumerations.FileOperationType.MKDIR;
-import static org.iplantc.service.io.model.enumerations.FileOperationType.MOVE;
-import static org.iplantc.service.io.model.enumerations.FileOperationType.RENAME;
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Writer;
-import java.net.URI;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Properties;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.io.Files;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.io.FilenameUtils;
@@ -70,24 +53,23 @@ import org.quartz.SchedulerException;
 import org.quartz.SimpleTrigger;
 import org.quartz.impl.StdSchedulerFactory;
 import org.restlet.Request;
-import org.restlet.data.CharacterSet;
-import org.restlet.data.ClientInfo;
-import org.restlet.data.Disposition;
-import org.restlet.data.MediaType;
-import org.restlet.data.Range;
 import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.ext.fileupload.RestletFileUpload;
 import org.restlet.representation.EmptyRepresentation;
 import org.restlet.representation.Representation;
 import org.restlet.representation.WriterRepresentation;
-import org.restlet.resource.Delete;
-import org.restlet.resource.Get;
-import org.restlet.resource.Post;
-import org.restlet.resource.Put;
-import org.restlet.resource.ResourceException;
+import org.restlet.resource.*;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.io.Files;
+import java.io.*;
+import java.net.URI;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Properties;
+
+import static org.iplantc.service.io.model.enumerations.FileOperationType.*;
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * Class to handle get and post requests for jobs
@@ -147,7 +129,7 @@ public class FileManagementResource extends AbstractFileResource
 		} 
     	catch (ResourceException e) {
     		log.error(e.getMessage(), e);
-    		try {remoteDataClient.disconnect();} catch (Exception e1) {}
+    		try {remoteDataClient.disconnect();} catch (Exception ignored) {}
     		setStatus(e.getStatus());
     		getResponse().setEntity(new AgaveErrorRepresentation(e.getMessage()));
     		throw e;
@@ -155,7 +137,7 @@ public class FileManagementResource extends AbstractFileResource
     	catch (Throwable e) {
     		String msg = "Unexpected error while processing this request";
     		log.error(msg, e);
-    		try {remoteDataClient.disconnect();} catch (Exception e1) {}
+    		try {remoteDataClient.disconnect();} catch (Exception ignored) {}
 		   	setStatus(Status.SERVER_ERROR_INTERNAL);
 	   		getResponse().setEntity(new AgaveErrorRepresentation(msg));
 	   		throw new ResourceException(Status.SERVER_ERROR_INTERNAL, msg, e);
@@ -463,7 +445,7 @@ public class FileManagementResource extends AbstractFileResource
 			log.error(e.getMessage(), e);
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL, e.getMessage(), e);
         } finally {
-        	try {remoteDataClient.disconnect();} catch (Exception e) {}
+        	try {remoteDataClient.disconnect();} catch (Exception ignored) {}
         }
     }
 
@@ -731,9 +713,9 @@ public class FileManagementResource extends AbstractFileResource
 					}
                     finally
                     {
-						try { remoteDataClient.disconnect(); } catch (Exception e) {}
-						try { in.close(); } catch (Exception e) {}
-						try { client.disconnect(); } catch (Exception e) {}
+						try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
+						try { in.close(); } catch (Exception ignored) {}
+						try { client.disconnect(); } catch (Exception ignored) {}
 					}
 				}
 
@@ -781,7 +763,7 @@ public class FileManagementResource extends AbstractFileResource
             throw new ResourceException(e);
         } 
 		finally {
-        	try {remoteDataClient.disconnect();} catch (Exception e) {}
+        	try {remoteDataClient.disconnect();} catch (Exception ignored) {}
         }
 
     }
@@ -1127,8 +1109,8 @@ public class FileManagementResource extends AbstractFileResource
                     					.usingJobData("sourceUrl", tmpUrl)
                     					.usingJobData("destUrl", "agave://" + system.getSystemId() + "/" + logicalFile.getAgaveRelativePathFromAbsolutePath())
                     				    .usingJobData("isRangeCopyOperation", Boolean.toString(!ranges.isEmpty()))
-            					        .usingJobData("rangeIndex", ranges.isEmpty() ? Long.valueOf(0) : ranges.get(0).getIndex())
-            					        .usingJobData("rangeSize", ranges.isEmpty() ? Long.valueOf(-1) : ranges.get(0).getSize())
+            					        .usingJobData("rangeIndex", ranges.isEmpty() ? 0L : ranges.get(0).getIndex())
+            					        .usingJobData("rangeSize", ranges.isEmpty() ? -1L : ranges.get(0).getSize())
                     					.build();
 
 									SimpleTrigger trigger = (SimpleTrigger)newTrigger()
@@ -1320,10 +1302,10 @@ public class FileManagementResource extends AbstractFileResource
 					catch (Exception e) {
 						log.error(e.getMessage(), e);
 						throw new ResourceException(Status.SERVER_ERROR_INTERNAL, e.getMessage(), e);
-					} 
-					finally {
-						try {remoteDataClient.disconnect();} catch (Exception e) {}
 					}
+//					finally {
+//						try { if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored) {}
+//					}
 	            }
 	        } else {
 	            // POST request with no entity.
@@ -1343,7 +1325,7 @@ public class FileManagementResource extends AbstractFileResource
 			 throw new ResourceException(Status.SERVER_ERROR_INTERNAL, msg, e);
 
 		} finally {
-			try {remoteDataClient.disconnect();} catch (Exception e) {}
+			try { if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored) {}
         }
     }
 
@@ -1374,7 +1356,7 @@ public class FileManagementResource extends AbstractFileResource
 	        schedulerFactory.initialize(props);
 	    }
 	    finally {
-	    	if (in != null) try { in.close(); } catch (Exception e) {}
+	    	if (in != null) try { in.close(); } catch (Exception ignored) {}
 	    }
 	    scheduler = schedulerFactory.getScheduler();
 	    return scheduler;
@@ -1495,7 +1477,7 @@ public class FileManagementResource extends AbstractFileResource
 //            }
 
         } finally {
-        	try {remoteDataClient.disconnect();} catch (Exception e) {}
+        	try {remoteDataClient.disconnect();} catch (Exception ignored) {}
 		}
 	}
 		
@@ -1641,7 +1623,7 @@ public class FileManagementResource extends AbstractFileResource
 			return new AgaveErrorRepresentation(AgaveStringUtils.convertWhitespace(e.getMessage()));
 		}
 		finally {
-			try {remoteDataClient.disconnect();} catch (Exception e) {}
+			try {remoteDataClient.disconnect();} catch (Exception ignored) {}
 		}
 	}
 
@@ -2309,7 +2291,7 @@ public class FileManagementResource extends AbstractFileResource
             log.error(msg, e);
         } finally {
             if (destClient != null) 
-                try {destClient.disconnect();} catch (Exception e) {}
+                try {destClient.disconnect();} catch (Exception ignored) {}
         }
 	}
 }

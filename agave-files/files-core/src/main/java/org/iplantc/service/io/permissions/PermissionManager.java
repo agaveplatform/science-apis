@@ -3,16 +3,6 @@
  */
 package org.iplantc.service.io.permissions;
 
-import java.io.FileNotFoundException;
-import java.math.BigInteger;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -45,6 +35,11 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
+import java.io.FileNotFoundException;
+import java.math.BigInteger;
+import java.net.URI;
+import java.util.*;
+
 /**
  * Management class for file and folder permissions. This class determines
  * whether a user other than the owner has permission to view/modify a 
@@ -54,6 +49,7 @@ import org.iplantc.service.transfer.model.enumerations.PermissionType;
  *
  */
 public class PermissionManager {
+	private static final Logger log = Logger.getLogger(PermissionManager.class);
 
 	private String remoteUsername;
 	private String apiUsername;
@@ -113,13 +109,13 @@ public class PermissionManager {
 	 * level. In all cases, system level permissions trump api permissions when mirroring
 	 * is turned on. 
 	 * 
-	 * @param agavePath
-	 * @return
-	 * @throws PermissionException
+	 * @param agavePath the path for which to fetch permissions
+	 * @return all permission for the given path
+	 * @throws PermissionException if unable to check permissions
 	 */
 	public Collection<RemoteFilePermission> getAllPermissions(String agavePath) throws PermissionException
 	{
-		Map<String, RemoteFilePermission> pemMap = new TreeMap<String, RemoteFilePermission>();
+		Map<String, RemoteFilePermission> pemMap = new TreeMap<>();
 		
 		LogicalFile logicalFile = this.logicalFile;
 		RemoteDataClient remoteDataClient = this.remoteDataClient;
@@ -248,7 +244,7 @@ public class PermissionManager {
 			throw new PermissionException(e);
 		}
 	}
-	
+
 	/**
 	 * Returns the calculated user permission for a given path on the
 	 * system assigned to this PermissionManager. There is no guarantee
@@ -258,12 +254,9 @@ public class PermissionManager {
 	 * 
 	 * @param systemAbsolutePath Absolute path to the file on the remote system.
 	 * 
-	 * @return RemoteFilePermission
-	 * @throws PermissionException
+	 * @return RemoteFilePermission for the path
+	 * @throws PermissionException if unable to check permissions
 	 */
-	
-	private static final Logger log = Logger.getLogger(PermissionManager.class);
-	
 	public RemoteFilePermission getUserPermission(String systemAbsolutePath) throws PermissionException
 	{
 		//variable for timer object used for profiling throughout the code.
@@ -819,8 +812,8 @@ public class PermissionManager {
 	 * 
 	 * system.storageConfig.rootDir + / + system.storageConfig.homeDir + / username
 	 * 
-	 * @param path
-	 * @return
+	 * @param path agave path
+	 * @return true if cleaned up path is the user home directory
 	 */
 	public boolean isUserHomeDirOnPublicSystem(String path)
 	{
@@ -829,7 +822,7 @@ public class PermissionManager {
 		
 		if (remoteSystem.isPubliclyAvailable())
 		{
-			String homeDir = remoteSystem.getStorageConfig().getHomeDir();
+			String homeDir;
 			try {
 				if (remoteDataClient == null) {
 					homeDir = remoteSystem.getRemoteDataClient().resolvePath("");
@@ -861,13 +854,13 @@ public class PermissionManager {
 	 * Checks whether path is under the current root directory of the system 
 	 * assigned to the current PermissionManager. The system root directory
 	 * is defined as, system.storageConfig.rootDir
-	 * 
-	 * @param systemAbsolutePath
-	 * @return
+	 *
+	 * @param systemAbsolutePath absolute path on remote system
+	 * @return true if path is relative to system root directory
 	 */
 	public boolean isUnderSystemRootDir(String systemAbsolutePath)
 	{
-		String rootDir = remoteSystem.getStorageConfig().getRootDir();
+		String rootDir;
 		
 		try {
 			if (remoteDataClient == null) {
@@ -886,10 +879,10 @@ public class PermissionManager {
 	 * on the system assigned to the current PermissionManager. The user's
 	 * virtual home is defined as:
 	 * 
-	 * system.storageConfig.rootDir + / + system.storageConfig.homeDir + / username
+	 * <pre><code>system.storageConfig.rootDir + / + system.storageConfig.homeDir + / username</code></pre>
 	 * 
-	 * @param systemAbsolutePath
-	 * @return
+	 * @param systemAbsolutePath absolute path on remote system
+	 * @return true if path is relative to user home
 	 */
 	public boolean isUnderUserHomeDirOnPublicSystem(String systemAbsolutePath)
 	{
@@ -898,8 +891,8 @@ public class PermissionManager {
 		
 		if (remoteSystem.isPubliclyAvailable())
 		{
-			String homeDir = remoteSystem.getStorageConfig().getHomeDir();
-			
+			String homeDir;
+
 			try {
 				if (remoteDataClient == null) {
 					homeDir = remoteSystem.getRemoteDataClient().resolvePath("");
@@ -928,8 +921,8 @@ public class PermissionManager {
 	 * Returns the parent folder of the current path without the trailing
 	 * slash. If the parent is root, / is returned.
 	 * 
-	 * @param path
-	 * @return
+	 * @param path any file path
+	 * @return parent path or "/" if path is root
 	 */
 	@SuppressWarnings("unused")
 	private String getParentPath(String path)
@@ -945,7 +938,7 @@ public class PermissionManager {
 	/**
 	 * Cleans up path by normalizing and removing trailing slash. OS safe.
 	 * 
-	 * @param path
+	 * @param path any file path
 	 * @return Normalized path without trailing slash.
 	 */
 	private String cleanPath(String path)
@@ -972,9 +965,11 @@ public class PermissionManager {
 	 * Returns the known permission for this file or folder without consideration of parent permissions.
 	 * The known permission is a derived value based on the user's role on the associated system and
 	 * ownership of the file, and any RemoteFilePermission assigned.
-	 * @param username
-	 * @return RemoteFilePermission
-	 * @throws PermissionException
+	 *
+	 * @param logicalFile the {@link LogicalFile} that {@code username} will be granted permission
+	 * @param username the user to whom to grant permission
+	 * @return RemoteFilePermission the granted permissino
+	 * @throws PermissionException if permission was unable to be checked and granted.
 	 */
 	private RemoteFilePermission getGrantedUserPermissionForLogicalFile(LogicalFile logicalFile, String username) 
 	throws PermissionException
@@ -1072,14 +1067,14 @@ public class PermissionManager {
 						if (logicalFile.getSystem().isPubliclyAvailable()) {
 							if (isUnderUserHomeDirOnPublicSystem(logicalFile.getPath()) || isUserHomeDirOnPublicSystem(logicalFile.getPath())) {
 								if (st1 != null) log.debug(st1.getShortStopMsg());
-								return userPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
+								return new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
 							} else {
 								if (st1 != null) log.debug(st1.getShortStopMsg());
-								return userPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.NONE, true);
+								return new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.NONE, true);
 							}
 						} else {
 							if (st1 != null) log.debug(st1.getShortStopMsg());
-							return userPem = new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
+							return new RemoteFilePermission(logicalFile.getId(), username, logicalFile.getInternalUsername(), PermissionType.ALL, true);
 						}
 					}
 				}
@@ -1103,10 +1098,10 @@ public class PermissionManager {
 	 * Returns whether the user can read the given path on the system
 	 * assigned to this PermissionManager. Delegates to 
 	 * PermissionManager.getUserPermission(path).
-	 * 
-	 * @param systemAbsolutePath
-	 * @return
-	 * @throws PermissionException
+	 *
+	 * @param systemAbsolutePath absolute path on remote system
+	 * @return true if has permission, false otherwise
+	 * @throws PermissionException@throws PermissionException if unable to check permission
 	 */
 	public boolean canRead(String systemAbsolutePath) throws PermissionException 
 	{
@@ -1117,10 +1112,10 @@ public class PermissionManager {
 	 * Returns whether the user can read and write the given path on the system
 	 * assigned to this PermissionManager. Delegates to 
 	 * PermissionManager.getUserPermission(path).
-	 * 
-	 * @param systemAbsolutePath
-	 * @return
-	 * @throws PermissionException
+	 *
+	 * @param systemAbsolutePath absolute path on remote system
+	 * @return true if has permission, false otherwise
+	 * @throws PermissionException@throws PermissionException if unable to check permission
 	 */
 	public boolean canReadWrite(String systemAbsolutePath) throws PermissionException 
 	{
@@ -1132,10 +1127,10 @@ public class PermissionManager {
 	 * Returns whether the user can read and execute the given path on the system
 	 * assigned to this PermissionManager. Delegates to 
 	 * PermissionManager.getUserPermission(path).
-	 * 
-	 * @param systemAbsolutePath
-	 * @return
-	 * @throws PermissionException
+	 *
+	 * @param systemAbsolutePath absolute path on remote system
+	 * @return true if has permission, false otherwise
+	 * @throws PermissionException@throws PermissionException if unable to check permission
 	 */
 	public boolean canReadExecute(String systemAbsolutePath) throws PermissionException 
 	{
@@ -1148,9 +1143,9 @@ public class PermissionManager {
 	 * assigned to this PermissionManager. Delegates to 
 	 * PermissionManager.getUserPermission(path).
 	 * 
-	 * @param systemAbsolutePath
-	 * @return
-	 * @throws PermissionException
+	 * @param systemAbsolutePath absolute path on remote system
+	 * @return true if has permission, false otherwise
+	 * @throws PermissionException@throws PermissionException if unable to check permission
 	 */
 	public boolean canWriteExecute(String systemAbsolutePath) throws PermissionException 
 	{
@@ -1162,10 +1157,10 @@ public class PermissionManager {
 	 * Returns whether the user can write the given path on the system
 	 * assigned to this PermissionManager. Delegates to 
 	 * PermissionManager.getUserPermission(path).
-	 * 
-	 * @param systemAbsolutePath
-	 * @return
-	 * @throws PermissionException
+	 *
+	 * @param systemAbsolutePath absolute path on remote system
+	 * @return true if has permission, false otherwise
+	 * @throws PermissionException@throws PermissionException if unable to check permission
 	 */
 	public boolean canWrite(String systemAbsolutePath) throws PermissionException 
 	{
@@ -1176,10 +1171,10 @@ public class PermissionManager {
 	 * Returns whether the user can execute the given path on the system
 	 * assigned to this PermissionManager. Delegates to 
 	 * PermissionManager.getUserPermission(path).
-	 * 
-	 * @param systemAbsolutePath
-	 * @return
-	 * @throws PermissionException
+	 *
+	 * @param systemAbsolutePath absolute path on remote system
+	 * @return true if has permission, false otherwise
+	 * @throws PermissionException@throws PermissionException if unable to check permission
 	 */
 	public boolean canExecute(String systemAbsolutePath) throws PermissionException 
 	{
@@ -1190,10 +1185,10 @@ public class PermissionManager {
 	 * Returns whether the user has all permissions for the given path 
 	 * on the system assigned to this PermissionManager. Delegates to 
 	 * PermissionManager.getUserPermission(systemAbsolutePath).
-	 * 
-	 * @param systemAbsolutePath
-	 * @return
-	 * @throws PermissionException
+	 *
+	 * @param systemAbsolutePath absolute path on remote system
+	 * @return true if has permission, false otherwise
+	 * @throws PermissionException@throws PermissionException if unable to check permission
 	 */
 	public boolean canAll(String systemAbsolutePath) throws PermissionException 
 	{
@@ -1228,11 +1223,12 @@ public class PermissionManager {
         else if (remoteDataClient == null) {
         	throw new PermissionException("Permission cannot be set on unknown file");
         }
-        
-        if (recursive) 
+
+		// TODO: revisit why this could ever be null. seems to be a design issue. Can we refactor to avoid this ever being questioned?
+		if (recursive && logicalFile != null)
     	{
         	List<BigInteger> childIds = LogicalFileDao.findChildIds(logicalFile.getPath(), remoteSystem.getId());
-        	List<Object[]> bulkEvents = new ArrayList<Object[]>();
+        	List<Object[]> bulkEvents = new ArrayList<>();
         	for (BigInteger childId: childIds) 
         	{
         		if (childId.longValue() == logicalFile.getId()) continue;
@@ -1309,11 +1305,12 @@ public class PermissionManager {
         else if (remoteDataClient == null) {
         	throw new PermissionException("Permission cannot be set on unknown file");
         }
-		
-		if (recursive) 
+
+		// TODO: revisit why this could ever be null. seems to be a design issue. Can we refactor to avoid this ever being questioned?
+		if (recursive && logicalFile != null)
     	{
         	List<BigInteger> childIds = LogicalFileDao.findChildIds(logicalFile.getPath(), logicalFile.getSystem().getId());
-        	List<Object[]> bulkEvents = new ArrayList<Object[]>();
+        	List<Object[]> bulkEvents = new ArrayList<>();
         	for (BigInteger childId: childIds)  
         	{
         		if (childId.longValue() == logicalFile.getId()) continue;
@@ -1387,11 +1384,12 @@ public class PermissionManager {
         else if (remoteDataClient == null) {
         	throw new PermissionException("Permission cannot be set on unknown file");
         }
-    	
-    	if (recursive) 
+
+        // TODO: revisit why this could ever be null. seems to be a design issue. Can we refactor to avoid this ever being questioned?
+    	if (recursive && logicalFile != null)
     	{
     		List<BigInteger> childIds = LogicalFileDao.findChildIds(logicalFile.getPath(), logicalFile.getSystem().getId());
-        	List<Object[]> bulkEvents = new ArrayList<Object[]>();
+        	List<Object[]> bulkEvents = new ArrayList<>();
         	for (BigInteger childId: childIds) 
         	{
         		if (childId.longValue() == logicalFile.getId()) continue;
@@ -1468,11 +1466,12 @@ public class PermissionManager {
         else if (remoteDataClient == null) { 
         	throw new PermissionException("Permission cannot be set on unknown file");
         }
-        
-        if (recursive) 
+
+		// TODO: revisit why this could ever be null. seems to be a design issue. Can we refactor to avoid this ever being questioned?
+		if (recursive && logicalFile != null)
     	{
         	List<BigInteger> childIds = LogicalFileDao.findChildIds(logicalFile.getPath(), logicalFile.getSystem().getId());
-        	List<Object[]> bulkEvents = new ArrayList<Object[]>();
+        	List<Object[]> bulkEvents = new ArrayList<>();
         	for (BigInteger childId: childIds) 
         	{
         		if (childId.longValue() == logicalFile.getId()) continue;
@@ -1548,11 +1547,12 @@ public class PermissionManager {
         {
         	throw new PermissionException("Permission cannot be set on unknown file");
         }
-        
-        if (recursive) 
+
+		// TODO: revisit why this could ever be null. seems to be a design issue. Can we refactor to avoid this ever being questioned?
+		if (recursive && logicalFile != null)
     	{
         	List<BigInteger> childIds = LogicalFileDao.findChildIds(logicalFile.getPath(), remoteSystem.getId());
-        	List<Object[]> bulkEvents = new ArrayList<Object[]>();
+        	List<Object[]> bulkEvents = new ArrayList<>();
         	for (BigInteger childId: childIds) 
         	{
         		if (childId.longValue() == logicalFile.getId()) continue;
@@ -1626,10 +1626,11 @@ public class PermissionManager {
         	throw new PermissionException("Permission cannot be set on unknown file");
         }
 
-        if (recursive) 
+		// TODO: revisit why this could ever be null. seems to be a design issue. Can we refactor to avoid this ever being questioned?
+		if (recursive && logicalFile != null)
     	{
         	List<BigInteger> childIds = LogicalFileDao.findChildIds(logicalFile.getPath(), remoteSystem.getId());
-        	List<Object[]> bulkEvents = new ArrayList<Object[]>();
+        	List<Object[]> bulkEvents = new ArrayList<>();
         	for (BigInteger childId: childIds) 
         	{
         		if (childId.longValue() == logicalFile.getId()) continue;
@@ -1702,10 +1703,11 @@ public class PermissionManager {
         	throw new PermissionException("Permission cannot be set on unknown file");
         }
 
-        if (recursive) 
+		// TODO: revisit why this could ever be null. seems to be a design issue. Can we refactor to avoid this ever being questioned?
+		if (recursive && logicalFile != null)
     	{
         	List<BigInteger> childIds = LogicalFileDao.findChildIds(logicalFile.getPath(), remoteSystem.getId());
-        	List<Object[]> bulkEvents = new ArrayList<Object[]>();
+        	List<Object[]> bulkEvents = new ArrayList<>();
         	for (BigInteger childId: childIds) 
         	{
         		if (childId.longValue() == logicalFile.getId()) continue;
@@ -1758,7 +1760,7 @@ public class PermissionManager {
     {
         if (logicalFile != null) 
         {
-            if (logicalFile.getOwner().equals(apiUsername)) 
+            if (logicalFile.getOwner().equals(apiUsername))
             {
             	RemoteFilePermissionDao.deleteBylogicalFileId(logicalFile.getId());
             	logicalFile.addPermissionEvent(new FileEvent(FileEventType.PERMISSION_REVOKE, 
@@ -1786,7 +1788,7 @@ public class PermissionManager {
         if (recursive) 
     	{
         	List<BigInteger> childIds = LogicalFileDao.findChildIds(logicalFile.getPath(), remoteSystem.getId());
-        	List<Object[]> bulkEvents = new ArrayList<Object[]>();
+        	List<Object[]> bulkEvents = new ArrayList<>();
         	for (BigInteger childId: childIds) 
         	{
         		if (childId.longValue() == logicalFile.getId()) continue;
@@ -1830,11 +1832,11 @@ public class PermissionManager {
 	 * hostname represents a system which is used with the path to check the user's 
 	 * role on the system and permissions on the file.
 	 *  
-	 * @param username
-	 * @param internalUsername
-	 * @param inputUri
-	 * @return
-	 * @throws PermissionException
+	 * @param username the user for which to check permissions.
+	 * @param internalUsername internal user of the {@code username}
+	 * @param inputUri the input {@link URI} for which to check the permissions
+	 * @return true if the {@code inputUri} can be ready by the given {@code username}.
+	 * @throws PermissionException if the permissions cannot be checked
 	 */
 	public static boolean canUserReadUri(String username, String internalUsername, URI inputUri) throws PermissionException 
 	{
@@ -1844,7 +1846,7 @@ public class PermissionManager {
 			String scheme = inputUri.getScheme();
 			RemoteSystem system = null;
 			String path = null;
-			if (AgaveUriUtil.isInternalURI(inputUri)) 
+			if (AgaveUriUtil.isInternalURI(inputUri))
 			{
 				if (StringUtils.isEmpty(scheme)) {
 					system = new SystemManager().getUserDefaultStorageSystem(username);
@@ -1886,8 +1888,6 @@ public class PermissionManager {
 				    try {
 				        ApiUriUtil.getRemoteSystem(username, inputUri);
 				        return true;
-				    } catch (PermissionException e) {
-				        throw e;
 				    } catch (SystemException e) {
 				        throw new PermissionException("No storage system was found matching the "
 				                + "one associated with the job output in " + inputUri);
@@ -1898,7 +1898,6 @@ public class PermissionManager {
 					// will throw an exception if the path isn't valid
 					String systemId = PathResolver.getSystemIdFromPath(inputUri.getPath(), username);
 					
-					// TODO: this first condition should be dead code. if it's null, we can just throw an exception
 					// since the system would have been resolved in the path resolution already.
 					if (systemId == null) {
 						system = new SystemManager().getUserDefaultStorageSystem(username);
@@ -1933,6 +1932,8 @@ public class PermissionManager {
 			else if (RemoteDataClientFactory.isSchemeSupported(inputUri))
 			{
 				remoteDataClient = new RemoteDataClientFactory().getInstance(username, internalUsername, inputUri);
+				// forced authentication here will provide the sanity check on sftp and ftp URL that must have
+				//value basic auth params in the URI to connect.
 				remoteDataClient.authenticate();
 				return true;
 			}
@@ -1946,6 +1947,9 @@ public class PermissionManager {
 		catch (PermissionException e) {
 			throw e;
 		}
+		catch (RemoteCredentialException e) {
+			throw new PermissionException(e.getMessage(), e);
+		}
 		catch (RemoteDataException e) {
 			throw new PermissionException("The server experienced an error attempting to "
 					+ "identify the file or directory at " + inputUri, e);
@@ -1955,7 +1959,7 @@ public class PermissionManager {
 					+ "to access the file or directory at " + inputUri, e);
 		}
 		finally {
-			try { remoteDataClient.disconnect();} catch (Exception e) {}
+			try { if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored) {}
 		}
 	}
 
@@ -1965,8 +1969,8 @@ public class PermissionManager {
 	 * parent is found, the system owner is granted ownership. If a parent is found, 
 	 * the parent owner is assigned unless the system is public and a user home directory
 	 * is an ancestor of the given {@code absolutePath}.
-	 * @param system
-	 * @param absolutePath
+	 * @param system the owner for whom to check permissions on public systems and implied permission paths
+	 * @param absolutePath the absolute path on the remote system
 	 * @return username of the file item owner
 	 * @throws PermissionException if the {@code absolutePath} falls outside the system home directory
 	 * @throws LogicalFileException if we cannot resolve 

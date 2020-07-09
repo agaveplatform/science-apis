@@ -1229,6 +1229,102 @@ public class JobRequestProcessorIT extends AbstractDaoTest
 		genericProcessFormJob(jobRequestMap, shouldThrowException, message);
 	}
 
+	/**
+	 * Tests empty job notifications validation on jobs submitted as form
+	 */
+	@Test
+	public void processJsonJobWithMultipleNotifications()
+	{
+		Job job = null;
+		try
+		{
+			Software software = createSoftware();
+			ObjectNode json = createJobJsonNode(software);
+
+			ObjectNode retryStrategy = mapper.createObjectNode()
+					.put("retryStrategy", "DELAYED")
+					.put("retryLimit", 3)
+					.put("retryRate", 5)
+					.put("retryDelay", 5)
+					.put("saveOnFailure", true);
+
+			ObjectNode defaultNotification = (ObjectNode)mapper.createObjectNode()
+					.put("url", "test@example.com")
+					.put("event", "FAILED")
+					.put("persistent", true)
+					.set("policy", retryStrategy);
+
+			ArrayNode jsonNotifications = mapper.createArrayNode();
+			for (String eventName: List.of("FAILED", "FINISHED", "STOPPED", "BLOCKED")) {
+				jsonNotifications.add(defaultNotification.deepCopy().put("event", eventName));
+			}
+
+			JobRequestInputProcessor inputProcessor = mock(JobRequestInputProcessor.class);
+			doNothing().when(inputProcessor).process(any());
+			when(inputProcessor.getJobInputs()).thenReturn(mapper.createObjectNode());
+
+			JobRequestParameterProcessor parameterProcessor = mock(JobRequestParameterProcessor.class);
+			doNothing().when(parameterProcessor).process(any());
+			when(parameterProcessor.getJobParameters()).thenReturn(mapper.createObjectNode());
+
+//			JobRequestNotificationProcessor notificationProcessor = mock(JobRequestNotificationProcessor.class);
+//			doNothing().when(notificationProcessor).process(any(JsonNode.class));
+//			doNothing().when(notificationProcessor).process(any(ArrayNode.class));
+//			doNothing().when(notificationProcessor).process(anyString());
+//			when(notificationProcessor.getNotifications()).thenReturn(new ArrayList<Notification>());
+
+			JobRequestProcessor processor = mock(JobRequestProcessor.class, new Answer() {
+				/**
+				 * @param invocation the invocation on the mock.
+				 * @return the value to be returned
+				 * @throws Throwable the throwable to be thrown
+				 */
+				@Override
+				public Object answer(InvocationOnMock invocation) throws Throwable {
+					if (invocation.getMethod().getName().equals("isSoftwareInvokableByUser")) {
+						return true;
+					} else if (invocation.getMethod().getName().equals("getInternalUsername")) {
+						return null;
+					} else if (invocation.getMethod().getName().equals("getParameterProcessor")) {
+						return parameterProcessor;
+					} else if (invocation.getMethod().getName().equals("getInputProcessor")) {
+						return inputProcessor;
+//					} else if (invocation.getMethod().getName().equals("getNotificationProcessor")) {
+//						return notificationProcessor;
+					} else if (invocation.getMethod().getName().equals("checkExecutionSystemLogin")) {
+						return true;
+					} else if (invocation.getMethod().getName().equals("checkExecutionSystemStorage")) {
+						return true;
+					} else if (invocation.getMethod().getName().equals("getUsername")) {
+						return TEST_OWNER;
+					} else {
+						return invocation.callRealMethod();
+					}
+				}
+			});
+
+			when(processor.getUsername()).thenReturn(TEST_OWNER);
+			when(processor.getInternalUsername()).thenReturn(null);
+			when(processor.isSoftwareInvokableByUser(eq(software), eq(TEST_OWNER))).thenReturn(true);
+			json = updateObjectNode(json, "notifications", jsonNotifications);
+
+
+			job = processor.processJob(json);
+
+			assertNotNull(job.getId(), "Job was not saved after processing.");
+
+			List<Notification> notifications = new NotificationDao().getActiveUserNotificationsForUuid(job.getOwner(), job.getUuid());
+			Assert.assertEquals(notifications.size(), jsonNotifications.size(),
+					"All notifications included with the job request shoudl be persistent after processing.");
+		}
+		catch (Exception e) {
+			Assert.fail("Unexpected failed to process job", e);
+		}
+		finally {
+			try { clearJobs(); } catch (Throwable ignored) {}
+		}
+	}
+
 	
 	/** 
 	 * Tests empty job notifications validation on jobs submitted as form

@@ -76,6 +76,9 @@ public class JobRequestNotificationProcessor {
 
 		if (json.isValueNode()) {
 			process(json.textValue());
+		}
+		else if (json.isArray()) {
+			process((ArrayNode)json);
 		} else {
 			throw new NotificationException("Invalid notification value given. "
 					+ "notifications must be an array of notification objects specifying a "

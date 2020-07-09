@@ -1,8 +1,5 @@
 package org.iplantc.service.jobs.search;
 
-import java.util.Date;
-import java.util.Map;
-
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -10,6 +7,12 @@ import org.iplantc.service.common.search.AgaveResourceSearchFilter;
 import org.iplantc.service.common.util.StringToTime;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.joda.time.DateTime;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Map;
+import java.util.TimeZone;
 
 /**
  * This class is the basis for search support across the API.
@@ -140,8 +143,14 @@ public class JobSearchFilter extends AgaveResourceSearchFilter
                     }
                 }
             } else {
-                return time;
-            }
+            	try {
+					SimpleDateFormat formatter = new SimpleDateFormat();
+					formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+					return formatter.parse(formatter.format(((Date) time)));
+				} catch (ParseException ignored) {
+            		return (Date)time;
+				}
+			}
         } else if (searchTermType == Long.class) {
             if (NumberUtils.isNumber(searchValue)) {
                 return NumberUtils.toLong(searchValue);

@@ -144,10 +144,15 @@ public class JobRequestParameterProcessor {
 
 						if (validParamValues.isEmpty())
 						{
-							throw new JobProcessingException(400,
-									"Invalid parameter value for " + softwareParameter.getKey() +
-									". Value must be one of: " + ServiceUtils.explode(",  ", validParamValues));
+							if (explodedParameters.length == 0) {
+								continue;
+							} else {
+								throw new JobProcessingException(400,
+										"No enumeration value defined for " + softwareParameter.getKey() +
+												". Input parameter value may only be empty.");
+							}
 						}
+						// this should not be possible
 						else if (explodedParameters.length == 0) {
 							continue;
 						}
@@ -156,7 +161,7 @@ public class JobRequestParameterProcessor {
 							for (String jobParam: explodedParameters)
 							{
 								// skip null values. Since enums are strings, they can legitimately be blank or
-								// padded and still be valid values.
+								// padded and still be valid values, thus we do not trim before making the null check.
 								if (jobParam == null) {
 									continue;
 								}
@@ -164,6 +169,8 @@ public class JobRequestParameterProcessor {
 								if (validParamValues.contains(jobParam))
 								{
 									if (explodedParameters.length == 1) {
+										// TODO: why are we sometimes putting an array and sometimes a single value? Is this
+										//   so we can retain the actual structure of the request?
 										getJobParameters().put(softwareParameter.getKey(), jobParam);
 									} else {
 										validatedJobParamValueArray.add(jobParam);
@@ -191,6 +198,7 @@ public class JobRequestParameterProcessor {
 									"Invalid parameter value for " + softwareParameter.getKey() +
 									". Boolean and flag parameters do not support multiple values.");
 						}
+						// this should not be possible
 						else if (explodedParameters.length == 0) {
 							// ignore empty arrays. This represents no value passed in by the user, so we skip adding
 							// this to the resulting job parameter object and carry on.
@@ -233,6 +241,7 @@ public class JobRequestParameterProcessor {
 					}
 					else if (softwareParameter.getType().equals(SoftwareParameterType.number))
 					{
+						// this should not be possible
 						if (explodedParameters.length == 0) {
 							continue;
 						}
@@ -299,6 +308,7 @@ public class JobRequestParameterProcessor {
 					}
 					else // string parameter
 					{
+						// this should not be possible
 						if (explodedParameters.length == 0) {
 							continue;
 						}

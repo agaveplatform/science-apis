@@ -1,10 +1,7 @@
 package org.iplantc.service.jobs.managers.launchers;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -16,7 +13,6 @@ import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
 import org.iplantc.service.jobs.util.Slug;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
@@ -31,8 +27,10 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 @Test(groups={"integration"})
 public class JobLauncherTest extends AbstractJobSubmissionTest {
@@ -193,15 +191,12 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 
 	@DataProvider(name = "submitJobProvider")
 	protected Object[][] submitJobProvider() throws Exception {
-//		List<Software> testApps = SoftwareDao.getUserApps(SYSTEM_OWNER, false);
-		List<Software> testApps = new ArrayList<Software>();
-		testApps.add(software);
-		Object[][] testData = new Object[testApps.size()][];
-		for(int i=0; i< testApps.size(); i++) {
-			testData[i] = new Object[] { testApps.get(i), "Submission to " + testApps.get(i).getExecutionSystem().getSystemId() + " failed.", false };
+		List<Object[]> testData = new ArrayList<>();
+	 	for (Software app: List.of(software)) {
+			testData.add(new Object[] { app, "Submission to " + app.getExecutionSystem().getSystemId() + " failed.", false });
 		}
 		
-		return testData;
+		return testData.toArray(new Object[][]{});
 	}
 
 	protected Job createAndPersistJob(Software software) throws Exception {
@@ -258,7 +253,7 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 		return job;
 	}
 
-	@Test(groups = { "job", "launcher", "submission" }, dataProvider = "submitJobProvider", enabled = true)
+	@Test(dataProvider = "submitJobProvider", enabled = true)
 	public void submitJob(Software software, String message, boolean shouldThrowException)
 	throws Exception {
 		Job job = null;

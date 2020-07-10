@@ -2,6 +2,7 @@ package org.iplantc.service.jobs.managers.monitors.parsers;
 
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorEmptyResponseException;
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorResponseParsingException;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -76,11 +77,17 @@ public class ForkJobStatusResponseParserTest extends AbstractJobStatusResponsePa
 
 	}
 
+	@Test(dataProvider = "parseBlankSchedulerResponseThrowsRemoteJobMonitorEmptyResponseExceptionProvider")
+	public void parseBlankSchedulerResponseIndicatesDone(String rawServerResponse)
+	{
+		_parseSchedulerResponse(rawServerResponse, ForkJobStatus.DONE);
+	}
+
 	@Override
-	@Test(dataProvider = "parseBlankSchedulerResponseThrowsRemoteJobMonitorEmptyResponseExceptionProvider", expectedExceptions = RemoteJobMonitorEmptyResponseException.class)
+	@Test(enabled = false, dataProvider = "parseBlankSchedulerResponseThrowsRemoteJobMonitorEmptyResponseExceptionProvider")
 	public void parseBlankSchedulerResponseThrowsRemoteJobMonitorEmptyResponseException(String rawServerResponse) throws RemoteJobMonitorEmptyResponseException, RemoteJobMonitorResponseParsingException
 	{
-		_parseBlankSchedulerResponseThrowsRemoteJobMonitorEmptyResponseException(rawServerResponse);
+		throw new SkipException("An empty response from a fork job should indicate a completed job and not throw an exception.");
 	}
 
 	@Override

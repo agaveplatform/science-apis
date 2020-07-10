@@ -43,10 +43,11 @@ public class ForkJobStatusResponseParser implements JobStatusResponseParser {
     public JobStatusResponse parse(String remoteJobId, String schedulerResponseText) throws RemoteJobMonitorEmptyResponseException, RemoteJobMonitorResponseParsingException {
 
         if (StringUtils.isBlank(schedulerResponseText)) {
-            throw new RemoteJobMonitorEmptyResponseException(
-                    "Empty response received from job status check on the remote system. Since the job was " +
-                            "successfully placed into queue, this is likely caused by a communication issue with the " +
-                            "scheduler. Retrying may clear up the issue.");
+            return new JobStatusResponse<>(remoteJobId, ForkJobStatus.DONE, "1");
+//            throw new RemoteJobMonitorEmptyResponseException(
+//                    "Empty response received from job status check on the remote system. Since the job was " +
+//                            "successfully placed into queue, this is likely caused by a communication issue with the " +
+//                            "scheduler. Retrying may clear up the issue.");
         } else {
             String[] lines = StringUtils.stripToEmpty(schedulerResponseText).split("[\\r\\n]+");
             for (String line : lines) {

@@ -1,16 +1,16 @@
 package org.iplantc.service.jobs.managers.launchers;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.iplantc.service.systems.model.enumerations.SchedulerType;
 import org.testng.annotations.Factory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class is a TestNG factory class which generates and 
  * runs a matrix of tests to test validation and remote job 
  * submission of all {@link JobLauncher} classes.
- * .
+ *
  * @author dooley
  *
  */
@@ -27,7 +27,8 @@ public class JobLauncherTestFactory
     			// don't have containers for them yet.
     			continue;
     		}
-    		testCases.add(new JobLauncherTest(scheduler));
+    		if (SchedulerType.SLURM == scheduler)
+    			testCases.add(new JobLauncherTest(scheduler));
     	}
     	
         return testCases.toArray();

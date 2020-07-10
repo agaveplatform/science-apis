@@ -57,7 +57,7 @@ public class WrapperTemplateMacroResolver {
         String resolvedTemplate = resolveJobAttributeMacros(wrapperTemplate);
         resolvedTemplate = resolveJobStatusMacros(resolvedTemplate);
 
-        return resolvedTemplate;
+        return resolvedTemplate == null ? "" : resolvedTemplate;
 //
 //        try {
 //            ExecutionSystem executionSystem = getExecutionSystem();

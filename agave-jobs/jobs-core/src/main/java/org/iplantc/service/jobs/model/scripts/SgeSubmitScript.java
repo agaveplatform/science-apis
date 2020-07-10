@@ -3,12 +3,12 @@
  */
 package org.iplantc.service.jobs.model.scripts;
 
-import java.util.Arrays;
-import java.util.Hashtable;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.model.Job;
+
+import java.util.Arrays;
+import java.util.Hashtable;
 
 /**
  * Concreate class for SGE batch submit scripts.
@@ -41,7 +41,7 @@ public class SgeSubmitScript extends AbstractSubmitScript
 				+ DIRECTIVE_PREFIX + "-l h_rt=" + time + "\n" 
 				// we can remote to the system and find the correct parallel environment
 				// using the "qconf -spl" command.
-				+ DIRECTIVE_PREFIX + "-pe " + nodes + "way " + processors + "\n"
+				// + DIRECTIVE_PREFIX + "-pe " + nodes + "way " + processors + "\n"
 				+ DIRECTIVE_PREFIX + "-q " + queue.getEffectiveMappedName() + "\n";
 				if (!StringUtils.isEmpty(queue.getCustomDirectives())) {
 					result += DIRECTIVE_PREFIX + queue.getCustomDirectives() + "\n";

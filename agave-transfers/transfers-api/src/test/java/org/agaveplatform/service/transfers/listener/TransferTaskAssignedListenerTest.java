@@ -606,90 +606,39 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	}
 
 	@Test
-	@DisplayName("TransferTaskAssignedListener - isTaskInterruptedTest")
+	@DisplayName("TransferTaskAssignedListener - taskIsNotInterrupted")
 	//@Disabled
-	void isTaskInterruptedTest(Vertx vertx, VertxTestContext ctx) {
+	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
-		JsonObject rootTransferTaskJson = tt.toJson();
 
-
-		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
-
-		JsonObject updatedTransferTaskJson = rootTransferTaskJson.copy().put("status", TransferStatusType.ASSIGNED.name());
-
-		// now mock out our db interactions. Here we
-		TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(updatedTransferTaskJson);
-
-		JsonObject expectedgetByIdAck = tt.toJson();
-		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
-		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(updateGetById);
-			return null;
-		}).when(dbService).getById(eq(tt.getTenantId()), eq(tt.getUuid()), anyObject() );
-
-
-		AsyncResult<JsonObject> updatedStatusAsyncResult = getMockAsyncResult(updatedTransferTaskJson);
-		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
-			handler.handle(updatedStatusAsyncResult);
-			return null;
-		}).when(dbService).updateStatus(any(), any(), any(), any(Handler.class));
-
-		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
-			// returning the given transfer task, adding an id if it doesn't have one.
-			JsonObject childTask = arguments.getArgumentAt(1, TransferTask.class).toJson().put("id", Instant.now().toEpochMilli());
-			handler.handle(Future.succeededFuture(childTask));
-//			handler.handle(updatedTransferTaskAsyncResult);
-			return null;
-		}).when(dbService).createOrUpdateChildTransferTask(any(), any(), any(Handler.class));
-
-		// assign the mock db service to the test listener
-		when(ta.getDbService()).thenReturn(dbService);
-
-		// assign the mock db service to the test listener
-		when(ta.getDbService()).thenReturn(dbService);
-
-		doCallRealMethod().when(ta).addCancelledTask(any());
-		doCallRealMethod().when(ta).removeCancelledTask(any());
-		doCallRealMethod().when(ta).addPausedTask(any());
-		doCallRealMethod().when(ta).removePausedTask(any());
-
-		when(ta.taskIsNotInterrupted(eq(tt))).thenReturn(Boolean.TRUE);
-
-//		doCallRealMethod().when(ta).cancelledTasks.add(eq(tt.getUuid()));
-//		doCallRealMethod().when(ta).cancelledTasks.remove(eq(tt.getUuid()));
+		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
 
 		ctx.verify(() -> {
 			ta.addCancelledTask(tt.getUuid());
 			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in cancelledTasks list should indicate task is interrupted");
 			ta.removeCancelledTask(tt.getUuid());
 
-//			ta.addPausedTask(tt.getUuid());
-//			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in pausedTasks list should indicate task is interrupted");
-//			ta.removePausedTask(tt.getUuid());
-//
-//			ta.addCancelledTask(tt.getParentTaskId());
-//			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in cancelledTasks list should indicate task is interrupted");
-//			ta.removeCancelledTask(tt.getParentTaskId());
-//
-//			ta.addPausedTask(tt.getParentTaskId());
-//			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in pausedTasks list should indicate task is interrupted");
-//			ta.removePausedTask(tt.getParentTaskId());
-//
-//			ta.addCancelledTask(tt.getRootTaskId());
-//			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in cancelledTasks list should indicate task is interrupted");
-//			ta.removeCancelledTask(tt.getRootTaskId());
-//
-//			ta.addPausedTask(tt.getRootTaskId());
-//			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in pausedTasks list should indicate task is interrupted");
-//			ta.removePausedTask(tt.getRootTaskId());
+			ta.addPausedTask(tt.getUuid());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in pausedTasks list should indicate task is interrupted");
+			ta.removePausedTask(tt.getUuid());
+
+			ta.addCancelledTask(tt.getParentTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in cancelledTasks list should indicate task is interrupted");
+			ta.removeCancelledTask(tt.getParentTaskId());
+
+			ta.addPausedTask(tt.getParentTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in pausedTasks list should indicate task is interrupted");
+			ta.removePausedTask(tt.getParentTaskId());
+
+			ta.addCancelledTask(tt.getRootTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in cancelledTasks list should indicate task is interrupted");
+			ta.removeCancelledTask(tt.getRootTaskId());
+
+			ta.addPausedTask(tt.getRootTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in pausedTasks list should indicate task is interrupted");
+			ta.removePausedTask(tt.getRootTaskId());
 
 			ctx.completeNow();
 		});

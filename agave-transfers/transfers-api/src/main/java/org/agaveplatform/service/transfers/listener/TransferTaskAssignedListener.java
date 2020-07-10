@@ -71,7 +71,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     // TODO: codify our notification behavior here. Do we rewrap? How do we ensure ordering? Do we just
                     //   throw it over the fence to Camel and forget about it? Boy, that would make things easier,
                     //   thought not likely faster.
-                    // TODO: This seems like the correct pattery. Handler sent to the processing function, then
+                    // TODO: This seems like the correct pattern. Handler sent to the processing function, then
                     //   only send the notification on success. We can add a failure and error notification to the
                     //   respective listeners in the same way.
 //                    _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
@@ -90,6 +90,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             log.info("Transfer task {} cancel detected", uuid);
             if (uuid != null) {
                 addCancelledTask(uuid);
+                checkPausedTask(uuid);
             }
         });
 

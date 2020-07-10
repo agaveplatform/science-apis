@@ -142,6 +142,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      */
     public synchronized void addCancelledTask(String uuid) {
         cancelledTasks.add(uuid);
+        cancelledTasks.contains(uuid);
     }
 
     /**
@@ -159,6 +160,14 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      */
     public synchronized void addPausedTask(String uuid) {
         pausedTasks.add(uuid);
+    }
+
+    /**
+    * Check for the existence of a uuid in the paused task
+     * @param uuid then
+    */
+    public synchronized boolean checkPausedTask(String uuid) {
+       return pausedTasks.contains(uuid);
     }
 
     /**

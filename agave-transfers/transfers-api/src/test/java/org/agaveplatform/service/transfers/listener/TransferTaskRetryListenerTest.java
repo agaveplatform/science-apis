@@ -283,6 +283,14 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
 		TransferTaskRetryListener ta = new TransferTaskRetryListener(vertx);
+
+		// mock out the db service so we can can isolate method logic rather than db
+		TransferTaskDatabaseService dbService = getMockTranserTaskDatabaseService(tt.toJson());
+
+
+
+		//doNothing().when(ta).getRetryRequestManager().request(any(), any(), any());
+
 		ctx.verify(() -> {
 			ta.addCancelledTask(tt.getUuid());
 			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in cancelledTasks list should indicate task is interrupted");

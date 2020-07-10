@@ -644,7 +644,7 @@ public class TransferTask {
                             + "/media/system/" + endpointUri.getHost() + endpointUri.getPath();
                 }
             }
-        } catch (AgaveNamespaceException e) {
+        } catch (Exception e) {
             log.error(e.getMessage());
         }
         

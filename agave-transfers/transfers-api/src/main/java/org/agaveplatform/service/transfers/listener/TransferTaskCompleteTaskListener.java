@@ -57,7 +57,12 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 			logger.info("Transfer task {} completed: {} -> {}", uuid, source, dest);
 
 			this.processEvent(body, result -> {
-
+				if (result.succeeded()) {
+					logger.error("Succeeded with the processing transfer completed event for transfer task {}", uuid);
+				} else {
+					logger.error("Error with return from complete event {}", uuid);
+					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+				}
 			});
 		});
 	}
@@ -78,10 +83,11 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 					logger.debug("Transfer task {} status updated to COMPLETED", uuid);
 					_doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, body);
 
-					if (parentTaskId != null) {
+					if (parentTaskId != null ) {
 						logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);
 						processParentEvent(tenantId, parentTaskId, tt -> {
 							if (tt.succeeded()) {
+								tt.result();
 								logger.debug("Check for parent task {} for completed transfer task {} done.", parentTaskId, uuid);
 								handler.handle(Future.succeededFuture(true));
 							} else {
@@ -97,7 +103,8 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 					}
 					else {
 						logger.debug("Transfer task {} has no parent task to process.", uuid);
-						handler.handle(Future.succeededFuture(true));
+						reply.failed();
+						handler.handle(Future.succeededFuture(false));
 					}
 				}
 				else {
@@ -122,14 +129,15 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 	 * @param parentTaskId the id of the parent
 	 * @param resultHandler the handler to call with a boolean value indicating whether the parent event was found to be incomplete and needed to have a transfer.complete event created.
 	 */
-	void processParentEvent(String tenantId, String parentTaskId, Handler<AsyncResult<Boolean>> resultHandler) {
+	protected void processParentEvent(String tenantId, String parentTaskId, Handler<AsyncResult<Boolean>> resultHandler) {
 		// lookup parent transfertask
 		getDbService().getById(tenantId, parentTaskId, getTaskById -> {
 			if (getTaskById.succeeded()) {
-				// check whether it's active or not by its status
+				// check whether it's active or not by its status2spy
+
 				TransferTask parentTask = new TransferTask(getTaskById.result());
 				if ( ! parentTask.getStatus().toString().isEmpty() &&
-						! List.of(CANCELLED, COMPLETED, FAILED).contains(parentTask.getStatus())) {
+						! List.of( PAUSED,CANCELLED, COMPLETED,COMPLETED_WITH_ERRORS,ERROR, FAILED).contains(parentTask.getStatus())) {
 
 					// if the parent is active, check for any children still active to see if it needs to be notified
 					// that all children have completed.

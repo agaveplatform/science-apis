@@ -113,6 +113,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                             uuid, CANCELING_WAITING.name());
                     getDbService().updateStatus(tenantId, uuid, CANCELING_WAITING.name(), updateReply -> {
                         if (updateReply.succeeded()) {
+
                             logger.debug(String.format("Successfully updated the status of transfer task %s to %s prior " +
                                             "to sending %s event.",
                                             uuid, CANCELING_WAITING.name(), TRANSFERTASK_CANCELED_SYNC));

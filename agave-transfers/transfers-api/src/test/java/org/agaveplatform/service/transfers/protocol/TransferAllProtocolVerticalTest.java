@@ -8,6 +8,8 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener;
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -30,8 +32,8 @@ import java.net.URI;
 import java.time.Instant;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_ALL;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
@@ -216,4 +218,42 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 
 	}
 
+	@Test
+	@DisplayName("TransferTaskAllVerticle - taskIsNotInterrupted")
+		//@Disabled
+	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) {
+		TransferTask tt = _createTestTransferTask();
+		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
+		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
+
+		TransferAllProtocolVertical ta = new TransferAllProtocolVertical(vertx);
+
+		ctx.verify(() -> {
+			ta.addCancelledTask(tt.getUuid());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in cancelledTasks list should indicate task is interrupted");
+			ta.removeCancelledTask(tt.getUuid());
+
+			ta.addPausedTask(tt.getUuid());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt present in pausedTasks list should indicate task is interrupted");
+			ta.removePausedTask(tt.getUuid());
+
+			ta.addCancelledTask(tt.getParentTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in cancelledTasks list should indicate task is interrupted");
+			ta.removeCancelledTask(tt.getParentTaskId());
+
+			ta.addPausedTask(tt.getParentTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt parent present in pausedTasks list should indicate task is interrupted");
+			ta.removePausedTask(tt.getParentTaskId());
+
+			ta.addCancelledTask(tt.getRootTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in cancelledTasks list should indicate task is interrupted");
+			ta.removeCancelledTask(tt.getRootTaskId());
+
+			ta.addPausedTask(tt.getRootTaskId());
+			assertFalse(ta.taskIsNotInterrupted(tt), "UUID of tt root present in pausedTasks list should indicate task is interrupted");
+			ta.removePausedTask(tt.getRootTaskId());
+
+			ctx.completeNow();
+		});
+	}
 }

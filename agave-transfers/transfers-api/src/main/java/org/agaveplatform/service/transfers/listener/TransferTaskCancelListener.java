@@ -65,9 +65,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} ackowledged cancellation", uuid);
-            this.processCancelAck(body, result -> {
-
-            });
+            this.processCancelAck(body, result -> {});
         });
     }
 

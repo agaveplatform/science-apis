@@ -1,5 +1,6 @@
 package org.iplantc.service.metadata.managers;
 
+import com.mongodb.DBCollection;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.auth.JWTClient;

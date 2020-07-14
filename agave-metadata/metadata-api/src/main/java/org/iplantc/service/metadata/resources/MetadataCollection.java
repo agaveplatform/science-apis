@@ -11,12 +11,14 @@ import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKe
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.regex.Pattern;
 
+import com.mongodb.*;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -40,8 +42,12 @@ import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.managers.MetadataRequestNotificationProcessor;
 import org.iplantc.service.metadata.managers.MetadataRequestPermissionProcessor;
 import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
+import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.MetadataEventType;
+import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.joda.time.DateTime;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.restlet.Context;
 import org.restlet.data.Form;
 import org.restlet.data.MediaType;
@@ -62,17 +68,11 @@ import com.github.fge.jsonschema.main.JsonSchemaFactory;
 import com.github.fge.jsonschema.main.JsonValidator;
 import com.github.fge.jsonschema.report.ProcessingMessage;
 import com.github.fge.jsonschema.report.ProcessingReport;
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.BasicDBObjectBuilder;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
 import com.mongodb.util.JSON;
 import com.mongodb.util.JSONParseException;
 import org.iplantc.service.common.util.SimpleTimer;
+
+import javax.persistence.Basic;
 
 /**
  * Class to handle CRUD operations on metadata entities.
@@ -93,6 +93,11 @@ public class MetadataCollection extends AgaveResource {
     private DBCollection collection;
     private DBCollection schemaCollection;
     private MetadataEventProcessor eventProcessor;
+
+    //KL - update to Mongo 4.0
+    private MongoCollection mongoCollection;
+    private MongoCollection mongoSchemaCollection;
+    private MongoDatabase mongoDB;
 
     /**
      * @param context
@@ -157,6 +162,12 @@ public class MetadataCollection extends AgaveResource {
             // Gets a collection, if it does not exist creates it
             collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
             schemaCollection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
+
+            //KL
+            mongoDB = mongoClient.getDatabase(Settings.METADATA_DB_SCHEME);
+            mongoCollection = mongoDB.getCollection(Settings.METADATA_DB_COLLECTION);
+            mongoSchemaCollection = mongoDB.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
+
         } catch (Throwable e) {
             log.error("Unable to connect to metadata store", e);
             response.setStatus(Status.SERVER_ERROR_INTERNAL);
@@ -168,13 +179,17 @@ public class MetadataCollection extends AgaveResource {
 
     /**
      * This method represents the HTTP GET action. The input files for the authenticated user are
-     * retrieved from the database and sent to the user as a {@link org.json.JSONArray JSONArray}
-     * of {@link org.json.JSONObject JSONObject}.
+     * retrieved from the database and sent to the user as a {@link JSONArray JSONArray}
+     * of {@link JSONObject JSONObject}.
      */
     @Override
     public Representation represent(Variant variant) throws ResourceException {
         DBCursor cursor = null;
         SimpleTimer st = null;
+
+        //KL
+        MongoCursor agg_cursor = null;
+
         try {
             if (collection == null) {
                 throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
@@ -183,6 +198,9 @@ public class MetadataCollection extends AgaveResource {
             }
 
             BasicDBObject query = null;
+
+            //KL - list of arguments for aggregation pipeline
+            BasicDBList agg = new BasicDBList();
 
             if (StringUtils.isEmpty(userQuery)) {
                 //AgaveLogServiceClient.log(METADATA02.name(), MetaList.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
@@ -194,13 +212,36 @@ public class MetadataCollection extends AgaveResource {
                     if (log.isDebugEnabled())
                         st = SimpleTimer.start("META instrument : no user query defined, meta perms gathered");
                     List<String> accessibleUuids = MetadataPermissionDao.getUuidOfAllSharedMetataItemReadableByUser(this.username);
+
+                    //KL - add permission find to query
+                    //permission match
+                    BasicDBObject permType = new BasicDBObject("$nin", Arrays.asList(PermissionType.NONE));
+                    BasicDBObject perm = new BasicDBObject("permissions", permType);
+                    BasicDBList permList = new BasicDBList();
+                    permList.add(perm);
+                    permList.add(new BasicDBObject("username", this.username));
+
+                    BasicDBObject elemMatch = new BasicDBObject("permissions", new BasicDBObject("$elemMatch", permList));
+
+                    //---------------------------------
+
                     if (st != null) log.debug(st.getShortStopMsg());
 
                     BasicDBList or = new BasicDBList();
-                    or.add(new BasicDBObject("uuid", new BasicDBObject("$in", accessibleUuids)));
+                    //KL - add permission to find query
+                    //or.add(new BasicDBObject("uuid", new BasicDBObject("$in", accessibleUuids)));
+                    or.add(elemMatch);
                     or.add(new BasicDBObject("owner", this.username));
 
-                    query.append("$or", or);
+                    BasicDBList queryList = new BasicDBList();
+                    queryList.add(query);
+                    queryList.add(or);
+                    BasicDBObject match = new BasicDBObject("$match", queryList);
+                    agg.add(match);
+
+                    //query.append("$or", or);
+                    //-------------------
+
                 }
 
             } else {
@@ -227,20 +268,50 @@ public class MetadataCollection extends AgaveResource {
                         }
                     }
                     // append tenancy info
-                    query.append("tenantId", TenancyHelper.getCurrentTenantId());
+                    //query.append("tenantId", TenancyHelper.getCurrentTenantId());
+                    //KL
+                    BasicDBObject tenantMatch = new BasicDBObject("tenantId", TenancyHelper.getCurrentTenantId());
 
                     // filter results if querying without implicity permissions
                     if (!includeRecordsWithImplicitPermissions) {
                         // permissions are separated from the metadata, so we need to look up available uuid for user.
                         List<String> accessibleUuids = MetadataPermissionDao.getUuidOfAllSharedMetataItemReadableByUser(
                             this.username);
+
+                        //KL - add permission find to query
+                        BasicDBObject permType = new BasicDBObject("$nin", Arrays.asList(PermissionType.NONE));
+                        BasicDBObject perm = new BasicDBObject("permissions", permType);
+                        BasicDBList permList = new BasicDBList();
+                        permList.add(perm);
+                        permList.add(new BasicDBObject("username", this.username));
+
+                        BasicDBObject elemMatch = new BasicDBObject("permissions", new BasicDBObject("$elemMatch", permList));
+
+                        //---------------------------------
+
                         List<String> accessibleOwners = Arrays.asList(this.username,
                             Settings.PUBLIC_USER_USERNAME,
                             Settings.WORLD_USER_USERNAME);
                         BasicDBList or = new BasicDBList();
-                        or.add(new BasicDBObject("uuid", new BasicDBObject("$in", accessibleUuids)));
-                        or.add(new BasicDBObject("owner", new BasicDBObject("$in", accessibleOwners)));
-                        query.append("$or", or);
+
+                        //KL - add permission to find query
+                        //or.add(new BasicDBObject("uuid", new BasicDBObject("$in", accessibleUuids)));
+                        //or.add(new BasicDBObject("$and", and));
+                        //or.add(new BasicDBObject("owner", new BasicDBObject("$in", accessibleOwners)));
+
+                        or.add(elemMatch);
+                        or.add(new BasicDBObject("owner", accessibleOwners));
+
+                        BasicDBList queryList = new BasicDBList();
+                        queryList.add(query);
+                        queryList.add(tenantMatch);
+                        queryList.add(or);
+                        BasicDBObject match = new BasicDBObject("$match", queryList);
+                        agg.add(match);
+
+                        //query.append("$or", or);
+                        //----------------------------------
+
                     }
                 } catch (JSONParseException e) {
                     throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Malformed JSON Query");
@@ -269,6 +340,15 @@ public class MetadataCollection extends AgaveResource {
 
             if (log.isDebugEnabled()) st = SimpleTimer.start("query mongodb ...  ");
 
+            //KL - aggregate instead of find - faster results
+            agg.add(Aggregates.sort(new BasicDBObject(orderField, orderDirection)));
+            agg.add(Aggregates.skip(offset));
+            agg.add(Aggregates.limit(limit));
+
+            agg_cursor = mongoCollection.aggregate(agg).cursor();
+            //-----------------------------------------------
+
+
             cursor = collection.find(query, new BasicDBObject("_id", false))
                                .sort(new BasicDBObject(orderField, orderDirection))
                                .skip(offset)
@@ -276,17 +356,29 @@ public class MetadataCollection extends AgaveResource {
             if (st != null) log.debug(st.getShortStopMsg());
 
             List<DBObject> permittedResults = new ArrayList<DBObject>();
+            List<DBObject> agg_permittedResults = new ArrayList<DBObject>();
+
 
             if (log.isDebugEnabled()) st = SimpleTimer.start("format the query results ...  ");
+
+            //KL -
+            while (agg_cursor.hasNext()) {
+                DBObject result = cursor.next ();
+                agg_permittedResults.add(result);
+            }
+            //---------------------------------------------
+
             for (DBObject result : cursor.toArray()) {
                 // permission check is not needed since the list came from
                 // a white list of allowsed uuids
                 result = formatMetadataObject(result);
                 permittedResults.add(result);
             }
+            //---------------------------------------------
+
             if (st != null) log.debug(st.getShortStopMsg());
 
-            return new IplantSuccessRepresentation(permittedResults.toString());
+            return new IplantSuccessRepresentation(agg_permittedResults.toString());
         } catch (SortSyntaxException e) {
             throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, e.getMessage(), e);
         } catch (ResourceException e) {
@@ -299,6 +391,7 @@ public class MetadataCollection extends AgaveResource {
         } finally {
             try {
                 cursor.close();
+                agg_cursor.close();             //KL
             } catch (Exception e) {
             }
         }
@@ -523,6 +616,23 @@ public class MetadataCollection extends AgaveResource {
             uuid = new AgaveUUID(UUIDType.METADATA).toString();
             doc.put("uuid", uuid);
             doc.append("created", timestamp);
+
+            //KL - add any permissions to the requesting user
+            BasicDBList pemList = new BasicDBList();
+            MetadataRequestPermissionProcessor permissionProcessor = new MetadataRequestPermissionProcessor(username,
+                    uuid);
+            permissionProcessor.process(permissions);
+            List<MetadataPermission> metaPemList = permissionProcessor.getPermissions();
+
+           for (MetadataPermission pem : metaPemList) {
+               pemList.add(new BasicDBObject("username", pem.getUsername())
+                       .append("group", null)
+                       .append("permissions", new BasicDBList().add(pem.getPermission())));
+           }
+           mongoCollection.insertOne(doc);
+
+           //KL -------------
+
             collection.insert(doc);
 
             eventProcessor.processContentEvent(uuid,
@@ -540,10 +650,11 @@ public class MetadataCollection extends AgaveResource {
             MetadataPermissionManager pm = new MetadataPermissionManager(uuid, username);
             pm.setPermission(username, "ALL");
 
-            // add any  permission to the requesting user
-            MetadataRequestPermissionProcessor permissionProcessor = new MetadataRequestPermissionProcessor(username,
-                uuid);
-            permissionProcessor.process(permissions);
+            //KL
+            //// add any  permission to the requesting user
+            //MetadataRequestPermissionProcessor permissionProcessor = new MetadataRequestPermissionProcessor(username,
+            //    uuid);
+            //permissionProcessor.process(permissions);
 
 
             getResponse().setStatus(Status.SUCCESS_CREATED);

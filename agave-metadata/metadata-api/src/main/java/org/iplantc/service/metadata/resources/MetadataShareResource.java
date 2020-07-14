@@ -1,11 +1,19 @@
 package org.iplantc.service.metadata.resources;
 
 import com.mongodb.*;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.DBCollectionUpdateOptions;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.common.auth.AuthorizationHelper;
+import org.iplantc.service.common.auth.JWTClient;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.clients.AgaveProfileServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.AgaveResource;
@@ -14,6 +22,7 @@ import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataPermissionDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.managers.MetadataPermissionManager;
+import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.util.ServiceUtils;
@@ -27,7 +36,11 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
+import javax.persistence.Basic;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
@@ -49,6 +62,10 @@ public class MetadataShareResource extends AgaveResource {
     private MongoClient mongoClient;
     private DB db;
     private DBCollection collection;
+
+    //KL - update to Mongo 4.0
+	private MongoDatabase mongoDB;
+	private MongoCollection mongoCollection;
 
     /**
 	 * @param context the request context
@@ -75,15 +92,28 @@ public class MetadataShareResource extends AgaveResource {
             db = mongoClient.getDB(Settings.METADATA_DB_SCHEME);
             // Gets a collection, if it does not exist creates it
             collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
-            
-            if (!StringUtils.isEmpty(uuid)) 
+
+			//KL - update to Mongo 4.0
+			mongoDB = mongoClient.getDatabase(Settings.METADATA_DB_SCHEME);
+			mongoCollection = mongoDB.getCollection(Settings.METADATA_DB_COLLECTION);
+
+
+			if (!StringUtils.isEmpty(uuid))
             {
     	        DBObject returnVal = collection.findOne(new BasicDBObject("uuid", uuid));
-    	
-    	        if (returnVal == null) {
+
+				//KL - update to Mongo 4.0
+				BasicDBList aggList = new BasicDBList();
+				aggList.add(new BasicDBObject("$match", new BasicDBObject("uuid", uuid)));
+
+				MongoCursor cursor = mongoCollection.aggregate(aggList).cursor();
+				if (cursor.hasNext()) {
+					returnVal = (DBObject) cursor.next();
+				}
+
+				if (returnVal == null) {
     	            throw new MetadataException("No metadata item found for user with id " + uuid);
     	        }
-    	        
     	        owner = (String)returnVal.get("owner");
             }
             else
@@ -121,13 +151,121 @@ public class MetadataShareResource extends AgaveResource {
 
 		try
 		{
+			//KL - permission in metadata doc ----------
+
+			//check mongodb connection
+			if (collection == null) {
+				throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+						"Unable to connect to metadata store. If this problem persists, "
+								+ "please contact the system administrators.");
+			}
+
+			//check user can read
+			//check user has valid permission to write to uuid
+			BasicDBObject query;
+			DBCursor cursor = null;
+			DBObject firstResult, formattedResult;
+			BasicDBList queryList = new BasicDBList();
+			BasicDBList matchList = new BasicDBList();
+			BasicDBList agg = new BasicDBList();
+			Cursor cursor_new = null;
+
+			matchList.add(new BasicDBObject("uuid", uuid));
+			matchList.add(new BasicDBObject("tenantId", TenancyHelper.getCurrentTenantId()));
+
+			//owner/admin permission
+			//if tenantadmin or owner
+			if (StringUtils.equals(Settings.PUBLIC_USER_USERNAME, username) ||
+					StringUtils.equals(Settings.WORLD_USER_USERNAME, username)) {
+				boolean worldAdmin = JWTClient.isWorldAdmin();
+				boolean tenantAdmin = AuthorizationHelper.isTenantAdmin(TenancyHelper.getCurrentEndUser());
+				if (!tenantAdmin && !worldAdmin) {
+					//user permissions
+					//BasicDBList and = new BasicDBList();
+					BasicDBObject permType = new BasicDBObject("$nin", Arrays.asList(PermissionType.NONE));
+					BasicDBObject perm = new BasicDBObject("permissions", permType);
+					BasicDBList permList = new BasicDBList();
+					permList.add(perm);
+					permList.add(new BasicDBObject("username", this.username));
+
+					BasicDBObject elemMatch = new BasicDBObject("permissions", new BasicDBObject("$elemMatch", permList));
+
+					//can be owner or user
+					BasicDBList or = new BasicDBList();
+					or.add(new BasicDBObject("owner", this.username));
+					or.add(elemMatch);
+
+					queryList.add(new BasicDBObject("$match", or));
+					queryList.add(new BasicDBObject("$match", matchList));
+					agg.add(queryList);
+					agg.add(Aggregates.skip(offset));
+					agg.add(Aggregates.limit(limit));
+
+					//query.append("$or", or);
+				}
+			}
+			cursor_new = (Cursor) collection.aggregate(agg);
+
+			List <MetadataPermission> pemList = new ArrayList<MetadataPermission>();
+
+			while (cursor_new.hasNext()) {
+				firstResult = cursor_new.next();
+				PermissionType resultPem = (PermissionType) firstResult.get("permissions.permissions.0");
+				String resultUser = firstResult.get("permissions.username").toString();
+				MetadataPermission mp = new MetadataPermission(uuid, resultUser, resultPem);
+				pemList.add(mp);
+			}
+
+			if (pemList.isEmpty()) {
+				//check if user has permissions set up
+
+				BasicDBList permList = new BasicDBList();
+				permList.add(new BasicDBObject("permissions.username", this.username));
+
+				agg = new BasicDBList();
+				agg.add(new BasicDBObject("$match", matchList));
+				agg.add(new BasicDBObject("$match", permList));
+
+				agg.add(Aggregates.skip(offset));
+				agg.add(Aggregates.limit(limit));
+
+				cursor_new = (Cursor) collection.aggregate(agg);
+				if (cursor_new.hasNext()){
+					throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
+							"User does not have permission to view this resource");
+				} else {
+					throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+							"No permissions found for user " + sharedUsername);
+				}
+			}
+
+			if (StringUtils.isEmpty(sharedUsername))
+			{
+				StringBuilder jPems = new StringBuilder(new MetadataPermission(uuid, owner, PermissionType.ALL).toJSON());
+				for (MetadataPermission permission: pemList)
+				{
+					if (!StringUtils.equals(permission.getUsername(), owner)) {
+						jPems.append(",").append(permission.toJSON());
+					}
+				}
+				return new IplantSuccessRepresentation("[" + jPems + "]");
+			}
+			else
+			{
+				if (ServiceUtils.isAdmin(sharedUsername) || StringUtils.equals(owner, sharedUsername)) {
+					MetadataPermission pem = new MetadataPermission(uuid, sharedUsername, PermissionType.ALL);
+					return new IplantSuccessRepresentation(pem.toJSON());
+				}
+			}
+			//------------------------------------------
+
 			MetadataPermissionManager pm = new MetadataPermissionManager(uuid, owner);
 
 			if (pm.canRead(username))
 			{
 				List<MetadataPermission> permissions = MetadataPermissionDao.getByUuid(uuid, offset, limit);
-				
-				if (StringUtils.isEmpty(sharedUsername)) 
+
+				if (StringUtils.isEmpty(sharedUsername))
 				{
 					StringBuilder jPems = new StringBuilder(new MetadataPermission(uuid, owner, PermissionType.ALL).toJSON());
 					for (MetadataPermission permission: permissions)
@@ -137,8 +275,8 @@ public class MetadataShareResource extends AgaveResource {
 						}
 					}
 					return new IplantSuccessRepresentation("[" + jPems + "]");
-				} 
-				else 
+				}
+				else
 				{
 					if (ServiceUtils.isAdmin(sharedUsername) || StringUtils.equals(owner, sharedUsername))
 					{
@@ -195,7 +333,17 @@ public class MetadataShareResource extends AgaveResource {
 				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, 
 						"No metadata id provided.");
 			}
-			
+
+			//KL - permission in metadata doc ----------
+
+			//check mongodb connection
+			if (collection == null) {
+				throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+						"Unable to connect to metadata store. If this problem persists, "
+								+ "please contact the system administrators.");
+			}
+			//------------------------------------------
+
 			String name;
             String sPermission;
 
@@ -265,7 +413,93 @@ public class MetadataShareResource extends AgaveResource {
 						"No user found matching " + name);
 				}
 			}
-			
+
+			/*--------------------------------------------------------*/
+
+			//KL - permission in metadata doc ------------------------
+
+			//check connection
+			if (collection == null) {
+				throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+						"Unable to connect to metadata store. If this problem persists, "
+								+ "please contact the system administrators.");
+			}
+
+			//check user has valid permission to write to uuid
+			BasicDBObject query;
+			MongoCursor cursor = null;
+			DBObject firstResult, formattedResult;
+
+			query = new BasicDBObject("uuid", uuid);
+			query.append("tenantId", TenancyHelper.getCurrentTenantId());
+
+			//user permissions
+			BasicDBObject permType = new BasicDBObject("$nin", Arrays.asList(PermissionType.NONE, PermissionType.READ));
+			BasicDBObject pem = new BasicDBObject("username", username)
+					.append("permissions", permType);
+
+			//owner/admin permission -- should this be done in else for performance
+			//if tenantadmin or owner
+			if (StringUtils.equals(Settings.PUBLIC_USER_USERNAME, username) ||
+					StringUtils.equals(Settings.WORLD_USER_USERNAME, username)) {
+				boolean worldAdmin = JWTClient.isWorldAdmin();
+				boolean tenantAdmin = AuthorizationHelper.isTenantAdmin(TenancyHelper.getCurrentEndUser());
+				if (!tenantAdmin && !worldAdmin) {
+					BasicDBList or = new BasicDBList();
+					or.add(new BasicDBObject("owner", username));
+					or.add(new BasicDBObject("permissions", new BasicDBObject("$elemMatch", pem)));
+					query.append("$or", or);
+				}
+			}
+
+			BasicDBList aggList = new BasicDBList();
+			aggList.add(query);
+			//findAndModify handles the find and updating/inserting
+			cursor = mongoCollection.aggregate(aggList).cursor();
+
+			if (cursor.hasNext())  {
+				//permission found
+				firstResult = (DBObject) cursor.next();
+			}
+			else {
+				throw new ResourceException(
+						Status.CLIENT_ERROR_FORBIDDEN,
+						"User does not have permission to modify this resource.");
+			}
+
+			//pull then push to update
+			//collection.update({"uuid":uuid, "tenantId":tenantid},{$pull: {"permissions" :{"username":username}}})
+			BasicDBObject removeQuery = new BasicDBObject("uuid", uuid);
+			removeQuery.append("tenantId", TenancyHelper.getCurrentTenantId());
+			BasicDBObject remove = new BasicDBObject("$pull", new BasicDBObject("permissions", new BasicDBObject("username", username)));
+			collection.update(removeQuery, remove);
+
+			if (StringUtils.isEmpty(sPermission) || sPermission.equalsIgnoreCase("none")) {
+				//remove if permissions is empty/none
+				getResponse().setStatus(Status.SUCCESS_OK);
+			} else{
+				getResponse().setStatus(Status.SUCCESS_CREATED);
+
+				BasicDBObject set = new BasicDBObject("permissions.permissions.0",sPermission);
+
+				query = new BasicDBObject("uuid", uuid);
+				query.append("tenantId", TenancyHelper.getCurrentTenantId());
+				BasicDBObject updatePem = new BasicDBObject("username", sharedUsername)
+						.append("permissions", Arrays.asList(sPermission))
+						.append("group", null);
+
+				query.append("permissions", Arrays.asList(updatePem));
+				BasicDBList updateAggList = new BasicDBList();
+
+				collection.update(updateAggList, set);
+				MetadataPermission metaPem = new MetadataPermission(uuid, sharedUsername, PermissionType.valueOf(sPermission));
+				getResponse().setEntity(new IplantSuccessRepresentation(metaPem.toJSON()));
+			}
+
+			/*--------------------------------------------------------*/
+
+
+
 			MetadataPermissionManager pm = new MetadataPermissionManager(uuid, owner);
 
 			if (pm.canWrite(username))

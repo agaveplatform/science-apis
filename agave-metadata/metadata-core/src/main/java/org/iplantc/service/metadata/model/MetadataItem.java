@@ -23,6 +23,7 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.validation.constraints.MetadataSchemaComplianceConstraint;
 import org.iplantc.service.notification.model.Notification;
 
@@ -104,6 +105,12 @@ public class MetadataItem {
     @JsonIgnore
     @JsonView({MetadataViews.Resource.Notifications.class, MetadataViews.Request.class})
     private List<Notification> notifications = new ArrayList<Notification>();
+
+
+    //KL
+    @JsonIgnore
+    @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
+    private List<MetadataPermission> permissions = new ArrayList<MetadataPermission>();
 
     public MetadataItem() {
         this.uuid = new AgaveUUID(UUIDType.METADATA).toString();
@@ -316,6 +323,32 @@ public class MetadataItem {
      */
     public synchronized void setLastUpdated(Date lastUpdated) {
         this.lastUpdated = lastUpdated;
+    }
+
+
+    //KL
+    /**
+     * @return the permissions
+     */
+    public synchronized List<MetadataPermission> getPermissions(){return permissions;}
+
+    //KL
+    /**
+     * @param pem the permissions to set
+     */
+    public synchronized void setPermissions(List<MetadataPermission> pem){this.permissions = pem;}
+
+    public synchronized void updatePermissions(MetadataPermission pem){
+        Integer indx = this.permissions.indexOf(pem);
+        if (indx > -1){
+            this.permissions.set(indx,pem);
+        } else {
+            this.permissions.add(pem);
+        }
+    }
+
+    public synchronized  void updatePermissions_delete(MetadataPermission pem){
+            this.permissions.remove(pem);
     }
 
     @JsonIgnore

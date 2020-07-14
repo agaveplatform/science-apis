@@ -4,6 +4,7 @@ import static org.iplantc.service.metadata.model.enumerations.PermissionType.ALL
 
 import java.net.UnknownHostException;
 import java.sql.Date;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -12,21 +13,29 @@ import java.util.regex.Pattern;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.*;
+import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.InsertOneOptions;
+import com.mongodb.client.result.UpdateResult;
+import io.grpc.Metadata;
 import org.apache.log4j.Logger;
 import org.bson.BsonDocument;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
+import org.quartz.impl.calendar.BaseCalendar;
+
+import javax.persistence.Basic;
 
 public class MetadataDao {
     
@@ -113,6 +122,145 @@ public class MetadataDao {
             return metadataItem;
         } catch (UnknownHostException| JsonProcessingException e) {
             throw new MetadataStoreException("Failed to insert metadata item", e);
+        }
+    }
+
+    /**
+     * Return the metadataItem from the collection
+     * @param metadataItem to be returned
+     * @return metadataItem
+     * @throws MetadataStoreException
+     */
+    public MetadataItem find(MetadataItem metadataItem) throws MetadataStoreException {
+        MongoCollection collection;
+
+        try{
+            collection = getDefaultCollection();
+            BasicDBObject doc = new BasicDBObject("uuid", metadataItem.getUuid())
+                    .append("tenantId", metadataItem.getTenantId())
+                    .append("schemaId", metadataItem.getSchemaId())
+                    .append("owner", metadataItem.getOwner())
+                    .append("name", metadataItem.getName())
+                    .append("value", metadataItem.getValue())
+                    .append("internalUsername", metadataItem.getInternalUsername())
+                    .append("created", metadataItem.getCreated())
+                    .append("lastUpdated", metadataItem.getLastUpdated())
+                    .append("permissions", metadataItem.getPermissions());
+
+            BasicDBList aggList = new BasicDBList();
+            aggList.add(new BasicDBObject("$match", doc));
+
+            DBCursor cursor = (DBCursor) collection.aggregate(aggList);
+
+            if (cursor != null) {
+                for (DBObject result : cursor.toArray()){
+                    return (MetadataItem) result;
+                }
+            }
+
+        } catch (UnknownHostException e) {
+            throw new MetadataStoreException("Failed to find metadata item", e);
+        }
+        return null;
+    }
+
+    /**
+     * Removes the permission for the specified user
+     * @param metadataItem to be updated
+     * @param user to be removed
+     * @throws MetadataStoreException
+     */
+    public void deleteUserPermission(MetadataItem metadataItem, String user) throws MetadataStoreException{
+        MongoCollection collection;
+        try{
+            collection = getDefaultCollection();
+
+            BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid());
+            query.append("permissions.user", user);
+            List<MetadataPermission> pemList = metadataItem.getPermissions();
+
+            BasicDBObject pullQuery = new BasicDBObject("permissions", new BasicDBObject("username", user));
+
+            collection.updateOne(query, new BasicDBObject("$pull", pullQuery));
+
+
+        } catch (Exception e){
+            throw new MetadataStoreException("Failed to delete user's permission", e);
+        }
+    }
+
+    /**
+     * Removes all permissions for the metadataItem
+     * @param metadataItem to be updated
+     * @throws MetadataStoreException
+     */
+    public void deleteAllPermissions(MetadataItem metadataItem) throws MetadataStoreException{
+        MongoCollection collection;
+        try{
+            collection = getDefaultCollection();
+
+            metadataItem.setPermissions(new ArrayList<MetadataPermission>());
+
+            BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid());
+            collection.updateOne(query, new BasicDBObject("$set", new BasicDBObject("permissions", metadataItem.getPermissions())));
+
+        } catch (Exception e) {
+            throw new MetadataStoreException("Failed to delete all permissions", e);
+        }
+    }
+
+    /**
+     * Update the permision for the specified user to the specified permission
+     * @param metadataItem to be updated
+     * @param user to be updated
+     * @param pem PermissionType to be updated
+     * @throws MetadataStoreException
+     */
+    public void updatePermission(MetadataItem metadataItem, String user, PermissionType pem) throws MetadataStoreException{
+        MongoCollection collection;
+        try{
+            collection = getDefaultCollection();
+
+            MetadataPermission newPem = new MetadataPermission(metadataItem.getUuid(), user, pem);
+            metadataItem.updatePermissions(newPem);
+
+            BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid());
+            collection.updateOne(query, new BasicDBObject("$set", new BasicDBObject("permissions", metadataItem.getPermissions())));
+
+        } catch (Exception e) {
+            throw new MetadataStoreException("Failed to update permission", e);
+        }
+    }
+
+    public void updateMetadata (MetadataItem metadataItem, String user) throws MetadataStoreException {
+        MongoCollection collection;
+
+        try{
+            collection = getDefaultCollection();
+            BasicDBList aggList = new BasicDBList();
+            BasicDBObject permType = new BasicDBObject("$nin", Arrays.asList(PermissionType.NONE, PermissionType.READ));
+
+            BasicDBObject pem = new BasicDBObject("username", user)
+                    .append("permissions", permType);
+
+            BasicDBList or = new BasicDBList();
+            or.add(new BasicDBObject("permissions", new BasicDBObject("$elemMatch", pem)));
+            or.add(new BasicDBObject("$or", user));
+
+            BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid())
+                    .append("tenantId", metadataItem.getTenantId())
+                    .append("schemaId", metadataItem.getSchemaId())
+                    .append("internalUsername", metadataItem.getInternalUsername())
+                    .append("$or", or);
+
+            aggList.add(query);
+            collection.updateOne((Bson) aggList, new BasicDBObject("$set", new BasicDBObject("value", metadataItem.getValue())));
+
+            //  new BasicDBObject("$set", new BasicDBObject("permissions", metadataItem.getPermissions())));
+
+
+        } catch (Exception e) {
+            throw new MetadataStoreException("Failed to update metadata");
         }
     }
 

@@ -1,19 +1,21 @@
 ######################################################
 #
-# Agave DevOps Slurm Server
-# Tag: agaveplatform/slurm:14.03.9
+# Agave DevOps Slurm Server release tag slurm-20-02-3-1
+# Tag: agaveplatform/slurm:20.02.3
 #
-# This container provides a standard Slurm controller
-# and worker created on top of the agaveplatform/centos-base
-# image. Nothing special here.
+# This container provides a custom Slurm controller and
+# and worker created on top of ubuntu:18.04 to provide a
+# functional job submission container for integration testing.
+# Standard test user account and keys are deployed. SSH server
+# is made available for remoting.
 #
 # Usage:
-# docker run -h docker -i -t  \
-#            -p 10022:22                  \ # SSHD, SFTP
-#            -p 9618:9618                 \ # Slurm
-#            --rm agaveplatform/slurm
+# docker run -it --rm \
+#            -p 10033:22                  \ # SSH, SFTP
+#            --rm agaveplatform/slurm:20.02.3
 #
-#  https://github.com/agaveplatform/base-images:6.5
+#  https://github.com/agaveplatform/base-images
+#  https://agaveplatform.org
 #
 ######################################################
 

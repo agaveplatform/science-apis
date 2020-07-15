@@ -1,3 +1,27 @@
+######################################################
+#
+# MongoDB 4.2.8
+# Tag: agaveplatform/mongodb:4.2.8
+#
+# Base MongoDB 4 image based on mongodb:4.2-bionic. Adds support
+# for MONGODB_USERNAME, MONGODB_PASSWORD, MONGODB_DATABASE,
+# and MONGODB_ADMIN_PASSWORD variables to customize the auth.
+#
+# If not value are specified, the default Agave agaveuser/password
+# credentials are used against the `api` and `notifications`
+# databases.
+#
+# Usage:
+# docker run -it --rm \
+#            -p 27017:27017
+#            -p 28017:28017
+#            --rm agaveplatform/mongodb:4.2.8
+#
+#  https://github.com/agaveplatform/base-images
+#  https://agaveplatform.org
+#
+######################################################
+
 FROM ubuntu:18.04
 
 LABEL MAINTAINER="Rion Dooley <deardooley@gmail.com>"

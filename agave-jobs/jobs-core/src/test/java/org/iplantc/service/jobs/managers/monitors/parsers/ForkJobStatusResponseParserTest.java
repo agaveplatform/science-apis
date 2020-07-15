@@ -25,11 +25,16 @@ public class ForkJobStatusResponseParserTest extends AbstractJobStatusResponsePa
 	}
 
 	/**
-	 * The job status query to Fork is {@code "llq <job_id>}. That means the response should
-	 * come back in a space-delimited line with the following fields:
+	 * The job status query to Fork is {@code "ps -o pid= -o user= -o stat= -o time= -o comm= | grep '^\s+<job_id>'}. That means
+	 * the response should come back in a space-delimited line with the following fields:
 	 *
 	 * <pre>
-	 * Id               Owner    Submitted    ST  PRI Class        Running On
+	 * Id    Owner    Status   Time  Exe
+	 *     1 root     S        0:00  sshd
+	 *   251 root     S        0:00  sshd
+	 *   253 testuser R        0:00  sshd
+	 *   254 testuser S        0:00  ash
+	 *   264 testuser R        0:00  ps
 	 * </pre>
 	 * We can then resolve a valid status line from the template using the following command:
 	 * <pre>

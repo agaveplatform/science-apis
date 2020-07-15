@@ -15,6 +15,7 @@ import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
 import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
+import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.SchedulerType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
@@ -35,15 +36,17 @@ import java.util.List;
 @Test(groups={"integration"})
 public class JobLauncherTest extends AbstractJobSubmissionTest {
 
+	private final ExecutionType executionType;
 	private String remoteFilePath;
 	protected Software software;
 	protected SchedulerType schedulerType;
 	protected ObjectMapper mapper = new ObjectMapper();
 	
-	public JobLauncherTest(SchedulerType schedulerType) {
+	public JobLauncherTest(ExecutionType executionType, SchedulerType schedulerType) {
 		this.schedulerType = schedulerType;
+		this.executionType = executionType;
 	}
-	
+
 	@BeforeClass
 	@Override
 	protected void beforeClass() throws Exception {
@@ -51,66 +54,10 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 	}
 
 	@AfterClass
+	@Override
 	protected void afterClass() throws Exception {
-		
-		try {
-			RemoteDataClient remoteDataClient = null;
-//			try 
-//			{
-//				Software software = SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName());
-//				
-//				remoteDataClient = software.getStorageSystem().getRemoteDataClient();
-//				remoteDataClient.authenticate();
-//				if (remoteDataClient.doesExist(software.getDeploymentPath())) {
-//					remoteDataClient.delete(software.getDeploymentPath());
-//					Assert.assertFalse(remoteDataClient.doesExist(software.getDeploymentPath()), 
-//							"Failed to delete software deployment path from software storage system");
-//				}
-//			} catch (RemoteDataException e) {
-//				Assert.fail("Failed to authenticate to the storage system " + job.getSoftwareName(), e);
-//			} catch (Exception e) {
-//				Assert.fail("Failed to delete software deployment path", e);
-//			} finally {
-//				try {remoteDataClient.disconnect();} catch (Exception e){}
-//			}
-			
-//			try {
-//				remoteDataClient = new SystemDao().findBySystemId(job.getSystem()).getRemoteDataClient(job.getInternalUsername());
-//				remoteDataClient.authenticate();
-//				if (remoteDataClient.doesExist(job.getWorkPath())) {
-//					remoteDataClient.delete(job.getWorkPath());
-//					Assert.assertFalse(remoteDataClient.doesExist(job.getWorkPath()), "Failed to delete work directory from execution system");
-//				}
-//			} catch (Exception e) {
-//				Assert.fail("Failed delete work directory", e);
-//			} finally {
-//				try {remoteDataClient.disconnect();} catch (Exception e){}
-//			}
-		
-		} finally {
-			clearJobs();
-			clearSoftware();
-			clearSystems();
-		}
+		super.afterClass();
 	}
-
-//	/* (non-Javadoc)
-//	 * @see org.iplantc.service.jobs.submission.AbstractJobSubmissionTest#clearSystems()
-//	 */
-//	@Override
-//	protected void clearSystems() {
-//		SystemDao dao = new SystemDao();
-//		try { dao.remove(executionSystem); } catch (Exception e){}
-//		try { dao.remove(storageSystem); } catch (Exception e){}
-//	}
-//
-//	/* (non-Javadoc)
-//	 * @see org.iplantc.service.jobs.submission.AbstractJobSubmissionTest#clearSoftware()
-//	 */
-//	@Override
-//	protected void clearSoftware() throws Exception {
-//		try { SoftwareDao.delete(software); } catch (Exception e){}
-//	}
 
 	@Override
 	protected void initSystems() throws Exception {
@@ -123,7 +70,7 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
         systemDao.persist(storageSystem);
         
         executionSystem = (ExecutionSystem)getNewInstanceOfRemoteSystem(RemoteSystemType.EXECUTION, 
-        		getExectionSystemSchedulerType().name().toLowerCase());
+        		getSchedulerType().name().toLowerCase());
         executionSystem.setOwner(SYSTEM_OWNER);
         executionSystem.setPubliclyAvailable(true);
         executionSystem.setType(RemoteSystemType.EXECUTION);
@@ -136,7 +83,7 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 	 * as systems/execution/{@link SchedulerType#name()}.example.com.json
 	 * @return the scheduler to use for the storage system
 	 */
-	protected SchedulerType getExectionSystemSchedulerType() {
+	protected SchedulerType getSchedulerType() {
 		return this.schedulerType;
 	}
 	
@@ -154,11 +101,11 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 	@Override
 	protected void initSoftware() throws Exception {
 		JSONObject json = jtd.getTestDataObject(SOFTWARE_SYSTEM_TEMPLATE_DIR + File.separator + 
-				executionSystem.getExecutionType().name().toLowerCase() + File.separator + 
-				executionSystem.getScheduler().name().toLowerCase() + ".json");
+				executionSystem.getExecutionType().name().toLowerCase() + File.separator +
+				getSchedulerType().name().toLowerCase() + ".json");
 		
 		json.put("deploymentSystem", storageSystem.getSystemId());
-		
+
 		software = Software.fromJSON(json, SYSTEM_OWNER);
 		software.setOwner(SYSTEM_OWNER);
 		
@@ -185,20 +132,16 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 			Assert.fail("Failed to copy input file to remote system", e);
 		} 
 		finally {
-			try {remoteDataClient.disconnect();} catch (Exception e){}
+			try {if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored){}
 		}
 	}
 
-	@DataProvider(name = "submitJobProvider")
-	protected Object[][] submitJobProvider() throws Exception {
-		List<Object[]> testData = new ArrayList<>();
-	 	for (Software app: List.of(software)) {
-			testData.add(new Object[] { app, "Submission to " + app.getExecutionSystem().getSystemId() + " failed.", false });
-		}
-		
-		return testData.toArray(new Object[][]{});
-	}
-
+	/**
+	 * Quick job setup method to create a job we can submit
+	 * @param software
+	 * @return
+	 * @throws Exception
+	 */
 	protected Job createAndPersistJob(Software software) throws Exception {
 		Job job = new Job();
 		job.setName( software.getExecutionSystem().getScheduler().name() + " test");
@@ -253,8 +196,18 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 		return job;
 	}
 
+	@DataProvider(name = "submitJobProvider")
+	protected Object[][] submitJobProvider() {
+		List<Object[]> testData = new ArrayList<>();
+		for (Software app: List.of(software)) {
+			testData.add(new Object[] { app, getSchedulerType().name() + " submission to " + getExecutionType().name() + " system should succeed.", false });
+		}
+
+		return testData.toArray(new Object[][]{});
+	}
+
 	@Test(dataProvider = "submitJobProvider", enabled = true)
-	public void submitJob(Software software, String message, boolean shouldThrowException)
+	public void testRun(Software software, String message, boolean shouldThrowException)
 	throws Exception {
 		Job job = null;
 		try {
@@ -267,23 +220,12 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 			this.genericRemoteSubmissionTestCase(job, true, "Condor job submission failed", false);
 		}
 		finally {
-			try { JobDao.delete(job); } catch (Exception e) {}
+			try { JobDao.delete(job); } catch (Exception ignored) {}
 			
 		}
 	}
-	
-	/**
-	 * @return the remoteFilePath
-	 */
-	protected String getRemoteFilePath() {
-		return remoteFilePath;
-	}
 
-	/**
-	 * @param remoteFilePath the remoteFilePath to set
-	 */
-	protected void setRemoteFilePath(String remoteFilePath) {
-		this.remoteFilePath = remoteFilePath;
+	public ExecutionType getExecutionType() {
+		return executionType;
 	}
-
 }

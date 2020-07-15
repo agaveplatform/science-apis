@@ -211,11 +211,11 @@ services:
 #      - '7515:7512'
 
   slurm:
-    image: agaveplatform/slurm:14.03.9
+    image: agaveplatform/slurm:20.02.3
     hostname: docker.example.com
     privileged: true
     ports:
-      - '10199:22'
+      - '10133:22'
 
   torque:
     image: agaveplatform/torque:6.1.3

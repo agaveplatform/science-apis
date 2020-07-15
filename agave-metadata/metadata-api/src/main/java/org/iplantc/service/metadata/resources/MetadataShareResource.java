@@ -62,8 +62,6 @@ public class MetadataShareResource extends AgaveResource {
     private MongoClient mongoClient;
     private DB db;
     private DBCollection collection;
-
-    //KL - update to Mongo 4.0
 	private MongoDatabase mongoDB;
 	private MongoCollection mongoCollection;
 
@@ -93,7 +91,6 @@ public class MetadataShareResource extends AgaveResource {
             // Gets a collection, if it does not exist creates it
             collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
 
-			//KL - update to Mongo 4.0
 			mongoDB = mongoClient.getDatabase(Settings.METADATA_DB_SCHEME);
 			mongoCollection = mongoDB.getCollection(Settings.METADATA_DB_COLLECTION);
 
@@ -102,7 +99,6 @@ public class MetadataShareResource extends AgaveResource {
             {
     	        DBObject returnVal = collection.findOne(new BasicDBObject("uuid", uuid));
 
-				//KL - update to Mongo 4.0
 				BasicDBList aggList = new BasicDBList();
 				aggList.add(new BasicDBObject("$match", new BasicDBObject("uuid", uuid)));
 
@@ -151,17 +147,12 @@ public class MetadataShareResource extends AgaveResource {
 
 		try
 		{
-			//KL - permission in metadata doc ----------
-
-			//check mongodb connection
 			if (collection == null) {
 				throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 						"Unable to connect to metadata store. If this problem persists, "
 								+ "please contact the system administrators.");
 			}
 
-			//check user can read
-			//check user has valid permission to write to uuid
 			BasicDBObject query;
 			DBCursor cursor = null;
 			DBObject firstResult, formattedResult;
@@ -173,15 +164,11 @@ public class MetadataShareResource extends AgaveResource {
 			matchList.add(new BasicDBObject("uuid", uuid));
 			matchList.add(new BasicDBObject("tenantId", TenancyHelper.getCurrentTenantId()));
 
-			//owner/admin permission
-			//if tenantadmin or owner
 			if (StringUtils.equals(Settings.PUBLIC_USER_USERNAME, username) ||
 					StringUtils.equals(Settings.WORLD_USER_USERNAME, username)) {
 				boolean worldAdmin = JWTClient.isWorldAdmin();
 				boolean tenantAdmin = AuthorizationHelper.isTenantAdmin(TenancyHelper.getCurrentEndUser());
 				if (!tenantAdmin && !worldAdmin) {
-					//user permissions
-					//BasicDBList and = new BasicDBList();
 					BasicDBObject permType = new BasicDBObject("$nin", Arrays.asList(PermissionType.NONE));
 					BasicDBObject perm = new BasicDBObject("permissions", permType);
 					BasicDBList permList = new BasicDBList();
@@ -190,7 +177,6 @@ public class MetadataShareResource extends AgaveResource {
 
 					BasicDBObject elemMatch = new BasicDBObject("permissions", new BasicDBObject("$elemMatch", permList));
 
-					//can be owner or user
 					BasicDBList or = new BasicDBList();
 					or.add(new BasicDBObject("owner", this.username));
 					or.add(elemMatch);
@@ -200,8 +186,6 @@ public class MetadataShareResource extends AgaveResource {
 					agg.add(queryList);
 					agg.add(Aggregates.skip(offset));
 					agg.add(Aggregates.limit(limit));
-
-					//query.append("$or", or);
 				}
 			}
 			cursor_new = (Cursor) collection.aggregate(agg);
@@ -217,8 +201,6 @@ public class MetadataShareResource extends AgaveResource {
 			}
 
 			if (pemList.isEmpty()) {
-				//check if user has permissions set up
-
 				BasicDBList permList = new BasicDBList();
 				permList.add(new BasicDBObject("permissions.username", this.username));
 
@@ -257,7 +239,6 @@ public class MetadataShareResource extends AgaveResource {
 					return new IplantSuccessRepresentation(pem.toJSON());
 				}
 			}
-			//------------------------------------------
 
 			MetadataPermissionManager pm = new MetadataPermissionManager(uuid, owner);
 
@@ -334,15 +315,11 @@ public class MetadataShareResource extends AgaveResource {
 						"No metadata id provided.");
 			}
 
-			//KL - permission in metadata doc ----------
-
-			//check mongodb connection
 			if (collection == null) {
 				throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 						"Unable to connect to metadata store. If this problem persists, "
 								+ "please contact the system administrators.");
 			}
-			//------------------------------------------
 
 			String name;
             String sPermission;

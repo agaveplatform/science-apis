@@ -106,7 +106,6 @@ public class MetadataItem {
     @JsonView({MetadataViews.Resource.Notifications.class, MetadataViews.Request.class})
     private List<Notification> notifications = new ArrayList<Notification>();
 
-
     //KL
     @JsonIgnore
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
@@ -349,6 +348,15 @@ public class MetadataItem {
 
     public synchronized  void updatePermissions_delete(MetadataPermission pem){
             this.permissions.remove(pem);
+    }
+
+    public synchronized MetadataPermission getPermissions_User(String user){
+        for (MetadataPermission pem : this.permissions) {
+            if (pem.getUsername().equals(user)) {
+                return pem;
+            }
+        }
+        return null;
     }
 
     @JsonIgnore

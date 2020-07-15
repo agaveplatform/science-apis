@@ -166,7 +166,6 @@ public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataIte
         Assert.assertFalse(pmTest.canRead(TEST_SHARED_USER), "User doesn't have permissions yet.");
         Assert.assertFalse(pmTest.canWrite(TEST_SHARED_USER), "User doesn't have any permissions yet.");
 
-        //Set condition to READ
         pmTest.setPermission(TEST_SHARED_USER, PermissionType.READ.toString());
          pmTest = new MetadataPermissionManager(getEntityUuid(testEntity), TEST_USER);
         Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Owner has implicit permissions.");
@@ -174,35 +173,29 @@ public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataIte
         Assert.assertTrue(pmTest.canRead(TEST_SHARED_USER), "User should have updated permission to READ.");
         Assert.assertFalse(pmTest.canWrite(TEST_SHARED_USER), "User should not have permission to WRITE.");
 
-        //Set condition to NONE / remove permission
         pmTest.setPermission(TEST_SHARED_USER, PermissionType.NONE.toString());
         Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Owner has implicit permissions.");
 
         Assert.assertFalse(pmTest.canRead(TEST_SHARED_USER), "User should no longer have permission to READ.");
         Assert.assertFalse(pmTest.canWrite(TEST_SHARED_USER), "User should no longer have permission to WRITE.");
 
-        //Set condition to READ_WRITE
         pmTest.setPermission(TEST_SHARED_USER, PermissionType.READ_WRITE.toString());
         Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Owner has implicit permissions.");
         Assert.assertTrue(pmTest.canRead(TEST_SHARED_USER) && pmTest.canWrite(TEST_SHARED_USER), "User should have updated permissions to READ_WRITE.");
 
-        //Clear permissions
         pmTest.clearPermissions();
 
         Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Clearing permissions should save ownership. ");
         Assert.assertFalse(pmTest.canRead(TEST_SHARED_USER) && pmTest.canWrite(TEST_SHARED_USER), "Clearing permissions should remove permissions for user.");
 
-        //Remove permission that is already removed
         pmTest.setPermission(TEST_SHARED_USER, "");
         Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Clearing permissions should save ownership. ");
         Assert.assertFalse(pmTest.canRead(TEST_SHARED_USER) && pmTest.canWrite(TEST_SHARED_USER), "Clearing permissions should remove permissions for user.");
 
-        //Change owner permissions
         pmTest.setPermission(TEST_USER, PermissionType.NONE.toString());
         Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Permissions will not be changed for the wner. ");
 
 
-        //No username specified
         try {
             pmTest.setPermission("", PermissionType.READ_WRITE.toString());
             Assert.fail("Empty username should throw exception.");

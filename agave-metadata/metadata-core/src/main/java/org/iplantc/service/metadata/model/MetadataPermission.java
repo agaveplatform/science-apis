@@ -38,7 +38,8 @@ public class MetadataPermission {
 	private String				username;
 	private PermissionType		permission;
 	private Date				lastUpdated = new Date();
-	private String 				tenantId;		
+	private String 				tenantId;
+	private String				group;
 	
 	public MetadataPermission() {
 		this.setTenantId(TenancyHelper.getCurrentTenantId());
@@ -174,7 +175,11 @@ public class MetadataPermission {
 		return permission.canExecute();
 	}
 
-	public String toJSON() throws JSONException 
+	public String getGroup() {return this.group;}
+
+	public void setGroup(String group) {this.group = group;}
+
+	public String toJSON() throws JSONException
 	{
 		JSONWriter writer = new JSONStringer();
 		writer.object()

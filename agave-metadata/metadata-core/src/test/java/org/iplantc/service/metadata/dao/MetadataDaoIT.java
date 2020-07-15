@@ -1,11 +1,16 @@
 package org.iplantc.service.metadata.dao;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonObject;
 import com.mongodb.*;
 import com.mongodb.client.*;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.DBCollectionUpdateOptions;
+import net.minidev.json.JSONObject;
+import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -19,6 +24,7 @@ import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.joda.time.DateTime;
+import org.json.JSONString;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -28,6 +34,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import javax.persistence.Basic;
+import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -185,14 +192,6 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
             listPem.add(metaPem);
             testEntity.setPermissions(listPem);
 
-            //           MetadataDao inst = mock(MetadataDao.class);
-            //           when(inst.insert(testEntity)).thenReturn(testEntity);
-//            when(inst.getMongoClient()).thenReturn(mongo);
-//            when(inst.getDefaultCollection()).thenReturn(col);
-//            when(inst.getCollection("testDB", "testCollection")).thenReturn(col);
-
-
-
 
             DBCursor cursor = null;
             BasicDBObject query = new BasicDBObject("tenantId", TenancyHelper.getCurrentTenantId());
@@ -211,8 +210,14 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
             int orderDirection = 1;
 
+//            MetadataDao md = new MetadataDao();
+//            md.getInstance();
+//            md.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ);
+
             MetadataDao inst = wrapper.getInstance();
+            inst.getMongoClient();
             MongoCollection collection = inst.getDefaultCollection();
+            inst.insert(testEntity);
             inst.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ);
 
             BasicDBList agg = new BasicDBList();
@@ -221,25 +226,69 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
             //cursor = (DBCursor) collection.find(new BasicDBObject("uuid", getEntityUuid(testEntity)));
 
-            agg.add(Aggregates.match(match));
+            agg.add(Aggregates.match(new BasicDBObject("uuid", testEntity.getUuid())));
 
-            MongoCursor mongoCursor =  collection.aggregate(agg).cursor();
-            List<DBObject> permittedResults = new ArrayList<DBObject>();
+            MongoCursor<Document> mongoCursor = null;
+            mongoCursor =  collection.aggregate(agg).iterator();
+            //mongoCursor = collection.find(new BasicDBObject("uuid", testEntity.getUuid())).cursor();
+            //mongoCursor = collection.find().iterator();
+
+            List<MetadataItem> permittedResults = new ArrayList<MetadataItem>();
 
             if (mongoCursor!=null) {
                 while (mongoCursor.hasNext()) {
-                    DBObject result = (DBObject)mongoCursor.next();
-                    Assert.assertEquals("testValue", result.get("value.testKey"));
-                    Assert.assertEquals(PermissionType.ALL.toString(), result.get("permissions.permissions.0"));
-                    permittedResults.add(result);
+                    Document result = mongoCursor.next();
+
+                    String strValue = result.getEmbedded(List.of("value", "testKey"), "");
+
+
+
+                    Document value = (Document) result.get("value");
+                    Assert.assertEquals(value.get("testKey"), "testValue");
+                    List<Document> pemList = result.getList("permissions", Document.class);
+
+                    List<Document> newPemList = (List<Document>) result.get("permissions");
+
+                    //Assert.assertEquals(newPemList.get(0).get("username"), TEST_USER);
+                    //Assert.assertEquals(newPemList.get(1).get("username"), TEST_SHARED_USER);
+                   // MetadataItem resultItem = new ObjectMapper().readValue(result.toJson(), MetadataItem.class);
+
+
+                    for (Document doc : newPemList) {
+                        Assert.assertNull(doc.get("group"));
+
+                        //get permissions always returns null -- continue testing with remove and update for now
+                        String strResult = doc.toJson();
+                        MetadataPermission resultItem = new ObjectMapper().readValue(strResult, MetadataPermission.class);
+
+
+                        //JSONObject obj = new JSONObject(strResult);
+
+
+                        List<String> permissions = (List<String>) doc.get("permissions");
+                        String test = doc.get("permissions").toString();
+                        permissions = doc.getList("permissions", String.class);
+                        permissions = doc.getEmbedded(List.of("permissions"), List.class);
+                        if (doc.get("username").equals(TEST_USER)){
+                            Assert.assertEquals(PermissionType.ALL.toString(), doc.get("permissions"));
+                        } else {
+                            Assert.assertEquals(PermissionType.READ.toString(), doc.get("permissions"));
+                        }
+                    }
+                    permittedResults.add(inst.parseResult(result));
                 }
             }
-
             Assert.assertEquals(1, permittedResults.size(), "Size should be 1.");
 
 
         } catch (MetadataException | MetadataStoreException | UnknownHostException e) {
             Assert.fail("Resolving metadata item UUID should not throw exception.", e);
+        } catch (JsonParseException e) {
+            e.printStackTrace();
+        } catch (JsonMappingException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -257,29 +306,32 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         listPem.add(metaPem2);
         testEntity.setPermissions(listPem);
 
+        MetadataDao inst = wrapper.getInstance();
+        inst.insert(testEntity);
 
         //remove user that doesn't have permissions
         try {
-            wrapper.deleteUserPermission(testEntity, "newuser");
+            inst.deleteUserPermission(testEntity, "newuser");
 
-            verify(wrapper, times(1)).deleteUserPermission(testEntity, "newuser");
+
+            //verify(wrapper, times(1)).deleteUserPermission(testEntity, "newuser");
         } catch (MetadataStoreException e){
             Assert.fail("Deleting user that doesn't have explicit permissions should not throw exception.");
         }
 
 
         //remove user permissions
-        wrapper.deleteUserPermission(testEntity, TEST_SHARED_USER);
-        verify(wrapper, times(1)).deleteUserPermission(testEntity, TEST_SHARED_USER);
+        testEntity = inst.deleteUserPermission(testEntity, TEST_SHARED_USER);
+        //verify(wrapper, times(1)).deleteUserPermission(testEntity, TEST_SHARED_USER);
 
-        MetadataItem result = wrapper.find(testEntity);
+        MetadataItem result = inst.find(testEntity, TEST_USER, null);
         Assert.assertEquals(result.getPermissions().size(), 1,
                 "Permission size should be 1 after removing a user's permissions");
 
         //remove all permissions
-        wrapper.deleteAllPermissions(testEntity);
-        verify(wrapper, times(1)).deleteAllPermissions(testEntity);
-        result = wrapper.find(testEntity);
+        inst.deleteAllPermissions(testEntity);
+        //verify(wrapper, times(1)).deleteAllPermissions(testEntity);
+        result = inst.find(testEntity, TEST_USER, null);
         Assert.assertEquals(result.getPermissions().size(), 0,
                 "Permission size should be 0 after removing all permissions.");
 
@@ -298,19 +350,19 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
         wrapper.insert(testEntity);
 
-        MetadataItem returnItem = wrapper.find(testEntity);
+        MetadataItem returnItem = wrapper.find(testEntity, TEST_USER,null);
 
         Assert.assertEquals(returnItem.getPermissions().size(), 0,
                 "Permission list should be 0.");
 
         wrapper.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ);
 
-        returnItem = wrapper.find(testEntity);
+        returnItem = wrapper.find(testEntity, TEST_USER, null);
         Assert.assertEquals(returnItem.getPermissions().size(), 1,
                 "Permission list should be 1 after adding a new user permission.");
 
         wrapper.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ_WRITE);
-        returnItem = wrapper.find(testEntity);
+        returnItem = wrapper.find(testEntity, TEST_USER,null);
         for (MetadataPermission pem : returnItem.getPermissions()){
             if (pem.getUsername().equals(TEST_SHARED_USER)){
                 Assert.assertEquals(pem.getPermission(), PermissionType.READ_WRITE,

@@ -5,6 +5,7 @@ import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
 
 public enum SGEJobStatus implements RemoteSchedulerJobStatus<SGEJobStatus> {
@@ -198,7 +199,7 @@ public enum SGEJobStatus implements RemoteSchedulerJobStatus<SGEJobStatus> {
      * @see #getUnknownStatuses()
      */
     public boolean isDoneStatus() {
-        return !isActiveStatus() && !isUnknownStatus();
+        return !isActiveStatus() && !isUnknownStatus() && !isPausedStatus();
     }
 
     /**

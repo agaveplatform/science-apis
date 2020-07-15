@@ -7,8 +7,6 @@ import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
-
 /**
  * Condor job statuses and status codes. Values provided by tables on HTCondor Wiki:
  * <a href="https://htcondor-wiki.cs.wisc.edu/index.cgi/wiki?p=MagicNumbers">https://htcondor-wiki.cs.wisc.edu/index.cgi/wiki?p=MagicNumbers</a>.
@@ -227,7 +225,7 @@ public enum CondorLogJobStatus implements RemoteSchedulerJobStatus<CondorLogJobS
 	 * @see #getUnknownStatuses()
 	 */
 	public boolean isDoneStatus() {
-		return !isActiveStatus() && !isUnknownStatus();
+		return !isActiveStatus() && !isUnknownStatus() && !isPausedStatus();
 	}
 
 	/**

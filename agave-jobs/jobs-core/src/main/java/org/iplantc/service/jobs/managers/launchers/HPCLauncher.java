@@ -3,14 +3,7 @@
  */
 package org.iplantc.service.jobs.managers.launchers;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -37,7 +30,13 @@ import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.List;
 
 /**
  * @author dooley
@@ -194,7 +193,7 @@ public class HPCLauncher extends AbstractJobLauncher
 	@Override
     public File processApplicationTemplate() throws JobException 
     {
-		step = "Process the " + getJob().getSoftwareName() + " wrapper template for job " + getJob().getUuid();
+		step = "Processing the " + getJob().getSoftwareName() + " wrapper template for job " + getJob().getUuid();
 		 
         log.debug(step);
         FileWriter batchWriter = null;
@@ -426,6 +425,11 @@ public class HPCLauncher extends AbstractJobLauncher
 	@Override
 	protected String submitJobToQueue() throws JobException, SchedulerException
 	{
+		step = String.format("Submitting job %s to the %s scheduler on %s %s",
+				getJob().getUuid(), getJob().getSchedulerType().name(), getJob().getExecutionType().name(), getJob().getSystem());
+
+		log.debug(step);
+
 		String submissionResponse = null;
 		RemoteDataClient remoteExecutionDataClient = null;
 		try

@@ -177,7 +177,7 @@ public enum PBSJobStatus implements RemoteSchedulerJobStatus<PBSJobStatus> {
      * @see #getUnknownStatuses()
      */
     public boolean isDoneStatus() {
-        return !isActiveStatus() && !isUnknownStatus();
+        return !isActiveStatus() && !isUnknownStatus() && !isPausedStatus();
     }
 
     /**

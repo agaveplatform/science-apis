@@ -5,7 +5,9 @@ import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 
 import java.util.ArrayList;
 import java.util.List;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
+
+import static org.iplantc.service.jobs.model.enumerations.JobStatusType.PAUSED;
+import static org.iplantc.service.jobs.model.enumerations.JobStatusType.QUEUED;
 
 public enum SlurmJobStatus implements RemoteSchedulerJobStatus<SlurmJobStatus> {
 
@@ -185,7 +187,7 @@ public enum SlurmJobStatus implements RemoteSchedulerJobStatus<SlurmJobStatus> {
 	 * @see #getUnknownStatuses()
 	 */
 	public boolean isDoneStatus() {
-		return !isActiveStatus() && !isUnknownStatus();
+		return !isActiveStatus() && !isUnknownStatus() && !isPausedStatus();
 	}
 
 	/**

@@ -5,7 +5,6 @@ import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 
 import java.util.ArrayList;
 import java.util.List;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
 
 /**
  * LoadLeveler job status codes and mappings to Agave {@link JobStatusType} values.
@@ -201,7 +200,7 @@ public enum LoadLevelerJobStatus implements RemoteSchedulerJobStatus<LoadLeveler
 	 * @see #getUnknownStatuses()
 	 */
 	public boolean isDoneStatus() {
-		return !isActiveStatus() && !isUnknownStatus();
+		return !isActiveStatus() && !isUnknownStatus() && !isPausedStatus();
 	}
 
 	/**

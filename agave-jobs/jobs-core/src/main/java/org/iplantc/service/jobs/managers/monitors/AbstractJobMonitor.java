@@ -3,11 +3,6 @@
  */
 package org.iplantc.service.jobs.managers.monitors;
 
-import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.Date;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.jobs.exceptions.JobException;
@@ -17,19 +12,22 @@ import org.iplantc.service.jobs.managers.launchers.AbstractJobLauncher;
 import org.iplantc.service.jobs.managers.launchers.StartupScriptJobMacroResolver;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType;
 import org.iplantc.service.jobs.model.scripts.SubmitScript;
 import org.iplantc.service.jobs.model.scripts.SubmitScriptFactory;
 import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.enumerations.StartupScriptSystemVariableType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.AuthenticationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.DateTime;
+
+import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.Date;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Abstract class to handle the common actions needed for a {@link JobMonitor} to properly function. Most
@@ -213,6 +211,18 @@ public abstract class AbstractJobMonitor implements JobMonitor {
 		return resolvedstartupScript == null ? "" :
                 String.format("echo $(source %s 2>&1) >> /dev/null ; ", resolvedstartupScript);
 	}
+
+    /**
+     * Filters the scheduler specific job query command replacing the {@code ${AGAVE_JOB_LOCALJOB_ID}} macro with the
+     * recorded {@link Job#getLocalJobId()} for the job under question.
+     * @return teh filtered job query command for the scheduler associated with the job.
+     * @throws SystemUnavailableException if the remote system is unavailable
+     */
+	public String getBatchQueryCommand() throws SystemUnavailableException {
+	    return StringUtils.replace("${AGAVE_JOB_LOCALJOB_ID}",
+                getJob().getLocalJobId(),
+                getExecutionSystem().getScheduler().getBatchQueryCommand());
+    }
 
     /**
      * Updates the job record in the db and locally with the given status and logs any error that happens.

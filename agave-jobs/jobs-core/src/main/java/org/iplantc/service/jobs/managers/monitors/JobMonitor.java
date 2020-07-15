@@ -1,10 +1,11 @@
 package org.iplantc.service.jobs.managers.monitors;
 
-import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
-
+import org.iplantc.service.jobs.exceptions.RemoteJobMonitorEmptyResponseException;
+import org.iplantc.service.jobs.exceptions.RemoteJobMonitorResponseParsingException;
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitoringException;
+import org.iplantc.service.jobs.managers.JobStatusResponse;
 import org.iplantc.service.jobs.managers.launchers.JobLauncher;
+import org.iplantc.service.jobs.managers.monitors.parsers.JobStatusResponseParser;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
@@ -13,6 +14,9 @@ import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.AuthenticationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
+
+import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 
 public interface JobMonitor {
     
@@ -47,11 +51,15 @@ public interface JobMonitor {
 
 	/**
 	 * Performs the remote call to make the job status check.
-	 * @param command the command to run on the {@link ExecutionSystem}
+	 * @param responseParser the parser to be used to analyze the response from running the queryCommand
+	 * @param queryCommand the command to run on the {@link ExecutionSystem}
 	 * @return the response from the job check command.
-	 * @throws RemoteJobMonitoringException if unable to fetch the condor log file content for any reason.
+	 * @throws RemoteJobMonitoringException if unable to query the remote job status
+	 * @throws RemoteJobMonitorEmptyResponseException if no repsonse comes back from the server when it should never be emtpy
+	 * @throws RemoteJobMonitorResponseParsingException if the response from the server cannot be parsed
 	 */
-	public String getJobStatusResponse(String command) throws RemoteJobMonitoringException;
+	public JobStatusResponse<?> getJobStatusResponse(JobStatusResponseParser responseParser, String queryCommand)
+			throws RemoteJobMonitorEmptyResponseException, RemoteJobMonitorResponseParsingException, RemoteJobMonitoringException;
 
 	/**
 	 * Thread safe getter of the job passed to the {@link JobMonitor}.

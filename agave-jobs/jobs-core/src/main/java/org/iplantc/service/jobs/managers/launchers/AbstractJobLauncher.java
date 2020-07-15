@@ -1,20 +1,10 @@
 package org.iplantc.service.jobs.managers.launchers;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.channels.ClosedByInterruptException;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicBoolean;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.exceptions.SoftwareException;
@@ -35,7 +25,6 @@ import org.iplantc.service.jobs.exceptions.SchedulerException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.jobs.model.enumerations.WrapperTemplateAttributeVariableType;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariableType;
 import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.notification.util.EmailMessage;
@@ -54,8 +43,14 @@ import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.util.MD5Checksum;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.io.Files;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Interface to define how to launch applications on various resources
@@ -169,42 +164,6 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	public String resolveRuntimeNotificationMacros(String wrapperTemplate) {
 		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
 		return resolver.resolveRuntimeNotificationMacros(wrapperTemplate);
-//
-//		Pattern emptyCallbackPattern = Pattern.compile("(?s).*\\$\\{AGAVE_JOB_CALLBACK_NOTIFICATION\\}.*");
-//        Matcher callbackMatcher = emptyCallbackPattern.matcher(wrapperTemplate);
-//        while (callbackMatcher.matches()) {
-//        	String callbackSnippet = resolver.resolveNotificationEventMacro(
-//        			"JOB_RUNTIME_CALLBACK_EVENT", new String[]{});
-//
-//            wrapperTemplate = StringUtils.replace(wrapperTemplate, callbackMatcher.group(0), callbackSnippet);
-//
-//            callbackMatcher = emptyCallbackPattern.matcher(wrapperTemplate);
-//        }
-//
-//	    // process the notification template first so there is no confusion or namespace conflict prior to resolution
-//        Pattern defaultCallbackPattern = Pattern.compile("(?s)(?:.*)?(?:(\\$\\{AGAVE_JOB_CALLBACK_NOTIFICATION\\|(?:([a-zA-Z0-9_,\\s]*))\\}))(?:.*)?");
-//        callbackMatcher = defaultCallbackPattern.matcher(wrapperTemplate);
-//        while (callbackMatcher.matches()) {
-//        	String callbackSnippet = resolver.resolveNotificationEventMacro(
-//                    "JOB_RUNTIME_CALLBACK_EVENT", StringUtils.split(callbackMatcher.group(2), ","));
-//
-//            wrapperTemplate = StringUtils.replace(wrapperTemplate, callbackMatcher.group(1), callbackSnippet);
-//
-//            callbackMatcher = defaultCallbackPattern.matcher(wrapperTemplate);
-//        }
-//
-//        Pattern customCallbackPattern = Pattern.compile("(?s)(?:.*)?(?:(\\$\\{AGAVE_JOB_CALLBACK_NOTIFICATION\\|(?:(\\s*[a-zA-Z0-9_]*\\s*))\\|(?:([a-zA-Z0-9_,\\s]*))\\}))(?:.*)?");
-//        callbackMatcher = customCallbackPattern.matcher(wrapperTemplate);
-//        while (callbackMatcher.matches()) {
-//            String callbackSnippet = resolver.resolveNotificationEventMacro(
-//                    callbackMatcher.group(2), StringUtils.split(callbackMatcher.group(3), ","));
-//
-//            wrapperTemplate = StringUtils.replace(wrapperTemplate, callbackMatcher.group(1), callbackSnippet);
-//
-//            callbackMatcher = customCallbackPattern.matcher(wrapperTemplate);
-//        }
-//
-//        return wrapperTemplate;
 	}
 
 	/**
@@ -226,18 +185,6 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	public String resolveMacros(String wrapperTemplate) throws JobMacroResolutionException {
 		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
 		return resolver.resolve(wrapperTemplate);
-
-//		for (WrapperTemplateAttributeVariableType macro: WrapperTemplateAttributeVariableType.values()) {
-//			wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
-//		}
-//
-//		for (WrapperTemplateStatusVariableType macro: WrapperTemplateStatusVariableType.values()) {
-////			if (macro != WrapperTemplateStatusVariableType.AGAVE_JOB_CALLBACK_NOTIFICATION) {
-//				wrapperTemplate = StringUtils.replace(wrapperTemplate, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
-////			}
-//		}
-//
-//		return wrapperTemplate;
 	}
 	
 	/* (non-Javadoc)
@@ -246,22 +193,6 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	public String resolveStartupScriptMacros(String startupScript) throws JobMacroResolutionException {
 		StartupScriptJobMacroResolver resolver = new StartupScriptJobMacroResolver(getJob());
 		return resolver.resolve();
-//
-//		if (StringUtils.isBlank(startupScript)) {
-//			return null;
-//		}
-//		else {
-//			String resolvedStartupScript = startupScript;
-//			for (StartupScriptSystemVariableType macro: StartupScriptSystemVariableType.values()) {
-//				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForSystem(getExecutionSystem()));
-//			}
-//
-//			for (StartupScriptJobVariableType macro: StartupScriptJobVariableType.values()) {
-//				resolvedStartupScript = StringUtils.replace(resolvedStartupScript, "${" + macro.name() + "}", macro.resolveForJob(getJob()));
-//			}
-//
-//			return resolvedStartupScript;
-//		}
 	}
 	
 	/**

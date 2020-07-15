@@ -440,12 +440,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		});
 	}
 
-	//#########################################################################################################
-	//# Nothing below here is implemented. Essentially all stub code.
-	//#########################################################################################################
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel ack with parent should succeed and check parent")
-	@Disabled
 	public void processCancelAckWithParentTest(Vertx vertx, VertxTestContext ctx) {
 
 		// Set up our transfertask for testing
@@ -462,12 +458,31 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
-		// mock a successful outcome with updated json transfer task result from processCancelAck
-		JsonObject expectedProcessCancelAck = parentTask.toJson()
-				.put("status", TransferStatusType.CANCELLED.name())
-				.put("endTime", Instant.now());
-		AsyncResult<JsonObject> updateProcessCancelAck = getMockAsyncResult(expectedProcessCancelAck);
-		doCallRealMethod().when(listener).processCancelAck( eq(parentTask.toJson()),any());
+		// mock the dbService getter in our mocked vertical so we don't need to use powermock
+		when(listener.getDbService()).thenReturn(dbService);
+
+		doCallRealMethod().when(listener).processCancelAck( any(), any());
+		doCallRealMethod().when(listener).processParentEvent( any(), any() ,any());
+
+		// mock the processParenetEvent process
+		AsyncResult<Boolean> setTransferTaskCanceledProcessParentAckHandler = getMockAsyncResult(Boolean.TRUE);
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledProcessParentAckHandler);
+			return null;
+		}).when(listener).processParentAck( any(), any(), any());
+
+		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
+		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
+		JsonObject expectedgetByIdAck = parentTask.toJson();
+		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
+			return null;
+		}).when(dbService).getById(any(), any(), anyObject());
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = parentTask.toJson()
@@ -480,16 +495,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
 			handler.handle(updateStatusHandler);
 			return null;
-		}).when(dbService).updateStatus(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), eq(TransferStatusType.CANCELLED.name()), any());
-
-		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
-		AsyncResult<Boolean> setTransferTaskCanceledIfNotCompletedNotHandler = getMockAsyncResult(Boolean.TRUE);
-		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
-			return null;
-		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), any());
+		}).when(dbService).updateStatus(any(), any(), any(), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
@@ -500,7 +506,19 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			return null;
 		}).when(dbService).allChildrenCancelledOrCompleted( any(), any(), any());
 
-		doCallRealMethod().when(listener).getTransferTask(anyString(), anyString(), any());
+
+
+		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
+		AsyncResult<Boolean> setTransferTaskCanceledIfNotCompletedNotHandler = getMockAsyncResult(Boolean.TRUE);
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
+			return null;
+		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(any(), any(), any());
+
+
+		doCallRealMethod().when(listener).getTransferTask(any(), any(), any());
 
 		// now we run the actual test using our test transfer task data
 		listener.processCancelAck(parentTask.toJson(), results -> {
@@ -530,7 +548,6 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel ack with parent who has all other children failed should create cancel event on parent")
-	@Disabled
 	public void processCancelAckWithParentAllChildrenTest(Vertx vertx, VertxTestContext ctx) {
 
 		// Set up our transfertask for testing
@@ -546,19 +563,16 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+		when(listener.getDbService()).thenReturn(dbService);
 
-		// mock a successful outcome with updated json transfer task result from processCancelAck
-		JsonObject expectedProcessCancelAck = parentTask.toJson()
-				.put("status", TransferStatusType.CANCELLED.name())
-				.put("endTime", Instant.now());
-		AsyncResult<JsonObject> updateProcessCancelAck = getMockAsyncResult(expectedProcessCancelAck);
-		doCallRealMethod().when(listener).processCancelAck( eq(parentTask.toJson()),any());
+		doCallRealMethod().when(listener).processCancelAck( any(), any());
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = parentTask.toJson()
 				.put("status", TransferStatusType.CANCELLED.name())
 				.put("endTime", Instant.now());
 		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
@@ -567,6 +581,16 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			return null;
 		}).when(dbService).updateStatus(any(), any(), any(), any());
 
+		// mock the processParenetEvent process
+		AsyncResult<Boolean> setTransferTaskCanceledProcessParentAckHandler = getMockAsyncResult(Boolean.TRUE);
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledProcessParentAckHandler);
+			return null;
+		}).when(listener).processParentAck( any(), any(), any());
+
+
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> setTransferTaskCanceledIfNotCompletedNotHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
@@ -574,7 +598,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
 			return null;
-		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), any());
+		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(any(), any(), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
@@ -583,18 +607,10 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(allChildrenCancelledOrCompletedHandler);
 			return null;
-		}).when(dbService).allChildrenCancelledOrCompleted(any(), any(), any());
+		}).when(dbService).allChildrenCancelledOrCompleted( any(), any(), any());
 
-//		// mock a successful outcome with a puased result from processCancelRequest indicating the child has no active parents
-//		AsyncResult<Boolean> processCancelRequest = getMockAsyncResult(Boolean.FALSE);
-//		// mock the handler passed into processParentEvent
-//		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-//			((Handler<AsyncResult<Boolean>>) arguments.getArgumentAt(1, Handler.class))
-//					.handle(processCancelRequest);
-//			return null;
-//		}).when(listener).processCancelAck( anyObject(), any());
 
-		doCallRealMethod().when(listener).getTransferTask(anyString(), anyString(), any());
+		doCallRealMethod().when(listener).getTransferTask(any(), any(), any());
 
 		// now we run the actual test using our test transfer task data
 		listener.processCancelAck(parentTask.toJson(), results -> {
@@ -623,8 +639,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 	}
 
 	@Test
-	@DisplayName("ransferTaskCancelListenerTest - process cancel ack with not empty parent id should check parent")
-	//@Disabled
+	@DisplayName("TransferTaskCancelListenerTest - process cancel ack with not empty parent id should check parent")
 	public void processCancelAckWithParentNotEmptyTest(Vertx vertx, VertxTestContext ctx) {
 
 		// Set up our transfertask for testing
@@ -634,6 +649,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		parentTask.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		parentTask.setStartTime(Instant.now());
 		parentTask.setEndTime(Instant.now());
+
 		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
@@ -701,7 +717,6 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC Ack Lstn with Parent - pCA w/Parent is not empty Failed")
-	@Disabled
 	public void processCancelAckWithParentIsNotEmptyTest(Vertx vertx, VertxTestContext ctx) {
 
 		// Set up our transfertask for testing
@@ -722,19 +737,22 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+		when(listener.getDbService()).thenReturn(dbService);
+		doCallRealMethod().when(listener).processCancelAck( any(), any());
 
-		// mock a successful outcome with updated json transfer task result from processCancelAck
-		JsonObject expectedProcessCancelAck = transferTask.toJson()
-				.put("status", TransferStatusType.CANCELLED.name())
-				.put("endTime", Instant.now());
-		AsyncResult<JsonObject> updateProcessCancelAck = getMockAsyncResult(expectedProcessCancelAck);
-		doCallRealMethod().when(listener).processCancelAck( eq(parentTask.toJson()),any());
+//		// mock a successful outcome with updated json transfer task result from processCancelAck
+//		JsonObject expectedProcessCancelAck = transferTask.toJson()
+//				.put("status", TransferStatusType.CANCELLED.name())
+//				.put("endTime", Instant.now());
+//		AsyncResult<JsonObject> updateProcessCancelAck = getMockAsyncResult(expectedProcessCancelAck);
+//		doCallRealMethod().when(listener).processCancelAck( any(), any());
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
-		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
+		JsonObject expectedUdpatedJsonObject = parentTask.toJson()
 				.put("status", TransferStatusType.CANCELLED.name())
 				.put("endTime", Instant.now());
 		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
+
 		// mock the handler passed into updateStatus
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
@@ -752,6 +770,16 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			return null;
 		}).when(dbService).allChildrenCancelledOrCompleted( any(), any(), any());
 
+		// mock the processParenetEvent process
+		AsyncResult<Boolean> setTransferTaskCanceledProcessParentAckHandler = getMockAsyncResult(Boolean.TRUE);
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledProcessParentAckHandler);
+			return null;
+		}).when(listener).processParentAck( any(), any(), any());
+
+
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> setTransferTaskCanceledIfNotCompletedNotHandler = getMockAsyncResult(Boolean.TRUE);
 		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
@@ -760,16 +788,6 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			handler.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
 			return null;
 		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), any());
-
-		// mock the processParenetEvent process
-		AsyncResult<Boolean> setTransferTaskCanceledProcessParentAckHandler = getMockAsyncResult(Boolean.TRUE);
-		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
-			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(setTransferTaskCanceledProcessParentAckHandler);
-			return null;
-		}).when(listener).processParentAck( eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
-
 
 		doCallRealMethod().when(listener).getTransferTask(anyString(), anyString(), any());
 
@@ -801,7 +819,6 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC processParentAck - pPA w/Parent")
-	@Disabled
 	public void processParentAckWithParentTest(Vertx vertx, VertxTestContext ctx) {
 
 		// Set up our transfertask for testing
@@ -818,11 +835,24 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
+		// mock the dbService getter in our mocked vertical so we don't need to use powermock
+		when(listener.getDbService()).thenReturn(dbService);
+
+		// mock the processParenetEvent process
+		AsyncResult<Boolean> setTransferTaskCanceledProcessParentAckHandler = getMockAsyncResult(Boolean.TRUE);
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(setTransferTaskCanceledProcessParentAckHandler);
+			return null;
+		}).when(listener).processParentAck( eq(parentTask.getTenantId()), eq(parentTask.getParentTaskId()), any());
+
 		// mock a successful outcome with updated json transfer task result from processCancelAck
 		JsonObject expectedProcessCancelAck = parentTask.toJson()
 				.put("status", TransferStatusType.CANCELLED.name())
 				.put("endTime", Instant.now());
 		AsyncResult<JsonObject> updateProcessCancelAck = getMockAsyncResult(expectedProcessCancelAck);
+
 		doCallRealMethod().when(listener).processCancelAck( eq(parentTask.toJson()),any());
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
@@ -846,7 +876,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(setTransferTaskCanceledIfNotCompletedNotHandler);
 			return null;
-		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), any());
+		}).when(dbService).setTransferTaskCanceledWhereNotCompleted(any(), any(), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
@@ -887,7 +917,6 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC processParentEvent - pPE w/Parent")
-	@Disabled
 	public void processParentEventTest(Vertx vertx, VertxTestContext ctx) {
 
 		// Set up our transfertask for testing
@@ -904,35 +933,28 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
+		// mock the dbService getter in our mocked vertical so we don't need to use powermock
+		when(listener.getDbService()).thenReturn(dbService);
+
 //		// mock a successful outcome with updated json transfer task result from processCancelAck
 //		JsonObject expectedProcessParentEvent = parentTask.toJson();
-////				.put("status", TransferStatusType.CANCELLED.name())
-////				.put("endTime", Instant.now());
-//		AsyncResult<JsonObject> updateProcessCancelAck = getMockAsyncResult(expectedProcessParentEvent);
-
-		doCallRealMethod().when(listener).processParentEvent( eq(parentTask.getOwner()), eq(parentTask.getUuid()) ,any());
-
-
-		// mock a successful outcome with updated json transfer task result from updateStatus
-//		JsonObject expectedUdpatedJsonObject = parentTask.toJson()
 //				.put("status", TransferStatusType.CANCELLED.name())
 //				.put("endTime", Instant.now());
-//		AsyncResult<JsonObject> updateStatusHandler = getMockAsyncResult(expectedUdpatedJsonObject);
-//		// mock the handler passed into updateStatus
-//		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
-//			((Handler<AsyncResult<JsonObject>>) arguments.getArgumentAt(3, Handler.class))
-//					.handle(updateStatusHandler);
-//			return null;
-//		}).when(dbService).updateStatus(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), eq(TransferStatusType.CANCELLED.name()), any());
+//		AsyncResult<JsonObject> updateProcessCancelAck = getMockAsyncResult(expectedProcessParentEvent);
+
+		doCallRealMethod().when(listener).processParentEvent( any(), any() ,any());
+
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
-		AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
-		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
+		JsonObject expectedgetByIdAck = parentTask.toJson();
+		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
-			handler.handle(setTransferTaskCanceledGetByIdHandler);
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(parentTask.getTenantId()), eq(parentTask.getUuid()), any());
+		}).when(dbService).getById(any(), any(), anyObject());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
@@ -946,7 +968,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		//doCallRealMethod().when(listener).getTransferTask(anyString(), anyString(), any());
 
 		// now we run the actual test using our test transfer task data
-		listener.processParentEvent(parentTask.getTenantId(), parentTask.getParentTaskId(), results -> {
+		listener.processParentEvent(parentTask.getTenantId(), parentTask.getUuid(), results -> {
 			ctx.verify(() -> {
 				assertTrue(results.succeeded(), "The call should succeed.");
 				//assertTrue(results.result(), "The async should return true");
@@ -960,7 +982,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				//verify(listener)._doPublishEvent(TRANSFERTASK_CANCELLED, transferTask.toJson());
 
 				// make sure the parent was not processed when none existed for the transfer task
-				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
+				//verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
 				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
@@ -998,9 +1020,6 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		//AsyncResult<Boolean> result = getMockAsyncResult(Boolean.TRUE);
 		//verify(tc.processCancelAck(transferTask, result ->{}), times(1));
-
-
-
 
 		tc.processCancelAck(transferTask, booleanAsyncResult -> {
 			ctx.verify(() ->{

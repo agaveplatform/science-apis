@@ -1,9 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -170,8 +167,10 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                 // update the status of the transfertask since the verticle handling it has
                 // reported back that it completed the cancel request since this tree is
                 // done cancelling
-                getDbService().setTransferTaskCanceledWhereNotCompleted(tenantId, uuid, setTransferTaskCanceledIfNotCompletedReso -> {
-                    if (setTransferTaskCanceledIfNotCompletedReso.succeeded()) {
+                logger.info("processing the setTransferTaskCancelWhereNotCompleted next");
+                //resultHandler.handle(Future.succeededFuture(true));
+                getDbService().setTransferTaskCanceledWhereNotCompleted(tenantId, uuid, setTransferTaskCanceledIfNotCompletedResult -> {
+                    if (setTransferTaskCanceledIfNotCompletedResult.succeeded()) {
                         logger.info("DB updated with status of CANCELED uuid = {}", uuid);
 
                         // this task and all its children are done, so we can send a complete event
@@ -208,10 +207,10 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                     } else {
                         // update failed on current task
                         String msg = String.format("Unable to update the status of transfer task %s to cancelled. %s",
-                                uuid, setTransferTaskCanceledIfNotCompletedReso.cause().getMessage());
+                                uuid, setTransferTaskCanceledIfNotCompletedResult.cause().getMessage());
                         logger.error(msg);
                         JsonObject json = new JsonObject()
-                                .put("cause", setTransferTaskCanceledIfNotCompletedReso.cause().getClass().getName())
+                                .put("cause", setTransferTaskCanceledIfNotCompletedResult.cause().getClass().getName())
                                 .put("message", msg)
                                 .mergeIn(body);
 
@@ -293,11 +292,14 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
      * @param parentTaskId the id of the parent
      * @param resultHandler the handler to call with a boolean value indicating whether the parent event was found to be incomplete and needed to have a transfer.complete event created.
      */
-    void processParentEvent(String tenantId, String parentTaskId, Handler<AsyncResult<Boolean>> resultHandler) {
-//		Promise<Boolean> promise = Promise.promise();
+    protected void processParentEvent(String tenantId, String parentTaskId, Handler<AsyncResult<Boolean>> resultHandler) {
+
+		Promise<Boolean> promise = Promise.promise();
         // lookup parent transfertask
+        logger.info("Got to the processParentEvent.");
         getDbService().getById(tenantId, parentTaskId, getTaskById -> {
             if (getTaskById.succeeded()) {
+                //JsonObject tta = getTaskById.result();
                 // check whether it's active or not by its status
                 TransferTask parentTask = new TransferTask(getTaskById.result());
                 if ( ! parentTask.getStatus().toString().isEmpty() &&

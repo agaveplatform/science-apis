@@ -251,7 +251,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 				// verify that the completed event was created. this should always be thrown
 				// if the updateStatus result succeeds.
-				//verify(listener)._doPublishEvent(eq(TRANSFERTASK_CANCELED_SYNC), eq(expectedUpdate));
+				//verify(listener)._doPublishEvent(eq(TRANSFERTASK_CANCELED_SYNC), any());
 
 				// make sure no error event is ever thrown
 				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
@@ -433,7 +433,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(ttc)._doPublishEvent(TRANSFERTASK_CANCELED_COMPLETED, transferTask.toJson());
 				verify(ttc, never())._doPublishEvent(eq(TRANSFERTASK_CANCELED_ACK), any());
 				//assertEquals(transferTask.getUuid(), results, "Transfer task was not acknowledged in response uuid");
-				//assertEquals(uuid, result, "result should have been uuid: " + uuid);
+				//assertEquals(transferTask.getUuid(), results, "result should have been uuid: " + transferTask.getUuid());
 
 				ctx.completeNow();
 			});
@@ -524,15 +524,15 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		listener.processCancelAck(parentTask.toJson(), results -> {
 			ctx.verify(() -> {
 				assertTrue(results.succeeded(), "The call should succeed.");
-				//assertTrue(results.result(), "The async should return true");
+				assertTrue(results.result(), "The async should return true");
 
 				// verify the db service was called to update the task status
-//				verify(dbService).updateStatus(eq(transferTask.getTenantId()),
-//						eq(transferTask.getUuid()), eq(TransferStatusType.CANCELLED.name()), any());
+//				verify(dbService).updateStatus(eq(parentTask.getTenantId()),
+//						eq(parentTask.getUuid()), eq(TransferStatusType.CANCELLED.name()), any());
 
 				// verify that the completed event was created. this should always be throws
 				// if the updateStatus result succeeds.
-				//verify(listener)._doPublishEvent(TRANSFERTASK_CANCELLED, transferTask.toJson());
+//				verify(listener)._doPublishEvent(TRANSFERTASK_CANCELLED, parentTask.toJson());
 
 				// make sure the parent was not processed when none existed for the transfer task
 				verify(listener, atLeastOnce()).processCancelAck(any(), any());
@@ -616,7 +616,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		listener.processCancelAck(parentTask.toJson(), results -> {
 			ctx.verify(() -> {
 				assertTrue(results.succeeded(), "The call should succeed.");
-				//assertTrue(results.result(), "The async should return true");
+				assertTrue(results.result(), "The async should return true");
 
 				// verify the db service was called to update the task status
 //				verify(dbService).updateStatus(eq(transferTask.getTenantId()),
@@ -693,7 +693,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		listener.processCancelAck(parentTask.toJson(), results -> {
 			ctx.verify(() -> {
 				assertTrue(results.succeeded(), "The call should succeed.");
-				//assertTrue(results.result(), "The async should return true");
+				assertFalse(results.result(), "The async should return false");
 
 				// verify the db service was called to update the task status
 //				verify(dbService).updateStatus(eq(transferTask.getTenantId()),
@@ -795,7 +795,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		listener.processCancelAck(parentTask.toJson(), results -> {
 			ctx.verify(() -> {
 				assertTrue(results.succeeded(), "The call should succeed.");
-				//assertTrue(results.result(), "The async should return true");
+				assertTrue(results.result(), "The async should return true");
 
 				// verify the db service was called to update the task status
 //				verify(dbService).updateStatus(eq(transferTask.getTenantId()),
@@ -893,7 +893,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		listener.processCancelAck(parentTask.toJson(), results -> {
 			ctx.verify(() -> {
 				assertTrue(results.succeeded(), "The call should succeed.");
-				//assertTrue(results.result(), "The async should return true");
+				assertTrue(results.result(), "The async should return true");
 
 				// verify the db service was called to update the task status
 //				verify(dbService).updateStatus(eq(transferTask.getTenantId()),
@@ -971,7 +971,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		listener.processParentEvent(parentTask.getTenantId(), parentTask.getUuid(), results -> {
 			ctx.verify(() -> {
 				assertTrue(results.succeeded(), "The call should succeed.");
-				//assertTrue(results.result(), "The async should return true");
+				assertTrue(results.result(), "The async should return true");
 
 				// verify the db service was called to update the task status
 //				verify(dbService).updateStatus(eq(transferTask.getTenantId()),
@@ -1013,13 +1013,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			return null;
 		}).when(tc).processCancelAck(any(), any()); //.thenAnswer(Boolean.TRUE);
 
-
-
 		tc.start();
 		vertx.eventBus().send(TRANSFERTASK_PAUSED_SYNC, transferTask);
-
-		//AsyncResult<Boolean> result = getMockAsyncResult(Boolean.TRUE);
-		//verify(tc.processCancelAck(transferTask, result ->{}), times(1));
 
 		tc.processCancelAck(transferTask, booleanAsyncResult -> {
 			ctx.verify(() ->{

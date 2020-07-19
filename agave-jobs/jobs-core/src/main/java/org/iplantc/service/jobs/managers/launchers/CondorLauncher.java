@@ -1,15 +1,6 @@
 package org.iplantc.service.jobs.managers.launchers;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.StringTokenizer;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -25,7 +16,6 @@ import org.iplantc.service.jobs.managers.launchers.parsers.CondorJobIdParser;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.model.scripts.CommandStripper;
-import org.iplantc.service.jobs.model.scripts.CondorSubmitScript;
 import org.iplantc.service.jobs.model.scripts.SubmitScript;
 import org.iplantc.service.jobs.model.scripts.SubmitScriptFactory;
 import org.iplantc.service.remote.RemoteSubmissionClient;
@@ -38,7 +28,14 @@ import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.List;
+import java.util.Map;
+import java.util.StringTokenizer;
 
 /**
  * Created with IntelliJ IDEA.
@@ -72,7 +69,7 @@ public class CondorLauncher  extends AbstractJobLauncher {
      */
     public CondorLauncher(Job job) {
         super(job);
-        this.submitFileObject = SubmitScriptFactory.getScript(job);
+        this.submitFileObject = SubmitScriptFactory.getInstance(getJob(), getSoftware(), getExecutionSystem());
     }
 
     /**
@@ -121,7 +118,7 @@ public class CondorLauncher  extends AbstractJobLauncher {
         log.debug(step);
 
         // todo need to add classAd info to submit file
-        submitFileObject = SubmitScriptFactory.getScript(getJob());
+        submitFileObject = SubmitScriptFactory.getInstance(getJob(), getSoftware(), getExecutionSystem());
         
         try 
         {

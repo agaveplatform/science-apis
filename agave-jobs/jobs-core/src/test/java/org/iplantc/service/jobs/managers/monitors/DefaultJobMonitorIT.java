@@ -55,7 +55,7 @@ public class DefaultJobMonitorIT extends JobLauncherTest {
             // Jobs will start instantly in our test environment, so we can run the monitor right away. To test multiple
             // stages in the remote job lifecycle, we can introduce delays and failures via job parameters to the test
             // app. This is the happy path.
-            JobMonitor monitor = new JobMonitorFactory().getInstance(submittedJob);
+            JobMonitor monitor = new JobMonitorFactory().getInstance(submittedJob, executionSystem);
 
             // The job should complete immediately, so we can run the monitor and check for the expected completed status.
             Job monitoredJob = monitor.monitor();

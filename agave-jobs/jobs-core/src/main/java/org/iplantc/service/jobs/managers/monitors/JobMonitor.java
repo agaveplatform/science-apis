@@ -66,6 +66,12 @@ public interface JobMonitor {
      * @return the {@link Job} being monitored.
      */
 	public Job getJob();
+
+	/**
+	 * Thread safe setter of the job passed to the {@link JobMonitor}.
+	 * @param job the {@link Job} to set.
+	 */
+	public void setJob(Job job);
 	
 	/**
 	 * Creates a new {@link RemoteSubmissionClient} for the {@link Job} 

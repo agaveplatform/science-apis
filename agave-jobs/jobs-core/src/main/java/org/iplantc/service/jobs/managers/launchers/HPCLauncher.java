@@ -24,10 +24,12 @@ import org.iplantc.service.jobs.model.scripts.SubmitScript;
 import org.iplantc.service.jobs.model.scripts.SubmitScriptFactory;
 import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.remote.exceptions.RemoteExecutionException;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.DateTime;
 
 import java.io.File;
@@ -44,7 +46,7 @@ import java.util.List;
  */
 public class HPCLauncher extends AbstractJobLauncher 
 {
-	private final Logger log = Logger.getLogger(HPCLauncher.class);
+	private static final Logger log = Logger.getLogger(HPCLauncher.class);
 
 	protected String batchScriptName = null;
     
@@ -62,6 +64,15 @@ public class HPCLauncher extends AbstractJobLauncher
 	public HPCLauncher(Job job) {
 		super(job);
 	}
+
+	public String getBatchScriptName() {
+		return batchScriptName;
+	}
+
+	public void setBatchScriptName(String batchScriptName) {
+		this.batchScriptName = batchScriptName;
+	}
+
 
 	/*
 	 * Put the job in the batch scheduling queue
@@ -194,27 +205,23 @@ public class HPCLauncher extends AbstractJobLauncher
     public File processApplicationTemplate() throws JobException 
     {
 		step = "Processing the " + getJob().getSoftwareName() + " wrapper template for job " + getJob().getUuid();
-		 
-        log.debug(step);
-        FileWriter batchWriter = null;
-        String appTemplate = null;
+		log.debug(step);
+
+		setBatchScriptName(Slug.toSlug(getJob().getName()) + ".ipcexe");
+
+		String appTemplate = null;
         File ipcexeFile = null;
-        RemoteDataClient remoteExecutionDataClient = null;
-        try 
-		{
-			// create the submit script in the temp folder
-        	batchScriptName = Slug.toSlug(getJob().getName()) + ".ipcexe";
-        	ipcexeFile = new File(tempAppDir + File.separator + batchScriptName);
-			batchWriter = new FileWriter(ipcexeFile);
-			
-			SubmitScript script = SubmitScriptFactory.getScript(getJob());
+		// create the submit script in the temp folder
+		ipcexeFile = new File(getTempAppDir() + File.separator + getBatchScriptName());
+
+		try (FileWriter batchWriter = new FileWriter(ipcexeFile);) {
+
+			SubmitScript script = SubmitScriptFactory.getInstance(getJob(), getSoftware(), getExecutionSystem());
 	
 			// write the script header
 			batchWriter.write(script.getScriptText());
-			
-			remoteExecutionDataClient = getSoftware().getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername());
-			
-			String absWorkDir = remoteExecutionDataClient.resolvePath(getJob().getWorkPath());
+
+			String absWorkDir = getAbsoluteRemoteJobDirPath();
 			
 			batchWriter.write("##########################################################\n");
             batchWriter.write("# Agave Environment Settings \n");
@@ -264,95 +271,28 @@ public class HPCLauncher extends AbstractJobLauncher
             }
 			
             // add in any custom environment variables that need to be set
-            if (!StringUtils.isEmpty(getSoftware().getExecutionSystem().getEnvironment())) {
+            if (!StringUtils.isEmpty(getExecutionSystem().getEnvironment())) {
             	batchWriter.write("# App specific environment variables\n");
-            	batchWriter.write(getSoftware().getExecutionSystem().getEnvironment());
+            	batchWriter.write(getExecutionSystem().getEnvironment());
             	batchWriter.write("\n");
         	}
             else {
             	batchWriter.write("# No custom environment variables configured for this app\n\n\n");   
             }
-            
-            
-            batchWriter.write("##########################################################\n");
-            batchWriter.write("# Begin App Wrapper Template Logic \n");
-            batchWriter.write("##########################################################\n\n");
-           
-			
+
+			appTemplate = "##########################################################\n" +
+            			  "# Begin App Wrapper Template Logic \n" +
+					      "##########################################################\n\n";
+
             // read in the template file
-			File appTemplateFile = new File(tempAppDir
-					+ File.separator + getSoftware().getExecutablePath());
-			
-			if (!appTemplateFile.exists()) {
-				throw new FileNotFoundException("Unable to locate wrapper script for \"" + 
-						getSoftware().getUniqueName() + "\" at " + 
-						appTemplateFile.getAbsolutePath());
-			}
-			
-			appTemplate = FileUtils.readFileToString(appTemplateFile);
-			
-			// replace the parameters with their passed in values
-			JsonNode jobParameters = getJob().getParametersAsJsonObject();
-			
-			for (SoftwareParameter param: getSoftware().getParameters())
-			{
-				if (jobParameters.has(param.getKey())) 
-				{
-					JsonNode jobJsonParam = jobParameters.get(param.getKey());
+			appTemplate += getAppTemplateFileContents();
 
-					// serialized the runtime parameters into a string of space-delimited 
-					// values after enquoting and adding relevant argument(s)
-					String templateVariableValue = parseSoftwareParameterValueIntoTemplateVariableValue(param, jobJsonParam);
-					
-					// now actually filter the template for this parameter
-					appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + param.getKey() + "\\}", templateVariableValue);
-				}
-				else if (!param.isVisible())
-				{
-					// serialized the runtime parameters into a string of space-delimited 
-					// values after enquoting and adding relevant argument(s)
-					String templateVariableValue = parseSoftwareParameterValueIntoTemplateVariableValue(param, param.getDefaultValueAsJsonArray());
-					
-					// now actually filter the template for this parameter
-					appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + param.getKey() + "\\}", templateVariableValue);
-				}
-				else 
-				{
-					appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + param.getKey() + "\\}", "");
-				}
-			}
-			
-			// replace the parameters with their passed in values
-			JsonNode jobInputs = getJob().getInputsAsJsonObject();
-			
-			for (SoftwareInput input: getSoftware().getInputs())
-			{
-				if (jobInputs.has(input.getKey())) 
-				{
-					JsonNode jobJsonInput = jobInputs.get(input.getKey());
+			// replace parameters
+			appTemplate = resolveJobRequestParameters(appTemplate);
 
-					// serialized the runtime parameters into a string of space-delimited 
-					// values after enquoting and adding relevant argument(s)
-					String templateVariableValue = parseSoftwareInputValueIntoTemplateVariableValue(input, jobJsonInput);
-					
-					// now actually filter the template for this parameter
-					appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + input.getKey() + "\\}", templateVariableValue);
-				}
-				else if (!input.isVisible())
-				{
-					// serialized the runtime parameters into a string of space-delimited 
-					// values after enquoting and adding relevant argument(s)
-					String templateVariableValue = parseSoftwareInputValueIntoTemplateVariableValue(input, input.getDefaultValueAsJsonArray());
-					
-					// now actually filter the template for this parameter
-					appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + input.getKey() + "\\}", templateVariableValue);
-				}
-				else 
-				{
-					appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + input.getKey() + "\\}", "");
-				}
-			}
-			
+			// replace inputs
+			appTemplate = resolveJobRequestInputs(appTemplate);
+
 			// strip out all references to banned commands such as icommands, etc
 			if (getExecutionSystem().isPubliclyAvailable()) {
 				appTemplate = CommandStripper.strip(appTemplate); 
@@ -364,8 +304,7 @@ public class HPCLauncher extends AbstractJobLauncher
 			
 			// add the success statement after the template by default. The user can add failure catches
 			// in their scripts that will trump a later success status.
-			appTemplate = appTemplate + 
-					"\n\n\n" + 
+			appTemplate += "\n\n\n" +
 					"##########################################################\n" +
             		"# End App Wrapper Template Logic \n" +
             		"##########################################################\n\n" +
@@ -379,7 +318,9 @@ public class HPCLauncher extends AbstractJobLauncher
 			appTemplate = resolveMacros(appTemplate);
 			
 			batchWriter.write(appTemplate);
-			
+
+			batchWriter.flush();
+
 			return ipcexeFile;
 		} 
         catch (IOException e) {
@@ -401,23 +342,128 @@ public class HPCLauncher extends AbstractJobLauncher
 			String msg = "Failed to resolve remote execution system prior to staging application.";
 			log.error(msg, e);
 			throw new JobException(msg, e);
-		} 
-        finally {
-            try {
-				if (batchWriter != null) {
-					batchWriter.close();
-				}
-			} catch (IOException e) {
-                log.warn("Failed to close batchWriter.", e);
-            }
-            try {
-				if (remoteExecutionDataClient != null) {
-					remoteExecutionDataClient.disconnect();
-				}
-			} catch (Exception ignored) {}
-        }
+		}
     }
 
+	/**
+	 * Utility method to resolve the {@link Job#getWorkPath()} to an absolute path on the remote host.
+	 * @return the absolute path of the job directory on the execution system
+	 * @throws FileNotFoundException if the path cannot be found on the remote system
+	 * @throws RemoteCredentialException if unable to auth to the remote system or credentials missing
+	 * @throws RemoteDataException if unable to contact the remote system.
+	 */
+	protected String getAbsoluteRemoteJobDirPath() throws FileNotFoundException, RemoteCredentialException, RemoteDataException {
+		RemoteDataClient remoteExecutionDataClient = null;
+		try {
+			remoteExecutionDataClient = getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername());
+			return remoteExecutionDataClient.resolvePath(getJob().getWorkPath());
+		} finally {
+			try {
+				if (remoteExecutionDataClient != null) { remoteExecutionDataClient.disconnect(); }
+			} catch (Exception ignored) {}
+		}
+	}
+
+	/**
+	 * Filters the app template with the parameter values from the job request
+	 * @param appTemplate the app wrapper template content
+	 * @return the filtered content
+	 * @throws JobException if the parameters cannot be fetched as a JsonObject
+	 */
+	protected String resolveJobRequestParameters(String appTemplate) throws JobException {
+		// replace the parameters with their passed in values
+		JsonNode jobParameters = getJob().getParametersAsJsonObject();
+
+		for (SoftwareParameter param: getSoftware().getParameters())
+		{
+			if (jobParameters.has(param.getKey()))
+			{
+				JsonNode jobJsonParam = jobParameters.get(param.getKey());
+
+				// serialized the runtime parameters into a string of space-delimited
+				// values after enquoting and adding relevant argument(s)
+				String templateVariableValue = parseSoftwareParameterValueIntoTemplateVariableValue(param, jobJsonParam);
+
+				// now actually filter the template for this parameter
+				appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + param.getKey() + "\\}", templateVariableValue);
+			}
+			else if (!param.isVisible())
+			{
+				// serialized the runtime parameters into a string of space-delimited
+				// values after enquoting and adding relevant argument(s)
+				String templateVariableValue = parseSoftwareParameterValueIntoTemplateVariableValue(param, param.getDefaultValueAsJsonArray());
+
+				// now actually filter the template for this parameter
+				appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + param.getKey() + "\\}", templateVariableValue);
+			}
+			else
+			{
+				appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + param.getKey() + "\\}", "");
+			}
+		}
+
+		return appTemplate;
+	}
+
+	/**
+	 * Filters the app template with the input values from the job request
+	 * @param appTemplate the app wrapper template content
+	 * @return the filtered content
+	 * @throws JobException if the parameters cannot be fetched as a JsonObject
+	 */
+	protected String resolveJobRequestInputs(String appTemplate) throws JobException, URISyntaxException {
+		// replace the parameters with their passed in values
+		JsonNode jobInputs = getJob().getInputsAsJsonObject();
+
+		for (SoftwareInput input: getSoftware().getInputs())
+		{
+			if (jobInputs.has(input.getKey()))
+			{
+				JsonNode jobJsonInput = jobInputs.get(input.getKey());
+
+				// serialized the runtime parameters into a string of space-delimited
+				// values after enquoting and adding relevant argument(s)
+				String templateVariableValue = parseSoftwareInputValueIntoTemplateVariableValue(input, jobJsonInput);
+
+				// now actually filter the template for this parameter
+				appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + input.getKey() + "\\}", templateVariableValue);
+			}
+			else if (!input.isVisible())
+			{
+				// serialized the runtime parameters into a string of space-delimited
+				// values after enquoting and adding relevant argument(s)
+				String templateVariableValue = parseSoftwareInputValueIntoTemplateVariableValue(input, input.getDefaultValueAsJsonArray());
+
+				// now actually filter the template for this parameter
+				appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + input.getKey() + "\\}", templateVariableValue);
+			}
+			else
+			{
+				appTemplate = appTemplate.replaceAll("(?i)\\$\\{" + input.getKey() + "\\}", "");
+			}
+		}
+
+		return appTemplate;
+	}
+
+	/**
+	 * Reads the contents of the app wrapper template already staged to the server host.
+	 *
+	 * @return the raw contents of the app wrapper template
+	 * @throws IOException if the file cannot be read or found
+	 */
+	protected String getAppTemplateFileContents() throws IOException {
+		File appTemplateFile = new File(getTempAppDir()
+				+ File.separator + getSoftware().getExecutablePath());
+
+		if (!appTemplateFile.exists()) {
+			throw new FileNotFoundException("Unable to locate wrapper script for \"" +
+					getSoftware().getUniqueName() + "\" at " +
+					appTemplateFile.getAbsolutePath());
+		}
+
+		return FileUtils.readFileToString(appTemplateFile);
+	}
 
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.jobs.managers.launchers.AbstractJobLauncher#submitJobToQueue()

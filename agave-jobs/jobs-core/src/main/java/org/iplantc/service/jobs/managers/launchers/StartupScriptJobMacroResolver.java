@@ -4,11 +4,9 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.cfg.NotYetImplementedException;
 import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
-import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType;
 import org.iplantc.service.jobs.util.Slug;
-import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.enumerations.StartupScriptSystemVariableType;
@@ -25,8 +23,9 @@ public class StartupScriptJobMacroResolver {
     private final Job job;
     private ExecutionSystem executionSystem;
 
-    public StartupScriptJobMacroResolver(@NotNull Job job) {
+    public StartupScriptJobMacroResolver(@NotNull Job job, ExecutionSystem executionSystem) {
         this.job = job;
+        this.executionSystem = executionSystem;
     }
 
     /**
@@ -39,7 +38,7 @@ public class StartupScriptJobMacroResolver {
      */
     public String resolve() throws JobMacroResolutionException
     {
-        try {
+//        try {
             ExecutionSystem executionSystem = getExecutionSystem();
             String startupScript = executionSystem.getStartupScript();
             if (StringUtils.isBlank(startupScript)) {
@@ -66,10 +65,10 @@ public class StartupScriptJobMacroResolver {
 
                 return resolvedStartupScript;
             }
-        } catch (SystemUnavailableException e) {
-            throw new JobMacroResolutionException("Execution system " + getJob().getSystem() +
-                    " is no longer available to resolve batch queue for job " + getJob().getUuid());
-        }
+//        } catch (SystemUnavailableException e) {
+//            throw new JobMacroResolutionException("Execution system " + getJob().getSystem() +
+//                    " is no longer available to resolve batch queue for job " + getJob().getUuid());
+//        }
     }
 
     /**
@@ -139,14 +138,8 @@ public class StartupScriptJobMacroResolver {
      * Resolves {@link ExecutionSystem} for job.
      *
      * @return the job {@link ExecutionSystem}
-     * @throws SystemUnavailableException if the system is no longer present or available
-     * @see JobManager#getJobExecutionSystem(Job)
      */
-    protected ExecutionSystem getExecutionSystem() throws SystemUnavailableException {
-        if (executionSystem == null) {
-            this.executionSystem = new JobManager().getJobExecutionSystem(getJob());
-        }
-
+    protected ExecutionSystem getExecutionSystem() {
         return executionSystem;
     }
 }

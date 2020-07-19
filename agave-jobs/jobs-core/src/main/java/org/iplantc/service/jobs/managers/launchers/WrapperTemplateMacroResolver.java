@@ -8,13 +8,11 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.util.TimeUtils;
 import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
-import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateAttributeVariableType;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariableType;
 import org.iplantc.service.jobs.util.Slug;
-import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.joda.time.DateTime;
@@ -39,8 +37,9 @@ public class WrapperTemplateMacroResolver {
     private final Job job;
     private ExecutionSystem executionSystem;
 
-    public WrapperTemplateMacroResolver(@NotNull Job job) {
+    public WrapperTemplateMacroResolver(@NotNull Job job, ExecutionSystem executionSystem) {
         this.job = job;
+        this.executionSystem = executionSystem;
     }
 
     /**
@@ -92,7 +91,7 @@ public class WrapperTemplateMacroResolver {
      * @throws JobMacroResolutionException when the execution system or batch queue is not available
      */
     public String resolveJobAttributeMacros(String wrapperTemplate) throws JobMacroResolutionException {
-        try {
+//        try {
             ExecutionSystem executionSystem = getExecutionSystem();
 
             if (StringUtils.isBlank(executionSystem.getStartupScript())) {
@@ -110,10 +109,10 @@ public class WrapperTemplateMacroResolver {
 
                 return resolvedTemplate;
             }
-        } catch (SystemUnavailableException e) {
-            throw new JobMacroResolutionException("Execution system " + getJob().getSystem() +
-                    " is no longer available to resolve batch queue for job " + getJob().getUuid());
-        }
+//        } catch (SystemUnavailableException e) {
+//            throw new JobMacroResolutionException("Execution system " + getJob().getSystem() +
+//                    " is no longer available to resolve batch queue for job " + getJob().getUuid());
+//        }
     }
 
     /**
@@ -124,7 +123,7 @@ public class WrapperTemplateMacroResolver {
      * @throws JobMacroResolutionException when the execution system or batch queue is not available
      */
     public String resolveJobStatusMacros(String wrapperTemplate) throws JobMacroResolutionException {
-        try {
+//        try {
             ExecutionSystem executionSystem = getExecutionSystem();
 
             if (StringUtils.isBlank(executionSystem.getStartupScript())) {
@@ -142,10 +141,10 @@ public class WrapperTemplateMacroResolver {
 
                 return resolvedTemplate;
             }
-        } catch (SystemUnavailableException e) {
-            throw new JobMacroResolutionException("Execution system " + getJob().getSystem() +
-                    " is no longer available to resolve batch queue for job " + getJob().getUuid());
-        }
+//        } catch (SystemUnavailableException e) {
+//            throw new JobMacroResolutionException("Execution system " + getJob().getSystem() +
+//                    " is no longer available to resolve batch queue for job " + getJob().getUuid());
+//        }
     }
 
     /**
@@ -405,14 +404,11 @@ public class WrapperTemplateMacroResolver {
      * Resolves {@link ExecutionSystem} for job.
      *
      * @return the job {@link ExecutionSystem}
-     * @throws SystemUnavailableException if the system is no longer present or available
-     * @see JobManager#getJobExecutionSystem(Job)
      */
-    protected ExecutionSystem getExecutionSystem() throws SystemUnavailableException {
-        if (executionSystem == null) {
-            this.executionSystem = new JobManager().getJobExecutionSystem(getJob());
-        }
-
+    protected ExecutionSystem getExecutionSystem() { //throws SystemUnavailableException {
+//        if (executionSystem == null) {
+//            this.executionSystem = new JobManager().getJobExecutionSystem(getJob());
+//        }
         return executionSystem;
     }
 }

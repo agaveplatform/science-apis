@@ -98,11 +98,11 @@ public abstract class AbstractJobKiller implements JobKiller {
 	 *   system not being available
 	 */
 	public String getStartupScriptCommand() throws JobMacroResolutionException {
-		String resolvedStartupScript = new StartupScriptJobMacroResolver(getJob()).resolve();
+		String resolvedStartupScript = new StartupScriptJobMacroResolver(getJob(), getExecutionSystem()).resolve();
 		if (resolvedStartupScript != null) {
 			return String.format("echo $(source %s 2>&1) >> /dev/null ", resolvedStartupScript);
 		} else {
-			return String.format("echo 'No startup script defined. Skipping...' >> /dev/null ");
+			return "echo 'No startup script defined. Skipping...' >> /dev/null ";
 		}
 	}
 

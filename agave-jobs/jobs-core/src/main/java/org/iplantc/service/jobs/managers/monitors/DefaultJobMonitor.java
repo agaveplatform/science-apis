@@ -32,10 +32,15 @@ import java.nio.channels.ClosedByInterruptException;
  */
 public class DefaultJobMonitor extends AbstractJobMonitor {
 	private static final Logger log = Logger.getLogger(DefaultJobMonitor.class);
-	
-	public DefaultJobMonitor(Job job)
+
+	/**
+	 * Default constructor for all child classes.
+	 * @param job the job to monitor
+	 * @param executionSystem the execution system on which the job is running
+	 */
+	public DefaultJobMonitor(Job job, ExecutionSystem executionSystem)
 	{
-		super(job);
+		super(job, executionSystem);
 	}
 
 	/* (non-Javadoc)

@@ -49,7 +49,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.channels.ClosedByInterruptException;
-import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -70,13 +69,11 @@ public abstract class AbstractJobLauncher implements JobLauncher
     protected Job						job;
     protected Software 					software;
     protected ExecutionSystem 			executionSystem;
-//	protected RemoteDataClient	 		remoteExecutionDataClient;
-//	protected RemoteDataClient	 		remoteSoftwareDataClient;
 	protected RemoteDataClient          localDataClient;
 	protected RemoteSubmissionClient 	submissionClient = null;
 	protected URLCopy                   urlCopy;
 	protected TransferTask              transferTask;
-	
+
 	protected AbstractJobLauncher() {}
 	
 	public AbstractJobLauncher(Job job) {
@@ -126,8 +123,8 @@ public abstract class AbstractJobLauncher implements JobLauncher
     public synchronized void setUrlCopy(URLCopy urlCopy) {
         this.urlCopy = urlCopy;
     }
-    
-    /* (non-Javadoc)
+
+	/* (non-Javadoc)
      * @see org.iplantc.service.jobs.managers.launchers.JobLauncher#checkStopped()
      */
     @Override
@@ -153,7 +150,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	 * @return the wrapper with the reserved {@link WrapperTemplateStatusVariableType} macros removed
 	 */
 	public String removeReservedJobStatusMacros(String wrapperTemplate) {
-		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob(), getExecutionSystem());
 		return resolver.removeReservedJobStatusMacros(wrapperTemplate);
 	}
 	
@@ -162,7 +159,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	 */
 	@Override
 	public String resolveRuntimeNotificationMacros(String wrapperTemplate) {
-		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob(), getExecutionSystem());
 		return resolver.resolveRuntimeNotificationMacros(wrapperTemplate);
 	}
 
@@ -173,7 +170,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	 * @return the wrapper template resolved of all runtime status macros
 	 */
 	protected String filterRuntimeStatusMacros(String appTemplate) {
-		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob(), getExecutionSystem());
 		return resolver.removeReservedJobStatusMacros(appTemplate);
 	}
 
@@ -183,7 +180,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	 */
 	@Override
 	public String resolveMacros(String wrapperTemplate) throws JobMacroResolutionException {
-		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob());
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob(), getExecutionSystem());
 		return resolver.resolve(wrapperTemplate);
 	}
 	
@@ -191,7 +188,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	 * @see org.iplantc.service.jobs.managers.launchers.JobLauncher#resolveStartupScriptMacros(java.lang.String)
 	 */
 	public String resolveStartupScriptMacros(String startupScript) throws JobMacroResolutionException {
-		StartupScriptJobMacroResolver resolver = new StartupScriptJobMacroResolver(getJob());
+		StartupScriptJobMacroResolver resolver = new StartupScriptJobMacroResolver(getJob(), getExecutionSystem());
 		return resolver.resolve();
 	}
 	
@@ -203,7 +200,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	 * @throws JobMacroResolutionException when the startup script cannot be resolved. This is usually due ot the system not being available
 	 */
 	public String getStartupScriptCommand(String absoluteRemoteWorkPath) throws JobMacroResolutionException {
-		String resolvedStartupScript = new StartupScriptJobMacroResolver(getJob()).resolve();
+		String resolvedStartupScript = new StartupScriptJobMacroResolver(getJob(), getExecutionSystem()).resolve();
 		if (resolvedStartupScript != null) {
 			return String.format("printf \"[%%s] %%b\\n\" $(date '+%%Y-%%m-%%dT%%H:%%M:%%S%%z') \"$(source %s 2>&1)\" >> %s/.agave.log ",
 					resolvedStartupScript,
@@ -497,7 +494,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 			throw new JobException(msg, e);
 		} 
     	finally {
-			try { remoteExecutionDataClient.disconnect();} catch (Exception ignored) {}
+			try { if (remoteExecutionDataClient != null) remoteExecutionDataClient.disconnect();} catch (Exception ignored) {}
 		}
     }
 
@@ -506,19 +503,22 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	 * present when the job starts. These file items will be ignored during archiving.
      * @param logFileName the name of the log file to create
      * @return the local file created
-     * @throws JobException
+     * @throws JobException if the file cannot be created and opened
      */
     protected File createArchiveLog(String logFileName) throws JobException {
         FileWriter logWriter = null;
         try 
         {
             File archiveLog = new File(tempAppDir, logFileName);
-            archiveLog.createNewFile();
-            logWriter = new FileWriter(archiveLog);
+            if (archiveLog.createNewFile()) {
+				logWriter = new FileWriter(archiveLog);
 
-            printListing(tempAppDir, tempAppDir, logWriter);
-            
-            return archiveLog;
+				printListing(tempAppDir, tempAppDir, logWriter);
+
+				return archiveLog;
+			} else {
+            	throw new JobException("Failed to create manifest file for job " + getJob().getUuid());
+			}
         } 
         catch (IOException e) 
         {
@@ -539,7 +539,6 @@ public abstract class AbstractJobLauncher implements JobLauncher
     
     protected void printListing(File file, File baseFolder, FileWriter writer) throws IOException
     {
-
         if (file.isFile())
         {
         	String relativeFilePath = StringUtils.removeStart(file.getPath(), baseFolder.getPath());
@@ -647,14 +646,12 @@ public abstract class AbstractJobLauncher implements JobLauncher
 				else
 				{
 					int childIndex = 0;
-					for(Iterator<JsonNode> i = jsonJobParamValue.iterator(); i.hasNext();) 
-					{
-						JsonNode child = i.next();
+					for (JsonNode child : jsonJobParamValue) {
 						String singleParamValue = child.asText();
 						if (softwareParameter.isEnquote()) {
 							singleParamValue = ServiceUtils.enquote(singleParamValue);
 						}
-						
+
 						if (softwareParameter.isShowArgument() && (softwareParameter.isRepeatArgument() || childIndex == 0)) {
 							paramValues[childIndex] = softwareParameter.getArgument() + singleParamValue;
 						} else {
@@ -717,16 +714,22 @@ public abstract class AbstractJobLauncher implements JobLauncher
 		} 
 		catch (Exception e) 
 		{
-			String singleParamValue = jsonJobParamValue.textValue();
-			
-			if (softwareParameter.isEnquote()) {
-				singleParamValue = ServiceUtils.enquote(singleParamValue);
-			}
-			
-			if (softwareParameter.isShowArgument()) {
-				paramValues[0] = softwareParameter.getArgument() + singleParamValue;
-			} else {
-				paramValues[0] = singleParamValue;
+			if (jsonJobParamValue != null) {
+				String singleParamValue = jsonJobParamValue.textValue();
+
+				if (softwareParameter.isEnquote()) {
+					singleParamValue = ServiceUtils.enquote(singleParamValue);
+				}
+
+				if (paramValues == null) {
+					paramValues = new String[1];
+				}
+
+				if (softwareParameter.isShowArgument()) {
+					paramValues[0] = softwareParameter.getArgument() + singleParamValue;
+				} else {
+					paramValues[0] = singleParamValue;
+				}
 			}
 		}
 		
@@ -755,19 +758,17 @@ public abstract class AbstractJobLauncher implements JobLauncher
 					paramValues = new String[jsonJobInputValue.size()];
 					
 					int childIndex = 0;
-					for(Iterator<JsonNode> i = jsonJobInputValue.iterator(); i.hasNext(); ) 
-					{
-						JsonNode child = i.next();
+					for (JsonNode child : jsonJobInputValue) {
 						String singleInputRawValue = child.asText();
 						URI uri = new URI(singleInputRawValue);
-						
+
 						// TODO: we should handle url decoding/escaping here so it is possible to use enquote without fear of having to do shellfoo magic to make a script bulletproof 
 						String singleInputValue = FilenameUtils.getName(uri.getPath());
-						
+
 						if (softwareInput.isEnquote()) {
 							singleInputValue = ServiceUtils.enquote(singleInputValue);
 						}
-						
+
 						if (softwareInput.isShowArgument() && (softwareInput.isRepeatArgument() || childIndex == 0)) {
 							paramValues[childIndex] = softwareInput.getArgument() + singleInputValue;
 						} else {
@@ -800,10 +801,15 @@ public abstract class AbstractJobLauncher implements JobLauncher
 			String singleInputRawValue = jsonJobInputValue.asText();
 			URI uri = new URI(singleInputRawValue);
 			String singleInputValue = FilenameUtils.getName(uri.getPath());
-			
+
 			if (softwareInput.isEnquote()) {
 				singleInputValue = ServiceUtils.enquote(singleInputValue);
 			}
+
+			if (paramValues == null) {
+				paramValues = new String[1];
+			}
+
 			if (softwareInput.isShowArgument()) {
 				paramValues[0] = softwareInput.getArgument() + singleInputValue;
 			} else {

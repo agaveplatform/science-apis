@@ -21,8 +21,13 @@ import java.nio.file.Path;
 public class CondorJobMonitor extends DefaultJobMonitor {
     private static final Logger log = Logger.getLogger(CondorJobMonitor.class);
 
-    public CondorJobMonitor(Job job) {
-        super(job);
+    /**
+     * Default constructor for all child classes.
+     * @param job the job to monitor
+     * @param executionSystem the execution system on which the job is running
+     */
+    public CondorJobMonitor(Job job, ExecutionSystem executionSystem) {
+        super(job, executionSystem);
     }
 
     /**

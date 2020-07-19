@@ -28,7 +28,7 @@ public enum CondorLogJobStatus implements RemoteSchedulerJobStatus<CondorLogJobS
 	GRID_RESOURCE_BACK_UP("025", "A grid resource that was previously unavailable is now available.", JobStatusType.QUEUED),
 	DETECTED_DOWN_GRID_RESOURCE("026", "The grid resource that a job is to run on is unavailable.", JobStatusType.QUEUED),
 	JOB_SUBMITTED_TO_GRID_RESOURCE("027", "A job has been submitted, and is under the auspices of the grid resource.", JobStatusType.QUEUED),
-	FACTORY_SUBMIT("035", "This event occurs when a user submits a cluster job using late materialization.", null),
+	FACTORY_SUBMIT("035", "This event occurs when a user submits a cluster job using late materialization.", JobStatusType.QUEUED),
 
 	//running
 	JOB_EXECUTING("001", "Job is running. It might occur more than once.", JobStatusType.RUNNING),

@@ -19,10 +19,10 @@ public enum LoadLevelerJobStatus implements RemoteSchedulerJobStatus<LoadLeveler
 	SYSTEM_HOLD("S", "The job has been put in system hold.", JobStatusType.QUEUED),
 	USER_HOLD_SYSTEM_HOLD("HS", "The job has been put in system hold and user hold.", JobStatusType.QUEUED),
 	IDLE("I", "The job is being considered to run on a machine, though no machine has been selected.", JobStatusType.QUEUED),
+	VACATED("V", "The job started but did not complete. The negotiator will reschedule the job (provided the job is allowed to be rescheduled). Possible reasons why a job moves to the Vacate state are: the machine where the job was running was flushed, the VACATE expression in the configuration file evaluated to True, or LoadLeveler detected a condition indicating the job needed to be vacated.", JobStatusType.QUEUED),
+	VACATE_PENDING("VP", "The job has been vacated and in process of being queued.", JobStatusType.QUEUED),
 
 	// failed
-	VACATED("V", "The job started but did not complete. The negotiator will reschedule the job (provided the job is allowed to be rescheduled). Possible reasons why a job moves to the Vacate state are: the machine where the job was running was flushed, the VACATE expression in the configuration file evaluated to True, or LoadLeveler detected a condition indicating the job needed to be vacated.", null),
-	VACATE_PENDING("VP", "The job has been vacated and in process of being queued.", null),
 	REJECTED("X", "The job was rejected.", null),
 	REJECT_PENDING("XP", "The job did not start. Possible reasons why a job is rejected are: job requirements were not met on the target machine, or the user ID of the person running the job is not valid on the target machine. After a job leaves the Reject Pending state, it is moved into one of the following states: Idle, User Hold, or Removed.", null),
 
@@ -111,7 +111,7 @@ public enum LoadLevelerJobStatus implements RemoteSchedulerJobStatus<LoadLeveler
 	 */
 	@Override
 	public List<LoadLevelerJobStatus> getQueuedStatuses() {
-		return List.of(DEFERRED, IDLE, REJECT_PENDING, REJECTED, SYSTEM_HOLD, USER_HOLD, USER_HOLD_SYSTEM_HOLD, VACATED, VACATE_PENDING);
+		return List.of(DEFERRED, IDLE, SYSTEM_HOLD, USER_HOLD, USER_HOLD_SYSTEM_HOLD, VACATED, VACATE_PENDING);
 	}
 
 	/**
@@ -147,7 +147,7 @@ public enum LoadLevelerJobStatus implements RemoteSchedulerJobStatus<LoadLeveler
 	 */
 	@Override
 	public List<LoadLevelerJobStatus> getFailedStatuses() {
-		return List.of(REMOVED, NOT_RUN, NOT_QUEUED, SUBMISSION_ERROR);
+		return List.of(REMOVED, REJECT_PENDING, REJECTED, NOT_RUN, NOT_QUEUED, SUBMISSION_ERROR);
 	}
 
 	/**

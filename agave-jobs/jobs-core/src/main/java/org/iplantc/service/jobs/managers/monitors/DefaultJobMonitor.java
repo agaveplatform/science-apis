@@ -76,6 +76,18 @@ public class DefaultJobMonitor extends AbstractJobMonitor {
 
 					// if the job status has changed
 					if (getJob().getStatus() != response.getStatus()) {
+						//							TODO: We should validate the observed value against the job state machine to ensure we do
+//								not introduce an infinite loop where a job keeps getting resubmitted and rerun over and
+//								over again due to unforseen parsing issues or a bug on the remote side.
+						if (response.getStatus() != null && getJob().getStatus().getNextValidStates().contains(response.getStatus())) {
+							log.error("Job " + getJob().getUuid() + " was found in a remote status of " +
+									response.getRemoteSchedulerJobStatus().toString() +
+									". This maps to an Agave job status of " + response.getStatus() +
+									", which is an illegal transition from the job's current state of " +
+									getJob().getStatus().name() + ". This observed transition will be accepted, but may be " +
+									"removed in a future update.");
+						}
+
 						// if the response status maps to a job status, use that
 						if (response.getRemoteSchedulerJobStatus().isFailureStatus()) {
 							JobStatusType nextStatus = getJob().isArchiveOutput() ? JobStatusType.CLEANING_UP : JobStatusType.FAILED;
@@ -85,6 +97,7 @@ public class DefaultJobMonitor extends AbstractJobMonitor {
 
 							updateJobStatus(nextStatus,
 									"Job status change to failed detected by job monitor.");
+
 						} else if (response.getRemoteSchedulerJobStatus().isDoneStatus()) {
 							log.debug("Job " + getJob().getUuid() + " was found in a completed state on " +
 									getJob().getSystem() + " as local job id " + getJob().getLocalJobId() +
@@ -128,10 +141,6 @@ public class DefaultJobMonitor extends AbstractJobMonitor {
 											". The job will remain active until a terminal state is detected.");
 						}
 					} else {
-						log.debug("Job " + getJob().getUuid() + " was found in an " +
-								getJob().getStatus().name().toLowerCase() + " on " +
-								getJob().getSystem() + " as local job id " + getJob().getLocalJobId() + ".");
-
 						updateJobStatus(getJob().getStatus(), getJob().getErrorMessage());
 					}
 				}

@@ -51,6 +51,7 @@ public class MetadataPermission {
 		setUuid(uuid);
 		setUsername(username);
 		setPermission(permissionType);
+		this.group = "";
 	}
 
 	/**

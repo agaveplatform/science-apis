@@ -22,5 +22,4 @@ public abstract class AbstractMetadataDaoIT implements IMetadataDaoIT{
         return null;
     }
 
-
 }

@@ -8,6 +8,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import javax.persistence.Id;
 import javax.validation.constraints.NotNull;
@@ -107,7 +108,7 @@ public class MetadataItem {
     private List<Notification> notifications = new ArrayList<Notification>();
 
     //KL
-    @JsonIgnore
+    //@JsonIgnore
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private List<MetadataPermission> permissions = new ArrayList<MetadataPermission>();
 
@@ -116,6 +117,8 @@ public class MetadataItem {
         this.tenantId = TenancyHelper.getCurrentTenantId();
         this.created = new Date();
         this.lastUpdated = new Date();
+//        this.permissions = new ArrayList<MetadataPermission>();
+
     }
 
 //    public MetadataItem(DBObject mongoObj) {

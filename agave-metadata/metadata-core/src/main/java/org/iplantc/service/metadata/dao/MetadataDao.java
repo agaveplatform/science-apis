@@ -1,39 +1,41 @@
 package org.iplantc.service.metadata.dao;
 
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
-import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+import static org.bson.codecs.configuration.CodecRegistries.*;
 import static org.iplantc.service.metadata.model.enumerations.PermissionType.ALL;
 
 import java.net.UnknownHostException;
 import java.sql.Date;
-import java.text.DateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 //import com.mongodb.*;
 import com.mongodb.*;
 import com.mongodb.MongoClient;
 import com.mongodb.client.*;
+import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 import com.mongodb.client.MongoClients;
 import org.apache.log4j.Logger;
-import org.bson.BsonInt32;
 import org.bson.Document;
+import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
-import org.iplantc.service.metadata.model.MetadataDocument;
 import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataItemCodec;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.json.JSONObject;
 
-import javax.persistence.Basic;
+
+import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Updates.*;
 
 public class MetadataDao {
     
@@ -44,6 +46,9 @@ public class MetadataDao {
     private MongoClients mongoClients = null;
 
     private static MetadataDao dao = null;
+
+    private boolean bolRead;
+    private boolean bolWrite;
     
     public static MetadataDao getInstance() {
         if (dao == null) {
@@ -59,7 +64,7 @@ public class MetadataDao {
      * @return valid mongo client connection
      * @throws UnknownHostException when the host cannot be found
      */
-    public MongoClient getMongoClient() throws UnknownHostException
+    public MongoClient getMongoClient()
     {
         if (mongoClient == null )
         {
@@ -72,10 +77,19 @@ public class MetadataDao {
         return mongoClient;
     }
 
-    public com.mongodb.client.MongoClient getMongoClients() throws UnknownHostException {
+    public com.mongodb.client.MongoClient getMongoClients() {
         if (mongoClients == null) {
+
+            //testing for custom codec
+            ClassModel<JsonNode> valueModel = ClassModel.builder(JsonNode.class).build();
+            ClassModel<MetadataPermission> metadataPermissionModel = ClassModel.builder(MetadataPermission.class).build();
+            PojoCodecProvider pojoCodecProvider = PojoCodecProvider.builder().register(valueModel, metadataPermissionModel).build();
+
+            CodecRegistry registry = CodecRegistries.fromCodecs(new MetadataItemCodec());
+
             CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
-                    fromProviders(PojoCodecProvider.builder().automatic(true).build()));
+                    fromProviders(pojoCodecProvider),
+                    registry);
 
             return mongoClients.create(MongoClientSettings.builder()
                     .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
@@ -118,11 +132,28 @@ public class MetadataDao {
         db = getMongoClient().getDatabase(dbName);
         db = getMongoClients().getDatabase(dbName); //update to 4.0
 
-        //MongoCollection<MetadataDocument> newDb = db.getCollection("MetadataDocument", MetadataDocument.class);
+        MongoCollection<MetadataItem> newDb = db.getCollection("api", MetadataItem.class);
 
 
         // Gets a collection, if it does not exist creates it
         return db.getCollection(collectionName);
+
+    }
+
+    public MongoCollection<MetadataItem> getDefaultMetadataItemCollection() throws UnknownHostException {
+        return getMetadataItemCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
+    }
+
+    /**
+     * Get the named collection configured with the MetadataItem class from the named db
+     * @param dbName database name
+     * @param collectionName colletion name
+     * @return collection from the db
+     */
+    public MongoCollection<MetadataItem> getMetadataItemCollection (String dbName, String collectionName){
+        db = getMongoClients().getDatabase(dbName);
+
+        return db.getCollection(collectionName, MetadataItem.class);
     }
 
     /**
@@ -132,124 +163,149 @@ public class MetadataDao {
      * @throws MetadataStoreException when the insertion failed
      */
     public MetadataItem insert(MetadataItem metadataItem) throws MetadataStoreException {
-        ObjectMapper mapper = new ObjectMapper();
-        MongoCollection collection;
+        MongoCollection<MetadataItem> metadataItemCollection;
         try {
-            collection = getDefaultCollection();
-            collection.insertOne(Document.parse(mapper.writeValueAsString(metadataItem)));
+
+            //using POJO Codec
+            metadataItemCollection = getDefaultMetadataItemCollection();
+
+            metadataItemCollection.insertOne(metadataItem);
+
+//            FindIterable<MetadataItem> findIterable = metadataItemCollection.find(eq("uuid", uuid));
+//
+//            String result = findIterable.cursor().next().getUuid();
+//            JsonNode valueResult = findIterable.cursor().next().getValue();
+
+
+
             return metadataItem;
-        } catch (UnknownHostException| JsonProcessingException e) {
+        } catch (UnknownHostException e) {
             throw new MetadataStoreException("Failed to insert metadata item", e);
         }
     }
 
+    public MetadataItem insertMetadataItem(MetadataItem metadataItem) throws MetadataStoreException {
+        ObjectMapper mapper = new ObjectMapper();
+
+        MongoCollection<MetadataItem> metadataItemCollection;
+        try {
+            metadataItemCollection = getDefaultMetadataItemCollection();
+            metadataItemCollection.insertOne(metadataItem);
+
+            return metadataItem;
+        } catch (UnknownHostException e) {
+            throw new MetadataStoreException("Failed to insert metadata item", e);
+        }
+    }
+
+
     /**
      * Return the metadataItem from the collection
-     * @param metadataItem to be returned
      * @return metadataItem
-     * @throws MetadataStoreException
      */
-    public MetadataItem find(MetadataItem metadataItem, String user, BasicDBObject query) throws MetadataStoreException {
+    public MetadataItem find(String user, Bson query) throws MetadataStoreException {
         MongoCollection collection;
+        MetadataItem returnEntity;
+        MongoCursor cursor;
+        List<MetadataItem> resultList = new ArrayList<>();
 
+        //POGO
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
         try{
-            collection = getDefaultCollection();
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-            //generate permissions list
-//            BasicDBList pemList = new BasicDBList();
-//            for (MetadataPermission pem : metadataItem.getPermissions()){
-//                pemList.add(new BasicDBObject("username:", pem.getUsername())
-//                        .append("group", null)
-//                        .append("permissions:", Arrays.asList(pem.getPermission().toString())));
-//            }
+//            Document docQuery = new Document("uuid", metadataItem.getUuid())
+//                    .append("tenantId", metadataItem.getTenantId());
+//
+            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
 
-            BasicDBList or = new BasicDBList();
-            or.add(new BasicDBObject("owner",user));
-            or.add(new BasicDBObject("permissions",
-                    new BasicDBObject("$nin", Arrays.asList(PermissionType.NONE.toString()))));
+            Bson docFilter = elemMatch("permissions", eq("username", user));
 
 
-            //generate query
-            BasicDBObject doc = new BasicDBObject("uuid", metadataItem.getUuid())
-                    .append("tenantId", metadataItem.getTenantId())
-                    .append("schemaId", metadataItem.getSchemaId())
-                    .append("$or", or);
-
-            BasicDBList aggList = new BasicDBList();
-            aggList.add(new BasicDBObject("$match", doc));
-
-            if (query != null) {
-                aggList.add(new BasicDBObject("$match", query));
+            if (query == null) {
+                query = new Document();
             }
 
-            MongoCursor<Document> cursor = null;
-            cursor =  collection.aggregate(aggList).iterator();
+            try {
+                returnEntity = metadataItemMongoCollection.find(and(query, or(eq("owner", user), docFilter))).first();
+//                returnEntity = metadataItemMongoCollection.find(query).first();
 
-            //cursor = collection.find().iterator();ß
+//                List<Bson> aggList = new ArrayList<Bson>();
+//                aggList.add(or(eq("owner", user), docFilter));
+//                aggList.add(query);
+//
+//
+//                cursor = metadataItemMongoCollection.aggregate(aggList).cursor();
+//
+//
+//                while (cursor.hasNext()) {
+//                    resultList.add((MetadataItem)cursor.next());
+//                }
 
-            if (cursor != null) {
-                while (cursor.hasNext()) {
-
-                    //create Metadata Item for result
-                    Document result = cursor.next();
-
-                    return parseResult(result);
-                    //return (MetadataItem) cursor.next();
-                }
+            } catch (Exception e) {
+                returnEntity = null;
             }
+
+            return returnEntity;
 
         } catch (UnknownHostException e) {
             throw new MetadataStoreException("Failed to find metadata item", e);
         }
-        return null;
     }
 
     /**
      * Removes the permission for the specified user
      * @param metadataItem to be updated
      * @param user to be removed
-     * @throws MetadataStoreException
      */
     public MetadataItem deleteUserPermission(MetadataItem metadataItem, String user) throws MetadataStoreException{
-        MongoCollection collection;
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+
+        String uuid = metadataItem.getUuid();
         try{
-            collection = getDefaultCollection();
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-            BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid());
-            query.append("permission.user", user);
+            Document docQuery = new Document("uuid", uuid)
+                    .append("permissions", new Document("$elemMatch", new Document("username", user)));
 
-            BasicDBObject pullQuery = new BasicDBObject("permission", new BasicDBObject("username", user))
-                    .append("uuid", metadataItem.getUuid());
+            MetadataPermission pemDelete = metadataItem.getPermissions_User(user);
+            metadataItem.updatePermissions_delete(pemDelete);
+            List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
 
-            collection.updateOne(query, new BasicDBObject("$pull", pullQuery));
-
-            MetadataPermission toDelete = metadataItem.getPermissions_User(user);
-            metadataItem.updatePermissions_delete(toDelete);
-
-            return metadataItem;
+            UpdateResult update = metadataItemMongoCollection.updateOne(docQuery, set("permissions", metadataPermissionsList));
 
         } catch (Exception e){
             throw new MetadataStoreException("Failed to delete user's permission", e);
         }
+        return metadataItem;
     }
+
+    Block<Document> printBlock = new Block<>() {
+        @Override
+        public void apply(final Document document) {
+            System.out.println(document.toJson());
+        }
+    };
+
 
     /**
      * Removes all permissions for the metadataItem
      * @param metadataItem to be updated
-     * @throws MetadataStoreException
      */
     public void deleteAllPermissions(MetadataItem metadataItem) throws MetadataStoreException{
         MongoCollection collection;
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
         try{
             collection = getDefaultCollection();
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-            metadataItem.setPermissions(new ArrayList<MetadataPermission>());
 
-            BasicDBList pemList = setPermissionsForDB(metadataItem.getPermissions());
+            metadataItem.setPermissions(new ArrayList<>());
+//            BasicDBList pemList = setPermissionsForDB(metadataItem.getPermissions());
 
             BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid());
-            collection.updateOne(query, new BasicDBObject("$set", new BasicDBObject("permissions", pemList)));
-
+            collection.updateOne(query, new BasicDBObject("$set", new BasicDBObject("permissions", new ArrayList<MetadataPermission>())));
+            metadataItemMongoCollection.updateOne(query, set("permissions", new ArrayList<MetadataItem>()));
         } catch (Exception e) {
             throw new MetadataStoreException("Failed to delete all permissions", e);
         }
@@ -260,86 +316,179 @@ public class MetadataDao {
      * @param metadataItem to be updated
      * @param user to be updated
      * @param pem PermissionType to be updated
-     * @throws MetadataStoreException
      */
-    public void updatePermission(MetadataItem metadataItem, String user, PermissionType pem) throws MetadataStoreException{
-        MongoCollection collection;
+    public MetadataPermission updatePermission(MetadataItem metadataItem, String user, PermissionType pem) throws MetadataStoreException{
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+        long matchCount, modified;
+        UpdateResult update;
+        String uuid;
+        MongoCursor cursor;
+        List<MetadataPermission> pemList;
+
         try{
-            collection = getDefaultCollection();
+            //get collection
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+            uuid = metadataItem.getUuid();
 
-            MetadataPermission newPem = new MetadataPermission(metadataItem.getUuid(), user, pem);
-            metadataItem.updatePermissions(newPem);
+            Document docQuery = new Document("uuid", uuid);
+//                    .append("permissions", new Document("$elemMatch", new Document("username", user)));
 
-            BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid());
-            BasicDBList pemList = setPermissionsForDB(metadataItem.getPermissions());
-            collection.updateOne(query, new BasicDBObject("$set", new BasicDBObject("permissions", pemList)));
+//            Bson docFilter = and(eq("uuid", uuid), elemMatch("permissions", eq("username", user)));
 
+            MetadataPermission pemUpdate = metadataItem.getPermissions_User(user);
+
+            if (pemUpdate == null) {
+                //user permission doesn't exist, create it
+                pemUpdate = new MetadataPermission(uuid, user, pem);
+            } else {
+                //update permission
+                pemUpdate.setPermission(pem);
+            }
+
+            metadataItem.updatePermissions(pemUpdate);
+            List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
+            update = metadataItemMongoCollection.updateOne(docQuery, set("permissions", metadataPermissionsList));
+
+            return pemUpdate;
         } catch (Exception e) {
             throw new MetadataStoreException("Failed to update permission", e);
         }
     }
 
-    public void updateMetadata (MetadataItem metadataItem, String user) throws MetadataStoreException {
-        MongoCollection collection;
+    public MetadataItem updateMetadata (MetadataItem metadataItem, String user) {
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
 
-        try{
-            collection = getDefaultCollection();
-            BasicDBList aggList = new BasicDBList();
-            BasicDBObject permType = new BasicDBObject("$nin", Arrays.asList(PermissionType.NONE, PermissionType.READ));
+        try {
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+            metadataItemMongoCollection.replaceOne(eq("uuid", metadataItem.getUuid()), metadataItem);
 
-            BasicDBObject pem = new BasicDBObject("username", user)
-                    .append("permissions", permType);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
 
-            BasicDBList or = new BasicDBList();
-            or.add(new BasicDBObject("permission", new BasicDBObject("$elemMatch", pem)));
-            or.add(new BasicDBObject("$or", user));
+        return metadataItem;
+    }
 
-            BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid())
-                    .append("tenantId", metadataItem.getTenantId())
-                    .append("schemaId", metadataItem.getSchemaId())
-                    .append("internalUsername", metadataItem.getInternalUsername())
-                    .append("$or", or);
+    public MetadataItem deleteMetadata (MetadataItem metadataItem, String user) throws MetadataStoreException {
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
 
-            aggList.add(query);
-            collection.updateOne((Bson) aggList, new BasicDBObject("$set", new BasicDBObject("value", metadataItem.getValue())));
+        try {
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-            //  new BasicDBObject("$set", new BasicDBObject("permissions", metadataItem.getPermissions())));
+            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
 
+            Bson deleteFilter = and(eq("uuid", metadataItem.getUuid()), eq("tenantId", metadataItem.getTenantId()));
+            Bson queryFilter = and(deleteFilter, or(eq("owner", user), docPermissions));
 
-        } catch (Exception e) {
-            throw new MetadataStoreException("Failed to update metadata");
+            DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(queryFilter);
+            if (deleteResult.getDeletedCount() == 0){
+                //delete unsuccessful
+                return null;
+            }
+
+        } catch (UnknownHostException e) {
+            throw new MetadataStoreException("No item was deleted", e);
+        }
+        return metadataItem;
+
+    }
+
+    public Bson createDocQuery(MetadataItem metadataItem){
+        Bson filter = and(eq("tenantId", metadataItem.getTenantId()), eq("uuid", metadataItem.getUuid()));
+        return filter;
+    }
+
+    /**
+     * Remove all documents in the collection
+     */
+    void clearCollection() throws UnknownHostException {
+        if (this.getCollectionSize() > 0){
+            MongoCollection<MetadataItem> metadataPermissionMongoCollection;
+            metadataPermissionMongoCollection = getDefaultMetadataItemCollection();
+            metadataPermissionMongoCollection.deleteMany(new Document());
         }
     }
 
-    public BasicDBList setPermissionsForDB(List<MetadataPermission> pemList){
-        BasicDBList returnList = new BasicDBList();
-        for (MetadataPermission pem : pemList) {
-            returnList.add(new BasicDBObject("username:", pem.getUsername())
-                    .append("group", null)
-                    .append("permissions:", Arrays.asList(pem.getPermission().toString())));
-        }
-        return returnList;
+    /**
+     * Return number of documents in collection
+     * @return number of documents in collection
+     */
+    long  getCollectionSize() throws UnknownHostException {
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+
+        metadataItemMongoCollection = getDefaultMetadataItemCollection();
+        return metadataItemMongoCollection.countDocuments();
     }
 
-    public MetadataItem parseResult(Document result){
-        MetadataItem returnItem = new MetadataItem();
+    /**
+     * Return all documents in the collection
+     * @return list of all documents in collection
+     */
+    List<MetadataItem> findAll() throws UnknownHostException {
+        List<MetadataItem> resultList = new ArrayList<>();
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+        MongoCursor cursor = null;
 
-        returnItem.setUuid(result.get("uuid").toString());
-        returnItem.setTenantId(result.get("tenantId").toString());
+        metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-        returnItem.setSchemaId((result.get("schemaId")==null) ? null : result.get("schemaId").toString());
-        returnItem.setOwner(result.get("owner").toString());
-        returnItem.setName(result.get("name").toString());
+        cursor = metadataItemMongoCollection.find(new Document()).cursor();
 
-        String jsonResult = result.toJson();
+        while (cursor.hasNext()) {
+            resultList.add((MetadataItem)cursor.next());
+        }
+        return resultList;
+    }
 
-//        returnItem.setValue(result.get("value"));   //change to json?
-        returnItem.setInternalUsername((result.get("schemaId")==null) ? null : result.get("internalUsername").toString());
-//        Date created = new DateFormat.parse(result.get("created").toString());
-//        returnItem.setCreated(new Date(result.get("created").toString()));
-//        returnItem.setLastUpdated(result.get("lastUpdated").toString());
-//        returnItem.setPermissions(result.get("permissions").toString());
-        return returnItem;
+
+    boolean hasRead(String user, String uuid) {
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+
+        try {
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+
+            Bson userFilter = elemMatch("permissions", and (eq("username", user), nin("permission", Arrays.asList(PermissionType.NONE.toString()))));
+
+            MetadataItem result;
+            try {
+                result = metadataItemMongoCollection.find(and(eq("uuid", uuid), or(eq("owner", user), userFilter))).first();
+                if (result != null) {
+                    bolWrite = true;
+                } else {
+                    bolWrite = false;
+                }
+            } catch (NullPointerException npe) {
+                bolRead = false;
+            }
+
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        return bolRead;
+    }
+
+    boolean hasWrite(String user, String uuid) {
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+
+        try {
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+
+            Bson userFilter = elemMatch("permissions", and (eq("username", user), in("permission", Arrays.asList(PermissionType.READ_WRITE.toString()))));
+
+            MetadataItem result;
+            try {
+                result = metadataItemMongoCollection.find(and(eq("uuid", uuid), or(eq("owner", user), userFilter))).first();
+                if (result != null) {
+                    bolWrite = true;
+                } else {
+                    bolWrite = false;
+                }
+            } catch (NullPointerException npe) {
+                bolWrite =  false;
+            }
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        return bolWrite;
     }
 
 //    public MetadataItem persist(MetadataItem item) throws MetadataStoreException {

@@ -2,6 +2,7 @@ package org.iplantc.service.metadata.dao;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
 import com.mongodb.*;
@@ -9,7 +10,10 @@ import com.mongodb.client.*;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.DBCollectionUpdateOptions;
-import net.minidev.json.JSONObject;
+import io.grpc.Metadata;
+import org.bson.conversions.Bson;
+import org.json.JSONArray;
+import org.json.simple.JSONObject;
 import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -25,6 +29,8 @@ import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.joda.time.DateTime;
 import org.json.JSONString;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -38,6 +44,7 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import static org.mockito.Matchers.anyString;
@@ -83,11 +90,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
             listPem.add(metaPem);
             entity.setPermissions(listPem);
 
-//            MetadataDao inst = mock(MetadataDao.class);
-//            when(inst.insert(entity)).thenReturn(entity);
-
             wrapper.insert(entity);
-
             //MetadataDao.getInstance().insert(entity);
         } catch (Exception e) {
             Assert.fail("Unable to create metadata item", e);
@@ -97,278 +100,166 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Test
-    public void insertTest() throws MetadataStoreException, MetadataException, PermissionException {
-        mockDB = mock(MongoDatabase.class);
-        mockCollection = mock(MongoCollection.class);
-        mockClient = mock(MongoClient.class);
+    public void insertTest() throws MetadataStoreException, MetadataException, PermissionException, UnknownHostException {
 
-        when(mockClient.getDatabase(anyString())).thenReturn(mockDB);
-        when (mockDB.getCollection(anyString())).thenReturn(mockCollection);
-        MockitoAnnotations.initMocks(this);
-
-        FindIterable iterable = mock(FindIterable.class);
-        DBCursor cursor = mock(DBCursor.class);
-        String uuid = new AgaveUUID(UUIDType.METADATA).toString();
-        DateTime created = new DateTime();
-        String strCreated = created.toString();
-
-        BasicDBObject doc = new BasicDBObject("uuid", uuid)
-                .append("owner", TEST_USER)
-                .append("tenantId", "")
-                .append("schemaId", "")
-                .append("lastUpdated", created.toDate().toString())
-                .append("associationIds", new BasicDBList())
-                .append("name", MetadataPermissionManagerIT.class.getName())
-                .append("value", new BasicDBObject("testKey", "testValue"))
-                .append("created", created.toDate().toString());
-
-        BasicDBList docList = new BasicDBList();
-        docList.add(doc);
-
-        BasicDBObject[] arrDoc = {doc};
-
-        when(mockCollection.find(new BasicDBObject("value.testKey", "testValue"))).thenReturn(iterable);
-        when(cursor.hasNext()).thenReturn(true).thenReturn(false);
-        when(cursor.next()).thenReturn(doc);
-        when(cursor.toArray()).thenReturn(Arrays.asList(arrDoc));
-
-        MetadataItem entity = new MetadataItem();
-        entity.setUuid(uuid);
-        entity.setOwner(TEST_USER);
-        entity.setTenantId("");
-        entity.setSchemaId("");
-        entity.setLastUpdated(created.toDate());
-        entity.setAssociations(new MetadataAssociationList());
-        entity.setName(MetadataPermissionManagerIT.class.getName());
-        entity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
-        entity.setCreated(created.toDate());
-
-        wrapper= mock(MetadataDao.class);
-        when(wrapper.insert(entity)).thenReturn(entity);
-
-        MetadataItem result = wrapper.insert(entity);
-
-        Assert.assertEquals(doc.get("owner"), result.getOwner(), "Expected the same owner");
-        Assert.assertEquals(doc.get("created").toString(), result.getCreated().toString(), "Expected the same created date");
-        Assert.assertEquals(doc.get("uuid"), uuid, "Expected the same uuid");
-        Assert.assertEquals(doc.get("lastUpdated"), result.getLastUpdated().toString(), "Expected same last updated date");
-        Assert.assertEquals(doc.get("tenantId"), result.getTenantId(), "Expected the same tenantId");
-        Assert.assertEquals(doc.get("schemaId"), result.getSchemaId(), "Expected the same SchemaId");
-        Assert.assertEquals(doc.get("name"), result.getName(), "Expected the same metadata name.");
-        Assert.assertEquals(doc.get("value.testKey"), result.getValue().get("value.testKey"), "Expected the same value");
-        BasicDBList docAssociationId = (BasicDBList) doc.get("associationIds");
-        Assert.assertEquals(docAssociationId.size(), result.getAssociations().size(), "Expected associationId count to be 0");
-
-        //add permissions for metadata item
-        MetadataPermissionManager pm = new MetadataPermissionManager(uuid, TEST_USER);
-        pm.setPermission(TEST_USER, "ALL");
-    }
-
-
-    @Test
-    public void testGetResourceData(){
-        try {
-//            MongoClient mongoClient = ((MetadataApplication) getApplication()).getMongoClient();
-//            DB db = mongoClient.getDB(Settings.METADATA_DB_SCHEME);
-//            // Gets a collection, if it does not exist creates it
-//            DBCollection collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
-//            DBCollection schemaCollection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
-
-//            MongoClient mongo = mock(MongoClient.class);
-//            MongoDatabase db = mock(MongoDatabase.class);
-//            MongoCollection col = mock(MongoCollection.class);
-
-//            when(mongo.getDatabase("testDB")).thenReturn(db);
-//            when(db.getCollection("testCollection")).thenReturn(col);
-
-            //MetadataItem testEntity = createEntity();
-            MetadataItem testEntity = new MetadataItem();
-            testEntity.setName(MetadataPermissionManagerIT.class.getName());
-            testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
-            testEntity.setOwner(TEST_USER);
-
-            MetadataPermission metaPem = new MetadataPermission(testEntity.getUuid(), TEST_USER, PermissionType.ALL);
-            List<MetadataPermission> listPem = new ArrayList<MetadataPermission>();
-            listPem.add(metaPem);
-            testEntity.setPermissions(listPem);
-
-
-            DBCursor cursor = null;
-            BasicDBObject query = new BasicDBObject("tenantId", TenancyHelper.getCurrentTenantId());
-
-            List<String> sortableFields = Arrays.asList("uuid",
-                    "tenantId",
-                    "schemaId",
-                    "internalUsername",
-                    "lastUpdated",
-                    "name",
-                    "value",
-                    "created",
-                    "owner");
-
-            String orderField = "lastUpdated";
-
-            int orderDirection = 1;
-
-//            MetadataDao md = new MetadataDao();
-//            md.getInstance();
-//            md.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ);
-
-            MetadataDao inst = wrapper.getInstance();
-            inst.getMongoClient();
-            MongoCollection collection = inst.getDefaultCollection();
-            inst.insert(testEntity);
-            inst.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ);
-
-            BasicDBList agg = new BasicDBList();
-            BasicDBObject match = new BasicDBObject("$match", new BasicDBObject("uuid", testEntity.getUuid()));
-            //agg.add(match);
-
-            //cursor = (DBCursor) collection.find(new BasicDBObject("uuid", getEntityUuid(testEntity)));
-
-            agg.add(Aggregates.match(new BasicDBObject("uuid", testEntity.getUuid())));
-
-            MongoCursor<Document> mongoCursor = null;
-            mongoCursor =  collection.aggregate(agg).iterator();
-            //mongoCursor = collection.find(new BasicDBObject("uuid", testEntity.getUuid())).cursor();
-            //mongoCursor = collection.find().iterator();
-
-            List<MetadataItem> permittedResults = new ArrayList<MetadataItem>();
-
-            if (mongoCursor!=null) {
-                while (mongoCursor.hasNext()) {
-                    Document result = mongoCursor.next();
-
-                    String strValue = result.getEmbedded(List.of("value", "testKey"), "");
-
-
-
-                    Document value = (Document) result.get("value");
-                    Assert.assertEquals(value.get("testKey"), "testValue");
-                    List<Document> pemList = result.getList("permissions", Document.class);
-
-                    List<Document> newPemList = (List<Document>) result.get("permissions");
-
-                    //Assert.assertEquals(newPemList.get(0).get("username"), TEST_USER);
-                    //Assert.assertEquals(newPemList.get(1).get("username"), TEST_SHARED_USER);
-                   // MetadataItem resultItem = new ObjectMapper().readValue(result.toJson(), MetadataItem.class);
-
-
-                    for (Document doc : newPemList) {
-                        Assert.assertNull(doc.get("group"));
-
-                        //get permissions always returns null -- continue testing with remove and update for now
-                        String strResult = doc.toJson();
-                        MetadataPermission resultItem = new ObjectMapper().readValue(strResult, MetadataPermission.class);
-
-
-                        //JSONObject obj = new JSONObject(strResult);
-
-
-                        List<String> permissions = (List<String>) doc.get("permissions");
-                        String test = doc.get("permissions").toString();
-                        permissions = doc.getList("permissions", String.class);
-                        permissions = doc.getEmbedded(List.of("permissions"), List.class);
-                        if (doc.get("username").equals(TEST_USER)){
-                            Assert.assertEquals(PermissionType.ALL.toString(), doc.get("permissions"));
-                        } else {
-                            Assert.assertEquals(PermissionType.READ.toString(), doc.get("permissions"));
-                        }
-                    }
-                    permittedResults.add(inst.parseResult(result));
-                }
-            }
-            Assert.assertEquals(1, permittedResults.size(), "Size should be 1.");
-
-
-        } catch (MetadataException | MetadataStoreException | UnknownHostException e) {
-            Assert.fail("Resolving metadata item UUID should not throw exception.", e);
-        } catch (JsonParseException e) {
-            e.printStackTrace();
-        } catch (JsonMappingException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Test
-    public void removeTest() throws MetadataException, MetadataStoreException {
+        //Create item to insert
         MetadataItem testEntity = new MetadataItem();
-        testEntity.setName(MetadataPermissionManagerIT.class.getName());
+        testEntity.setName(MetadataDaoIT.class.getName());
         testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
         testEntity.setOwner(TEST_USER);
-
         MetadataPermission metaPem = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.ALL);
-        MetadataPermission metaPem2 = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER2, PermissionType.READ);
         List<MetadataPermission> listPem = new ArrayList<MetadataPermission>();
+        listPem.add(metaPem);
+        testEntity.setPermissions(listPem);
+
+        MetadataDao inst = wrapper.getInstance();
+
+        //clean collection
+        inst.clearCollection();
+        Assert.assertEquals(inst.getCollectionSize(), 0);
+
+        inst.getMongoClients();
+        inst.insertMetadataItem(testEntity);
+        MetadataItem firstResult = inst.find(TEST_USER, new Document("uuid", testEntity.getUuid()));
+
+        Assert.assertNotNull(firstResult, "Document should be found by uuid after inserting to collection");
+
+        //check metadata item was inserted
+        Assert.assertEquals(inst.getCollectionSize(), 1, "Document size should be 1 after inserting new document.");
+        Assert.assertEquals(firstResult.getOwner(), TEST_USER);
+        Assert.assertEquals(firstResult.getName(),MetadataDaoIT.class.getName());
+        Assert.assertEquals(firstResult.getValue().get("testKey"), testEntity.getValue().get("testKey"));
+        Assert.assertEquals(firstResult.getPermissions().size(), 1);
+
+    }
+
+    @Test
+    public void removeTest() throws MetadataException, MetadataStoreException, UnknownHostException {
+        //add entity
+        MetadataItem testEntity = new MetadataItem();
+        testEntity.setName(MetadataDaoIT.class.getName());
+        testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
+        testEntity.setOwner(TEST_USER);
+        List<MetadataPermission> listPem = new ArrayList<MetadataPermission>();
+        MetadataPermission metaPem = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.ALL);
+        MetadataPermission metaPem2 = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER2, PermissionType.ALL);
         listPem.add(metaPem);
         listPem.add(metaPem2);
         testEntity.setPermissions(listPem);
 
         MetadataDao inst = wrapper.getInstance();
-        inst.insert(testEntity);
 
-        //remove user that doesn't have permissions
-        try {
-            inst.deleteUserPermission(testEntity, "newuser");
+        //clean collection
+        inst.clearCollection();
+        Assert.assertEquals(inst.getCollectionSize(), 0);
 
+        //insert metadataItem
+        inst.getMongoClients();
+        inst.insertMetadataItem(testEntity);
+        MetadataItem insertResult = inst.find(TEST_SHARED_USER, new Document("uuid", testEntity.getUuid()));
 
-            //verify(wrapper, times(1)).deleteUserPermission(testEntity, "newuser");
-        } catch (MetadataStoreException e){
-            Assert.fail("Deleting user that doesn't have explicit permissions should not throw exception.");
-        }
+        //check metadataItem was added
+        Assert.assertEquals(inst.getCollectionSize(), 1);
+        List<MetadataItem> resultList = new ArrayList<MetadataItem>();
+        resultList = inst.findAll();
+        Assert.assertEquals(resultList.size(), 1, "Should have 1 document in the collection after inserting.");
+        Assert.assertEquals(insertResult.getPermissions().size(), 2, "Permissions should be 2 after adding the metadataitem.");
 
+        //remove permission for user
+        inst.deleteUserPermission(testEntity, TEST_SHARED_USER);
+        Assert.assertEquals(inst.getCollectionSize() , 1, "Removing a user's permission should not remove the document in the collection");
 
-        //remove user permissions
-        testEntity = inst.deleteUserPermission(testEntity, TEST_SHARED_USER);
-        //verify(wrapper, times(1)).deleteUserPermission(testEntity, TEST_SHARED_USER);
+        //check permission removed
+        MetadataItem pemRemoveResult = inst.find(TEST_SHARED_USER, new Document("uuid", testEntity.getUuid()));
+        Assert.assertNull(pemRemoveResult,"Nothing should be found for the user removed.");
 
-        MetadataItem result = inst.find(testEntity, TEST_USER, null);
-        Assert.assertEquals(result.getPermissions().size(), 1,
-                "Permission size should be 1 after removing a user's permissions");
+        //secondary check
+        MetadataItem pemRemoveResult_2 = inst.find(TEST_USER, new Document("uuid", testEntity.getUuid()));
+        Assert.assertEquals(pemRemoveResult_2.getPermissions().size(),1, "Permissions list should be 1 after removing 1 user permission");
 
-        //remove all permissions
-        inst.deleteAllPermissions(testEntity);
-        //verify(wrapper, times(1)).deleteAllPermissions(testEntity);
-        result = inst.find(testEntity, TEST_USER, null);
-        Assert.assertEquals(result.getPermissions().size(), 0,
-                "Permission size should be 0 after removing all permissions.");
+        //remove metadataItem
+        MetadataItem removeItem = inst.deleteMetadata(testEntity, TEST_USER);
+        Assert.assertNotNull(removeItem, "Item was not removed successfully");
+        Assert.assertEquals(inst.getCollectionSize(), 0, "Collection size should be 0 after removing");
 
-
+        //check metadataitem removed
+        MetadataItem removeResult = inst.find(TEST_USER, new Document("uuid", testEntity.getUuid()));
+        Assert.assertNull(removeResult, "Nothing should be found for the metadata item removed");
     }
 
     @Test
-    public void updateTest() throws MetadataException, MetadataStoreException {
+    public void updateTest() throws MetadataException, MetadataStoreException, UnknownHostException {
+
+        //add entity without any permissions
         MetadataItem testEntity = new MetadataItem();
-        testEntity.setName(MetadataPermissionManagerIT.class.getName());
+        testEntity.setName(MetadataDaoIT.class.getName());
         testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
         testEntity.setOwner(TEST_USER);
-
         List<MetadataPermission> listPem = new ArrayList<MetadataPermission>();
         testEntity.setPermissions(listPem);
 
-        wrapper.insert(testEntity);
+        MetadataDao inst = wrapper.getInstance();
 
-        MetadataItem returnItem = wrapper.find(testEntity, TEST_USER,null);
+        Document docQuery = new Document("uuid", testEntity.getUuid())
+                .append("tenantId", testEntity.getTenantId());
+        Bson docFilter = inst.createDocQuery(testEntity);
 
-        Assert.assertEquals(returnItem.getPermissions().size(), 0,
-                "Permission list should be 0.");
+        //clean collection
+        inst.clearCollection();
+        Assert.assertEquals(inst.getCollectionSize(), 0);
 
-        wrapper.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ);
+        //insert metadataItem
+        inst.getMongoClients();
+        inst.insertMetadataItem(testEntity);
 
-        returnItem = wrapper.find(testEntity, TEST_USER, null);
-        Assert.assertEquals(returnItem.getPermissions().size(), 1,
-                "Permission list should be 1 after adding a new user permission.");
-
-        wrapper.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ_WRITE);
-        returnItem = wrapper.find(testEntity, TEST_USER,null);
-        for (MetadataPermission pem : returnItem.getPermissions()){
-            if (pem.getUsername().equals(TEST_SHARED_USER)){
-                Assert.assertEquals(pem.getPermission(), PermissionType.READ_WRITE,
-                        "Permission type should be READ_WRITE after updating.");
-            }
+        //check it was added
+        if (inst.hasRead(TEST_SHARED_USER, testEntity.getUuid())) {
+            MetadataItem firstResult = inst.find(TEST_SHARED_USER, docFilter);
+            Assert.assertNull(firstResult, "Item should not be found because no permissions were set for the user yet.");
         }
+        Assert.assertEquals(inst.getCollectionSize(), 1);
+
+        //add permission for test share user with read
+        MetadataPermission updatePem = inst.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ);
+
+        //check permission updated
+        Assert.assertEquals(inst.getCollectionSize(), 1, "Updating permission should not change collection size.");
+        MetadataItem updatePemResult = inst.find(TEST_SHARED_USER, docFilter);
+
+//        Assert.assertNotNull(updatePemResult, "User permission updated should not be null");
+        MetadataItem testResult = inst.find(TEST_USER, docFilter);
+
+        MetadataItem newResult = inst.find(TEST_USER, new Document());
+
+        List<MetadataItem> resultList = inst.findAll();
+
+        Assert.assertNotNull(updatePemResult, "Item should be found after adding");
+        Assert.assertEquals(updatePemResult.getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.READ, "Permission for user should be READ after updating.");
+
+        //change metadata value
+        testEntity.setValue(mapper.createObjectNode().put("newKey", "newValue"));
+
+        MetadataItem updateResultItem = null;
+        if (inst.hasWrite(TEST_SHARED_USER, testEntity.getUuid())) {
+            updateResultItem = inst.updateMetadata(testEntity, TEST_SHARED_USER);
+        }
+
+        //metadata should not be updated
+        Assert.assertNull(updateResultItem, "User does not have correct permissions, metataItem should not be updated.");
+
+        //update permission to read_write
+        inst.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ_WRITE);
+
+        if (inst.hasWrite(TEST_SHARED_USER, testEntity.getUuid())){
+            updateResultItem = inst.updateMetadata(testEntity, TEST_SHARED_USER);
+        }
+
+        Assert.assertNotNull(updateResultItem, "User has correct permissions, metadataItem should be updated.");
+
+        //metadata value should be updated
+        MetadataItem updateResult = inst.find(TEST_SHARED_USER, docQuery);
+        Assert.assertEquals(updateResult.getValue(), testEntity.getValue());
+
     }
 
 }

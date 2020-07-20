@@ -164,7 +164,7 @@ public class HPCLauncher extends AbstractJobLauncher
 	            //   It's worth noting that the RUNNING status on valid jobs will still come through, 
 	            // but it will be ignored since the job state is already running. no harm no foul.  
 	            if (getSoftware().getExecutionType() == ExecutionType.CLI) {
-	            	getJob().setStatus(JobStatusType.RUNNING, message);
+	            	getJob().setStatus(JobStatusType.RUNNING, "CLI job started running as process id " + getJob().getLocalJobId());
 	            }
             }
             else

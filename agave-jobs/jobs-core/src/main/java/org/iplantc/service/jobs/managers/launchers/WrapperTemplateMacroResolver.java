@@ -94,7 +94,7 @@ public class WrapperTemplateMacroResolver {
 //        try {
             ExecutionSystem executionSystem = getExecutionSystem();
 
-            if (StringUtils.isBlank(executionSystem.getStartupScript())) {
+            if (StringUtils.isBlank(wrapperTemplate)) {
                 return null;
             }
             else {
@@ -126,7 +126,7 @@ public class WrapperTemplateMacroResolver {
 //        try {
             ExecutionSystem executionSystem = getExecutionSystem();
 
-            if (StringUtils.isBlank(executionSystem.getStartupScript())) {
+            if (StringUtils.isBlank(wrapperTemplate)) {
                 return null;
             }
             else {

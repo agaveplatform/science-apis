@@ -614,21 +614,6 @@ public class JobRequestProcessorIT extends AbstractDaoTest
 			when(processor.getInternalUsername()).thenReturn(null);
 			when(processor.isSoftwareInvokableByUser(any(), eq(TEST_OWNER))).thenReturn(true);
 			job = processor.processJob(json);
-//
-////			JobRequestProcessor jobRequestProcessor = new JobRequestProcessor(JSONTestDataUtil.TEST_OWNER, null);
-////			job = JobManager.processJob(json, JSONTestDataUtil.TEST_OWNER, null);
-//
-//			JobRequestProcessor jobRequestProcessor = spy(JobRequestProcessor.class);
-//			doReturn(true).when(jobRequestProcessor).checkExecutionSystemLogin(any(ExecutionSystem.class));
-//			doReturn(true).when(jobRequestProcessor).checkExecutionSystemStorage(any(ExecutionSystem.class));
-//			doReturn(true).when(jobRequestProcessor).createArchivePath(any(ExecutionSystem.class), any(String.class));
-////			when(jobRequestProcessor.checkExecutionSystemLogin(any(ExecutionSystem.class)).thenReturn(true);
-////			when(jobRequestProcessor.checkExecutionSystemStorage(any(ExecutionSystem.class))).thenReturn(true);
-////			when(jobRequestProcessor.createArchivePath(any(RemoteSystem.class), any(String.class))).thenReturn(true);
-//
-//			jobRequestProcessor.setUsername(JSONTestDataUtil.TEST_OWNER);
-//
-//			job = jobRequestProcessor.processJob(json);
 			
 			assertNotNull(job.getId(), "Job was not saved after processing.");
 		} 

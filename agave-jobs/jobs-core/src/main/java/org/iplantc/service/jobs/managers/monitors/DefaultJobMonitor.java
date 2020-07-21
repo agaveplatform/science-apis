@@ -156,6 +156,9 @@ public class DefaultJobMonitor extends AbstractJobMonitor {
 					event.setJob(getJob());
 					JobEventProcessor eventProcessor = new JobEventProcessor(event);
 					eventProcessor.process();
+
+					// TODO: shall we check the agave job log and/or accounting logs for the job status at this point?
+
 				} catch (RemoteJobMonitorResponseParsingException e) {
 					log.error(e.getMessage());
 					updateJobStatus(getJob().getStatus(), getJob().getErrorMessage());

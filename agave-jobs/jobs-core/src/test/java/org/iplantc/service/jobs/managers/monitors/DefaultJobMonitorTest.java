@@ -30,6 +30,7 @@ import java.util.UUID;
 import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.fail;
 
 @Test(groups={"unit"})
@@ -161,6 +162,43 @@ public class DefaultJobMonitorTest  {
                 SGEJobStatus.UNKNOWN,
                 SlurmJobStatus.UNKNOWN,
                 TorqueJobStatus.UNKNOWN);
+    }
+
+    @DataProvider
+    protected Object[][] testGetBatchQueryCommandProvider() {
+        List<Object[]> testData = new ArrayList<>();
+
+        testData.add(new Object[]{ ExecutionType.CLI, SchedulerType.FORK });
+        testData.add(new Object[]{ ExecutionType.CONDOR, SchedulerType.CONDOR });
+
+        for (SchedulerType schedulerType: ExecutionType.HPC.getCompatibleSchedulerTypes()) {
+            testData.add(new Object[]{ ExecutionType.HPC, schedulerType });
+        }
+
+        return testData.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "testGetBatchQueryCommandProvider")
+    public void testGetBatchQueryCommand(ExecutionType executionType, SchedulerType schedulerType) throws SystemUnavailableException {
+
+        ExecutionSystem executionSystem = createMockExecutionSystem(executionType, schedulerType);
+
+        // create the mock job
+        Job job = createMockJob(executionType, schedulerType);
+        String localSchedulerId = UUID.randomUUID().toString();
+        when(job.getLocalJobId()).thenReturn(localSchedulerId);
+
+        // mock the class under test so we can isolate behavior to the monitor method
+        DefaultJobMonitor monitor = mock(DefaultJobMonitor.class);
+        when(monitor.getJob()).thenReturn(job);
+        when(monitor.getExecutionSystem()).thenReturn(executionSystem);
+        when(monitor.getBatchQueryCommand()).thenCallRealMethod();
+
+        String batchQueryCommannd = monitor.getBatchQueryCommand();
+
+        assertEquals(batchQueryCommannd,
+                schedulerType.getBatchQueryCommand().replace("${AGAVE_JOB_LOCALJOB_ID}", localSchedulerId),
+                "Local job id should replace macro in job monitoring batch query command.");
     }
 
     @DataProvider

@@ -10,28 +10,35 @@ import static org.iplantc.service.jobs.model.enumerations.JobStatusType.PAUSED;
 import static org.iplantc.service.jobs.model.enumerations.JobStatusType.QUEUED;
 
 public enum SlurmJobStatus implements RemoteSchedulerJobStatus<SlurmJobStatus> {
-
-	BOOT_FAIL("BF", "Job terminated due to launch failure, typically due to a hardware failure "
+	BOOT_FAIL("BOOT_FAIL", "Job terminated due to launch failure, typically due to a hardware failure "
 			+ "(e.g. unable to boot the node or block and the job can not be requeued).", null),
+	CANCELLED("CANCELLED", "Job was explicitly cancelled by the user or system administrator. The job may or may not have been initiated.", null),
+	DEADLINE("DEADLINE", "Job missed its deadline.", null),
+	FAILED("FAILED", "Job terminated with non-zero exit code or other failure condition.", null),
+	NODE_FAIL("NODE_FAIL", "Job terminated due to failure of one or more allocated nodes.", null),
+	OUT_OF_MEMORY("OUT_OF_MEMORY", "Job experienced out of memory error.", null),
+	PREEMPTED("PREEMPTED", "Job terminated due to preemption.", null),
+	REVOKED("REVOKED", "Sibling was removed from cluster due to other cluster starting the job.", null),
+	TIMEOUT("TIMEOUT", "Job terminated upon reaching its time limit.", null),
 
-	CANCELLED("CA", "Job was explicitly cancelled by the user or system administrator. The job may or may not have been initiated.", null),
-	COMPLETED("CD", "Job has terminated all processes on all nodes with an exit code of zero.", null),
-	COMPLETING("CG", "Job is in the process of completing. Some processes on some nodes may still be active.", JobStatusType.RUNNING),
-	CONFIGURING("CF", "Job has been allocated resources, but are waiting for them to become ready for use (e.g. booting).", QUEUED),
-	DEADLINE("DL", "Job missed its deadline.", null),
 	EQW("EQW", "Job started but there was an unrecoverable error. Job will remain in this unrecoverable state until manually cleaned up.", null),
-	FAILED("F", "Job terminated with non-zero exit code or other failure condition.", null),
-	NODE_FAIL("NF", "Job terminated due to failure of one or more allocated nodes.", null),
-	PENDING("PD", "Job is awaiting resource allocation. Note for a job to be selected in this "
+
+	CONFIGURING("CONFIGURING", "Job has been allocated resources, but are waiting for them to become ready for use (e.g. booting).", QUEUED),
+	PENDING("PENDING", "Job is awaiting resource allocation. Note for a job to be selected in this "
 			+ "state it must have 'EligibleTime' in the requested time interval or different from "
 			+ "'Unknown'. The 'EligibleTime' is displayed by the 'scontrol show job' command. "
 			+ "For example jobs submitted with the '--hold' option will have 'EligibleTime=Unknown' "
 			+ "as they are pending indefinitely.", QUEUED),
-	PREEMPTED("PR", "Job terminated due to preemption.", null),
-	RESIZING("RS", "Job is about to change size.", JobStatusType.RUNNING),
-	RUNNING("R", "Job currently has an allocation.", JobStatusType.RUNNING),
-	SUSPENDED("S", "Job has an allocation, but execution has been suspended.", PAUSED),
-	TIMEOUT("TO", "Job terminated upon reaching its time limit.", null),
+	REQUEUED("REQUEUED", "Job was requeued.", JobStatusType.QUEUED),
+
+	RUNNING("RUNNING", "Job currently has an allocation.", JobStatusType.RUNNING),
+	RESIZING("RESIZING", "Job is about to change size.", JobStatusType.RUNNING),
+	COMPLETING("COMPLETING", "Job is in the process of completing. Some processes on some nodes may still be active.", JobStatusType.RUNNING),
+
+	SUSPENDED("SUSPENDED", "Job has an allocation, but execution has been suspended.", PAUSED),
+
+	COMPLETED("COMPLETED", "Job has terminated all processes on all nodes with an exit code of zero.", null),
+
 	UNKNOWN("", "Job status is unknown or could not be obtained.", null);
 
 	private String description;
@@ -98,7 +105,7 @@ public enum SlurmJobStatus implements RemoteSchedulerJobStatus<SlurmJobStatus> {
 	 */
 	@Override
 	public List<SlurmJobStatus> getQueuedStatuses() {
-		return List.of(PENDING, CONFIGURING);
+		return List.of(PENDING, CONFIGURING, REQUEUED);
 	}
 
 	/**
@@ -134,7 +141,7 @@ public enum SlurmJobStatus implements RemoteSchedulerJobStatus<SlurmJobStatus> {
 	 */
 	@Override
 	public List<SlurmJobStatus> getFailedStatuses() {
-		return List.of(BOOT_FAIL, CANCELLED, DEADLINE, FAILED, NODE_FAIL, TIMEOUT, PREEMPTED);
+		return List.of(BOOT_FAIL, CANCELLED, DEADLINE, FAILED, NODE_FAIL, PREEMPTED, OUT_OF_MEMORY, REVOKED, TIMEOUT);
 	}
 
 	/**

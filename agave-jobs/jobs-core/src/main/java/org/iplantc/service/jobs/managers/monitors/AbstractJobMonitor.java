@@ -236,9 +236,9 @@ public abstract class AbstractJobMonitor implements JobMonitor {
      * @throws SystemUnavailableException if the remote system is unavailable
      */
 	public String getBatchQueryCommand() throws SystemUnavailableException {
-	    return StringUtils.replace("${AGAVE_JOB_LOCALJOB_ID}",
-                getJob().getLocalJobId(),
-                getExecutionSystem().getScheduler().getBatchQueryCommand());
+	    return StringUtils.replace(getExecutionSystem().getScheduler().getBatchQueryCommand(),
+                "${AGAVE_JOB_LOCALJOB_ID}",
+                getJob().getLocalJobId());
     }
 
     /**

@@ -250,7 +250,7 @@ public class WrapperTemplateMacroResolver {
                     resolveTenantJobUrl(getJob().getTenantId()),
                     getJob().getUuid(),
                     getJob().getUpdateToken(),
-                    jobStatusMacro.name());
+                    jobStatusMacro.getStatus().name());
         }
     }
 
@@ -261,7 +261,7 @@ public class WrapperTemplateMacroResolver {
      *     <li>{@code JOB_RUNTIME_CALLBACK_EVENT}: an empty callback equal to a {@link JobStatusType#HEARTBEAT}  callback.</li>
      *     <li>{@code JOB_RUNTIME_CALLBACK_EVENT:}</li>
      * </ul>
-     * @param wrapperTemplate
+     * @param wrapperTemplate the resolved wrapper template
      * @return
      */
     public String resolveRuntimeNotificationMacros(String wrapperTemplate) {
@@ -368,7 +368,7 @@ public class WrapperTemplateMacroResolver {
     /**
      * Users can include any of the {@link WrapperTemplateStatusVariableType#userAccessibleJobCallbackMacros()} in their
      * wrapper template. All other status callback values will cause issues in the proper execution and monitoring of
-     * the job. This method removes all {@link WrapperTemplateStatusVariableType} that are not availble to the user
+     * the job. This method removes all {@link WrapperTemplateStatusVariableType} that are not available to the user
      * from the wrapper template.
      * @param wrapperTemplate the wrapper template to filter
      * @return the wrapper with the reserved {@link WrapperTemplateStatusVariableType} macros removed

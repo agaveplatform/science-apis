@@ -1,14 +1,6 @@
 package org.iplantc.service.jobs.model.enumerations;
 
-import java.util.*;
-
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.jobs.Settings;
-import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
-import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.systems.model.ExecutionSystem;
+import java.util.List;
 
 public enum WrapperTemplateStatusVariableType implements WrapperTemplateVariableType {
     // status macros
@@ -36,6 +28,7 @@ public enum WrapperTemplateStatusVariableType implements WrapperTemplateVariable
         this.status = status;
     }
 
+
     /**
      * These are the white listed status callbacks users can add in their wrapper templates
      * to be called by the API at runtime. Anything not in this list will be removed when
@@ -49,5 +42,12 @@ public enum WrapperTemplateStatusVariableType implements WrapperTemplateVariable
                 AGAVE_JOB_CALLBACK_FAILURE,
                 AGAVE_JOB_CALLBACK_ALIVE,
                 AGAVE_JOB_CALLBACK_NOTIFICATION);
+    }
+
+    /**
+     * @return The {@link JobStatusType} corresponding to this macro.
+     */
+    public JobStatusType getStatus() {
+        return status;
     }
 }

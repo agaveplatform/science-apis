@@ -86,7 +86,7 @@ node('master') {
     }
     
     AGAVE_VERSION = sh (
-        script: 'mvn -s config/maven/settings-SAMPLE.xml org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v Downloading | grep -v Downloaded   | grep -e \'^[^\\[]\'',
+        script: 'mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v Downloading | grep -v Downloaded   | grep -e \'^[^\\[]\'',
         returnStdout: true
     ).trim()
     echo "Agave version : ${AGAVE_VERSION}"
@@ -101,7 +101,7 @@ node('master') {
         def dorun=new Boolean(env.run_build_jars)
         if (dorun) {
             try {
-                sh "mvn -s config/maven/settings-SAMPLE.xml -Pagave,plain -B install -DskipDocker=true"
+                sh "mvn -Pagave,dev -B install -DskipDocker=true"
             }
             catch (err) {
                 slackSend color: "red", message: "Jenkins-3 Failed to compile the core services. Failed build is on display at <${env.BUILD_URL}|here>."
@@ -149,11 +149,12 @@ node('master') {
                 // update base images explicitly
 
                 sh "docker pull agaveplatform/tomcat:8.5"
-                sh "docker pull agaveplatform/maven:3.6"
+                sh "docker pull agaveplatform/maven:3.6-proto"
                 sh "docker pull agaveplatform/php-api-base:alpine"
+                sh "docker pull agaveplatform/golang:1.13"
 
                 try {
-                    sh "./dockerbuild.sh -o -b -t ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG}  -v ${AGAVE_BUILD_TAG}"
+                    sh "./dockerbuild.sh -o -b -t ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG} -v ${AGAVE_BUILD_TAG}"
                 } catch (dperr) {
                     slackSend color: "red", message: "Jenkins-3 Failed to build Science API Docker images. Failed build is on display at <${env.BUILD_URL}|here>."
                     throw err
@@ -262,7 +263,7 @@ node('master') {
             catch (err) {
                 slackSend color: "red", message: "Jenkins-3 Science APIs successfully deployed to develop, but the latest Newman integration tests failed with the current deployment. Failed integration tests are on display at <${env.BUILD_URL}|here>."
             }
-        }else{
+        } else {
             echo "Skipping the \"Newman integration tests\" stage...."
         }
     }

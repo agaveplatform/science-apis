@@ -921,8 +921,8 @@ public class FileManagementResource extends AbstractFileResource
 				
 							LogicalFile logicalFile = null;
 				            try {
-				            	logicalFile = LogicalFileDao.findBySystemAndPath(system, remoteDataClient.resolvePath(remotePath));;
-				            } catch(Exception e) {
+				            	logicalFile = LogicalFileDao.findBySystemAndPath(system, remoteDataClient.resolvePath(remotePath));
+							} catch(Exception e) {
 				            	if (log.isDebugEnabled()) {
 				            		String msg = "LogicalFileDao.findBySystemAndPath() failed, creating new logical file " +
 						                         remotePath + ".";
@@ -977,7 +977,7 @@ public class FileManagementResource extends AbstractFileResource
 	                        // generated in the response.  We make the adjustment after already having persisted the
 	                        // logical file in an intermediate state.  The goal of this hack is to disrupt this method's 
 	                        // convoluted logic as little as possible.
-							adjustDestinationPath(logicalFile);
+							logicalFile.setPath(getAdjustDestinationPath(remoteDataClient, logicalFile));
 							logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
 							LogicalFileDao.persist(logicalFile);
 
@@ -1292,7 +1292,7 @@ public class FileManagementResource extends AbstractFileResource
                         // generated in the response.  We make the adjustment after already having persisted the
                         // logical file in an intermediate state.  The goal of this hack is to disrupt this method's 
 						// convoluted logic as little as possible.
-                        adjustDestinationPath(logicalFile);
+						logicalFile.setPath(getAdjustDestinationPath(remoteDataClient, logicalFile));
 						logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
 						LogicalFileDao.persist(logicalFile);
 
@@ -1446,8 +1446,12 @@ public class FileManagementResource extends AbstractFileResource
                         		                    msg + ", " + e.getMessage());
                     }
 
-                    remoteDataClient.delete(path);
-                    
+                    try {
+                    	remoteDataClient.delete(path);
+					} catch (FileNotFoundException e) {
+						// ignore missing files/folders
+					}
+
                     // this should cascade delete the permissions when the logical file deletes
                     logicalFile.addContentEvent(new FileEvent(FileEventType.DELETED, "Deleted via API", 
 							getAuthenticatedUsername()));
@@ -1461,8 +1465,7 @@ public class FileManagementResource extends AbstractFileResource
                     }
                     
                     return representation;
-                    
-                } 
+                }
                 catch (ResourceException e) {
                 	log.error(e.getMessage(), e);
                 	throw e;
@@ -2277,10 +2280,11 @@ public class FileManagementResource extends AbstractFileResource
 	 * in the asynchronous copy code may need to be coordinated with the code here.
 	 * 
 	 * If this method experiences an exception, the logical file path remains unchanged. 
-	 * 
+	 *
+	 * @param destClient the {@link RemoteDataClient} to the {@code logicalFile}
 	 * @param logicalFile the logical file that already has a path defined.
 	 */
-	private void adjustDestinationPath(LogicalFile logicalFile)
+	private String getAdjustDestinationPath(RemoteDataClient destClient, LogicalFile logicalFile)
 	{
         // We perform adjustments to the logical file's path so that the proper links can be generated
         // in the REST response.  The strategy is that by moving the path adjustment code here and
@@ -2288,19 +2292,14 @@ public class FileManagementResource extends AbstractFileResource
 	    // task.  This shift allows us to accurately generate link URLs in the synchronous response.  
 	    // Previously, StagingJob would change the logical file's path after the synchronous response 
 	    // was already sent, which resulted in the generation of invalid links.
-        RemoteDataClient destClient = null;
         try {
-            destClient = ServiceUtils.getDestinationRemoteDataClient(logicalFile);
-            String adjustedPath = ServiceUtils.getAdjustedDestinationPath(destClient, logicalFile, username);
-            logicalFile.setPath(adjustedPath); // Set but not persisted.
+            return ServiceUtils.getAdjustedDestinationPath(destClient, logicalFile, username);
         } catch (Exception e) {
             // Just log the error.  Some of the links in the response may not be correct,
             // but we let the task proceed anyway.
-            String msg = "Failed to adjust logical file path for link generation: " + logicalFile.getSourceUri();
-            log.error(msg, e);
-        } finally {
-            if (destClient != null) 
-                try {destClient.disconnect();} catch (Exception ignored) {}
+            log.error("Failed to adjust logical file path for link generation: " +
+					logicalFile.getSourceUri() + ". " + e.getMessage());
+            return logicalFile.getPath();
         }
 	}
 }

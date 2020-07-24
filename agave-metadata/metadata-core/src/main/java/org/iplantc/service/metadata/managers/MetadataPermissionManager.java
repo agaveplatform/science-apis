@@ -172,6 +172,7 @@ public class MetadataPermissionManager {
             // delete the permission if it exists
             if (userPermission != null) {
                 MetadataPermissionDao.delete(userPermission);
+
                 // getEventProcessor().processPermissionEvent(getUuid(), pem, MetadataEventType.PERMISSION_REVOKE, getAuthenticatedUsername(), new MetadataDao().getByUuid(getUuid()).toJSON());
                 NotificationManager.process(getUuid(), MetadataEventType.PERMISSION_REVOKE.name(), username);
             } else {

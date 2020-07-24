@@ -1,24 +1,17 @@
 package org.iplantc.service.metadata.model;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.bson.BsonReader;
-import org.bson.BsonType;
 import org.bson.BsonWriter;
 import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.DocumentCodec;
 import org.bson.codecs.EncoderContext;
-import org.bson.codecs.configuration.CodecRegistry;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 
-import javax.xml.crypto.dsig.keyinfo.KeyValue;
-import java.io.IOException;
-import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;

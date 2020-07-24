@@ -54,7 +54,7 @@ public class MetadataAssociationList {
      */
     public void add(String uuid) throws MetadataAssociationException, PermissionException {
             
-        if (StringUtils.isEmpty(uuid) && !associatedIds.containsKey(uuid)) {
+        if (StringUtils.isEmpty(uuid) || !associatedIds.containsKey(uuid)) {
             AssociatedReference ref = checkForValidAssociationUuid(uuid);
             this.associatedIds.put(uuid, ref);
         }
@@ -152,7 +152,6 @@ public class MetadataAssociationList {
             } catch (Exception e) {
                 throw new MetadataAssociationException("Unable to resolve associated resource uuid " + uuid, e);
             }
-            
         }
     }
     
@@ -211,5 +210,13 @@ public class MetadataAssociationList {
      */
     public int size() {
         return associatedIds.size();
+    }
+
+    public LinkedHashMap<String, AssociatedReference> getAssociatedIds() {
+        return associatedIds;
+    }
+
+    public void setAssociatedIds(LinkedHashMap<String, AssociatedReference> associatedIds) {
+        this.associatedIds = associatedIds;
     }
 }

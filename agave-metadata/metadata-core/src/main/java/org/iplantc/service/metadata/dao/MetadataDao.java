@@ -25,14 +25,15 @@ import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.iplantc.service.common.search.SearchTerm;
-import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.common.Settings;
+//import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataItemCodec;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-
 
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.*;
@@ -203,9 +204,13 @@ public class MetadataDao {
      * Return the metadataItem from the collection
      * @return metadataItem
      */
-    public MetadataItem find(String user, Bson query) throws MetadataStoreException {
+
+    public List<MetadataItem> find (String user, Bson query) throws MetadataStoreException {
+        return find(user, query, 0, org.iplantc.service.common.Settings.DEFAULT_PAGE_SIZE, new BasicDBObject());
+    }
+
+    public List<MetadataItem> find(String user, Bson query, int offset, int limit, BasicDBObject order) throws MetadataStoreException {
         MongoCollection collection;
-        MetadataItem returnEntity;
         MongoCursor cursor;
         List<MetadataItem> resultList = new ArrayList<>();
 
@@ -227,7 +232,14 @@ public class MetadataDao {
             }
 
             try {
-                returnEntity = metadataItemMongoCollection.find(and(query, or(eq("owner", user), docFilter))).first();
+                cursor = metadataItemMongoCollection.find(and(query, or(eq("owner", user), docFilter)))
+                        .sort(order)
+                        .skip(offset)
+                        .limit(limit).cursor();
+
+                while (cursor.hasNext()) {
+                    resultList.add((MetadataItem) cursor.next());
+                }
 //                returnEntity = metadataItemMongoCollection.find(query).first();
 
 //                List<Bson> aggList = new ArrayList<Bson>();
@@ -243,17 +255,47 @@ public class MetadataDao {
 //                }
 
             } catch (Exception e) {
-                returnEntity = null;
             }
 
-            return returnEntity;
+            return resultList;
 
         } catch (UnknownHostException e) {
             throw new MetadataStoreException("Failed to find metadata item", e);
         }
     }
 
-    /**
+    public List<MetadataItem> aggFind(String user, Bson query) {
+        List<MetadataItem> resultList = new ArrayList<>();
+        MongoCollection collection;
+        MetadataItem returnEntity;
+        MongoCursor cursor;
+
+        //POGO
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+        try {
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+
+            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
+
+            Bson docFilter = or(eq("username", user), elemMatch("permissions", eq("username", user)));
+
+            List<Bson> aggregateList = new ArrayList<>();
+            aggregateList.add(docFilter);
+            aggregateList.add(query);
+
+            cursor = metadataItemMongoCollection.aggregate(aggregateList).cursor();
+            while (cursor.hasNext()) {
+                resultList.add((MetadataItem) cursor.next());
+            }
+
+
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+        return resultList;
+    }
+
+        /**
      * Removes the permission for the specified user
      * @param metadataItem to be updated
      * @param user to be removed
@@ -355,7 +397,7 @@ public class MetadataDao {
         }
     }
 
-    public MetadataItem updateMetadata (MetadataItem metadataItem, String user) {
+    public MetadataItem updateMetadata (MetadataItem metadataItem, String user) throws MetadataException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
         try {
@@ -363,7 +405,7 @@ public class MetadataDao {
             metadataItemMongoCollection.replaceOne(eq("uuid", metadataItem.getUuid()), metadataItem);
 
         } catch (UnknownHostException e) {
-            e.printStackTrace();
+            throw new MetadataException("Failed to add/update metadata item.", e);
         }
 
         return metadataItem;
@@ -401,7 +443,7 @@ public class MetadataDao {
     /**
      * Remove all documents in the collection
      */
-    void clearCollection() throws UnknownHostException {
+    public void clearCollection() throws UnknownHostException {
         if (this.getCollectionSize() > 0){
             MongoCollection<MetadataItem> metadataPermissionMongoCollection;
             metadataPermissionMongoCollection = getDefaultMetadataItemCollection();
@@ -424,7 +466,7 @@ public class MetadataDao {
      * Return all documents in the collection
      * @return list of all documents in collection
      */
-    List<MetadataItem> findAll() throws UnknownHostException {
+    public List<MetadataItem> findAll() throws UnknownHostException {
         List<MetadataItem> resultList = new ArrayList<>();
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         MongoCursor cursor = null;
@@ -440,7 +482,7 @@ public class MetadataDao {
     }
 
 
-    boolean hasRead(String user, String uuid) {
+    public boolean hasRead(String user, String uuid) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
         try {
@@ -450,11 +492,18 @@ public class MetadataDao {
 
             MetadataItem result;
             try {
-                result = metadataItemMongoCollection.find(and(eq("uuid", uuid), or(eq("owner", user), userFilter))).first();
+                //check if uuid exists
+                result = metadataItemMongoCollection.find(eq("uuid", uuid)).first();
                 if (result != null) {
-                    bolWrite = true;
+                    result = metadataItemMongoCollection.find(and(eq("uuid", uuid), or(eq("owner", user), userFilter))).first();
+                    if (result != null) {
+                        bolRead = true;
+                    } else {
+                        //check if uuid exists
+                        bolRead = false;
+                    }
                 } else {
-                    bolWrite = false;
+                    bolRead = true;
                 }
             } catch (NullPointerException npe) {
                 bolRead = false;
@@ -466,7 +515,7 @@ public class MetadataDao {
         return bolRead;
     }
 
-    boolean hasWrite(String user, String uuid) {
+    public boolean hasWrite(String user, String uuid) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
         try {

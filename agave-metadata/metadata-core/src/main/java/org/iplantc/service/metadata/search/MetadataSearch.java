@@ -67,13 +67,8 @@ import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.*;
 
 public class MetadataSearch {
-//    private String userQuery = "";
     private boolean bolImplicitPermissions = true;
-//    private String uuid;
-//    private String tenantId;
     private String owner;
-//    private String schemaId;
-//    private String name;
     private String value;
     private String username;
     private MetadataAssociationList associationList;
@@ -94,15 +89,10 @@ public class MetadataSearch {
         metadataItem.setTenantId(TenancyHelper.getCurrentTenantId());
         this.username = username;
         this.metadataDao = new MetadataDao().getInstance();
+        this.limit = org.iplantc.service.common.Settings.DEFAULT_PAGE_SIZE;
+        this.offset = 0;
     }
 
-//    public String getUserQuery() {
-//        return userQuery;
-//    }
-//
-//    public void setUserQuery(String userQuery) {
-//        this.userQuery = userQuery;
-//    }
 
     public boolean isBolImplicitPermissions() {
         return bolImplicitPermissions;
@@ -112,22 +102,6 @@ public class MetadataSearch {
         this.bolImplicitPermissions = bolImplicitPermissions;
     }
 
-//    public String getUuid() {
-//        return uuid;
-//    }
-//
-//    public void setUuid(String uuid) {
-//        this.uuid = uuid;
-//    }
-//
-//    public String getTenantId() {
-//        return tenantId;
-//    }
-//
-//    public void setTenantId(String tenantId) {
-//        this.tenantId = tenantId;
-//    }
-//
     public String getUsername() {
         return username;
     }
@@ -137,13 +111,11 @@ public class MetadataSearch {
     }
 
     public String getOwner() {
-//        return owner;
         return this.metadataItem.getOwner();
     }
 
     public void setOwner(String owner) {
         this.metadataItem.setOwner(owner);
-//        this.owner = owner;
     }
 
     public MetadataItem getMetadataItem() {
@@ -152,21 +124,6 @@ public class MetadataSearch {
 
     public void setMetadataItem(MetadataItem metadataItem) {
         this.metadataItem = metadataItem;
-    }
-
-    //
-//    public String getSchemaId() {
-//        return schemaId;
-//    }
-//
-//    public void setSchemaId(String schemaId) {
-//        this.schemaId = schemaId;
-//    }
-
-    public Bson createDBQuery() {
-        dbQuery = and(eq("tenantId", "111"));
-
-        return dbQuery;
     }
 
     public BasicDBObject parseUserQuery(String userQuery) throws MetadataQueryException, IOException {
@@ -359,7 +316,7 @@ public class MetadataSearch {
         }
     }
 
-    public void updatePermissions(String username, String group, PermissionType pem){
+    public void updatePermissions(String username, String group, PermissionType pem) throws MetadataException {
         MetadataPermission metadataPermission;
 
         try {
@@ -372,7 +329,7 @@ public class MetadataSearch {
             metadataItem.updatePermissions(metadataPermission);
 
         } catch (MetadataException e) {
-            e.printStackTrace();
+            throw new MetadataException("Unable to update permission.", e);
         }
     }
 
@@ -463,6 +420,10 @@ public class MetadataSearch {
         return eq("tenantId", this.metadataItem.getTenantId());
     }
 
+    public Bson getUuidQuery(){
+        return eq("uuid", this.metadataItem.getUuid());
+    }
+
     public Bson getReadQuery(){
         return or(
                 eq("owner", this.username),
@@ -494,36 +455,111 @@ public class MetadataSearch {
         List<MetadataItem> result = new ArrayList<>();
         try {
             //build query
-            Bson permissionFilter = and(getTenantIdQuery(), getReadQuery(), parseUserQuery(userQuery));
+//            Bson permissionFilter = and(getTenantIdQuery(), getReadQuery(), parseUserQuery(userQuery));
+
+            Document doc = Document.parse(userQuery);
+            Bson permissionFilter = and(getTenantIdQuery(), getUuidQuery(), doc);
+
+//            result = metadataDao.find(this.username, permissionFilter);
+
             MongoCollection<MetadataItem> collection = metadataDao.getDefaultMetadataItemCollection();
-            result = metadataDao.find(this.username, permissionFilter, offset, limit, new BasicDBObject(orderField, orderDirection));
+
+            BasicDBObject order = (orderField == null) ? new BasicDBObject() : new BasicDBObject(orderField, orderDirection);
+
+            result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
 
             if (result.size() == 0) {
                 //check if user has permission
                 if (metadataDao.hasRead(this.username, this.metadataItem.getUuid())){
                     //nothing found matching the query
                 } else {
-                    throw new MetadataException ("User doesn't have permission.");
+//                    throw new PermissionException ("User doesn't have read permission.");
                 }
             }
-        } catch (MetadataQueryException | UnknownHostException | MetadataStoreException | MetadataException e) {
-            throw new MetadataException("Unable to find item based on query.", e);
-        } catch (IOException e) {
+        } catch (MetadataStoreException | IOException e) {
             throw new MetadataException("Unable to find item based on query.", e);
         }
+//        } catch (PermissionException e) {
+//            throw new PermissionException ("User doesn't have read permission.", e);
+//        }
         return result;
     }
 
-    public void updateMetadataItem() throws MetadataException, MetadataStoreException {
-        //if new metadata item, insert
-        if (metadataDao.find(this.username, and(eq("uuid", this.metadataItem.getUuid()),
-                eq("tenantId", metadataItem.getTenantId()))).size() == 0){
-            metadataDao.insert(metadataItem);
-        } else {
-            //otherwise update
+    public void updateMetadataItem() throws MetadataException, MetadataStoreException, PermissionException {
+        MetadataItem result = metadataDao.find_uuid(and(eq("uuid", this.metadataItem.getUuid()),
+                eq("tenantId", this.metadataItem.getTenantId())));
+
+
+        if (result!=null){
+            metadataItem.setOwner(result.getOwner());
+            MetadataPermission pem = result.getPermissions_User(this.username);
+            if (pem == null) {
+                if (StringUtils.equals(this.username, result.getOwner())){
+                    pem = new MetadataPermission();
+                    pem.setPermission(PermissionType.ALL);
+                    pem.setGroup(null);
+                    pem.setUsername(this.username);
+                    pem.setUuid(result.getUuid());
+                } else {
+                    throw new PermissionException("User does not have the permission to edit this item.");
+                }
+            }
+            checkPermission(pem.getPermission(), this.username, true);
             metadataDao.updateMetadata(metadataItem, this.username);
+
+        } else {
+            metadataItem.setOwner(this.username);
+            metadataDao.insert(metadataItem);
+        }
+
+//        if (metadataDao.hasWrite(this.username, this.metadataItem.getUuid())) {
+//
+//            //if new metadata item, insert
+//            if (metadataDao.find(this.username, and(eq("uuid", this.metadataItem.getUuid()),
+//                    eq("tenantId", metadataItem.getTenantId()))).size() == 0) {
+//                metadataItem.setOwner(this.username);
+//                metadataDao.insert(metadataItem);
+//            } else {
+//                //otherwise update
+//                metadataDao.updateMetadata(metadataItem, this.username);
+//            }
+//        }
+    }
+
+    /**
+     * Check if user has correct permissions, throw Permission Exception if the user doesn't have the
+     * correct permission
+     * @param pem user's Permission type
+     * @param username user to check
+     * @param bolWrite true for read/write permission, false for read permission
+     * @throws PermissionException
+     * @throws MetadataException
+     */
+    public void checkPermission (PermissionType pem, String username, boolean bolWrite) throws PermissionException, MetadataException {
+        if (StringUtils.isBlank(username)) {
+            throw new MetadataException("Invalid username");
+        }
+
+        if (StringUtils.equals(Settings.PUBLIC_USER_USERNAME, username) ||
+                StringUtils.equals(Settings.WORLD_USER_USERNAME, username)) {
+            boolean worldAdmin = JWTClient.isWorldAdmin();
+            boolean tenantAdmin = AuthorizationHelper.isTenantAdmin(TenancyHelper.getCurrentEndUser());
+            if (!tenantAdmin && !worldAdmin) {
+                throw new PermissionException("User does not have permission to edit public metadata item permissions");
+            }
+        }
+
+        if (bolWrite) {
+            if (!Arrays.asList(PermissionType.READ_WRITE, PermissionType.WRITE, PermissionType.ALL).contains(pem)) {
+                throw new PermissionException("user does not have permission to edit public metadata item.");
+            }
+        } else {
+            if (pem == PermissionType.NONE) {
+                throw new PermissionException("user does not have permission to edit public metadata item.");
+            }
         }
     }
+
 
     public void setMetadataPermission(PermissionType pem, String username) throws MetadataStoreException, MetadataException, PermissionException {
         if (StringUtils.isBlank(username)) {

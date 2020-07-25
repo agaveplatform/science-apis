@@ -1,5 +1,6 @@
 package org.iplantc.service.metadata.model;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.bson.BsonReader;
@@ -55,7 +56,9 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         ObjectNode json = mapper.createObjectNode();
 
         for (String key : value.keySet()){
-            json.put(key, String.valueOf(value.get(key)));
+            Document doc = Document.parse((String)value.get(key));
+            json.put(key, String.valueOf(Document.parse((String) value.get(key))));
+
         }
 
         metadataItem.setValue(json);
@@ -98,16 +101,30 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         writer.writeName("name");
         writer.writeString(value.getName());
         writer.writeName("value");
+
         writer.writeStartDocument();
+        recursiveParseDocument(value.getValue(), writer);
 
         //write values to Document
-        for (Iterator<String> it = value.getValue().fieldNames(); it.hasNext(); ) {
-            String key = it.next();
-            writer.writeName(key);
-            writer.writeString(String.valueOf(value.getValue().get(key).textValue()));
-        }
+//        for (Iterator<String> it = value.getValue().fieldNames(); it.hasNext(); ) {
+//
+//            String key = it.next();
+//
+//            if (value.getValue().get(key).isObject()){
+//                //this is only single nested - what if multiple nested?
+//
+//                JsonNode nestedNode = value.getValue().get(key);
+//                while ()
+//
+//            }
+//
+//            writer.writeName(key);
+//            writer.writeString(String.valueOf(value.getValue().get(key).textValue()));
+//        }
 
-        writer.writeEndDocument();
+        System.out.println(writer.toString());
+
+//        writer.writeEndDocument();
         writer.writeStartArray("permissions");
         for (MetadataPermission pem : value.getPermissions()){
             writer.writeStartDocument();
@@ -127,5 +144,29 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
     @Override
     public Class<MetadataItem> getEncoderClass() {
         return MetadataItem.class;
+    }
+
+
+
+    private BsonWriter recursiveParseDocument(JsonNode doc, BsonWriter writer){
+//        writer.writeStartDocument();
+
+        for (Iterator<String> it = doc.fieldNames(); it.hasNext(); ) {
+            String key = it.next();
+//            writer.writeStartDocument(key);
+//            writer.writeName(key);
+
+            if (doc.get(key).isObject()){
+                JsonNode nestedNode = doc.get(key);
+                writer.writeStartDocument(key);
+                recursiveParseDocument(nestedNode, writer);
+//                writer.writeEndDocument();
+            } else {
+                writer.writeName(key);
+                writer.writeString(String.valueOf(doc.get(key).textValue()));
+            }
+        }
+        writer.writeEndDocument();
+        return writer;
     }
 }

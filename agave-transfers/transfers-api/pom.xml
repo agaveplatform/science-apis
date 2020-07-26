@@ -102,7 +102,25 @@
                 <version>${maven-failsafe-plugin.version}</version>
             </plugin>
 
-
+            <plugin>
+                <groupId>io.reactiverse</groupId>
+                <artifactId>vertx-maven-plugin</artifactId>
+                <version>1.0.22</version>
+                <executions>
+                    <execution>
+                        <id>vmp</id>
+                        <goals>
+                            <goal>initialize</goal>
+                            <goal>package</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <config>target/test-classes/config-test.json</config>
+                    <launcher>org.agaveplatform.service.transfers.TransferApplication</launcher>
+                    <redeploy>true</redeploy>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

@@ -19,5 +19,9 @@
         <!-- <property name="hbm2ddl.auto">create</property> -->
         <property name="hibernate.show_sql">false</property>
         <property name="hibernate.query.substitutions">true 1, false 0</property>
+        <property name="connection.autoReconnect">true</property>
+        <property name="connection.autoReconnectForPools">true</property>
+        <property name="connection.is-connection-validation-required">true</property>
+        <property name="javax.persistence.validation.mode">none</property>
 	</session-factory>
 </hibernate-configuration>

@@ -144,3 +144,4 @@ fabric.properties
 /public_key.pem
 /private_key.pem
 /private.pem
+!/src/test/resources/docker-compose.yml

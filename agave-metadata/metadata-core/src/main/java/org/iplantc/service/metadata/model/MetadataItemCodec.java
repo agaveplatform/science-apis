@@ -1,5 +1,6 @@
 package org.iplantc.service.metadata.model;
 
+import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -10,12 +11,19 @@ import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.DocumentCodec;
 import org.bson.codecs.EncoderContext;
+import org.bson.json.JsonParseException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+/**
+ * Custom Codec for processing MetadataItem to Bson
+ *
+ * @author kliang
+ */
 
 public class MetadataItemCodec implements Codec<MetadataItem> {
 
@@ -41,7 +49,6 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         metadataItem.setTenantId(document.getString("tenantId"));
         metadataItem.setSchemaId(document.getString("schemaId"));
         metadataItem.setInternalUsername(document.getString("internalUsername"));
-        //metadataItem.setLastUpdated(document.getDate("lastUpdated"));
         metadataItem.setName(document.getString("name"));
 
         ObjectMapper mapper = new ObjectMapper();
@@ -56,9 +63,16 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         ObjectNode json = mapper.createObjectNode();
 
         for (String key : value.keySet()){
-            Document doc = Document.parse((String)value.get(key));
-            json.put(key, String.valueOf(Document.parse((String) value.get(key))));
+            Document doc = null;
+            try {
+                doc = (Document) value.get(key);
+                JsonFactory factory = new ObjectMapper().getFactory();
+                JsonNode jsonMetadataNode = factory.createParser(doc.toJson()).readValueAsTree();
+                json.put(key, jsonMetadataNode);
 
+            } catch (Exception e) {
+                json.put(key, String.valueOf(value.get(key)));
+            }
         }
 
         metadataItem.setValue(json);
@@ -81,9 +95,7 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
                 e.printStackTrace();
             }
         }
-
         metadataItem.setPermissions(permissionList);
-
         return metadataItem;
     }
 
@@ -105,26 +117,6 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         writer.writeStartDocument();
         recursiveParseDocument(value.getValue(), writer);
 
-        //write values to Document
-//        for (Iterator<String> it = value.getValue().fieldNames(); it.hasNext(); ) {
-//
-//            String key = it.next();
-//
-//            if (value.getValue().get(key).isObject()){
-//                //this is only single nested - what if multiple nested?
-//
-//                JsonNode nestedNode = value.getValue().get(key);
-//                while ()
-//
-//            }
-//
-//            writer.writeName(key);
-//            writer.writeString(String.valueOf(value.getValue().get(key).textValue()));
-//        }
-
-        System.out.println(writer.toString());
-
-//        writer.writeEndDocument();
         writer.writeStartArray("permissions");
         for (MetadataPermission pem : value.getPermissions()){
             writer.writeStartDocument();
@@ -147,20 +139,20 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
     }
 
 
-
+    /**
+     * Write to BsonWriter recursively for nested JsonNodes
+     * @param doc JsonNode to parse
+     * @param writer BsonWriter to write to
+     * @return BsonWriter
+     */
     private BsonWriter recursiveParseDocument(JsonNode doc, BsonWriter writer){
-//        writer.writeStartDocument();
-
         for (Iterator<String> it = doc.fieldNames(); it.hasNext(); ) {
             String key = it.next();
-//            writer.writeStartDocument(key);
-//            writer.writeName(key);
 
             if (doc.get(key).isObject()){
                 JsonNode nestedNode = doc.get(key);
                 writer.writeStartDocument(key);
                 recursiveParseDocument(nestedNode, writer);
-//                writer.writeEndDocument();
             } else {
                 writer.writeName(key);
                 writer.writeString(String.valueOf(doc.get(key).textValue()));

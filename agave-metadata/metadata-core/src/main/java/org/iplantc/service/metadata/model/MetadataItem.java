@@ -1,6 +1,4 @@
-/**
- *
- */
+
 package org.iplantc.service.metadata.model;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -341,12 +339,21 @@ public class MetadataItem {
     public synchronized void setPermissions(List<MetadataPermission> pem){this.permissions = pem;}
 
     public synchronized void updatePermissions(MetadataPermission pem){
-        Integer indx = this.permissions.indexOf(pem);
-        if (indx > -1){
+        MetadataPermission currentUserPermission = this.getPermissions_User(pem.getUsername());
+
+        if (currentUserPermission != null) {
+            Integer indx = this.permissions.indexOf(currentUserPermission);
             this.permissions.set(indx,pem);
         } else {
             this.permissions.add(pem);
+
         }
+//        Integer indx = this.permissions.indexOf(pem);
+//        if (indx > -1){
+//            this.permissions.set(indx,pem);
+//        } else {
+//            this.permissions.add(pem);
+//        }
     }
 
     public synchronized  void updatePermissions_delete(MetadataPermission pem){

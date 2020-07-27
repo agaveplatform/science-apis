@@ -53,6 +53,7 @@ import org.iplantc.service.metadata.model.enumerations.MetadataEventType;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.notification.managers.NotificationManager;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.net.UnknownHostException;
@@ -67,7 +68,7 @@ import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.*;
 
 public class MetadataSearch {
-    private boolean bolImplicitPermissions = true;
+    private boolean bolImplicitPermissions;
     private String owner;
     private String value;
     private String username;
@@ -81,18 +82,17 @@ public class MetadataSearch {
     MetadataDao metadataDao;
 
     private Bson dbQuery;
-    public MetadataSearch(boolean bolImplicitPermissions,String username, String uuid) {
+    public MetadataSearch(boolean bolImplicitPermissions,String username) {
 //        this.userQuery = userQuery;
         this.bolImplicitPermissions = bolImplicitPermissions;
         this.metadataItem = new MetadataItem();
-        metadataItem.setUuid(uuid);
+//        metadataItem.setUuid(uuid);
         metadataItem.setTenantId(TenancyHelper.getCurrentTenantId());
         this.username = username;
         this.metadataDao = new MetadataDao().getInstance();
         this.limit = org.iplantc.service.common.Settings.DEFAULT_PAGE_SIZE;
         this.offset = 0;
     }
-
 
     public boolean isBolImplicitPermissions() {
         return bolImplicitPermissions;
@@ -126,21 +126,26 @@ public class MetadataSearch {
         this.metadataItem = metadataItem;
     }
 
-    public BasicDBObject parseUserQuery(String userQuery) throws MetadataQueryException, IOException {
+    public String getUuid() {
+        return this.metadataItem.getUuid();
+    }
+
+    public void setUuid(String uuid) {
+        this.metadataItem.setUuid(uuid);
+    }
+
+    public BasicDBObject parseUserQuery(String userQuery) throws MetadataQueryException {
         ObjectMapper mapper  = new ObjectMapper();
         ObjectNode mappedValue = mapper.createObjectNode();
 
         BasicDBObject query;
-//        parseValue(userQuery);
         query = BasicDBObject.parse(userQuery);
         for (String key : query.keySet()) {
-            if (StringUtils.equals(key, "name")){
-//                metadataItem.setName((String)query.get(key));
-            } else {
+            if (!StringUtils.equals(key, "name")){
                 if (query.get(key) instanceof String) {
                     if (((String) query.get(key)).contains("*")) {
                         try {
-                            Pattern regexPattern = Pattern.compile((String) query.getString(key),
+                            Pattern regexPattern = Pattern.compile(query.getString(key),
                                     Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
                             query.put(key, regexPattern);
 
@@ -238,6 +243,67 @@ public class MetadataSearch {
         }
     }
 
+    public void parseDocument(Document doc) throws MetadataQueryException {
+        try {
+            for (String key : doc.keySet()) {
+                if (StringUtils.equals(key, "name") && doc.get("name") != null) {
+                    metadataItem.setName((String) doc.get("name"));
+                } else {
+                    throw new MetadataQueryException(
+                            "No name attribute specified. Please associate a value with the metadata name.");
+                }
+
+                if (StringUtils.equals(key, "value") && doc.get("value") != null) {
+                    this.value = (String) doc.get("value");
+                    this.metadataItem.setValue(this.parseValue(this.value));
+                } else {
+                    throw new MetadataQueryException(
+                            "No value attribute specified. Please associate a value with the metadata value.");
+                }
+
+                if (StringUtils.equals(key, "associationIds")) {
+                    ArrayNode items = doc.get("associationIds", ArrayNode.class);
+                    MetadataAssociationList associationList = checkAssociationIds(items);
+                    this.metadataItem.setAssociations(associationList);
+                    continue;
+                }
+
+                if (StringUtils.equals(key, "notifications")) {
+                    ArrayNode items = doc.get("notifications", ArrayNode.class);
+                }
+
+                if (StringUtils.equals(key, "permissions")) {
+                    ArrayNode permissions = doc.get("permissions", ArrayNode.class);
+                    MetadataRequestPermissionProcessor permissionProcessor = new MetadataRequestPermissionProcessor(username,
+                            this.metadataItem.getUuid());
+                    permissionProcessor.process(permissions);
+                    List<MetadataPermission> metaPemList = permissionProcessor.getPermissions();
+                    this.metadataItem.setPermissions(metaPemList);
+                }
+
+                if (StringUtils.equals(key, "schemaId")) {
+                    this.metadataItem.setSchemaId((String) doc.get("schemaId"));
+                    checkSchemaId(this.metadataItem.getSchemaId());
+                }
+            }
+
+        } catch (MetadataQueryException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new MetadataQueryException(
+                    "Unable to parse form. " + e.getMessage());
+        }
+    }
+
+    public JsonNode parseValue(String value) throws MetadataQueryException {
+        try {
+            JsonFactory factory = new ObjectMapper().getFactory();
+            return factory.createParser(value).readValueAsTree();
+        } catch (IOException e) {
+            throw new MetadataQueryException("Unable to parse value.", e);
+        }
+    }
+
     public MetadataAssociationList checkAssociationIds(ArrayNode items) throws MetadataQueryException, UnknownHostException {
         MongoCollection<MetadataItem> collection = metadataDao.getDefaultMetadataItemCollection();
 
@@ -249,16 +315,14 @@ public class MetadataSearch {
         if (items != null) {
             for (int i = 0; i < items.size(); i++) {
                 try {
-                    String associationId = (String) items.get(i).asText();
-                    if (StringUtils.isEmpty(associationId)) {
-                        continue;
-                    } else {
+                    String associationId = items.get(i).asText();
+                    if (StringUtils.isNotEmpty(associationId)) {
                         AgaveUUID associationUuid = new AgaveUUID(associationId);
                         if (UUIDType.METADATA == associationUuid.getResourceType()) {
                             BasicDBObject associationQuery = new BasicDBObject("uuid", associationId);
                             associationQuery.append("tenantId", TenancyHelper.getCurrentTenantId());
 //                            BasicDBObject associationDBObj = (BasicDBObject) collection.find(associationQuery).limit(1);
-                            MetadataItem associationDocument = (MetadataItem) collection.find(associationQuery).first();
+                            MetadataItem associationDocument = collection.find(associationQuery).first();
 
                             if (associationDocument == null) {
                                 throw new MetadataQueryException(
@@ -306,34 +370,7 @@ public class MetadataSearch {
 
     }
 
-    public JsonNode parseValue(String value) throws MetadataQueryException {
-        try {
-            JsonFactory factory = new ObjectMapper().getFactory();
-            JsonNode jsonMetadataNode = factory.createParser(value).readValueAsTree();
-            return jsonMetadataNode;
-        } catch (IOException e) {
-            throw new MetadataQueryException("Unable to parse value.", e);
-        }
-    }
-
-    public void updatePermissions(String username, String group, PermissionType pem) throws MetadataException {
-        MetadataPermission metadataPermission;
-
-        try {
-            metadataPermission = new MetadataPermission();
-            metadataPermission.setPermission(pem);
-            metadataPermission.setUsername(username);
-            metadataPermission.setGroup(group);
-            metadataPermission.setUuid(metadataItem.getUuid());
-
-            metadataItem.updatePermissions(metadataPermission);
-
-        } catch (MetadataException e) {
-            throw new MetadataException("Unable to update permission.", e);
-        }
-    }
-
-    public void checkSchemaId(String schemaId) throws MetadataQueryException, MetadataSchemaValidationException {
+    public void checkSchemaId(String schemaId) throws MetadataSchemaValidationException {
         try {
             MongoCollection schemaCollection = getSchemaCollection();
 
@@ -416,6 +453,10 @@ public class MetadataSearch {
         return collection;
     }
 
+    public void clearCollection() throws UnknownHostException {
+        metadataDao.clearCollection();
+    }
+
     public Bson getTenantIdQuery(){
         return eq("tenantId", this.metadataItem.getTenantId());
     }
@@ -425,12 +466,22 @@ public class MetadataSearch {
     }
 
     public Bson getReadQuery(){
-        return or(
-                eq("owner", this.username),
-                elemMatch("permissions",
-                        and(
-                                eq("username", this.username),
-                                nin("permissions", PermissionType.NONE.toString()))));
+        Bson docFilter = elemMatch("permissions", and (eq("username", this.username),
+                nin("permission", Arrays.asList(PermissionType.NONE.toString()))));
+
+        Bson permissionFilter;
+        if (bolImplicitPermissions)
+            permissionFilter = or (in("owner", this.username), docFilter);
+        else
+            permissionFilter = docFilter;
+
+        return permissionFilter;
+//        return or(
+//                eq("owner", this.username),
+//                elemMatch("permissions",
+//                        and(
+//                                eq("username", this.username),
+//                                nin("permissions", PermissionType.NONE.toString()))));
     }
 
     public Bson getWriteQuery(){
@@ -454,13 +505,13 @@ public class MetadataSearch {
     public List<MetadataItem> find(String userQuery) throws MetadataException {
         List<MetadataItem> result = new ArrayList<>();
         try {
-            //build query
-//            Bson permissionFilter = and(getTenantIdQuery(), getReadQuery(), parseUserQuery(userQuery));
+            Document doc;
+            if (StringUtils.isEmpty(userQuery))
+                doc = new Document();
+            else
+                doc = Document.parse(userQuery);
 
-            Document doc = Document.parse(userQuery);
-            Bson permissionFilter = and(getTenantIdQuery(), getUuidQuery(), doc);
-
-//            result = metadataDao.find(this.username, permissionFilter);
+            Bson permissionFilter = and(getTenantIdQuery(), doc, getReadQuery());
 
             MongoCollection<MetadataItem> collection = metadataDao.getDefaultMetadataItemCollection();
 
@@ -468,29 +519,29 @@ public class MetadataSearch {
 
             result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
 
-            if (result.size() == 0) {
-                //check if user has permission
-                if (metadataDao.hasRead(this.username, this.metadataItem.getUuid())){
-                    //nothing found matching the query
-                } else {
-//                    throw new PermissionException ("User doesn't have read permission.");
-                }
-            }
+//            if (result.size() == 0) {
+//                //check if user has permission
+//                if (metadataDao.hasRead(this.username, this.metadataItem.getUuid())){
+//                    //nothing found matching the query
+//                } else {
+//                }
+//            }
         } catch (MetadataStoreException | IOException e) {
             throw new MetadataException("Unable to find item based on query.", e);
         }
-//        } catch (PermissionException e) {
-//            throw new PermissionException ("User doesn't have read permission.", e);
-//        }
         return result;
+    }
+
+    public List<MetadataItem> findAll() throws UnknownHostException {
+        return metadataDao.findAll();
     }
 
     public void updateMetadataItem() throws MetadataException, MetadataStoreException, PermissionException {
         MetadataItem result = metadataDao.find_uuid(and(eq("uuid", this.metadataItem.getUuid()),
                 eq("tenantId", this.metadataItem.getTenantId())));
 
-
         if (result!=null){
+            //item exists, check if user has the correct permissions to update item
             metadataItem.setOwner(result.getOwner());
             MetadataPermission pem = result.getPermissions_User(this.username);
             if (pem == null) {
@@ -512,18 +563,6 @@ public class MetadataSearch {
             metadataDao.insert(metadataItem);
         }
 
-//        if (metadataDao.hasWrite(this.username, this.metadataItem.getUuid())) {
-//
-//            //if new metadata item, insert
-//            if (metadataDao.find(this.username, and(eq("uuid", this.metadataItem.getUuid()),
-//                    eq("tenantId", metadataItem.getTenantId()))).size() == 0) {
-//                metadataItem.setOwner(this.username);
-//                metadataDao.insert(metadataItem);
-//            } else {
-//                //otherwise update
-//                metadataDao.updateMetadata(metadataItem, this.username);
-//            }
-//        }
     }
 
     /**
@@ -560,8 +599,7 @@ public class MetadataSearch {
         }
     }
 
-
-    public void setMetadataPermission(PermissionType pem, String username) throws MetadataStoreException, MetadataException, PermissionException {
+    public void setMetadataPermission(String username, PermissionType pem, String group) throws MetadataStoreException, MetadataException, PermissionException {
         if (StringUtils.isBlank(username)) {
             throw new MetadataException("Invalid username");
         }
@@ -590,91 +628,30 @@ public class MetadataSearch {
 
     }
 
-    public List<MetadataItem> findAll() throws UnknownHostException {
-            return metadataDao.findAll();
-    }
+    /**
+     * Add/update the user's permission to pem
+     * @param username user to update
+     * @param group group to be updated
+     * @param pem permission to be updated to
+     * @throws MetadataException
+     */
+    public void updatePermissions(String username, String group, PermissionType pem) throws MetadataException {
+        MetadataPermission metadataPermission;
 
-    public void clearCollection() throws UnknownHostException {
-        metadataDao.clearCollection();
-    }
+        try {
+            metadataPermission = new MetadataPermission();
+            metadataPermission.setPermission(pem);
+            metadataPermission.setUsername(username);
+            metadataPermission.setGroup(group);
+            metadataPermission.setUuid(metadataItem.getUuid());
 
+            metadataItem.updatePermissions(metadataPermission);
+            metadataDao.updatePermission(metadataItem, username, pem);
 
-    public BasicDBObject formatMetadataItem(MetadataItem metadataItem){
-        BasicDBObject result;
-
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:MM:SSZ-05:00");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-
-        result = new BasicDBObject("uuid", metadataItem.getUuid())
-                .append("schemaId", metadataItem.getSchemaId())
-                .append("internalUsername", metadataItem.getInternalUsername())
-                .append("associationIds", String.valueOf(metadataItem.getAssociations()))
-                .append("lastUpdated", formatter.format(metadataItem.getLastUpdated()))
-                .append("name", metadataItem.getName())
-                .append("value", BasicDBObject.parse(String.valueOf(metadataItem.getValue())))
-                .append("created", formatter.format(metadataItem.getCreated()))
-                .append("owner", metadataItem.getOwner());
-        return result ;
-    }
-
-    public DBObject formatMetadataItemResult(MetadataItem metadataItem) throws UUIDException {
-        BasicDBObject metadataObject = formatMetadataItem(metadataItem);
-        BasicDBObject hal = new BasicDBObject();
-        hal.put("self",
-                new BasicDBObject("href",
-                        TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + "data/" +
-                                metadataItem.getUuid()));
-        hal.put("permissions",
-                new BasicDBObject("href",
-                        TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + "data/" +
-                                metadataItem.getUuid() + "/pems"));
-        hal.put("owner",
-                new BasicDBObject("href",
-                        TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + metadataItem.getOwner()));
-
-        if (metadataItem.getAssociations() != null) {
-            // TODO: break this into a list of object under the associationIds attribute so
-            // we dont' overwrite the objects in the event there are multiple of the same type.
-            BasicDBList halAssociationIds = new BasicDBList();
-
-            MetadataAssociationList associationList = metadataItem.getAssociations();
-
-            for (String associatedId : associationList.getAssociatedIds().keySet()){
-//            for (String associatedId : metadataItem.getAssociations()) {
-                AgaveUUID agaveUUID = new AgaveUUID((String) associatedId);
-
-                try {
-                    String resourceUrl = agaveUUID.getObjectReference();
-                    BasicDBObject assocResource = new BasicDBObject();
-                    assocResource.put("rel", (String) associatedId);
-                    assocResource.put("href", TenancyHelper.resolveURLToCurrentTenant(resourceUrl));
-                    assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
-                    halAssociationIds.add(assocResource);
-                } catch (UUIDException e) {
-                    BasicDBObject assocResource = new BasicDBObject();
-                    assocResource.put("rel", (String) associatedId);
-                    assocResource.put("href", null);
-                    if (agaveUUID != null) {
-                        assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
-                    }
-                    halAssociationIds.add(assocResource);
-                }
-            }
-
-            hal.put("associationIds", halAssociationIds);
+        } catch (MetadataException | MetadataStoreException e) {
+            throw new MetadataException("Unable to update permission.", e);
         }
-
-        if (metadataItem.getSchemaId() != null && !StringUtils.isEmpty(metadataItem.getSchemaId())) {
-            AgaveUUID agaveUUID = new AgaveUUID(metadataItem.getSchemaId());
-            hal.append(agaveUUID.getResourceType().name(),
-                    new BasicDBObject("href", TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference())));
-
-        }
-        metadataObject.put("_links", hal);
-        return metadataObject;
-
     }
-
 
     /**
      * Remove the permission for the specified user
@@ -684,6 +661,24 @@ public class MetadataSearch {
      */
     public MetadataItem deletePermission(String user) throws MetadataStoreException {
         return metadataDao.deleteUserPermission(this.metadataItem, user);
+    }
+
+
+    /**
+     * Find all permissions for the user
+     * @param user
+     * @return
+     */
+    public List<MetadataItem> findPermission_User(String user, String uuid) throws MetadataStoreException {
+        //only the owner or tenantAdmin can access if no permissions are explicitly set
+        return metadataDao.find(user, and(eq("uuid", uuid),
+                or (eq("owner", user),eq("permissions.username", user))));
+    }
+
+    public MetadataItem findPermission_Uuid(String uuid) throws MetadataStoreException {
+        List<MetadataPermission> permissionList = new ArrayList<>();
+        List<MetadataItem> metadataItemList = metadataDao.find(this.username, eq("uuid", uuid));
+        return metadataItemList.get(0);
     }
 
 }

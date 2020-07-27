@@ -39,6 +39,8 @@ public class MetadataPermission {
 	private PermissionType		permission;
 	private Date				lastUpdated = new Date();
 	private String 				tenantId;
+
+	@Transient
 	private String				group;
 	
 	public MetadataPermission() {
@@ -176,8 +178,10 @@ public class MetadataPermission {
 		return permission.canExecute();
 	}
 
+	@Transient
 	public String getGroup() {return this.group;}
 
+	@Transient
 	public void setGroup(String group) {this.group = group;}
 
 	public String toJSON() throws JSONException

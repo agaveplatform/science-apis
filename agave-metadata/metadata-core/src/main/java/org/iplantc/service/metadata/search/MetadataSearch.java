@@ -14,6 +14,7 @@ import com.mongodb.util.JSONParseException;
 import io.grpc.Metadata;
 import io.grpc.internal.JsonParser;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.bson.conversions.Bson;
 import com.mongodb.*;
 import com.mongodb.MongoClient;
@@ -34,6 +35,7 @@ import org.iplantc.service.common.exceptions.SortSyntaxException;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.search.AgaveResourceResultOrdering;
+import org.iplantc.service.common.util.SimpleTimer;
 import org.iplantc.service.common.util.StringToTime;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -43,6 +45,7 @@ import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataSchemaValidationException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
+import org.iplantc.service.metadata.managers.MetadataRequestNotificationProcessor;
 import org.iplantc.service.metadata.managers.MetadataRequestPermissionProcessor;
 import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.AssociatedReference;
@@ -51,6 +54,7 @@ import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.MetadataEventType;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
+import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.managers.NotificationManager;
 
 import javax.swing.*;
@@ -59,6 +63,7 @@ import java.lang.reflect.Array;
 import java.net.UnknownHostException;
 import java.security.Permission;
 import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -78,28 +83,21 @@ public class MetadataSearch {
     private int offset;
     private int limit;
     private MetadataItem metadataItem;
+    private ArrayNode notifications;
+    private ArrayNode permissions;
+
 
     MetadataDao metadataDao;
 
     private Bson dbQuery;
     public MetadataSearch(boolean bolImplicitPermissions,String username) {
-//        this.userQuery = userQuery;
         this.bolImplicitPermissions = bolImplicitPermissions;
         this.metadataItem = new MetadataItem();
-//        metadataItem.setUuid(uuid);
         metadataItem.setTenantId(TenancyHelper.getCurrentTenantId());
         this.username = username;
         this.metadataDao = new MetadataDao().getInstance();
         this.limit = org.iplantc.service.common.Settings.DEFAULT_PAGE_SIZE;
         this.offset = 0;
-    }
-
-    public boolean isBolImplicitPermissions() {
-        return bolImplicitPermissions;
-    }
-
-    public void setBolImplicitPermissions(boolean bolImplicitPermissions) {
-        this.bolImplicitPermissions = bolImplicitPermissions;
     }
 
     public String getUsername() {
@@ -134,6 +132,30 @@ public class MetadataSearch {
         this.metadataItem.setUuid(uuid);
     }
 
+    public void setOrderField(String orderField) {
+        this.orderField = orderField;
+    }
+
+    public void setOrderDirection(int orderDirection) {
+        this.orderDirection = orderDirection;
+    }
+
+    public void setOffset(int offset) {
+        this.offset = offset;
+    }
+
+    public void setLimit(int limit) {
+        this.limit = limit;
+    }
+
+    public ArrayNode getNotifications() {
+        return notifications;
+    }
+
+    public ArrayNode getPermissions() {
+        return permissions;
+    }
+
     public BasicDBObject parseUserQuery(String userQuery) throws MetadataQueryException {
         ObjectMapper mapper  = new ObjectMapper();
         ObjectNode mappedValue = mapper.createObjectNode();
@@ -165,8 +187,8 @@ public class MetadataSearch {
         try {
             ObjectMapper mapper = new ObjectMapper();
             ArrayNode items = mapper.createArrayNode();
-            ArrayNode permissions = mapper.createArrayNode();
-            ArrayNode notifications = mapper.createArrayNode();
+            this.permissions = mapper.createArrayNode();
+            this.notifications = mapper.createArrayNode();
 
 
             if (jsonMetadata.has("name") && jsonMetadata.get("name").isTextual()
@@ -205,8 +227,7 @@ public class MetadataSearch {
 
             if (jsonMetadata.hasNonNull("notifications")) {
                 if (jsonMetadata.get("notifications").isArray()) {
-                    notifications = (ArrayNode) jsonMetadata.get("notifications");
-//                    this.metadataItem.setNotifications(notifications);
+                    this.notifications = (ArrayNode) jsonMetadata.get("notifications");
                 } else {
                     throw new MetadataQueryException(
                             "Invalid notifications value. notifications should be an "
@@ -269,7 +290,7 @@ public class MetadataSearch {
                 }
 
                 if (StringUtils.equals(key, "notifications")) {
-                    ArrayNode items = doc.get("notifications", ArrayNode.class);
+                    this.notifications = doc.get("notifications", ArrayNode.class);
                 }
 
                 if (StringUtils.equals(key, "permissions")) {
@@ -279,6 +300,7 @@ public class MetadataSearch {
                     permissionProcessor.process(permissions);
                     List<MetadataPermission> metaPemList = permissionProcessor.getPermissions();
                     this.metadataItem.setPermissions(metaPemList);
+                    this.permissions = permissions;
                 }
 
                 if (StringUtils.equals(key, "schemaId")) {
@@ -430,6 +452,15 @@ public class MetadataSearch {
         }
     }
 
+    public void processNotifications() throws NotificationException {
+        MetadataRequestNotificationProcessor notificationProcessor = new MetadataRequestNotificationProcessor(
+                username,
+                this.metadataItem.getUuid());
+        notificationProcessor.process(this.notifications);
+
+        this.metadataItem.setNotifications(notificationProcessor.getNotifications());
+    }
+
     public MongoCollection getSchemaCollection(){
         MongoCollection schemaCollection = null;
         try {
@@ -448,8 +479,8 @@ public class MetadataSearch {
             collection = metadataDao.getCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
         } catch (UnknownHostException e) {
             e.printStackTrace();
+            collection = null;
         }
-
         return collection;
     }
 
@@ -467,11 +498,12 @@ public class MetadataSearch {
 
     public Bson getReadQuery(){
         Bson docFilter = elemMatch("permissions", and (eq("username", this.username),
-                nin("permission", Arrays.asList(PermissionType.NONE.toString()))));
+                in("permission", Arrays.asList(PermissionType.ALL.toString(), PermissionType.READ.toString(),
+                        PermissionType.READ_WRITE.toString(), PermissionType.READ_EXECUTE.toString()))));
 
         Bson permissionFilter;
         if (bolImplicitPermissions)
-            permissionFilter = or (in("owner", this.username), docFilter);
+            permissionFilter = or (in("owner", Arrays.asList(this.username, Settings.WORLD_USER_USERNAME, Settings.PUBLIC_USER_USERNAME)), docFilter);
         else
             permissionFilter = docFilter;
 
@@ -502,32 +534,30 @@ public class MetadataSearch {
                                 PermissionType.WRITE_PERMISSION.toString(), PermissionType.READ_WRITE_PERMISSION.toString()))));
     }
 
-    public List<MetadataItem> find(String userQuery) throws MetadataException {
+    public List<MetadataItem> find(String userQuery) throws MetadataException, MetadataQueryException {
         List<MetadataItem> result = new ArrayList<>();
         try {
             Document doc;
+
             if (StringUtils.isEmpty(userQuery))
                 doc = new Document();
             else
-                doc = Document.parse(userQuery);
+                try {
+                    doc = Document.parse(userQuery);
+                } catch (Exception e) {
+                    throw new MetadataQueryException();
+                }
 
             Bson permissionFilter = and(getTenantIdQuery(), doc, getReadQuery());
-
-            MongoCollection<MetadataItem> collection = metadataDao.getDefaultMetadataItemCollection();
 
             BasicDBObject order = (orderField == null) ? new BasicDBObject() : new BasicDBObject(orderField, orderDirection);
 
             result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
 
-//            if (result.size() == 0) {
-//                //check if user has permission
-//                if (metadataDao.hasRead(this.username, this.metadataItem.getUuid())){
-//                    //nothing found matching the query
-//                } else {
-//                }
-//            }
-        } catch (MetadataStoreException | IOException e) {
+        } catch (MetadataStoreException e) {
             throw new MetadataException("Unable to find item based on query.", e);
+        } catch (MetadataQueryException e) {
+            throw new MetadataQueryException("Unable to parse query.");
         }
         return result;
     }
@@ -536,7 +566,7 @@ public class MetadataSearch {
         return metadataDao.findAll();
     }
 
-    public void updateMetadataItem() throws MetadataException, MetadataStoreException, PermissionException {
+    public MetadataItem updateMetadataItem() throws MetadataException, MetadataStoreException, PermissionException {
         MetadataItem result = metadataDao.find_uuid(and(eq("uuid", this.metadataItem.getUuid()),
                 eq("tenantId", this.metadataItem.getTenantId())));
 
@@ -556,13 +586,13 @@ public class MetadataSearch {
                 }
             }
             checkPermission(pem.getPermission(), this.username, true);
-            metadataDao.updateMetadata(metadataItem, this.username);
+            this.metadataItem = metadataDao.updateMetadata(metadataItem, this.username);
 
         } else {
             metadataItem.setOwner(this.username);
-            metadataDao.insert(metadataItem);
+            this.metadataItem = metadataDao.insert(metadataItem);
         }
-
+        return this.metadataItem;
     }
 
     /**
@@ -662,7 +692,6 @@ public class MetadataSearch {
     public MetadataItem deletePermission(String user) throws MetadataStoreException {
         return metadataDao.deleteUserPermission(this.metadataItem, user);
     }
-
 
     /**
      * Find all permissions for the user

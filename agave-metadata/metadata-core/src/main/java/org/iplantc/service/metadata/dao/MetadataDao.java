@@ -17,6 +17,7 @@ import com.mongodb.client.*;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.mongodb.client.MongoClients;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistries;
@@ -50,7 +51,7 @@ public class MetadataDao {
 
     private boolean bolRead;
     private boolean bolWrite;
-    
+
     public static MetadataDao getInstance() {
         if (dao == null) {
             dao = new MetadataDao();
@@ -63,7 +64,6 @@ public class MetadataDao {
      * Establishes a connection to the mongo server
      *
      * @return valid mongo client connection
-     * @throws UnknownHostException when the host cannot be found
      */
     public MongoClient getMongoClient()
     {
@@ -135,7 +135,6 @@ public class MetadataDao {
 
         MongoCollection<MetadataItem> newDb = db.getCollection("api", MetadataItem.class);
 
-
         // Gets a collection, if it does not exist creates it
         return db.getCollection(collectionName);
 
@@ -166,18 +165,9 @@ public class MetadataDao {
     public MetadataItem insert(MetadataItem metadataItem) throws MetadataStoreException {
         MongoCollection<MetadataItem> metadataItemCollection;
         try {
-
             //using POJO Codec
             metadataItemCollection = getDefaultMetadataItemCollection();
-
             metadataItemCollection.insertOne(metadataItem);
-
-//            FindIterable<MetadataItem> findIterable = metadataItemCollection.find(eq("uuid", uuid));
-//
-//            String result = findIterable.cursor().next().getUuid();
-//            JsonNode valueResult = findIterable.cursor().next().getValue();
-
-
 
             return metadataItem;
         } catch (UnknownHostException e) {
@@ -204,13 +194,11 @@ public class MetadataDao {
      * Return the metadataItem from the collection
      * @return metadataItem
      */
-
     public List<MetadataItem> find (String user, Bson query) throws MetadataStoreException {
         return find(user, query, 0, org.iplantc.service.common.Settings.DEFAULT_PAGE_SIZE, new BasicDBObject());
     }
 
     public List<MetadataItem> find(String user, Bson query, int offset, int limit, BasicDBObject order) throws MetadataStoreException {
-        MongoCollection collection;
         MongoCursor cursor;
         List<MetadataItem> resultList = new ArrayList<>();
 
@@ -219,45 +207,45 @@ public class MetadataDao {
         try{
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-//            Document docQuery = new Document("uuid", metadataItem.getUuid())
-//                    .append("tenantId", metadataItem.getTenantId());
+//            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
 //
-            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
-
-            Bson docFilter = elemMatch("permissions", eq("username", user));
-
+//            Bson docFilter = elemMatch("permissions", and (eq("username", user),
+//                    nin("permission", Arrays.asList(PermissionType.NONE.toString()))));
+//
+//            Bson permissionFilter = or (eq("owner", user), docFilter);
 
             if (query == null) {
                 query = new Document();
             }
 
             try {
-                cursor = metadataItemMongoCollection.find(and(query, or(eq("owner", user), docFilter)))
+//                cursor = metadataItemMongoCollection.find(and(query, or(eq("owner", user), docFilter)))
+                cursor = metadataItemMongoCollection.find(query)
                         .sort(order)
                         .skip(offset)
                         .limit(limit).cursor();
 
+//                cursor = metadataItemMongoCollection.find(query).cursor();
+
                 while (cursor.hasNext()) {
                     resultList.add((MetadataItem) cursor.next());
                 }
-//                returnEntity = metadataItemMongoCollection.find(query).first();
-
-//                List<Bson> aggList = new ArrayList<Bson>();
-//                aggList.add(or(eq("owner", user), docFilter));
-//                aggList.add(query);
-//
-//
-//                cursor = metadataItemMongoCollection.aggregate(aggList).cursor();
-//
-//
-//                while (cursor.hasNext()) {
-//                    resultList.add((MetadataItem)cursor.next());
-//                }
 
             } catch (Exception e) {
             }
 
             return resultList;
+
+        } catch (UnknownHostException e) {
+            throw new MetadataStoreException("Failed to find metadata item", e);
+        }
+    }
+
+    public MetadataItem find_uuid(Bson filter) throws MetadataStoreException {
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+        try{
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+            return metadataItemMongoCollection.find(filter).first();
 
         } catch (UnknownHostException e) {
             throw new MetadataStoreException("Failed to find metadata item", e);
@@ -321,14 +309,6 @@ public class MetadataDao {
         }
         return metadataItem;
     }
-
-    Block<Document> printBlock = new Block<>() {
-        @Override
-        public void apply(final Document document) {
-            System.out.println(document.toJson());
-        }
-    };
-
 
     /**
      * Removes all permissions for the metadataItem
@@ -436,8 +416,7 @@ public class MetadataDao {
     }
 
     public Bson createDocQuery(MetadataItem metadataItem){
-        Bson filter = and(eq("tenantId", metadataItem.getTenantId()), eq("uuid", metadataItem.getUuid()));
-        return filter;
+        return and(eq("tenantId", metadataItem.getTenantId()), eq("uuid", metadataItem.getUuid()));
     }
 
     /**

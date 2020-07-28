@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.DBObject;
+import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -35,6 +36,9 @@ public class MetadataSearchIT {
         JsonFactory factory = new ObjectMapper().getFactory();
         JsonNode jsonMetadataNode = factory.createParser(query).readValueAsTree();
         search.parseJsonMetadata(jsonMetadataNode);
+        Document doc = new Document();
+        doc.parse(metadataQuery);
+        search.parseDocument(doc);
         search.setOwner(username);
         uuid = new AgaveUUID(UUIDType.METADATA).toString();
         search.setUuid(uuid);
@@ -230,8 +234,12 @@ public class MetadataSearchIT {
         List<String> queryList = Arrays.asList(metadataQueryMustard, metadataQueryCactus, metadataQueryAgavoideae, metadataQueryWisteria);
 
         for (String query : queryList) {
-            uuid = new AgaveUUID(UUIDType.METADATA).toString();
-            createMetadataItem(query);
+            try {
+                uuid = new AgaveUUID(UUIDType.METADATA).toString();
+                createMetadataItem(query);
+            } catch (Exception e ) {
+                System.out.println("Exception reached: " + e);
+            }
         }
 
 

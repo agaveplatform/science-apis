@@ -14,6 +14,13 @@ import com.mongodb.util.JSONParseException;
 import io.grpc.Metadata;
 import io.grpc.internal.JsonParser;
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 import org.bson.conversions.Bson;
 import com.mongodb.*;
@@ -30,9 +37,12 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.auth.JWTClient;
+import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.SortSyntaxException;
+import org.iplantc.service.common.exceptions.TenantException;
 import org.iplantc.service.common.exceptions.UUIDException;
+import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.search.AgaveResourceResultOrdering;
 import org.iplantc.service.common.util.SimpleTimer;
@@ -58,9 +68,11 @@ import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.managers.NotificationManager;
 
 import javax.swing.*;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Array;
-import java.net.UnknownHostException;
+import java.net.*;
 import java.security.Permission;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -338,8 +350,25 @@ public class MetadataSearch {
             for (int i = 0; i < items.size(); i++) {
                 try {
                     String associationId = items.get(i).asText();
+
+
                     if (StringUtils.isNotEmpty(associationId)) {
                         AgaveUUID associationUuid = new AgaveUUID(associationId);
+
+                        //calling uuid api to validate
+                        if (!validateUuid(associationId)) {
+                            if (UUIDType.METADATA == associationUuid.getResourceType()) {
+                                throw new MetadataQueryException(
+                                        "No metadata resource found with uuid " + associationId);
+                            } else if (UUIDType.SCHEMA == associationUuid.getResourceType()) {
+                                throw new MetadataQueryException(
+                                        "No metadata schema resource found with uuid " + associationId);
+                            } else {
+                                throw new MetadataQueryException(
+                                        "No associated object found with uuid " + associationId);
+                            }
+                        }
+
                         if (UUIDType.METADATA == associationUuid.getResourceType()) {
                             BasicDBObject associationQuery = new BasicDBObject("uuid", associationId);
                             associationQuery.append("tenantId", TenancyHelper.getCurrentTenantId());
@@ -351,6 +380,7 @@ public class MetadataSearch {
                                         "No metadata resource found with uuid " + associationId);
                             }
                         } else if (UUIDType.SCHEMA == associationUuid.getResourceType()) {
+
                             MongoCollection schemataCollection = getSchemaCollection();
 
                             BasicDBObject associationQuery = new BasicDBObject("uuid", associationId);
@@ -708,6 +738,40 @@ public class MetadataSearch {
         List<MetadataPermission> permissionList = new ArrayList<>();
         List<MetadataItem> metadataItemList = metadataDao.find(this.username, eq("uuid", uuid));
         return metadataItemList.get(0);
+    }
+
+    public boolean validateUuid(String uuid) {
+//        String baseUrl = "http://localhost/uuid/v2/" + uuid;
+
+        Tenant tenant = null;
+        try{
+            tenant = new TenantDao().findByTenantId(TenancyHelper.getCurrentTenantId());
+
+            URI uri = null;
+            URI tenantBaseUrl = URI.create(tenant.getBaseUrl());
+            URIBuilder builder = new URIBuilder();
+            builder.setScheme(tenantBaseUrl.getHost());
+            builder.setPath("uuid/v2");
+            builder.setParameter("uuid", uuid);
+            uri = builder.build();
+            String strUrl = uri.toString();
+
+            HttpResponse response = null;
+            HttpClient client = HttpClientBuilder.create().build();
+            HttpGet getRequest = new HttpGet(strUrl);
+            response = client.execute(getRequest);
+
+            if (response.getStatusLine().getStatusCode() == 200) {
+                HttpEntity httpEntity = response.getEntity();
+                String apiOutput = EntityUtils.toString(httpEntity);
+                System.out.println(apiOutput);
+                if (StringUtils.isNotEmpty(apiOutput)) {
+                    return true;
+                }
+            }
+        } catch (IOException | TenantException | URISyntaxException e) {
+        }
+        return false;
     }
 
 }

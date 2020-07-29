@@ -7,14 +7,17 @@ import com.mongodb.DBObject;
 import org.apache.commons.lang.StringUtils;
 import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.exceptions.TenantException;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.dao.MetadataPermissionDao;
+import org.iplantc.service.metadata.exceptions.MetadataAssociationException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
+import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
@@ -24,6 +27,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -400,5 +404,90 @@ public class MetadataSearchIT {
         Assert.assertEquals(result.size(), 1, "The user has specified permission for the uuid");
 
     }
+
+
+    @Test
+    public void validateUuid() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, URISyntaxException, TenantException, TenantException, URISyntaxException {
+        MetadataSearch search = new MetadataSearch(false, this.username);
+
+        String metadataQueryAgavoideae =
+                "  {" +
+                        "    \"name\": \"Agavoideae\"," +
+                        "    \"value\": {" +
+                        "      \"type\": \"a flowering plant\"," +
+                        "      \"order\": \" Asparagales\", " +
+                        "      \"properties\": {" +
+                        "        \"profile\": {" +
+                        "        \"status\": \"paused\"" +
+                        "           }," +
+                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+                        "       }" +
+                        "       }" +
+                        "   }";
+
+        String metadataQueryWisteria =
+                "  {" +
+                        "    \"name\": \"wisteria\"," +
+                        "    \"value\": {" +
+                        "      \"type\": \"a flowering plant\"," +
+                        "      \"order\": \" Fabales\", " +
+                        "      \"properties\": {" +
+                        "        \"profile\": {" +
+                        "        \"status\": \"active\"" +
+                        "           }," +
+                        "        \"description\": \"native to China, Korea, Japan, and the Eastern United States.\"" +
+                        "       }" +
+                        "       }" +
+                        "   }";
+
+        //insert items;
+        List<String> queryList = Arrays.asList(metadataQueryAgavoideae, metadataQueryWisteria);
+        for (String query : queryList) {
+            MetadataItem metadataItem = createMetadataItem(query);
+//            Assert.assertTrue(search.validateUuid(metadataItem.getUuid()));
+        }
+//        Assert.assertFalse(search.validateUuid("1111"));
+    }
+
+    @Test
+    public void StringToMetadataItemTest() throws IOException, UUIDException, PermissionException, MetadataAssociationException, MetadataException, MetadataStoreException, MetadataQueryException, JSONException {
+        String metadataQueryAloe =
+                "  {" +
+                        "    \"name\": \"Aloe\"," +
+                        "    \"value\": {" +
+                        "      \"type\": \"a plant\"" +
+                        "}" +
+                        "   }";
+
+        MetadataItem aloeMetadataItem = createMetadataItem(metadataQueryAloe);
+        String metadataQueryAgavoideae =
+                "  {" +
+                        "    \"name\": \"Agavoideae\"," +
+                        "    \"value\": {" +
+                        "      \"type\": \"a flowering plant\"," +
+                        "      \"order\": \" Asparagales\", " +
+                        "      \"properties\": {" +
+                        "        \"profile\": {" +
+                        "        \"status\": \"paused\"" +
+                        "           }," +
+                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+                        "       }" +
+                        "       }," +
+                        "       \"associationIds\": [" +
+                        "        \"" + aloeMetadataItem.getUuid() + "\"]" +
+                        "   }";
+
+        ObjectMapper mapper = new ObjectMapper();
+        MetadataItem bean = mapper.readValue(metadataQueryAgavoideae, MetadataItem.class);
+
+        MetadataAssociationList associationList= bean.getAssociations();
+        associationList.add(aloeMetadataItem.getUuid());
+        bean.setAssociations(associationList);
+
+        MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(bean);
+        System.out.println(metadataItemSerializer.formatMetadataItemResult().toString());
+    }
+
+
 
 }

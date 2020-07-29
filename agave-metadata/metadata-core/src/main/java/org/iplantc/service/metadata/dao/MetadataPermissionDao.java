@@ -8,10 +8,13 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.mongodb.*;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.DBCollectionUpdateOptions;
 import io.grpc.Metadata;
 import jdk.nashorn.api.tree.TryTree;
 import org.apache.commons.lang.StringUtils;
+import org.bson.Document;
 import org.hibernate.CacheMode;
 import org.hibernate.Criteria;
 import org.hibernate.HibernateException;
@@ -25,6 +28,7 @@ import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 //import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.util.ServiceUtils;
@@ -121,7 +125,7 @@ public class MetadataPermissionDao {
 	 * @return
 	 * @throws MetadataException
 	 */
-	public static List<MetadataPermission> getByUuid_mongo(String uuid, DBCollection collection)
+	public static List<MetadataPermission> getByUuid_mongo(String uuid, MongoCollection collection)
 			throws MetadataException
 	{
 		return getByUuid_mongo(uuid, 0, -1, collection);
@@ -138,7 +142,7 @@ public class MetadataPermissionDao {
 	 * @throws MetadataException
 	 */
 	@SuppressWarnings("unchecked")
-	public static List<MetadataPermission> getByUuid_mongo(String uuid, int offset, int limit, DBCollection collection)
+	public static List<MetadataPermission> getByUuid_mongo(String uuid, int offset, int limit, MongoCollection collection)
 			throws MetadataException
 	{
 
@@ -148,30 +152,23 @@ public class MetadataPermissionDao {
 			throw new MetadataException("Unable to connect to metadata store");
 		try
 		{
-			//match 1 - permission check - already done
+			MongoCursor cursor = null;
 
-			DBCursor cursor = null;
+			Document docFields = new Document()
+					.append("uuid", uuid)
+					.append("permissions", true)
+					.append("_id", false)
+					.append("owner", true);
 
-			BasicDBList fields = new BasicDBList();
-			fields.add(new BasicDBObject("permissions", true));
-			fields.add(new BasicDBObject("_id", false));
-			fields.add(new BasicDBObject("owner", true));
-
-			//match 2 - by uuid - only show permissions and owner
-
-			cursor = collection.find(new BasicDBObject("uuid", uuid), fields)
+			cursor = collection.find(docFields)
 					.skip(offset)
-					.limit(limit);
+					.limit(limit).cursor();
 
 			List<MetadataPermission> pem = new ArrayList<MetadataPermission>();
 
-			for(DBObject result: cursor.toArray()) {
-				PermissionType pemType = (PermissionType) result.get("permissions.permissions");
-				String user = (String) result.get("permissions.username");
-
-				MetadataPermission metaPem = new MetadataPermission(uuid, user, pemType);
-
-				pem.add(metaPem);
+			while (cursor.hasNext()) {
+				MetadataItem result = (MetadataItem) cursor.next();
+				return result.getPermissions();
 			}
 
 			return pem;
@@ -355,33 +352,27 @@ public class MetadataPermissionDao {
 	 * @return
 	 * @throws MetadataException
 	 */
-	public static MetadataPermission getByUsernameAndUuid_mongo (String username, String uuid, DBCollection collection) throws MetadataException
+	public static MetadataPermission getByUsernameAndUuid_mongo (String username, String uuid, MongoCollection collection) throws MetadataException
 	{
 		if (!ServiceUtils.isValid(username))
 			throw new MetadataException("Username cannot be null");
 
 		try
 		{
-			BasicDBObject query;
-			DBCursor cursor = null;
-			DBObject firstResult, formattedResult;
+			MongoCursor cursor = null;
 
-			//match 1 - permissions - already done
+			Document docQuery = new Document("uuid", uuid)
+					.append("permissions", new Document("$elemMatch", new Document("username", username)));
 
-			//match 2 - uuid and username
-			query = new BasicDBObject("uuid", uuid);
-			query.append("permissions.username", username);
-
-			cursor = collection.find(query, new BasicDBObject("_id", false));
+			cursor = collection.find(docQuery).cursor();
 			if (cursor.hasNext())  {
 				//permission found
-				firstResult = cursor.next();
-				return (MetadataPermission)firstResult.get("permissions.permissions");
+				MetadataItem firstResult = (MetadataItem) cursor.next();
+				return firstResult.getPermissions_User(username);
 			}
 			else {
 				return null;
 			}
-
 		}
 		catch (Exception ex)
 		{

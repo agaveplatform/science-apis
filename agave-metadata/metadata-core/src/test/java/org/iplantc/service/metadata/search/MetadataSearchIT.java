@@ -4,21 +4,27 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.DBObject;
+import org.apache.commons.lang.StringUtils;
 import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.metadata.dao.MetadataDao;
+import org.iplantc.service.metadata.dao.MetadataPermissionDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
+import org.json.JSONException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -32,7 +38,6 @@ public class MetadataSearchIT {
 
     public MetadataItem createMetadataItem(String query) throws MetadataException, MetadataStoreException, IOException, MetadataQueryException, PermissionException {
         MetadataSearch search = new MetadataSearch(false, username);
-        search.setOwner(username);
         JsonFactory factory = new ObjectMapper().getFactory();
         JsonNode jsonMetadataNode = factory.createParser(query).readValueAsTree();
         search.parseJsonMetadata(jsonMetadataNode);
@@ -377,7 +382,6 @@ public class MetadataSearchIT {
                         "       }" +
                         "   }";
 
-//        uuid = new AgaveUUID(UUIDType.METADATA).toString();
         MetadataItem metadataItem = createMetadataItem(metadataQueryAgavoideae);
         search.setUuid(metadataItem.getUuid());
 
@@ -391,16 +395,10 @@ public class MetadataSearchIT {
         Assert.assertEquals(result.size(), 0, "The user doesn't have any permissions specified for the uuid");
 
         //adding permissions
-//        search.setMetadataPermission(sharedUser, PermissionType.READ, "");
         search.updatePermissions(sharedUser, "", PermissionType.READ);
         result = search.findPermission_User(sharedUser, metadataItem.getUuid());
         Assert.assertEquals(result.size(), 1, "The user has specified permission for the uuid");
 
     }
-
-//    @Test
-//    public void findAllPermissionsForUserTest(){
-//
-//    }
 
 }

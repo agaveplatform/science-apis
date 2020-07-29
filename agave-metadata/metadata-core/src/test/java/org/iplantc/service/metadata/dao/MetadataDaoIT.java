@@ -29,7 +29,6 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
     private ObjectMapper mapper = new ObjectMapper();
 
-
     @Mock
     private MongoClient mockClient;
 
@@ -101,7 +100,6 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         Assert.assertEquals(firstResult.get(0).getName(),MetadataDaoIT.class.getName());
         Assert.assertEquals(firstResult.get(0).getValue().get("testKey"), testEntity.getValue().get("testKey"));
         Assert.assertEquals(firstResult.get(0).getPermissions().size(), 1);
-
     }
 
     @Test
@@ -167,7 +165,6 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
     @Test
     public void updateTest() throws MetadataException, MetadataStoreException, UnknownHostException {
-
         //add entity without any permissions
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -238,7 +235,5 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         //metadata value should be updated
         List<MetadataItem> updateResult = inst.find(TEST_SHARED_USER, docQuery);
         Assert.assertEquals(updateResult.get(0).getValue(), testEntity.getValue());
-
     }
-
 }

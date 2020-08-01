@@ -25,6 +25,7 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
+import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.common.Settings;
 //import org.iplantc.service.metadata.Settings;
@@ -40,9 +41,9 @@ import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.*;
 
 public class MetadataDao {
-    
+
     private static final Logger log = Logger.getLogger(MetadataDao.class);
-    
+
     private MongoDatabase db = null;
     private MongoClient mongoClient = null;
     private MongoClients mongoClients = null;
@@ -56,7 +57,7 @@ public class MetadataDao {
         if (dao == null) {
             dao = new MetadataDao();
         }
-        
+
         return dao;
     }
 
@@ -65,10 +66,8 @@ public class MetadataDao {
      *
      * @return valid mongo client connection
      */
-    public MongoClient getMongoClient()
-    {
-        if (mongoClient == null )
-        {
+    public MongoClient getMongoClient() {
+        if (mongoClient == null) {
             mongoClient = new MongoClient(
                     new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT),
                     getMongoCredential(),
@@ -104,6 +103,7 @@ public class MetadataDao {
 
     /**
      * Creates a new MongoDB credential for the database collections
+     *
      * @return valid mongo credential for this instance
      */
     private MongoCredential getMongoCredential() {
@@ -114,21 +114,21 @@ public class MetadataDao {
 
     /**
      * Gets the default metadata collection from the default mongodb metatadata db.
+     *
      * @return collection from the db
-     * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
      */
-    public MongoCollection getDefaultCollection() throws UnknownHostException {
+    public MongoCollection getDefaultCollection() {
         return getCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
     }
 
     /**
      * Gets the named collection from the named db.
-     * @param dbName database name
+     *
+     * @param dbName         database name
      * @param collectionName collection name
      * @return collection from the db
-     * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
      */
-    public MongoCollection getCollection(String dbName, String collectionName) throws UnknownHostException {
+    public MongoCollection getCollection(String dbName, String collectionName) {
 
         db = getMongoClient().getDatabase(dbName);
         db = getMongoClients().getDatabase(dbName); //update to 4.0
@@ -140,24 +140,30 @@ public class MetadataDao {
 
     }
 
-    public MongoCollection<MetadataItem> getDefaultMetadataItemCollection() throws UnknownHostException {
+    /**
+     * Gets the default {@link MetadataItem} configured metadata collection from the default mongodb metadata db
+     *
+     * @return collection from the db
+     */
+    public MongoCollection<MetadataItem> getDefaultMetadataItemCollection() {
         return getMetadataItemCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
     }
 
     /**
-     * Get the named collection configured with the MetadataItem class from the named db
-     * @param dbName database name
+     * Get the named collection configured with the {@link MetadataItem} class from the named db
+     *
+     * @param dbName         database name
      * @param collectionName colletion name
      * @return collection from the db
      */
-    public MongoCollection<MetadataItem> getMetadataItemCollection (String dbName, String collectionName){
+    public MongoCollection<MetadataItem> getMetadataItemCollection(String dbName, String collectionName) {
         db = getMongoClients().getDatabase(dbName);
-
         return db.getCollection(collectionName, MetadataItem.class);
     }
 
     /**
      * Stores the provided {@link MetadataItem} in the mongo collection
+     *
      * @param metadataItem the {@link MetadataItem} to be inserted
      * @return the inserted {@link MetadataItem}
      * @throws MetadataStoreException when the insertion failed
@@ -170,11 +176,19 @@ public class MetadataDao {
             metadataItemCollection.insertOne(metadataItem);
 
             return metadataItem;
-        } catch (UnknownHostException e) {
+        } catch (MongoException e) {
             throw new MetadataStoreException("Failed to insert metadata item", e);
         }
     }
 
+
+    /**
+     * Insert the provided {@link MetadataItem} in the mongo collection
+     *
+     * @param metadataItem the {@link MetadataItem} to be inserted
+     * @return the inserted {@link MetadataItem}
+     * @throws MetadataStoreException when the insertion failed
+     */
     public MetadataItem insertMetadataItem(MetadataItem metadataItem) throws MetadataStoreException {
         ObjectMapper mapper = new ObjectMapper();
 
@@ -184,75 +198,72 @@ public class MetadataDao {
             metadataItemCollection.insertOne(metadataItem);
 
             return metadataItem;
-        } catch (UnknownHostException e) {
+        } catch (MongoException e) {
             throw new MetadataStoreException("Failed to insert metadata item", e);
         }
     }
 
 
     /**
-     * Return the metadataItem from the collection
+     * Find the {@link MetadataItem} from the mongo collection based on the {@link Bson} query as the {@code user}
+     * with the default offset, limit, and sort settings
+     *
+     * @param user  making the query
+     * @param query {@link Bson} query to search with
      * @return metadataItem
      */
-    public List<MetadataItem> find (String user, Bson query) throws MetadataStoreException {
+    public List<MetadataItem> find(String user, Bson query) {
         return find(user, query, 0, org.iplantc.service.common.Settings.DEFAULT_PAGE_SIZE, new BasicDBObject());
     }
 
-    public List<MetadataItem> find(String user, Bson query, int offset, int limit, BasicDBObject order) throws MetadataStoreException {
+    /**
+     * Find the {@link MetadataItem} from the mongo collection based on the {@link Bson} query as the {@code user}
+     *
+     * @param user  making the query
+     * @param query {@link Bson} query to search with
+     * @return metadataItem
+     */
+    public List<MetadataItem> find(String user, Bson query, int offset, int limit, BasicDBObject order) {
         MongoCursor cursor;
         List<MetadataItem> resultList = new ArrayList<>();
 
         //POGO
         MongoCollection<MetadataItem> metadataItemMongoCollection;
-        try{
-            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+        metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-//            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
-//
-//            Bson docFilter = elemMatch("permissions", and (eq("username", user),
-//                    nin("permission", Arrays.asList(PermissionType.NONE.toString()))));
-//
-//            Bson permissionFilter = or (eq("owner", user), docFilter);
-
-            if (query == null) {
-                query = new Document();
-            }
-
-            try {
-//                cursor = metadataItemMongoCollection.find(and(query, or(eq("owner", user), docFilter)))
-                cursor = metadataItemMongoCollection.find(query)
-                        .sort(order)
-                        .skip(offset)
-                        .limit(limit).cursor();
-
-//                cursor = metadataItemMongoCollection.find(query).cursor();
-
-                while (cursor.hasNext()) {
-                    resultList.add((MetadataItem) cursor.next());
-                }
-
-            } catch (Exception e) {
-            }
-
-            return resultList;
-
-        } catch (UnknownHostException e) {
-            throw new MetadataStoreException("Failed to find metadata item", e);
+        if (query == null) {
+            query = new Document();
         }
+
+        try {
+            cursor = metadataItemMongoCollection.find(query)
+                    .sort(order)
+                    .skip(offset)
+                    .limit(limit).cursor();
+
+            while (cursor.hasNext()) {
+                resultList.add((MetadataItem) cursor.next());
+            }
+
+        } catch (Exception e) {
+        }
+        return resultList;
     }
 
-    public MetadataItem find_uuid(Bson filter) throws MetadataStoreException {
+
+    /**
+     * Find the {@link MetadataItem} with the provided {@link Bson} filter
+     *
+     * @param filter {@link Bson} filter to search the collection with
+     * @return {@link MetadataItem} matching the {@link Bson} filter
+     */
+    public MetadataItem find_uuid(Bson filter) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
-        try{
-            metadataItemMongoCollection = getDefaultMetadataItemCollection();
-            return metadataItemMongoCollection.find(filter).first();
-
-        } catch (UnknownHostException e) {
-            throw new MetadataStoreException("Failed to find metadata item", e);
-        }
+        metadataItemMongoCollection = getDefaultMetadataItemCollection();
+        return metadataItemMongoCollection.find(filter).first();
     }
 
-    public List<MetadataItem> aggFind(String user, Bson query) {
+    public List<MetadataItem> aggFind(String user, Bson query) throws MetadataStoreException {
         List<MetadataItem> resultList = new ArrayList<>();
         MongoCollection collection;
         MetadataItem returnEntity;
@@ -277,47 +288,50 @@ public class MetadataDao {
             }
 
 
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            throw new MetadataStoreException("Unable to find query ", e);
         }
         return resultList;
     }
 
-        /**
+    /**
      * Removes the permission for the specified user
+     *
      * @param metadataItem to be updated
-     * @param user to be removed
+     * @param user         to be removed
+     * @return {@link MetadataItem} with the permission removed for the {@code user}
      */
-    public MetadataItem deleteUserPermission(MetadataItem metadataItem, String user) throws MetadataStoreException{
+    public MetadataItem deleteUserPermission(MetadataItem metadataItem, String user) throws MetadataStoreException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
         String uuid = metadataItem.getUuid();
-        try{
-            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+        metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-            Document docQuery = new Document("uuid", uuid)
-                    .append("permissions", new Document("$elemMatch", new Document("username", user)));
+        Document docQuery = new Document("uuid", uuid)
+                .append("permissions", new Document("$elemMatch", new Document("username", user)));
 
-            MetadataPermission pemDelete = metadataItem.getPermissions_User(user);
-            metadataItem.updatePermissions_delete(pemDelete);
-            List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
+        MetadataPermission pemDelete = metadataItem.getPermissions_User(user);
+        metadataItem.updatePermissions_delete(pemDelete);
+        List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
 
-            UpdateResult update = metadataItemMongoCollection.updateOne(docQuery, set("permissions", metadataPermissionsList));
+        UpdateResult update = metadataItemMongoCollection.updateOne(docQuery, set("permissions", metadataPermissionsList));
 
-        } catch (Exception e){
-            throw new MetadataStoreException("Failed to delete user's permission", e);
+        if (update.getModifiedCount() == 1) {
+            return metadataItem;
+        } else {
+            throw new MetadataStoreException("Unable to delete user permissions");
         }
-        return metadataItem;
     }
 
     /**
      * Removes all permissions for the metadataItem
+     *
      * @param metadataItem to be updated
      */
-    public void deleteAllPermissions(MetadataItem metadataItem) throws MetadataStoreException{
+    public void deleteAllPermissions(MetadataItem metadataItem) throws MetadataStoreException {
         MongoCollection collection;
         MongoCollection<MetadataItem> metadataItemMongoCollection;
-        try{
+        try {
             collection = getDefaultCollection();
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
@@ -335,28 +349,25 @@ public class MetadataDao {
 
     /**
      * Update the permision for the specified user to the specified permission
+     *
      * @param metadataItem to be updated
-     * @param user to be updated
-     * @param pem PermissionType to be updated
+     * @param user         to be updated
+     * @param pem          PermissionType to be updated
      */
-    public MetadataPermission updatePermission(MetadataItem metadataItem, String user, PermissionType pem) throws MetadataStoreException{
+    public MetadataPermission updatePermission(MetadataItem metadataItem, String user, PermissionType pem) throws MetadataStoreException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
-        long matchCount, modified;
+//        long matchCount, modified;
         UpdateResult update;
         String uuid;
-        MongoCursor cursor;
-        List<MetadataPermission> pemList;
+//        MongoCursor cursor;
+//        List<MetadataPermission> pemList;
 
-        try{
+        try {
             //get collection
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
             uuid = metadataItem.getUuid();
 
             Document docQuery = new Document("uuid", uuid);
-//                    .append("permissions", new Document("$elemMatch", new Document("username", user)));
-
-//            Bson docFilter = and(eq("uuid", uuid), elemMatch("permissions", eq("username", user)));
-
             MetadataPermission pemUpdate = metadataItem.getPermissions_User(user);
 
             if (pemUpdate == null) {
@@ -377,53 +388,69 @@ public class MetadataDao {
         }
     }
 
-    public MetadataItem updateMetadata (MetadataItem metadataItem, String user) throws MetadataException {
+    /**
+     * Update the {@link MetadataItem} as the provided user
+     *
+     * @param metadataItem the {@link MetadataItem} to be updated
+     * @param user         the user performing the update
+     * @return the inserted {@link MetadataItem}
+     * @throws MetadataException when update failed
+     */
+    public MetadataItem updateMetadata(MetadataItem metadataItem, String user) throws MetadataException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
         try {
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
             metadataItemMongoCollection.replaceOne(eq("uuid", metadataItem.getUuid()), metadataItem);
 
-        } catch (UnknownHostException e) {
+        } catch (MongoException e) {
             throw new MetadataException("Failed to add/update metadata item.", e);
         }
 
         return metadataItem;
     }
 
-    public MetadataItem deleteMetadata (MetadataItem metadataItem, String user) throws MetadataStoreException {
+    /**
+     * Delete {@code metadataItem} from the collection as the specified user
+     *
+     * @param metadataItem {@link MetadataItem} to delete
+     * @param user         deleting the item
+     * @return the deleted {@link MetadataItem}
+     * @throws PermissionException  if the user does not have write permissions
+     */
+    public MetadataItem deleteMetadata(MetadataItem metadataItem, String user) throws PermissionException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
-        try {
-            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+        metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
+        if (hasWrite(user, metadataItem.getUuid())) {
             Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
 
             Bson deleteFilter = and(eq("uuid", metadataItem.getUuid()), eq("tenantId", metadataItem.getTenantId()));
             Bson queryFilter = and(deleteFilter, or(eq("owner", user), docPermissions));
 
             DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(queryFilter);
-            if (deleteResult.getDeletedCount() == 0){
+            if (deleteResult.getDeletedCount() == 0) {
                 //delete unsuccessful
                 return null;
             }
-
-        } catch (UnknownHostException e) {
-            throw new MetadataStoreException("No item was deleted", e);
+        } else {
+            throw new PermissionException("User does not have permission to delete this item");
         }
+
         return metadataItem;
 
     }
 
-    public Bson createDocQuery(MetadataItem metadataItem){
+    public Bson createDocQuery(MetadataItem metadataItem) {
         return and(eq("tenantId", metadataItem.getTenantId()), eq("uuid", metadataItem.getUuid()));
     }
 
     /**
      * Remove all documents in the collection
      */
-    public void clearCollection() throws UnknownHostException {
-        if (this.getCollectionSize() > 0){
+    public void clearCollection()   {
+        if (this.getCollectionSize() > 0) {
             MongoCollection<MetadataItem> metadataPermissionMongoCollection;
             metadataPermissionMongoCollection = getDefaultMetadataItemCollection();
             metadataPermissionMongoCollection.deleteMany(new Document());
@@ -431,10 +458,11 @@ public class MetadataDao {
     }
 
     /**
-     * Return number of documents in collection
+     * Get total number of documents in collection
+     *
      * @return number of documents in collection
      */
-    long  getCollectionSize() throws UnknownHostException {
+    long getCollectionSize()   {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
@@ -443,9 +471,10 @@ public class MetadataDao {
 
     /**
      * Return all documents in the collection
+     *
      * @return list of all documents in collection
      */
-    public List<MetadataItem> findAll() throws UnknownHostException {
+    public List<MetadataItem> findAll()   {
         List<MetadataItem> resultList = new ArrayList<>();
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         MongoCursor cursor = null;
@@ -455,68 +484,66 @@ public class MetadataDao {
         cursor = metadataItemMongoCollection.find(new Document()).cursor();
 
         while (cursor.hasNext()) {
-            resultList.add((MetadataItem)cursor.next());
+            resultList.add((MetadataItem) cursor.next());
         }
         return resultList;
     }
 
 
+    /**
+     * Check if {@code user} has read permissions for the {@code uuid}
+     *
+     * @param user to check permissions for
+     * @param uuid valid AgaveUuid string
+     * @return true if user has read permission, false otherwise
+     */
     public boolean hasRead(String user, String uuid) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
+        metadataItemMongoCollection = getDefaultMetadataItemCollection();
+
+        Bson userFilter = elemMatch("permissions", and(eq("username", user), nin("permission", Arrays.asList(PermissionType.NONE.toString()))));
+
+        MetadataItem result;
         try {
-            metadataItemMongoCollection = getDefaultMetadataItemCollection();
-
-            Bson userFilter = elemMatch("permissions", and (eq("username", user), nin("permission", Arrays.asList(PermissionType.NONE.toString()))));
-
-            MetadataItem result;
-            try {
-                //check if uuid exists
-                result = metadataItemMongoCollection.find(eq("uuid", uuid)).first();
+            //check if uuid exists
+            result = metadataItemMongoCollection.find(eq("uuid", uuid)).first();
+            if (result != null) {
+                result = metadataItemMongoCollection.find(and(eq("uuid", uuid), or(eq("owner", user), userFilter))).first();
                 if (result != null) {
-                    result = metadataItemMongoCollection.find(and(eq("uuid", uuid), or(eq("owner", user), userFilter))).first();
-                    if (result != null) {
-                        bolRead = true;
-                    } else {
-                        //check if uuid exists
-                        bolRead = false;
-                    }
-                } else {
-                    bolRead = true;
+                    return true;
                 }
-            } catch (NullPointerException npe) {
-                bolRead = false;
+            } else {
+                return true;
             }
-
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
+        } catch (NullPointerException npe) {
         }
-        return bolRead;
+        return false;
     }
 
+    /**
+     * Check if {@code user} has writer permissions for the {@code uuid}
+     *
+     * @param user to check permissions for
+     * @param uuid valid AgaveUuid string
+     * @return true if user has write permissions, false otherwise
+     */
     public boolean hasWrite(String user, String uuid) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
+        metadataItemMongoCollection = getDefaultMetadataItemCollection();
+
+        Bson userFilter = elemMatch("permissions", and(eq("username", user), in("permission", Arrays.asList(PermissionType.READ_WRITE.toString()))));
+
+        MetadataItem result;
         try {
-            metadataItemMongoCollection = getDefaultMetadataItemCollection();
-
-            Bson userFilter = elemMatch("permissions", and (eq("username", user), in("permission", Arrays.asList(PermissionType.READ_WRITE.toString()))));
-
-            MetadataItem result;
-            try {
-                result = metadataItemMongoCollection.find(and(eq("uuid", uuid), or(eq("owner", user), userFilter))).first();
-                if (result != null) {
-                    bolWrite = true;
-                } else {
-                    bolWrite = false;
-                }
-            } catch (NullPointerException npe) {
-                bolWrite =  false;
+            result = metadataItemMongoCollection.find(and(eq("uuid", uuid), or(eq("owner", user), userFilter))).first();
+            if (result != null) {
+                return true;
             }
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
+        } catch (NullPointerException npe) {
         }
-        return bolWrite;
+        return false;
     }
 
 //    public MetadataItem persist(MetadataItem item) throws MetadataStoreException {
@@ -998,12 +1025,12 @@ public class MetadataDao {
 //            throw new MetadataQueryException("Unable to insert new metadata item", e);
 //        }       
 //    }
-    
+
     /**
-     * Creates a {@link DBObject} representing the appropriate permission check 
-     * for {@code username} to establish they have @{link permission) for a 
+     * Creates a {@link DBObject} representing the appropriate permission check
+     * for {@code username} to establish they have @{link permission) for a
      * {@link MetadataItem}.
-     * 
+     *
      * @param username
      * @param permission
      * @return
@@ -1011,68 +1038,64 @@ public class MetadataDao {
     protected DBObject createAuthCriteria(String username, PermissionType permission) {
         BasicDBList ownerList = new BasicDBList();
         ownerList.addAll(Arrays.asList(Settings.PUBLIC_USER_USERNAME, Settings.WORLD_USER_USERNAME, username));
-        
+
         BasicDBList aclCriteria = new BasicDBList();
         aclCriteria.add(QueryBuilder.start("username").in(ownerList).get());
         if (permission == ALL) {
             aclCriteria.add(QueryBuilder.start("read").is(true).and("write").is(true).get());
-        } 
-        else if (permission.canRead() && permission.canWrite()) {
+        } else if (permission.canRead() && permission.canWrite()) {
             aclCriteria.add(QueryBuilder.start("read").is(true).and("write").is(true).get());
-        } 
-        else if (permission.canRead()) {
+        } else if (permission.canRead()) {
             aclCriteria.add(QueryBuilder.start("read").is(true).get());
-        } 
-        else if (permission.canWrite()) {
+        } else if (permission.canWrite()) {
             aclCriteria.add(QueryBuilder.start("write").is(true).get());
         }
-        
+
         BasicDBList authConditions = new BasicDBList();
         authConditions.add(QueryBuilder.start("owner").in(ownerList).get());
         authConditions.add(QueryBuilder.start("acl").all(aclCriteria).get());
-        
+
         DBObject authCriteria = QueryBuilder.start().all(
                 authConditions).get();
-        
+
         return authCriteria;
     }
-    
+
     /**
-     * Turns the search criteria supplied by the user in the URL query into a 
+     * Turns the search criteria supplied by the user in the URL query into a
      * {@link DBObject} we can pass to the MongoDB driver.
-     * 
+     *
      * @param searchCriteria
      * @return
-     * @throws MetadataQueryException 
+     * @throws MetadataQueryException
      */
     @SuppressWarnings("unchecked")
     protected DBObject parseUserSearchCriteria(Map<SearchTerm, Object> searchCriteria) throws MetadataQueryException {
         DBObject userCriteria = null;
         QueryBuilder queryBuilder = null;
-        
+
         if (searchCriteria == null || searchCriteria.isEmpty()) {
             return new BasicDBObject();
-        } 
-        else {
-            for (SearchTerm searchTerm: searchCriteria.keySet()) {
-                
+        } else {
+            for (SearchTerm searchTerm : searchCriteria.keySet()) {
+
                 // this is a freeform search query. Support regex then move on. if this exists, it is the only
                 // search criteria
                 if (searchCriteria.get(searchTerm) instanceof DBObject) {
-                    
-                    userCriteria = (DBObject)searchCriteria.get(searchTerm);
-                    
+
+                    userCriteria = (DBObject) searchCriteria.get(searchTerm);
+
                     // support regex in the freeform queries
-                    for (String key: userCriteria.keySet()) {
-                        
+                    for (String key : userCriteria.keySet()) {
+
                         // TODO: throw exception on unsafe mongo keywords in freeform search
-                        
+
                         // we're just going one layer deep on the regex support. anything else won't work anyway due to 
                         // the lack of freeform query support in the java driver
                         if (userCriteria.get(key) instanceof String) {
                             if (((String) userCriteria.get(key)).contains("*")) {
                                 try {
-                                    Pattern regexPattern = Pattern.compile((String)userCriteria.get(key), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+                                    Pattern regexPattern = Pattern.compile((String) userCriteria.get(key), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
                                     userCriteria.put(key, regexPattern);
                                 } catch (Exception e) {
                                     throw new MetadataQueryException("Invalid regular expression for " + key + " query", e);
@@ -1088,66 +1111,53 @@ public class MetadataDao {
                     } else {
                         queryBuilder.and(searchTerm.getMappedField());
                     }
-                    
+
                     if (searchTerm.getOperator() == SearchTerm.Operator.EQ) {
                         queryBuilder.is(searchCriteria.get(searchTerm));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.NEQ) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.NEQ) {
                         queryBuilder.notEquals(searchCriteria.get(searchTerm));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.IN) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.IN) {
                         queryBuilder.in(Arrays.asList(searchCriteria.get(searchTerm)));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.NIN) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.NIN) {
                         queryBuilder.notIn(Arrays.asList(searchCriteria.get(searchTerm)));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.GT) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.GT) {
                         queryBuilder.greaterThan(searchCriteria.get(searchTerm));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.GTE) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.GTE) {
                         queryBuilder.greaterThanEquals(searchCriteria.get(searchTerm));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.LT) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.LT) {
                         queryBuilder.lessThan(searchCriteria.get(searchTerm));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.LTE) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.LTE) {
                         queryBuilder.lessThanEquals(searchCriteria.get(searchTerm));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.LIKE) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.LIKE) {
                         try {
-                            Pattern regexPattern = Pattern.compile((String)searchCriteria.get(searchTerm), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+                            Pattern regexPattern = Pattern.compile((String) searchCriteria.get(searchTerm), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
                             queryBuilder.regex(regexPattern);
                         } catch (Exception e) {
                             throw new MetadataQueryException("Invalid regular expression for " + searchTerm.getMappedField() + " query", e);
                         }
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.NLIKE) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.NLIKE) {
                         try {
-                            Pattern regexPattern = Pattern.compile((String)searchCriteria.get(searchTerm), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+                            Pattern regexPattern = Pattern.compile((String) searchCriteria.get(searchTerm), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
                             queryBuilder.not().regex(regexPattern);
                         } catch (Exception e) {
                             throw new MetadataQueryException("Invalid regular expression for " + searchTerm.getMappedField() + " query", e);
                         }
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.ON) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.ON) {
                         queryBuilder.is(searchCriteria.get(searchTerm));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.BEFORE) {
-                        
-                        queryBuilder.lessThan((Date)searchCriteria.get(searchTerm));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.AFTER) {
-                        queryBuilder.greaterThan((Date)searchCriteria.get(searchTerm));
-                    }
-                    else if (searchTerm.getOperator() == SearchTerm.Operator.BETWEEN) {
-                        List<Date> dateRange = (List<Date>)searchCriteria.get(searchTerm);
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.BEFORE) {
+
+                        queryBuilder.lessThan((Date) searchCriteria.get(searchTerm));
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.AFTER) {
+                        queryBuilder.greaterThan((Date) searchCriteria.get(searchTerm));
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.BETWEEN) {
+                        List<Date> dateRange = (List<Date>) searchCriteria.get(searchTerm);
                         queryBuilder.greaterThan(dateRange.get(0))
-                                    .and(searchTerm.getMappedField())
-                                        .lessThan(dateRange.get(1));
+                                .and(searchTerm.getMappedField())
+                                .lessThan(dateRange.get(1));
                     }
                 }
             }
-        
+
             // generate the query if we used the query builder
             if (queryBuilder != null) {
                 userCriteria = queryBuilder.get();
@@ -1155,8 +1165,8 @@ public class MetadataDao {
             // if there wasn't a freeform search query, we need to init
             else if (userCriteria == null) {
                 userCriteria = new BasicDBObject();
-            } 
-            
+            }
+
             return userCriteria;
         }
     }

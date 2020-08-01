@@ -15,6 +15,6 @@ public interface IMetadataDaoIT {
     MetadataItem insert();
     MetadataItem createEntity();
     void insertTest() throws MetadataStoreException, MetadataException, PermissionException, UnknownHostException;
-    void removeTest() throws MetadataStoreException, MetadataException, UnknownHostException;
+    void removeTest() throws MetadataStoreException, MetadataException, UnknownHostException, PermissionException;
     void updateTest() throws MetadataStoreException, MetadataException, UnknownHostException;
 }

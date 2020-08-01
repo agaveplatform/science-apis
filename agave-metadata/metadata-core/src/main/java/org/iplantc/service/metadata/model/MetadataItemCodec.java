@@ -12,6 +12,8 @@ import org.bson.codecs.DecoderContext;
 import org.bson.codecs.DocumentCodec;
 import org.bson.codecs.EncoderContext;
 import org.bson.json.JsonParseException;
+import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.metadata.exceptions.MetadataAssociationException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 
@@ -49,16 +51,27 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         metadataItem.setTenantId(document.getString("tenantId"));
         metadataItem.setSchemaId(document.getString("schemaId"));
         metadataItem.setInternalUsername(document.getString("internalUsername"));
+
+        List<String> associationList = document.getList("associationIds", String.class);
+        for (String associationId : associationList) {
+            try {
+                metadataItem.getAssociations().add(associationId);
+            } catch (MetadataAssociationException e) {
+                e.printStackTrace();
+            } catch (PermissionException e) {
+                e.printStackTrace();
+            }
+        }
+
         metadataItem.setName(document.getString("name"));
 
+        //value
         ObjectMapper mapper = new ObjectMapper();
-
-        Document value = new Document();
-
+        Document value;
         try {
              value = (Document) document.get("value");
         } catch (Exception e) {
-            //catch
+            value = new Document();
         }
         ObjectNode json = mapper.createObjectNode();
 
@@ -74,17 +87,14 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
                 json.put(key, String.valueOf(value.get(key)));
             }
         }
-
         metadataItem.setValue(json);
 
+        //permissions
         metadataItem.setPermissions(new ArrayList<>());
-
         List<MetadataPermission> permissionList = new ArrayList<>();
         List<Document> permList= document.getList("permissions", Document.class);
-
         for (Document doc : permList) {
             MetadataPermission newPem = new MetadataPermission();
-
             try {
                 newPem.setUsername((String)doc.get("username"));
                 newPem.setUuid(uuid);
@@ -109,7 +119,12 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         writer.writeName("tenantId");
         writer.writeString(value.getTenantId());
         writer.writeName("associationIds");
-        writer.writeString(value.getAssociations().toString());
+        writer.writeStartArray();
+        for (String key : value.getAssociations().getAssociatedIds().keySet()){
+            writer.writeString(key);
+        }
+//        writer.writeString(value.getAssociations().toString());
+        writer.writeEndArray();
         writer.writeName("name");
         writer.writeString(value.getName());
         writer.writeName("value");

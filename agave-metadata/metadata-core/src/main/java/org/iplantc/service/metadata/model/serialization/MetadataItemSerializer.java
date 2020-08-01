@@ -10,6 +10,7 @@ import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.model.AssociatedReference;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
@@ -18,6 +19,7 @@ import org.json.JSONStringer;
 import org.json.JSONWriter;
 
 import java.text.SimpleDateFormat;
+import java.util.Map;
 import java.util.TimeZone;
 
 /**
@@ -37,7 +39,7 @@ public class MetadataItemSerializer {
      * Format MetadataItem to BasicDBObject
      * @return BasicDBObject equivalent of the MetadataItem
      */
-    public BasicDBObject formatMetadataItem(){
+    public BasicDBObject formatMetadataItem() {
         BasicDBObject result;
 
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:MM:SSZ-05:00");
@@ -46,7 +48,7 @@ public class MetadataItemSerializer {
         result = new BasicDBObject("uuid", metadataItem.getUuid())
                 .append("schemaId", metadataItem.getSchemaId())
                 .append("internalUsername", metadataItem.getInternalUsername())
-                .append("associationIds", String.valueOf(metadataItem.getAssociations()))
+                .append("associationIds", metadataItem.getAssociations().getAssociatedIds().keySet().toString())
                 .append("lastUpdated", formatter.format(metadataItem.getLastUpdated()))
                 .append("name", metadataItem.getName())
                 .append("value", BasicDBObject.parse(String.valueOf(metadataItem.getValue())))
@@ -63,23 +65,24 @@ public class MetadataItemSerializer {
     public DBObject formatMetadataItemResult() throws UUIDException {
         BasicDBObject metadataObject = formatMetadataItem();
         BasicDBObject hal = new BasicDBObject();
+        String resourceURL = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE);
         hal.put("self",
                 new BasicDBObject("href",
-                        TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + "data/" +
+                        resourceURL + "data/" +
                                 metadataItem.getUuid()));
         hal.put("permissions",
                 new BasicDBObject("href",
-                        TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + "data/" +
+                        resourceURL + "data/" +
                                 metadataItem.getUuid() + "/pems"));
         hal.put("owner",
                 new BasicDBObject("href",
-                        TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + metadataItem.getOwner()));
+                        resourceURL+ metadataItem.getOwner()));
 
         if (metadataItem.getAssociations() != null) {
             BasicDBList halAssociationIds = new BasicDBList();
             MetadataAssociationList associationList = metadataItem.getAssociations();
 
-            halAssociationIds = getResolvedUrlsForAssociationIds(associationList);
+            halAssociationIds = formatAssociationIds(associationList);
             hal.put("associationIds", halAssociationIds);
         }
 
@@ -105,19 +108,34 @@ public class MetadataItemSerializer {
             try {
                 String resourceUrl = agaveUUID.getObjectReference();
                 BasicDBObject assocResource = new BasicDBObject();
-                assocResource.put("rel", (String) associatedId);
+                assocResource.put("rel", associatedId);
                 assocResource.put("href", TenancyHelper.resolveURLToCurrentTenant(resourceUrl));
                 assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
                 halAssociationIds.add(assocResource);
             } catch (UUIDException e) {
                 BasicDBObject assocResource = new BasicDBObject();
-                assocResource.put("rel", (String) associatedId);
+                assocResource.put("rel", associatedId);
                 assocResource.put("href", null);
                 if (agaveUUID != null) {
                     assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
                 }
                 halAssociationIds.add(assocResource);
             }
+        }
+        return halAssociationIds;
+    }
+
+    public BasicDBList formatAssociationIds(MetadataAssociationList associationList) throws UUIDException {
+        BasicDBList halAssociationIds = new BasicDBList();
+
+        for (Map.Entry<String, AssociatedReference> entry : associationList.getAssociatedIds().entrySet()) {
+            AgaveUUID agaveUUID = new AgaveUUID(entry.getKey());
+            BasicDBObject assocResource = new BasicDBObject();
+
+            assocResource.put("rel", entry.getKey());
+            assocResource.put("href", entry.getValue().getUrl());
+            assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
+            halAssociationIds.add(assocResource);
         }
         return halAssociationIds;
     }
@@ -181,7 +199,7 @@ public class MetadataItemSerializer {
 
 
     public String toJson() throws JSONException, UUIDException {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:MM:SSZ-05:00");
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:SSZ-05:00");
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
 
         JSONWriter writer = new JSONStringer();
@@ -205,6 +223,5 @@ public class MetadataItemSerializer {
         writer.endObject();
         return writer.toString();
     }
-
 
 }

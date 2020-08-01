@@ -4,29 +4,44 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.DBObject;
+import com.mongodb.TaggableReadPreference;
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.util.EntityUtils;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.TenantException;
 import org.iplantc.service.common.exceptions.UUIDException;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.metadata.dao.MetadataDao;
-import org.iplantc.service.metadata.dao.MetadataPermissionDao;
 import org.iplantc.service.metadata.exceptions.MetadataAssociationException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
-import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.json.JSONException;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,21 +53,110 @@ public class MetadataSearchIT {
     String uuid;
     String username = "testuser";
     String sharedUser = "testSharedUser";
-    String metadataQuery = "{\"value\": {\"title\": \"Example Metadata\", \"properties\": {\"species\": \"arabidopsis\", \"description\": \"A model organism...\"}}, \"name\": \"test metadata\"}\"";
+    List<String> queryList = new ArrayList<>();
+    AgaveUUID jobUuid = new AgaveUUID(UUIDType.JOB);
+    AgaveUUID schemaUuid = new AgaveUUID(UUIDType.SCHEMA);
 
-    public MetadataItem createMetadataItem(String query) throws MetadataException, MetadataStoreException, IOException, MetadataQueryException, PermissionException {
+    public List<String> setQueryList(List<String> stringList){
+        if (stringList.isEmpty()) {
+            this.queryList.add("  {" +
+                    "    \"name\": \"mustard plant\"," +
+                    "    \"value\": {" +
+                    "      \"type\": \"a plant\"," +
+                    "        \"profile\": {" +
+                    "        \"status\": \"active\"" +
+                    "           }," +
+                    "        \"description\": \"The seed of the mustard plant is used as a spice...\"" +
+                    "       }," +
+                    "       \"associationIds\": [\"" + jobUuid.toString() + "\"]" +
+                    "   }");
+
+            this.queryList.add("  {" +
+                    "    \"name\": \"cactus (cactaeceae)\"," +
+                    "    \"value\": {" +
+                    "      \"type\": \"a plant\"," +
+                    "      \"order\": \"Caryophyllales\", " +
+                    "        \"profile\": {" +
+                    "        \"status\": \"inactive\"" +
+                    "           }," +
+                    "        \"description\": \"It could take a century for a cactus to produce its first arm. /n" +
+                    "                           A type of succulent and monocots. .\"" +
+                    "       }" +
+                    "   }");
+
+            this.queryList.add(
+                    "  {" +
+                            "    \"name\": \"Agavoideae\"," +
+                            "    \"value\": {" +
+                            "      \"type\": \"a flowering plant\"," +
+                            "      \"order\": \" Asparagales\", " +
+                            "        \"profile\": {" +
+                            "        \"status\": \"paused\"" +
+                            "           }," +
+                            "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+                            "       }" +
+                            "   }");
+            this.queryList.add("  {" +
+                    "    \"name\": \"wisteria\"," +
+                    "    \"value\": {" +
+                    "      \"type\": \"a flowering plant\"," +
+                    "      \"order\": \" Fabales\", " +
+                    "        \"profile\": {" +
+                    "        \"status\": \"active\"" +
+                    "           }," +
+                    "        \"description\": \"native to China, Korea, Japan, and the Eastern United States.\"" +
+                    "       }," +
+                    "       \"associationIds\": [\"" + jobUuid.toString() + "\", " +
+                    "       \"" + schemaUuid.toString() + "\"]" +
+                    "   }");
+        } else {
+            this.queryList.addAll(stringList);
+        }
+        return this.queryList;
+    }
+
+    public MetadataItem createSingleMetadataItem(String query) throws MetadataException, MetadataStoreException, IOException, MetadataQueryException, PermissionException, UUIDException {
+        if (StringUtils.isEmpty(query)) {
+            query = "{\"value\": {\"title\": \"Example Metadata\", \"properties\": {\"species\": \"arabidopsis\", " +
+                    "\"description\": \"A model organism...\"}}, \"name\": \"test metadata\"}\"";
+        }
         MetadataSearch search = new MetadataSearch(false, username);
+        MetadataSearch spySearch = Mockito.spy(search);
+
+        Mockito.doReturn(createResponseString(jobUuid)).when(spySearch).getValidationResponse(jobUuid.toString());
+        Mockito.doReturn(createResponseString(schemaUuid)).when(spySearch).getValidationResponse(schemaUuid.toString());
+
         JsonFactory factory = new ObjectMapper().getFactory();
         JsonNode jsonMetadataNode = factory.createParser(query).readValueAsTree();
-        search.parseJsonMetadata(jsonMetadataNode);
-        Document doc = new Document();
-        doc.parse(metadataQuery);
-        search.parseDocument(doc);
-        search.setOwner(username);
+        spySearch.parseJsonMetadata(jsonMetadataNode);
+//        Document doc = new Document();
+//        doc.parse(query);
+//        search.parseDocument(doc);
+        spySearch.setOwner(username);
         uuid = new AgaveUUID(UUIDType.METADATA).toString();
-        search.setUuid(uuid);
-        search.updateMetadataItem();
-        return search.getMetadataItem();
+        spySearch.setUuid(uuid);
+        spySearch.updateMetadataItem();
+        return spySearch.getMetadataItem();
+    }
+
+    public List<MetadataItem> createMultipleMetadataItems(List<String> queryList) throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, UUIDException {
+        List<MetadataItem> resultList = new ArrayList<>();
+        for (String query : queryList){
+            resultList.add(createSingleMetadataItem(query));
+        }
+        return resultList;
+    }
+
+    public String createResponseString(AgaveUUID uuid) throws UUIDException {
+        return  "  {" +
+                "    \"uuid\": \""+ uuid.toString() +"\"," +
+                "    \"type\": \""+ uuid.getResourceType().toString() + "\"," +
+                "    \"_links\": {" +
+                "      \"self\": {" +
+                "        \"href\": \""+ TenancyHelper.resolveURLToCurrentTenant(uuid.getObjectReference()) + "\"" +
+                "      }" +
+                "    }" +
+                "  }";
     }
 
     @Test
@@ -60,15 +164,19 @@ public class MetadataSearchIT {
         String userQuery = "{\"name\": \"some metadata\"}";
         JsonFactory factory = new ObjectMapper().getFactory();
 
-        MetadataSearch search = new MetadataSearch(false, username);
-        search.clearCollection();
+        MetadataSearch search = new MetadataSearch(true, this.username);
+        MetadataSearch spySearch = Mockito.spy(search);
+        spySearch.clearCollection();
 
         //add metadata for associatedID
-        MetadataItem associatedItem = createMetadataItem(metadataQuery);
+        MetadataItem associatedItem = createSingleMetadataItem("");
+        AgaveUUID associatedUuid = new AgaveUUID(associatedItem.getUuid());
+
+        Mockito.doReturn(createResponseString(associatedUuid)).when(spySearch).getValidationResponse(associatedItem.getUuid());
 
         //for create/updating
         uuid = new AgaveUUID(UUIDType.METADATA).toString();
-        search.setUuid(uuid);
+        spySearch.setUuid(uuid);
         String strJson =
                 "  {" +
                 "    \"uuid\": \""+uuid+"\"," +
@@ -90,24 +198,23 @@ public class MetadataSearchIT {
         JsonNode jsonMetadataNode = factory.createParser(strJson).readValueAsTree();
 
         //setup metadata item to be inserted
-        search.parseJsonMetadata(jsonMetadataNode);
+        spySearch.parseJsonMetadata(jsonMetadataNode);
 
-        if (search.find(userQuery).size() == 0) {
-            search.setOwner(username);
+        if (spySearch.find(userQuery).size() == 0) {
+            spySearch.setOwner(username);
         }
 
-        //insert metdata item
-        search.updateMetadataItem();
-        Assert.assertEquals(search.findAll().size(), 2);
+        //insert metadata item
+        spySearch.updateMetadataItem();
+        Assert.assertEquals(spySearch.findAll().size(), 2);
 
-        MetadataItemSerializer serializer = new MetadataItemSerializer(search.getMetadataItem());
+        List<MetadataItem> findResult = spySearch.find(userQuery);
+        Assert.assertEquals(findResult.size(), 1, "Should find 1 result with the inserted metadata item");
 
-        DBObject result = serializer.formatMetadataItemResult();
-        System.out.println(result);
     }
 
     @Test
-    public void updateExistingItem() throws MetadataException, MetadataQueryException, MetadataStoreException, IOException, PermissionException {
+    public void updateExistingItem() throws MetadataException, MetadataQueryException, MetadataStoreException, IOException, PermissionException, UUIDException {
         String strUpdate =
                 "  {" +
                         "    \"name\": \"New Metadata\"," +
@@ -128,7 +235,7 @@ public class MetadataSearchIT {
         search.clearCollection();
 
         //insert item
-        MetadataItem metadataItem = createMetadataItem(metadataQuery);
+        MetadataItem metadataItem = createSingleMetadataItem("");
         Assert.assertEquals(search.findAll().size(),1, "Collection size should be 1 after inserting the metadata item.");
 
         String queryBeforeUpdate = "{\"name\": \"test metadata\"}";
@@ -156,7 +263,7 @@ public class MetadataSearchIT {
         search.setUsername(username);
         search.updatePermissions(sharedUser, "", PermissionType.READ);
         List<MetadataItem> resultAll = search.findAll();
-        Assert.assertEquals(search.findAll().size(), 1, "Updating metadata item should not add a new item.");
+        Assert.assertEquals(resultAll.size(), 1, "Updating metadata item should not add a new item.");
 
         //user should now be able to search
         search.setUsername(sharedUser);
@@ -184,73 +291,13 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void searchTest() throws IOException, MetadataException, MetadataQueryException, MetadataStoreException, PermissionException {
+    public void searchTest() throws IOException, MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, UUIDException {
         MetadataSearch search = new MetadataSearch(true, username);
         search.clearCollection();
 
-        String metadataQueryMustard =
-                "  {" +
-                        "    \"name\": \"mustard plant\"," +
-                        "    \"value\": {" +
-                        "      \"type\": \"a plant\"," +
-                        "        \"profile\": {" +
-                        "        \"status\": \"active\"" +
-                        "           }," +
-                        "        \"description\": \"The seed of the mustard plant is used as a spice...\"" +
-                        "       }" +
-                        "   }";
-
-        String metadataQueryCactus =
-                "  {" +
-                        "    \"name\": \"cactus (cactaeceae)\"," +
-                        "    \"value\": {" +
-                        "      \"type\": \"a plant\"," +
-                        "      \"order\": \"Caryophyllales\", " +
-                        "        \"profile\": {" +
-                        "        \"status\": \"inactive\"" +
-                        "           }," +
-                        "        \"description\": \"It could take a century for a cactus to produce its first arm. /n" +
-                        "                           A type of succulent and monocots. .\"" +
-                        "       }" +
-                        "   }";
-
-        String metadataQueryAgavoideae =
-                "  {" +
-                        "    \"name\": \"Agavoideae\"," +
-                        "    \"value\": {" +
-                        "      \"type\": \"a flowering plant\"," +
-                        "      \"order\": \" Asparagales\", " +
-                        "        \"profile\": {" +
-                        "        \"status\": \"paused\"" +
-                        "           }," +
-                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
-                        "       }" +
-                        "   }";
-
-        String metadataQueryWisteria =
-                "  {" +
-                        "    \"name\": \"wisteria\"," +
-                        "    \"value\": {" +
-                        "      \"type\": \"a flowering plant\"," +
-                        "      \"order\": \" Fabales\", " +
-                        "        \"profile\": {" +
-                        "        \"status\": \"active\"" +
-                        "           }," +
-                        "        \"description\": \"native to China, Korea, Japan, and the Eastern United States.\"" +
-                        "       }" +
-                        "   }";
-
-        List<String> queryList = Arrays.asList(metadataQueryMustard, metadataQueryCactus, metadataQueryAgavoideae, metadataQueryWisteria);
-
-        for (String query : queryList) {
-            try {
-                uuid = new AgaveUUID(UUIDType.METADATA).toString();
-                createMetadataItem(query);
-            } catch (Exception e ) {
-                System.out.println("Exception reached: " + e);
-            }
-        }
-
+        if (this.queryList.isEmpty())
+            setQueryList(new ArrayList<String>());
+        createMultipleMetadataItems(this.queryList);
 
         //verify that all items are added
         List<MetadataItem> resultAll = search.findAll();
@@ -302,63 +349,33 @@ public class MetadataSearchIT {
         Assert.assertEquals(resultList.size(), 2, "There should be 2 metadata items found: cactus and Agavoideae");
     }
 
-//    @Test
-//    public void schemaTest(){
-//
-//    }
-
     @Test
-    public void findAllMetadataForUserTest() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException {
-        MetadataSearch implicitSearch = new MetadataSearch(true, username);
-        MetadataSearch explicitSearch = new MetadataSearch(false, username);
+    public void findAllMetadataForUserTest() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, UUIDException {
+        MetadataSearch implicitSearch = new MetadataSearch(true, this.username);
+        MetadataSearch explicitSearch = new MetadataSearch(false, this.username);
+
+        MetadataSearch spyImplicitSearch = Mockito.spy(implicitSearch);
+        MetadataSearch spyExplicitSearch = Mockito.spy(explicitSearch);
+
+        Mockito.doReturn(createResponseString(jobUuid)).when(spyImplicitSearch).getValidationResponse(jobUuid.toString());
+        Mockito.doReturn(createResponseString(schemaUuid)).when(spyImplicitSearch).getValidationResponse(schemaUuid.toString());
+
         implicitSearch.clearCollection();
 
-        String metadataQueryAgavoideae =
-                "  {" +
-                        "    \"name\": \"Agavoideae\"," +
-                        "    \"value\": {" +
-                        "      \"type\": \"a flowering plant\"," +
-                        "      \"order\": \" Asparagales\", " +
-                        "      \"properties\": {" +
-                        "        \"profile\": {" +
-                        "        \"status\": \"paused\"" +
-                        "           }," +
-                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
-                        "       }" +
-                        "       }" +
-                        "   }";
+        if (this.queryList.isEmpty())
+            setQueryList(new ArrayList<String>());
 
-        String metadataQueryWisteria =
-                "  {" +
-                        "    \"name\": \"wisteria\"," +
-                        "    \"value\": {" +
-                        "      \"type\": \"a flowering plant\"," +
-                        "      \"order\": \" Fabales\", " +
-                        "      \"properties\": {" +
-                        "        \"profile\": {" +
-                        "        \"status\": \"active\"" +
-                        "           }," +
-                        "        \"description\": \"native to China, Korea, Japan, and the Eastern United States.\"" +
-                        "       }" +
-                        "       }" +
-                        "   }";
-
-        //insert items;
-        List<String> queryList = Arrays.asList(metadataQueryAgavoideae, metadataQueryWisteria);
-        for (String query : queryList) {
-            uuid = new AgaveUUID(UUIDType.METADATA).toString();
-            createMetadataItem(query);
-        }
+        createMultipleMetadataItems(this.queryList);
 
         //verify items were added
         List<MetadataItem> resultAll = implicitSearch.findAll();
-        Assert.assertEquals(resultAll.size(), 2);
+        Assert.assertEquals(resultAll.size(), 4);
 
         String userQuery = "";
         List<MetadataItem> searchResult;
 
         searchResult = implicitSearch.find(userQuery);
-        Assert.assertEquals(searchResult.size(), 2, "Implicit Search should find 2 metadata items ");
+        Assert.assertEquals(searchResult.size(), 4, "Implicit Search should find 2 metadata items ");
 
         //only ones the user has been given explicit permission for
         searchResult = explicitSearch.find(userQuery);
@@ -367,8 +384,8 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findPermissionForUuidTest() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException {
-        MetadataSearch search = new MetadataSearch(false, username);
+    public void findPermissionForUuidTest() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, UUIDException {
+        MetadataSearch search = new MetadataSearch(false, this.username);
         search.clearCollection();
 
         String metadataQueryAgavoideae =
@@ -386,7 +403,7 @@ public class MetadataSearchIT {
                         "       }" +
                         "   }";
 
-        MetadataItem metadataItem = createMetadataItem(metadataQueryAgavoideae);
+        MetadataItem metadataItem = createSingleMetadataItem(metadataQueryAgavoideae);
         search.setUuid(metadataItem.getUuid());
 
         List<MetadataItem> resultAll = search.findAll();
@@ -407,50 +424,38 @@ public class MetadataSearchIT {
 
 
     @Test
-    public void validateUuid() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, URISyntaxException, TenantException, TenantException, URISyntaxException {
-        MetadataSearch search = new MetadataSearch(false, this.username);
+    public void validateUuid() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, UUIDException {
+        MetadataSearch search = new MetadataSearch(true, this.username);
+        MetadataSearch spySearch = Mockito.spy(search);
 
-        String metadataQueryAgavoideae =
-                "  {" +
-                        "    \"name\": \"Agavoideae\"," +
-                        "    \"value\": {" +
-                        "      \"type\": \"a flowering plant\"," +
-                        "      \"order\": \" Asparagales\", " +
-                        "      \"properties\": {" +
-                        "        \"profile\": {" +
-                        "        \"status\": \"paused\"" +
-                        "           }," +
-                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
-                        "       }" +
-                        "       }" +
-                        "   }";
+        Mockito.doReturn(createResponseString(jobUuid)).when(spySearch).getValidationResponse(jobUuid.toString());
+        Mockito.doReturn(createResponseString(schemaUuid)).when(spySearch).getValidationResponse(schemaUuid.toString());
 
-        String metadataQueryWisteria =
-                "  {" +
-                        "    \"name\": \"wisteria\"," +
-                        "    \"value\": {" +
-                        "      \"type\": \"a flowering plant\"," +
-                        "      \"order\": \" Fabales\", " +
-                        "      \"properties\": {" +
-                        "        \"profile\": {" +
-                        "        \"status\": \"active\"" +
-                        "           }," +
-                        "        \"description\": \"native to China, Korea, Japan, and the Eastern United States.\"" +
-                        "       }" +
-                        "       }" +
-                        "   }";
+        String invalidUuid = new AgaveUUID(UUIDType.FILE).toString();
+        Mockito.doReturn(null).when(spySearch).getValidationResponse(invalidUuid);
 
-        //insert items;
-        List<String> queryList = Arrays.asList(metadataQueryAgavoideae, metadataQueryWisteria);
-        for (String query : queryList) {
-            MetadataItem metadataItem = createMetadataItem(query);
-//            Assert.assertTrue(search.validateUuid(metadataItem.getUuid()));
+        spySearch.clearCollection();
+        setQueryList(new ArrayList<>());
+
+        for (String query : this.queryList) {
+            uuid = new AgaveUUID(UUIDType.METADATA).toString();
+            JsonFactory factory = new ObjectMapper().getFactory();
+            JsonNode jsonMetadataNode = factory.createParser(query).readValueAsTree();
+            spySearch.parseJsonMetadata(jsonMetadataNode);
+            spySearch.setOwner(username);
+            spySearch.setUuid(uuid);
+            spySearch.updateMetadataItem();
         }
-//        Assert.assertFalse(search.validateUuid("1111"));
+
+        List<MetadataItem> metadataItemList = spySearch.find("{\"name\": \"mustard plant\"}");
+        Assert.assertTrue(metadataItemList.get(0).getAssociations().getAssociatedIds().containsKey(jobUuid.toString()));
+
+        metadataItemList = spySearch.find("{\"name\": \"wisteria\"}");
+        Assert.assertTrue(metadataItemList.get(0).getAssociations().getAssociatedIds().containsKey(schemaUuid.toString()));
     }
 
     @Test
-    public void StringToMetadataItemTest() throws IOException, UUIDException, PermissionException, MetadataAssociationException, MetadataException, MetadataStoreException, MetadataQueryException, JSONException {
+    public void StringToMetadataItemTest() throws IOException, UUIDException, PermissionException, MetadataAssociationException, MetadataException, MetadataStoreException, MetadataQueryException {
         String metadataQueryAloe =
                 "  {" +
                         "    \"name\": \"Aloe\"," +
@@ -459,7 +464,9 @@ public class MetadataSearchIT {
                         "}" +
                         "   }";
 
-        MetadataItem aloeMetadataItem = createMetadataItem(metadataQueryAloe);
+
+        MetadataSearch search  = new MetadataSearch(false, this.username);
+        MetadataItem aloeMetadataItem = createSingleMetadataItem(metadataQueryAloe);
         String metadataQueryAgavoideae =
                 "  {" +
                         "    \"name\": \"Agavoideae\"," +
@@ -484,8 +491,12 @@ public class MetadataSearchIT {
         associationList.add(aloeMetadataItem.getUuid());
         bean.setAssociations(associationList);
 
-        MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(bean);
-        System.out.println(metadataItemSerializer.formatMetadataItemResult().toString());
+        try {
+            MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(bean);
+            System.out.println(metadataItemSerializer.formatMetadataItemResult().toString());
+        } catch (Exception e){
+            Assert.fail("Serializing MetadataItem to Json String should not throw exception");
+        }
     }
 
 

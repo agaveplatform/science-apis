@@ -59,7 +59,17 @@ public class MetadataAssociationList {
             this.associatedIds.put(uuid, ref);
         }
     }
-    
+
+    /**
+     * Adds a single {@code ref} to this {@link MetadataAssociationList}.
+     * @param ref a valid {@link AssociatedReference}
+     */
+    public void add(AssociatedReference ref){
+        if (ref != null || !associatedIds.containsKey(ref.getUuid())) {
+            this.associatedIds.put(ref.getUuid().toString(), ref);
+        }
+    }
+
     /**
      * Adds all the {@code uuids} to this {@link MetadataAssociationList}.
      * @param uuids list of valid serialized {@link AgaveUUID} strings.
@@ -154,7 +164,7 @@ public class MetadataAssociationList {
             }
         }
     }
-    
+
     /**
      * Returns map with url as keys and resolved referces as values
      * @return

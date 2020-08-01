@@ -39,6 +39,7 @@ import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataPermissionDao;
 import org.iplantc.service.metadata.events.MetadataEventProcessor;
 import org.iplantc.service.metadata.exceptions.MetadataException;
+import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.managers.MetadataRequestNotificationProcessor;
 import org.iplantc.service.metadata.managers.MetadataRequestPermissionProcessor;
@@ -202,6 +203,8 @@ public class MetadataCollection extends AgaveResource {
             List<MetadataItem> userResults;
 
             try {
+
+
                 List<String> sortableFields = Arrays.asList("uuid",
                         "tenantId",
                         "schemaId",
@@ -228,7 +231,7 @@ public class MetadataCollection extends AgaveResource {
 
                 userResults= search.find(userQuery);
 
-            } catch (MetadataException e) {
+            } catch (MetadataQueryException e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Malformed JSON Query, " + e);
             }
 
@@ -301,7 +304,11 @@ public class MetadataCollection extends AgaveResource {
                     username,
                     metadataItemSerializer.formatMetadataItemResult().toString());
 
-            search.processNotifications();
+            // process any embedded notifications
+            MetadataRequestNotificationProcessor notificationProcessor = new MetadataRequestNotificationProcessor(
+                    username,
+                    uuid);
+            notificationProcessor.process(search.getNotifications());
 
             getResponse().setStatus(Status.SUCCESS_CREATED);
             getResponse().setEntity(new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString()));

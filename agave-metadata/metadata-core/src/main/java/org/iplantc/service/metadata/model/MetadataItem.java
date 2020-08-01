@@ -346,14 +346,7 @@ public class MetadataItem {
             this.permissions.set(indx,pem);
         } else {
             this.permissions.add(pem);
-
         }
-//        Integer indx = this.permissions.indexOf(pem);
-//        if (indx > -1){
-//            this.permissions.set(indx,pem);
-//        } else {
-//            this.permissions.add(pem);
-//        }
     }
 
     public synchronized  void updatePermissions_delete(MetadataPermission pem){

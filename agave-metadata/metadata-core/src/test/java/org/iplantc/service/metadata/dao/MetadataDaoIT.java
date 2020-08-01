@@ -6,6 +6,7 @@ import com.mongodb.client.*;
 import com.mongodb.client.MongoClient;
 import org.bson.conversions.Bson;
 import org.bson.Document;
+import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.managers.MetadataPermissionManagerIT;
@@ -103,7 +104,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Test
-    public void removeTest() throws MetadataException, MetadataStoreException, UnknownHostException {
+    public void removeTest() throws MetadataException, MetadataStoreException, UnknownHostException, PermissionException {
         //add entity
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());

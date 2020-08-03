@@ -83,6 +83,7 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 				}
 			});
 		} catch (Throwable t) {
+			log.error("Error with TransferTaskWatchListener processEvent  error ={} }",  t.toString());
 			handler.handle(Future.failedFuture(t));
 		}
 	}

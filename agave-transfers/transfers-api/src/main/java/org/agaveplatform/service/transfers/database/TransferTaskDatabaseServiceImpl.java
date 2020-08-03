@@ -189,6 +189,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     dbClient.query(sqlQueries.get(SqlQuery.ALL_ACTIVE_ROOT_TRANSFERTASK_IDS), fetch -> {
       if (fetch.succeeded()) {
         JsonArray response = new JsonArray(fetch.result().getRows());
+        LOGGER.info("getActiveRootTaskIds worked");
         resultHandler.handle(Future.succeededFuture(response));
       } else {
         LOGGER.error("Failed to query active root transfer tasks.", fetch.cause());

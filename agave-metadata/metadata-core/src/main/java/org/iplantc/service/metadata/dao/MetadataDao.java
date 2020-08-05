@@ -4,7 +4,8 @@ import static org.bson.codecs.configuration.CodecRegistries.*;
 import static org.iplantc.service.metadata.model.enumerations.PermissionType.ALL;
 
 import java.net.UnknownHostException;
-import java.sql.Date;
+//import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -14,6 +15,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.*;
 import com.mongodb.MongoClient;
 import com.mongodb.client.*;
+import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.mongodb.client.MongoClients;
@@ -25,6 +28,8 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
+import org.hibernate.sql.Update;
+import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.common.Settings;
@@ -52,6 +57,26 @@ public class MetadataDao {
 
     private boolean bolRead;
     private boolean bolWrite;
+
+    private MetadataItem metadataItem=null;
+    private List<String> accessibleOwners=null;
+
+
+    public MetadataItem getMetadataItem() {
+        return metadataItem;
+    }
+
+    public void setMetadataItem(MetadataItem metadataItem) {
+        this.metadataItem = metadataItem;
+    }
+
+    public List<String> getAccessibleOwners() {
+        return accessibleOwners;
+    }
+
+    public void setAccessibleOwners(List<String> accessibleOwners) {
+        this.accessibleOwners = accessibleOwners;
+    }
 
     public static MetadataDao getInstance() {
         if (dao == null) {
@@ -110,7 +135,6 @@ public class MetadataDao {
         return MongoCredential.createScramSha1Credential(
                 Settings.METADATA_DB_USER, Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_PWD.toCharArray());
     }
-
 
     /**
      * Gets the default metadata collection from the default mongodb metatadata db.
@@ -181,7 +205,6 @@ public class MetadataDao {
         }
     }
 
-
     /**
      * Insert the provided {@link MetadataItem} in the mongo collection
      *
@@ -203,7 +226,6 @@ public class MetadataDao {
         }
     }
 
-
     /**
      * Find the {@link MetadataItem} from the mongo collection based on the {@link Bson} query as the {@code user}
      * with the default offset, limit, and sort settings
@@ -217,7 +239,7 @@ public class MetadataDao {
     }
 
     /**
-     * Find the {@link MetadataItem} from the mongo collection based on the {@link Bson} query as the {@code user}
+     * Find all {@link MetadataItem} from the mongo collection based on the {@link Bson} query as the {@code user}
      *
      * @param user  making the query
      * @param query {@link Bson} query to search with
@@ -235,14 +257,21 @@ public class MetadataDao {
             query = new Document();
         }
 
+        if (accessibleOwners==null){
+            accessibleOwners = new ArrayList<String>();
+        }
+
+        Bson withPermissionQuery = and(query, getHasReadQuery(user, accessibleOwners));
+
         try {
-            cursor = metadataItemMongoCollection.find(query)
+            cursor = metadataItemMongoCollection.find(withPermissionQuery)
                     .sort(order)
                     .skip(offset)
                     .limit(limit).cursor();
 
             while (cursor.hasNext()) {
-                resultList.add((MetadataItem) cursor.next());
+                MetadataItem metadataItem = (MetadataItem) cursor.next();
+                resultList.add(metadataItem);
             }
 
         } catch (Exception e) {
@@ -250,18 +279,17 @@ public class MetadataDao {
         return resultList;
     }
 
-
-    /**
-     * Find the {@link MetadataItem} with the provided {@link Bson} filter
-     *
-     * @param filter {@link Bson} filter to search the collection with
-     * @return {@link MetadataItem} matching the {@link Bson} filter
-     */
-    public MetadataItem find_uuid(Bson filter) {
-        MongoCollection<MetadataItem> metadataItemMongoCollection;
-        metadataItemMongoCollection = getDefaultMetadataItemCollection();
-        return metadataItemMongoCollection.find(filter).first();
-    }
+//    /**
+//     * Find the {@link MetadataItem} with the provided {@link Bson} filter
+//     *
+//     * @param filter {@link Bson} filter to search the collection with
+//     * @return {@link MetadataItem} matching the {@link Bson} filter
+//     */
+//    public MetadataItem findSingleDocument (Bson filter) {
+//        MongoCollection<MetadataItem> metadataItemMongoCollection;
+//        metadataItemMongoCollection = getDefaultMetadataItemCollection();
+//        return metadataItemMongoCollection.find(filter).first();
+//    }
 
     public List<MetadataItem> aggFind(String user, Bson query) throws MetadataStoreException {
         List<MetadataItem> resultList = new ArrayList<>();
@@ -301,91 +329,85 @@ public class MetadataDao {
      * @param user         to be removed
      * @return {@link MetadataItem} with the permission removed for the {@code user}
      */
-    public MetadataItem deleteUserPermission(MetadataItem metadataItem, String user) throws MetadataStoreException {
-        MongoCollection<MetadataItem> metadataItemMongoCollection;
+//    public MetadataItem deleteUserPermission(MetadataItem metadataItem, String user) throws MetadataStoreException, PermissionException {
+//        MongoCollection<MetadataItem> metadataItemMongoCollection;
+//
+//        String uuid = metadataItem.getUuid();
+//        metadataItemMongoCollection = getDefaultMetadataItemCollection();
+//
+//        if (hasWrite(user, this.accessibleOwners)) {
+//            Document docQuery = new Document("uuid", uuid)
+//                    .append("permissions", new Document("$elemMatch", new Document("username", user)));
+//
+//            Bson permissionQuery = and(eq("uuid", uuid), getHasWriteQuery(user, this.accessibleOwners));
+////        MetadataPermission pemDelete = metadataItem.getPermissions_User(user);
+////        metadataItem.updatePermissions_delete(pemDelete);
+//            List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
+//
+//            UpdateResult update = metadataItemMongoCollection.updateOne(permissionQuery, set("permissions", metadataPermissionsList));
+//
+//            if (update.getModifiedCount() > 0) {
+//                return metadataItem;
+//            } else {
+//                throw new MetadataStoreException("Unable to delete user permissions");
+//            }
+//        } else {
+//            throw new PermissionException("User does not have sufficient access to edit metadata permissions.");
+//        }
+//    }
 
-        String uuid = metadataItem.getUuid();
-        metadataItemMongoCollection = getDefaultMetadataItemCollection();
-
-        Document docQuery = new Document("uuid", uuid)
-                .append("permissions", new Document("$elemMatch", new Document("username", user)));
-
-        MetadataPermission pemDelete = metadataItem.getPermissions_User(user);
-        metadataItem.updatePermissions_delete(pemDelete);
-        List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
-
-        UpdateResult update = metadataItemMongoCollection.updateOne(docQuery, set("permissions", metadataPermissionsList));
-
-        if (update.getModifiedCount() == 1) {
-            return metadataItem;
-        } else {
-            throw new MetadataStoreException("Unable to delete user permissions");
-        }
-    }
-
-    /**
-     * Removes all permissions for the metadataItem
-     *
-     * @param metadataItem to be updated
-     */
-    public void deleteAllPermissions(MetadataItem metadataItem) throws MetadataStoreException {
-        MongoCollection collection;
-        MongoCollection<MetadataItem> metadataItemMongoCollection;
-        try {
-            collection = getDefaultCollection();
-            metadataItemMongoCollection = getDefaultMetadataItemCollection();
-
-
-            metadataItem.setPermissions(new ArrayList<>());
-//            BasicDBList pemList = setPermissionsForDB(metadataItem.getPermissions());
-
-            BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid());
-            collection.updateOne(query, new BasicDBObject("$set", new BasicDBObject("permissions", new ArrayList<MetadataPermission>())));
-            metadataItemMongoCollection.updateOne(query, set("permissions", new ArrayList<MetadataItem>()));
-        } catch (Exception e) {
-            throw new MetadataStoreException("Failed to delete all permissions", e);
-        }
-    }
+//    /**
+//     * Removes all permissions for the metadataItem
+//     *
+//     * @param metadataItem to be updated
+//     */
+//    public void deleteAllPermissions(MetadataItem metadataItem) throws MetadataStoreException {
+//        MongoCollection collection;
+//        MongoCollection<MetadataItem> metadataItemMongoCollection;
+//        try {
+//            collection = getDefaultCollection();
+//            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+//
+//            metadataItem.setPermissions(new ArrayList<>());
+//
+//            BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid());
+//            collection.updateOne(query, new BasicDBObject("$set", new BasicDBObject("permissions", new ArrayList<MetadataPermission>())));
+//            metadataItemMongoCollection.updateOne(query, set("permissions", new ArrayList<MetadataItem>()));
+//        } catch (Exception e) {
+//            throw new MetadataStoreException("Unable to delete all permissions", e);
+//        }
+//    }
 
     /**
      * Update the permision for the specified user to the specified permission
      *
      * @param metadataItem to be updated
-     * @param user         to be updated
-     * @param pem          PermissionType to be updated
+     * @param user         making the update
      */
-    public MetadataPermission updatePermission(MetadataItem metadataItem, String user, PermissionType pem) throws MetadataStoreException {
+    public List<MetadataPermission> updatePermission(MetadataItem metadataItem, String user) throws MetadataStoreException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
-//        long matchCount, modified;
         UpdateResult update;
         String uuid;
-//        MongoCursor cursor;
-//        List<MetadataPermission> pemList;
 
         try {
             //get collection
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
             uuid = metadataItem.getUuid();
 
-            Document docQuery = new Document("uuid", uuid);
-            MetadataPermission pemUpdate = metadataItem.getPermissions_User(user);
-
-            if (pemUpdate == null) {
-                //user permission doesn't exist, create it
-                pemUpdate = new MetadataPermission(uuid, user, pem);
+            if (hasWrite(user, uuid)){
+                List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
+                update = metadataItemMongoCollection.updateOne(eq("uuid", uuid), set("permissions", metadataPermissionsList));
+                if (update.getModifiedCount() > 0 )
+                    //update success
+                    return metadataPermissionsList;
             } else {
-                //update permission
-                pemUpdate.setPermission(pem);
+                throw new PermissionException("User does not have sufficient access to edit metadata permissions.");
             }
 
-            metadataItem.updatePermissions(pemUpdate);
-            List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
-            update = metadataItemMongoCollection.updateOne(docQuery, set("permissions", metadataPermissionsList));
-
-            return pemUpdate;
         } catch (Exception e) {
             throw new MetadataStoreException("Failed to update permission", e);
         }
+        return null;
     }
 
     /**
@@ -396,17 +418,42 @@ public class MetadataDao {
      * @return the inserted {@link MetadataItem}
      * @throws MetadataException when update failed
      */
-    public MetadataItem updateMetadata(MetadataItem metadataItem, String user) throws MetadataException {
+    public MetadataItem updateMetadata(MetadataItem metadataItem, String user) throws MetadataException, PermissionException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
         try {
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
-            metadataItemMongoCollection.replaceOne(eq("uuid", metadataItem.getUuid()), metadataItem);
+
+            if (hasWrite(user, metadataItem.getUuid())) {
+                //update last updated time
+                Date lastUpdated = new Date();
+                metadataItem.setLastUpdated(lastUpdated);
+                ReplaceOptions replaceOptions = new ReplaceOptions();
+                replaceOptions.upsert(true);
+                UpdateResult replace = metadataItemMongoCollection.replaceOne(and(eq("uuid", metadataItem.getUuid()),
+                        eq("tenantId", metadataItem.getTenantId())), metadataItem, replaceOptions);
+
+//                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
+//                formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+//
+//                UpdateOptions updateOptions = new UpdateOptions();
+//                UpdateResult replace = metadataItemMongoCollection.updateOne(eq("uuid", metadataItem.getUuid()),
+//                        combine(set("name", metadataItem.getName()),
+//                                set("value", metadataItem.getValue()),
+//                                set("associationIds", metadataItem.getAssociations().getAssociatedIds().keySet()),
+//                                set("schemaId", metadataItem.getSchemaId()),
+//                                set("lastUpdated", formatter.format(metadataItem.getLastUpdated()))
+//                                ), updateOptions);
+
+
+                replace.getModifiedCount();
+            } else {
+                throw new PermissionException("User does not have sufficient access to edit public metadata item.");
+            }
 
         } catch (MongoException e) {
             throw new MetadataException("Failed to add/update metadata item.", e);
         }
-
         return metadataItem;
     }
 
@@ -424,12 +471,12 @@ public class MetadataDao {
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
         if (hasWrite(user, metadataItem.getUuid())) {
-            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
+//            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
+            Bson deleteFilter = and(eq("uuid", metadataItem.getUuid()),
+                    eq("tenantId", metadataItem.getTenantId()));
+//            Bson queryFilter = and(deleteFilter, or(eq("owner", user), docPermissions));
 
-            Bson deleteFilter = and(eq("uuid", metadataItem.getUuid()), eq("tenantId", metadataItem.getTenantId()));
-            Bson queryFilter = and(deleteFilter, or(eq("owner", user), docPermissions));
-
-            DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(queryFilter);
+            DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(deleteFilter);
             if (deleteResult.getDeletedCount() == 0) {
                 //delete unsuccessful
                 return null;
@@ -442,7 +489,11 @@ public class MetadataDao {
 
     }
 
-    public Bson createDocQuery(MetadataItem metadataItem) {
+    public Bson createQuery(String uuid, String tenantId, Bson query) {
+        return and(eq("uuid", uuid), eq("tenantId", tenantId), query);
+    }
+
+    public Bson createQueryFromMetadataItem(MetadataItem metadataItem) {
         return and(eq("tenantId", metadataItem.getTenantId()), eq("uuid", metadataItem.getUuid()));
     }
 
@@ -464,14 +515,12 @@ public class MetadataDao {
      */
     long getCollectionSize()   {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
-
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
         return metadataItemMongoCollection.countDocuments();
     }
 
     /**
      * Return all documents in the collection
-     *
      * @return list of all documents in collection
      */
     public List<MetadataItem> findAll()   {
@@ -489,7 +538,6 @@ public class MetadataDao {
         return resultList;
     }
 
-
     /**
      * Check if {@code user} has read permissions for the {@code uuid}
      *
@@ -498,27 +546,13 @@ public class MetadataDao {
      * @return true if user has read permission, false otherwise
      */
     public boolean hasRead(String user, String uuid) {
-        MongoCollection<MetadataItem> metadataItemMongoCollection;
+        if (AuthorizationHelper.isTenantAdmin(user))
+            return true;
 
-        metadataItemMongoCollection = getDefaultMetadataItemCollection();
-
-        Bson userFilter = elemMatch("permissions", and(eq("username", user), nin("permission", Arrays.asList(PermissionType.NONE.toString()))));
-
-        MetadataItem result;
-        try {
-            //check if uuid exists
-            result = metadataItemMongoCollection.find(eq("uuid", uuid)).first();
-            if (result != null) {
-                result = metadataItemMongoCollection.find(and(eq("uuid", uuid), or(eq("owner", user), userFilter))).first();
-                if (result != null) {
-                    return true;
-                }
-            } else {
-                return true;
-            }
-        } catch (NullPointerException npe) {
-        }
-        return false;
+//        Bson userFilter = elemMatch("permissions", and(eq("username", user),
+//                in("permission", PermissionType.ALL.toString(), PermissionType.READ.toString(),
+//                        PermissionType.READ_WRITE.toString(), PermissionType.READ_EXECUTE.toString())));
+        return checkPermission(uuid, user, this.getHasReadQuery(user, this.accessibleOwners));
     }
 
     /**
@@ -529,21 +563,94 @@ public class MetadataDao {
      * @return true if user has write permissions, false otherwise
      */
     public boolean hasWrite(String user, String uuid) {
+        if (AuthorizationHelper.isTenantAdmin(user))
+            return true;
+//
+//        Bson userFilter = elemMatch("permissions", and(eq("username", user),
+//                in("permission", Arrays.asList(PermissionType.ALL.toString(),
+//                        PermissionType.READ_WRITE.toString(), PermissionType.READ_EXECUTE.toString(),
+//                        PermissionType.WRITE.toString(), PermissionType.WRITE_EXECUTE.toString()))));
+
+        return checkPermission(uuid, user, getHasWriteQuery(user, this.accessibleOwners));
+    }
+
+    /**
+     * Check the mongodb if the {@code user} has the correct permissios for the metadata item for the specified {@code uuid}
+     * @param uuid of metadata item
+     * @param user to check permission for
+     * @param userFilter permission query
+     * @return
+     */
+    public boolean checkPermission(String uuid, String user, Bson userFilter){
         MongoCollection<MetadataItem> metadataItemMongoCollection;
-
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
-
-        Bson userFilter = elemMatch("permissions", and(eq("username", user), in("permission", Arrays.asList(PermissionType.READ_WRITE.toString()))));
 
         MetadataItem result;
         try {
-            result = metadataItemMongoCollection.find(and(eq("uuid", uuid), or(eq("owner", user), userFilter))).first();
-            if (result != null) {
+            //check if user has permission
+            result = metadataItemMongoCollection.find(and(eq("uuid", uuid),
+                    or(eq("owner", user), userFilter))).first();
+
+            if (result == null) {
+                //check if uuid exists
+                result = metadataItemMongoCollection.find(eq("uuid", uuid)).first();
+                if (result == null)
+                    //metadata item doesn't exist, user can read or write
+                    return true;
+            } else {
                 return true;
             }
         } catch (NullPointerException npe) {
         }
         return false;
+    }
+
+    /**
+     * Get Bson filter to check for read permissions for the user
+     * @param user
+     * @param accessibleOwners
+     * @return
+     */
+    public Bson getHasReadQuery(String user, List<String> accessibleOwners){
+        return or(in("owner", accessibleOwners),
+                elemMatch("permissions", and(
+                        eq("username", user),
+                        in("permission", PermissionType.ALL.toString(), PermissionType.READ.toString(),
+                                PermissionType.READ_WRITE.toString(), PermissionType.READ_EXECUTE.toString()))));
+    }
+
+    /**
+     *
+     * @param user
+     * @param accessibleOwners
+     * @return
+     */
+    public Bson getHasWriteQuery(String user, List<String> accessibleOwners){
+        return or(in("owner", accessibleOwners),
+                elemMatch("permissions", and(
+                        eq("username", user),
+                        in("permission", PermissionType.READ_WRITE.toString(), PermissionType.ALL.toString(),
+                                PermissionType.WRITE.toString(), PermissionType.WRITE_EXECUTE.toString(),
+                                PermissionType.WRITE_PERMISSION.toString(), PermissionType.READ_WRITE_PERMISSION.toString()))));
+    }
+
+    /**
+     * @return List of users who are tenant admins or the owner for the {@link MetadataItem}
+     */
+    public List<String> getAccessibleOwners (String user, boolean bolImplicitPermissions) {
+        List<String> accessibleOwners = new ArrayList<>();
+        if (!bolImplicitPermissions) {
+            accessibleOwners = Arrays.asList(user,
+                    org.iplantc.service.metadata.Settings.PUBLIC_USER_USERNAME,
+                    org.iplantc.service.metadata.Settings.WORLD_USER_USERNAME);
+        } else {
+            accessibleOwners.add(user);
+        }
+        return accessibleOwners;
+    }
+
+    public Bson getTenantIdQuery(String tenantId){
+        return eq("tenantId", tenantId);
     }
 
 //    public MetadataItem persist(MetadataItem item) throws MetadataStoreException {

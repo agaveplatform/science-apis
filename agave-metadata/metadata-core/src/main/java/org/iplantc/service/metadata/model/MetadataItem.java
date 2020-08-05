@@ -3,10 +3,7 @@ package org.iplantc.service.metadata.model;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import javax.persistence.Id;
 import javax.validation.constraints.NotNull;
@@ -36,28 +33,27 @@ import com.mongodb.DBObject;
 
 /**
  * @author dooley
- *
  */
-@JsonIgnoreProperties(ignoreUnknown=true)
-@MetadataSchemaComplianceConstraint(valueField="value",
-  schemaIdField="schemaId",
-  message="The value does not comply with the provided metadata schema")
+@JsonIgnoreProperties(ignoreUnknown = true)
+@MetadataSchemaComplianceConstraint(valueField = "value",
+        schemaIdField = "schemaId",
+        message = "The value does not comply with the provided metadata schema")
 public class MetadataItem {
 
     @Id
     private String _id;
 
-    @NotNull(message="No name attribute specified. Please provide a valid name for this metadata item.")
-    @NotEmpty(message="Empty name attribute specified. Please provide a valid name for this metadata item.")
-    @Length(min=1,max=256)
+    @NotNull(message = "No name attribute specified. Please provide a valid name for this metadata item.")
+    @NotEmpty(message = "Empty name attribute specified. Please provide a valid name for this metadata item.")
+    @Length(min = 1, max = 256)
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String name;
 
-    @Length(max=16384, message="Metadata value must be less than 16385")
+    @Length(max = 16384, message = "Metadata value must be less than 16385")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private JsonNode value;
 
-    @Length(max=64, message="Metadata schemaId must be a valid schema uuid")
+    @Length(max = 64, message = "Metadata schemaId must be a valid schema uuid")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String schemaId;
 
@@ -70,11 +66,11 @@ public class MetadataItem {
     private String internalUsername;
 
     @NotNull
-    @Length(min=1,max=32, message="Metadata owner must be less than 33 characters.")
+    @Length(min = 1, max = 32, message = "Metadata owner must be less than 33 characters.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String owner;
 
-    @Length(max=64, message="Metadata uuid must be a valid uuid.")
+    @Length(max = 64, message = "Metadata uuid must be a valid uuid.")
     @NotNull
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String uuid;
@@ -110,13 +106,13 @@ public class MetadataItem {
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private List<MetadataPermission> permissions = new ArrayList<MetadataPermission>();
 
+
     public MetadataItem() {
         this.uuid = new AgaveUUID(UUIDType.METADATA).toString();
         this.tenantId = TenancyHelper.getCurrentTenantId();
         this.created = new Date();
         this.lastUpdated = new Date();
 //        this.permissions = new ArrayList<MetadataPermission>();
-
     }
 
 //    public MetadataItem(DBObject mongoObj) {
@@ -327,33 +323,39 @@ public class MetadataItem {
 
 
     //KL
+
     /**
      * @return the permissions
      */
-    public synchronized List<MetadataPermission> getPermissions(){return permissions;}
+    public synchronized List<MetadataPermission> getPermissions() {
+        return permissions;
+    }
 
     //KL
+
     /**
      * @param pem the permissions to set
      */
-    public synchronized void setPermissions(List<MetadataPermission> pem){this.permissions = pem;}
+    public synchronized void setPermissions(List<MetadataPermission> pem) {
+        this.permissions = pem;
+    }
 
-    public synchronized void updatePermissions(MetadataPermission pem){
+    public synchronized void updatePermissions(MetadataPermission pem) {
         MetadataPermission currentUserPermission = this.getPermissions_User(pem.getUsername());
 
         if (currentUserPermission != null) {
             Integer indx = this.permissions.indexOf(currentUserPermission);
-            this.permissions.set(indx,pem);
+            this.permissions.set(indx, pem);
         } else {
             this.permissions.add(pem);
         }
     }
 
-    public synchronized  void updatePermissions_delete(MetadataPermission pem){
-            this.permissions.remove(pem);
+    public synchronized void updatePermissions_delete(MetadataPermission pem) {
+        this.permissions.remove(pem);
     }
 
-    public synchronized MetadataPermission getPermissions_User(String user){
+    public synchronized MetadataPermission getPermissions_User(String user) {
         for (MetadataPermission pem : this.permissions) {
             if (pem.getUsername().equals(user)) {
                 return pem;
@@ -384,13 +386,11 @@ public class MetadataItem {
                         TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE + "data/" + getUuid())
                 ));
 
-        if (!getAssociations().isEmpty())
-        {
+        if (!getAssociations().isEmpty()) {
             hal.putAll(getAssociations().getReferenceGroupMap());
         }
 
-        if (StringUtils.isNotEmpty(getSchemaId()))
-        {
+        if (StringUtils.isNotEmpty(getSchemaId())) {
             hal.put(UUIDType.SCHEMA.name().toLowerCase(),
                     mapper.createObjectNode().put("href",
                             TenancyHelper.resolveURLToCurrentTenant(getSchemaId())));
@@ -398,6 +398,25 @@ public class MetadataItem {
         json.put("_links", hal);
 
         return json;
+    }
+
+    public boolean equals(Object obj) {
+        if (obj == this)
+            return true;
+
+        if (!(obj instanceof MetadataItem))
+            return false;
+
+        MetadataItem metadataItem = (MetadataItem) obj;
+
+        return (StringUtils.equals(this.getName(), metadataItem.getName())) &&
+                (this.getValue().equals(metadataItem.getValue())) &&
+                (StringUtils.equals(this.getSchemaId(), metadataItem.getSchemaId())) &&
+                (StringUtils.equals(this.getOwner(), metadataItem.getOwner())) &&
+                (StringUtils.equals(this.getUuid(), metadataItem.getUuid())) &&
+                (StringUtils.equals(this.getTenantId(), metadataItem.getTenantId())) &&
+                (this.getLastUpdated().compareTo(metadataItem.getLastUpdated()) == 0) &&
+                (this.getAssociations().getAssociatedIds().keySet().equals(metadataItem.getAssociations().getAssociatedIds().keySet()));
     }
 
 //    @JsonValue

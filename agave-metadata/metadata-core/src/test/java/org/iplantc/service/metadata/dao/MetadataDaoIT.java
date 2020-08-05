@@ -71,8 +71,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Test
-    public void insertTest() throws MetadataStoreException, MetadataException, UnknownHostException {
-
+    public void insertTest() throws MetadataStoreException, MetadataException, PermissionException {
         //Create item to insert
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -89,12 +88,20 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         inst.clearCollection();
         Assert.assertEquals(inst.getCollectionSize(), 0);
 
-        inst.getMongoClients();
-        inst.insertMetadataItem(testEntity);
+//        inst.getMongoClients();
+
+        List<String> accessibleOwners = new ArrayList<>();
+        accessibleOwners.add(TEST_USER);
+        inst.setAccessibleOwners(accessibleOwners);
+        inst.updateMetadata(testEntity, TEST_USER);
+
         List<MetadataItem>  firstResult = inst.find(TEST_USER, new Document("uuid", testEntity.getUuid()));
 
-        Assert.assertNotNull(firstResult, "Document should be found by uuid after inserting to collection");
+        List<MetadataItem> allResult = inst.findAll();
 
+        Assert.assertEquals(inst.getCollectionSize(), 1, "Collection size should be 1 after inserting new metadata item.");
+        Assert.assertEquals(firstResult.size(), 1, "Find result should be 1 after inserting the new metadata item.");
+//        Assert.assertNotNull(firstResult, "Document should be found by uuid after inserting to collection");
         //check metadata item was inserted
         Assert.assertEquals(inst.getCollectionSize(), 1, "Document size should be 1 after inserting new document.");
         Assert.assertEquals(firstResult.get(0).getOwner(), TEST_USER);
@@ -122,10 +129,14 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         //clean collection
         inst.clearCollection();
         Assert.assertEquals(inst.getCollectionSize(), 0);
+        List<String> accessibleOwners = new ArrayList<>();
+        accessibleOwners.add(TEST_USER);
+        inst.setAccessibleOwners(accessibleOwners);
+
 
         //insert metadataItem
         inst.getMongoClients();
-        inst.insertMetadataItem(testEntity);
+        inst.updateMetadata(testEntity, TEST_USER);
 
         Document findDoc_SharedUser = new Document("uuid", testEntity.getUuid())
                 .append("permissions.username", TEST_SHARED_USER);
@@ -140,14 +151,16 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         Assert.assertEquals(insertResult.get(0).getPermissions().size(), 2, "Permissions should be 2 after adding the metadataitem.");
 
         //remove permission for user
-        inst.deleteUserPermission(testEntity, TEST_SHARED_USER);
+        MetadataPermission permissionToRemove = testEntity.getPermissions_User(TEST_SHARED_USER);
+        testEntity.updatePermissions_delete(permissionToRemove);
+        inst.updatePermission(testEntity, TEST_SHARED_USER);
         Assert.assertEquals(inst.getCollectionSize() , 1, "Removing a user's permission should not remove the document in the collection");
 
         //check permission removed
         Document docToRemove = new Document("uuid", testEntity.getUuid())
                 .append("permissions.username", TEST_SHARED_USER);
 
-        List<MetadataItem>  pemRemoveResult = inst.find(TEST_SHARED_USER, findDoc_SharedUser);
+        List<MetadataItem> pemRemoveResult = inst.find(TEST_SHARED_USER, findDoc_SharedUser);
         Assert.assertEquals(pemRemoveResult.size(), 0,"Nothing should be found for the user removed.");
 
         //secondary check
@@ -165,7 +178,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Test
-    public void updateTest() throws MetadataException, MetadataStoreException, UnknownHostException {
+    public void updateTest() throws MetadataException, MetadataStoreException, UnknownHostException, PermissionException {
         //add entity without any permissions
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -179,13 +192,15 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         Document docQuery = new Document("uuid", testEntity.getUuid())
                 .append("tenantId", testEntity.getTenantId());
 
-        Bson docFilter = inst.createDocQuery(testEntity);
+        Bson docFilter = inst.createQueryFromMetadataItem(testEntity);
 
         //clean collection
         inst.clearCollection();
         Assert.assertEquals(inst.getCollectionSize(), 0);
 
         //insert metadataItem
+        List<String> accessibleOwners = new ArrayList<>();
+        inst.setAccessibleOwners(accessibleOwners);
         inst.getMongoClients();
         inst.insertMetadataItem(testEntity);
 
@@ -197,7 +212,11 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         Assert.assertEquals(inst.getCollectionSize(), 1);
 
         //add permission for test share user with read
-        MetadataPermission updatePem = inst.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ);
+        MetadataPermission sharedUserPermission = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
+        List<MetadataPermission> metadataPermissionList = testEntity.getPermissions();
+        metadataPermissionList.add(sharedUserPermission);
+        testEntity.setPermissions(metadataPermissionList);
+        List<MetadataPermission> updatePem = inst.updatePermission(testEntity, TEST_USER);
 
         //check permission updated
         Assert.assertEquals(inst.getCollectionSize(), 1, "Updating permission should not change collection size.");
@@ -205,9 +224,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
 //        Assert.assertNotNull(updatePemResult, "User permission updated should not be null");
         List<MetadataItem> testResult = inst.find(TEST_USER, docFilter);
-
         List<MetadataItem>  newResult = inst.find(TEST_USER, new Document());
-
         List<MetadataItem> resultList = inst.findAll();
 
         Assert.assertNotNull(updatePemResult, "Item should be found after adding");
@@ -225,7 +242,14 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         Assert.assertNull(updateResultItem, "User does not have correct permissions, metataItem should not be updated.");
 
         //update permission to read_write
-        inst.updatePermission(testEntity, TEST_SHARED_USER, PermissionType.READ_WRITE);
+        sharedUserPermission = testEntity.getPermissions_User(TEST_SHARED_USER);
+        sharedUserPermission.setPermission(PermissionType.READ_WRITE);
+        testEntity.updatePermissions(sharedUserPermission);
+
+        List<MetadataPermission> metadataPermission = inst.updatePermission(testEntity, TEST_USER);
+
+        Assert.assertNotNull(metadataPermission, "Permission should be updated");
+        Assert.assertTrue(metadataPermission.size() > 0, "Permission should be updated");
 
         if (inst.hasWrite(TEST_SHARED_USER, testEntity.getUuid())){
             updateResultItem = inst.updateMetadata(testEntity, TEST_SHARED_USER);

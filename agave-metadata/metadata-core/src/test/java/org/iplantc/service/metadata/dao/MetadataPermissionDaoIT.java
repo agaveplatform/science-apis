@@ -125,7 +125,8 @@ public class MetadataPermissionDaoIT extends AbstractMetadataPermissionDaoIT {
 		List<String> queryList = Arrays.asList(metadataQueryMustard, metadataQueryCactus, metadataQueryAgavoideae);
 		List<String> uuidList = new ArrayList<>();
 
-		MetadataSearch search = new MetadataSearch(false, username);
+		MetadataSearch search = new MetadataSearch(username);
+		search.setAccessibleOwnersExplicit();
 		search.setOwner(username);
 
 		for (String query : queryList) {

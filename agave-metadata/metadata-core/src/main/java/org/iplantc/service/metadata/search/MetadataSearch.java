@@ -87,7 +87,7 @@ import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.*;
 
 public class MetadataSearch {
-    private boolean bolImplicitPermissions;
+//    private boolean bolImplicitPermissions;
     private String owner;
     private String value;
     private String username;
@@ -99,14 +99,14 @@ public class MetadataSearch {
     private MetadataItem metadataItem;
     private ArrayNode notifications;
     private ArrayNode permissions;
+    private List<String> accessibleOwners;
+
 
     MetadataDao metadataDao;
-
-
     private Bson dbQuery;
 
-    public MetadataSearch(boolean bolImplicitPermissions, String username) {
-        this.bolImplicitPermissions = bolImplicitPermissions;
+    public MetadataSearch(String username) {
+//        this.bolImplicitPermissions = bolImplicitPermissions;
         this.metadataItem = new MetadataItem();
         metadataItem.setTenantId(TenancyHelper.getCurrentTenantId());
         this.username = username;
@@ -172,13 +172,13 @@ public class MetadataSearch {
     }
 
     public BasicDBObject parseUserQuery(String userQuery) throws MetadataQueryException {
-        ObjectMapper mapper  = new ObjectMapper();
+        ObjectMapper mapper = new ObjectMapper();
         ObjectNode mappedValue = mapper.createObjectNode();
 
         BasicDBObject query;
         query = BasicDBObject.parse(userQuery);
         for (String key : query.keySet()) {
-            if (!StringUtils.equals(key, "name")){
+            if (!StringUtils.equals(key, "name")) {
                 if (query.get(key) instanceof String) {
                     if (((String) query.get(key)).contains("*")) {
                         try {
@@ -198,7 +198,6 @@ public class MetadataSearch {
         return query;
     }
 
-
     /**
      * Parse {@link JsonNode} to {@link MetadataItem} with verified associatedIds
      *
@@ -211,7 +210,6 @@ public class MetadataSearch {
             ArrayNode items = mapper.createArrayNode();
             this.permissions = mapper.createArrayNode();
             this.notifications = mapper.createArrayNode();
-
 
             if (jsonMetadata.has("name") && jsonMetadata.get("name").isTextual()
                     && !jsonMetadata.get("name").isNull()) {
@@ -261,13 +259,7 @@ public class MetadataSearch {
 
             if (jsonMetadata.hasNonNull("permissions")) {
                 if (jsonMetadata.get("permissions").isArray()) {
-                    permissions = (ArrayNode) jsonMetadata.get("permissions");
-                    MetadataRequestPermissionProcessor permissionProcessor = new MetadataRequestPermissionProcessor(username,
-                            this.metadataItem.getUuid());
-                    permissionProcessor.process(permissions);
-                    List<MetadataPermission> metaPemList = permissionProcessor.getPermissions();
-                    this.metadataItem.setPermissions(metaPemList);
-
+                    this.permissions = (ArrayNode) jsonMetadata.get("permissions");
                 } else {
                     throw new MetadataQueryException(
                             "Invalid permissions value. permissions should be an "
@@ -346,7 +338,6 @@ public class MetadataSearch {
                     "Unable to parse form. " + e.getMessage());
         }
     }
-
 
     /**
      * Parse string to {@link JsonNode} equivalent
@@ -590,47 +581,46 @@ public class MetadataSearch {
      * @return {@link Bson} filter for read permissions for the {@link MetadataItem}
      */
     public Bson getReadQuery() {
-        Bson docFilter = elemMatch("permissions", and(eq("username", this.username),
-                in("permission", Arrays.asList(PermissionType.ALL.toString(), PermissionType.READ.toString(),
-                        PermissionType.READ_WRITE.toString(), PermissionType.READ_EXECUTE.toString()))));
-
-        Bson permissionFilter;
-        if (bolImplicitPermissions)
-            permissionFilter = or(in("owner", Arrays.asList(this.username, Settings.WORLD_USER_USERNAME, Settings.PUBLIC_USER_USERNAME)), docFilter);
-        else
-            permissionFilter = docFilter;
-
-        return permissionFilter;
-    }
-
-    /**
-     * @return List of users who are tenant admins or the owner for the {@link MetadataItem}
-     */
-    public List<String> getAccessibleOwners() {
-        List<String> accessibleOwners = new ArrayList<>();
-        if (!bolImplicitPermissions) {
-            accessibleOwners = Arrays.asList(this.username,
-                    Settings.PUBLIC_USER_USERNAME,
-                    Settings.WORLD_USER_USERNAME);
-        } else {
-            accessibleOwners.add(this.username);
-        }
-        return accessibleOwners;
+        return or(in("owner", this.accessibleOwners),
+                elemMatch("permissions", and(
+                        eq("username", this.username),
+                        in("permission", PermissionType.ALL.toString(), PermissionType.READ.toString(),
+                                PermissionType.READ_WRITE.toString(), PermissionType.READ_EXECUTE.toString()))));
     }
 
     /**
      * @return {@link Bson} filter for write permissions for the {@link MetadataItem}
      */
     public Bson getWriteQuery() {
-        List<String> accessibleOwners = getAccessibleOwners();
-
-        return or(in("owner", accessibleOwners),
+        return or(in("owner", this.accessibleOwners),
                 elemMatch("permissions", and(
                         eq("username", this.username),
-                        in("permissions", PermissionType.READ_WRITE.toString(),
+                        in("permission", PermissionType.READ_WRITE.toString(), PermissionType.ALL.toString(),
                                 PermissionType.WRITE.toString(), PermissionType.WRITE_EXECUTE.toString(),
                                 PermissionType.WRITE_PERMISSION.toString(), PermissionType.READ_WRITE_PERMISSION.toString()))));
+
     }
+
+    /**
+     * @return List of users who are tenant admins or the owner for the {@link MetadataItem}
+     */
+    public List<String> setAccessibleOwnersExplicit() {
+        this.accessibleOwners = Arrays.asList(this.username,
+                Settings.PUBLIC_USER_USERNAME,
+                Settings.WORLD_USER_USERNAME);
+
+        return this.accessibleOwners;
+    }
+
+    public List<String> setAccessibleOwnersImplicit(){
+        if (this.accessibleOwners == null)
+            this.accessibleOwners = new ArrayList<>();
+        this.accessibleOwners.add(this.username);
+        return this.accessibleOwners;
+    }
+
+
+
 
     /**
      * Parse JsonString {@code userQuery} to {@link Document}
@@ -650,7 +640,6 @@ public class MetadataSearch {
         return doc;
     }
 
-
     /**
      * Find all {@link MetadataItem} matching the {@code userQuery} and the offset/limit specified
      *
@@ -664,7 +653,9 @@ public class MetadataSearch {
             Document doc;
             doc = getDocumentFromQuery(userQuery);
             Bson permissionFilter = and(getTenantIdQuery(), doc, getReadQuery());
+
             BasicDBObject order = (orderField == null) ? new BasicDBObject() : new BasicDBObject(orderField, orderDirection);
+            metadataDao.setAccessibleOwners(this.accessibleOwners);
             result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
 
         } catch (MetadataQueryException e) {
@@ -691,30 +682,8 @@ public class MetadataSearch {
      * @throws MetadataStoreException if unable to connect to the metadata collection
      * @throws PermissionException    if user does not have permission to update the {@link MetadataItem}
      */
-    public MetadataItem updateMetadataItem() throws MetadataException, MetadataStoreException, PermissionException {
-        MetadataItem result = metadataDao.find_uuid(and(eq("uuid", this.metadataItem.getUuid()),
-                eq("tenantId", this.metadataItem.getTenantId())));
-
-        if (result != null) {
-            //item exists, check if user has the correct permissions to update item
-            metadataItem.setOwner(result.getOwner());
-            MetadataPermission pem = result.getPermissions_User(this.username);
-            if (pem == null) {
-                if (StringUtils.equals(this.username, result.getOwner())) {
-                    pem = new MetadataPermission(result.getUuid(), this.username, PermissionType.ALL);
-                    pem.setGroup("");
-                } else {
-                    throw new PermissionException("User does not have the permission to edit this item.");
-                }
-            }
-            checkPermission(pem.getPermission(), this.username, true);
-            this.metadataItem = metadataDao.updateMetadata(metadataItem, this.username);
-
-        } else {
-            metadataItem.setOwner(this.username);
-            this.metadataItem = metadataDao.insert(metadataItem);
-        }
-        return this.metadataItem;
+    public MetadataItem updateMetadataItem() throws MetadataException, PermissionException {
+        return metadataDao.updateMetadata(this.metadataItem, this.username);
     }
 
     /**
@@ -773,28 +742,28 @@ public class MetadataSearch {
     /**
      * Add/update the user's permission to {@code pem}
      *
-     * @param username String user to update
+     * @param userToUpdate String user to update
      * @param group    group to be updated
      * @param pem      {@link PermissionType} to be updated to
      * @throws MetadataException      if unable to update the permission of {@code user}
      * @throws MetadataStoreException
      */
-    public void updatePermissions(String username, String group, PermissionType pem) throws MetadataException, MetadataStoreException, UnknownHostException {
+    public void updatePermissions(String userToUpdate, String group, PermissionType pem) throws MetadataException, MetadataStoreException, UnknownHostException {
         MetadataPermission metadataPermission;
         //check if user has write permissions
-        if (metadataDao.hasWrite(this.username, this.metadataItem.getUuid())) {
             if (pem.equals(PermissionType.NONE) || pem == null) {
                 //delete permission
-                metadataDao.deleteUserPermission(this.metadataItem, username);
+                MetadataPermission pemDelete = metadataItem.getPermissions_User(userToUpdate);
+                metadataItem.updatePermissions_delete(pemDelete);
+                List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
+
             } else {
-                metadataPermission = new MetadataPermission(metadataItem.getUuid(), username, pem);
+                metadataPermission = new MetadataPermission(metadataItem.getUuid(), userToUpdate, pem);
                 metadataPermission.setGroup(group);
 
                 metadataItem.updatePermissions(metadataPermission);
-                metadataDao.updatePermission(metadataItem, username, pem);
             }
-            NotificationManager.process(this.metadataItem.getUuid(), MetadataEventType.PERMISSION_UPDATE.name(), username);
-        }
+            metadataDao.updatePermission(metadataItem, this.username);
     }
 
     /**
@@ -803,7 +772,7 @@ public class MetadataSearch {
      * @param user to find permission for
      * @return list of {@link MetadataItem} where the user was specified permissions
      */
-    public List<MetadataItem> findPermission_User(String user, String uuid)   {
+    public List<MetadataItem> findPermission_User(String user, String uuid) {
         //only the owner or tenantAdmin can access if no permissions are explicitly set
         return metadataDao.find(user, and(eq("uuid", uuid),
                 or(eq("owner", user), eq("permissions.username", user))));
@@ -815,7 +784,7 @@ public class MetadataSearch {
      * @param uuid to search for
      * @return list of {@link MetadataPermission} for the provided uuid
      */
-    public MetadataItem findPermission_Uuid(String uuid)   {
+    public MetadataItem findPermission_Uuid(String uuid) {
         List<MetadataPermission> permissionList = new ArrayList<>();
         List<MetadataItem> metadataItemList = metadataDao.find(this.username, eq("uuid", uuid));
         return metadataItemList.get(0);

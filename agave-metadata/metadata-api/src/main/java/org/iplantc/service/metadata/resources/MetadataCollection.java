@@ -193,7 +193,12 @@ public class MetadataCollection extends AgaveResource {
         SimpleTimer st = null;
 
         try {
-            MetadataSearch search = new MetadataSearch(includeRecordsWithImplicitPermissions, this.username);
+            MetadataSearch search = new MetadataSearch(this.username);
+            if (includeRecordsWithImplicitPermissions)
+                search.setAccessibleOwnersImplicit();
+            else
+                search.setAccessibleOwnersExplicit();
+
             if (search.getCollection() == null) {
                 throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                         "Unable to connect to metadata store. If this problem persists, "
@@ -270,7 +275,9 @@ public class MetadataCollection extends AgaveResource {
 
         try {
 
-            MetadataSearch search = new MetadataSearch(false, this.username);
+            MetadataSearch search = new MetadataSearch( this.username);
+            search.setAccessibleOwnersExplicit();
+
             if (search.getCollection() == null) {
                 throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                         "Unable to connect to metadata store. " +

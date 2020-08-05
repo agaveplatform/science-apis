@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.bson.BsonReader;
+import org.bson.BsonTimestamp;
 import org.bson.BsonWriter;
 import org.bson.Document;
 import org.bson.codecs.Codec;
@@ -16,10 +17,12 @@ import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.metadata.exceptions.MetadataAssociationException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
+import org.joda.time.DateTime;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 /**
  * Custom Codec for processing MetadataItem to Bson
@@ -43,9 +46,17 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
     public MetadataItem decode(BsonReader reader, DecoderContext decoderContext) {
         MetadataItem metadataItem = new MetadataItem();
         Document document = documentCodec.decode(reader, decoderContext);
+        
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        try {
+            metadataItem.setCreated(formatter.parse(document.getString("created")));
+            metadataItem.setLastUpdated(formatter.parse(document.getString("lastUpdated")));
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
 
         String uuid = document.getString("uuid");
-
         metadataItem.setUuid(uuid);
         metadataItem.setOwner(document.getString("owner"));
         metadataItem.setTenantId(document.getString("tenantId"));
@@ -111,7 +122,14 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
 
     @Override
     public void encode(BsonWriter writer, MetadataItem value, EncoderContext encoderContext) {
+
         writer.writeStartDocument();
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        writer.writeName("created");
+        writer.writeString(formatter.format(value.getCreated()));
+        writer.writeName("lastUpdated");
+        writer.writeString(formatter.format(value.getLastUpdated()));
         writer.writeName("uuid");
         writer.writeString(value.getUuid());
         writer.writeName("owner");
@@ -128,11 +146,10 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         writer.writeName("name");
         writer.writeString(value.getName());
         writer.writeName("value");
-
         writer.writeStartDocument();
         recursiveParseDocument(value.getValue(), writer);
-
         writer.writeStartArray("permissions");
+
         for (MetadataPermission pem : value.getPermissions()){
             writer.writeStartDocument();
                 writer.writeName("username");

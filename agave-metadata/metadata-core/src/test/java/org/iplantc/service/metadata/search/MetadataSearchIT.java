@@ -136,8 +136,6 @@ public class MetadataSearchIT {
         JsonNode jsonMetadataNode = factory.createParser(query).readValueAsTree();
         spySearch.parseJsonMetadata(jsonMetadataNode);
         spySearch.setOwner(username);
-        uuid = new AgaveUUID(UUIDType.METADATA).toString();
-        spySearch.setUuid(uuid);
         spySearch.updateMetadataItem();
         return spySearch.getMetadataItem();
     }

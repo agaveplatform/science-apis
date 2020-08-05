@@ -683,6 +683,7 @@ public class MetadataSearch {
      * @throws PermissionException    if user does not have permission to update the {@link MetadataItem}
      */
     public MetadataItem updateMetadataItem() throws MetadataException, PermissionException {
+        metadataDao.setAccessibleOwners(this.accessibleOwners);
         return metadataDao.updateMetadata(this.metadataItem, this.username);
     }
 

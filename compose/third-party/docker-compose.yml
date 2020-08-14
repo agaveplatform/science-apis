@@ -5,7 +5,7 @@
 ##############################################################
 # MySQL
 ##############################################################
-version: '3.7'
+version: '3.3'
 
 volumes:
   mysql_data:
@@ -13,11 +13,10 @@ volumes:
 
 networks:
   services:
-  realtime:
 
 services:
   mysql:
-    image: agave-mariadb:2.2.27
+    image: agaveplatform/agave-mariadb:2.2.27
     ports:
       - '3306:3306'
     volumes:
@@ -80,37 +79,6 @@ services:
 #        reservations:
 #          memory: 256M
 
-
-#  ##############################################################
-#  # MongoDB - 3.4
-#  ##############################################################
-#  mongodb34:
-#    image: agaveapi/mongodb:3.4
-#    hostname: mongodb
-#    mem_limit: 512m
-#    restart: on-failure
-#    environment:
-#      - MONGODB_ADMIN_PASS=changeit
-#      - MONGODB_PASSWORD=password
-#      - MONGODB_USERNAME=agaveuser
-#      - MONGODB_DATABASE=api
-#    volumes_from:
-#      - mongodbvol
-#    ports:
-#      - '27018:27017'
-#    labels:
-#      - "traefik.enable=false"
-#    networks:
-#      - services
-#
-#  mongodb34vol:
-#    image: agaveapi/mongodb:3.4
-#    command: sleep 120
-#    mem_limit: 64m
-#    labels:
-#      - "traefik.enable=false"
-#    networks:
-#      - services
 
   ##############################################################
   # MongoDB 4.2.4
@@ -201,23 +169,6 @@ services:
 #          memory: 512M
 #        reservations:
 #          memory: 256M
-
-  ##############################################################
-  # Fluentd
-  ##############################################################
-
-#  fluentd:
-#    image: fluent/fluentd
-#    hostname: fluentd.example.com
-#    restart: on-failure
-#    ports:
-#      - 24224:24224
-#    volumes:
-#      - ../logs/fluentd:/fluentd/log
-#    labels:
-#      - "traefik.enable=false"
-#    networks:
-#      - default
 
 networks:
   services:

@@ -1,0 +1,42 @@
+###############################################################
+# Core Science APIs - Migrations
+# migrations.yml
+#
+# This contains the database migration utilities for updating 
+# and repairing the database. For database backup and snapshots,
+# please see the `config/extras/db` folder.
+#
+# note: Do not run this entire file. In the vast majority of 
+# cases, it is sufficient to run the info, migrate, and validate
+# tasks in succession to handle the database update in its 
+# entirety.
+#
+###############################################################
+---
+version: '3.3'
+
+volumes:
+  mysql_core_data:
+    external: true
+  mysql_auth_data:
+    external: true
+  mongo_data:
+    external: true
+  beanstalkd_data:
+    external: true
+  ldap_config:
+    external: true
+  ldap_data:
+    external: true
+
+services:
+
+  migrate:
+    image: agaveplatform/agave-migrations:${AGAVE_VERSION}
+    command: "./flyway migrate"
+    depends_on:
+      - mysql-core
+    environment:
+      MYSQL_HOST: mysql-core
+    env_file:
+      - configs/mysql-core.conf

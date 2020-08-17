@@ -182,7 +182,7 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 									.put("message", msg)
 									.mergeIn(body);
 
-							_doPublishEvent(TRANSFERTASK_FAILED, json);
+							_doPublishEvent(TRANSFER_FAILED, json);
 							handler.handle(Future.succeededFuture(false));
 						}
 					} else {

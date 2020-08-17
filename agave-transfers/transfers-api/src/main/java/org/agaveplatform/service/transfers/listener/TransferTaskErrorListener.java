@@ -20,8 +20,7 @@ import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_TRIES;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_RETRY;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 	protected static final Logger log = LoggerFactory.getLogger(TransferTaskErrorListener.class);
@@ -71,12 +70,12 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 						log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
 					} else {
 						log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
+						_doPublishEvent(TRANSFER_FAILED, body);
 					}
 				});
 			}catch (Exception e){
 				log.error(e.getMessage());
 			}
-
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {

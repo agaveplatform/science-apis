@@ -64,7 +64,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             try {
                 processEvent(body, resp -> {
                     if (resp.succeeded()) {
-                        log.error("Succeeded with the processing transfer created event for transfer task {}", uuid);
+                        log.info("Succeeded with the processing transfer created event for transfer task {}", uuid);
 //                        _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
                     } else {
                         log.error("Error with return from creating the event {}", uuid);
@@ -159,10 +159,10 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                                 "source file item %s for transfer task %s.", source, uuid);
                         throw new PermissionException(message);
                     }
+                } else {
+                    throw new RemoteDataSyntaxException(String.format("Unknown source schema %s for the transfer task %s",
+                            destUri.getScheme(), uuid));
                 }
-            } else {
-                throw new RemoteDataSyntaxException(String.format("Unknown source schema %s for the transfer task %s",
-                                        destUri.getScheme(), uuid));
             }
 
             if (uriSchemeIsNotSupported(destUri)) {
@@ -204,6 +204,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                 handler.handle(Future.succeededFuture(false));
             }
         } catch (Exception e) {
+            log.error("Error with TransferTaskCreatedListener {}", e.toString());
             doHandleError(e, e.getMessage(), body, handler);
         }
     }

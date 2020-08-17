@@ -14,7 +14,7 @@ import java.net.URI;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_FAILED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
 
 public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     private static final Logger logger = LoggerFactory.getLogger(AbstractTransferTaskListener.class);
@@ -78,7 +78,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
                 .put("message", failureMessage)
                 .mergeIn(originalMessageBody);
 
-        _doPublishEvent(TRANSFERTASK_FAILED, json);
+        _doPublishEvent(TRANSFER_FAILED, json);
 
         // propagate the exception back to the calling method
         if (handler != null) {

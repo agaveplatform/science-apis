@@ -297,13 +297,14 @@ public class MetadataCollection extends AgaveResource {
             MetadataItem metadataItem;
 
             try {
-                if (StringUtils.isEmpty(uuid))
-                    uuid = new AgaveUUID(UUIDType.METADATA).toString();
-                search.setUuid(uuid);
+//                if (StringUtils.isEmpty(uuid))
+//                    uuid = new AgaveUUID(UUIDType.METADATA).toString();
+//                search.setUuid(uuid);
+                search.setOwner(this.username);
                 metadataItem = search.updateMetadataItem();
             } catch (Exception e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                        "Unable to add metadata. " + e.getMessage());
+                        "UPDATED!!: ffffffffUnable to add metadata. " + e.getMessage());
             }
             MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
             eventProcessor.processContentEvent(uuid,

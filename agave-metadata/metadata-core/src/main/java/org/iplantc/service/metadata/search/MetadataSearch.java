@@ -550,7 +550,7 @@ public class MetadataSearch {
      */
     public MongoCollection getCollection() {
         MongoCollection collection = null;
-        collection = metadataDao.getCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
+        collection = metadataDao.getMetadataItemCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
         return collection;
     }
 
@@ -647,7 +647,7 @@ public class MetadataSearch {
      * @return list of {@link MetadataItem} matching the {@code userQuery} in the sort order specified
      * @throws MetadataQueryException if {@code userQuery} is invalid format
      */
-    public List<MetadataItem> find(String userQuery) throws MetadataQueryException {
+    public List<MetadataItem> find(String userQuery) throws MetadataQueryException, PermissionException {
         List<MetadataItem> result = new ArrayList<>();
         try {
             Document doc;
@@ -657,6 +657,12 @@ public class MetadataSearch {
             BasicDBObject order = (orderField == null) ? new BasicDBObject() : new BasicDBObject(orderField, orderDirection);
             metadataDao.setAccessibleOwners(this.accessibleOwners);
             result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
+
+            if (result.size() == 0){
+                if (metadataDao.findSingleDocument(eq("uuid", getUuid())) != null){
+                    throw new PermissionException("User does not have permission to view this resource.");
+                }
+            }
 
         } catch (MetadataQueryException e) {
             throw new MetadataQueryException("Unable to parse query.");
@@ -749,7 +755,7 @@ public class MetadataSearch {
      * @throws MetadataException      if unable to update the permission of {@code user}
      * @throws MetadataStoreException
      */
-    public void updatePermissions(String userToUpdate, String group, PermissionType pem) throws MetadataException, MetadataStoreException, UnknownHostException {
+    public void updatePermissions(String userToUpdate, String group, PermissionType pem) throws MetadataException, MetadataStoreException, UnknownHostException, PermissionException {
         MetadataPermission metadataPermission;
         //check if user has write permissions
             if (pem.equals(PermissionType.NONE) || pem == null) {

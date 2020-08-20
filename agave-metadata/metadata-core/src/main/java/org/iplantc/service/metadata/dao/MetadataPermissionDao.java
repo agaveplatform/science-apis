@@ -149,7 +149,7 @@ public class MetadataPermissionDao {
 		if (!ServiceUtils.isValid(uuid))
 			throw new MetadataException("Object id cannot be null");
 		if (collection == null)
-			throw new MetadataException("Unable to connect to metadata store");
+			throw new MetadataException("Exception 7: Unable to connect to metadata store");
 		try
 		{
 			MongoCursor cursor = null;

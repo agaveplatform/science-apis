@@ -95,9 +95,9 @@ public class MetadataSchemaShareResource extends AgaveResource
             response.setEntity(new IplantErrorRepresentation(e.getMessage()));
             
         } catch (Exception e) {
-            log.error("Unable to connect to metadata store", e);
+            log.error("Exception 6: Unable to connect to metadata store", e);
             response.setStatus(Status.SERVER_ERROR_INTERNAL);
-            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store."));
+            response.setEntity(new IplantErrorRepresentation("Exception 6: Unable to connect to metadata store."));
         }
 //        finally {
 ////        	try { mongoClient.close(); } catch (Throwable e) {}

@@ -279,17 +279,17 @@ public class MetadataDao {
         return resultList;
     }
 
-//    /**
-//     * Find the {@link MetadataItem} with the provided {@link Bson} filter
-//     *
-//     * @param filter {@link Bson} filter to search the collection with
-//     * @return {@link MetadataItem} matching the {@link Bson} filter
-//     */
-//    public MetadataItem findSingleDocument (Bson filter) {
-//        MongoCollection<MetadataItem> metadataItemMongoCollection;
-//        metadataItemMongoCollection = getDefaultMetadataItemCollection();
-//        return metadataItemMongoCollection.find(filter).first();
-//    }
+    /**
+     * Find the {@link MetadataItem} with the provided {@link Bson} filter
+     *
+     * @param filter {@link Bson} filter to search the collection with
+     * @return {@link MetadataItem} matching the {@link Bson} filter
+     */
+    public MetadataItem findSingleDocument (Bson filter) {
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+        metadataItemMongoCollection = getDefaultMetadataItemCollection();
+        return metadataItemMongoCollection.find(filter).first();
+    }
 
     public List<MetadataItem> aggFind(String user, Bson query) throws MetadataStoreException {
         List<MetadataItem> resultList = new ArrayList<>();
@@ -384,7 +384,7 @@ public class MetadataDao {
      * @param metadataItem to be updated
      * @param user         making the update
      */
-    public List<MetadataPermission> updatePermission(MetadataItem metadataItem, String user) throws MetadataStoreException {
+    public List<MetadataPermission> updatePermission(MetadataItem metadataItem, String user) throws MetadataStoreException, PermissionException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         UpdateResult update;
         String uuid;

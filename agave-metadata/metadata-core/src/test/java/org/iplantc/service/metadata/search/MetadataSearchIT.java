@@ -30,6 +30,7 @@ import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.json.JSONException;
@@ -456,7 +457,6 @@ public class MetadataSearchIT {
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
 
-
         if (this.queryList.isEmpty())
             setQueryList(new ArrayList<String>());
         createMultipleMetadataItems(this.queryList);
@@ -487,13 +487,75 @@ public class MetadataSearchIT {
         Assert.assertEquals(resultList.size(), 2, "There should be 2 metadata items found: cactus and Agavoideae");
     }
 
-
     @Test
-    public void findPermissionForUuidTest() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, UUIDException {
-        MetadataSearch search = new MetadataSearch( this.username);
+    public void searchWithPermissionsTest() throws MetadataStoreException, MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException {
+        MetadataSearch search = new MetadataSearch(this.username);
         search.clearCollection();
         search.setAccessibleOwnersExplicit();
 
+        String metadataQueryAgavoideae =
+                "  {" +
+                        "    \"name\": \"Agavoideae\"," +
+                        "    \"value\": {" +
+                        "      \"type\": \"a flowering plant\"," +
+                        "      \"order\": \" Asparagales\", " +
+                        "      \"properties\": {" +
+                        "        \"profile\": {" +
+                        "        \"status\": \"paused\"" +
+                        "           }," +
+                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+                        "       }" +
+                        "       }" +
+                        "   }";
+
+        MetadataItem metadataItem = createSingleMetadataItem(metadataQueryAgavoideae);
+        search.setUuid(metadataItem.getUuid());
+        search.setMetadataItem(metadataItem);
+
+        List<String> userList = Arrays.asList("readUser", "readWriteUser", "writeUser", "allUser", "noneUser");
+        List<PermissionType> permissionTypeList = Arrays.asList(PermissionType.READ, PermissionType.READ_WRITE, PermissionType.WRITE, PermissionType.ALL, PermissionType.NONE);
+
+        for (int i = 0; i < userList.size(); i++) {
+            search.updatePermissions(userList.get(i), "", permissionTypeList.get(i));
+        }
+
+        MetadataSearch searchRead = new MetadataSearch(userList.get(0));
+        searchRead.setAccessibleOwnersExplicit();
+        searchRead.setUuid(metadataItem.getUuid());
+        List<MetadataItem> readItem = searchRead.find("{\"name\":\"Agavoideae\"}");
+        Assert.assertTrue(readItem.get(0).getName().equals("Agavoideae"), "User with read permission should find metadata item.");
+
+        MetadataSearch searchReadWrite = new MetadataSearch(userList.get(1));
+        searchReadWrite.setAccessibleOwnersExplicit();
+        searchReadWrite.setUuid(metadataItem.getUuid());
+        List<MetadataItem> readWriteItem = searchReadWrite.find("{\"name\":\"Agavoideae\"}");
+        Assert.assertTrue(readWriteItem.get(0).getName().equals("Agavoideae"), "User with read write permission should find metadata item.");
+
+
+        MetadataSearch searchWrite = new MetadataSearch(userList.get(2));
+        searchWrite.setAccessibleOwnersExplicit();
+        searchWrite.setUuid(metadataItem.getUuid());
+        Assert.assertThrows(PermissionException.class, ()-> searchWrite.find("{\"name\":\"Agavoideae\"}"));
+
+        MetadataSearch searchAll = new MetadataSearch(userList.get(3));
+        searchAll.setAccessibleOwnersExplicit();
+        searchAll.setUuid(metadataItem.getUuid());
+        List<MetadataItem> allItem = searchAll.find("{\"name\":\"Agavoideae\"}");
+        Assert.assertTrue(allItem.get(0).getName().equals("Agavoideae"), "User with all permission should find metadata item.");
+
+        MetadataSearch searchNone = new MetadataSearch(userList.get(4));
+        searchNone.setAccessibleOwnersExplicit();
+        searchNone.setUuid(metadataItem.getUuid());
+        Assert.assertThrows(PermissionException.class, ()-> searchNone.find("{\"name\":\"Agavoideae\"}"));
+
+    }
+
+
+    @Test
+    public void findPermissionForUuidTest() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, UUIDException, JSONException {
+        MetadataSearch search = new MetadataSearch( this.username);
+        search.clearCollection();
+        search.setAccessibleOwnersExplicit();
 
         String metadataQueryAgavoideae =
                 "  {" +
@@ -527,6 +589,16 @@ public class MetadataSearchIT {
         result = search.findPermission_User(sharedUser, metadataItem.getUuid());
         Assert.assertEquals(result.size(), 1, "The user has specified permission for the uuid");
 
+
+        StringBuilder jPems = new StringBuilder(new MetadataPermission(uuid, username, PermissionType.ALL).toJSON());
+
+        for (MetadataPermission permission: result.get(0).getPermissions())
+        {
+            if (!StringUtils.equals(permission.getUsername(), username)) {
+                jPems.append(",").append(permission.toJSON());
+            }
+        }
+        System.out.println(jPems);
     }
 
 
@@ -609,5 +681,6 @@ public class MetadataSearchIT {
             Assert.fail("Serializing MetadataItem to Json String should not throw exception");
         }
     }
+
 
 }

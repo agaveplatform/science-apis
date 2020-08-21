@@ -18,6 +18,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -120,18 +121,18 @@ public class MetadataResource extends AgaveResource {
         getVariants().add(new Variant(MediaType.APPLICATION_JSON));
 
         // Set up MongoDB connection
-//        try {
-//            mongoClient = ((MetadataApplication) getApplication()).getMongoClient();
-//            db = mongoClient.getDB(Settings.METADATA_DB_SCHEME);
-//            // Gets a collection, if it does not exist creates it
-//            collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
-//            schemaCollection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
-//        } catch (Exception e) {
-//            log.error("Exception 3: Unable to connect to metadata store", e);
-////        	try { mongoClient.close(); } catch (Exception e1) {}
-//            response.setStatus(Status.SERVER_ERROR_INTERNAL);
-//            response.setEntity(new IplantErrorRepresentation("Exception 3: Unable to connect to metadata store."));
-//        }
+        try {
+            mongoClient = ((MetadataApplication) getApplication()).getMongoClient();
+            db = mongoClient.getDB(Settings.METADATA_DB_SCHEME);
+            // Gets a collection, if it does not exist creates it
+            collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
+            schemaCollection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
+        } catch (Exception e) {
+            log.error("Unable to connect to metadata store", e);
+//        	try { mongoClient.close(); } catch (Exception e1) {}
+            response.setStatus(Status.SERVER_ERROR_INTERNAL);
+            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store."));
+        }
     }
 
     /**
@@ -144,11 +145,6 @@ public class MetadataResource extends AgaveResource {
     public Representation represent(Variant variant) throws ResourceException {
         DBCursor cursor = null;
         try {
-//            if (collection == null) {
-//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-//                        "Unable to connect to metadata store. If this problem persists, "
-//                                + "please contact the system administrators.");
-//            }
 
 //            BasicDBObject query = null;
 
@@ -159,57 +155,23 @@ public class MetadataResource extends AgaveResource {
             // How would one browse all their metadata?
             // does that even make sense?
 
-
-            //Mongo 4.0 ---------------------------------
             MetadataSearch search = new MetadataSearch(username);
-            search.setUuid(uuid);
-            if (search.getCollection() == null){
+            search.setAccessibleOwnersExplicit();
+
+            if (search.getCollection() == null) {
                 throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                         "Unable to connect to metadata store. If this problem persists, "
-                                + "please contact the system administrators.");
+                                + "please contact the system administrators. Exception: ");
             }
 
-            List<MetadataItem> result = search.find("{\"uuid\": \"" + uuid + "\" }");
-
-            if (result.size() > 0) {
-                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(result.get(0));
+            MetadataItem result = search.findOne();
+            if (result != null) {
+                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(result);
                 return new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString());
             } else {
-                throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-                        "No metadata item found for user with id " + uuid);
+                throw new MetadataException("No metadata item found for user with id " + uuid);
             }
 
-//        	query = new BasicDBObject("uuid", uuid);
-//        	query.append("tenantId", TenancyHelper.getCurrentTenantId());
-//
-//            cursor = collection.find(query, new BasicDBObject("_id", false));
-//
-//            if (cursor.hasNext()) {
-//            	DBObject firstResult = cursor.next();
-//
-//            	MetadataPermissionManager pm = new MetadataPermissionManager(uuid, (String)firstResult.get("owner"));
-//                if (pm.canRead(username)) {
-//                	firstResult = formatMetadataObject(firstResult);
-//                	return new IplantSuccessRepresentation(firstResult.toString());
-//                }
-//                else {
-//                    getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
-//                    return new IplantErrorRepresentation("User does not have permission to read this metadata entry.");
-//                }
-//            }
-//            else {
-//            	throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-//            			"No metadata item found for user with id " + uuid);
-//            }
-        } catch (PermissionException e) {
-            log.error("Failed to fetch metadata item " + uuid + ". " + e.getMessage());
-            throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
-                    "User does not have permission to read this metadata entry.", e);
-
-            //--------------------------------------------------------
-        } catch (ResourceException e) {
-            log.error("Failed to fetch metadata item " + uuid + ". " + e.getMessage());
-            throw e;
         } catch (Throwable e) {
             log.error("Failed to list metadata " + uuid, e);
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
@@ -234,53 +196,27 @@ public class MetadataResource extends AgaveResource {
         DBCursor cursor = null;
 
         try {
-            if (collection == null) {
-                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                        "Unable to connect to metadata store. " +
-                                "If this problem persists, please contact the system administrators.");
-            }
-
-
 
             String name = null;
             String value = null;
             String schemaId = null;
             ObjectMapper mapper = new ObjectMapper();
             ArrayNode items = mapper.createArrayNode();
+            MetadataItem metadataItem = null;
+
+            MetadataSearch search = new MetadataSearch(this.username);
+            search.setAccessibleOwnersExplicit();
 
             try {
+                if (search.getCollection() == null) {
+                    throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+                            "Unable to connect to metadata store. " +
+                                    "If this problem persists, please contact the system administrators.");
+                }
+
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
+                search.parseJsonMetadata(jsonMetadata);
 
-                if (jsonMetadata.has("name") && jsonMetadata.get("name").isTextual()
-                        && !jsonMetadata.get("name").isNull()) {
-                    name = jsonMetadata.get("name").asText();
-                } else {
-                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                            "No name attribute specified. Please associate a value with the metadata name.");
-                }
-
-                if (jsonMetadata.has("value") && !jsonMetadata.get("value").isNull()) {
-                    if (jsonMetadata.get("value").isObject() || jsonMetadata.get("value").isArray())
-                        value = jsonMetadata.get("value").toString();
-                    else
-                        value = jsonMetadata.get("value").asText();
-                } else {
-                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                            "No value attribute specified. Please associate a value with the metadata value.");
-                }
-
-                if (jsonMetadata.has("associationIds")) {
-                    if (jsonMetadata.get("associationIds").isArray()) {
-                        items = (ArrayNode) jsonMetadata.get("associationIds");
-                    } else {
-                        if (jsonMetadata.get("associationIds").isTextual())
-                            items.add(jsonMetadata.get("associationIds").asText());
-                    }
-                }
-
-                if (jsonMetadata.has("schemaId") && jsonMetadata.get("schemaId").isTextual()) {
-                    schemaId = jsonMetadata.get("schemaId").asText();
-                }
             } catch (ResourceException e) {
                 throw e;
             } catch (Exception e) {
@@ -288,151 +224,35 @@ public class MetadataResource extends AgaveResource {
                         "Unable to parse form. " + e.getMessage());
             }
 
-            // if a schema is given, validate the metadata against that registered schema
-            if (schemaId != null) {
-                BasicDBObject schemaQuery = new BasicDBObject("uuid", schemaId);
-                schemaQuery.append("tenantId", TenancyHelper.getCurrentTenantId());
-                BasicDBObject schemaDBObj = (BasicDBObject) schemaCollection.findOne(schemaQuery);
-
-                // lookup the schema
-                if (schemaDBObj == null) {
-                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                            "Specified schema does not exist.");
-                }
-
-                // check user permsisions to view the schema
-                try {
-                    MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager(schemaId, (String) schemaDBObj.get("owner"));
-                    if (!schemaPM.canRead(username)) {
-                        throw new MetadataException("User does not have permission to read metadata schema");
-                    }
-                } catch (MetadataException e) {
-                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                            e.getMessage());
-                }
-
-                // now validate the json against the schema
-                String schema = ServiceUtils.unescapeSchemaRefFieldNames(schemaDBObj.getString("schema"));
-                try {
-                    JsonFactory factory = new ObjectMapper().getFactory();
-                    JsonNode jsonSchemaNode = factory.createParser(schema).readValueAsTree();
-                    JsonNode jsonMetadataNode = factory.createParser(value).readValueAsTree();
-                    AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();
-                    ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
-                    if (!report.isSuccess()) {
-                        StringBuilder sb = new StringBuilder();
-                        for (Iterator<ProcessingMessage> reportMessageIterator = report.iterator(); reportMessageIterator.hasNext(); ) {
-                            sb.append(reportMessageIterator.next().toString() + "\n");
-
-                        }
-                        throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                                "Metadata value does not conform to schema. \n" + sb.toString());
-                    }
-                } catch (ResourceException e) {
-                    throw e;
-                } catch (Exception e) {
-                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                            "Metadata does not conform to schema.");
-                }
-            }
-
-            // lookup the associated ids to make sure they exist.
-            BasicDBList associations = new BasicDBList();
-            if (items != null) {
-                for (int i = 0; i < items.size(); i++) {
-                    try {
-                        String associationId = (String) items.get(i).asText();
-                        if (StringUtils.isEmpty(associationId)) {
-                            continue;
-                        } else {
-                            AgaveUUID associationUuid = new AgaveUUID(associationId);
-                            if (UUIDType.METADATA == associationUuid.getResourceType()
-                                    || UUIDType.SCHEMA == associationUuid.getResourceType()) {
-                                BasicDBObject associationQuery = new BasicDBObject("uuid", associationId);
-                                associationQuery.append("tenantId", TenancyHelper.getCurrentTenantId());
-                                BasicDBObject associationDBObj = (BasicDBObject) collection.findOne(associationQuery);
-
-                                if (associationDBObj == null) {
-                                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                                            "No associated object found with id" + associationId);
-                                }
-                            } else {
-                                try {
-                                    associationUuid.getObjectReference();
-                                } catch (Exception e) {
-                                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                                            "No associated object found with id" + associationId);
-                                }
-                            }
-
-                            associations.add(items.get(i).asText());
-                        }
-                    } catch (ResourceException e) {
-                        throw e;
-                    } catch (Exception e) {
-                        throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                                "Unable to parse association ids.");
-                    }
-                }
-            }
-
-            BasicDBObject doc;
-            String timestamp = new DateTime().toString();
             try {
-                doc = new BasicDBObject("uuid", uuid)
-                        .append("schemaId", schemaId)
-                        .append("internalUsername", internalUsername)
-                        .append("associationIds", associations)
-                        .append("lastUpdated", timestamp)
-                        .append("name", name)
-                        .append("value", JSON.parse(value));
-            } catch (JSONParseException e) {
-                // If value is a String that cannot be parsed into JSON Objects, then store it as a String
-                doc = new BasicDBObject("uuid", uuid)
-                        .append("schemaId", schemaId)
-                        .append("internalUsername", internalUsername)
-                        .append("associationIds", associations)
-                        .append("lastUpdated", timestamp)
-                        .append("name", name)
-                        .append("value", value);
-            }
+                search.setUuid(uuid);
 
-            // Insert or Update - currently a name on a path must be unique, which may not be desirable
-            BasicDBObject query = new BasicDBObject("uuid", uuid);
-            query.append("tenantId", TenancyHelper.getCurrentTenantId());
+                MetadataItem item = search.findOne();
+                search.setOwner(item.getOwner());
 
-            cursor = collection.find(query);
-            if (cursor.hasNext()) {
-                BasicDBObject currentMetadata = (BasicDBObject) cursor.next();
+                metadataItem = search.updateMetadataItem();
 
-                // Check if user has permission to update the metadata
-                MetadataPermissionManager permissionManager = new MetadataPermissionManager(uuid, (String) currentMetadata.get("owner"));
-                if (permissionManager.canWrite(username)) {
-
-                    doc.append("created", currentMetadata.get("created"));
-                    doc.append("owner", currentMetadata.get("owner"));
-                    doc.append("tenantId", currentMetadata.get("tenantId"));
-
-                    collection.update(query, doc);
-
+                if (metadataItem == null) {
+                    throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+                            "No metadata item found for user with id " + uuid);
+                } else {
                     for (int i = 0; i < items.size(); i++) {
                         String aid = items.get(i).asText();
                         NotificationManager.process(aid, "METADATA_UPDATED", username);
                     }
 
                     NotificationManager.process(uuid, "UPDATED", username);
-
                     getResponse().setStatus(Status.SUCCESS_OK);
-                } else {
-                    throw new ResourceException(Status.CLIENT_ERROR_UNAUTHORIZED,
-                            "User does not have permission to update metadata");
                 }
-            } else {
-                throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-                        "No metadata item found for user with id " + uuid);
-            }
 
-            getResponse().setEntity(new IplantSuccessRepresentation(formatMetadataObject(doc).toString()));
+                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
+                getResponse().setEntity(new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString()));
+
+
+            } catch (PermissionException e) {
+                throw new ResourceException(Status.CLIENT_ERROR_UNAUTHORIZED,
+                        "User does not have permission to update metadata");
+            }
 
             return;
         } catch (ResourceException e) {
@@ -462,51 +282,46 @@ public class MetadataResource extends AgaveResource {
         AgaveLogServiceClient.log(METADATA02.name(), MetaDelete.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 
         DBCursor cursor = null;
+        MetadataItem metadataItem = null;
         try {
-            if (collection == null) {
-                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                        "Unable to connect to metadata store. " +
-                                "If this problem persists, please contact the system administrators.");
-            }
 
             if (StringUtils.isEmpty(uuid)) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
                         "No object identifier provided.");
             }
 
-            BasicDBObject query = new BasicDBObject("uuid", uuid);
-            query.append("tenantId", TenancyHelper.getCurrentTenantId());
+            MetadataSearch search = new MetadataSearch(this.username);
+            search.setAccessibleOwnersExplicit();
 
-            cursor = collection.find(query);
+            if (search.getCollection() == null) {
+                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+                        "Unable to connect to metadata store. " +
+                                "If this problem persists, please contact the system administrators.");
+            }
 
-            if (!cursor.hasNext()) {
-                throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-                        "No object identifier found for the given uuid.");
-            } else {
-                while (cursor.hasNext()) {
-                    BasicDBObject metadata = (BasicDBObject) cursor.next();
-                    MetadataPermissionManager pm = new MetadataPermissionManager(uuid, (String) metadata.get("owner"));
-                    if (pm.canWrite(username)) {
-                        collection.remove(metadata);
-                        MetadataPermissionDao.deleteByUuid(uuid);
+            try {
+                search.setUuid(uuid);
+                metadataItem = search.deleteMetadataItem();
 
-                        BasicDBList aids = (BasicDBList) metadata.get("associationIds");
-                        for (Object aid : aids) {
-                            NotificationManager.process((String) aid, "METADATA_DELETED", username);
-                        }
-
-                        NotificationManager.process(uuid, "DELETED", username);
-                    } else {
-                        getResponse().setStatus(Status.CLIENT_ERROR_UNAUTHORIZED);
-                        getResponse().setEntity(new IplantErrorRepresentation(
-                                "User does not have permission to update metadata"));
-                        return;
-                    }
+                if (metadataItem == null) {
+                    throw new Exception();
                 }
+                for (String aid : metadataItem.getAssociations().getAssociatedIds().keySet()) {
+                    NotificationManager.process((String) aid, "METADATA_DELETED", username);
+                }
+
+                NotificationManager.process(uuid, "DELETED", username);
 
                 getResponse().setStatus(Status.SUCCESS_OK);
                 getResponse().setEntity(new IplantSuccessRepresentation());
+
+            } catch (PermissionException e) {
+                getResponse().setStatus(Status.CLIENT_ERROR_UNAUTHORIZED);
+                getResponse().setEntity(new IplantErrorRepresentation(
+                        "User does not have permission to update metadata"));
+                return;
             }
+
         } catch (ResourceException e) {
             log.error("Failed to delete metadata item " + uuid + ". " + e.getMessage());
 

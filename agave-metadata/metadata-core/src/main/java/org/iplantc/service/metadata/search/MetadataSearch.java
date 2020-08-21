@@ -550,7 +550,14 @@ public class MetadataSearch {
      */
     public MongoCollection getCollection() {
         MongoCollection collection = null;
-        collection = metadataDao.getMetadataItemCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
+//        Settings.METADATA_DB_COLLECTION = "metadata";
+
+//        if (Settings.METADATA_DB_COLLECTION == null) {
+//            Settings.METADATA_DB_COLLECTION = "metadata";
+//            collection = metadataDao.getMetadataItemCollection(Settings.METADATA_DB_SCHEME, "metadata");
+//        } else {
+            collection = metadataDao.getMetadataItemCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
+//        }
         return collection;
     }
 
@@ -641,7 +648,7 @@ public class MetadataSearch {
     }
 
     /**
-     * Find all {@link MetadataItem} matching the {@code userQuery} and the offset/limit specified
+     * Find the {@link MetadataItem} matching the {@code userQuery} and the offset/limit specified
      *
      * @param userQuery String query to search the collection for
      * @return list of {@link MetadataItem} matching the {@code userQuery} in the sort order specified
@@ -681,6 +688,27 @@ public class MetadataSearch {
     }
 
     /**
+     * Find single document in the collection
+     * matching the {@link MetadataItem} uuid and tenantId
+     *
+     * @return {@link MetadataItem} matching the criteria
+     */
+    public MetadataItem findOne(){
+        return metadataDao.findSingleDocument(and(eq("uuid", this.getUuid()),
+                eq("tenantId", this.metadataItem.getTenantId())));
+    }
+
+    /**
+     * Find a single document in the collection
+     *
+     * @param query {@link Bson} to search the collection with
+     * @return {@link MetadataItem} matching the criteria
+     */
+    public MetadataItem findOne(Bson query) {
+        return metadataDao.findSingleDocument(query);
+    }
+
+    /**
      * Update the metadata item
      *
      * @return {@link MetadataItem} that was updated successfully
@@ -691,6 +719,17 @@ public class MetadataSearch {
     public MetadataItem updateMetadataItem() throws MetadataException, PermissionException {
         metadataDao.setAccessibleOwners(this.accessibleOwners);
         return metadataDao.updateMetadata(this.metadataItem, this.username);
+    }
+
+    /**
+     * Delete the metadata item
+     *
+     * @return {@link MetadataItem} that was deleted successfully, null otherwise
+     * @throws PermissionException if user does not have permission to update the {@link MetadataItem}
+     */
+    public MetadataItem deleteMetadataItem() throws PermissionException {
+        metadataDao.setAccessibleOwners(this.accessibleOwners);
+        return metadataDao.deleteMetadata(this.metadataItem, this.username);
     }
 
     /**

@@ -8,6 +8,7 @@ import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.DBCollectionUpdateOptions;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.bson.Document;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.auth.JWTClient;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
@@ -25,6 +26,7 @@ import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
+import org.iplantc.service.metadata.model.MetadataViews;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.search.MetadataSearch;
 import org.iplantc.service.metadata.util.ServiceUtils;
@@ -87,16 +89,9 @@ public class MetadataShareResource extends AgaveResource {
         getVariants().add(new Variant(MediaType.APPLICATION_JSON));
 
         try {
-//            mongoClient = ((MetadataApplication) getApplication()).getMongoClient();
-
-//            db = mongoClient.getDB(Settings.METADATA_DB_SCHEME);
-            // Gets a collection, if it does not exist creates it
-//            collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
-
-//            mongoDB = mongoClient.getDatabase(Settings.METADATA_DB_SCHEME);
-//            mongoCollection = mongoDB.getCollection(Settings.METADATA_DB_COLLECTION);
             MetadataSearch search = new MetadataSearch(username);
             mongoCollection = search.getCollection();
+
             if (mongoCollection == null){
                 throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                         "Unable to connect to metadata store. If this problem persists, "
@@ -104,29 +99,14 @@ public class MetadataShareResource extends AgaveResource {
             }
 
             if (!StringUtils.isEmpty(uuid)) {
-//                DBObject returnVal = collection.findOne(new BasicDBObject("uuid", uuid));
+                //uuid exists, find metadataitem
+                    MetadataItem result = search.findOne(new Document("uuid", uuid));
 
-//                BasicDBList aggList = new BasicDBList();
-//                aggList.add(new BasicDBObject("$match", new BasicDBObject("uuid", uuid)));
-//
-//                MongoCursor cursor = mongoCollection.aggregate(aggList).cursor();
-//                if (cursor.hasNext()) {
-//                    returnVal = (DBObject) cursor.next();
-//                }
-//                if (returnVal == null) {
-//                    throw new MetadataException("No metadata item found for user with id " + uuid);
-//                }
-//                owner = (String) returnVal.get("owner");
-                if (search.validateUuid(uuid)) {
-                    //uuid exists, find metadataitem
-                    List<MetadataItem> result = search.find("{\"uuid\":\""+uuid+"\"}");
-                    if (result.size() > 0) {
-                        metadataItem = result.get(0);
-                        owner = metadataItem.getOwner();
+                if (result != null) {
+                        owner = result.getOwner();
                     } else {
                         throw new MetadataException("No metadata item found for user with id " + uuid);
                     }
-                }
             } else {
                 throw new MetadataException("No metadata id provided.");
             }
@@ -134,10 +114,16 @@ public class MetadataShareResource extends AgaveResource {
             response.setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
             response.setEntity(new IplantErrorRepresentation(e.getMessage()));
 
-        } catch (Exception e) {
-            log.error("Exception 1: Unable to connect to metadata store", e);
+        } catch (ResourceException e) {
             response.setStatus(Status.SERVER_ERROR_INTERNAL);
-            response.setEntity(new IplantErrorRepresentation("Exception 1: Unable to connect to metadata store. " + e.getMessage()));
+            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store. If this problem persists, "
+                    + "please contact the system administrators."));
+
+        } catch (Exception e) {
+            log.error("Unable to connect to metadata store", e);
+            response.setStatus(Status.SERVER_ERROR_INTERNAL);
+            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store. If this problem persists, "
+                    + "please contact the system administrators."));
         }
 //        finally {
 //        	
@@ -158,32 +144,18 @@ public class MetadataShareResource extends AgaveResource {
         }
 
         try {
-//			if (collection == null) {
-//				throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-//						"Unable to connect to metadata store. If this problem persists, "
-//								+ "please contact the system administrators.");
-//			}
-
-//			BasicDBObject query;
-//			DBCursor cursor = null;
-//			DBObject firstResult, formattedResult;
-//			BasicDBList queryList = new BasicDBList();
-//			BasicDBList matchList = new BasicDBList();
-//			BasicDBList agg = new BasicDBList();
-//			Cursor cursor_new = null;
-//
-//			matchList.add(new BasicDBObject("uuid", uuid));
-//			matchList.add(new BasicDBObject("tenantId", TenancyHelper.getCurrentTenantId()));
-//
-
             //Update to Mongo4.0 - KL
             MetadataSearch search = new MetadataSearch(this.username);
             search.setUuid(uuid);
             search.setAccessibleOwnersExplicit();
+
+            //testing
+            Settings.METADATA_DB_COLLECTION = "metadata";
+
             if (search.getCollection() == null) {
                 throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                         "Unable to connect to metadata store. If this problem persists, "
-                                + "please contact the system administrators.");
+                                + "please contact the system administrators. ");
             }
 
             List<MetadataItem> permissionResult = new ArrayList<>();
@@ -207,10 +179,6 @@ public class MetadataShareResource extends AgaveResource {
                 }
             }
 
-
-//			if (permissionResult.size() == 0)
-//				System.out.println("no permissions");
-
             StringBuilder jsonPems = new StringBuilder(new MetadataPermission(uuid, owner, PermissionType.ALL).toJSON());
 
             for (MetadataItem item : permissionResult) {
@@ -224,127 +192,6 @@ public class MetadataShareResource extends AgaveResource {
 
             //----------------------
 
-
-//			if (StringUtils.equals(Settings.PUBLIC_USER_USERNAME, username) ||
-//					StringUtils.equals(Settings.WORLD_USER_USERNAME, username)) {
-//				boolean worldAdmin = JWTClient.isWorldAdmin();
-//				boolean tenantAdmin = AuthorizationHelper.isTenantAdmin(TenancyHelper.getCurrentEndUser());
-//				if (!tenantAdmin && !worldAdmin) {
-//					BasicDBObject permType = new BasicDBObject("$nin", Arrays.asList(PermissionType.NONE));
-//					BasicDBObject perm = new BasicDBObject("permissions", permType);
-//					BasicDBList permList = new BasicDBList();
-//					permList.add(perm);
-//					permList.add(new BasicDBObject("username", this.username));
-//
-//					BasicDBObject elemMatch = new BasicDBObject("permissions", new BasicDBObject("$elemMatch", permList));
-//
-//					BasicDBList or = new BasicDBList();
-//					or.add(new BasicDBObject("owner", this.username));
-//					or.add(elemMatch);
-//
-//					queryList.add(new BasicDBObject("$match", or));
-//					queryList.add(new BasicDBObject("$match", matchList));
-//					agg.add(queryList);
-//					agg.add(Aggregates.skip(offset));
-//					agg.add(Aggregates.limit(limit));
-//				}
-//			}
-//			cursor_new = (Cursor) collection.aggregate(agg);
-//
-//			List <MetadataPermission> pemList = new ArrayList<MetadataPermission>();
-//
-//			while (cursor_new.hasNext()) {
-//				firstResult = cursor_new.next();
-//				PermissionType resultPem = (PermissionType) firstResult.get("permissions.permissions.0");
-//				String resultUser = firstResult.get("permissions.username").toString();
-//				MetadataPermission mp = new MetadataPermission(uuid, resultUser, resultPem);
-//				pemList.add(mp);
-//			}
-//
-//			if (pemList.isEmpty()) {
-//				BasicDBList permList = new BasicDBList();
-//				permList.add(new BasicDBObject("permissions.username", this.username));
-//
-//				agg = new BasicDBList();
-//				agg.add(new BasicDBObject("$match", matchList));
-//				agg.add(new BasicDBObject("$match", permList));
-//
-//				agg.add(Aggregates.skip(offset));
-//				agg.add(Aggregates.limit(limit));
-//
-//				cursor_new = (Cursor) collection.aggregate(agg);
-//				if (cursor_new.hasNext()){
-//					throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
-//							"User does not have permission to view this resource");
-//				} else {
-//					throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-//							"No permissions found for user " + sharedUsername);
-//				}
-//			}
-//
-//			if (StringUtils.isEmpty(sharedUsername))
-//			{
-//				StringBuilder jPems = new StringBuilder(new MetadataPermission(uuid, owner, PermissionType.ALL).toJSON());
-//				for (MetadataPermission permission: pemList)
-//				{
-//					if (!StringUtils.equals(permission.getUsername(), owner)) {
-//						jPems.append(",").append(permission.toJSON());
-//					}
-//				}
-//				return new IplantSuccessRepresentation("[" + jPems + "]");
-//			}
-//			else
-//			{
-//				if (ServiceUtils.isAdmin(sharedUsername) || StringUtils.equals(owner, sharedUsername)) {
-//					MetadataPermission pem = new MetadataPermission(uuid, sharedUsername, PermissionType.ALL);
-//					return new IplantSuccessRepresentation(pem.toJSON());
-//				}
-//			}
-//
-//			MetadataPermissionManager pm = new MetadataPermissionManager(uuid, owner);
-//
-//			if (pm.canRead(username))
-//			{
-//				List<MetadataPermission> permissions = MetadataPermissionDao.getByUuid(uuid, offset, limit);
-//
-//				if (StringUtils.isEmpty(sharedUsername))
-//				{
-//					StringBuilder jPems = new StringBuilder(new MetadataPermission(uuid, owner, PermissionType.ALL).toJSON());
-//					for (MetadataPermission permission: permissions)
-//	    			{
-//						if (!StringUtils.equals(permission.getUsername(), owner)) {
-//							jPems.append(",").append(permission.toJSON());
-//						}
-//					}
-//					return new IplantSuccessRepresentation("[" + jPems + "]");
-//				}
-//				else
-//				{
-//					if (ServiceUtils.isAdmin(sharedUsername) || StringUtils.equals(owner, sharedUsername))
-//					{
-//						MetadataPermission pem = new MetadataPermission(uuid, sharedUsername, PermissionType.ALL);
-//						return new IplantSuccessRepresentation(pem.toJSON());
-//					}
-//					else
-//					{
-//						MetadataPermission pem = MetadataPermissionDao.getByUsernameAndUuid(sharedUsername, uuid);
-//						if (pem == null)
-//						{
-//							throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-//									"No permissions found for user " + sharedUsername);
-//						}
-//						else
-//						{
-//							return new IplantSuccessRepresentation(pem.toJSON());
-//						}
-//					}
-//				}
-//			}
-//			else
-//			{
-//				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
-//						"User does not have permission to view this resource");
-//			}
 
         } catch (ResourceException e) {
             getResponse().setStatus(e.getStatus());
@@ -368,14 +215,9 @@ public class MetadataShareResource extends AgaveResource {
                         "No metadata id provided.");
             }
 
-            if (collection == null) {
-                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                        "Unable to connect to metadata store. If this problem persists, "
-                                + "please contact the system administrators.");
-            }
-
             String name;
             String sPermission;
+            MetadataSearch search = new MetadataSearch(username);
 
             JSONObject postPermissionData = super.getPostedEntityAsJsonObject(true);
 
@@ -434,87 +276,17 @@ public class MetadataShareResource extends AgaveResource {
 
             //KL - permission in metadata doc ------------------------
 
-            //check connection
-            if (collection == null) {
-                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                        "Unable to connect to metadata store. If this problem persists, "
-                                + "please contact the system administrators.");
-            }
 
-//            //check user has valid permission to write to uuid
-//            BasicDBObject query;
-//            MongoCursor cursor = null;
-//            DBObject firstResult, formattedResult;
-//
-//            query = new BasicDBObject("uuid", uuid);
-//            query.append("tenantId", TenancyHelper.getCurrentTenantId());
-//
-//            //user permissions
-//            BasicDBObject permType = new BasicDBObject("$nin", Arrays.asList(PermissionType.NONE, PermissionType.READ));
-//            BasicDBObject pem = new BasicDBObject("username", username)
-//                    .append("permissions", permType);
-//
-//            //owner/admin permission -- should this be done in else for performance
-//            //if tenantadmin or owner
-//            if (StringUtils.equals(Settings.PUBLIC_USER_USERNAME, username) ||
-//                    StringUtils.equals(Settings.WORLD_USER_USERNAME, username)) {
-//                boolean worldAdmin = JWTClient.isWorldAdmin();
-//                boolean tenantAdmin = AuthorizationHelper.isTenantAdmin(TenancyHelper.getCurrentEndUser());
-//                if (!tenantAdmin && !worldAdmin) {
-//                    BasicDBList or = new BasicDBList();
-//                    or.add(new BasicDBObject("owner", username));
-//                    or.add(new BasicDBObject("permissions", new BasicDBObject("$elemMatch", pem)));
-//                    query.append("$or", or);
-//                }
-//            }
-//
-//            BasicDBList aggList = new BasicDBList();
-//            aggList.add(query);
-//            //findAndModify handles the find and updating/inserting
-//            cursor = mongoCollection.aggregate(aggList).cursor();
-//
-//            if (cursor.hasNext()) {
-//                //permission found
-//                firstResult = (DBObject) cursor.next();
-//            } else {
-//                throw new ResourceException(
-//                        Status.CLIENT_ERROR_FORBIDDEN,
-//                        "User does not have permission to modify this resource.");
-//            }
-//
-//            //pull then push to update
-//            //collection.update({"uuid":uuid, "tenantId":tenantid},{$pull: {"permissions" :{"username":username}}})
-//            BasicDBObject removeQuery = new BasicDBObject("uuid", uuid);
-//            removeQuery.append("tenantId", TenancyHelper.getCurrentTenantId());
-//            BasicDBObject remove = new BasicDBObject("$pull", new BasicDBObject("permissions", new BasicDBObject("username", username)));
-//            collection.update(removeQuery, remove);
-
-//            if (StringUtils.isEmpty(sPermission) || sPermission.equalsIgnoreCase("none")) {
-//                //remove if permissions is empty/none
-//                getResponse().setStatus(Status.SUCCESS_OK);
-//            } else {
-//                getResponse().setStatus(Status.SUCCESS_CREATED);
-//
-//                BasicDBObject set = new BasicDBObject("permissions.permissions.0", sPermission);
-//
-//                query = new BasicDBObject("uuid", uuid);
-//                query.append("tenantId", TenancyHelper.getCurrentTenantId());
-//                BasicDBObject updatePem = new BasicDBObject("username", sharedUsername)
-//                        .append("permissions", Arrays.asList(sPermission))
-//                        .append("group", null);
-//
-//                query.append("permissions", Arrays.asList(updatePem));
-//                BasicDBList updateAggList = new BasicDBList();
-//
-//                collection.update(updateAggList, set);
-//                MetadataPermission metaPem = new MetadataPermission(uuid, sharedUsername, PermissionType.valueOf(sPermission));
-//                getResponse().setEntity(new IplantSuccessRepresentation(metaPem.toJSON()));
-//            }
-
-            MetadataSearch search = new MetadataSearch(username);
             search.setOwner(owner);
             search.setAccessibleOwnersExplicit();
             search.setUuid(uuid);
+
+            if (search.getCollection() == null) {
+                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+                        "Unable to connect to metadata store. " +
+                                "If this problem persists, please contact the system administrators.");
+            }
+
             try {
                 search.updatePermissions(name, "", PermissionType.valueOf(sPermission));
             } catch (PermissionException e) {
@@ -528,40 +300,6 @@ public class MetadataShareResource extends AgaveResource {
             }
             /*--------------------------------------------------------*/
 
-
-            MetadataPermissionManager pm = new MetadataPermissionManager(uuid, owner);
-
-            if (pm.canWrite(username)) {
-                // if the permission is null or empty, the permission
-                // will be removed
-                try {
-                    pm.setPermission(name, sPermission);
-                    if (StringUtils.isEmpty(sPermission)) {
-                        getResponse().setStatus(Status.SUCCESS_OK);
-                    } else {
-                        getResponse().setStatus(Status.SUCCESS_CREATED);
-                    }
-
-                    MetadataPermission permission = MetadataPermissionDao.getByUsernameAndUuid(name, uuid);
-                    if (permission == null) {
-                        permission = new MetadataPermission(uuid, name, PermissionType.NONE);
-                    }
-
-                    getResponse().setEntity(new IplantSuccessRepresentation(permission.toJSON()));
-                } catch (PermissionException e) {
-                    throw new ResourceException(
-                            Status.CLIENT_ERROR_FORBIDDEN,
-                            e.getMessage(), e);
-                } catch (IllegalArgumentException iae) {
-                    throw new ResourceException(
-                            Status.CLIENT_ERROR_BAD_REQUEST,
-                            "Invalid permission value. Valid values are: " + PermissionType.supportedValuesAsString());
-                }
-            } else {
-                throw new ResourceException(
-                        Status.CLIENT_ERROR_FORBIDDEN,
-                        "User does not have permission to modify this resource.");
-            }
 
         } catch (ResourceException e) {
             getResponse().setEntity(
@@ -588,25 +326,43 @@ public class MetadataShareResource extends AgaveResource {
             return;
         }
 
-        try {
-            MetadataPermissionManager pm = new MetadataPermissionManager(uuid, owner);
+        MetadataSearch search = new MetadataSearch(this.username);
+        search.setAccessibleOwnersExplicit();
+        search.setUuid(uuid);
 
-            if (pm.canWrite(username)) {
-                if (StringUtils.isEmpty(sharedUsername)) {
-                    // clear all permissions
-                    pm.clearPermissions();
-                } else { // clear pems for user
-                    pm.setPermission(sharedUsername, null);
+        if (search.getCollection() == null) {
+            throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+                    "Unable to connect to metadata store. " +
+                            "If this problem persists, please contact the system administrators.");
+        }
+
+        try {
+            if (StringUtils.isEmpty(sharedUsername)) {
+                // clear all permissions
+                metadataItem = search.findOne();
+                if (metadataItem == null) {
+                    throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+                            "No metadata item found for user with id " + uuid);
                 }
 
-                getResponse().setEntity(new IplantSuccessRepresentation());
-            } else {
-                throw new ResourceException(
-                        Status.CLIENT_ERROR_FORBIDDEN,
-                        "User does not have permission to modify this resource.");
+                metadataItem.setPermissions(new ArrayList<MetadataPermission>());
+                search.setMetadataItem(metadataItem);
+                search.updateMetadataItem();
+
+            } else { // clear pems for user
+                search.updatePermissions(sharedUsername, "", PermissionType.NONE);
             }
-        } catch (ResourceException e) {
+
+            getResponse().setEntity(new IplantSuccessRepresentation());
+
+        } catch (PermissionException e) {
+            throw new ResourceException(
+                    Status.CLIENT_ERROR_FORBIDDEN,
+                    "User does not have permission to modify this resource.");
+        }
+        catch (ResourceException e) {
             throw e;
+
         } catch (Throwable e) {
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                     "Failed to remove metadata permissions: " + e.getMessage());

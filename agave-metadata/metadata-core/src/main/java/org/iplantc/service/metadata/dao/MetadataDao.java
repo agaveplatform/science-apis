@@ -52,6 +52,7 @@ public class MetadataDao {
     private MongoDatabase db = null;
     private MongoClient mongoClient = null;
     private MongoClients mongoClients = null;
+    private com.mongodb.client.MongoClient mongo4Client = null;
 
     private static MetadataDao dao = null;
 
@@ -103,7 +104,7 @@ public class MetadataDao {
     }
 
     public com.mongodb.client.MongoClient getMongoClients() {
-        if (mongoClients == null) {
+        if (mongo4Client == null) {
 
             //testing for custom codec
             ClassModel<JsonNode> valueModel = ClassModel.builder(JsonNode.class).build();
@@ -116,14 +117,14 @@ public class MetadataDao {
                     fromProviders(pojoCodecProvider),
                     registry);
 
-            return mongoClients.create(MongoClientSettings.builder()
+            mongo4Client =  mongoClients.create(MongoClientSettings.builder()
                     .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
                             new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT))))
                     .credential(getMongoCredential())
                     .codecRegistry(pojoCodecRegistry)
                     .build());
         }
-        return null;
+        return mongo4Client;
     }
 
     /**
@@ -181,8 +182,8 @@ public class MetadataDao {
      * @return collection from the db
      */
     public MongoCollection<MetadataItem> getMetadataItemCollection(String dbName, String collectionName) {
-        db = getMongoClients().getDatabase(dbName);
-        return db.getCollection(collectionName, MetadataItem.class);
+            db = getMongoClients().getDatabase(dbName);
+            return db.getCollection(collectionName, MetadataItem.class);
     }
 
     /**
@@ -288,7 +289,12 @@ public class MetadataDao {
     public MetadataItem findSingleDocument (Bson filter) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
-        return metadataItemMongoCollection.find(filter).first();
+        try {
+            return metadataItemMongoCollection.find(filter).first();
+        }
+        catch (Exception e){
+            return null;
+        }
     }
 
     public List<MetadataItem> aggFind(String user, Bson query) throws MetadataStoreException {

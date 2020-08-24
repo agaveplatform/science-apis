@@ -1,23 +1,15 @@
 package org.iplantc.service.metadata.dao;
 
-import org.hibernate.HibernateException;
-import org.hibernate.Session;
-import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.exceptions.MetadataException;
-import org.iplantc.service.metadata.exceptions.MetadataQueryException;
-import org.iplantc.service.metadata.model.MetadataSchemaItem;
 import org.iplantc.service.metadata.model.MetadataSchemaPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.util.List;
-import java.util.UUID;
+
+import static org.testng.Assert.*;
 
 @Test(groups={"integration"})
 public class MetadataSchemaPermissionDaoIT extends AbstractMetadataPermissionDaoIT{
@@ -33,7 +25,7 @@ public class MetadataSchemaPermissionDaoIT extends AbstractMetadataPermissionDao
 			String schemaId = getResourceUuid();
 			MetadataSchemaPermission pem = new MetadataSchemaPermission(schemaId, TEST_OWNER, PermissionType.READ);
 			MetadataSchemaPermissionDao.persist(pem);
-			Assert.assertNotNull(pem.getId(), "Schema permission did not persist.");
+			assertNotNull(pem.getId(), "Schema permission did not persist.");
 	}
 
 	@Test(dependsOnMethods={"persistTest"})
@@ -43,13 +35,13 @@ public class MetadataSchemaPermissionDaoIT extends AbstractMetadataPermissionDao
 
 		MetadataSchemaPermission pem = new MetadataSchemaPermission(schemaId, TEST_OWNER, PermissionType.READ);
 		MetadataSchemaPermissionDao.persist(pem);
-		Assert.assertNotNull(pem.getId(), "Schema permission did not persist.");
+		assertNotNull(pem.getId(), "Schema permission did not persist.");
 
 		List<MetadataSchemaPermission> pems = MetadataSchemaPermissionDao.getBySchemaId(schemaId);
-		Assert.assertNotNull(pems, "getBySchemaId did not return any permissions.");
-		Assert.assertEquals(pems.size(), 1,
+		assertNotNull(pems, "getBySchemaId did not return any permissions.");
+		assertEquals(pems.size(), 1,
 				"getBySchemaId should only return permissions for the given schema Id.");
-		Assert.assertEquals(schemaId, pems.get(0).getSchemaId(),
+		assertEquals(schemaId, pems.get(0).getSchemaId(),
 				"getBySchemaId should not return a permission for another schemaId.");
 	}
 
@@ -60,15 +52,15 @@ public class MetadataSchemaPermissionDaoIT extends AbstractMetadataPermissionDao
 
 		MetadataSchemaPermission pem1 = new MetadataSchemaPermission(schemaId, TEST_OWNER, PermissionType.READ);
 		MetadataSchemaPermissionDao.persist(pem1);
-		Assert.assertNotNull(pem1.getId(), "Metadata Schema permission 1 did not persist.");
+		assertNotNull(pem1.getId(), "Metadata Schema permission 1 did not persist.");
 
 		MetadataSchemaPermission pem2 = new MetadataSchemaPermission(schemaId, TEST_SHARED_OWNER, PermissionType.READ);
 		MetadataSchemaPermissionDao.persist(pem2);
-		Assert.assertNotNull(pem2.getId(), "Job permission 2 did not persist.");
+		assertNotNull(pem2.getId(), "Job permission 2 did not persist.");
 
 		MetadataSchemaPermission userPem = MetadataSchemaPermissionDao.getByUsernameAndSchemaId(TEST_OWNER, schemaId);
-		Assert.assertNotNull(userPem, "getByUsernameAndSchemaId did not return the user permission.");
-		Assert.assertEquals(userPem, pem1, "getBySchemaId did not return the correct metadata schema permission for the user.");
+		assertNotNull(userPem, "getByUsernameAndSchemaId did not return the user permission.");
+		assertEquals(userPem, pem1, "getBySchemaId did not return the correct metadata schema permission for the user.");
 	}
 
 	@Test(dependsOnMethods={"getByUsernameAndUuidTest"})
@@ -78,12 +70,24 @@ public class MetadataSchemaPermissionDaoIT extends AbstractMetadataPermissionDao
 
 		MetadataSchemaPermission pem = new MetadataSchemaPermission(schemaId, TEST_OWNER, PermissionType.READ);
 		MetadataSchemaPermissionDao.persist(pem);
-		Assert.assertNotNull(pem.getId(), "Schema permission did not persist.");
+		assertNotNull(pem.getId(), "Schema permission did not persist.");
 
 		MetadataSchemaPermissionDao.delete(pem);
 		List<MetadataSchemaPermission> pems = MetadataSchemaPermissionDao.getBySchemaId(schemaId);
-		Assert.assertFalse(pems.contains(pem), "Schema permission did not delete.");
+		assertFalse(pems.contains(pem), "Schema permission did not delete.");
 	}
 
 
+	@Test(dependsOnMethods={"deleteTest"})
+	public void getUuidOfAllSharedMetataSchemaItemReadableByUserTest() throws MetadataException
+	{
+		String schemaId = getResourceUuid();
+
+		MetadataSchemaPermission pem = new MetadataSchemaPermission(schemaId, TEST_OWNER, PermissionType.READ);
+		MetadataSchemaPermissionDao.persist(pem);
+		assertNotNull(pem.getId(), "Schema permission did not persist.");
+
+		List<String> uuids = MetadataSchemaPermissionDao.getUuidOfAllSharedMetataSchemaItemReadableByUser(TEST_OWNER, 0, 100);
+		assertTrue(uuids.contains(schemaId), "Test schema uuid should be returned from shared schema list");
+	}
 }

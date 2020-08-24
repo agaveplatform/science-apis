@@ -3,20 +3,17 @@
  */
 package org.iplantc.service.metadata.resources;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaCreate;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaDelete;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaList;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaSearch;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
-
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.regex.Pattern;
-
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.github.fge.jsonschema.main.AgaveJsonSchemaFactory;
+import com.github.fge.jsonschema.main.AgaveJsonValidator;
+import com.github.fge.jsonschema.report.ProcessingMessage;
+import com.github.fge.jsonschema.report.ProcessingReport;
+import com.mongodb.*;
+import com.mongodb.util.JSON;
+import com.mongodb.util.JSONParseException;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -29,6 +26,7 @@ import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.AgaveResource;
 import org.iplantc.service.common.search.AgaveResourceResultOrdering;
+import org.iplantc.service.common.util.SimpleTimer;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.MetadataApplication;
@@ -43,36 +41,21 @@ import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.enumerations.MetadataEventType;
 import org.joda.time.DateTime;
 import org.restlet.Context;
-import org.restlet.data.Form;
-import org.restlet.data.MediaType;
-import org.restlet.data.Request;
-import org.restlet.data.Response;
-import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.github.fge.jsonschema.main.AgaveJsonSchemaFactory;
-import com.github.fge.jsonschema.main.AgaveJsonValidator;
-import com.github.fge.jsonschema.main.JsonSchemaFactory;
-import com.github.fge.jsonschema.main.JsonValidator;
-import com.github.fge.jsonschema.report.ProcessingMessage;
-import com.github.fge.jsonschema.report.ProcessingReport;
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.BasicDBObjectBuilder;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.util.JSON;
-import com.mongodb.util.JSONParseException;
-import org.iplantc.service.common.util.SimpleTimer;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Pattern;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaCreate;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaSearch;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
 
 /**
  * Class to handle CRUD operations on metadata entities.
@@ -427,9 +410,9 @@ public class MetadataCollection extends AgaveResource {
                     ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
                     if (!report.isSuccess()) {
                         StringBuilder sb = new StringBuilder();
-                        for (Iterator<ProcessingMessage> reportMessageIterator = report.iterator(); reportMessageIterator.hasNext(); ) {
-                            sb.append(reportMessageIterator.next().toString() + "\n");
-
+                        for (ProcessingMessage processingMessage : report) {
+                            sb.append(processingMessage.toString());
+                            sb.append("\n");
                         }
                         throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
                             "Metadata value does not conform to schema. \n" + sb.toString());
@@ -448,9 +431,7 @@ public class MetadataCollection extends AgaveResource {
                 for (int i = 0; i < items.size(); i++) {
                     try {
                         String associationId = (String) items.get(i).asText();
-                        if (StringUtils.isEmpty(associationId)) {
-                            continue;
-                        } else {
+                        if (!StringUtils.isEmpty(associationId)) {
                             AgaveUUID associationUuid = new AgaveUUID(associationId);
                             if (UUIDType.METADATA == associationUuid.getResourceType()) {
                                 BasicDBObject associationQuery = new BasicDBObject("uuid", associationId);
@@ -548,7 +529,6 @@ public class MetadataCollection extends AgaveResource {
 
             getResponse().setStatus(Status.SUCCESS_CREATED);
             getResponse().setEntity(new IplantSuccessRepresentation(formatMetadataObject(doc).toString()));
-            return;
         } catch (ResourceException e) {
             log.error("Failed to add metadata ", e);
             getResponse().setStatus(e.getStatus());
@@ -560,15 +540,14 @@ public class MetadataCollection extends AgaveResource {
                 "An error occurred while fetching the metadata item. " +
                     "If this problem persists, " +
                     "please contact the system administrators."));
-        } finally {
         }
     }
 
     /**
      * Formats each metadata item returned with Agave decorations
-     * @param metadataObject
-     * @return
-     * @throws UUIDException
+     * @param metadataObject the bson object to format
+     * @return bson object with hypermedia added and links resolved
+     * @throws UUIDException if the associated uuid cannot be resolved.
      */
     private DBObject formatMetadataObject(DBObject metadataObject) throws UUIDException {
         metadataObject.removeField("_id");

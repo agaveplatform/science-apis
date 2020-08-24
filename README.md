@@ -61,16 +61,14 @@ Each of these services is available as a Docker image. We primarily include them
 
 ## Building
 
-> ***The Agave Core APIs are automatically built and tested as part of our CI/CD workflow on every commit. Docker images for successful builds are automatically creatd and pushed into the [Docker public registry](http://docker.com/u/agaveapi). Unless you are actively developing against the code base, you do not need to build the images yourself. The `docker-compose.yml` file will guarantee you have the latest version of the APIs running.***  
+> ***The Agave Core APIs are automatically built and tested as part of our CI/CD workflow on every commit. Docker images for successful builds are automatically created and pushed into the [Docker public registry](http://hub.docker.com/u/agaveplatform). Unless you are actively developing against the code base, you do not need to build the images yourself. The `docker-compose.yml` file will guarantee you have the latest version of the APIs running.***  
   
 To create a development build of the APIs, you will need to check out this project and its submodules, then kick off the maven build. The following commands will build and package each API, build its Docker image, and tag it with the current version and project commit hash. 
 
 ```  
 $ git clone http://bitbucket.org/agaveapi/science-apis.git agave-science-apis
 $ cd agave-science-apis
-$ git submodule init
-$ git submodule update
-$ mvn -s config/maven/settings.xml -P build,publish clean deploy
+$ mvn -P agave,dev clean install
 $ cp docker-compose.yml.SAMPLE docker-compose.yml
 ``` 
 
@@ -79,7 +77,7 @@ If you are not actively developing the APIs, skip the checkout and build and sim
 ``` 
 $ mkdir agave-science-apis
 $ cd agave-science-apis
-$ curl -sk -o docker-compose.yml https://bitbucket.org/agaveapi/agave/raw/master/docker-compose.yml.SAMPLE  
+$ curl -sk -o docker-compose.yml https://git.org/agaveapi/agave/raw/master/docker-compose.yml.SAMPLE  
 ``` 
 
 ## Running

@@ -275,6 +275,9 @@ while getopts 'cbporgs:w:t:v:' OPTION; do
 done
 shift "$(($OPTIND -1))"
 
+# look up git branch for the default tag
+GIT_BRANCH=$(git branch | head -n 1 | sed 's/ //g')
+version=${version:-"$GIT_BRANCH"}
 if [[ -z "${tag}" || -z "${version}" ]]; then
   echo "script usage: $(basename $0) [-c] [-o] -t imagetag -v imageversion" >&2
   exit 1

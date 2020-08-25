@@ -1,18 +1,7 @@
 package org.iplantc.service.jobs.managers;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.io.IOException;
-import java.lang.reflect.Method;
-
-import org.hibernate.HibernateException;
-import org.hibernate.Session;
-import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.exceptions.SoftwareException;
-import org.iplantc.service.common.persistence.HibernateUtil;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.jobs.dao.AbstractDaoTest;
@@ -23,17 +12,15 @@ import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
 import org.mockito.Mockito;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 
-@Test(groups={"broken", "integration"})
-public class JobEventProcessorTest extends AbstractDaoTest {
+import static org.mockito.Mockito.*;
+
+@Test(groups={"integration"})
+public class JobEventProcessorIT extends AbstractDaoTest {
 
 	protected NotificationDao ndao = new NotificationDao();
 
@@ -90,10 +77,10 @@ public class JobEventProcessorTest extends AbstractDaoTest {
 		return notification;
 	}
 
-	// @Test
-	public void process() {
-		throw new RuntimeException("Test not implemented");
-	}
+//	// @Test
+//	public void process() {
+//		throw new RuntimeException("Test not implemented");
+//	}
 
 	@DataProvider
 	protected Object[][] processJobExecutionSystemEventProvider() {
@@ -177,7 +164,7 @@ public class JobEventProcessorTest extends AbstractDaoTest {
 	}
 
 //	@Test
-	public void processJobSoftwareEvent() {
-		throw new RuntimeException("Test not implemented");
-	}
+//	public void processJobSoftwareEvent() {
+//		throw new RuntimeException("Test not implemented");
+//	}
 }

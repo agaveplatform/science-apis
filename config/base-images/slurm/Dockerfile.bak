@@ -1,0 +1,85 @@
+######################################################
+#
+# Agave DevOps Slurm Server
+# Tag: agaveplatform/slurm:14.03.9
+#
+# This container provides a standard Slurm controller
+# and worker created on top of the agaveplatform/centos-base
+# image. Nothing special here.
+#
+# Usage:
+# docker run -h docker -i -t  \
+#            -p 10022:22                  \ # SSHD, SFTP
+#            -p 9618:9618                 \ # Slurm
+#            --rm agaveplatform/slurm
+#
+#  https://github.com/agaveplatform/base-images:6.5
+#
+######################################################
+
+FROM ubuntu:18.04
+
+LABEL maintainer="Rion Dooley <deardooley@gmail.com>"
+
+## Add slurm user
+#RUN adduser slurm && \
+#    echo "slurm:slurm" | chpasswd
+#USER slurm
+#RUN mkdir /home/slurm/.ssh
+#ADD ssh/id_rsa.pub /home/slurm/.ssh/authorized_keys
+#USER root
+
+# Install slurm
+RUN apt-get update
+RUN	apt-get install -y git bzip2 vim-tiny
+RUN apt-get install -y libslurm-dev slurmd slurmctld slurm-client munge openssh-server
+RUN chsh --shell /bin/bash munge
+
+#RUN	mkdir -p /etc/sysconfig/slurm && \
+#	cp etc/init.d.slurm /etc/init.d/slurmd && \
+#	chmod +x /etc/init.d/slurmd && \
+#	cp -rf doc/html /var/www/html/slurm && \
+#	chown -R apache:apache /var/www/html/slurm && \
+
+RUN	chown -R root:root /var/log/munge && \
+	chown -R root:root /var/lib/munge && \
+	mkdir -p /var/run/munge && \
+	chown -R root:root /var/run/munge && \
+	chown -R root:root /etc/munge && \
+
+	mkdir /var/log/slurm && \
+	touch /var/log/slurm/job_completions && \
+	touch /var/log/slurm/accounting && \
+	chown -R slurm:slurm /var/log/slurm && \
+
+	touch /var/spool/last_config_lite && \
+	touch /var/spool/last_config_lite.new && \
+	chown slurm:slurm /var/spool/last_config_lite* && \
+
+	chown root:slurm /var/spool && \
+	chmod g+w /var/spool
+
+RUN adduser --shell /bin/bash "testuser"  && \
+	echo "testuser:testuser" | chpasswd
+USER testuser
+RUN mkdir /home/testuser/.ssh
+COPY ssh/id_rsa.pub /home/testuser/.ssh/authorized_keys
+USER root
+
+RUN adduser --shell /bin/bash "testshareuser"  && \
+    echo "testshareuser:testshareuser" | chpasswd
+USER testshareuser
+RUN mkdir /home/testshareuser/.ssh
+COPY ssh/id_rsa.pub /home/testshareuser/.ssh/authorized_keys
+USER root
+
+RUN adduser --shell /bin/bash "testotheruser" && \
+    echo "testotheruser:testotheruser" | chpasswd
+USER testotheruser
+RUN mkdir /home/testotheruser/.ssh
+COPY ssh/id_rsa.pub /home/testotheruser/.ssh/authorized_keys
+USER root
+
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

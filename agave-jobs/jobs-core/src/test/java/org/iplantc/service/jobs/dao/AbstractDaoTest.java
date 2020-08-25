@@ -6,7 +6,6 @@ package org.iplantc.service.jobs.dao;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.gson.JsonParseException;
 import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -14,10 +13,8 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.math.RandomUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.StringUtils;
-import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
@@ -39,19 +36,18 @@ import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.joda.time.DateTime;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
@@ -67,7 +63,6 @@ import static org.iplantc.service.jobs.model.JSONTestDataUtil.*;
  * @author dooley
  *
  */
-@Test(groups={"integration"})
 public class AbstractDaoTest 
 {	
     private static final Logger log = Logger.getLogger(AbstractDaoTest.class);
@@ -169,6 +164,50 @@ public class AbstractDaoTest
     /**
      * Creates private execution system with a random uuid as the id.
      * Asserts that the system is created and valid prior to returning.
+     * @return a persisted {@link ExecutionSystem}
+     */
+    protected ExecutionSystem createExecutionSystem(BatchQueue[] batchQueues) {
+        ExecutionSystem system = null;
+        SystemDao dao = new SystemDao();
+        try {
+            JSONObject json = JSONTestDataUtil.getInstance().getTestDataObject(TEST_EXECUTION_SYSTEM_FILE);
+            json.put("id", UUID.randomUUID().toString());
+            // add batch queues into system json, replacing previous ones.
+            JSONArray queues = new JSONArray();
+            for(BatchQueue q: batchQueues) {
+                BatchQueue cc = q.clone();
+                JSONObject jsonQ = new JSONObject()
+                    .put("id", cc.getUuid())
+                    .put("name", cc.getName())
+                    .put("mappedName", UUID.randomUUID().toString())
+                    .put("description", cc.getDescription())
+                    .put("default", cc.isSystemDefault())
+                    .put("maxJobs", cc.getMaxJobs())
+                    .put("maxUserJobs", cc.getMaxUserJobs())
+                    .put("maxNodes", cc.getMaxNodes())
+                    .put("maxProcessorsPerNode", cc.getMaxProcessorsPerNode())
+                    .put("maxMemoryPerNode", cc.getMaxMemoryPerNode())
+                    .put("maxRequestedTime", cc.getMaxRequestedTime())
+                    .put("customDirectives", cc.getCustomDirectives());
+                queues.put(jsonQ);
+            }
+            json.put("queues", queues);
+            // now marshal to an ExecutionSystem and save
+            system = ExecutionSystem.fromJSON(json);
+            system.setOwner(SYSTEM_OWNER);
+            system.getUsersUsingAsDefault().add(SYSTEM_OWNER);
+            dao.persist(system);
+        } catch (IOException | JSONException | SystemArgumentException e) {
+            log.error("Unable create execution system", e);
+            Assert.fail("Unable create execution system", e);
+        }
+
+        return system;
+    }
+
+    /**
+     * Creates private execution system with a random uuid as the id.
+     * Asserts that the system is created and valid prior to returning.
      * @return a persisted {@link StorageSystem}
      */
     protected StorageSystem createStorageSystem() {
@@ -198,6 +237,7 @@ public class AbstractDaoTest
         {
             HibernateUtil.beginTransaction();
             session = HibernateUtil.getSession();
+            session.clear();
             HibernateUtil.disableAllFilters();
 
             session.createQuery("DELETE ExecutionSystem").executeUpdate();
@@ -210,9 +250,12 @@ public class AbstractDaoTest
             session.createQuery("DELETE StorageSystem").executeUpdate();
             session.createQuery("DELETE StorageConfig").executeUpdate();
             session.createQuery("DELETE SystemRole").executeUpdate();
+            session.createQuery("DELETE SystemHistoryEvent").executeUpdate();
             session.createQuery("DELETE SystemPermission").executeUpdate();
             session.createSQLQuery("delete from userdefaultsystems").executeUpdate();
             session.flush();
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
         finally
         {

@@ -173,7 +173,7 @@ public enum TorqueJobStatus implements RemoteSchedulerJobStatus<TorqueJobStatus>
      * @see #getUnknownStatuses()
      */
     public boolean isDoneStatus() {
-        return !isActiveStatus() && !isUnknownStatus();
+        return !isActiveStatus() && !isUnknownStatus() && !isPausedStatus();
     }
 
     /**

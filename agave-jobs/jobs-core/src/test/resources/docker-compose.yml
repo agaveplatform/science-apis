@@ -211,8 +211,9 @@ services:
 #      - '7515:7512'
 
   slurm:
-    image: agaveplatform/slurm:14.03.9
+    image: agaveplatform/slurm:20.02.3
     hostname: docker.example.com
+    privileged: true
     ports:
       - '10133:22'
 
@@ -228,6 +229,10 @@ services:
   pbs:
     image: agaveplatform/pbspro:19.1.2
     hostname: docker
+    command:
+      - "tail"
+      - "-f"
+      - "/dev/null"
     ports:
       - '10188:22'
 

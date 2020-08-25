@@ -1,10 +1,5 @@
 package org.iplantc.service.transfer;
 
-import java.io.FileNotFoundException;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.Date;
-
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -14,7 +9,6 @@ import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uri.AgaveUriRegex;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.AuthConfigException;
 import org.iplantc.service.systems.exceptions.EncryptionException;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
@@ -33,6 +27,11 @@ import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.s3.S3Jcloud;
 import org.iplantc.service.transfer.sftp.MaverickSFTP;
 import org.irods.jargon.core.connection.AuthScheme;
+
+import java.io.FileNotFoundException;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.Date;
 
 public class RemoteDataClientFactory {
     
@@ -245,7 +244,8 @@ public class RemoteDataClientFactory {
 	 * </ol> 
 	 * 
 	 * Standard URL are also supported which provide both public and authenticated access to
-	 * resources. See {@link #isSchemeSupported(URI)} for more information on supported schema.
+	 * resources. See {@link #isSchemeSupported(URI)} for more information on supported schema. No authentication
+	 * checks will be made for standard URL, thus
 	 * 
 	 * @see #isSchemeSupported(URI)
 	 * @param apiUsername the user making the requet
@@ -264,7 +264,7 @@ public class RemoteDataClientFactory {
 	throws RemoteDataException, RemoteCredentialException, PermissionException, 
 		   SystemUnknownException, AgaveNamespaceException, FileNotFoundException
 	{
-	    // first look for internal URI
+		// first look for internal URI
 	    if (ApiUriUtil.isInternalURI(uri)) 
 	    {
 	        RemoteSystem system = ApiUriUtil.getRemoteSystem(apiUsername, uri);
@@ -327,6 +327,15 @@ public class RemoteDataClientFactory {
     			return new FTP(host, port, username, password, null, null);
     		} 
     		else if (StringUtils.equalsIgnoreCase(scheme,"sftp")) {
+    			if (StringUtils.isEmpty(username) || StringUtils.isEmpty(password)) {
+					throw new RemoteCredentialException("Invalid credentials provided for URI, " + uri.toString() +
+							". SFTP URL  must have valid username and password provided in the user info section of " +
+							"the URI in order to authenticate. Please consider registering your SFTP server as a system " +
+							"with Agave to avoid unintentionally exposing your credentials.");
+				} else if (StringUtils.isEmpty(host)) {
+					throw new RemoteDataException("Invalid hostname provided for URI, " + uri.toString());
+				}
+
     			return new MaverickSFTP(host, port, username, password, null, null);
     		}
     		else {
@@ -344,7 +353,7 @@ public class RemoteDataClientFactory {
 	 * {@link RemoteSystem}. URI with {@code http} and {@code https} schema are checked against known resource URI
 	 * within the current tenant and accepted if a match is found. For all other schemas, the response is based upon
 	 * agave's ability to authenticate to the remote system using basic username and password found in the standard
-	 * {@link URI#getAuthority()} content.
+	 * {@link URI#getAuthority()} content. Empty and null schema are rejected.
 	 * 
 	 * @param uri the {@link URI} for which to check the schema
 	 * @return true if the schema is supported directly or through reference to an internal api URI

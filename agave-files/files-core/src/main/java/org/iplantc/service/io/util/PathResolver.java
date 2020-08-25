@@ -3,13 +3,6 @@
  */
 package org.iplantc.service.io.util;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.tools.ant.util.FileUtils;
@@ -18,6 +11,13 @@ import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Utility class to determine permissions on remote files.
@@ -186,44 +186,15 @@ public class PathResolver {
 	 * Extracts the virtual path on a remote file system from the original
 	 * URL request path made to the Files API. 
 	 * 
-	 * @param owner
-	 * @param path
-	 * @return resolved path
-	 * @throws IOException 
-	 * @throws URISyntaxException 
+	 * @param owner the system owner
+	 * @param originalPath the full url path of the request made to the files api.
+	 * @return resolved agave path for the url
+	 * @throws IOException if the path cannot be parsed
 	 */
 	public static String resolve(String owner, String originalPath) throws IOException 
-	{	
-//	    Matcher matcher = FilePathRegex.getMatcher(originalPath, owner);
-//	    
-//	    if (matcher == null) {
-//	        throw new IOException("Unrecognized URL structure for path " + originalPath);
-//	    }
-//	    
-//	    // get the path component of the original request URL path. 
-//	    String path = null;
-//	    // if public path,the path is in group 3
-//	    if (matcher.groupCount() == 5) {
-//	        path = matcher.group(3);
-//	    } 
-//	    // in all other paths, the path is in group 2
-//	    else {
-//	        path = matcher.group(2);
-//	    }
-//	    
-//	    // Convert Windows-format paths to sensible paths
-//        Pattern regexDriveLetter = Pattern.compile("^[a-zA-Z]:");
-//        Pattern regexSlash = Pattern.compile("\\\\");
-//
-//        path = regexDriveLetter.matcher(path).replaceAll("");
-//        path = regexSlash.matcher(path).replaceAll("/");
-//
-//        return path; 
-		
-	    
+	{
 		// this will drop the webapp name which probably won't match the IO service route
 		String path = originalPath;
-		//path = path.substring(path.indexOf("files", 1));
 		String[] endpoints = { "listings", "media", "pems", "meta", "history", "index" };
 		
 		String[] segments = path.substring(1).split("/", -1);//FileUtils.getPathStack(path);
@@ -233,16 +204,13 @@ public class PathResolver {
 				segments[2].equals("system")) 
 		{	
 			// they specified the system id as the next token. drop it.
-			if (segments.length == 4) 
+			if (segments.length == 4)
 			{
 				path = "";
-			} 
-			else 
+			}
+			else
 			{
-				List<String> segmentList = new ArrayList<String>();
-				for(int i=4;i<segments.length; i++) {
-					segmentList.add(segments[i]);
-				}
+				List<String> segmentList = new ArrayList<>(Arrays.asList(segments).subList(4, segments.length));
 				path = ServiceUtils.explode("/", segmentList);
 			}
 		} 
@@ -256,10 +224,7 @@ public class PathResolver {
 			} 
 			else 
 			{
-				List<String> segmentList = new ArrayList<String>();
-				for(int i=2;i<segments.length; i++) {
-					segmentList.add(segments[i]);
-				}
+				List<String> segmentList = new ArrayList<String>(Arrays.asList(segments).subList(2, segments.length));
 				path = ServiceUtils.explode("/", segmentList);
 			}
 		} else {
@@ -270,8 +235,6 @@ public class PathResolver {
 			path = "/";
 		} else {
 			path = StringUtils.replace(path, "/ /",  "//");
-			// escape spaces in file names. the path is already decoded at this point
-//			path = StringUtils.replace(path, " ", "\\ ");
 		}
 		
         // Convert Windows-format paths to sensible paths
@@ -286,42 +249,34 @@ public class PathResolver {
 	}
 	
 	/**
-	 * Returns the {@link RemoteSystem#systemId} id or {@link RemoteSystem#uuid} from a valid File API request path 
-	 * given by {@code originalPath}. If {@code originalPath} does not contain a 
-	 * {@link RemoteSystem#systemId} id or {@link RemoteSystem#uuid}, it returns the user's default {@link StorageSystem#systemId}.
+	 * Returns the {@link RemoteSystem#getSystemId()} id or {@link RemoteSystem#getUuid()} from a valid File API
+	 * request path given by {@code originalPath}. If {@code originalPath} does not contain a
+	 * {@link RemoteSystem#getSystemId()} id or {@link RemoteSystem#getUuid()}, it returns the user's default
+	 * {@link StorageSystem#getSystemId()}.
 	 * 
 	 * Example:
-	 * <code>"/files/media/system/storage.example.com/path/to/file.dat"     =>  "storage.example.com"
-	 * "/files/media/system/storage.example.com//path/to/file.dat"     =>  "storage.example.com"
-	 * "/files/media/path/to/file.dat"                                 =>  "default.storage.example.com"
-	 * "/files/media///path/to/file.dat"                               =>  "storage.example.com"
-	 * </code>
+	 * <pre><code>
+	 * "/files/media/system/storage.example.com/path/to/file.dat"   =>  "storage.example.com"
+	 * "/files/media/system/storage.example.com//path/to/file.dat"  =>  "storage.example.com"
+	 * "/files/media/path/to/file.dat"                              =>  "default.storage.example.com"
+	 * "/files/media///path/to/file.dat"                            =>  "storage.example.com"
+	 * </code></pre>
 	 * 
 	 * @param originalPath full URL request path to the Files API
-	 * @param username of user making the request. This is needed when looking up the default storage system. 
-	 * @return the {@link RemoteSystem#systemId} id or {@link RemoteSystem#uuid} represented by the {@code originalPath}
+	 * @param owner of user making the request. This is needed when looking up the default storage system.
+	 * @return the {@link RemoteSystem#getSystemId()} id or {@link RemoteSystem#getUuid()} represented by the {@code originalPath}
 	 * @throws IOException if the {@code originalPath} is not a valid Files API path 
 	 */
 	public static String getSystemIdFromPath(String originalPath, String owner) throws IOException 
-	{	
-//	    Matcher matcher = FilePathRegex.getMatcher(originalPath, owner);
-//        
-//        if (matcher == null) {
-//            throw new IOException("Unrecognized URL structure for path " + originalPath);
-//        } else { 
-//            return matcher.group(1);
-//        }
-        
+	{
         if (StringUtils.isEmpty(originalPath)) {
 			throw new IOException("Unrecognized URL structure for path " + originalPath);
 		}
 		
 		// this will drop the webapp name which probably won't match the IO service route
-		String path = originalPath;
-		//path = path.substring(path.indexOf("files", 1));
 		String[] endpoints = { "listings", "media", "pems", "meta", "history", "index" };
 		
-		String[] segments = path.substring(1).split("/", -1);//FileUtils.getPathStack(path);
+		String[] segments = originalPath.substring(1).split("/", -1);//FileUtils.getPathStack(path);
 		
 		if (segments.length > 3 && segments[0].equals("files") && 
 				ArrayUtils.contains(endpoints, segments[1]) &&
@@ -333,9 +288,10 @@ public class PathResolver {
 		else if (segments.length > 1 && segments[0].equals("files") && 
 				ArrayUtils.contains(endpoints, segments[1])) 
 		{
+			// no system in uri, default system will have to be looked up by the calling function.
 			return null;
 		} else {
-			throw new IOException("Unrecognized URL structure for path " + path);
+			throw new IOException("Unrecognized URL structure for path " + originalPath);
 		}
 	}
 
@@ -343,23 +299,13 @@ public class PathResolver {
 	 * Resolve the file system path represented by the public unauthenticated
 	 * file path represented by the request to the Files API.
 	 * 
-	 * @param owner
-	 * @param path
+	 * @param owner the original owner of the path
+	 * @param originalPath the original path in the http request
 	 * @return true if the path is in the user's home subtree, false otherwise
-	 * @throws IOException 
-	 * @throws URISyntaxException 
+	 * @throws IOException if the path is invalid
 	 */
 	public static String resolvePublic(String owner, String originalPath) throws IOException 
-	{	
-//	    if (!FilePathRegex.FILES_PUBLIC_URI.matches(originalPath, owner)) 
-//	    {
-//	        throw new IOException("Unrecognized publci URL structure for path " + originalPath);
-//	    } 
-//	    else 
-//	    {
-//            return resolve(owner, originalPath);
-//	    }
-        
+	{
 		// this will drop the webapp name which probably won't match the IO service route
 		String path = originalPath;
 		//path = path.replaceAll("//", "/ /");
@@ -406,7 +352,7 @@ public class PathResolver {
 	 * 
 	 * @param originalPath full URL request path
 	 * @return username or null if the path is absolute
-	 * @throws IOException
+	 * @throws IOException if the path was invalid
 	 */
 	public static String getOwner(String originalPath) 
 	throws IOException 
@@ -425,12 +371,12 @@ public class PathResolver {
 	 * Checks to see if a username can be inferred from a system path. This only
 	 * works if the system is public. Otherwise the determination needs to be 
 	 * made from system roles and ACL.
-	 * @param systemPath
-	 * @param system
-	 * @param remoteDataClient
+	 *
+	 * @param systemPath the agave path for the remote system
+	 * @param system the system against which to resolve the {@code systemPath}
+	 * @param remoteDataClient instance of {@link RemoteDataClient} for the system
 	 * @return username if one exists, otherwise null
-	 * 
-	 * @throws IOException
+	 * @throws IOException if the path is invalid or cannot be resolved
 	 */
 	public static String getImpliedOwnerFromSystemPath(String systemPath, RemoteSystem system, RemoteDataClient remoteDataClient) 
 	throws IOException 

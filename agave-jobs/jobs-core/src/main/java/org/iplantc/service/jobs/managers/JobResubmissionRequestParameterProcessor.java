@@ -35,9 +35,8 @@ public class JobResubmissionRequestParameterProcessor extends JobRequestParamete
 	/**
 	 * Validates the {@link SoftwareParameter} values passed into
 	 * a job request.
-	 * @param software
-	 * @param jobRequestMap
-	 * @throws JobProcessingException
+	 * @param jobRequestMap the map of parameter values submitted with the job request
+	 * @throws JobProcessingException if an invalid value is provided
 	 */
 	public void process(Map<String, Object> jobRequestMap) 
 	throws JobProcessingException {
@@ -167,14 +166,13 @@ public class JobResubmissionRequestParameterProcessor extends JobRequestParamete
 					
 					String[] explodedParameters = null;
 					if (jobRequestMap.get(softwareParameter.getKey()) == null) {
-//						explodedParameters = new String[]{};
 						continue;
 					} else if (jobRequestMap.get(softwareParameter.getKey()) instanceof String[]) {
 						explodedParameters = (String[])jobRequestMap.get(softwareParameter.getKey());
-
-					} else {
+					} else if (jobRequestMap.get(softwareParameter.getKey()) instanceof String) {
 						explodedParameters = StringUtils.split((String)jobRequestMap.get(softwareParameter.getKey()), ";");
-//						explodedParameters = new String[]{(String)pTable.get(softwareParameter.getKey())};
+					} else {
+						explodedParameters = new String[] { String.valueOf(jobRequestMap.get(softwareParameter.getKey())) };
 					}
 
 					if (softwareParameter.getMinCardinality() > explodedParameters.length)

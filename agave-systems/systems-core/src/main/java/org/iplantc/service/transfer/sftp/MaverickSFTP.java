@@ -1,8 +1,6 @@
 package org.iplantc.service.transfer.sftp;
 
-import com.google.protobuf.ByteString;
 import com.sshtools.logging.LoggerFactory;
-import com.sshtools.net.ForwardingClient;
 import com.sshtools.publickey.SshPrivateKeyFile;
 import com.sshtools.publickey.SshPrivateKeyFileFactory;
 import com.sshtools.sftp.*;
@@ -15,14 +13,11 @@ import com.sshtools.ssh2.KBIAuthentication;
 import com.sshtools.ssh2.Ssh2Client;
 import com.sshtools.ssh2.Ssh2Context;
 import com.sshtools.ssh2.Ssh2PublicKeyAuthentication;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.remote.ssh.MaverickSSHSubmissionClient;
-import org.iplantc.service.remote.ssh.shell.Shell;
 import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
@@ -77,7 +72,7 @@ public final class MaverickSFTP implements RemoteDataClient {
 
     // Socket timeouts
     public static final int CONNECT_TIMEOUT_MS = 20000;  // 20 seconds
-    public static final int READ_TIMEOUT_MS    = 120000; // 2 minutes
+    public static final int READ_TIMEOUT_MS    = 60000; // 2 minutes
 
     public static final int TEST_CONNECT_TIMEOUT_MS = 8000; // 8 seconds
     public static final int TEST_READ_TIMEOUT_MS    = 100;  // .1 seconds
@@ -195,7 +190,7 @@ public final class MaverickSFTP implements RemoteDataClient {
         // Get a new authenticated session.
         try {
             // Make initial socket connection
-            // This call can throw a recoverable exception AloeSSHConnection
+            // This call can throw a recoverable exception
             sock = connect(CONNECT_TIMEOUT_MS, READ_TIMEOUT_MS,
                     username, host, port, proxyHost, proxyPort, getMsgPrefix());
             // Create an SSH connector
@@ -1616,6 +1611,7 @@ public final class MaverickSFTP implements RemoteDataClient {
 
                 String copyCommand = String.format("cp -rLf \"%s\" \"%s\"", resolvedSrc, resolvedDest);
                 log.debug("Performing remote copy on " + host + ": " + copyCommand);
+
 
                 MaverickSSHSubmissionClient proxySubmissionClient = null;
                 String proxyResponse = null;

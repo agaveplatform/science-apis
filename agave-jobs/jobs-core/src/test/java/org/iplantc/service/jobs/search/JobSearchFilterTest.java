@@ -1,21 +1,16 @@
 package org.iplantc.service.jobs.search;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.search.SearchTerm;
-import org.iplantc.service.jobs.dao.AbstractDaoTest;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
-public class JobSearchFilterTest extends AbstractDaoTest
+import java.util.*;
+
+@Test(groups={"unit"})
+public class JobSearchFilterTest
 {
     
     private String alternateCase(String val) {
@@ -39,11 +34,6 @@ public class JobSearchFilterTest extends AbstractDaoTest
 		JobSearchFilter jobSearchFilter = new JobSearchFilter();
 		for (String key: jobSearchFilter.getSearchTermMappings().keySet())
 		{
-//		    // handle sets and ranges independently
-//		    if (StringUtils.endsWithIgnoreCase(key, "between") 
-//                    || StringUtils.endsWithIgnoreCase(key, "in") 
-//                    || StringUtils.endsWithIgnoreCase(key, "nin")) continue;
-//            
             testData.add(new Object[]{ key, true, "Exact terms should be accepted" });
 			testData.add(new Object[]{ key.toUpperCase(), true, "Uppercase terms should be accepted" });
 			testData.add(new Object[]{ alternateCase(key), true, "Mixed case terms should be accepted" });

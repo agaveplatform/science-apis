@@ -1,12 +1,6 @@
 package org.iplantc.service.jobs.managers.launchers;
 
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
-
-import java.io.File;
-import java.util.Date;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -14,9 +8,7 @@ import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
-import org.iplantc.service.jobs.exceptions.SoftwareUnavailableException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateAttributeVariableType;
@@ -24,7 +16,6 @@ import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariable
 import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
 import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
@@ -39,7 +30,12 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.util.Date;
+import java.util.List;
+
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 
 /**
@@ -208,7 +204,7 @@ public class JobLauncherMacroIT extends AbstractJobSubmissionTest {
 		
 		Job job = createJob(testApps.get(0));
 		ExecutionSystem executionSystem = testApps.get(0).getExecutionSystem();
-		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(job);
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(job, executionSystem);
 
 		Object[][] testData = new Object[WrapperTemplateAttributeVariableType.values().length + WrapperTemplateStatusVariableType.values().length + 1][3];
 		int i = 0;
@@ -238,7 +234,7 @@ public class JobLauncherMacroIT extends AbstractJobSubmissionTest {
 	protected Object[][] resolveNotificationsMacrosProvider() throws Exception {
 		
 		Job job = createJob(software);
-		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(job);
+		WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(job, executionSystem);
 		return new Object[][] { 
 			{job, "",
 					resolver.resolveNotificationEventMacro(null, null),
@@ -262,8 +258,7 @@ public class JobLauncherMacroIT extends AbstractJobSubmissionTest {
 	}
 
 	@Test(dataProvider = "resolveNotificationsMacrosProvider", dependsOnMethods = { "resolveMacros" }, enabled = true)
-	public void resolveNotificationMacros(Job job, String macroVars, String expectedValue, boolean archive) 
-	throws JobException, SystemUnavailableException, SoftwareUnavailableException 
+	public void resolveNotificationMacros(Job job, String macroVars, String expectedValue, boolean archive)
 	{
 		JobLauncher launcher = getTestJobLauncher(job);
 		

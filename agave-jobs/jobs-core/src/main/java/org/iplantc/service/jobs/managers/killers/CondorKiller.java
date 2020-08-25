@@ -12,11 +12,6 @@ public class CondorKiller extends AbstractJobKiller {
     }
 
     @Override
-    protected String getCommand() {
-        return getExecutionSystem().getScheduler().getBatchKillCommand() + " " + getJob().getLocalJobId();
-    }
-
-	@Override
 	protected String getAltCommand() {
 		// if the response was empty, the job could be done, but the scheduler could only 
 		// recognize numeric job ids. Let's try again with just the numeric part

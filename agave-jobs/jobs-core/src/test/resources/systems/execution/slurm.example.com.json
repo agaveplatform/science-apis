@@ -39,8 +39,8 @@
       "type": "PASSWORD"
     }
   },
-  "scratchDir": "/tmp",
-  "workDir": "/tmp",
+  "scratchDir": "scratch",
+  "workDir": "scratch",
   "scheduler": "SLURM",
   "environment": "",
   "startupScript": "./bashrc"

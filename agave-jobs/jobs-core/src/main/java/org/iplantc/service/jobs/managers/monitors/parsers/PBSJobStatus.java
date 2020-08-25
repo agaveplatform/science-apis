@@ -11,6 +11,7 @@ public enum PBSJobStatus implements RemoteSchedulerJobStatus<PBSJobStatus> {
     QUEUED("Q", "Job is queued.", JobStatusType.QUEUED),
     WAITING("W", "Job is waiting for its requested execution time to be reached or job specified a stagein request which failed for some reason.", JobStatusType.QUEUED),
     HELD("H", "Job is held.", JobStatusType.QUEUED),
+    MOVED("M", "Job was moved to another server.", JobStatusType.QUEUED),
 
     ARRAY_BEGUN("B", "Job arrays only. Job array has at least one subjob running.", JobStatusType.RUNNING),
     EXITING("E", "Job is exiting after having run.", JobStatusType.RUNNING),
@@ -21,7 +22,7 @@ public enum PBSJobStatus implements RemoteSchedulerJobStatus<PBSJobStatus> {
     USER_INTERRUPT("U", "Cycle-harvesting job is suspended due to keyboard activity.", JobStatusType.PAUSED),
 
     FINISHED("F", "Job is finished.", null),
-    MOVED("M", "Job was moved to another server.", null),
+
 
 //    These are added by PBS/Torque v.2.4.16 (from Ubuntu)
     COMPLETED("C", "Job is completed after having run.", null), // distinct from F, but effectively the same for us
@@ -177,7 +178,7 @@ public enum PBSJobStatus implements RemoteSchedulerJobStatus<PBSJobStatus> {
      * @see #getUnknownStatuses()
      */
     public boolean isDoneStatus() {
-        return !isActiveStatus() && !isUnknownStatus();
+        return !isActiveStatus() && !isUnknownStatus() && !isPausedStatus();
     }
 
     /**

@@ -16,14 +16,14 @@
       "maxNodes": 1,
       "maxMemory": "5MB",
       "customDirectives": "-p 1",
-      "default": false
+      "default": true
     },
     {
-      "name": "normal",
+      "name": "default",
       "maxJobs": 100,
       "maxMemory": "2048GB",
       "customDirectives": "-p 1",
-      "default": true
+      "default": false
     }
   ],
   "login": {

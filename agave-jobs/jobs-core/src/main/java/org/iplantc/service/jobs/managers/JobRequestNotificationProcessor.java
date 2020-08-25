@@ -3,19 +3,20 @@
  */
 package org.iplantc.service.jobs.managers;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.jobs.model.enumerations.JobEventType;
+import org.iplantc.service.notification.exceptions.NotificationException;
+import org.iplantc.service.notification.model.Notification;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.notification.exceptions.BadCallbackException;
-import org.iplantc.service.notification.exceptions.NotificationException;
-import org.iplantc.service.notification.model.Notification;
-import org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import static org.iplantc.service.jobs.model.enumerations.JobEventType.*;
 
 /**
  * @author dooley
@@ -39,147 +40,102 @@ public class JobRequestNotificationProcessor {
 	 * URL, phone numbers, and agave uri. Anything else will throw 
 	 * an exception.
 	 *  
-	 * @param json
+	 * @param callbackUrl the url callback when just strings are given as the notification property in url form submissions
 	 * @throws NotificationException if an invalid callback URL value is given
 	 */
 	public void process(String callbackUrl) throws NotificationException {
-		if (!StringUtils.isEmpty(callbackUrl)) {
-			try {
-				// validate the callback value they provided for support
-				NotificationCallbackProviderType.getInstanceForUri(callbackUrl);
-				
-				// add default notifications for each terminal state
-				this.notifications.add(new Notification(job.getUuid(), 
-						username, JobStatusType.FINISHED.name(), callbackUrl, false));
-				this.notifications.add(new Notification(job.getUuid(), 
-						username, JobStatusType.FAILED.name(), callbackUrl, false));
-				this.notifications.add(new Notification(job.getUuid(), 
-						username, JobStatusType.STOPPED.name(), callbackUrl, false));
+		ObjectMapper mapper = new ObjectMapper();
+
+		if (StringUtils.isNotBlank(callbackUrl)) {
+			ArrayNode jsonNotifications = mapper.createArrayNode();
+			for (JobEventType eventType : List.of(FINISHED, FAILED, STOPPED)) {
+				jsonNotifications.addObject()
+						.put("event", eventType.name())
+						.put("owner", getUsername())
+						.put("associatedUuid", getJob().getUuid())
+						.put("url", callbackUrl)
+						.put("persistent", false);
 			}
-			catch (BadCallbackException e) {
-				throw new NotificationException("Invalid notification callback url provided", e);
-			}
-			catch (Exception e) {
-				throw new NotificationException("Unable to create notification for the given value", e);
-			}
+			process(jsonNotifications);
 		}
 	}
-	
+
 	/**
 	 * Processes a {@link JsonNode} passed in with a job request as a 
 	 * notification configuration. Accepts an array of {@link Notification} 
 	 * request objects or a simple string;
 	 *  
-	 * @param json
-	 * @throws NotificationException
+	 * @param json a JSON representation of the notification to be added to the job
+	 * @throws NotificationException if the notification cannot be validated
 	 */
 	public void process(JsonNode json) throws NotificationException {
-		
-		notifications.clear();
-		
-		if (json == null || json.isNull()) {
-			// ignore the null value
-			return;
-		}
-		else if (json.isValueNode()) {
+
+		getNotifications().clear();
+
+		if (json == null || json.isNull()) return;
+
+		if (json.isValueNode()) {
 			process(json.textValue());
 		}
-		else if (!json.isArray())
-		{
+		else if (json.isArray()) {
+			process((ArrayNode)json);
+		} else {
 			throw new NotificationException("Invalid notification value given. "
 					+ "notifications must be an array of notification objects specifying a "
 					+ "valid url, event, and an optional boolean persistence attribute.");
 		}
-		else
+	}
+
+	/**
+	 * Processes a {@link ArrayNode} of notification subscriptions represented as {@link ObjectNode}.
+	 *
+	 * @param jsonNotifications a JSON array of json notification objects
+	 * @throws NotificationException if the notification cannot be validated
+	 */
+	public void process(ArrayNode jsonNotifications) throws NotificationException {
+
+		getNotifications().clear();
+
+		if (jsonNotifications == null) return;
+
+		for (int i=0; i<jsonNotifications.size(); i++)
 		{
-			for (int i=0; i<json.size(); i++)
+			JsonNode jsonNotif = jsonNotifications.get(i);
+			if (!jsonNotif.isObject())
 			{
-				JsonNode jsonNotif = json.get(i);
-				if (!jsonNotif.isObject())
-				{
-					throw new NotificationException("Invalid notifications["+i+"] value given. "
-						+ "Each notification objects should specify a "
-						+ "valid url, event, and an optional boolean persistence attribute.");
+				throw new NotificationException("Invalid notifications["+i+"] value given. "
+					+ "Each notification object should specify a "
+					+ "valid url, event, and an optional boolean persistence attribute.");
+			}
+			else
+			{
+				// here we reuse the validation built into the {@link Notification} model
+				// itself to validate the embedded job notification subscriptions.
+				try {
+					addNotification(((ObjectNode)jsonNotif).put("associatedUuid", getJob().getUuid()));
 				}
-				else
-				{
-					// here we reuse the validation built into the {@link Notification} model
-					// itself to validate the embedded job notification subscriptions.
-					Notification notification = new Notification();
-					try {
-						((ObjectNode)jsonNotif).put("associatedUuid", job.getUuid());
-						notification = Notification.fromJSON(jsonNotif);
-						notification.setOwner(job.getOwner());
-					} 
-					catch (NotificationException e) {
-						throw e;
-					} 
-					catch (Throwable e) {
-						throw new NotificationException("Unable to process notification.", e);
-					}
-					
-//					Notification notification = new Notification();
-//					currentKey = "notifications["+i+"].url";
-//					if (!jsonNotif.has("url")) {
-//						throw new NotificationException("No notifications["+i+"] attribute given. "
-//								+ "Notifications must have valid url and event attributes.");
-//					}
-//					else
-//					{
-//						notification.setCallbackUrl(jsonNotif.get("url").textValue());
-//					}
-//
-//					currentKey = "notifications["+i+"].event";
-//					if (!jsonNotif.has("event")) {
-//						throw new NotificationException("No notifications["+i+"] attribute given. "
-//								+ "Notifications must have valid url and event attributes.");
-//					}
-//					else
-//					{
-//						String event = jsonNotif.get("event").textValue();
-//						try {
-//							if (!StringUtils.equals("*", event)) {
-//								try {
-//									JobStatusType.valueOf(event.toUpperCase());
-//								} catch (IllegalArgumentException e) {
-//									JobMacroType.valueOf(event.toUpperCase());
-//								}
-//								notification.setEvent(StringUtils.upperCase(event));
-//							}
-//							else {
-//								notification.setEvent("*");
-//							}
-//						} catch (Throwable e) {
-//							throw new NotificationException("Valid values are: *, " +
-//									ServiceUtils.explode(", ", Arrays.asList(JobStatusType.values())) + ", " +
-//									ServiceUtils.explode(", ", Arrays.asList(JobMacroType.values())));
-//						}
-//					}
-//
-//
-//					if (jsonNotif.has("persistent"))
-//					{
-//						currentKey = "notifications["+i+"].persistent";
-//						if (jsonNotif.get("persistent").isNull()) {
-//							throw new NotificationException(currentKey + " cannot be null");
-//						}
-//						else if (!jsonNotif.get("persistent").isBoolean())
-//						{
-//							throw new NotificationException("Invalid value for " + currentKey + ". "
-//									+ "If provided, " + currentKey + " must be a boolean value.");
-//						} else {
-//							notification.setPersistent(jsonNotif.get("persistent").asBoolean());
-//						}
-//					}
-//					
-//					notification.setOwner(getUsername());
-//					notification.setAssociatedUuid(job.getUuid());
-					
-					getNotifications().add(notification);
+				catch (NotificationException e) {
+					throw e;
+				}
+				catch (Throwable e) {
+					throw new NotificationException("Unable to process notification ["+i+"]" , e);
 				}
 			}
 		}
-		
+	}
+
+	/**
+	 * Parses JsonObject into a {@link Notification} and adds the object to the queue. This is a light wrapper for the
+	 * call to {@link Notification#fromJSON(JsonNode)} that allows us to mock out an otherwise static method
+	 * call that would throw exceptions without a live database to query the job id. We already test the
+	 * {@link Notification#fromJSON(JsonNode)} method in its module, so we can skip that here.
+	 *
+	 * @param jsonNotification notification subscription represented as an {@link ObjectNode}
+	 */
+	protected void addNotification(ObjectNode jsonNotification) throws NotificationException {
+		Notification notification = Notification.fromJSON(jsonNotification);
+		notification.setOwner(getUsername());
+		getNotifications().add(notification);
 	}
 
 	/**
@@ -210,4 +166,11 @@ public class JobRequestNotificationProcessor {
 		this.username = username;
 	}
 
+	public Job getJob() {
+		return job;
+	}
+
+	public void setJob(Job job) {
+		this.job = job;
+	}
 }

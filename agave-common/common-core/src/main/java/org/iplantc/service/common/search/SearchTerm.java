@@ -1,12 +1,12 @@
 package org.iplantc.service.common.search;
 
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.exceptions.SearchSyntaxException;
+
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.exceptions.SearchSyntaxException;
 
 /**
  * Tuple to hold mapping of job attribute and
@@ -147,11 +147,11 @@ public class SearchTerm implements Comparable<SearchTerm>
 			        boolean first = true;
 			        for(Date d: (List<Date>)searchValue) {
 			        	if (first) {
-			        		dates.add(new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.000000").format(d));
+			        		dates.add(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.000000").format(d));
 			        		first = false;
 			        	}
 			        	else {
-			        		dates.add(new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.999999").format(d));
+			        		dates.add(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.999999").format(d));
 			        	}
 			        }
 			        
@@ -162,18 +162,18 @@ public class SearchTerm implements Comparable<SearchTerm>
 			} else if (searchValue instanceof Date) {
 				if (this == ON) {
 					List<String> dates = new ArrayList<>();
-			        dates.add(new SimpleDateFormat("YYYY-MM-dd 00:00:00").format((Date)searchValue));
-			        dates.add(new SimpleDateFormat("YYYY-MM-dd 23:59:59").format((Date)searchValue));
+			        dates.add(new SimpleDateFormat("yyyy-MM-dd 00:00:00").format((Date)searchValue));
+			        dates.add(new SimpleDateFormat("yyyy-MM-dd 23:59:59").format((Date)searchValue));
 			        return dates;
 			    } 
 			    else if (this == GT || this == LTE || this == AFTER) {
-			    	return new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.999999").format((Date)searchValue);
+			    	return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.999999").format((Date)searchValue);
 			    }
 			    else if (this == LT || this == GTE || this == BEFORE) {
-			    	return new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.000000").format((Date)searchValue);
+			    	return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.000000").format((Date)searchValue);
 			    }
 			    else {
-			        return new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.000000").format((Date)searchValue);
+			        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.000000").format((Date)searchValue);
 			    }
 			}
 			

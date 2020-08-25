@@ -3,22 +3,11 @@
  */
 package org.iplantc.service.jobs.dao;
 
-import java.math.BigInteger;
-import java.util.*;
-
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.CacheMode;
-import org.hibernate.HibernateException;
-import org.hibernate.ObjectNotFoundException;
-import org.hibernate.Query;
-import org.hibernate.SQLQuery;
-import org.hibernate.Session;
-import org.hibernate.StaleObjectStateException;
-import org.hibernate.StaleStateException;
-import org.hibernate.UnresolvableObjectException;
+import org.hibernate.*;
 import org.hibernate.transform.AliasToEntityMapResultTransformer;
 import org.hibernate.transform.Transformers;
 import org.hibernate.type.StandardBasicTypes;
@@ -37,6 +26,9 @@ import org.iplantc.service.jobs.search.JobSearchFilter;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.joda.time.DateTime;
+
+import java.math.BigInteger;
+import java.util.*;
 
 /**
  * @author dooley
@@ -477,7 +469,7 @@ public class JobDao
                 buf.append(systemIds[i]);
             }
             buf.append(").");
-            log.debug(buf.toString());             
+            log.debug(buf.toString());
         }
         
 	    boolean excludeTenant = false;
@@ -1725,7 +1717,7 @@ public class JobDao
 			sql +=	"\n ORDER BY " + String.format(orderBy.getMappedField(), orderBy.getPrefix()) + " " + order.toString() + " \n";
 			
 			String q = sql;
-			//log.debug(q);
+//			log.debug(q);
 			SQLQuery query = session.createSQLQuery(sql);
 			query.addScalar("id", StandardBasicTypes.LONG)
 				.addScalar("charge", StandardBasicTypes.DOUBLE)
@@ -1816,7 +1808,7 @@ public class JobDao
 			    
 			}
 			
-			log.debug(q);
+//			log.debug(q);
 			
 			List<JobDTO> jobs = query
 					.setFirstResult(offset)

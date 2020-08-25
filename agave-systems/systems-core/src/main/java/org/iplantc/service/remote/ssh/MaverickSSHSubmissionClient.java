@@ -1,14 +1,17 @@
 package org.iplantc.service.remote.ssh;
 
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketAddress;
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import com.sshtools.logging.LoggerFactory;
 import com.sshtools.net.ForwardingClient;
+import com.sshtools.publickey.SshPrivateKeyFile;
+import com.sshtools.publickey.SshPrivateKeyFileFactory;
+import com.sshtools.ssh.*;
+import com.sshtools.ssh.components.ComponentManager;
+import com.sshtools.ssh.components.SshKeyPair;
+import com.sshtools.ssh.components.jce.JCEComponentManager;
+import com.sshtools.ssh2.KBIAuthentication;
+import com.sshtools.ssh2.Ssh2Client;
+import com.sshtools.ssh2.Ssh2Context;
+import com.sshtools.ssh2.Ssh2PublicKeyAuthentication;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.remote.RemoteSubmissionClient;
@@ -22,24 +25,13 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.sftp.MaverickSFTPLogger;
 import org.iplantc.service.transfer.sftp.MultiFactorKBIRequestHandler;
 
-import com.sshtools.logging.LoggerFactory;
-import com.sshtools.publickey.SshPrivateKeyFile;
-import com.sshtools.publickey.SshPrivateKeyFileFactory;
-import com.sshtools.ssh.PasswordAuthentication;
-import com.sshtools.ssh.PublicKeyAuthentication;
-import com.sshtools.ssh.SshAuthentication;
-import com.sshtools.ssh.SshClient;
-import com.sshtools.ssh.SshConnector;
-import com.sshtools.ssh.SshSession;
-import com.sshtools.ssh.SshTransport;
-import com.sshtools.ssh.SshTunnel;
-import com.sshtools.ssh.components.ComponentManager;
-import com.sshtools.ssh.components.SshKeyPair;
-import com.sshtools.ssh.components.jce.JCEComponentManager;
-import com.sshtools.ssh2.KBIAuthentication;
-import com.sshtools.ssh2.Ssh2Client;
-import com.sshtools.ssh2.Ssh2Context;
-import com.sshtools.ssh2.Ssh2PublicKeyAuthentication;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 /**
@@ -624,7 +616,7 @@ public class MaverickSSHSubmissionClient implements RemoteSubmissionClient {
 
                             Thread.sleep(1000);
                         }
-
+                        // TODO: wrap and pass back the exit code
                         return process.getCommandOutput();
                     } catch (Throwable t) {
                         String msg = "Failed to read response from " + hostname;

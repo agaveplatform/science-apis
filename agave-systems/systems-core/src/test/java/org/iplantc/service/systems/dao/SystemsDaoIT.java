@@ -219,7 +219,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 	
-	public void udpateBatchQueue() throws Exception
+	public void updateBatchQueue() throws Exception
 	{
 		SystemDao dao = new SystemDao();
 		try {
@@ -230,16 +230,22 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			system.getBatchQueues().clear();
 			dao.persist(system);
 			Assert.assertTrue(system.getBatchQueues().isEmpty(), "Batch queues were not deleted");
-			
+
+			ExecutionSystem savedSystem = (ExecutionSystem) dao.findBySystemId(system.getSystemId());
+			Assert.assertTrue(savedSystem.getBatchQueues().isEmpty(), "Batch queues were not deleted");
+
 			BatchQueue queue = new BatchQueue("test", (long)10, 10.0);
 			system.addBatchQueue(queue);
 			dao.persist(system);
-			Assert.assertEquals(system.getBatchQueues().size(), 1,  "Incorrect number of queues found");
-			
+			savedSystem = (ExecutionSystem) dao.findBySystemId(system.getSystemId());
+			Assert.assertEquals(savedSystem.getBatchQueues().size(), 1,  "Incorrect number of queues found");
+
 			BatchQueue savedQueue = system.getBatchQueues().iterator().next();
 			system.removeBatchQueue(savedQueue);
 			dao.persist(system);
-			Assert.assertTrue(system.getBatchQueues().isEmpty(), "Batch queue was not deleted");
+
+			savedSystem = (ExecutionSystem) dao.findBySystemId(system.getSystemId());
+			Assert.assertTrue(savedSystem.getBatchQueues().isEmpty(), "Batch queue was not deleted");
 		}
 		catch (Throwable t) {
 			Assert.fail("Failed to update batch queues", t);

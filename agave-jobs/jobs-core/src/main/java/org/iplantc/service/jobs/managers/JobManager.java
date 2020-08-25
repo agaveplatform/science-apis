@@ -3,15 +3,10 @@
  */
 package org.iplantc.service.jobs.managers;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -34,8 +29,8 @@ import org.iplantc.service.jobs.exceptions.JobTerminationException;
 import org.iplantc.service.jobs.managers.killers.JobKiller;
 import org.iplantc.service.jobs.managers.killers.JobKillerFactory;
 import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.jobs.model.JobDependency;
 import org.iplantc.service.jobs.model.JobEvent;
+import org.iplantc.service.jobs.model.SystemAccessCache;
 import org.iplantc.service.jobs.model.enumerations.JobEventType;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.queue.ZombieJobWatch;
@@ -64,10 +59,10 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.impl.StdSchedulerFactory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.File;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.*;
 
 /**
  * @author dooley
@@ -989,5 +984,13 @@ public class JobManager {
         }
 
         return false;
+    }
+
+    public Instant getLastSuccessfulSystemAccess(ExecutionSystem executionSystem) {
+        return new SystemAccessCache().getLastSuccess(executionSystem.getUuid());
+    }
+
+    public void setLastSuccessfulSystemAccess(ExecutionSystem executionSystem, Instant lastSuccess) {
+        new SystemAccessCache().setLastSuccess(executionSystem.getUuid(), lastSuccess);
     }
 }

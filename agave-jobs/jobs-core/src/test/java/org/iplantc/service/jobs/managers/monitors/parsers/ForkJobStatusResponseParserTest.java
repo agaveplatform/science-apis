@@ -2,6 +2,7 @@ package org.iplantc.service.jobs.managers.monitors.parsers;
 
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorEmptyResponseException;
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorResponseParsingException;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -24,11 +25,16 @@ public class ForkJobStatusResponseParserTest extends AbstractJobStatusResponsePa
 	}
 
 	/**
-	 * The job status query to Fork is {@code "llq <job_id>}. That means the response should
-	 * come back in a space-delimited line with the following fields:
+	 * The job status query to Fork is {@code "ps -o pid= -o user= -o stat= -o time= -o comm= | grep '^\s+<job_id>'}. That means
+	 * the response should come back in a space-delimited line with the following fields:
 	 *
 	 * <pre>
-	 * Id               Owner    Submitted    ST  PRI Class        Running On
+	 * Id    Owner    Status   Time  Exe
+	 *     1 root     S        0:00  sshd
+	 *   251 root     S        0:00  sshd
+	 *   253 testuser R        0:00  sshd
+	 *   254 testuser S        0:00  ash
+	 *   264 testuser R        0:00  ps
 	 * </pre>
 	 * We can then resolve a valid status line from the template using the following command:
 	 * <pre>
@@ -76,11 +82,17 @@ public class ForkJobStatusResponseParserTest extends AbstractJobStatusResponsePa
 
 	}
 
+	@Test(dataProvider = "parseBlankSchedulerResponseThrowsRemoteJobMonitorEmptyResponseExceptionProvider")
+	public void parseBlankSchedulerResponseIndicatesDone(String rawServerResponse)
+	{
+		_parseSchedulerResponse(rawServerResponse, ForkJobStatus.DONE);
+	}
+
 	@Override
-	@Test(dataProvider = "parseBlankSchedulerResponseThrowsRemoteJobMonitorEmptyResponseExceptionProvider", expectedExceptions = RemoteJobMonitorEmptyResponseException.class)
+	@Test(enabled = false, dataProvider = "parseBlankSchedulerResponseThrowsRemoteJobMonitorEmptyResponseExceptionProvider")
 	public void parseBlankSchedulerResponseThrowsRemoteJobMonitorEmptyResponseException(String rawServerResponse) throws RemoteJobMonitorEmptyResponseException, RemoteJobMonitorResponseParsingException
 	{
-		_parseBlankSchedulerResponseThrowsRemoteJobMonitorEmptyResponseException(rawServerResponse);
+		throw new SkipException("An empty response from a fork job should indicate a completed job and not throw an exception.");
 	}
 
 	@Override

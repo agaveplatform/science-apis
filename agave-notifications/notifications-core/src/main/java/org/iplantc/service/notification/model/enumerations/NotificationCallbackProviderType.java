@@ -1,14 +1,13 @@
 package org.iplantc.service.notification.model.enumerations;
 
-import java.net.URI;
-
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.uri.AgaveUriUtil;
 import org.iplantc.service.notification.exceptions.BadCallbackException;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.notification.util.ServiceUtils;
+
+import java.net.URI;
 
 /**
  * A {@link Notification} can be sent to destinations accessible through multiple
@@ -56,7 +55,7 @@ public enum NotificationCallbackProviderType {
 			return SLACK;
 		
 		// otherwise we assume it's a standard webhook. check for context and known integrations
-		// checand forward accordingly.
+		// check 3and forward accordingly.
 		} else {
 			try {
 				URI callbackURI = URI.create(callbackUrl.replaceAll("\\$", "%24").replaceAll("\\{", "%7B").replaceAll("\\}", "%7D"));
@@ -66,7 +65,8 @@ public enum NotificationCallbackProviderType {
 						StringUtils.startsWith(callbackURI.getHost(), "127.") ||
 						StringUtils.startsWith(callbackURI.getHost(), "255.") || 
 						StringUtils.startsWith(callbackURI.getHost(), "172.") || 
-						StringUtils.startsWith(callbackURI.getHost(), "192.") || 
+						StringUtils.startsWith(callbackURI.getHost(), "192.") ||
+						StringUtils.startsWith(callbackURI.getHost(), "10.") ||
 						StringUtils.equals(callbackURI.getHost(), Settings.getLocalHostname()) ||
 						Settings.getIpAddressesFromNetInterface().contains(callbackURI.getHost())) {
 					throw new BadCallbackException("Invalid callback url.");

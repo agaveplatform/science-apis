@@ -1,5 +1,14 @@
 package org.iplantc.service.common;
 
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.util.IPAddressValidator;
+import org.iplantc.service.common.util.OSValidator;
+import org.joda.time.DateTimeZone;
+
+import javax.net.ssl.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,27 +20,7 @@ import java.net.UnknownHostException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.TimeZone;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.X509TrustManager;
-
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.log4j.Logger;
-import org.iplantc.service.common.util.IPAddressValidator;
-import org.iplantc.service.common.util.OSValidator;
-import org.joda.time.DateTimeZone;
+import java.util.*;
 
 
 public class Settings 
@@ -215,13 +204,13 @@ public class Settings
                     context.getSocketFactory());
 
         } catch (Exception e) { // should never happen 
-            log.error("Unexpected errror configuring HTTPS URL connection. Continuing initialization.");
+            log.error("Unexpected error configuring HTTPS URL connection. Continuing initialization.");
         }
 
         Properties props = loadRuntimeProperties();
 
-        DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
-        TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
+        DateTimeZone.setDefault(DateTimeZone.forID("UTC"));
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
 
         try {
             DEBUG = Boolean.valueOf(props.getProperty("iplant.debug.mode", "false"));

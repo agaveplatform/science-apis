@@ -1,0 +1,217 @@
+{
+  "checkpointable": false,
+  "executionSystem": "execute.example.com",
+  "executionType": "CLI",
+  "version": "1.0",
+  "ontology": [],
+  "helpURI": "http://support.agaveplatform.org",
+  "label": "Remote singularity image execution script",
+  "defaultProcessorsPerNode": 1,
+  "defaultMemoryPerNode": 1,
+  "defaultNodeCount": 1,
+  "defaultRequestedTime": "00:10:00",
+  "deploymentPath": "testuser/agave/apps/singularity-1.0",
+  "deploymentSystem": "storage.example.com",
+  "shortDescription": "Simple app for running a user-defined command on a remote system",
+  "longDescription": "Simple app for running a user-defined command on a remote system. No sanitization is done on the command choice.",
+  "parallelism": "SERIAL",
+  "name": "singularity",
+  "templatePath": "wrapper.sh",
+  "testPath": "test/test.sh",
+  "tags": [
+    "demo",
+    "debug"
+  ],
+  "inputs": [
+    {
+      "id": "input tarball",
+      "value": {
+        "validator": "",
+        "visible": true,
+        "required": false,
+        "order": 0,
+        "enquote": false,
+        "default": "agave://storage.example.com/testuser/agave/apps/singularity-1.0/input.tgz"
+      },
+      "details": {
+        "label": "input tarball",
+        "description": "",
+        "argument": null,
+        "showArgument": false,
+        "repeatArgument": false
+      },
+      "semantics": {
+        "minCardinality": 0,
+        "maxCardinality": 1,
+        "ontology": [],
+        "fileTypes": []
+      }
+    }
+  ],
+  "parameters": [
+    {
+      "id": "simagename",
+      "value": {
+        "visible": true,
+        "required": false,
+        "type": "string",
+        "order": 0,
+        "enquote": false,
+        "default": "ubuntu",
+        "validator": null
+      },
+      "details": {
+        "label": "Singularity Image",
+        "description": "The Singularity image to run: swan, funwave",
+        "argument": null,
+        "showArgument": false,
+        "repeatArgument": false
+      },
+      "semantics": {
+        "minCardinality": 0,
+        "maxCardinality": 1,
+        "ontology": []
+      }
+    },
+    {
+      "id": "needs_props",
+      "value": {
+        "visible": true,
+        "required": false,
+        "type": "string",
+        "order": 0,
+        "enquote": false,
+        "default": "ubuntu",
+        "validator": null
+      },
+      "details": {
+        "label": "Needs Properties",
+        "description": "Properties needed before the job runs",
+        "argument": null,
+        "showArgument": false,
+        "repeatArgument": false
+      },
+      "semantics": {
+        "minCardinality": 0,
+        "maxCardinality": 1,
+        "ontology": []
+      }
+    },
+    {
+      "id": "sets_props",
+      "value": {
+        "visible": true,
+        "required": false,
+        "type": "string",
+        "order": 0,
+        "enquote": false,
+        "default": "ubuntu",
+        "validator": null
+      },
+      "details": {
+        "label": "Sets Properties",
+        "description": "Properties set after the job runs",
+        "argument": null,
+        "showArgument": false,
+        "repeatArgument": false
+      },
+      "semantics": {
+        "minCardinality": 0,
+        "maxCardinality": 1,
+        "ontology": []
+      }
+    },
+    {
+      "id": "nx",
+      "value": {
+        "visible": true,
+        "required": false,
+        "type": "number",
+        "order": 0,
+        "enquote": false,
+        "default": 0,
+        "validator": null
+      },
+      "details": {
+        "label": "NX",
+        "description": "Processors in the X direction",
+        "argument": null,
+        "showArgument": false,
+        "repeatArgument": false
+      },
+      "semantics": {
+        "minCardinality": 0,
+        "maxCardinality": 1,
+        "ontology": []
+      }
+    },
+    {
+      "id": "ny",
+      "value": {
+        "visible": true,
+        "required": false,
+        "type": "number",
+        "order": 0,
+        "enquote": false,
+        "default": 0,
+        "validator": null
+      },
+      "details": {
+        "label": "NY",
+        "description": "Processors in the Y direction",
+        "argument": null,
+        "showArgument": false,
+        "repeatArgument": false
+      },
+      "semantics": {
+        "minCardinality": 0,
+        "maxCardinality": 1,
+        "ontology": []
+      }
+    },
+    {
+      "id": "nz",
+      "value": {
+        "visible": true,
+        "required": false,
+        "type": "number",
+        "order": 0,
+        "enquote": false,
+        "default": 0,
+        "validator": null
+      },
+      "details": {
+        "label": "NZ",
+        "description": "Processors in the Z direction",
+        "argument": null,
+        "showArgument": false,
+        "repeatArgument": false
+      },
+      "semantics": {
+        "minCardinality": 0,
+        "maxCardinality": 1,
+        "ontology": []
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "id": "Output",
+      "value": {
+        "validator": null,
+        "order": 0,
+        "default": "output.tgz"
+      },
+      "details": {
+        "label": "tables",
+        "description": "The output"
+      },
+      "semantics": {
+        "minCardinality": 0,
+        "maxCardinality": -1,
+        "ontology": [],
+        "fileTypes": []
+      }
+    }
+  ]
+}

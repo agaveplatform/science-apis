@@ -235,7 +235,7 @@ public class AbstractAgaveResource {
 				} catch (Exception e) {
 					throw new ResourceException(org.restlet.data.Status.SERVER_ERROR_INTERNAL,
 							"Failed to parse file upload. Please make sure you included "
-							+ "a file in your POST request.");
+							+ "a file in your POST request.", e);
 				}
 		        
 		        for (FileItem item : items) {

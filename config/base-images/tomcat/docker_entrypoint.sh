@@ -205,8 +205,8 @@ if [[ -n "$ENABLE_REMOTE_DEBUG" ]]; then
 	echo "=> Enabled remote debugging via JMX"
 	export CATALINA_OPTS="${CATALINA_OPTS} -Xdebug "
 	export JPDA_TRANSPORT=${JPDA_TRANSPORT:-$(echo 'dt_socket')}
-  export JPDA_ADDRESS=52911
-  export JPDA_SUSPEND=${JPDA_SUSPEND:-$(echo 'n')}
+	export JPDA_ADDRESS=52911
+	export JPDA_SUSPEND=${JPDA_SUSPEND:-$(echo 'n')}
 	export ENABLE_JMX=1
 else
 	echo "=> Remote JMX debugging is disabled"
@@ -233,8 +233,8 @@ if [[ -n "$ENABLE_JMX" ]]; then
 	echo "========================================================================"
 
 	echo "=> Configuring JMX for new admin account"
-	sed -i -e "s/JMX_ADMIN_USER/"$JMX_USER"/" $CATALINA_HOME/conf/jmxremote.password
-	sed -i -e "s/JMX_ADMIN_USER/"$JMX_USER"/" $CATALINA_HOME/conf/jmxremote.access
+	sed -i -e "s/ADMIN_USER/"$JMX_USER"/" $CATALINA_HOME/conf/jmxremote.password
+	sed -i -e "s/ADMIN_USER/"$JMX_USER"/" $CATALINA_HOME/conf/jmxremote.access
 	sed -i -e "s/JMX_ADMIN_PASSWORD/"$JMX_PASS"/" $CATALINA_HOME/conf/jmxremote.password
 	sed -i -e "s/JMX_HOSTNAME/"$HOSTNAME"/" $CATALINA_HOME/conf/server.xml
 	sed -i -e "s#<!-- JMX_RMI_LISTENER##" $CATALINA_HOME/conf/server.xml

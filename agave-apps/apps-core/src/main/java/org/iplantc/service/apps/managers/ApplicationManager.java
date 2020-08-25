@@ -3,16 +3,6 @@
  */
 package org.iplantc.service.apps.managers;
 
-import static org.iplantc.service.apps.exceptions.SoftwareResourceException.CLIENT_ERROR_BAD_REQUEST;
-import static org.iplantc.service.apps.exceptions.SoftwareResourceException.CLIENT_ERROR_FORBIDDEN;
-import static org.iplantc.service.apps.exceptions.SoftwareResourceException.CLIENT_ERROR_NOT_FOUND;
-import static org.iplantc.service.apps.exceptions.SoftwareResourceException.SERVER_ERROR_INTERNAL;
-
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-
 import org.apache.log4j.Logger;
 import org.hibernate.Session;
 import org.iplantc.service.apps.Settings;
@@ -33,10 +23,18 @@ import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.Date;
+import java.util.List;
+
+import static org.iplantc.service.apps.exceptions.SoftwareResourceException.*;
 
 /**
  * Handles management tasks for {@link Software} objects.
@@ -206,7 +204,7 @@ public class ApplicationManager
 			LogicalFile logicalFile = null;
 			PermissionManager pm = null;
 			
-			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception e) {}
+			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception ignored) {}
 			
 			pm = new PermissionManager(newSoftware.getStorageSystem(), remoteDataClient, logicalFile, username);
 			
@@ -223,7 +221,7 @@ public class ApplicationManager
 			
 			checkPath = newSoftware.getDeploymentPath() + "/" + newSoftware.getExecutablePath();
 			
-			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception e) {}
+			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception ignored) {}
 			
 			pm = new PermissionManager(newSoftware.getStorageSystem(), remoteDataClient, logicalFile, username);
 			
@@ -240,7 +238,7 @@ public class ApplicationManager
 			
 			checkPath = newSoftware.getDeploymentPath() + "/" + newSoftware.getTestPath();
 			
-			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception e) {}
+			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception ignored) {}
 			
 			pm = new PermissionManager(newSoftware.getStorageSystem(), remoteDataClient, logicalFile, username);
 			
@@ -258,7 +256,7 @@ public class ApplicationManager
 			return true;
 		}
 		finally {
-			try { remoteDataClient.disconnect();} catch (Exception e) {}
+			try { if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored) {}
 		}
 	}
 
@@ -266,9 +264,10 @@ public class ApplicationManager
 	 * Makes a private app public by snappshotting, compressing, and checksumming the deploymentPath
 	 * onto the tenant default public storage system.
 	 * 
-	 * @param software
-	 * @returns public software object
-	 * @throws SoftwareException
+	 * @param software the software to publish
+	 * @param apiUsername the user publishing the app
+	 * @return the published software object
+	 * @throws SoftwareException if the app could not be published
 	 */
 	public static Software makePublic(Software software, String apiUsername) throws SoftwareException
 	{
@@ -283,13 +282,13 @@ public class ApplicationManager
 	}
 	
 	/**
-	 * Checks that the user has proper permissions on the underlying {@link ExecutionSystem} 
+	 * Checks that the user has proper permissions on the underlying {@link ExecutionSystem}
 	 * and the given {@link Software} object to submit a job. Existence of the {@link Software#getDeploymentPath()} 
 	 * is also verified. If missing, and the app is disabled and notifications are thrown.
 	 * 
-	 * @param software
-	 * @param username
-	 * @return
+	 * @param software the app for which to check avail and permissions
+	 * @param username the user to check
+	 * @return true if the app can be run, false otherwise
 	 */
 	public static boolean isInvokableByUser(Software software, String username) 
 	throws SoftwareException
@@ -356,7 +355,7 @@ public class ApplicationManager
 					throw new SoftwareException("Unable to locate this application for invocation", e);
 				}
 				finally {
-					try { dataClient.disconnect(); } catch(Exception e) {};
+					try { dataClient.disconnect(); } catch(Exception ignored) {};
 				}
 			}
 		}

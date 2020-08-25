@@ -1,24 +1,7 @@
 package org.iplantc.service.io.resources;
 
-import static org.iplantc.service.io.model.enumerations.FileOperationType.COPY;
-import static org.iplantc.service.io.model.enumerations.FileOperationType.MKDIR;
-import static org.iplantc.service.io.model.enumerations.FileOperationType.MOVE;
-import static org.iplantc.service.io.model.enumerations.FileOperationType.RENAME;
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Writer;
-import java.net.URI;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Properties;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.io.Files;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.io.FilenameUtils;
@@ -70,24 +53,23 @@ import org.quartz.SchedulerException;
 import org.quartz.SimpleTrigger;
 import org.quartz.impl.StdSchedulerFactory;
 import org.restlet.Request;
-import org.restlet.data.CharacterSet;
-import org.restlet.data.ClientInfo;
-import org.restlet.data.Disposition;
-import org.restlet.data.MediaType;
-import org.restlet.data.Range;
 import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.ext.fileupload.RestletFileUpload;
 import org.restlet.representation.EmptyRepresentation;
 import org.restlet.representation.Representation;
 import org.restlet.representation.WriterRepresentation;
-import org.restlet.resource.Delete;
-import org.restlet.resource.Get;
-import org.restlet.resource.Post;
-import org.restlet.resource.Put;
-import org.restlet.resource.ResourceException;
+import org.restlet.resource.*;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.io.Files;
+import java.io.*;
+import java.net.URI;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Properties;
+
+import static org.iplantc.service.io.model.enumerations.FileOperationType.*;
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * Class to handle get and post requests for jobs
@@ -147,7 +129,7 @@ public class FileManagementResource extends AbstractFileResource
 		} 
     	catch (ResourceException e) {
     		log.error(e.getMessage(), e);
-    		try {remoteDataClient.disconnect();} catch (Exception e1) {}
+    		try {remoteDataClient.disconnect();} catch (Exception ignored) {}
     		setStatus(e.getStatus());
     		getResponse().setEntity(new AgaveErrorRepresentation(e.getMessage()));
     		throw e;
@@ -155,13 +137,20 @@ public class FileManagementResource extends AbstractFileResource
     	catch (Throwable e) {
     		String msg = "Unexpected error while processing this request";
     		log.error(msg, e);
-    		try {remoteDataClient.disconnect();} catch (Exception e1) {}
+    		try {remoteDataClient.disconnect();} catch (Exception ignored) {}
 		   	setStatus(Status.SERVER_ERROR_INTERNAL);
 	   		getResponse().setEntity(new AgaveErrorRepresentation(msg));
 	   		throw new ResourceException(Status.SERVER_ERROR_INTERNAL, msg, e);
     	}
     }
-    
+
+    @Override
+	protected void doRelease() throws ResourceException {
+    	// regardless of what happens, when the resource releases after the request, close the connection
+		// to the remote data client.
+		try { if (remoteDataClient != null) remoteDataClient.disconnect(); } catch (Exception ignored) {}
+	}
+
     /**
      * On public storage systems, the first token of any relative path will
      * indicate an implied ownership permission for the resource. 
@@ -210,9 +199,9 @@ public class FileManagementResource extends AbstractFileResource
     private RemoteDataClient initRemoteDataClientForSystem(RemoteSystem remoteSystem, String internalUsername) 
     throws ResourceException 
     {
-    	try
+		RemoteDataClient rdc = null;
+		try
         {
-    		RemoteDataClient rdc = null;
     		if (remoteSystem != null) {
     			
     			// get a valid client
@@ -234,11 +223,13 @@ public class FileManagementResource extends AbstractFileResource
 		catch (RemoteDataException e) {
 			String msg = "Failed to connect to the remote system. "+ e.getMessage();
 			log.error(msg, e);
-        	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, msg, e);
+			try { if (rdc != null) rdc.disconnect(); } catch (Exception ignored) {}
+        	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, msg);
 		} catch (RemoteCredentialException | IOException e) {
 			String msg = "Failed to authenticate to the remote system. " + e.getMessage();
 			log.error(msg, e);
-			throw new ResourceException(Status.SERVER_ERROR_BAD_GATEWAY, msg, e);
+			try { if (rdc != null) rdc.disconnect(); } catch (Exception ignored) {}
+			throw new ResourceException(Status.SERVER_ERROR_BAD_GATEWAY, msg);
 		}
     }
 
@@ -463,7 +454,7 @@ public class FileManagementResource extends AbstractFileResource
 			log.error(e.getMessage(), e);
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL, e.getMessage(), e);
         } finally {
-        	try {remoteDataClient.disconnect();} catch (Exception e) {}
+        	try {remoteDataClient.disconnect();} catch (Exception ignored) {}
         }
     }
 
@@ -731,9 +722,9 @@ public class FileManagementResource extends AbstractFileResource
 					}
                     finally
                     {
-						try { remoteDataClient.disconnect(); } catch (Exception e) {}
-						try { in.close(); } catch (Exception e) {}
-						try { client.disconnect(); } catch (Exception e) {}
+						try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
+						try { in.close(); } catch (Exception ignored) {}
+						try { client.disconnect(); } catch (Exception ignored) {}
 					}
 				}
 
@@ -781,7 +772,7 @@ public class FileManagementResource extends AbstractFileResource
             throw new ResourceException(e);
         } 
 		finally {
-        	try {remoteDataClient.disconnect();} catch (Exception e) {}
+        	try {remoteDataClient.disconnect();} catch (Exception ignored) {}
         }
 
     }
@@ -930,8 +921,8 @@ public class FileManagementResource extends AbstractFileResource
 				
 							LogicalFile logicalFile = null;
 				            try {
-				            	logicalFile = LogicalFileDao.findBySystemAndPath(system, remoteDataClient.resolvePath(remotePath));;
-				            } catch(Exception e) {
+				            	logicalFile = LogicalFileDao.findBySystemAndPath(system, remoteDataClient.resolvePath(remotePath));
+							} catch(Exception e) {
 				            	if (log.isDebugEnabled()) {
 				            		String msg = "LogicalFileDao.findBySystemAndPath() failed, creating new logical file " +
 						                         remotePath + ".";
@@ -986,7 +977,7 @@ public class FileManagementResource extends AbstractFileResource
 	                        // generated in the response.  We make the adjustment after already having persisted the
 	                        // logical file in an intermediate state.  The goal of this hack is to disrupt this method's 
 	                        // convoluted logic as little as possible.
-							adjustDestinationPath(logicalFile);
+							logicalFile.setPath(getAdjustDestinationPath(remoteDataClient, logicalFile));
 							logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
 							LogicalFileDao.persist(logicalFile);
 
@@ -1127,8 +1118,8 @@ public class FileManagementResource extends AbstractFileResource
                     					.usingJobData("sourceUrl", tmpUrl)
                     					.usingJobData("destUrl", "agave://" + system.getSystemId() + "/" + logicalFile.getAgaveRelativePathFromAbsolutePath())
                     				    .usingJobData("isRangeCopyOperation", Boolean.toString(!ranges.isEmpty()))
-            					        .usingJobData("rangeIndex", ranges.isEmpty() ? Long.valueOf(0) : ranges.get(0).getIndex())
-            					        .usingJobData("rangeSize", ranges.isEmpty() ? Long.valueOf(-1) : ranges.get(0).getSize())
+            					        .usingJobData("rangeIndex", ranges.isEmpty() ? 0L : ranges.get(0).getIndex())
+            					        .usingJobData("rangeSize", ranges.isEmpty() ? -1L : ranges.get(0).getSize())
                     					.build();
 
 									SimpleTrigger trigger = (SimpleTrigger)newTrigger()
@@ -1301,7 +1292,7 @@ public class FileManagementResource extends AbstractFileResource
                         // generated in the response.  We make the adjustment after already having persisted the
                         // logical file in an intermediate state.  The goal of this hack is to disrupt this method's 
 						// convoluted logic as little as possible.
-                        adjustDestinationPath(logicalFile);
+						logicalFile.setPath(getAdjustDestinationPath(remoteDataClient, logicalFile));
 						logicalFile.addContentEvent(FileEventType.STAGING_QUEUED, username);
 						LogicalFileDao.persist(logicalFile);
 
@@ -1320,10 +1311,10 @@ public class FileManagementResource extends AbstractFileResource
 					catch (Exception e) {
 						log.error(e.getMessage(), e);
 						throw new ResourceException(Status.SERVER_ERROR_INTERNAL, e.getMessage(), e);
-					} 
-					finally {
-						try {remoteDataClient.disconnect();} catch (Exception e) {}
 					}
+//					finally {
+//						try { if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored) {}
+//					}
 	            }
 	        } else {
 	            // POST request with no entity.
@@ -1343,7 +1334,7 @@ public class FileManagementResource extends AbstractFileResource
 			 throw new ResourceException(Status.SERVER_ERROR_INTERNAL, msg, e);
 
 		} finally {
-			try {remoteDataClient.disconnect();} catch (Exception e) {}
+			try { if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored) {}
         }
     }
 
@@ -1374,7 +1365,7 @@ public class FileManagementResource extends AbstractFileResource
 	        schedulerFactory.initialize(props);
 	    }
 	    finally {
-	    	if (in != null) try { in.close(); } catch (Exception e) {}
+	    	if (in != null) try { in.close(); } catch (Exception ignored) {}
 	    }
 	    scheduler = schedulerFactory.getScheduler();
 	    return scheduler;
@@ -1426,14 +1417,14 @@ public class FileManagementResource extends AbstractFileResource
                     } 
                     catch (FileNotFoundException e) {
                     	String msg = "Remote path " + path + " does not exist.";
-                    	log.error(msg, e);
+                    	log.error(msg);
                     	setStatus(Status.CLIENT_ERROR_NOT_FOUND, msg);
                     	return new AgaveErrorRepresentation(msg);
                     }
                     catch (Exception e) {
                     	log.error("Failed to delete file agave://" + systemId + "/" + path, e);
                     	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
-                        		"Failed to delete " + path + " on the remote system.", e);
+                        		"Failed to delete " + path + " on the remote system.");
                         
                     }
                 }
@@ -1452,11 +1443,15 @@ public class FileManagementResource extends AbstractFileResource
                     	String msg = "Failed to retrieve permissions for " + path;
                     	log.error(msg, e);
                         throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, 
-                        		                    msg + ", " + e.getMessage(), e);
+                        		                    msg + ", " + e.getMessage());
                     }
 
-                    remoteDataClient.delete(path);
-                    
+                    try {
+                    	remoteDataClient.delete(path);
+					} catch (FileNotFoundException e) {
+						// ignore missing files/folders
+					}
+
                     // this should cascade delete the permissions when the logical file deletes
                     logicalFile.addContentEvent(new FileEvent(FileEventType.DELETED, "Deleted via API", 
 							getAuthenticatedUsername()));
@@ -1470,8 +1465,7 @@ public class FileManagementResource extends AbstractFileResource
                     }
                     
                     return representation;
-                    
-                } 
+                }
                 catch (ResourceException e) {
                 	log.error(e.getMessage(), e);
                 	throw e;
@@ -1479,7 +1473,7 @@ public class FileManagementResource extends AbstractFileResource
                 catch (Throwable e) {
                 	log.error("File deletion failed: " + e.getMessage(), e);
                 	throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
-                			"File deletion failed", e);
+                			"File deletion failed");
                     
                 }
             }
@@ -1495,7 +1489,7 @@ public class FileManagementResource extends AbstractFileResource
 //            }
 
         } finally {
-        	try {remoteDataClient.disconnect();} catch (Exception e) {}
+        	try {remoteDataClient.disconnect();} catch (Exception ignored) {}
 		}
 	}
 		
@@ -1641,7 +1635,7 @@ public class FileManagementResource extends AbstractFileResource
 			return new AgaveErrorRepresentation(AgaveStringUtils.convertWhitespace(e.getMessage()));
 		}
 		finally {
-			try {remoteDataClient.disconnect();} catch (Exception e) {}
+			try {remoteDataClient.disconnect();} catch (Exception ignored) {}
 		}
 	}
 
@@ -2286,10 +2280,11 @@ public class FileManagementResource extends AbstractFileResource
 	 * in the asynchronous copy code may need to be coordinated with the code here.
 	 * 
 	 * If this method experiences an exception, the logical file path remains unchanged. 
-	 * 
+	 *
+	 * @param destClient the {@link RemoteDataClient} to the {@code logicalFile}
 	 * @param logicalFile the logical file that already has a path defined.
 	 */
-	private void adjustDestinationPath(LogicalFile logicalFile)
+	private String getAdjustDestinationPath(RemoteDataClient destClient, LogicalFile logicalFile)
 	{
         // We perform adjustments to the logical file's path so that the proper links can be generated
         // in the REST response.  The strategy is that by moving the path adjustment code here and
@@ -2297,19 +2292,14 @@ public class FileManagementResource extends AbstractFileResource
 	    // task.  This shift allows us to accurately generate link URLs in the synchronous response.  
 	    // Previously, StagingJob would change the logical file's path after the synchronous response 
 	    // was already sent, which resulted in the generation of invalid links.
-        RemoteDataClient destClient = null;
         try {
-            destClient = ServiceUtils.getDestinationRemoteDataClient(logicalFile);
-            String adjustedPath = ServiceUtils.getAdjustedDestinationPath(destClient, logicalFile, username);
-            logicalFile.setPath(adjustedPath); // Set but not persisted.
+            return ServiceUtils.getAdjustedDestinationPath(destClient, logicalFile, username);
         } catch (Exception e) {
             // Just log the error.  Some of the links in the response may not be correct,
             // but we let the task proceed anyway.
-            String msg = "Failed to adjust logical file path for link generation: " + logicalFile.getSourceUri();
-            log.error(msg, e);
-        } finally {
-            if (destClient != null) 
-                try {destClient.disconnect();} catch (Exception e) {}
+            log.error("Failed to adjust logical file path for link generation: " +
+					logicalFile.getSourceUri() + ". " + e.getMessage());
+            return logicalFile.getPath();
         }
 	}
 }

@@ -3,19 +3,15 @@
  */
 package org.iplantc.service.apps.util;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import com.fasterxml.jackson.core.JsonLocation;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.TextNode;
+import com.stevesoft.pat.Regex;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -27,15 +23,10 @@ import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import com.fasterxml.jackson.core.JsonLocation;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.TextNode;
-import com.stevesoft.pat.Regex;
+import java.io.*;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author dooley
@@ -266,9 +257,10 @@ public class ServiceUtils {
 	 * attributes "status" and "message." the former is success or failure. The
 	 * latter is the output from a service invocation or the error message.
 	 * 
-	 * @param status
-	 * @param json
-	 * @return
+	 * @param status the stats result of the request. "success" or "error"
+	 * @param message the message ton include in the response
+	 * @param json the json string to wrap in a success message wrapper
+	 * @return the wrapped json result
 	 */
 	private static String wrapOutput(String status, String message, String json)
 	{
@@ -294,10 +286,10 @@ public class ServiceUtils {
 
 	/**
 	 * Used to wrap the payload of a service invocation in a json object
-	 * 
-	 * @param message
-	 * @param json
-	 * @return
+	 *
+	 * @param message the message ton include in the response
+	 * @param json the json string to wrap in a success message wrapper
+	 * @return the wrapped json result
 	 */
 	public static String wrapSuccess(String message, String json)
 	{
@@ -309,9 +301,8 @@ public class ServiceUtils {
 	 * attributes "status" and "message." the former is success or failure. The
 	 * latter is the output from a service invocation or the error message.
 	 * 
-	 * @param status
-	 * @param json
-	 * @return
+	 * @param json the json string to wrap in a success message wrapper
+	 * @return tje wrapped json result
 	 */
 	public static String wrapSuccess(String json)
 	{
@@ -323,9 +314,9 @@ public class ServiceUtils {
 	 * attributes "status" and "message." the former is success or failure. The
 	 * latter is the output from a service invocation or the error message.
 	 * 
-	 * @param status
-	 * @param json
-	 * @return
+	 * @param message the error message ton include in the response
+	 * @param json the json string to wrap in an error message wrapper
+	 * @return the wrapped json result
 	 */
 	public static String wrapError(String message, String json)
 	{
@@ -525,23 +516,22 @@ public class ServiceUtils {
 	 * Returns the primary values from a JSON array as a String array. Any non-primary type values
 	 * in the array will not be included in the response.
 	 * 
-	 * @param JsonNode 
+	 * @param jsonArray the array to parse
+	 * @param enquoteValues should the extracted values be wrapped in double quotes
 	 * @return String array of values from the JSON array. Any primary types will get converted here.
-	 * @throws JsonParseException
-	 * @throws IOException
 	 */
-	public static String[] getStringValuesFromJsonArray(final ArrayNode json, final boolean enquoteValues)
+	public static String[] getStringValuesFromJsonArray(final ArrayNode jsonArray, final boolean enquoteValues)
 	{
-		if (json == null || json.size() == 0 || json.isNull())
+		if (jsonArray == null || jsonArray.size() == 0 || jsonArray.isNull())
 		{
 			return new String[]{};
 		}
 		else
 		{
-			String[] arrayValues = new String[json.size()];
-			for(int i=0; i<json.size(); i++) 
+			String[] arrayValues = new String[jsonArray.size()];
+			for(int i=0; i<jsonArray.size(); i++)
 			{
-				JsonNode child = json.path(i);
+				JsonNode child = jsonArray.path(i);
 				if (child.isValueNode()) {
 					if (enquoteValues) {
 						arrayValues[i] = ServiceUtils.enquote(child.asText());
@@ -558,10 +548,11 @@ public class ServiceUtils {
 	 * Returns the values from a JSON array of primary types as a String array by parsing the
 	 * given string into a JsonNode and calling the corresponding method.
 	 * 
-	 * @param sJson 
+	 * @param sJson the string to marshal to a json array and extract the string value
+	 * @param enquoteValues true if the values should be wrapped in double quotes
 	 * @return String array of values from the JSON array. Any primary types will get converted here.
-	 * @throws JsonParseException
-	 * @throws IOException
+	 * @throws JsonParseException if the parsed json string is not an array.
+	 * @throws IOException if the string cannot be parsed
 	 */
 	public static String[] getStringValuesFromJsonArray(final String sJson, final boolean enquoteValues)
 	throws JsonParseException, IOException
@@ -575,9 +566,6 @@ public class ServiceUtils {
 	    	  throw new JsonParseException("Value is not a valid JSON array of primary values.", new JsonLocation(sJson, sJson.length(), 1, 1));
 			}
 		} 
-		catch (JsonParseException e) {
-			throw e;
-		}
 		catch (JsonProcessingException e) {
 			throw e;
 		}
@@ -586,7 +574,8 @@ public class ServiceUtils {
 	/**
 	 * Utility function to verify a string value against a given regex.
 	 * 
-	 * @param singleInput string value to test.
+	 * @param value string value to test.
+	 * @param regex the regex to test
 	 * @return true if validator is null or the string matches. false otherwise
 	 */
 	public static boolean doesValueMatchValidatorRegex(String value, String regex)

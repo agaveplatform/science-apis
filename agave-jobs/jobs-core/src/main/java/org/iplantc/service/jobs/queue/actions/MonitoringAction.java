@@ -6,7 +6,6 @@ package org.iplantc.service.jobs.queue.actions;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.UnresolvableObjectException;
-import org.iplantc.service.jobs.exceptions.JobDependencyException;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.managers.monitors.AbstractJobMonitor;
@@ -15,7 +14,7 @@ import org.iplantc.service.jobs.managers.monitors.JobMonitorFactory;
 import org.iplantc.service.jobs.managers.monitors.parsers.JobStatusResponseParser;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
-import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.enumerations.SchedulerType;
 
 import java.nio.channels.ClosedByInterruptException;
@@ -43,16 +42,14 @@ public class MonitoringAction extends AbstractWorkerAction {
     /**
      * This method attempts check the status of the remote job/process/service represented by an {@link Job}.
      *
-     * @throws SystemUnavailableException
-     * @throws SystemUnknownException
-     * @throws JobException
-     * @throws JobDependencyException 
+     * @throws SystemUnavailableException if the remote system is not available
+     * @throws JobException if the job monitor cannot be processed
      */
-    public void run() throws SystemUnavailableException, SystemUnknownException, JobException, ClosedByInterruptException, JobDependencyException
+    public void run() throws SystemUnavailableException, JobException, ClosedByInterruptException
     {
         try 
         {
-            setJobMonitor(new JobMonitorFactory().getInstance(getJob()));
+            setJobMonitor(new JobMonitorFactory().getInstance(getJob(), getExecutionSystem()));
             
             log.debug("Checking status of job " + job.getUuid());
             
@@ -78,5 +75,13 @@ public class MonitoringAction extends AbstractWorkerAction {
 
     public synchronized void setJobMonitor(JobMonitor jobMonitor) {
         this.jobMonitor = jobMonitor;
+    }
+
+    /**
+     * Looks up and returns the {@link ExecutionSystem} for this job
+     * @return the job executionSystem
+     */
+    public ExecutionSystem getExecutionSystem() throws SystemUnavailableException {
+        return new JobManager().getJobExecutionSystem(getJob());
     }
 }

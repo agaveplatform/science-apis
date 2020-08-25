@@ -5,6 +5,7 @@ import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
 
 public enum LSFJobStatus implements RemoteSchedulerJobStatus<LSFJobStatus> {
@@ -193,7 +194,7 @@ public enum LSFJobStatus implements RemoteSchedulerJobStatus<LSFJobStatus> {
 	 * @see #getUnknownStatuses()
 	 */
 	public boolean isDoneStatus() {
-		return !isActiveStatus() && !isUnknownStatus();
+		return !isActiveStatus() && !isUnknownStatus() && !isPausedStatus();
 	}
 
 	/**

@@ -14,6 +14,13 @@
       "maxMemory": "2048GB",
       "customDirectives": "",
       "default": true
+    },
+    {
+      "name": "batch",
+      "maxJobs": 100,
+      "maxMemory": "2048GB",
+      "customDirectives": "",
+      "default": false
     }
   ],
   "login": {

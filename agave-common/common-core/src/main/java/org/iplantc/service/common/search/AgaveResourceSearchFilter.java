@@ -1,21 +1,15 @@
 package org.iplantc.service.common.search;
 
-import java.time.DateTimeException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.iplantc.service.common.exceptions.SearchSyntaxException;
 import org.iplantc.service.common.util.StringToTime;
 import org.joda.time.DateTime;
-import org.joda.time.LocalTime;
+
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.util.*;
 
 public abstract class AgaveResourceSearchFilter {
 	
@@ -226,7 +220,7 @@ public abstract class AgaveResourceSearchFilter {
                     }
                 }
             } else {
-                return new LocalTime((Date)time);
+                return time;
             }
         } else if (searchTermType == Long.class) {
             if (NumberUtils.isNumber(searchValue)) {

@@ -149,6 +149,9 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
 
             // ensure we can make the transfer based on protocol
             if (uriSchemeIsNotSupported(srcUri)) {
+                throw new RemoteDataSyntaxException(String.format("Unknown source schema %s for the transfer task %s",
+                        destUri.getScheme(), uuid));
+            } else {
                 // look up the system to check permissions
                 if (srcUri.getScheme().equalsIgnoreCase("agave")) {
                     // TODO: ensure user has access to the system. We may need to look up file permissions her as well.
@@ -159,13 +162,13 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                                 "source file item %s for transfer task %s.", source, uuid);
                         throw new PermissionException(message);
                     }
-                } else {
-                    throw new RemoteDataSyntaxException(String.format("Unknown source schema %s for the transfer task %s",
-                            destUri.getScheme(), uuid));
-                }
+}
             }
 
             if (uriSchemeIsNotSupported(destUri)) {
+                throw new RemoteDataSyntaxException(String.format("Unknown destination schema %s for the transfer task %s",
+                        destUri.getScheme(), uuid));
+            } else {
                 SystemDao systemDao = new SystemDao();
                 if (destUri.getScheme().equalsIgnoreCase("agave")) {
                     // TODO: ensure user has access to the system. We may need to look up file permissions her as well.
@@ -177,9 +180,6 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                         throw new PermissionException(message);
                     }
                 }
-            } else {
-                throw new RemoteDataSyntaxException(String.format("Unknown destination schema %s for the transfer task %s",
-                        destUri.getScheme(), uuid));
             }
 
             // check for interrupted before proceeding

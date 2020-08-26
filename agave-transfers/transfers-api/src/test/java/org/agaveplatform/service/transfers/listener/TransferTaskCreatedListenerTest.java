@@ -26,7 +26,6 @@ import java.net.URI;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(VertxExtension.class)
@@ -43,7 +42,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.getRemoteSystemAO()).thenCallRealMethod();
 		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
-		when(listener.uriSchemeIsNotSupported(any())).thenReturn(true);
+		when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
 		doCallRealMethod().when(listener).processEvent(any(), any());

@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.util.List;
 
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
 
@@ -61,7 +62,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
     public void _doPublishEvent(String eventName, JsonObject body) {
-        getRetryRequestManager().request(eventName, body, 3);
+        getRetryRequestManager().request(eventName, body, config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, 0));
     }
 
     /**

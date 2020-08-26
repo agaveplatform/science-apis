@@ -9,5 +9,5 @@
   "transfertask.jdbc.max_pool_size": 100,
   "transfertask.db.queue": "transfertaskdb.queue",
   "transfertask.sqlqueries.resource.file": "db-queries.yml",
-  "transfertask.max.tries": 3
+  "transfertask.max.attempts": 1
 }

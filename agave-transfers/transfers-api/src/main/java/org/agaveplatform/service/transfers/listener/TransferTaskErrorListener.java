@@ -19,7 +19,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_TRIES;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public class TransferTaskErrorListener extends AbstractTransferTaskListener {
@@ -92,7 +92,7 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 
 			String cause = body.getString("cause");
 			String message = body.getString("message", "");
-			int maxTries = config().getInteger(TRANSFERTASK_MAX_TRIES, Settings.MAX_STAGING_RETRIES);
+			int maxTries = config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, Settings.MAX_STAGING_RETRIES);
 			//String status = body.getString("COMPLETED", null);
 			String tenantId = body.getString("tenantId");
 			String uuid = body.getString("uuid");

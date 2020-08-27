@@ -3,7 +3,6 @@
  */
 package org.iplantc.service.metadata.resources;
 
-<<<<<<< HEAD
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaCreate;
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaDelete;
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaList;
@@ -20,7 +19,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Aggregates;
-=======
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,7 +30,6 @@ import com.github.fge.jsonschema.report.ProcessingReport;
 import com.mongodb.*;
 import com.mongodb.util.JSON;
 import com.mongodb.util.JSONParseException;
->>>>>>> 2.2.27
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -74,7 +71,6 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-<<<<<<< HEAD
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -88,7 +84,6 @@ import com.github.fge.jsonschema.report.ProcessingReport;
 import com.mongodb.util.JSON;
 import com.mongodb.util.JSONParseException;
 import org.iplantc.service.common.util.SimpleTimer;
-=======
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
@@ -99,7 +94,6 @@ import java.util.regex.Pattern;
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaCreate;
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaSearch;
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
->>>>>>> 2.2.27
 
 import javax.persistence.Basic;
 
@@ -165,7 +159,7 @@ public class MetadataCollection extends AgaveResource {
                 // check whether they explicitly ask for unprivileged results..basically query
                 // as a normal user
                 if (form.getNames().contains("privileged") &&
-                    !BooleanUtils.toBoolean((String) form.getFirstValue("privileged"))) {
+                        !BooleanUtils.toBoolean((String) form.getFirstValue("privileged"))) {
                     this.includeRecordsWithImplicitPermissions = false;
                 }
                 // either they did not provide a "privileged" query parameter or it was true
@@ -258,7 +252,7 @@ public class MetadataCollection extends AgaveResource {
                 search.setLimit(limit);
                 search.setOffset(offset);
 
-                userResults= search.find(userQuery);
+                userResults = search.find(userQuery);
 
             } catch (MetadataQueryException e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Malformed JSON Query, " + e);
@@ -278,9 +272,9 @@ public class MetadataCollection extends AgaveResource {
             throw e;
         } catch (Throwable e) {
             throw new ResourceException(org.restlet.data.Status.SERVER_ERROR_INTERNAL,
-                "An error occurred while fetching the metadata item. " +
-                    "If this problem persists, " +
-                    "please contact the system administrators.", e);
+                    "An error occurred while fetching the metadata item. " +
+                            "If this problem persists, " +
+                            "please contact the system administrators.", e);
         }
     }
 
@@ -292,13 +286,12 @@ public class MetadataCollection extends AgaveResource {
     @Override
     public void acceptRepresentation(Representation entity) {
         AgaveLogServiceClient.log(METADATA02.name(),
-            MetaCreate.name(),
-            username,
-            "",
-            getRequest().getClientInfo().getUpstreamAddress());
+                MetaCreate.name(),
+                username,
+                "",
+                getRequest().getClientInfo().getUpstreamAddress());
 
         try {
-
             MetadataSearch search = new MetadataSearch( this.username);
             search.setAccessibleOwnersExplicit();
 
@@ -315,99 +308,28 @@ public class MetadataCollection extends AgaveResource {
                 throw e;
             } catch (Exception e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                    "Unable to parse form. " + e.getMessage());
+                        "Unable to parse form. " + e.getMessage());
             }
 
             MetadataItem metadataItem;
 
-<<<<<<< HEAD
-=======
-                // now validate the json against the schema
-                String schema = schemaDBObj.getString("schema");
-                try {
-                    JsonFactory factory = new ObjectMapper().getFactory();
-                    JsonNode jsonSchemaNode = factory.createParser(schema).readValueAsTree();
-                    JsonNode jsonMetadataNode = factory.createParser(value).readValueAsTree();
-                    AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();
-
-                    ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
-                    if (!report.isSuccess()) {
-                        StringBuilder sb = new StringBuilder();
-                        for (ProcessingMessage processingMessage : report) {
-                            sb.append(processingMessage.toString());
-                            sb.append("\n");
-                        }
-                        throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                            "Metadata value does not conform to schema. \n" + sb.toString());
-                    }
-                } catch (ResourceException e) {
-                    throw e;
-                } catch (Exception e) {
-                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                        "Metadata does not conform to schema.");
-                }
-            }
-
-            // lookup the associated ids to make sure they exist.
-            BasicDBList associations = new BasicDBList();
-            if (items != null) {
-                for (int i = 0; i < items.size(); i++) {
-                    try {
-                        String associationId = (String) items.get(i).asText();
-                        if (!StringUtils.isEmpty(associationId)) {
-                            AgaveUUID associationUuid = new AgaveUUID(associationId);
-                            if (UUIDType.METADATA == associationUuid.getResourceType()) {
-                                BasicDBObject associationQuery = new BasicDBObject("uuid", associationId);
-                                associationQuery.append("tenantId", TenancyHelper.getCurrentTenantId());
-                                BasicDBObject associationDBObj = (BasicDBObject) collection.findOne(associationQuery);
-
-                                if (associationDBObj == null) {
-                                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                                        "No metadata resource found with uuid " + associationId);
-                                }
-                            } else if (UUIDType.SCHEMA == associationUuid.getResourceType()) {
-                                DBCollection schemataCollection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
-
-                                BasicDBObject associationQuery = new BasicDBObject("uuid", associationId);
-                                associationQuery.append("tenantId", TenancyHelper.getCurrentTenantId());
-                                BasicDBObject associationDBObj = (BasicDBObject) schemataCollection.findOne(
-                                    associationQuery);
-
-                                if (associationDBObj == null) {
-                                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                                        "No metadata schema resource found with uuid " + associationId);
-                                }
-                            } else {
-                                try {
-                                    associationUuid.getObjectReference();
-                                } catch (Exception e) {
-                                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                                        "No associated object found with uuid " + associationId);
-                                }
-                            }
-
-                            associations.add(items.get(i).asText());
-                        }
-                    } catch (ResourceException e) {
-                        throw e;
-                    } catch (Exception e) {
-                        throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                            "Unable to parse association ids.", e);
-                    }
-                }
-            }
-
-            BasicDBObject doc;
-            String timestamp = new DateTime().toString();
->>>>>>> 2.2.27
             try {
-                search.setOwner(this.username);
+                MetadataItem existingItem = search.findOne();
+
+                if (existingItem != null) {
+                    search.setOwner(existingItem.getOwner());
+                } else {
+                    search.setOwner(this.username);
+                }
+
                 metadataItem = search.updateMetadataItem();
             } catch (Exception e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
                         "Unable to add metadata. " + e.getMessage());
             }
             MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
+            String result = metadataItemSerializer.formatMetadataItemResult().toString();
+
             eventProcessor.processContentEvent(uuid,
                     MetadataEventType.CREATED,
                     username,
@@ -420,12 +342,8 @@ public class MetadataCollection extends AgaveResource {
             notificationProcessor.process(search.getNotifications());
 
             getResponse().setStatus(Status.SUCCESS_CREATED);
-<<<<<<< HEAD
             getResponse().setEntity(new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString()));
             return;
-=======
-            getResponse().setEntity(new IplantSuccessRepresentation(formatMetadataObject(doc).toString()));
->>>>>>> 2.2.27
         } catch (ResourceException e) {
             log.error("Failed to add metadata ", e);
             getResponse().setStatus(e.getStatus());
@@ -434,87 +352,87 @@ public class MetadataCollection extends AgaveResource {
             log.error("Failed to add metadata ", e);
             getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
             getResponse().setEntity(new IplantErrorRepresentation(
-                "An error occurred while fetching the metadata item. " +
-                    "If this problem persists, " +
-                    "please contact the system administrators."));
+                    "An error occurred while fetching the metadata item. " +
+                            "If this problem persists, " +
+                            "please contact the system administrators."));
         }
     }
 
-    /**
-     * Formats each metadata item returned with Agave decorations
-     * @param metadataObject the bson object to format
-     * @return bson object with hypermedia added and links resolved
-     * @throws UUIDException if the associated uuid cannot be resolved.
-     */
-    private DBObject formatMetadataObject(DBObject metadataObject) throws UUIDException {
+/**
+ * Formats each metadata item returned with Agave decorations
+ * @param metadataObject the bson object to format
+ * @return bson object with hypermedia added and links resolved
+ * @throws UUIDException if the associated uuid cannot be resolved.
+ */
+private DBObject formatMetadataObject(DBObject metadataObject)throws UUIDException{
         metadataObject.removeField("_id");
         metadataObject.removeField("tenantId");
-        BasicDBObject hal = new BasicDBObject();
+        BasicDBObject hal=new BasicDBObject();
         hal.put("self",
-            new BasicDBObject("href",
-                TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + "data/" + metadataObject.get(
-                    "uuid")));
+        new BasicDBObject("href",
+        TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE)+"data/"+metadataObject.get(
+        "uuid")));
         hal.put("permissions",
-            new BasicDBObject("href",
-                TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + "data/" + metadataObject.get(
-                    "uuid") + "/pems"));
+        new BasicDBObject("href",
+        TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE)+"data/"+metadataObject.get(
+        "uuid")+"/pems"));
         hal.put("owner",
-            new BasicDBObject("href",
-                TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + metadataObject.get("owner")));
+        new BasicDBObject("href",
+        TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE)+metadataObject.get("owner")));
 
-        if (metadataObject.containsField("associationIds")) {
-            // TODO: break this into a list of object under the associationIds attribute so
-            // we dont' overwrite the objects in the event there are multiple of the same type.
-            BasicDBList halAssociationIds = new BasicDBList();
+        if(metadataObject.containsField("associationIds")){
+        // TODO: break this into a list of object under the associationIds attribute so
+        // we dont' overwrite the objects in the event there are multiple of the same type.
+        BasicDBList halAssociationIds=new BasicDBList();
 
-            for (Object associatedId : (BasicDBList) metadataObject.get("associationIds")) {
-                AgaveUUID agaveUUID = new AgaveUUID((String) associatedId);
+        for(Object associatedId:(BasicDBList)metadataObject.get("associationIds")){
+        AgaveUUID agaveUUID=new AgaveUUID((String)associatedId);
 
-                try {
-                    String resourceUrl = agaveUUID.getObjectReference();
-                    BasicDBObject assocResource = new BasicDBObject();
-                    assocResource.put("rel", (String) associatedId);
-                    assocResource.put("href", TenancyHelper.resolveURLToCurrentTenant(resourceUrl));
-                    assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
-                    halAssociationIds.add(assocResource);
-                } catch (UUIDException e) {
-                    BasicDBObject assocResource = new BasicDBObject();
-                    assocResource.put("rel", (String) associatedId);
-                    assocResource.put("href", null);
-                    if (agaveUUID != null) {
-                        assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
-                    }
-                    halAssociationIds.add(assocResource);
-                }
-            }
-
-            hal.put("associationIds", halAssociationIds);
+        try{
+        String resourceUrl=agaveUUID.getObjectReference();
+        BasicDBObject assocResource=new BasicDBObject();
+        assocResource.put("rel",(String)associatedId);
+        assocResource.put("href",TenancyHelper.resolveURLToCurrentTenant(resourceUrl));
+        assocResource.put("title",agaveUUID.getResourceType().name().toLowerCase());
+        halAssociationIds.add(assocResource);
+        }catch(UUIDException e){
+        BasicDBObject assocResource=new BasicDBObject();
+        assocResource.put("rel",(String)associatedId);
+        assocResource.put("href",null);
+        if(agaveUUID!=null){
+        assocResource.put("title",agaveUUID.getResourceType().name().toLowerCase());
+        }
+        halAssociationIds.add(assocResource);
+        }
         }
 
-        if (metadataObject.get("schemaId") != null && !StringUtils.isEmpty(metadataObject.get("schemaId").toString())) {
-            AgaveUUID agaveUUID = new AgaveUUID((String) metadataObject.get("schemaId"));
-            hal.append(agaveUUID.getResourceType().name(),
-                new BasicDBObject("href", TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference())));
+        hal.put("associationIds",halAssociationIds);
+        }
+
+        if(metadataObject.get("schemaId")!=null&&!StringUtils.isEmpty(metadataObject.get("schemaId").toString())){
+        AgaveUUID agaveUUID=new AgaveUUID((String)metadataObject.get("schemaId"));
+        hal.append(agaveUUID.getResourceType().name(),
+        new BasicDBObject("href",TenancyHelper.resolveURLToCurrentTenant(agaveUUID.getObjectReference())));
 
         }
-        metadataObject.put("_links", hal);
+        metadataObject.put("_links",hal);
         return metadataObject;
-    }
+        }
 
-    /* (non-Javadoc)
-     * @see org.restlet.resource.Resource#allowPost()
-     */
-    @Override
-    public boolean allowPost() {
+/* (non-Javadoc)
+ * @see org.restlet.resource.Resource#allowPost()
+ */
+@Override
+public boolean allowPost(){
         return true;
-    }
+        }
 
-    /* (non-Javadoc)
-     * @see org.restlet.resource.Resource#allowDelete()
-     */
-    @Override
-    public boolean allowDelete() {
+/* (non-Javadoc)
+ * @see org.restlet.resource.Resource#allowDelete()
+ */
+@Override
+public boolean allowDelete(){
         return true;
-    }
+        }
 
-}
+        }

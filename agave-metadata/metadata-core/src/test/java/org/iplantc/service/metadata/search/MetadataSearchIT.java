@@ -823,5 +823,56 @@ public class MetadataSearchIT {
         }
     }
 
+    @Test
+    public void findPermissionMultipleUserTest() throws MetadataStoreException, MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException {
+        MetadataSearch search = new MetadataSearch(this.username);
+        search.clearCollection();
+        search.setAccessibleOwnersExplicit();
+
+        String metadataQueryAgavoideae =
+                "  {" +
+                        "    \"name\": \"Agavoideae\"," +
+                        "    \"value\": {" +
+                        "      \"type\": \"a flowering plant\"," +
+                        "      \"order\": \" Asparagales\", " +
+                        "      \"properties\": {" +
+                        "        \"profile\": {" +
+                        "        \"status\": \"paused\"" +
+                        "           }," +
+                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+                        "       }" +
+                        "       }" +
+                        "   }";
+
+        MetadataItem metadataItem = createSingleMetadataItem(metadataQueryAgavoideae);
+        search.setUuid(metadataItem.getUuid());
+        search.updatePermissions(sharedUser, "", PermissionType.READ);
+        search.updatePermissions("readWriteUser", "", PermissionType.READ_WRITE);
+        search.updatePermissions("writeUser", "", PermissionType.WRITE);
+
+        MetadataSearch findPermission = new MetadataSearch(this.username);
+        List<MetadataItem> result = findPermission.findPermission_User(sharedUser, metadataItem.getUuid());
+        Assert.assertEquals(result.size(), 1, "There should be one permission per user for a given uuid.");
+        Assert.assertEquals(result.get(0).getPermissions_User(sharedUser).getPermission(), PermissionType.READ, "sharedUser should have permission type READ");
+
+        result = search.findPermission_User("readWriteUser", metadataItem.getUuid());
+        Assert.assertEquals(result.size(), 1, "There should be one permission per user for a given uuid.");
+        Assert.assertEquals(result.get(0).getPermissions_User("readWriteUser").getPermission(), PermissionType.READ_WRITE, "newUser should have permission type READ_WRITE");
+
+        result = search.findPermission_User(this.username, metadataItem.getUuid());
+        Assert.assertEquals(result.size(), 1, "There should be one permission per user for a given uuid.");
+        Assert.assertEquals(result.get(0).getPermissions_User(this.username).getPermission(), PermissionType.ALL, "Owner should have permission type ALL");
+
+        String json = "[" + "{\"username\":\"testuser\",\"permission\":{\"read\":true,\"write\":true},\"_links\":{\"self\":{\""+
+   "href\":\"https://apim.tenants.dev.example.com/meta/v2/4529592979496964586-242ac1f4-0001-012/pems/testuser\"},\"parent\":{\"href\":\"https://apim.tenants.dev.example.com/meta/v2/4529592979496964586-242ac1f4-0001-012\"},\"profile\":{\"href\":\"https://apim.tenants.dev.example.com/meta/v2/testuser\"}}},{\"username\":\"testsha reuser\",\"permission\":{\"read\":true,\"write\":true},\"_links\":{\"self\":{\"href\":\"https://apim .tenants.dev.example.com/meta/v2/4529592979496964586-242ac1f4-0001-012/pems/testshareuser\"},\"parent\":{\"hre f\":\"https://apim.tenants.dev.example.com/meta/v2/4529592979496964586-242ac1f4-0001-012\"},\"profile\":{\"h ref\":\"https://apim.tenants.dev.example.com/meta/v2/testshareuser\"}}}" + "]";
+        ObjectMapper mapper = new ObjectMapper();
+        JsonFactory factory = new ObjectMapper().getFactory();
+        JsonNode jsonMetadataNode = factory.createParser(json).readValueAsTree();
+
+        System.out.println(jsonMetadataNode);
+
+
+    }
+
 
 }

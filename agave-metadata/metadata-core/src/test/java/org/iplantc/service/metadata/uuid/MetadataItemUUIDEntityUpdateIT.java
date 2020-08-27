@@ -39,7 +39,7 @@ public class MetadataItemUUIDEntityUpdateIT implements AbstractUUIDTest<Metadata
         MetadataItem entity = null;
         try {
             entity = new MetadataItem();
-            entity.setName(MetadataItemUUIDEntityLookupTest.class.getName());
+            entity.setName(MetadataItemUUIDEntityLookupIT.class.getName());
             entity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
             entity.setOwner(TEST_USER);
             MetadataDao.getInstance().insert(entity);

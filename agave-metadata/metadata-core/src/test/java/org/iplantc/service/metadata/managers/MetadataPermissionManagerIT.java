@@ -28,7 +28,7 @@ import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.iplantc.service.metadata.uuid.MetadataItemUUIDEntityLookupTest;
+import org.iplantc.service.metadata.uuid.MetadataItemUUIDEntityLookupIT;
 import org.joda.time.DateTime;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;

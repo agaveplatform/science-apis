@@ -1,5 +1,6 @@
 package org.iplantc.service.common.restlet;
 
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantRepresentation;
@@ -12,6 +13,8 @@ import org.restlet.service.StatusService;
 
 public class IPlantStatusService extends StatusService 
 {
+	private static final Logger log = Logger.getLogger(IPlantStatusService.class);
+
 
 	/* (non-Javadoc)
 	 * @see org.restlet.service.StatusService#getStatus(java.lang.Throwable, org.restlet.data.Request, org.restlet.data.Response)
@@ -43,6 +46,8 @@ public class IPlantStatusService extends StatusService
 				} else {
 					message = status.getDescription();
 				}
+				log.error(message, status.getThrowable());
+
 				return new IplantErrorRepresentation(message);
 			}
 		} finally {

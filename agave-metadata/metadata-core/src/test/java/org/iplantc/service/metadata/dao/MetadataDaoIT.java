@@ -86,28 +86,20 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
         //clean collection
         inst.clearCollection();
-        Assert.assertEquals(inst.getCollectionSize(), 0);
-
-//        inst.getMongoClients();
 
         List<String> accessibleOwners = new ArrayList<>();
         accessibleOwners.add(TEST_USER);
         inst.setAccessibleOwners(accessibleOwners);
-        inst.updateMetadata(testEntity, TEST_USER);
+        MetadataItem updatedItem = inst.updateMetadata(testEntity, TEST_USER);
 
-        List<MetadataItem>  firstResult = inst.find(TEST_USER, new Document("uuid", testEntity.getUuid()));
-
-        List<MetadataItem> allResult = inst.findAll();
-
+        List<MetadataItem>  firstResult = inst.find(TEST_USER, new Document("uuid", updatedItem.getUuid()));
         Assert.assertEquals(inst.getCollectionSize(), 1, "Collection size should be 1 after inserting new metadata item.");
         Assert.assertEquals(firstResult.size(), 1, "Find result should be 1 after inserting the new metadata item.");
-//        Assert.assertNotNull(firstResult, "Document should be found by uuid after inserting to collection");
-        //check metadata item was inserted
-        Assert.assertEquals(inst.getCollectionSize(), 1, "Document size should be 1 after inserting new document.");
         Assert.assertEquals(firstResult.get(0).getOwner(), TEST_USER);
         Assert.assertEquals(firstResult.get(0).getName(),MetadataDaoIT.class.getName());
         Assert.assertEquals(firstResult.get(0).getValue().get("testKey"), testEntity.getValue().get("testKey"));
         Assert.assertEquals(firstResult.get(0).getPermissions().size(), 1);
+        Assert.assertEquals(firstResult.get(0).getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.ALL);
     }
 
     @Test
@@ -202,7 +194,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         List<String> accessibleOwners = new ArrayList<>();
         inst.setAccessibleOwners(accessibleOwners);
         inst.getMongoClients();
-        inst.insertMetadataItem(testEntity);
+        inst.insert(testEntity);
 
         //check it was added
         if (inst.hasRead(TEST_SHARED_USER, testEntity.getUuid())) {

@@ -19,6 +19,7 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.validation.constraints.MetadataSchemaComplianceConstraint;
 import org.iplantc.service.notification.model.Notification;
@@ -340,7 +341,7 @@ public class MetadataItem {
         this.permissions = pem;
     }
 
-    public synchronized void updatePermissions(MetadataPermission pem) {
+    public synchronized void updatePermissions(MetadataPermission pem) throws MetadataException {
         MetadataPermission currentUserPermission = this.getPermissions_User(pem.getUsername());
 
         if (currentUserPermission != null) {
@@ -355,11 +356,14 @@ public class MetadataItem {
         this.permissions.remove(pem);
     }
 
-    public synchronized MetadataPermission getPermissions_User(String user) {
+    public synchronized MetadataPermission getPermissions_User(String user) throws MetadataException {
         for (MetadataPermission pem : this.permissions) {
             if (pem.getUsername().equals(user)) {
                 return pem;
             }
+        }
+        if (StringUtils.equals(user, this.getOwner())) {
+            return new MetadataPermission(user, "", PermissionType.ALL);
         }
         return null;
     }

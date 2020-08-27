@@ -164,19 +164,36 @@ public class MetadataResource extends AgaveResource {
                                 + "please contact the system administrators. Exception: ");
             }
 
-            MetadataItem result = search.findOne();
-            if (result != null) {
-                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(result);
+            search.setUuid(uuid);
+            List<MetadataItem> userResults = search.find(userQuery);
+
+            if (userResults.size() == 1) {
+                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(userResults.get(0));
                 return new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString());
             } else {
-                throw new MetadataException("No metadata item found for user with id " + uuid);
+                //nothing found, check if uuid exists
+                MetadataItem metadataItem = search.findOne();
+                if (metadataItem == null) {
+                    throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+                            "No metadata item found for user with id " + uuid);
+                }
+                else {
+                    getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
+                    return new IplantErrorRepresentation("User does not have permission to read this metadata entry.");
+                }
             }
 
-        } catch (Throwable e) {
+        }
+        catch (ResourceException e) {
+            log.error("Failed to fetch metadata item " + uuid + ". " + e.getMessage());
+            throw e;
+        }
+
+        catch (Throwable e) {
             log.error("Failed to list metadata " + uuid, e);
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                     "An unexpected error occurred while fetching the metadata item. "
-                            + "If this continues, please contact your tenant administrator.", e);
+                            + "If this continues, please contact your tenant administrator." + "[[ERROR]] " + e.getMessage(), e);
         } finally {
             try {
                 cursor.close();
@@ -227,8 +244,13 @@ public class MetadataResource extends AgaveResource {
             try {
                 search.setUuid(uuid);
 
-                MetadataItem item = search.findOne();
-                search.setOwner(item.getOwner());
+                MetadataItem existingItem = search.findOne();
+
+                if (existingItem != null) {
+                    search.setOwner(existingItem.getOwner());
+                } else {
+                    search.setOwner(username);
+                }
 
                 metadataItem = search.updateMetadataItem();
 

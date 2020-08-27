@@ -666,7 +666,7 @@ public class MetadataSearch {
             result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
 
             if (result.size() == 0){
-                if (metadataDao.findSingleDocument(eq("uuid", getUuid())) != null){
+                if (metadataDao.findSingleMetadataItem(eq("uuid", getUuid())) != null){
                     throw new PermissionException("User does not have permission to view this resource.");
                 }
             }
@@ -694,7 +694,7 @@ public class MetadataSearch {
      * @return {@link MetadataItem} matching the criteria
      */
     public MetadataItem findOne(){
-        return metadataDao.findSingleDocument(and(eq("uuid", this.getUuid()),
+        return metadataDao.findSingleMetadataItem(and(eq("uuid", this.getUuid()),
                 eq("tenantId", this.metadataItem.getTenantId())));
     }
 
@@ -705,7 +705,7 @@ public class MetadataSearch {
      * @return {@link MetadataItem} matching the criteria
      */
     public MetadataItem findOne(Bson query) {
-        return metadataDao.findSingleDocument(query);
+        return metadataDao.findSingleMetadataItem(query);
     }
 
     /**

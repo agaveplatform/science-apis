@@ -13,8 +13,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 //import com.mongodb.*;
 import com.mongodb.*;
-import com.mongodb.MongoClient;
+//import com.mongodb.MongoClient;
 import com.mongodb.client.*;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.result.DeleteResult;
@@ -50,7 +51,7 @@ public class MetadataDao {
     private static final Logger log = Logger.getLogger(MetadataDao.class);
 
     private MongoDatabase db = null;
-    private MongoClient mongoClient = null;
+//    private MongoClient mongoClient = null;
     private MongoClients mongoClients = null;
     private com.mongodb.client.MongoClient mongo4Client = null;
 
@@ -62,6 +63,12 @@ public class MetadataDao {
     private MetadataItem metadataItem=null;
     private List<String> accessibleOwners=null;
 
+    public MetadataDao(MongoClients paramMongoClients){
+        this.mongoClients = paramMongoClients;
+    }
+
+    public MetadataDao() {
+    }
 
     public MetadataItem getMetadataItem() {
         return metadataItem;
@@ -88,22 +95,23 @@ public class MetadataDao {
     }
 
     /**
+     * @Deprecated moved to MetadataDao.getMongoClients
      * Establishes a connection to the mongo server
      *
      * @return valid mongo client connection
      */
-    public MongoClient getMongoClient() {
-        if (mongoClient == null) {
-            mongoClient = new MongoClient(
-                    new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT),
-                    getMongoCredential(),
-                    MongoClientOptions.builder().build());
-        }
+//    public MongoClient getMongoClient() {
+//        if (mongoClient == null) {
+//            mongoClient = new MongoClient(
+//                    new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT),
+//                    getMongoCredential(),
+//                    MongoClientOptions.builder().build());
+//        }
+//
+//        return mongoClient;
+//    }
 
-        return mongoClient;
-    }
-
-    public com.mongodb.client.MongoClient getMongoClients() {
+    public MongoClient getMongoClients() {
         if (mongo4Client == null) {
 
             //testing for custom codec
@@ -155,7 +163,7 @@ public class MetadataDao {
      */
     public MongoCollection getCollection(String dbName, String collectionName) {
 
-        db = getMongoClient().getDatabase(dbName);
+//        db = getMongoClient().getDatabase(dbName);
         db = getMongoClients().getDatabase(dbName); //update to 4.0
 
         MongoCollection<MetadataItem> newDb = db.getCollection("api", MetadataItem.class);
@@ -213,19 +221,17 @@ public class MetadataDao {
      * @return the inserted {@link MetadataItem}
      * @throws MetadataStoreException when the insertion failed
      */
-    public MetadataItem insertMetadataItem(MetadataItem metadataItem) throws MetadataStoreException {
-        ObjectMapper mapper = new ObjectMapper();
-
-        MongoCollection<MetadataItem> metadataItemCollection;
-        try {
-            metadataItemCollection = getDefaultMetadataItemCollection();
-            metadataItemCollection.insertOne(metadataItem);
-
-            return metadataItem;
-        } catch (MongoException e) {
-            throw new MetadataStoreException("Failed to insert metadata item", e);
-        }
-    }
+//    public MetadataItem insertMetadataItem(MetadataItem metadataItem) throws MetadataStoreException {
+//        MongoCollection<MetadataItem> metadataItemCollection;
+//        try {
+//            metadataItemCollection = getDefaultMetadataItemCollection();
+//            metadataItemCollection.insertOne(metadataItem);
+//
+//            return metadataItem;
+//        } catch (MongoException e) {
+//            throw new MetadataStoreException("Failed to insert metadata item", e);
+//        }
+//    }
 
     /**
      * Find the {@link MetadataItem} from the mongo collection based on the {@link Bson} query as the {@code user}
@@ -286,7 +292,7 @@ public class MetadataDao {
      * @param filter {@link Bson} filter to search the collection with
      * @return {@link MetadataItem} matching the {@link Bson} filter
      */
-    public MetadataItem findSingleDocument (Bson filter) {
+    public MetadataItem findSingleMetadataItem (Bson filter) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
         try {
@@ -297,6 +303,16 @@ public class MetadataDao {
         }
     }
 
+
+    /**
+     * Find the {@link MetadataItem} with the provided {@link Bson} query using
+     * aggregate
+     *
+     * @param user performing the search
+     * @param query {@link} to search the collection with
+     * @return list of all {@link MetadataItem} matching the {@link Bson} query
+     * @throws MetadataStoreException when unable to query the collection
+     */
     public List<MetadataItem> aggFind(String user, Bson query) throws MetadataStoreException {
         List<MetadataItem> resultList = new ArrayList<>();
         MongoCollection collection;

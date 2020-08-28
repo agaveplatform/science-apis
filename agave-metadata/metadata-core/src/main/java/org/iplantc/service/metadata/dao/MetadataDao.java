@@ -608,6 +608,7 @@ public class MetadataDao {
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
         MetadataItem result;
+        MongoCursor cursor;
         try {
             //check if user has permission
             result = metadataItemMongoCollection.find(and(eq("uuid", uuid),
@@ -616,9 +617,10 @@ public class MetadataDao {
             if (result == null) {
                 //check if uuid exists
                 result = metadataItemMongoCollection.find(eq("uuid", uuid)).first();
-                if (result == null)
+                if (result == null) {
                     //metadata item doesn't exist, user can read or write
                     return true;
+                }
             } else {
                 return true;
             }

@@ -87,7 +87,7 @@ import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.*;
 
 public class MetadataSearch {
-//    private boolean bolImplicitPermissions;
+    //    private boolean bolImplicitPermissions;
     private String owner;
     private String value;
     private String username;
@@ -550,23 +550,14 @@ public class MetadataSearch {
      */
     public MongoCollection getCollection() {
         MongoCollection collection = null;
-//        Settings.METADATA_DB_COLLECTION = "metadata";
-
-//        if (Settings.METADATA_DB_COLLECTION == null) {
-//            Settings.METADATA_DB_COLLECTION = "metadata";
-//            collection = metadataDao.getMetadataItemCollection(Settings.METADATA_DB_SCHEME, "metadata");
-//        } else {
-            collection = metadataDao.getMetadataItemCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
-//        }
+        collection = metadataDao.getMetadataItemCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
         return collection;
     }
 
     /**
      * Remove all documents from the Metadata collection
-     *
-     * @throws UnknownHostException
      */
-    public void clearCollection() throws UnknownHostException {
+    public void clearCollection() {
         metadataDao.clearCollection();
     }
 
@@ -619,14 +610,12 @@ public class MetadataSearch {
         return this.accessibleOwners;
     }
 
-    public List<String> setAccessibleOwnersImplicit(){
+    public List<String> setAccessibleOwnersImplicit() {
         if (this.accessibleOwners == null)
             this.accessibleOwners = new ArrayList<>();
         this.accessibleOwners.add(this.username);
         return this.accessibleOwners;
     }
-
-
 
 
     /**
@@ -665,8 +654,8 @@ public class MetadataSearch {
             metadataDao.setAccessibleOwners(this.accessibleOwners);
             result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
 
-            if (result.size() == 0){
-                if (metadataDao.findSingleMetadataItem(eq("uuid", getUuid())) != null){
+            if (result.size() == 0) {
+                if (metadataDao.findSingleMetadataItem(eq("uuid", getUuid())) != null) {
                     throw new PermissionException("User does not have permission to view this resource.");
                 }
             }
@@ -683,7 +672,7 @@ public class MetadataSearch {
      * @return list of {@link MetadataItem} found
      * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
      */
-    public List<MetadataItem> findAll() throws UnknownHostException {
+    public List<MetadataItem> findAll() {
         return metadataDao.findAll();
     }
 
@@ -693,7 +682,7 @@ public class MetadataSearch {
      *
      * @return {@link MetadataItem} matching the criteria
      */
-    public MetadataItem findOne(){
+    public MetadataItem findOne() {
         return metadataDao.findSingleMetadataItem(and(eq("uuid", this.getUuid()),
                 eq("tenantId", this.metadataItem.getTenantId())));
     }
@@ -712,9 +701,8 @@ public class MetadataSearch {
      * Update the metadata item
      *
      * @return {@link MetadataItem} that was updated successfully
-     * @throws MetadataException      if unable to update the {@link MetadataItem} in the metadata collection
-     * @throws MetadataStoreException if unable to connect to the metadata collection
-     * @throws PermissionException    if user does not have permission to update the {@link MetadataItem}
+     * @throws MetadataException   if unable to update the {@link MetadataItem} in the metadata collection
+     * @throws PermissionException if user does not have permission to update the {@link MetadataItem}
      */
     public MetadataItem updateMetadataItem() throws MetadataException, PermissionException {
         metadataDao.setAccessibleOwners(this.accessibleOwners);
@@ -789,39 +777,46 @@ public class MetadataSearch {
      * Add/update the user's permission to {@code pem}
      *
      * @param userToUpdate String user to update
-     * @param group    group to be updated
-     * @param pem      {@link PermissionType} to be updated to
+     * @param group        group to be updated
+     * @param pem          {@link PermissionType} to be updated to
      * @throws MetadataException      if unable to update the permission of {@code user}
-     * @throws MetadataStoreException
+     * @throws MetadataStoreException if the connection cannot be found/created, or db connection is bad
      */
-    public void updatePermissions(String userToUpdate, String group, PermissionType pem) throws MetadataException, MetadataStoreException, UnknownHostException, PermissionException {
+    public void updatePermissions(String userToUpdate, String group, PermissionType pem) throws MetadataException, MetadataStoreException, PermissionException {
         MetadataPermission metadataPermission;
         //check if user has write permissions
-            if (pem.equals(PermissionType.NONE) || pem == null) {
-                //delete permission
-                MetadataPermission pemDelete = metadataItem.getPermissions_User(userToUpdate);
-                metadataItem.updatePermissions_delete(pemDelete);
-                List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
+        if (pem.equals(PermissionType.NONE) || pem == null) {
+            //delete permission
+            MetadataPermission pemDelete = metadataItem.getPermissions_User(userToUpdate);
+            metadataItem.updatePermissions_delete(pemDelete);
+            List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
 
-            } else {
-                metadataPermission = new MetadataPermission(metadataItem.getUuid(), userToUpdate, pem);
-                metadataPermission.setGroup(group);
+        } else {
+            metadataPermission = new MetadataPermission(metadataItem.getUuid(), userToUpdate, pem);
+            metadataPermission.setGroup(group);
 
-                metadataItem.updatePermissions(metadataPermission);
-            }
-            metadataDao.updatePermission(metadataItem, this.username);
+            metadataItem.updatePermissions(metadataPermission);
+        }
+        metadataDao.updatePermission(metadataItem, this.username);
     }
 
     /**
      * Return all permissions for the user
      *
      * @param user to find permission for
-     * @return list of {@link MetadataItem} where the user was specified permissions
+     * @return list of {@link MetadataItem} where the user was specified permissions; null if the user making the query
+     * does not have permission to view the metadata item
      */
     public List<MetadataItem> findPermission_User(String user, String uuid) {
         //only the owner or tenantAdmin can access if no permissions are explicitly set
-        return metadataDao.find(user, and(eq("uuid", uuid),
-                or(eq("owner", user), eq("permissions.username", user))));
+        metadataDao.setAccessibleOwners(this.accessibleOwners);
+
+        if (metadataDao.hasRead(this.username, uuid)) {
+            return metadataDao.find(this.username, and(eq("uuid", uuid),
+                    or(eq("owner", user), eq("permissions.username", user))));
+        }
+        else
+            return null;
     }
 
     /**
@@ -860,10 +855,7 @@ public class MetadataSearch {
      */
     public boolean validateUuid(String uuid) throws MetadataException {
         String apiOutput = getValidationResponse(uuid);
-
-        if (StringUtils.isNotEmpty(apiOutput))
-            return true;
-        return false;
+        return StringUtils.isNotEmpty(apiOutput);
     }
 
     /**

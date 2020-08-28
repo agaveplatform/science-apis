@@ -81,13 +81,6 @@ public class MetadataResource extends AgaveResource {
 
     private MongoClient mongoClient;
     private DB db;
-    private DBCollection collection;
-    private DBCollection schemaCollection;
-
-    //KL - update to Mongo 4.0
-    private MongoCollection mongoCollection;
-    private MongoCollection mongoSchemaCollection;
-    private MongoDatabase mongoDB;
 
     /**
      * @param context
@@ -121,18 +114,18 @@ public class MetadataResource extends AgaveResource {
         getVariants().add(new Variant(MediaType.APPLICATION_JSON));
 
         // Set up MongoDB connection
-        try {
-            mongoClient = ((MetadataApplication) getApplication()).getMongoClient();
-            db = mongoClient.getDB(Settings.METADATA_DB_SCHEME);
-            // Gets a collection, if it does not exist creates it
-            collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
-            schemaCollection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
-        } catch (Exception e) {
-            log.error("Unable to connect to metadata store", e);
-//        	try { mongoClient.close(); } catch (Exception e1) {}
-            response.setStatus(Status.SERVER_ERROR_INTERNAL);
-            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store."));
-        }
+//        try {
+//            mongoClient = ((MetadataApplication) getApplication()).getMongoClient();
+//            db = mongoClient.getDB(Settings.METADATA_DB_SCHEME);
+//            // Gets a collection, if it does not exist creates it
+//            collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
+//            schemaCollection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
+//        } catch (Exception e) {
+//            log.error("Unable to connect to metadata store", e);
+////        	try { mongoClient.close(); } catch (Exception e1) {}
+//            response.setStatus(Status.SERVER_ERROR_INTERNAL);
+//            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store."));
+//        }
     }
 
     /**
@@ -172,8 +165,8 @@ public class MetadataResource extends AgaveResource {
                 return new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString());
             } else {
                 //nothing found, check if uuid exists
-                MetadataItem metadataItem = search.findOne();
-                if (metadataItem == null) {
+                MetadataItem foundMetadataItem = search.findOne();
+                if (foundMetadataItem == null) {
                     throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
                             "No metadata item found for user with id " + uuid);
                 }
@@ -185,15 +178,15 @@ public class MetadataResource extends AgaveResource {
 
         }
         catch (ResourceException e) {
-            log.error("Failed to fetch metadata item " + uuid + ". " + e.getMessage());
-            throw e;
+            log.error("Failed to list metadata " + uuid + " for user " + username, e);
+            throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, e.getMessage());
         }
 
         catch (Throwable e) {
             log.error("Failed to list metadata " + uuid, e);
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                     "An unexpected error occurred while fetching the metadata item. "
-                            + "If this continues, please contact your tenant administrator." + "[[ERROR]] " + e.getMessage(), e);
+                            + "If this continues, please contact your tenant administrator.", e);
         } finally {
             try {
                 cursor.close();
@@ -213,13 +206,9 @@ public class MetadataResource extends AgaveResource {
         DBCursor cursor = null;
 
         try {
-
-            String name = null;
-            String value = null;
-            String schemaId = null;
             ObjectMapper mapper = new ObjectMapper();
             ArrayNode items = mapper.createArrayNode();
-            MetadataItem metadataItem = null;
+            MetadataItem updatedMetadataItem = null;
 
             MetadataSearch search = new MetadataSearch(this.username);
             search.setAccessibleOwnersExplicit();
@@ -249,12 +238,12 @@ public class MetadataResource extends AgaveResource {
                 if (existingItem != null) {
                     search.setOwner(existingItem.getOwner());
                 } else {
-                    search.setOwner(username);
+                    search.setOwner(this.username);
                 }
 
-                metadataItem = search.updateMetadataItem();
+                updatedMetadataItem = search.updateMetadataItem();
 
-                if (metadataItem == null) {
+                if (updatedMetadataItem == null) {
                     throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
                             "No metadata item found for user with id " + uuid);
                 } else {
@@ -267,7 +256,7 @@ public class MetadataResource extends AgaveResource {
                     getResponse().setStatus(Status.SUCCESS_OK);
                 }
 
-                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
+                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(updatedMetadataItem);
                 getResponse().setEntity(new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString()));
 
 
@@ -304,7 +293,7 @@ public class MetadataResource extends AgaveResource {
         AgaveLogServiceClient.log(METADATA02.name(), MetaDelete.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 
         DBCursor cursor = null;
-        MetadataItem metadataItem = null;
+        MetadataItem deletedMetadataItem = null;
         try {
 
             if (StringUtils.isEmpty(uuid)) {
@@ -323,12 +312,12 @@ public class MetadataResource extends AgaveResource {
 
             try {
                 search.setUuid(uuid);
-                metadataItem = search.deleteMetadataItem();
+                deletedMetadataItem = search.deleteMetadataItem();
 
-                if (metadataItem == null) {
+                if (deletedMetadataItem == null) {
                     throw new Exception();
                 }
-                for (String aid : metadataItem.getAssociations().getAssociatedIds().keySet()) {
+                for (String aid : deletedMetadataItem.getAssociations().getAssociatedIds().keySet()) {
                     NotificationManager.process((String) aid, "METADATA_DELETED", username);
                 }
 

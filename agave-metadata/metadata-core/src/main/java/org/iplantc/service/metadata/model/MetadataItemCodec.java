@@ -64,13 +64,14 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         metadataItem.setInternalUsername(document.getString("internalUsername"));
 
         List<String> associationList = document.getList("associationIds", String.class);
+
+        // Allow invalid uuids to pass to preserve the reference and let the appropriate
+        // service to handle access issues
         for (String associationId : associationList) {
             try {
                 metadataItem.getAssociations().add(associationId);
             } catch (MetadataAssociationException e) {
-                e.printStackTrace();
             } catch (PermissionException e) {
-                e.printStackTrace();
             }
         }
 

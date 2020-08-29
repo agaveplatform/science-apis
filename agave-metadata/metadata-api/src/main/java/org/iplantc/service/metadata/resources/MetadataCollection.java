@@ -111,16 +111,8 @@ public class MetadataCollection extends AgaveResource {
     private String uuid;
     private String userQuery;
     private boolean includeRecordsWithImplicitPermissions = true;
-    private MongoClient mongoClient;
-    private DB db;
-    private DBCollection collection;
-    private DBCollection schemaCollection;
     private MetadataEventProcessor eventProcessor;
 
-    //KL - update to Mongo 4.0
-    private MongoCollection mongoCollection;
-    private MongoCollection mongoSchemaCollection;
-    private MongoDatabase mongoDB;
 
     /**
      * @param context
@@ -327,13 +319,6 @@ public class MetadataCollection extends AgaveResource {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
                         "Unable to add metadata. " + e.getMessage());
             }
-            MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
-            String result = metadataItemSerializer.formatMetadataItemResult().toString();
-
-            eventProcessor.processContentEvent(uuid,
-                    MetadataEventType.CREATED,
-                    username,
-                    metadataItemSerializer.formatMetadataItemResult().toString());
 
             // process any embedded notifications
             MetadataRequestNotificationProcessor notificationProcessor = new MetadataRequestNotificationProcessor(
@@ -341,8 +326,18 @@ public class MetadataCollection extends AgaveResource {
                     uuid);
             notificationProcessor.process(search.getNotifications());
 
+            MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
+            String strMetadataItem = metadataItemSerializer.formatMetadataItemResult().toString();
+
+            eventProcessor.processContentEvent(uuid,
+                    MetadataEventType.CREATED,
+                    username,
+                    strMetadataItem);
+
             getResponse().setStatus(Status.SUCCESS_CREATED);
-            getResponse().setEntity(new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString()));
+            getResponse().setEntity(new IplantSuccessRepresentation(strMetadataItem));
+
+
             return;
         } catch (ResourceException e) {
             log.error("Failed to add metadata ", e);

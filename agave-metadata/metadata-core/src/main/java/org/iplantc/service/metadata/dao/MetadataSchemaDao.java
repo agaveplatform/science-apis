@@ -4,11 +4,13 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.*;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.apache.log4j.Logger;
 
 import org.bson.BsonDocument;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
@@ -102,6 +104,24 @@ public class MetadataSchemaDao {
             throw new MetadataStoreException("Failed to insert metadata item", e);
         }
     }
+
+    /**
+     * Find the Metadata Schema based on the provided query in the mongo collection
+     * @param query the {@link Bson} query to search the collection with
+     * @return Document matching the {@link MetadataSchemaItem} found
+     * @throws MetadataStoreException if unable to find the {@link MetadataSchemaItem}
+     */
+    public Document findOne(Bson query) throws MetadataStoreException {
+        MongoCollection collection;
+        try {
+            collection = getDefaultCollection();
+            return (Document) collection.find(query).first();
+        } catch (UnknownHostException | NullPointerException e ) {
+            throw new MetadataStoreException("Failed to find metadata schema item", e);
+        }
+    }
+
+
 //    
 //    /**
 //     * Generates a {@link Query} from the given {@code uuid} and {@link TenancyHelper#getCurrentTenantId()}

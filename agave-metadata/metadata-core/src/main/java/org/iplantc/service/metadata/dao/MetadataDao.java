@@ -432,6 +432,29 @@ public class MetadataDao {
         return null;
     }
 
+    public List<MetadataPermission> updatePermission(String uuid, List<MetadataPermission> permissionList, String user) throws MetadataStoreException, PermissionException {
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+        UpdateResult update;
+
+        try {
+            //get collection
+            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+
+            if (hasWrite(user, uuid)){
+                update = metadataItemMongoCollection.updateOne(eq("uuid", uuid), set("permissions", permissionList));
+                if (update.getModifiedCount() > 0 )
+                    //update success
+                    return permissionList;
+            } else {
+                throw new PermissionException("User does not have sufficient access to edit metadata permissions.");
+            }
+
+        } catch (Exception e) {
+            throw new MetadataStoreException("Failed to update permission", e);
+        }
+        return null;
+    }
+
     /**
      * Update the {@link MetadataItem} as the provided user
      *

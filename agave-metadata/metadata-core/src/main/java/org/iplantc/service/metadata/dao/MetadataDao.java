@@ -51,7 +51,7 @@ public class MetadataDao {
     private static final Logger log = Logger.getLogger(MetadataDao.class);
 
     private MongoDatabase db = null;
-//    private MongoClient mongoClient = null;
+    //    private MongoClient mongoClient = null;
     private MongoClients mongoClients = null;
     private com.mongodb.client.MongoClient mongo4Client = null;
 
@@ -60,10 +60,10 @@ public class MetadataDao {
     private boolean bolRead;
     private boolean bolWrite;
 
-    private MetadataItem metadataItem=null;
-    private List<String> accessibleOwners=null;
+    private MetadataItem metadataItem = null;
+    private List<String> accessibleOwners = null;
 
-    public MetadataDao(MongoClients paramMongoClients){
+    public MetadataDao(MongoClients paramMongoClients) {
         this.mongoClients = paramMongoClients;
     }
 
@@ -95,10 +95,9 @@ public class MetadataDao {
     }
 
     /**
+     * @return valid mongo client connection
      * @Deprecated moved to MetadataDao.getMongoClients
      * Establishes a connection to the mongo server
-     *
-     * @return valid mongo client connection
      */
 //    public MongoClient getMongoClient() {
 //        if (mongoClient == null) {
@@ -110,7 +109,6 @@ public class MetadataDao {
 //
 //        return mongoClient;
 //    }
-
     public MongoClient getMongoClients() {
         if (mongo4Client == null) {
 
@@ -125,7 +123,7 @@ public class MetadataDao {
                     fromProviders(pojoCodecProvider),
                     registry);
 
-            mongo4Client =  mongoClients.create(MongoClientSettings.builder()
+            mongo4Client = mongoClients.create(MongoClientSettings.builder()
                     .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
                             new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT))))
                     .credential(getMongoCredential())
@@ -190,8 +188,8 @@ public class MetadataDao {
      * @return collection from the db
      */
     public MongoCollection<MetadataItem> getMetadataItemCollection(String dbName, String collectionName) {
-            db = getMongoClients().getDatabase(dbName);
-            return db.getCollection(collectionName, MetadataItem.class);
+        db = getMongoClients().getDatabase(dbName);
+        return db.getCollection(collectionName, MetadataItem.class);
     }
 
     /**
@@ -264,7 +262,7 @@ public class MetadataDao {
             query = new Document();
         }
 
-        if (accessibleOwners==null){
+        if (accessibleOwners == null) {
             accessibleOwners = new ArrayList<String>();
         }
 
@@ -292,13 +290,12 @@ public class MetadataDao {
      * @param filter {@link Bson} filter to search the collection with
      * @return {@link MetadataItem} matching the {@link Bson} filter
      */
-    public MetadataItem findSingleMetadataItem (Bson filter) {
+    public MetadataItem findSingleMetadataItem(Bson filter) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
         try {
             return metadataItemMongoCollection.find(filter).first();
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             return null;
         }
     }
@@ -308,7 +305,7 @@ public class MetadataDao {
      * Find the {@link MetadataItem} with the provided {@link Bson} query using
      * aggregate
      *
-     * @param user performing the search
+     * @param user  performing the search
      * @param query {@link} to search the collection with
      * @return list of all {@link MetadataItem} matching the {@link Bson} query
      * @throws MetadataStoreException when unable to query the collection
@@ -416,15 +413,11 @@ public class MetadataDao {
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
             uuid = metadataItem.getUuid();
 
-            if (hasWrite(user, uuid)){
-                List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
-                update = metadataItemMongoCollection.updateOne(eq("uuid", uuid), set("permissions", metadataPermissionsList));
-                if (update.getModifiedCount() > 0 )
-                    //update success
-                    return metadataPermissionsList;
-            } else {
-                throw new PermissionException("User does not have sufficient access to edit metadata permissions.");
-            }
+            List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
+            update = metadataItemMongoCollection.updateOne(eq("uuid", uuid), set("permissions", metadataPermissionsList));
+            if (update.getModifiedCount() > 0)
+                //update success
+                return metadataPermissionsList;
 
         } catch (Exception e) {
             throw new MetadataStoreException("Failed to update permission", e);
@@ -440,9 +433,9 @@ public class MetadataDao {
             //get collection
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-            if (hasWrite(user, uuid)){
+            if (hasWrite(user, uuid)) {
                 update = metadataItemMongoCollection.updateOne(eq("uuid", uuid), set("permissions", permissionList));
-                if (update.getModifiedCount() > 0 )
+                if (update.getModifiedCount() > 0)
                     //update success
                     return permissionList;
             } else {
@@ -508,7 +501,7 @@ public class MetadataDao {
      * @param metadataItem {@link MetadataItem} to delete
      * @param user         deleting the item
      * @return the deleted {@link MetadataItem}
-     * @throws PermissionException  if the user does not have write permissions
+     * @throws PermissionException if the user does not have write permissions
      */
     public MetadataItem deleteMetadata(MetadataItem metadataItem, String user) throws PermissionException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
@@ -545,7 +538,7 @@ public class MetadataDao {
     /**
      * Remove all documents in the collection
      */
-    public void clearCollection()   {
+    public void clearCollection() {
         if (this.getCollectionSize() > 0) {
             MongoCollection<MetadataItem> metadataPermissionMongoCollection;
             metadataPermissionMongoCollection = getDefaultMetadataItemCollection();
@@ -558,7 +551,7 @@ public class MetadataDao {
      *
      * @return number of documents in collection
      */
-    long getCollectionSize()   {
+    long getCollectionSize() {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
         return metadataItemMongoCollection.countDocuments();
@@ -566,9 +559,10 @@ public class MetadataDao {
 
     /**
      * Return all documents in the collection
+     *
      * @return list of all documents in collection
      */
-    public List<MetadataItem> findAll()   {
+    public List<MetadataItem> findAll() {
         List<MetadataItem> resultList = new ArrayList<>();
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         MongoCursor cursor = null;
@@ -621,12 +615,13 @@ public class MetadataDao {
 
     /**
      * Check the mongodb if the {@code user} has the correct permissios for the metadata item for the specified {@code uuid}
-     * @param uuid of metadata item
-     * @param user to check permission for
+     *
+     * @param uuid       of metadata item
+     * @param user       to check permission for
      * @param userFilter permission query
      * @return
      */
-    public boolean checkPermission(String uuid, String user, Bson userFilter){
+    public boolean checkPermission(String uuid, String user, Bson userFilter) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
@@ -654,11 +649,12 @@ public class MetadataDao {
 
     /**
      * Get Bson filter to check for read permissions for the user
+     *
      * @param user
      * @param accessibleOwners
      * @return
      */
-    public Bson getHasReadQuery(String user, List<String> accessibleOwners){
+    public Bson getHasReadQuery(String user, List<String> accessibleOwners) {
         return or(in("owner", accessibleOwners),
                 elemMatch("permissions", and(
                         eq("username", user),
@@ -667,12 +663,11 @@ public class MetadataDao {
     }
 
     /**
-     *
      * @param user
      * @param accessibleOwners
      * @return
      */
-    public Bson getHasWriteQuery(String user, List<String> accessibleOwners){
+    public Bson getHasWriteQuery(String user, List<String> accessibleOwners) {
         return or(in("owner", accessibleOwners),
                 elemMatch("permissions", and(
                         eq("username", user),
@@ -684,7 +679,7 @@ public class MetadataDao {
     /**
      * @return List of users who are tenant admins or the owner for the {@link MetadataItem}
      */
-    public List<String> getAccessibleOwners (String user, boolean bolImplicitPermissions) {
+    public List<String> getAccessibleOwners(String user, boolean bolImplicitPermissions) {
         List<String> accessibleOwners = new ArrayList<>();
         if (!bolImplicitPermissions) {
             accessibleOwners = Arrays.asList(user,
@@ -696,7 +691,7 @@ public class MetadataDao {
         return accessibleOwners;
     }
 
-    public Bson getTenantIdQuery(String tenantId){
+    public Bson getTenantIdQuery(String tenantId) {
         return eq("tenantId", tenantId);
     }
 

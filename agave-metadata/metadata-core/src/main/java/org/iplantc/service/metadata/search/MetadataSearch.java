@@ -842,23 +842,23 @@ public class MetadataSearch {
 
 
     //------  Permission handling ---------------
-//    /**
-//     * @return List of users who are tenant admins or the owner for the {@link MetadataItem}
-//     */
-//    public List<String> setAccessibleOwnersExplicit() {
-//        this.accessibleOwners = Arrays.asList(this.username,
-//                Settings.PUBLIC_USER_USERNAME,
-//                Settings.WORLD_USER_USERNAME);
-//
-//        return this.accessibleOwners;
-//    }
-//
-//    public List<String> setAccessibleOwnersImplicit() {
-//        if (this.accessibleOwners == null)
-//            this.accessibleOwners = new ArrayList<>();
-//        this.accessibleOwners.add(this.username);
-//        return this.accessibleOwners;
-//    }
+    /**
+     * @return List of users who are tenant admins or the owner for the {@link MetadataItem}
+     */
+    public List<String> setAccessibleOwnersExplicit() {
+        this.accessibleOwners = Arrays.asList(this.username,
+                Settings.PUBLIC_USER_USERNAME,
+                Settings.WORLD_USER_USERNAME);
+
+        return this.accessibleOwners;
+    }
+
+    public List<String> setAccessibleOwnersImplicit() {
+        if (this.accessibleOwners == null)
+            this.accessibleOwners = new ArrayList<>();
+        this.accessibleOwners.add(this.username);
+        return this.accessibleOwners;
+    }
 //    /**
 //     * Check if user has correct permissions, throw Permission Exception if the user doesn't have the
 //     * correct permission

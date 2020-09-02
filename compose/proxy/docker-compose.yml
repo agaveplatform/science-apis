@@ -19,7 +19,7 @@ version: '3.7'
 
 services:
   localproxy:
-    build: apache
+    build:
       context: apache
     image: apache-api-proxy:devel
     environment:

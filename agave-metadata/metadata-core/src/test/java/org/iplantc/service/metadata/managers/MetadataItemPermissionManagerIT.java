@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+@Test(groups={"integration"})
 public class MetadataItemPermissionManagerIT {
     private ObjectMapper mapper = new ObjectMapper();
 
@@ -63,7 +64,7 @@ public class MetadataItemPermissionManagerIT {
 
         addedMetadataItem.updatePermissions(permissionToUpdate);
         updatedSearch.setMetadataItem(addedMetadataItem);
-        MetadataItem updatedMetadataItem = updatedSearch.findOne();
+        MetadataItem updatedMetadataItem = updatedSearch.findOne(new String[0]);
 
         Assert.assertNotNull(updatedMetadataItem);
         Assert.assertEquals(updatedMetadataItem.getPermissions_User(SHARED_USER), permissionToUpdate, "READ user permission for 'shareuser' should be added.");
@@ -122,7 +123,7 @@ public class MetadataItemPermissionManagerIT {
         updatedSearch.setAccessibleOwnersExplicit();
         updatedSearch.setUuid(addedMetadataItem.getUuid());
 
-        MetadataItem initialMetadataItem = updatedSearch.findOne();
+        MetadataItem initialMetadataItem = updatedSearch.findOne(new String[0]);
         Assert.assertEquals(initialMetadataItem.getPermissions_User(SHARED_USER).getPermission(), PermissionType.READ);
 
         //update
@@ -130,7 +131,7 @@ public class MetadataItemPermissionManagerIT {
         MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), SHARED_USER, PermissionType.READ_WRITE);
         pemManager.updatePermissions(SHARED_USER, updatedPermission, addedMetadataItem);
 
-        MetadataItem updatedMetadataItem = updatedSearch.findOne();
+        MetadataItem updatedMetadataItem = updatedSearch.findOne(new String[0]);
         Assert.assertEquals(updatedMetadataItem.getPermissions_User(SHARED_USER).getPermission(), PermissionType.READ_WRITE, "User permission should be updated from READ to READ_WRITE.");
 
     }
@@ -160,7 +161,7 @@ public class MetadataItemPermissionManagerIT {
         updatedSearch.setAccessibleOwnersExplicit();
         updatedSearch.setUuid(addedMetadataItem.getUuid());
 
-        MetadataItem initialMetadataItem = updatedSearch.findOne();
+        MetadataItem initialMetadataItem = updatedSearch.findOne(new String[0]);
         Assert.assertEquals(initialMetadataItem.getPermissions_User(SHARED_USER).getPermission(), PermissionType.READ);
 
         //delete
@@ -168,7 +169,7 @@ public class MetadataItemPermissionManagerIT {
         MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), SHARED_USER, PermissionType.NONE);
         pemManager.updatePermissions(SHARED_USER, updatedPermission, addedMetadataItem);
 
-        MetadataItem updatedMetadataItem = updatedSearch.findOne();
+        MetadataItem updatedMetadataItem = updatedSearch.findOne(new String[0]);
         Assert.assertNull(updatedMetadataItem.getPermissions_User(SHARED_USER), "Removed user permission should return null. ");
     }
 
@@ -199,7 +200,7 @@ public class MetadataItemPermissionManagerIT {
         MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), "invalidUser", PermissionType.NONE);
         Assert.assertNull(pemManager.updatePermissions("invalidUser", updatedPermission, addedMetadataItem));
 
-        MetadataItem updatedMetadataItem = updatedSearch.findOne();
+        MetadataItem updatedMetadataItem = updatedSearch.findOne(new String[0]);
         Assert.assertNull(updatedMetadataItem.getPermissions_User("invalidUser"));
     }
 

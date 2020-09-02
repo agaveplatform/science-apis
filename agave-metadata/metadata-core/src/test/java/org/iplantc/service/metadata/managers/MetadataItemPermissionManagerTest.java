@@ -24,6 +24,7 @@ import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.powermock.api.mockito.PowerMockito.doReturn;
 
+//@Test(groups={"unit"})
 public class MetadataItemPermissionManagerTest {
     private ObjectMapper mapper = new ObjectMapper();
 

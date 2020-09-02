@@ -212,13 +212,14 @@ public class MetadataDao {
         }
     }
 
-    /**
-     * Insert the provided {@link MetadataItem} in the mongo collection
-     *
-     * @param metadataItem the {@link MetadataItem} to be inserted
-     * @return the inserted {@link MetadataItem}
-     * @throws MetadataStoreException when the insertion failed
-     */
+//    /**
+//     * Duplicate of insert
+//     * Insert the provided {@link MetadataItem} in the mongo collection
+//     *
+//     * @param metadataItem the {@link MetadataItem} to be inserted
+//     * @return the inserted {@link MetadataItem}
+//     * @throws MetadataStoreException when the insertion failed
+//     */
 //    public MetadataItem insertMetadataItem(MetadataItem metadataItem) throws MetadataStoreException {
 //        MongoCollection<MetadataItem> metadataItemCollection;
 //        try {
@@ -290,11 +291,20 @@ public class MetadataDao {
      * @param filter {@link Bson} filter to search the collection with
      * @return {@link MetadataItem} matching the {@link Bson} filter
      */
-    public MetadataItem findSingleMetadataItem(Bson filter) {
+    public MetadataItem findSingleMetadataItem(Bson filter, String[] filters) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
+
+        Document projectionFilter = new Document();
         try {
-            return metadataItemMongoCollection.find(filter).first();
+            if (filters.length > 0) {
+                for (String singleFilter : filters) {
+                    projectionFilter.put(singleFilter, true);
+                }
+                return metadataItemMongoCollection.find(filter).projection(projectionFilter).first();
+            } else {
+                return metadataItemMongoCollection.find(filter).first();
+            }
         } catch (Exception e) {
             return null;
         }

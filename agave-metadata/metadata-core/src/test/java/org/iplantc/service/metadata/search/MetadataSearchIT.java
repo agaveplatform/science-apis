@@ -1,6 +1,7 @@
 package org.iplantc.service.metadata.search;
 
 import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonpCharacterEscapes;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.DBObject;
@@ -54,7 +55,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-@Test(groups = {"integration"})
+//@Test(groups = {"integration"})
 public class MetadataSearchIT {
     String uuid;
     String username = "testuser";
@@ -137,26 +138,37 @@ public class MetadataSearchIT {
 
 
 
-//
-//    public MetadataItem createSingleMetadataItem(String query) throws MetadataException, MetadataStoreException, IOException, MetadataQueryException, PermissionException, UUIDException {
-//        if (StringUtils.isEmpty(query)) {
-//            query = "{\"value\": {\"title\": \"Example Metadata\", \"properties\": {\"species\": \"arabidopsis\", " +
-//                    "\"description\": \"A model organism...\"}}, \"name\": \"test metadata\"}\"";
-//        }
-//        MetadataSearch search = new MetadataSearch(username);
-//        MetadataSearch spySearch = Mockito.spy(search);
-//        spySearch.setAccessibleOwnersExplicit();
-//
+    @Test
+    public MetadataItem createSingleMetadataItem(String query) throws MetadataException, MetadataStoreException, IOException, MetadataQueryException, PermissionException, UUIDException {
+        if (StringUtils.isEmpty(query)) {
+            query = "{\"value\": {\"title\": \"Example Metadata\", \"properties\": {\"species\": \"arabidopsis\", " +
+                    "\"description\": \"A model organism...\"}}, \"name\": \"test metadata\"}\"";
+        }
+        MetadataSearch search = new MetadataSearch(username);
+        MetadataSearch spySearch = Mockito.spy(search);
+        spySearch.setAccessibleOwnersExplicit();
+
+        MetadataValidation metadataValidation = new MetadataValidation();
+        MetadataValidation spyMetadataValidation = Mockito.spy(metadataValidation);
+
+
 //        Mockito.doReturn(createResponseString(jobUuid)).when(spySearch).getValidationResponse(jobUuid.toString());
 //        Mockito.doReturn(createResponseString(schemaUuid)).when(spySearch).getValidationResponse(schemaUuid.toString());
-//
-//        JsonFactory factory = new ObjectMapper().getFactory();
-//        JsonNode jsonMetadataNode = factory.createParser(query).readValueAsTree();
+        Mockito.doReturn(createResponseString(jobUuid)).when(spyMetadataValidation).getValidationResponse(jobUuid.toString());
+        Mockito.doReturn(createResponseString(schemaUuid)).when(spyMetadataValidation).getValidationResponse(schemaUuid.toString());
+
+        JsonFactory factory = new ObjectMapper().getFactory();
+        JsonNode jsonMetadataNode = factory.createParser(query).readValueAsTree();
+
+        JsonParser jsonParser = new JsonParser(jsonMetadataNode);
+        jsonParser.parseJsonMetadata(jsonMetadataNode);
+        spySearch.setMetadataItem(jsonParser.getMetadataItem());
+
 //        spySearch.parseJsonMetadata(jsonMetadataNode);
-//        spySearch.setOwner(username);
-//        spySearch.updateMetadataItem();
-//        return spySearch.getMetadataItem();
-//    }
+        spySearch.setOwner(username);
+        spySearch.updateMetadataItem();
+        return spySearch.getMetadataItem();
+    }
 
 //    public List<MetadataItem> createMultipleMetadataItems(List<String> queryList) throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, UUIDException {
 //        List<MetadataItem> resultList = new ArrayList<>();
@@ -166,100 +178,115 @@ public class MetadataSearchIT {
 //        return resultList;
 //    }
 //
-//    public String createResponseString(AgaveUUID uuid) throws UUIDException {
-//        return "  {" +
-//                "    \"uuid\": \"" + uuid.toString() + "\"," +
-//                "    \"type\": \"" + uuid.getResourceType().toString() + "\"," +
-//                "    \"_links\": {" +
-//                "      \"self\": {" +
-//                "        \"href\": \"" + TenancyHelper.resolveURLToCurrentTenant(uuid.getObjectReference()) + "\"" +
-//                "      }" +
-//                "    }" +
-//                "  }";
-//    }
-//
-//    @Test
-//    public void createTest() throws IOException, MetadataException, UUIDException, MetadataQueryException, MetadataStoreException, PermissionException {
-//        JsonFactory factory = new ObjectMapper().getFactory();
-//
-//        MetadataSearch search = new MetadataSearch(this.username);
-//        MetadataSearch spySearch = Mockito.spy(search);
-//        spySearch.clearCollection();
-//        spySearch.setAccessibleOwnersImplicit();
-//
-//        AgaveUUID associatedUuid = new AgaveUUID(UUIDType.JOB);
+    public String createResponseString(AgaveUUID uuid) throws UUIDException {
+        return "  {" +
+                "    \"uuid\": \"" + uuid.toString() + "\"," +
+                "    \"type\": \"" + uuid.getResourceType().toString() + "\"," +
+                "    \"_links\": {" +
+                "      \"self\": {" +
+                "        \"href\": \"" + TenancyHelper.resolveURLToCurrentTenant(uuid.getObjectReference()) + "\"" +
+                "      }" +
+                "    }" +
+                "  }";
+    }
+
+    @Test
+    public void createTest() throws IOException, MetadataException, UUIDException, MetadataQueryException, MetadataStoreException, PermissionException {
+        JsonFactory factory = new ObjectMapper().getFactory();
+
+        MetadataSearch search = new MetadataSearch(this.username);
+        MetadataSearch spySearch = Mockito.spy(search);
+        spySearch.clearCollection();
+        spySearch.setAccessibleOwnersImplicit();
+
+        AgaveUUID associatedUuid = new AgaveUUID(UUIDType.JOB);
+
+        MetadataValidation metadataValidation = new MetadataValidation();
+        MetadataValidation spyMetadataValidation = Mockito.spy(metadataValidation);
+
+
+
 //        Mockito.doReturn(createResponseString(associatedUuid)).when(spySearch).getValidationResponse(associatedUuid.toString());
-//
-//        //create metadata item to insert
-//        String strJson =
-//                "  {" +
-//                        "    \"uuid\": \"" + uuid + "\"," +
-//                        "    \"schemaId\": null," +
-//                        "    \"associationIds\": [" +
-//                        "      \"" + associatedUuid.toString() + "\"" +
-//                        "    ]," +
-//                        "    \"name\": \"some metadata\"," +
-//                        "    \"value\": {" +
-//                        "      \"title\": \"Example Metadata\"," +
-//                        "      \"properties\": {" +
-//                        "        \"species\": \"arabidopsis\"," +
-//                        "        \"description\": \"A model plant organism...\"" +
-//                        "      }" +
-//                        "    }," +
-//                        "    \"owner\": \"" + username + "\"" +
-//                        "   }";
-//
-//        JsonNode jsonMetadataNode = factory.createParser(strJson).readValueAsTree();
+        Mockito.doReturn(createResponseString(associatedUuid)).when(spyMetadataValidation).getValidationResponse(associatedUuid.toString());
+
+        //create metadata item to insert
+        String strJson =
+                "  {" +
+                        "    \"uuid\": \"" + uuid + "\"," +
+                        "    \"schemaId\": null," +
+                        "    \"associationIds\": [" +
+                        "      \"" + associatedUuid.toString() + "\"" +
+                        "    ]," +
+                        "    \"name\": \"some metadata\"," +
+                        "    \"value\": {" +
+                        "      \"title\": \"Example Metadata\"," +
+                        "      \"properties\": {" +
+                        "        \"species\": \"arabidopsis\"," +
+                        "        \"description\": \"A model plant organism...\"" +
+                        "      }" +
+                        "    }," +
+                        "    \"owner\": \"" + username + "\"" +
+                        "   }";
+
+        JsonNode jsonMetadataNode = factory.createParser(strJson).readValueAsTree();
+
+        JsonParser jsonParser = new JsonParser(jsonMetadataNode);
+        jsonParser.parseJsonMetadata(jsonMetadataNode);
+        spySearch.setMetadataItem(jsonParser.getMetadataItem());
+
 //        spySearch.parseJsonMetadata(jsonMetadataNode);
-//        spySearch.setOwner(username);
-//
-//        //insert metadata item
-//        MetadataItem insertedMetadataItem = spySearch.updateMetadataItem();
-//
-//        String userQuery = "{\"name\": \"some metadata\"}";
-//        List<MetadataItem> findResult = spySearch.find(userQuery);
-//
-//        Assert.assertTrue(findResult.get(0).equals(insertedMetadataItem));
-//    }
-//
-//    @Test
-//    public void updateExistingItemAsOwner() throws MetadataException, MetadataQueryException, MetadataStoreException, IOException, PermissionException, UUIDException {
-//        MetadataSearch createItem = new MetadataSearch(this.username);
-//        createItem.clearCollection();
-//        createItem.setAccessibleOwnersImplicit();
-//
-//        MetadataItem metadataItem = createSingleMetadataItem("");
-//
-//        String strUpdate =
-//                "  {" +
-//                        "    \"name\": \"New Metadata\"," +
-//                        "    \"value\": {" +
-//                        "      \"title\": \"Changed Metadata Title\"," +
-//                        "      \"properties\": {" +
-//                        "        \"species\": \"wisteria\"," +
-//                        "        \"description\": \"A model flower organism...\"" +
-//                        "       }" +
-//                        "       }" +
-//                        "   }";
-//
-//        String queryAfterUpdate = "{\"name\": \"New Metadata\", \"value.properties.species\": \"wisteria\"}";
-//        JsonFactory factory = new ObjectMapper().getFactory();
-//        JsonNode jsonMetadataNode = factory.createParser(strUpdate).readValueAsTree();
-//
-//        MetadataSearch updateItem = new MetadataSearch(this.username);
-//        updateItem.setAccessibleOwnersImplicit();
-//        updateItem.parseJsonMetadata(jsonMetadataNode);
-//        updateItem.setUuid(metadataItem.getUuid());
-//
-//        MetadataItem existingItem = updateItem.findOne();
-//        updateItem.setOwner(existingItem.getOwner());
-//
-//        updateItem.parseJsonMetadata(jsonMetadataNode);
-//        MetadataItem insertedMetadataItem = updateItem.updateMetadataItem();
-//
-//        List<MetadataItem> result = updateItem.find(queryAfterUpdate);
-//        Assert.assertEquals(result.get(0), insertedMetadataItem);
-//    }
+        spySearch.setOwner(username);
+
+        //insert metadata item
+        MetadataItem insertedMetadataItem = spySearch.updateMetadataItem();
+
+        String userQuery = "{\"name\": \"some metadata\"}";
+        List<MetadataItem> findResult = spySearch.find(userQuery, new String[0]);
+
+        Assert.assertTrue(findResult.get(0).equals(insertedMetadataItem));
+    }
+
+    @Test
+    public void updateExistingItemAsOwner() throws MetadataException, MetadataQueryException, MetadataStoreException, IOException, PermissionException, UUIDException {
+        MetadataSearch createItem = new MetadataSearch(this.username);
+        createItem.clearCollection();
+        createItem.setAccessibleOwnersImplicit();
+
+        MetadataItem metadataItem = createSingleMetadataItem("");
+
+        String strUpdate =
+                "  {" +
+                        "    \"name\": \"New Metadata\"," +
+                        "    \"value\": {" +
+                        "      \"title\": \"Changed Metadata Title\"," +
+                        "      \"properties\": {" +
+                        "        \"species\": \"wisteria\"," +
+                        "        \"description\": \"A model flower organism...\"" +
+                        "       }" +
+                        "       }" +
+                        "   }";
+
+        String queryAfterUpdate = "{\"name\": \"New Metadata\", \"value.properties.species\": \"wisteria\"}";
+        JsonFactory factory = new ObjectMapper().getFactory();
+        JsonNode jsonMetadataNode = factory.createParser(strUpdate).readValueAsTree();
+
+        JsonParser jsonParser = new JsonParser(jsonMetadataNode);
+        jsonParser.parseJsonMetadata(jsonMetadataNode);
+
+        MetadataSearch updateItem = new MetadataSearch(this.username);
+        updateItem.setAccessibleOwnersImplicit();
+        updateItem.setMetadataItem(jsonParser.getMetadataItem());
+        //        updateItem.parseJsonMetadata(jsonMetadataNode);
+        updateItem.setUuid(metadataItem.getUuid());
+
+        MetadataItem existingItem = updateItem.findOne(new String[0]);
+        updateItem.setOwner(existingItem.getOwner());
+
+        MetadataItem insertedMetadataItem = updateItem.updateMetadataItem();
+
+        List<MetadataItem> result = updateItem.find(queryAfterUpdate, new String[0]);
+        Assert.assertEquals(result.get(0), insertedMetadataItem);
+    }
 //
 //    @Test
 //    public void updateExistingItemAsSharedUserWithRead() throws IOException, MetadataStoreException, MetadataException, MetadataQueryException, PermissionException, UUIDException {

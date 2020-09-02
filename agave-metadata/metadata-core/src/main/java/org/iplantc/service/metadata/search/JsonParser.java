@@ -5,16 +5,26 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.github.fge.jsonschema.main.AgaveJsonSchemaFactory;
+import com.github.fge.jsonschema.main.AgaveJsonValidator;
+import com.github.fge.jsonschema.report.ProcessingMessage;
+import com.github.fge.jsonschema.report.ProcessingReport;
+import com.mongodb.BasicDBObject;
 import io.grpc.Metadata;
 import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.UUIDException;
+import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.metadata.dao.MetadataSchemaDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
+import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
+import org.iplantc.service.metadata.model.MetadataSchemaItem;
+import org.iplantc.service.metadata.model.validation.MetadataSchemaComplianceValidator;
 
 import java.io.IOException;
 import java.util.List;
@@ -26,11 +36,33 @@ import java.util.List;
 public class JsonParser {
     private ArrayNode permissions;
     private ArrayNode notifications;
+
+    public MetadataItem getMetadataItem() {
+        return metadataItem;
+    }
+
     private MetadataItem metadataItem;
     ObjectMapper mapper = new ObjectMapper();
 
     public JsonParser(JsonNode jsonMetadata) throws MetadataQueryException {
-        parseJsonMetadata(jsonMetadata);
+//        parseJsonMetadata(jsonMetadata);
+        this.metadataItem = new MetadataItem();
+    }
+
+
+    /**
+     * Parse String in Json format to {@link JsonNode}
+     * @param strJson String in Json format
+     * @return JsonNode of {@code strJson}
+     * @throws MetadataQueryException if {@code strJson} is invalid json format
+     */
+    public JsonNode parseStringToJson(String strJson) throws MetadataQueryException {
+        try {
+            JsonFactory factory = new ObjectMapper().getFactory();
+            return factory.createParser(strJson).readValueAsTree();
+        } catch (IOException e){
+            throw new MetadataQueryException("Invalid Json format: " + e.getMessage());
+        }
     }
 
     /**
@@ -81,6 +113,7 @@ public class JsonParser {
 
     /**
      * Get {@link JsonNode} value field
+     *
      * @param valueNode to be parsed
      * @return {@link JsonNode} of {@code value}
      * @throws MetadataQueryException if invalid json format
@@ -96,6 +129,7 @@ public class JsonParser {
 
     /**
      * Get {@JsonNode} associationIds field and validate the uuids
+     *
      * @param associationNode
      * @return
      */
@@ -119,6 +153,7 @@ public class JsonParser {
 
     /**
      * Get the {@JsonNode} notifications field
+     *
      * @param notificationNode
      * @return
      * @throws MetadataQueryException
@@ -138,6 +173,7 @@ public class JsonParser {
 
     /**
      * Get {@JsonNode} permissions field
+     *
      * @param permissionNode
      * @return
      * @throws MetadataQueryException
@@ -157,10 +193,11 @@ public class JsonParser {
 
     /**
      * Get {@link JsonNode} schemaId field and verify the metadata schema exists
+     *
      * @param schemaNode {@link JsonNode} to get schemaId from
      * @return schemaId if metadata schema exists and {@code username} has permissions to view it
      * @throws MetadataStoreException if unable to connect to the mongo collection
-     * @throws PermissionException if user doesn't have permissions to view the metadata schema
+     * @throws PermissionException    if user doesn't have permissions to view the metadata schema
      */
     public String parseSchemaIdToString(JsonNode schemaNode) throws MetadataStoreException, PermissionException {
         if (schemaNode.has("schemaId") && schemaNode.get("schemaId").isTextual()) {
@@ -170,8 +207,75 @@ public class JsonParser {
             Document schemaDoc = validation.checkSchemaIdExists(schemaNode.get("schemaId").asText());
 
             if (schemaDoc != null)
-                    return schemaNode.get("schemaId").asText();
+                return schemaNode.get("schemaId").asText();
         }
         return "";
+    }
+
+    /**
+     * Validate given JsonNode against the schemaId
+     */
+    public void validateValueAgainstSchema(String value, String schemaId) throws MetadataQueryException {
+
+//        //get schema
+//        if (schemaId.length() == 0)
+//            throw new MetadataQueryException("No schemaId to validate against.");
+//
+//        BasicDBObject schemaQuery = new BasicDBObject("uuid", schemaId);
+//        schemaQuery.append("tenantId", TenancyHelper.getCurrentTenantId());
+//        BasicDBObject schemaDBObj = (BasicDBObject) schemaCollection.findOne(schemaQuery);
+//
+
+//        // lookup the schema
+//        if (schemaDBObj == null) {
+//            throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
+//                    "Specified schema does not exist.");
+//        }
+//
+//        // check user permsisions to view the schema
+//        try {
+//            MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager(schemaId,
+//                    (String) schemaDBObj.get("owner"));
+//            if (!schemaPM.canRead(username)) {
+//                throw new MetadataException("User does not have permission to read metadata schema");
+//            }
+//        } catch (MetadataException e) {
+//            throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, e.getMessage());
+//        }
+//
+//
+//
+//
+//        //validate against schema
+//
+//        // now validate the json against the schema
+//        String schema = schemaDBObj.getString("schema");
+//        try {
+//            JsonFactory factory = new ObjectMapper().getFactory();
+//            JsonNode jsonSchemaNode = factory.createParser(schema).readValueAsTree();
+//            JsonNode jsonMetadataNode = factory.createParser(value).readValueAsTree();
+//            AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();
+//
+//            ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
+//            if (!report.isSuccess()) {
+//                StringBuilder sb = new StringBuilder();
+//                for (ProcessingMessage processingMessage : report) {
+//                    sb.append(processingMessage.toString());
+//                    sb.append("\n");
+//                }
+//                throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
+//                        "Metadata value does not conform to schema. \n" + sb.toString());
+//            }
+//        } catch (ResourceException e) {
+//            throw e;
+//        } catch (Exception e) {
+//            throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
+//                    "Metadata does not conform to schema.");
+//        }
+
+        //return node if pass
+
+        //return null else
+
     }
 }

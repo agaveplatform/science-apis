@@ -111,7 +111,7 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
                 newPem.setUsername((String)doc.get("username"));
                 newPem.setUuid(uuid);
                 newPem.setGroup((String)doc.get("group"));
-                newPem.setPermission(PermissionType.valueOf(doc.get("permission").toString()));
+                newPem.setPermission(PermissionType.getIfPresent(doc.get("permission").toString().toUpperCase()));
                 permissionList.add(newPem);
             } catch (MetadataException e) {
                 e.printStackTrace();

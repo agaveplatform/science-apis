@@ -172,8 +172,6 @@ public class MetadataSearch {
     }
 
 
-
-
     //------ Parsing ---------------
 //    public BasicDBObject parseUserQuery(String userQuery) throws MetadataQueryException {
 //        ObjectMapper mapper = new ObjectMapper();
@@ -361,10 +359,8 @@ public class MetadataSearch {
 //    //------------------------------
 
 
-
-
     //------ Validation ---------------
-    /**
+//    /**
 //     * Verify the associationIds using the agave-uuid api
 //     *
 //     * @param items {@link ArrayNode} of String associated uuids
@@ -659,8 +655,6 @@ public class MetadataSearch {
     //------------------------------
 
 
-
-
     //------ DAO Interaction ---------------
 
 //    /**
@@ -694,6 +688,10 @@ public class MetadataSearch {
         metadataDao.clearCollection();
     }
 
+    public List<MetadataItem> find(String userQuery) throws PermissionException, MetadataQueryException {
+        return find(userQuery, new String[0]);
+    }
+
     /**
      * Find the {@link MetadataItem} matching the {@code userQuery} and the offset/limit specified
      *
@@ -704,16 +702,16 @@ public class MetadataSearch {
     public List<MetadataItem> find(String userQuery, String[] filters) throws MetadataQueryException, PermissionException {
         List<MetadataItem> result = new ArrayList<>();
         try {
-            Document doc;
-            doc = getDocumentFromQuery(userQuery);
+            Document doc = new JsonHandler().parseStringToDocument(userQuery);
             Bson permissionFilter = and(getTenantIdQuery(), doc);
 
             BasicDBObject order = (orderField == null) ? new BasicDBObject() : new BasicDBObject(orderField, orderDirection);
             metadataDao.setAccessibleOwners(this.accessibleOwners);
+
             result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
 
             if (result.size() == 0) {
-                if (metadataDao.findSingleMetadataItem(eq("uuid", getUuid()), filters) != null) {
+                if (metadataDao.findSingleMetadataItem(eq("uuid", getUuid())) != null) {
                     throw new PermissionException("User does not have permission to view this resource.");
                 }
             }
@@ -734,25 +732,74 @@ public class MetadataSearch {
         return metadataDao.findAll();
     }
 
+
     /**
      * Find single document in the collection
      * matching the {@link MetadataItem} uuid and tenantId
      *
      * @return {@link MetadataItem} matching the criteria
      */
-    public MetadataItem findOne(String[] filters) {
+    public MetadataItem findOne() {
         return metadataDao.findSingleMetadataItem(and(eq("uuid", this.getUuid()),
-                eq("tenantId", this.metadataItem.getTenantId())), filters);
+                eq("tenantId", this.metadataItem.getTenantId())));
     }
 
     /**
      * Find a single document in the collection
      *
-     * @param query {@link Bson} to search the collection with
+     * @param query to search the collection with
      * @return {@link MetadataItem} matching the criteria
      */
-    public MetadataItem findOne(Bson query, String[] filters) {
-        return metadataDao.findSingleMetadataItem(query, filters);
+    public MetadataItem findOne(Bson query) throws MetadataQueryException {
+//        Document docQuery = getDocumentFromQuery(query);
+        return metadataDao.findSingleMetadataItem(query);
+    }
+
+
+    /**
+     * Find all documents matching {@code query} with fields specified by {@code filters}
+     *
+     * @param query   to search the collection with
+     * @param filters {@link List} of fields to filter result with
+     * @return {@link List} of {@link Document} matching the query
+     */
+    public List<Document> filterFind(String query, String[] filters) throws MetadataQueryException {
+        Document docQuery = new JsonHandler().parseStringToDocument(query);
+        Document docFilter = parseDocumentfromList(filters);
+        return metadataDao.filterFind(docQuery, docFilter);
+    }
+
+    /**
+     * Find one document matching {@link Bson} query with fields specified by {@code filters}
+     *
+     * @param query   {@link Bson} query to search the collection with
+     * @param filters {@link List} of fields to filter result with
+     * @return {@link Document} matching the query, null if nothing is found
+     */
+    public Document filterFindOne(Bson query, String[] filters) {
+        Document docFilter = parseDocumentfromList(filters);
+
+        List<Document> foundDocuments = metadataDao.filterFind(query, docFilter);
+        if (foundDocuments.size() > 0)
+            return foundDocuments.get(0);
+        return null;
+    }
+
+
+    /**
+     * Parse String List to a Document with String key and value of 1
+     *
+     * @param filters List of String specifying fields to filter by
+     * @return Document with the each String as the key with value of 1
+     */
+    public Document parseDocumentfromList(String[] filters) {
+        Document docFilter = new Document();
+        if (filters.length > 0) {
+            for (String filter : filters) {
+                docFilter.append(filter, 1);
+            }
+        }
+        return docFilter;
     }
 
     /**
@@ -781,6 +828,7 @@ public class MetadataSearch {
     //---------------------------------------------
 
     //------  Helpers ---------------
+
     /**
      * @return {@link Bson} filter for the current tenantId
      */
@@ -819,29 +867,53 @@ public class MetadataSearch {
 //
 //    }
 //
-    /**
-     * Parse JsonString {@code userQuery} to {@link Document}
-     *
-     * @param userQuery JsonString to parse
-     * @return {@link Document} of the JsonString {@code userQuery}
-     * @throws MetadataQueryException if invalid Json format
-     */
-    public Document getDocumentFromQuery(String userQuery) throws MetadataQueryException {
-        Document doc = new Document();
-        if (StringUtils.isNotEmpty(userQuery))
-            try {
-                doc = Document.parse(userQuery);
-            } catch (Exception e) {
-                throw new MetadataQueryException("Unable to parse query ", e);
-            }
-        return doc;
-    }
+//    /**
+//     * Parse JsonString {@code userQuery} to {@link Document}
+//     *
+//     * @param userQuery JsonString to parse
+//     * @return {@link Document} of the JsonString {@code userQuery}
+//     * @throws MetadataQueryException if invalid Json format
+//     */
+//    public Document getDocumentFromQuery(String userQuery) throws MetadataQueryException {
+//        Document doc = new Document();
+//        if (StringUtils.isNotEmpty(userQuery)){
+//            try {
+//                doc = Document.parse(userQuery);
+//                for (String key : doc.keySet()){
+//                    if (doc.get(key) instanceof String){
+//                        if (((String) doc.get(key)).contains("*")) {
+//                                Pattern regexPattern = Pattern.compile((String) doc.getString(key),
+//                                        Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+//                                doc.put(key, regexPattern);
+//                            }
+//                        }
+//                    }
+////                query = ((BasicDBObject) JSON.parse(userQuery));
+////                for (String key : query.keySet()) {
+////                    if (query.get(key) instanceof String) {
+////                        if (((String) query.get(key)).contains("*")) {
+////                            try {
+////                                Pattern regexPattern = Pattern.compile((String) query.getString(key),
+////                                        Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+////                                query.put(key, regexPattern);
+////                            } catch (Exception e) {
+////                                throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
+////                                        "Invalid regular expression for " + key + " query");
+////                            }
+////                        }
+////                    }
+////                }
+//            } catch (Exception e) {
+//                throw new MetadataQueryException("Unable to parse query ", e);
+//            }
+//        }
+//        return doc;
+//    }
     //------------------------------
 
 
-
-
     //------  Permission handling ---------------
+
     /**
      * @return List of users who are tenant admins or the owner for the {@link MetadataItem}
      */

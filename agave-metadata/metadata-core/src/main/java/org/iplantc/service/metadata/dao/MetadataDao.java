@@ -232,6 +232,50 @@ public class MetadataDao {
 //        }
 //    }
 
+
+    /**
+     * Find the {@link MetadataItem} from the mongo collection based on the {@link Bson query} filtered
+     * by {@code filter}
+     *
+     * @param query  {@link Bson} query to search with
+     * @param filter list of String to specify which fields to return
+     * @return List of {@link Document} matching the query criteria
+     */
+    public List<Document> filterFind(Bson query, Bson filter) {
+        MongoCursor cursor;
+        List<Document> resultList = new ArrayList<>();
+
+
+        //Don't use custom codecs for faster processing with filters/projections
+        MongoCollection mongoCollection;
+        mongoCollection = getDefaultCollection();
+
+        int offset = 0;
+        int limit = org.iplantc.service.common.Settings.DEFAULT_PAGE_SIZE;
+        BasicDBObject order = new BasicDBObject();
+
+        if (query == null) {
+            query = new Document();
+        }
+
+        try {
+            cursor = mongoCollection.find(query)
+                    .sort(order)
+                    .skip(offset)
+                    .limit(limit)
+                    .projection(filter).cursor();
+
+            while (cursor.hasNext()) {
+                Document foundDocuments = (Document) cursor.next();
+                resultList.add(foundDocuments);
+            }
+
+        } catch (Exception e) {
+        }
+        return resultList;
+    }
+
+
     /**
      * Find the {@link MetadataItem} from the mongo collection based on the {@link Bson} query as the {@code user}
      * with the default offset, limit, and sort settings
@@ -285,26 +329,19 @@ public class MetadataDao {
         return resultList;
     }
 
+
     /**
      * Find the {@link MetadataItem} with the provided {@link Bson} filter
      *
      * @param filter {@link Bson} filter to search the collection with
      * @return {@link MetadataItem} matching the {@link Bson} filter
      */
-    public MetadataItem findSingleMetadataItem(Bson filter, String[] filters) {
+    public MetadataItem findSingleMetadataItem(Bson filter) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-        Document projectionFilter = new Document();
         try {
-            if (filters.length > 0) {
-                for (String singleFilter : filters) {
-                    projectionFilter.put(singleFilter, true);
-                }
-                return metadataItemMongoCollection.find(filter).projection(projectionFilter).first();
-            } else {
-                return metadataItemMongoCollection.find(filter).first();
-            }
+            return metadataItemMongoCollection.find(filter).first();
         } catch (Exception e) {
             return null;
         }

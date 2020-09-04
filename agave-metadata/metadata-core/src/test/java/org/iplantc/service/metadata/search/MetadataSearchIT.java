@@ -292,7 +292,7 @@ public class MetadataSearchIT {
         //        updateItem.parseJsonMetadata(jsonMetadataNode);
         updateItem.setUuid(metadataItem.getUuid());
 
-        MetadataItem existingItem = updateItem.findOne(new String[0]);
+        MetadataItem existingItem = updateItem.findOne();
         updateItem.setOwner(existingItem.getOwner());
 
         MetadataItem insertedMetadataItem = updateItem.updateMetadataItem();

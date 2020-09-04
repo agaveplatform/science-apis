@@ -111,10 +111,10 @@ public class JsonHandler {
             this.permissions = mapper.createArrayNode();
             this.notifications = mapper.createArrayNode();
 
-            metadataItem.setName(parseNameToString(jsonMetadata));
-            metadataItem.setValue(parseValueToJsonNode(jsonMetadata));
-            metadataItem.setAssociations(parseAssociationIdsToArrayNode(jsonMetadata));
-            metadataItem.setSchemaId(parseSchemaIdToString(jsonMetadata));
+            this.metadataItem.setName(parseNameToString(jsonMetadata));
+            this.metadataItem.setValue(parseValueToJsonNode(jsonMetadata));
+            this.metadataItem.setAssociations(parseAssociationIdsToArrayNode(jsonMetadata));
+            this.metadataItem.setSchemaId(parseSchemaIdToString(jsonMetadata));
             this.permissions = parsePermissionToArrayNode(jsonMetadata);
             this.notifications = parseNotificationToArrayNode(jsonMetadata);
 
@@ -170,21 +170,24 @@ public class JsonHandler {
      */
     public MetadataAssociationList parseAssociationIdsToArrayNode(JsonNode associationNode) throws UUIDException, MetadataException, MetadataQueryException {
         mapper = new ObjectMapper();
-
         ArrayNode associationItems = mapper.createArrayNode();
 
-        if (associationNode.get("associationIds").isArray()) {
-            associationItems = (ArrayNode) associationNode.get("associationIds");
-        } else {
-            if (associationNode.get("associationIds").isTextual())
-                associationItems.add(associationNode.get("associationIds").asText());
-        }
+        MetadataAssociationList associationList = new MetadataAssociationList();
 
-        //validate ids?
-        if (metadataValidation == null)
-            metadataValidation = new MetadataValidation();
-        MetadataAssociationList metadataAssociationList = metadataValidation.checkAssociationIds_uuidApi(associationItems);
-        return metadataAssociationList;
+
+        if (associationNode.has("associationIds")) {
+            if (associationNode.get("associationIds").isArray()) {
+                associationItems = (ArrayNode) associationNode.get("associationIds");
+            } else {
+                if (associationNode.get("associationIds").isTextual())
+                    associationItems.add(associationNode.get("associationIds").asText());
+            }
+            //validate ids?
+            if (metadataValidation == null)
+                metadataValidation = new MetadataValidation();
+            associationList = metadataValidation.checkAssociationIds_uuidApi(associationItems);
+        }
+        return associationList;
     }
 
     /**

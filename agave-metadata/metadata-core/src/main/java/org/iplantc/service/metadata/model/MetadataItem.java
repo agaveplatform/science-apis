@@ -6,6 +6,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include;
 import java.util.*;
 
 import javax.persistence.Id;
+import javax.validation.Constraint;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Past;
 
@@ -22,6 +23,8 @@ import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.validation.constraints.MetadataSchemaComplianceConstraint;
+import org.iplantc.service.metadata.model.validation.constraints.ValidAgaveUUID;
+import org.iplantc.service.metadata.model.validation.constraints.ValidJsonSchema;
 import org.iplantc.service.notification.model.Notification;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -56,6 +59,7 @@ public class MetadataItem {
 
     @Length(max = 64, message = "Metadata schemaId must be a valid schema uuid")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
+//    @ValidAgaveUUID(type = UUIDType.SCHEMA, value = "")
     private String schemaId;
 
     @NotNull

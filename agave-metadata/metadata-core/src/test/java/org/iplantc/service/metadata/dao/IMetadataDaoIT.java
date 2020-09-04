@@ -14,7 +14,16 @@ public interface IMetadataDaoIT {
     MongoCollection getDefaultCollection();
     MetadataItem insert();
     MetadataItem createEntity();
-    void insertTest() throws MetadataStoreException, MetadataException, PermissionException, UnknownHostException;
-    void removeTest() throws MetadataStoreException, MetadataException, UnknownHostException, PermissionException;
-    void updateTest() throws MetadataStoreException, MetadataException, UnknownHostException, PermissionException;
+    void insertTest() throws  MetadataException, PermissionException;
+    void insertPermissionTest() throws MetadataStoreException, MetadataException, PermissionException;
+    void removeMetadataTest() throws MetadataStoreException, MetadataException, PermissionException;
+    void removePermissionTest()  throws MetadataStoreException, MetadataException, PermissionException;
+    void updateTest() throws MetadataStoreException, MetadataException, PermissionException;
+    void updatePermissionTest() throws MetadataStoreException, MetadataException, PermissionException;
+    void findMetadataTest() throws MetadataException, PermissionException;
+    void findPermissionTest() throws MetadataException, PermissionException;
+    void findMetadataItemWithFiltersTest() throws MetadataException, PermissionException;
+    void findMetadataItemWithInvalidFiltersTest() throws MetadataException, PermissionException;
+
+
 }

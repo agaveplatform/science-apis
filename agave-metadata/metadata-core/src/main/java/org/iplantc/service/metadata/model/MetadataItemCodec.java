@@ -36,11 +36,11 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
 
     private Codec<Document> documentCodec;
 
-    public MetadataItemCodec(){
+    public MetadataItemCodec() {
         this.documentCodec = new DocumentCodec();
     }
 
-    public MetadataItemCodec(Codec<Document> codec){
+    public MetadataItemCodec(Codec<Document> codec) {
         this.documentCodec = codec;
     }
 
@@ -48,7 +48,7 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
     public MetadataItem decode(BsonReader reader, DecoderContext decoderContext) {
         MetadataItem metadataItem = new MetadataItem();
         Document document = documentCodec.decode(reader, decoderContext);
-        
+
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
 
@@ -87,17 +87,20 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         List<String> associationList = document.getList("associationIds", String.class);
 
 
+        MetadataAssociationList metadataAssociationList = metadataItem.getAssociations();
+
         if (associationList != null) {
             // Allow invalid uuids to pass to preserve the reference and let the appropriate
             // service to handle access issues
             for (String associationId : associationList) {
                 try {
-                    metadataItem.getAssociations().add(associationId);
+                    metadataAssociationList.add(associationId);
                 } catch (MetadataAssociationException e) {
                 } catch (PermissionException e) {
                 }
             }
         }
+        metadataItem.setAssociations(metadataAssociationList);
 
         String name = document.getString("name");
         if (StringUtils.isNotEmpty(name))
@@ -107,7 +110,7 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         ObjectMapper mapper = new ObjectMapper();
         Document value;
         try {
-             value = (Document) document.get("value");
+            value = (Document) document.get("value");
         } catch (Exception e) {
             value = new Document();
         }
@@ -132,7 +135,7 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         //permissions
         metadataItem.setPermissions(new ArrayList<>());
         List<MetadataPermission> permissionList = new ArrayList<>();
-        List<Document> permList= document.getList("permissions", Document.class);
+        List<Document> permList = document.getList("permissions", Document.class);
 
         if (permList != null) {
             for (Document doc : permList) {
@@ -170,26 +173,31 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         writer.writeString(value.getTenantId());
         writer.writeName("associationIds");
         writer.writeStartArray();
-        for (String key : value.getAssociations().getAssociatedIds().keySet()){
+        for (String key : value.getAssociations().getAssociatedIds().keySet()) {
             writer.writeString(key);
         }
 //        writer.writeString(value.getAssociations().toString());
         writer.writeEndArray();
+        writer.writeName("schemaId");
+        try {
+            writer.writeString(value.getSchemaId());
+        } catch (Exception e) {
+            writer.writeNull();
+        }
         writer.writeName("name");
         writer.writeString(value.getName());
         writer.writeName("value");
         writer.writeStartDocument();
         recursiveParseDocument(value.getValue(), writer);
         writer.writeStartArray("permissions");
-
-        for (MetadataPermission pem : value.getPermissions()){
+        for (MetadataPermission pem : value.getPermissions()) {
             writer.writeStartDocument();
-                writer.writeName("username");
-                writer.writeString(pem.getUsername());
-                writer.writeName("group");
-                writer.writeString(pem.getGroup());
-                writer.writeName("permission");
-                writer.writeString(pem.getPermission().toString());
+            writer.writeName("username");
+            writer.writeString(pem.getUsername());
+            writer.writeName("group");
+            writer.writeString(pem.getGroup());
+            writer.writeName("permission");
+            writer.writeString(pem.getPermission().toString());
             writer.writeEndDocument();
         }
         writer.writeEndArray();
@@ -204,15 +212,16 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
 
     /**
      * Write to BsonWriter recursively for nested JsonNodes
-     * @param doc JsonNode to parse
+     *
+     * @param doc    JsonNode to parse
      * @param writer BsonWriter to write to
      * @return BsonWriter
      */
-    private BsonWriter recursiveParseDocument(JsonNode doc, BsonWriter writer){
+    private BsonWriter recursiveParseDocument(JsonNode doc, BsonWriter writer) {
         for (Iterator<String> it = doc.fieldNames(); it.hasNext(); ) {
             String key = it.next();
 
-            if (doc.get(key).isObject()){
+            if (doc.get(key).isObject()) {
                 JsonNode nestedNode = doc.get(key);
                 writer.writeStartDocument(key);
                 recursiveParseDocument(nestedNode, writer);

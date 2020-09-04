@@ -70,7 +70,6 @@ public class MetadataValidation {
                         associationList.add(associatedReference);
                     } else {
                         UUIDType type = associationUuid.getResourceType();
-
                         if (UUIDType.METADATA == type)
                             throw new MetadataQueryException("No metadata resource found with uuid " + associationId);
                         else if (UUIDType.SCHEMA == type)

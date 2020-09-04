@@ -27,8 +27,10 @@ import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.MetadataSchemaItem;
 import org.iplantc.service.metadata.model.validation.MetadataSchemaComplianceValidator;
+import org.iplantc.service.notification.model.Notification;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -127,7 +129,6 @@ public class JsonHandler {
     }
 
 
-
     /**
      * Get {@link JsonNode} name field
      *
@@ -200,7 +201,7 @@ public class JsonHandler {
     public ArrayNode parseNotificationToArrayNode(JsonNode notificationNode) throws MetadataQueryException {
         if (notificationNode.hasNonNull("notifications")) {
             if (notificationNode.get("notifications").isArray()) {
-                return (ArrayNode) notificationNode.get("notifications");
+                 return (ArrayNode) notificationNode.get("notifications");
             } else {
                 throw new MetadataQueryException(
                         "Invalid notifications value. notifications should be an "
@@ -250,7 +251,7 @@ public class JsonHandler {
             if (schemaDoc != null)
                 return schemaNode.get("schemaId").asText();
         }
-        return "";
+        return null;
     }
 
     /**

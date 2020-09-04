@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.grpc.netty.shaded.io.netty.util.internal.StringUtil;
+import org.apache.commons.lang.StringUtils;
 import org.bson.BsonReader;
 import org.bson.BsonTimestamp;
 import org.bson.BsonWriter;
@@ -49,33 +51,57 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         
         SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+        String created = document.getString("created");
+        String lastUpdated = document.getString("lastUpdated");
+
         try {
-            metadataItem.setCreated(formatter.parse(document.getString("created")));
-            metadataItem.setLastUpdated(formatter.parse(document.getString("lastUpdated")));
+            if (StringUtils.isNotEmpty(created))
+                metadataItem.setCreated(formatter.parse(created));
+            if (StringUtils.isNotEmpty(lastUpdated))
+                metadataItem.setLastUpdated(formatter.parse(lastUpdated));
         } catch (ParseException e) {
             e.printStackTrace();
         }
 
         String uuid = document.getString("uuid");
-        metadataItem.setUuid(uuid);
-        metadataItem.setOwner(document.getString("owner"));
-        metadataItem.setTenantId(document.getString("tenantId"));
-        metadataItem.setSchemaId(document.getString("schemaId"));
-        metadataItem.setInternalUsername(document.getString("internalUsername"));
+        if (StringUtils.isNotEmpty(uuid))
+            metadataItem.setUuid(uuid);
+
+        String owner = document.getString("owner");
+        if (StringUtils.isNotEmpty(owner))
+            metadataItem.setOwner(owner);
+
+        String tenantId = document.getString("tenantId");
+        if (StringUtils.isNotEmpty(tenantId))
+            metadataItem.setTenantId(tenantId);
+
+        String schemaId = document.getString("schemaId");
+        if (StringUtils.isNotEmpty(schemaId))
+            metadataItem.setSchemaId(schemaId);
+
+        String internalUsername = document.getString("internalUsername");
+        if (StringUtils.isNotEmpty(internalUsername))
+            metadataItem.setInternalUsername(internalUsername);
 
         List<String> associationList = document.getList("associationIds", String.class);
 
-        // Allow invalid uuids to pass to preserve the reference and let the appropriate
-        // service to handle access issues
-        for (String associationId : associationList) {
-            try {
-                metadataItem.getAssociations().add(associationId);
-            } catch (MetadataAssociationException e) {
-            } catch (PermissionException e) {
+
+        if (associationList != null) {
+            // Allow invalid uuids to pass to preserve the reference and let the appropriate
+            // service to handle access issues
+            for (String associationId : associationList) {
+                try {
+                    metadataItem.getAssociations().add(associationId);
+                } catch (MetadataAssociationException e) {
+                } catch (PermissionException e) {
+                }
             }
         }
 
-        metadataItem.setName(document.getString("name"));
+        String name = document.getString("name");
+        if (StringUtils.isNotEmpty(name))
+            metadataItem.setName(name);
 
         //value
         ObjectMapper mapper = new ObjectMapper();
@@ -87,16 +113,18 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         }
         ObjectNode json = mapper.createObjectNode();
 
-        for (String key : value.keySet()){
-            Document doc = null;
-            try {
-                doc = (Document) value.get(key);
-                JsonFactory factory = new ObjectMapper().getFactory();
-                JsonNode jsonMetadataNode = factory.createParser(doc.toJson()).readValueAsTree();
-                json.put(key, jsonMetadataNode);
+        if (value != null) {
+            for (String key : value.keySet()) {
+                Document doc = null;
+                try {
+                    doc = (Document) value.get(key);
+                    JsonFactory factory = new ObjectMapper().getFactory();
+                    JsonNode jsonMetadataNode = factory.createParser(doc.toJson()).readValueAsTree();
+                    json.put(key, jsonMetadataNode);
 
-            } catch (Exception e) {
-                json.put(key, String.valueOf(value.get(key)));
+                } catch (Exception e) {
+                    json.put(key, String.valueOf(value.get(key)));
+                }
             }
         }
         metadataItem.setValue(json);
@@ -105,16 +133,19 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         metadataItem.setPermissions(new ArrayList<>());
         List<MetadataPermission> permissionList = new ArrayList<>();
         List<Document> permList= document.getList("permissions", Document.class);
-        for (Document doc : permList) {
-            MetadataPermission newPem = new MetadataPermission();
-            try {
-                newPem.setUsername((String)doc.get("username"));
-                newPem.setUuid(uuid);
-                newPem.setGroup((String)doc.get("group"));
-                newPem.setPermission(PermissionType.getIfPresent(doc.get("permission").toString().toUpperCase()));
-                permissionList.add(newPem);
-            } catch (MetadataException e) {
-                e.printStackTrace();
+
+        if (permList != null) {
+            for (Document doc : permList) {
+                MetadataPermission newPem = new MetadataPermission();
+                try {
+                    newPem.setUsername((String) doc.get("username"));
+                    newPem.setUuid(uuid);
+                    newPem.setGroup((String) doc.get("group"));
+                    newPem.setPermission(PermissionType.getIfPresent(doc.get("permission").toString().toUpperCase()));
+                    permissionList.add(newPem);
+                } catch (MetadataException e) {
+                    e.printStackTrace();
+                }
             }
         }
         metadataItem.setPermissions(permissionList);
@@ -163,7 +194,6 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         }
         writer.writeEndArray();
         writer.writeEndDocument();
-
     }
 
     @Override

@@ -11,6 +11,7 @@ import com.github.fge.jsonschema.report.ProcessingMessage;
 import com.github.fge.jsonschema.report.ProcessingReport;
 import com.mongodb.BasicDBObject;
 import io.grpc.Metadata;
+import org.apache.commons.lang.StringUtils;
 import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.UUIDException;
@@ -18,6 +19,7 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.metadata.dao.MetadataSchemaDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
+import org.iplantc.service.metadata.exceptions.MetadataSchemaValidationException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
@@ -28,24 +30,26 @@ import org.iplantc.service.metadata.model.validation.MetadataSchemaComplianceVal
 
 import java.io.IOException;
 import java.util.List;
+import java.util.regex.Pattern;
 
 
 /**
  * Parse JsonNode and validate
  */
-public class JsonParser {
+public class JsonHandler {
     private ArrayNode permissions;
     private ArrayNode notifications;
+    private MetadataValidation metadataValidation;
 
     public MetadataItem getMetadataItem() {
         return metadataItem;
     }
+    public void setMetadataValidation(MetadataValidation paramValidation) { this.metadataValidation = paramValidation;}
 
     private MetadataItem metadataItem;
     ObjectMapper mapper = new ObjectMapper();
 
-    public JsonParser(JsonNode jsonMetadata) throws MetadataQueryException {
-//        parseJsonMetadata(jsonMetadata);
+    public JsonHandler() {
         this.metadataItem = new MetadataItem();
     }
 
@@ -63,6 +67,35 @@ public class JsonParser {
         } catch (IOException e){
             throw new MetadataQueryException("Invalid Json format: " + e.getMessage());
         }
+    }
+
+    /**
+     * Parse JsonString {@code userQuery} to {@link Document}
+     * Regex will also be parsed
+     *
+     * @param strJson JsonString to parse
+     * @return {@link Document} of the JsonString {@code userQuery}
+     * @throws MetadataQueryException if invalid Json format
+     */
+    public Document parseStringToDocument(String strJson) throws MetadataQueryException {
+        Document doc = new Document();
+        if (StringUtils.isNotEmpty(strJson)){
+            try {
+                doc = Document.parse(strJson);
+                for (String key : doc.keySet()){
+                    if (doc.get(key) instanceof String){
+                        if (((String) doc.get(key)).contains("*")) {
+                            Pattern regexPattern = Pattern.compile((String) doc.getString(key),
+                                    Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+                            doc.put(key, regexPattern);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                throw new MetadataQueryException("Unable to parse query ", e);
+            }
+        }
+        return doc;
     }
 
     /**
@@ -92,6 +125,8 @@ public class JsonParser {
                     "Unable to parse form. " + e.getMessage());
         }
     }
+
+
 
     /**
      * Get {@link JsonNode} name field
@@ -146,8 +181,9 @@ public class JsonParser {
         }
 
         //validate ids?
-        MetadataValidation validation = new MetadataValidation();
-        MetadataAssociationList metadataAssociationList = validation.checkAssociationIds_uuidApi(associationItems);
+        if (metadataValidation == null)
+            metadataValidation = new MetadataValidation();
+        MetadataAssociationList metadataAssociationList = metadataValidation.checkAssociationIds_uuidApi(associationItems);
         return metadataAssociationList;
     }
 
@@ -202,10 +238,12 @@ public class JsonParser {
     public String parseSchemaIdToString(JsonNode schemaNode) throws MetadataStoreException, PermissionException {
         if (schemaNode.has("schemaId") && schemaNode.get("schemaId").isTextual()) {
 
-            //validate schemaId?
-            MetadataValidation validation = new MetadataValidation();
-            Document schemaDoc = validation.checkSchemaIdExists(schemaNode.get("schemaId").asText());
+            if (metadataValidation == null)
+                metadataValidation = new MetadataValidation();
 
+            Document schemaDoc = metadataValidation.checkSchemaIdExists(schemaNode.get("schemaId").asText());
+
+            //where to check for permission?
             if (schemaDoc != null)
                 return schemaNode.get("schemaId").asText();
         }
@@ -215,67 +253,25 @@ public class JsonParser {
     /**
      * Validate given JsonNode against the schemaId
      */
-    public void validateValueAgainstSchema(String value, String schemaId) throws MetadataQueryException {
+    public String validateValueAgainstSchema(String value, String schema) throws MetadataQueryException, MetadataSchemaValidationException {
+        try {
+            JsonFactory factory = new ObjectMapper().getFactory();
+            JsonNode jsonSchemaNode = factory.createParser(schema).readValueAsTree();
+            JsonNode jsonMetadataNode = factory.createParser(value).readValueAsTree();
+            AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();
 
-//        //get schema
-//        if (schemaId.length() == 0)
-//            throw new MetadataQueryException("No schemaId to validate against.");
-//
-//        BasicDBObject schemaQuery = new BasicDBObject("uuid", schemaId);
-//        schemaQuery.append("tenantId", TenancyHelper.getCurrentTenantId());
-//        BasicDBObject schemaDBObj = (BasicDBObject) schemaCollection.findOne(schemaQuery);
-//
-
-//        // lookup the schema
-//        if (schemaDBObj == null) {
-//            throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-//                    "Specified schema does not exist.");
-//        }
-//
-//        // check user permsisions to view the schema
-//        try {
-//            MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager(schemaId,
-//                    (String) schemaDBObj.get("owner"));
-//            if (!schemaPM.canRead(username)) {
-//                throw new MetadataException("User does not have permission to read metadata schema");
-//            }
-//        } catch (MetadataException e) {
-//            throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, e.getMessage());
-//        }
-//
-//
-//
-//
-//        //validate against schema
-//
-//        // now validate the json against the schema
-//        String schema = schemaDBObj.getString("schema");
-//        try {
-//            JsonFactory factory = new ObjectMapper().getFactory();
-//            JsonNode jsonSchemaNode = factory.createParser(schema).readValueAsTree();
-//            JsonNode jsonMetadataNode = factory.createParser(value).readValueAsTree();
-//            AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();
-//
-//            ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
-//            if (!report.isSuccess()) {
-//                StringBuilder sb = new StringBuilder();
-//                for (ProcessingMessage processingMessage : report) {
-//                    sb.append(processingMessage.toString());
-//                    sb.append("\n");
-//                }
-//                throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-//                        "Metadata value does not conform to schema. \n" + sb.toString());
-//            }
-//        } catch (ResourceException e) {
-//            throw e;
-//        } catch (Exception e) {
-//            throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-//                    "Metadata does not conform to schema.");
-//        }
-
-        //return node if pass
-
-        //return null else
-
+            ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
+            if (!report.isSuccess()) {
+                StringBuilder sb = new StringBuilder();
+                for (ProcessingMessage processingMessage : report) {
+                    sb.append(processingMessage.toString());
+                    sb.append("\n");
+                }
+                return sb.toString();
+            }
+            return value;
+        } catch (Exception e) {
+            throw new MetadataSchemaValidationException("Metadata does not conform to schema.");
+        }
     }
 }

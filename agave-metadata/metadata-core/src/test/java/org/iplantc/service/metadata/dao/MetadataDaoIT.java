@@ -2,6 +2,7 @@ package org.iplantc.service.metadata.dao;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mongodb.client.*;
 import com.mongodb.client.MongoClient;
 import org.bson.conversions.Bson;
@@ -23,6 +24,8 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import static com.mongodb.client.model.Filters.eq;
 
 @Test(groups={"integration"})
 public class MetadataDaoIT extends AbstractMetadataDaoIT {
@@ -72,8 +75,10 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         return entity;
     }
 
-    @Test
-    public void insertTest() throws MetadataStoreException, MetadataException, PermissionException {
+    @Override
+    public void insertTest() throws  MetadataException, PermissionException {
+        System.out.println("Insert test complete!!");
+
         //Create item to insert
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -102,7 +107,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Override
-    public void insertPermissionTest() throws MetadataStoreException, MetadataException, PermissionException, UnknownHostException {
+    public void insertPermissionTest() throws MetadataStoreException, MetadataException, PermissionException {
         MetadataDao inst = wrapper.getInstance();
         inst.clearCollection();
 
@@ -130,26 +135,33 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
                 "Permission added for " + TEST_SHARED_USER2 + " should be READ_WRITE.");
     }
 
-
     @Override
-    public void removePermissionTest() throws MetadataStoreException, MetadataException, UnknownHostException, PermissionException {
-        MetadataItem createdEntity = createEntity();
-
-        MetadataPermission sharedUserPermission = createdEntity.getPermissions_User(TEST_SHARED_USER);
+    public void removePermissionTest() throws MetadataStoreException, MetadataException, PermissionException {
         MetadataDao inst = wrapper.getInstance();
+        inst.clearCollection();
 
-        createdEntity.updatePermissions_delete(sharedUserPermission);
-        List<MetadataPermission> updatedPermissions = inst.updatePermission(createdEntity, TEST_USER);
+        MetadataItem testEntity = new MetadataItem();
+        testEntity.setName(MetadataDaoIT.class.getName());
+        testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
+        testEntity.setOwner(TEST_USER);
 
-        Assert.assertNotNull(updatedPermissions, "updatePermission should return list of successfully updated permissions.");
+        inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
+        MetadataItem addedItem = inst.updateMetadata(testEntity, TEST_USER);
+        MetadataPermission metaPem = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
+        testEntity.setPermissions(new ArrayList<>(Arrays.asList(metaPem)));
 
-        List<MetadataItem> resultList = inst.find(TEST_USER, new Document("uuid", createdEntity.getUuid()));
+        MetadataPermission sharedUserPermission = testEntity.getPermissions_User(TEST_SHARED_USER);
+
+        testEntity.updatePermissions_delete(sharedUserPermission);
+        List<MetadataPermission> updatedPermissions = inst.updatePermission(testEntity, TEST_USER);
+
+        List<MetadataItem> resultList = inst.find(TEST_USER, new Document("uuid", testEntity.getUuid()));
 
         Assert.assertNull(resultList.get(0).getPermissions_User(TEST_SHARED_USER), "Removed permission should return null.");
     }
 
-    @Test
-    public void removeMetadataTest() throws MetadataException, MetadataStoreException, UnknownHostException, PermissionException {
+    @Override
+    public void removeMetadataTest() throws MetadataException, PermissionException {
         //add entity
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -215,8 +227,8 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 //        Assert.assertEquals(removeResult.size(), 0, "Nothing should be found for the metadata item removed");
     }
 
-    @Test
-    public void updateTest() throws MetadataException, MetadataStoreException, UnknownHostException, PermissionException {
+    @Override
+    public void updateTest() throws MetadataException, MetadataStoreException, PermissionException {
         //add entity without any permissions
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -302,7 +314,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Override
-    public void updatePermissionTest() throws MetadataStoreException, MetadataException, UnknownHostException, PermissionException {
+    public void updatePermissionTest() throws MetadataStoreException, MetadataException, PermissionException {
         MetadataDao inst = wrapper.getInstance();
         inst.clearCollection();
 
@@ -320,21 +332,21 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         pemShareUser.setPermission(PermissionType.READ);
         MetadataPermission pemShareUser2 = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER2, PermissionType.READ_WRITE);
         List<MetadataPermission> updatedList = new ArrayList<>(Arrays.asList(pemShareUser, pemShareUser2));
-        addedItem.setPermissions(listPem);
+        addedItem.setPermissions(updatedList);
         List<MetadataPermission> updatedPermissions = inst.updatePermission(addedItem, TEST_USER);
 
         Assert.assertNotNull(updatedPermissions, "updatePermission should return the successfully updated permissions list.");
 
         List<MetadataItem> updatedItem = inst.find(TEST_USER, new Document("uuid", addedItem.getUuid()));
         Assert.assertEquals(updatedItem.get(0).getPermissions().size(), 2, "There should be 2 permissions added.");
-        Assert.assertEquals(updatedItem.get(0).getPermissions_User(TEST_SHARED_USER), PermissionType.READ,
+        Assert.assertEquals(updatedItem.get(0).getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.READ,
                 "Permission for " + TEST_SHARED_USER + " should be updated to READ.");
-        Assert.assertEquals(updatedItem.get(0).getPermissions_User(TEST_SHARED_USER2), PermissionType.READ_WRITE,
+        Assert.assertEquals(updatedItem.get(0).getPermissions_User(TEST_SHARED_USER2).getPermission(), PermissionType.READ_WRITE,
                 "Permission for " + TEST_SHARED_USER2 + " should be added as READ_WRITE.");
     }
 
     @Override
-    public void findMetadataTest() throws MetadataStoreException, MetadataException, UnknownHostException, PermissionException {
+    public void findMetadataTest() throws MetadataException, PermissionException {
         MetadataDao inst = wrapper.getInstance();
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -346,12 +358,12 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         inst.updateMetadata(testEntity, TEST_USER);
 
 
-        MetadataItem foundItem = inst.findSingleMetadataItem(new Document("uuid", testEntity.getUuid()), new String[0]);
+        MetadataItem foundItem = inst.findSingleMetadataItem(new Document("uuid", testEntity.getUuid()));
         Assert.assertEquals(foundItem, testEntity, "MetadataItem found should match the created entity.");
     }
 
     @Override
-    public void findPermissionTest() throws MetadataStoreException, MetadataException, UnknownHostException, PermissionException {
+    public void findPermissionTest() throws MetadataException,PermissionException {
         MetadataDao inst = wrapper.getInstance();
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -363,16 +375,18 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
         inst.updateMetadata(testEntity, TEST_USER);
-        List<MetadataItem> resultList = inst.find(TEST_USER, new Document("$elemMatch", new Document("permissions", new Document("username", TEST_SHARED_USER))));
-        Assert.assertEquals(resultList.get(0).getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.READ);
+        MetadataItem foundItem = inst.findSingleMetadataItem(new Document("uuid", testEntity.getUuid()));
+        Assert.assertEquals(foundItem.getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.READ);
     }
 
-    @Test
+    @Override
     public void findMetadataItemWithFiltersTest() throws MetadataException, PermissionException {
+        ObjectNode value = mapper.createObjectNode().put("testKey", "testValue");
+
         MetadataDao inst = wrapper.getInstance();
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
-        testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
+        testEntity.setValue(value);
         testEntity.setOwner(TEST_USER);
         MetadataPermission pemShareUser = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
         List<MetadataPermission> listPem = new ArrayList<>(Arrays.asList(pemShareUser));
@@ -380,15 +394,40 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
         inst.updateMetadata(testEntity, TEST_USER);
 
-        String[] filters = new String[1];
-        filters[0] = "name";
+        Document docFilter = new Document("uuid", 1)
+                .append("name",1)
+                .append("value", 1);
 
-        MetadataItem foundItem = inst.findSingleMetadataItem(new Document("uuid", testEntity.getUuid()), filters);
-        System.out.println("Found Item: " + foundItem);
-        MetadataItemSerializer serializer = new MetadataItemSerializer(foundItem);
-        System.out.println(serializer.formatMetadataItem().toString());
-        Assert.assertEquals(foundItem.getName(), MetadataDaoIT.class.getName());
-        Assert.assertNull(foundItem.getValue());
+        List<Document> foundItems = inst.filterFind(new Document("uuid", testEntity.getUuid()), docFilter);
 
+        Assert.assertEquals(foundItems.get(0).get("uuid"), testEntity.getUuid(), "Document found should include the filtered field 'uuid'.");
+        Assert.assertEquals(foundItems.get(0).get("name"), MetadataDaoIT.class.getName(), "Document found should include the filtered field 'name'.");
+        Assert.assertEquals(foundItems.get(0).getEmbedded(List.of("value", "testKey"), String.class), "testValue", "Document found should include the filtered field 'value'.");
+        Assert.assertNull(foundItems.get(0).get("permissions"), "Items not included in the filter should return null.");
+    }
+
+    @Override
+    public void findMetadataItemWithInvalidFiltersTest() throws MetadataException, PermissionException {
+        ObjectNode value = mapper.createObjectNode().put("testKey", "testValue");
+
+        MetadataDao inst = wrapper.getInstance();
+        MetadataItem testEntity = new MetadataItem();
+        testEntity.setName(MetadataDaoIT.class.getName());
+        testEntity.setValue(value);
+        testEntity.setOwner(TEST_USER);
+        MetadataPermission pemShareUser = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
+        List<MetadataPermission> listPem = new ArrayList<>(Arrays.asList(pemShareUser));
+        testEntity.setPermissions(listPem);
+        inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
+        inst.updateMetadata(testEntity, TEST_USER);
+
+        Document docFilter = new Document("uuid", 1)
+                .append("name",1)
+                .append("value", 1)
+                .append("invalidField", 1);
+
+        List<Document> foundItems = inst.filterFind(new Document("uuid", testEntity.getUuid()), docFilter);
+
+        Assert.assertNull(foundItems.get(0).get("invalidField"), "Invalid/missing fields should not be included in the result.");
     }
 }

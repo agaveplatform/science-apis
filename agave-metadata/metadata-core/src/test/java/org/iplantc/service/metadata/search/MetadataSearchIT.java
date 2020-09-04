@@ -2,12 +2,16 @@ package org.iplantc.service.metadata.search;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.*;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import org.apache.commons.lang.StringUtils;
+import com.mongodb.util.JSON;
+import com.mongodb.util.JSONParseException;
+import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.auth.AuthorizationHelper;
@@ -20,10 +24,14 @@ import org.iplantc.service.metadata.exceptions.MetadataAssociationException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
+import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.AssociatedReference;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
+import org.iplantc.service.metadata.util.ServiceUtils;
+import org.iplantc.service.notification.managers.NotificationManager;
+import org.joda.time.DateTime;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -45,6 +53,12 @@ public class MetadataSearchIT {
     List<String> queryList = new ArrayList<>();
     AgaveUUID jobUuid = new AgaveUUID(UUIDType.JOB);
     AgaveUUID schemaUuid = new AgaveUUID(UUIDType.SCHEMA);
+
+    @Mock
+    AuthorizationHelper mockAuthorizationHelper;
+
+    @InjectMocks
+    MetadataSearch mockSearch;
 
     public List<String> setQueryList(List<String> stringList) {
         if (stringList.isEmpty()) {
@@ -95,14 +109,15 @@ public class MetadataSearchIT {
                     "           }," +
                     "        \"description\": \"native to China, Korea, Japan, and the Eastern United States.\"" +
                     "       }," +
-                    "       \"associationIds\": [\"" + jobUuid.toString() + "\", " +
-                    "       \"" + schemaUuid.toString() + "\"]" +
+                    "       \"associationIds\": [\"" + jobUuid.toString() + "\"], " +
+                    "       \"schemaId\": \"" + schemaUuid.toString() + "\"" +
                     "   }");
         } else {
             this.queryList.addAll(stringList);
         }
         return this.queryList;
     }
+
 
     //model validation
 
@@ -118,7 +133,12 @@ public class MetadataSearchIT {
 
     //no data leak - combination of permission + retrieval
 
-    @AfterTest
+    @BeforeClass
+    public void setup(){
+        createSchema();
+    }
+
+    @AfterMethod
     public void cleanUpCollection() throws MetadataQueryException {
         try {
             MongoCredential mongoCredential = MongoCredential.createScramSha1Credential(
@@ -129,7 +149,7 @@ public class MetadataSearchIT {
                     mongoCredential,
                     MongoClientOptions.builder().build());
 
-            MongoDatabase mongoDatabase = client.getDatabase(org.iplantc.service.common.Settings.METADATA_DB_SCHEME);
+            MongoDatabase mongoDatabase = client.getDatabase(Settings.METADATA_DB_SCHEME);
             MongoCollection mongoCollection = mongoDatabase.getCollection(Settings.METADATA_DB_COLLECTION, MetadataItem.class);
 
             mongoCollection.deleteMany(new Document());
@@ -139,76 +159,55 @@ public class MetadataSearchIT {
         }
     }
 
-//    public MetadataItem createSingleMetadataItem(String query) throws MetadataException, MetadataStoreException, IOException, MetadataQueryException, PermissionException, UUIDException {
-//        if (StringUtils.isEmpty(query)) {
-//            query = "{\"value\": {\"title\": \"Example Metadata\", \"properties\": {\"species\": \"arabidopsis\", " +
-//                    "\"description\": \"A model organism...\"}}, \"name\": \"test metadata\"}\"";
-//        }
-//        ObjectMapper mapper = new ObjectMapper();
-//
-//        MetadataSearch search = new MetadataSearch(username);
-//        MetadataSearch spySearch = Mockito.spy(search);
-//        spySearch.setAccessibleOwnersExplicit();
-//
-//        MetadataValidation metadataValidation = new MetadataValidation();
-//        MetadataValidation spyMetadataValidation = Mockito.spy(metadataValidation);
-//
-//        MetadataValidation mockMetadataValidation = mock(MetadataValidation.class);
-//
-////        Mockito.doReturn(createResponseString(jobUuid)).when(spySearch).getValidationResponse(jobUuid.toString());
-////        Mockito.doReturn(createResponseString(schemaUuid)).when(spySearch).getValidationResponse(schemaUuid.toString());
-//        Mockito.doReturn(createResponseString(jobUuid)).when(spyMetadataValidation).getValidationResponse(jobUuid.toString());
-//        Mockito.doReturn(createResponseString(schemaUuid)).when(spyMetadataValidation).getValidationResponse(schemaUuid.toString());
-//
-//        MetadataValidation mockValidation = mock(MetadataValidation.class);
-//
-//        AssociatedReference associatedJobReference = new AssociatedReference(jobUuid, createResponseString(jobUuid));
-//        AssociatedReference associatedSchemaReference = new AssociatedReference(schemaUuid, createResponseString(schemaUuid));
-//        MetadataAssociationList associationList = new MetadataAssociationList();
-//        associationList.add(associatedJobReference);
-//        associationList.add(associatedSchemaReference);
-//
-//
-//        Mockito.doReturn(associationList).when(mockValidation).checkAssociationIds_uuidApi(mapper.createArrayNode().add(jobUuid.toString()));
-//        Mockito.doReturn(associationList).when(mockValidation).checkAssociationIds_uuidApi(mapper.createArrayNode().add(schemaUuid.toString()));
-//
-//
-//        JsonFactory factory = new ObjectMapper().getFactory();
-//        JsonNode jsonMetadataNode = factory.createParser(query).readValueAsTree();
-//
-//        JsonHandler jsonHandler = new JsonHandler();
-//        jsonHandler.setMetadataValidation(mockMetadataValidation);
-//        jsonHandler.parseJsonMetadata(jsonMetadataNode);
-//        spySearch.setMetadataItem(jsonHandler.getMetadataItem());
-//
-////        spySearch.parseJsonMetadata(jsonMetadataNode);
-//        spySearch.setOwner(username);
-//        spySearch.updateMetadataItem();
-//        return spySearch.getMetadataItem();
-//    }
+    public String createSchema() {
+        MongoCredential mongoCredential = MongoCredential.createScramSha1Credential(
+                Settings.METADATA_DB_USER, Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_PWD.toCharArray());
+        MongoClient mongoClient = new com.mongodb.MongoClient(
+                new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT),
+                mongoCredential,
+                MongoClientOptions.builder().build());
+        MongoDatabase mongoDatabase = mongoClient.getDatabase(org.iplantc.service.metadata.Settings.METADATA_DB_SCHEME);
+        MongoCollection mongoCollection = mongoDatabase.getCollection(org.iplantc.service.metadata.Settings.METADATA_DB_SCHEMATA_COLLECTION);
 
-    //    public List<MetadataItem> createMultipleMetadataItems(List<String> queryList) throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, UUIDException {
-//        List<MetadataItem> resultList = new ArrayList<>();
-//        for (String query : queryList) {
-//            resultList.add(createSingleMetadataItem(query));
-//        }
-//        return resultList;
-//    }
-//
-    public String createResponseString(AgaveUUID uuid) throws UUIDException {
-        return "  {" +
-                "    \"uuid\": \"" + uuid.toString() + "\"," +
-                "    \"type\": \"" + uuid.getResourceType().toString() + "\"," +
-                "    \"_links\": {" +
-                "      \"self\": {" +
-                "        \"href\": \"" + TenancyHelper.resolveURLToCurrentTenant(uuid.getObjectReference()) + "\"" +
-                "      }" +
-                "    }" +
-                "  }";
+
+        String strItemToAdd = "  {" +
+                "    \"name\": \"Sample Name\"," +
+                "    \"value\": {" +
+                "      \"type\": \"Sample type\"," +
+                "        \"profile\": {" +
+                "        \"status\": \"Sample Status\"" +
+                "           }," +
+                "        \"description\": \"Sample description...\"" +
+                "       }," +
+                "   }";
+
+        Document doc;
+        String timestamp = new DateTime().toString();
+            doc = new Document("internalUsername", this.username)
+                    .append("lastUpdated", timestamp)
+                    .append("schema", ServiceUtils.escapeSchemaRefFieldNames(strItemToAdd));
+
+        doc.put("uuid", schemaUuid.toString());
+        doc.append("created", timestamp);
+        doc.append("owner", this.username);
+        doc.append("tenantId", TenancyHelper.getCurrentTenantId());
+
+        mongoCollection.insertOne(doc);
+
+        return schemaUuid.toString();
     }
 
-    public MetadataItem createMetadataItemFromString(String strMetadataItem, String owner) throws MetadataQueryException {
+    public MetadataItem createMetadataItemFromString(String strMetadataItem, String owner) throws MetadataQueryException, UUIDException, MetadataException, PermissionException, MetadataAssociationException {
+        ObjectMapper mapper = new ObjectMapper();
+        MetadataValidation mockValidation = mock(MetadataValidation.class);
+
+        MetadataAssociationList associationList = new MetadataAssociationList();
+        associationList.add(jobUuid.toString());
+
+        Mockito.doReturn(associationList).when(mockValidation).checkAssociationIds_uuidApi(mapper.createArrayNode().add(jobUuid.toString()));
         JsonHandler jsonHandler = new JsonHandler();
+        jsonHandler.setMetadataValidation(mockValidation);
+
         JsonNode node = jsonHandler.parseStringToJson(strMetadataItem);
         jsonHandler.parseJsonMetadata(node);
 
@@ -218,8 +217,9 @@ public class MetadataSearchIT {
         return metadataItem;
     }
 
+
     @Test
-    public void createNewItemTest() throws IOException, MetadataException, UUIDException, MetadataQueryException, MetadataStoreException, PermissionException {
+    public void createNewItemTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
         String strItemToAdd = "  {" +
                 "    \"name\": \"mustard plant\"," +
                 "    \"value\": {" +
@@ -230,16 +230,10 @@ public class MetadataSearchIT {
                 "        \"description\": \"The seed of the mustard plant is used as a spice...\"" +
                 "       }," +
                 "   \"associationIds\": [\"" + jobUuid.toString() + "\"]," +
-                "   \"schemaId\": \"" + schemaUuid.toString() + "\""+
+                "   \"schemaId\": \"" + schemaUuid.toString() + "\"" +
                 "   }";
 
-//        JsonHandler handler = new JsonHandler();
-//        JsonNode node = handler.parseStringToJson(strItemToAdd);
-//        handler.parseJsonMetadata(node);
-//
-//        MetadataItem toAddItem = handler.getMetadataItem();
-//        toAddItem.setOwner(this.username);
-
+//        createSchema();
         MetadataItem toAddItem = createMetadataItemFromString(strItemToAdd, this.username);
 
         MetadataSearch search = new MetadataSearch(this.username);
@@ -248,14 +242,12 @@ public class MetadataSearchIT {
         MetadataItem addedItem = search.updateMetadataItem();
 
         Assert.assertEquals(addedItem, toAddItem, "updateMetadataItem should return the MetadataItem successfully added/updated.");
-
         List<MetadataItem> foundItems = search.find("{\"uuid\": \"" + toAddItem.getUuid() + "\"}");
         Assert.assertEquals(foundItems.get(0), toAddItem, "MetadataItem found with matching uuid should match the MetadataItem added.");
-
     }
 
     @Test
-    public void updateExistingItemAsOwner() throws MetadataException, MetadataQueryException, MetadataStoreException, IOException, PermissionException, UUIDException {
+    public void updateExistingItemAsOwner() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch createItem = new MetadataSearch(this.username);
         createItem.clearCollection();
         createItem.setAccessibleOwnersImplicit();
@@ -272,15 +264,7 @@ public class MetadataSearchIT {
                         "       }" +
                         "   }";
 
-
-//
-//        JsonHandler jsonHandler = new JsonHandler();
-//        JsonNode jsonNode = jsonHandler.parseStringToJson(toAdd);
-//        jsonHandler.parseJsonMetadata(jsonNode);
-
-
         MetadataItem toAddItem = createMetadataItemFromString(toAdd, this.username);
-//        toAddItem.setOwner(this.username);
         createItem.setMetadataItem(toAddItem);
         createItem.updateMetadataItem();
 
@@ -295,10 +279,6 @@ public class MetadataSearchIT {
                         "       }" +
                         "       }" +
                         "   }";
-
-//        JsonHandler updatedJsonHandler = new JsonHandler();
-//        JsonNode updatedJsonNode = updatedJsonHandler.parseStringToJson(strUpdate);
-//        updatedJsonHandler.parseJsonMetadata(updatedJsonNode);
 
         MetadataItem toUpdateItem = createMetadataItemFromString(strUpdate, this.username);
 
@@ -317,7 +297,7 @@ public class MetadataSearchIT {
                 "A model flower organism...");
     }
 
-//    @Test
+    //    @Test
 //    public void updateExistingItemAsSharedUserWithRead() throws IOException, MetadataStoreException, MetadataException, MetadataQueryException, PermissionException, UUIDException {
 //        MetadataSearch searchAsOwner = new MetadataSearch(username);
 //        searchAsOwner.clearCollection();
@@ -429,15 +409,46 @@ public class MetadataSearchIT {
 //            Assert.assertEquals(p.getMessage(), "User does not have sufficient access to edit public metadata item.");
 //        }
 //    }
+    @Test
+    public void findMetadataWithFiltersTest() throws MetadataException, IOException, MetadataQueryException, PermissionException {
+        ObjectMapper mapper = new ObjectMapper();
 
-    @Mock
-    AuthorizationHelper mockAuthorizationHelper;
+        MetadataItem testEntity = new MetadataItem();
+        testEntity.setName("wisteria");
+        String value =
+                "    {" +
+                        "      \"type\": \"a flowering plant\"," +
+                        "      \"order\": \" Fabales\", " +
+                        "        \"profile\": {" +
+                        "        \"status\": \"active\"" +
+                        "           }," +
+                        "        \"description\": \"native to China, Korea, Japan, and the Eastern United States.\"" +
+                        "       }}";
 
-    @InjectMocks
-    MetadataSearch mockSearch;
+        testEntity.setValue(mapper.getFactory().createParser(value).readValueAsTree());
+        testEntity.setOwner(username);
+
+
+        MetadataSearch toAdd = new MetadataSearch(username);
+        toAdd.setMetadataItem(testEntity);
+        toAdd.setAccessibleOwnersExplicit();
+        toAdd.updateMetadataItem();
+
+        String strQuery = "{ \"value.type\": { \"$regex\": \".*flowering.*\"}}";
+        String[] filters = {"name", "value.type"};
+
+        MetadataSearch search = new MetadataSearch(username);
+        List<MetadataItem> all = search.findAll(new String[0]);
+
+
+        List<Document> foundItems = search.filterFind(strQuery, filters);
+        Assert.assertEquals(foundItems.size(), 1);
+        Assert.assertTrue(Arrays.asList("wisteria", "Agavoideae").contains(foundItems.get(0).get("name")));
+        Assert.assertTrue(foundItems.get(0).getEmbedded(List.of("value", "type"), String.class).contains("flowering"));
+    }
 
     @Test
-    public void findAllMetadataForUserImplicitSearchTest() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, UUIDException {
+    public void findAllMetadataForUserImplicitSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch implicitSearch = new MetadataSearch(this.username);
 
         MetadataSearch spyImplicitSearch = Mockito.spy(implicitSearch);
@@ -456,8 +467,6 @@ public class MetadataSearchIT {
             addSearch.updateMetadataItem();
         }
 
-//        createMultipleMetadataItems(this.queryList);
-
         String userQuery = "";
         List<MetadataItem> searchResult;
 
@@ -466,7 +475,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findAllMetadataForUserExplicitSearchTest() throws MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, IOException, UUIDException {
+    public void findAllMetadataForUserExplicitSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch explicitSearch = new MetadataSearch(this.sharedUser);
 
         MetadataSearch spyExplicitSearch = Mockito.spy(explicitSearch);
@@ -483,7 +492,6 @@ public class MetadataSearchIT {
             addSearch.setMetadataItem(toAdd);
             addSearch.updateMetadataItem();
         }
-//        createMultipleMetadataItems(this.queryList);
 
         String userQuery = "";
         List<MetadataItem> searchResult;
@@ -494,7 +502,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void regexSearchTest() throws IOException, MetadataException, MetadataQueryException, MetadataStoreException, PermissionException, UUIDException {
+    public void regexSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch search = new MetadataSearch(username);
         search.setAccessibleOwnersImplicit();
 
@@ -510,7 +518,6 @@ public class MetadataSearchIT {
             addSearch.setMetadataItem(toAdd);
             addSearch.updateMetadataItem();
         }
-//        createMultipleMetadataItems(this.queryList);
 
         String queryByValueRegex = "{ \"value.description\": { \"$regex\": \".*monocots.*\", \"$options\": \"m\"}}";
         List<MetadataItem> resultList;
@@ -520,7 +527,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void nameSearchTest() throws MetadataQueryException, MetadataException, MetadataStoreException, UUIDException, PermissionException, IOException {
+    public void nameSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -536,7 +543,6 @@ public class MetadataSearchIT {
             addSearch.setMetadataItem(toAdd);
             addSearch.updateMetadataItem();
         }
-//        createMultipleMetadataItems(this.queryList);
 
         String queryByName = "{\"name\":\"mustard plant\"}";
         List<MetadataItem> resultList;
@@ -546,7 +552,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void nestedValueSearchTest() throws MetadataQueryException, MetadataException, MetadataStoreException, UUIDException, PermissionException, IOException {
+    public void nestedValueSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -562,7 +568,6 @@ public class MetadataSearchIT {
             addSearch.setMetadataItem(toAdd);
             addSearch.updateMetadataItem();
         }
-//        createMultipleMetadataItems(this.queryList);
 
         String queryByValue = "{\"value.type\":\"a plant\"}";
         List<MetadataItem> resultList;
@@ -572,7 +577,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void conditionalSearchTest() throws MetadataQueryException, MetadataException, MetadataStoreException, UUIDException, PermissionException, IOException {
+    public void conditionalSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -587,7 +592,6 @@ public class MetadataSearchIT {
             addSearch.setMetadataItem(toAdd);
             addSearch.updateMetadataItem();
         }
-//        createMultipleMetadataItems(this.queryList);
 
         String queryByValueConditional = "{" +
                 "   \"$or\":[" +
@@ -616,7 +620,8 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void deleteMetadataItemAsOwnerTest() throws MetadataStoreException, MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException {
+    public void deleteMetadataItemAsOwnerTest() throws MetadataQueryException, PermissionException, MetadataException, UUIDException, MetadataAssociationException {
+        //create metadata item to delete
         String metadataQueryAloe =
                 "  {" +
                         "    \"name\": \"Aloe\"," +
@@ -628,22 +633,27 @@ public class MetadataSearchIT {
 
         MetadataSearch search = new MetadataSearch(this.username);
         search.setAccessibleOwnersExplicit();
-
-
         MetadataItem aloeMetadataItem = createMetadataItemFromString(metadataQueryAloe, this.username);
-//        MetadataItem aloeMetadataItem = createSingleMetadataItem(metadataQueryAloe);
 
+        MetadataSearch addItem = new MetadataSearch(this.username);
+        addItem.setAccessibleOwnersImplicit();
+        addItem.setMetadataItem(aloeMetadataItem);
+        addItem.updateMetadataItem();
+
+        //find item to delete
         MetadataSearch ownerSearch = new MetadataSearch(this.username);
         ownerSearch.setAccessibleOwnersExplicit();
-
         ownerSearch.setUuid(aloeMetadataItem.getUuid());
         MetadataItem itemToDelete = ownerSearch.findOne();
         ownerSearch.setMetadataItem(itemToDelete);
+
         MetadataItem deletedItem = ownerSearch.deleteMetadataItem();
 
         Assert.assertNotNull(deletedItem, "Deleting metadata item should return the item removed.");
         Assert.assertEquals(deletedItem.getName(), "Aloe", "Deleted metadata item returned should have name \"Aloe\"");
 
+        MetadataItem itemAfterDelete = ownerSearch.findOne();
+        Assert.assertNull(itemAfterDelete, "Item should not be found after deleting.");
     }
 
 //    @Test
@@ -839,36 +849,4 @@ public class MetadataSearchIT {
 //
 //    }
 
-    @Test
-    public void findMetadataWithFiltersTest() throws MetadataStoreException, MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException {
-        ObjectMapper mapper = new ObjectMapper();
-
-        MetadataItem testEntity = new MetadataItem();
-        testEntity.setName("wisteria");
-        String value =
-                "    {" +
-                        "      \"type\": \"a flowering plant\"," +
-                        "      \"order\": \" Fabales\", " +
-                        "        \"profile\": {" +
-                        "        \"status\": \"active\"" +
-                        "           }," +
-                        "        \"description\": \"native to China, Korea, Japan, and the Eastern United States.\"" +
-                        "       }}";
-        testEntity.setValue(mapper.getFactory().createParser(value).readValueAsTree());
-        testEntity.setOwner(username);
-
-        MetadataSearch toAdd = new MetadataSearch(username);
-        toAdd.setMetadataItem(testEntity);
-        toAdd.setAccessibleOwnersExplicit();
-        toAdd.updateMetadataItem();
-
-        String strQuery = "{ \"value.type\": { \"$regex\": \".*flowering.*\"}}";
-        String[] filters = {"name", "value.type"};
-
-        MetadataSearch search = new MetadataSearch(username);
-        List<Document> foundItems = search.filterFind(strQuery, filters);
-        Assert.assertEquals(foundItems.size(), 1);
-        Assert.assertTrue(Arrays.asList("wisteria", "Agavoideae").contains(foundItems.get(0).get("name")));
-        Assert.assertTrue(foundItems.get(0).getEmbedded(List.of("value", "type"), String.class).contains("flowering"));
-    }
 }

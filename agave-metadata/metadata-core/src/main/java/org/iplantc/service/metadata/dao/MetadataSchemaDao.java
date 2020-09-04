@@ -12,11 +12,14 @@ import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataSchemaItem;
 
 import java.net.UnknownHostException;
+
+import static com.mongodb.client.model.Filters.*;
 
 public class MetadataSchemaDao {
     
@@ -144,22 +147,28 @@ public class MetadataSchemaDao {
 //                DBQuery.is("tenantId", tenantId));
 //    }
 //
-//    /**
-//     * Returns a {@link MetadataSchemaItem} with the matching {@code uuid} and {code tenantId}
-//     * @param uuid
-//     * @param tenantId
-//     * @return
-//     * @throws MetadataQueryException
-//     */
-//    public MetadataSchemaItem findByUuidAndTenant(String uuid, String tenantId) 
-//    throws MetadataQueryException 
-//    {   
-//        try {
-//            return (MetadataSchemaItem)getDefaultCollection().findOne(_getDBQueryForUuidAndTenant(uuid, tenantId));
-//        } catch (Exception e) {
-//            throw new MetadataQueryException("Unable to find metadata schema by UUID", e);
-//        }        
-//    }
+
+    private Bson _getBsonQueryForUuidAndTenant(String uuid, String tenantId){
+        return and(eq("uuid", uuid), eq("tenantId", tenantId));
+
+    }
+
+    /**
+     * Returns a {@link MetadataSchemaItem} with the matching {@code uuid} and {code tenantId}
+     * @param uuid
+     * @param tenantId
+     * @return
+     * @throws MetadataQueryException
+     */
+    public MetadataSchemaItem findByUuidAndTenant(String uuid, String tenantId)
+    throws MetadataQueryException
+    {
+        try {
+            return (MetadataSchemaItem)getDefaultCollection().find(_getBsonQueryForUuidAndTenant(uuid, tenantId));
+        } catch (Exception e) {
+            throw new MetadataQueryException("Unable to find metadata schema by UUID", e);
+        }
+    }
 //    
 //    /**
 //     * Insert a new metadata item

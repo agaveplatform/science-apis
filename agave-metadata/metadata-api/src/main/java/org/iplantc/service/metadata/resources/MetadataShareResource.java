@@ -22,6 +22,7 @@ import org.iplantc.service.metadata.MetadataApplication;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataPermissionDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
+import org.iplantc.service.metadata.managers.MetadataItemPermissionManager;
 import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
@@ -32,10 +33,7 @@ import org.iplantc.service.metadata.search.MetadataSearch;
 import org.iplantc.service.metadata.util.ServiceUtils;
 import org.json.JSONObject;
 import org.restlet.Context;
-import org.restlet.data.MediaType;
-import org.restlet.data.Request;
-import org.restlet.data.Response;
-import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
@@ -84,14 +82,15 @@ public class MetadataShareResource extends AgaveResource {
         try {
             MetadataSearch search = new MetadataSearch(username);
 
-            if (search.getCollection() == null) {
-                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                        "Unable to connect to metadata store. If this problem persists, "
-                                + "please contact the system administrators.");
-            }
+//            if (search.getCollection() == null) {
+//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+//                        "Unable to connect to metadata store. If this problem persists, "
+//                                + "please contact the system administrators.");
+//            }
 
             if (!StringUtils.isEmpty(uuid)) {
                 //uuid exists, find metadataitem
+
                 MetadataItem result = search.findOne(new Document("uuid", uuid));
 
                 if (result != null) {
@@ -107,11 +106,11 @@ public class MetadataShareResource extends AgaveResource {
             response.setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
             response.setEntity(new IplantErrorRepresentation("Invalid metadata uuid"));
 
-        } catch (ResourceException e) {
-            log.error("Unable to connect to metadata store ", e);
-            response.setStatus(Status.SERVER_ERROR_INTERNAL);
-            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store. If this problem persists, "
-                    + "please contact the system administrators."));
+//        } catch (ResourceException e) {
+//            log.error("Unable to connect to metadata store ", e);
+//            response.setStatus(Status.SERVER_ERROR_INTERNAL);
+//            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store. If this problem persists, "
+//                    + "please contact the system administrators."));
 
         } catch (Exception e) {
             log.error("Unable to connect to metadata store", e);
@@ -147,16 +146,18 @@ public class MetadataShareResource extends AgaveResource {
             search.setUuid(uuid);
             search.setAccessibleOwnersExplicit();
 
-            if (search.getCollection() == null) {
-                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                        "Unable to connect to metadata store. If this problem persists, "
-                                + "please contact the system administrators. ");
-            }
+//            if (search.getCollection() == null) {
+//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+//                        "Unable to connect to metadata store. If this problem persists, "
+//                                + "please contact the system administrators. ");
+//            }
 
             List<MetadataItem> permissionResult = new ArrayList<>();
             if (StringUtils.isEmpty(sharedUsername)) {
                 //get all permissions
-                permissionResult = search.findPermission_User(username, uuid);
+                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username);
+                permissionResult = metadataItemPermissionManager.findPermission_User(username, uuid);
+//                permissionResult = search.findPermission_User(username, uuid);
 
                 if (permissionResult == null || permissionResult.size() == 0) {
                     throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
@@ -177,12 +178,14 @@ public class MetadataShareResource extends AgaveResource {
             } else {
                 //get single permission
                 MetadataPermission foundPermission;
+                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username);
 
                 if (ServiceUtils.isAdmin(sharedUsername) || StringUtils.equals(owner, sharedUsername)) {
                     foundPermission = new MetadataPermission(uuid, sharedUsername, PermissionType.ALL);
 //                    return new IplantSuccessRepresentation(foundPermission.toJSON());
                 } else {
-                    permissionResult = search.findPermission_User(sharedUsername, uuid);
+                    permissionResult = metadataItemPermissionManager.findPermission_User(username, uuid);
+//                    permissionResult = search.findPermission_User(sharedUsername, uuid);
 
                     if (permissionResult == null) {
                         throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
@@ -230,11 +233,11 @@ public class MetadataShareResource extends AgaveResource {
             String sPermission;
             MetadataSearch search = new MetadataSearch(username);
 
-            if (search.getCollection() == null) {
-                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                        "Unable to connect to metadata store. " +
-                                "If this problem persists, please contact the system administrators.");
-            }
+//            if (search.getCollection() == null) {
+//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+//                        "Unable to connect to metadata store. " +
+//                                "If this problem persists, please contact the system administrators.");
+//            }
 
             JSONObject postPermissionData = super.getPostedEntityAsJsonObject(true);
 
@@ -293,14 +296,16 @@ public class MetadataShareResource extends AgaveResource {
             search.setAccessibleOwnersExplicit();
             search.setUuid(uuid);
 
-            if (search.getCollection() == null) {
-                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                        "Unable to connect to metadata store. " +
-                                "If this problem persists, please contact the system administrators.");
-            }
+//            if (search.getCollection() == null) {
+//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+//                        "Unable to connect to metadata store. " +
+//                                "If this problem persists, please contact the system administrators.");
+//            }
 
             try {
-                search.updatePermissions(name, "", PermissionType.valueOf(sPermission));
+                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username);
+//                metadataItemPermissionManager.updatePermissions(name, "", PermissionType.getIfPresent(sPermission))
+//                search.updatePermissions(name, "", PermissionType.valueOf(sPermission));
 
                 if (StringUtils.isEmpty(sPermission)) {
                     getResponse().setStatus(Status.SUCCESS_OK);
@@ -315,10 +320,10 @@ public class MetadataShareResource extends AgaveResource {
                 }
                 getResponse().setEntity(new IplantSuccessRepresentation(updatedPermission.toJSON()));
 
-            } catch (PermissionException e) {
-                throw new ResourceException(
-                        Status.CLIENT_ERROR_FORBIDDEN,
-                        e.getMessage(), e);
+//            } catch (PermissionException e) {
+//                throw new ResourceException(
+//                        Status.CLIENT_ERROR_FORBIDDEN,
+//                        e.getMessage(), e);
             } catch (IllegalArgumentException iae) {
                 throw new ResourceException(
                         Status.CLIENT_ERROR_BAD_REQUEST,
@@ -354,11 +359,11 @@ public class MetadataShareResource extends AgaveResource {
         search.setAccessibleOwnersExplicit();
         search.setUuid(uuid);
 
-        if (search.getCollection() == null) {
-            throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                    "Unable to connect to metadata store. " +
-                            "If this problem persists, please contact the system administrators.");
-        }
+//        if (search.getCollection() == null) {
+//            throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+//                    "Unable to connect to metadata store. " +
+//                            "If this problem persists, please contact the system administrators.");
+//        }
 
         try {
             if (StringUtils.isEmpty(sharedUsername)) {
@@ -374,8 +379,10 @@ public class MetadataShareResource extends AgaveResource {
                 search.updateMetadataItem();
 
             } else {
+                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username);
+
                 // clear for user
-                search.updatePermissions(sharedUsername, "", PermissionType.NONE);
+//                search.updatePermissions(sharedUsername, "", PermissionType.NONE);
             }
 
             getResponse().setEntity(new IplantSuccessRepresentation());

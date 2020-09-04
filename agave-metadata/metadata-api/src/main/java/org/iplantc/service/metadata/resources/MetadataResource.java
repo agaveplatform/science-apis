@@ -10,16 +10,11 @@ import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKe
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.Iterator;
 import java.util.List;
 
 import com.mongodb.*;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.bson.Document;
-import org.bson.conversions.Bson;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.UUIDException;
@@ -28,19 +23,12 @@ import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.AgaveResource;
 import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.metadata.MetadataApplication;
 import org.iplantc.service.metadata.Settings;
-import org.iplantc.service.metadata.dao.MetadataPermissionDao;
-import org.iplantc.service.metadata.exceptions.MetadataException;
-import org.iplantc.service.metadata.managers.MetadataPermissionManager;
-import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
+import org.iplantc.service.metadata.search.JsonHandler;
 import org.iplantc.service.metadata.search.MetadataSearch;
-import org.iplantc.service.metadata.util.ServiceUtils;
 import org.iplantc.service.notification.managers.NotificationManager;
-import org.joda.time.DateTime;
 import org.restlet.Context;
 import org.restlet.data.Form;
 import org.restlet.data.MediaType;
@@ -51,18 +39,9 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.github.fge.jsonschema.main.AgaveJsonSchemaFactory;
-import com.github.fge.jsonschema.main.AgaveJsonValidator;
-import com.github.fge.jsonschema.main.JsonSchemaFactory;
-import com.github.fge.jsonschema.main.JsonValidator;
-import com.github.fge.jsonschema.report.ProcessingMessage;
-import com.github.fge.jsonschema.report.ProcessingReport;
-import com.mongodb.util.JSON;
-import com.mongodb.util.JSONParseException;
 
 /**
  * Class to handle CRUD operations on metadata entities.
@@ -151,14 +130,14 @@ public class MetadataResource extends AgaveResource {
             MetadataSearch search = new MetadataSearch(username);
             search.setAccessibleOwnersExplicit();
 
-            if (search.getCollection() == null) {
-                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                        "Unable to connect to metadata store. If this problem persists, "
-                                + "please contact the system administrators. Exception: ");
-            }
+//            if (search.getCollection() == null) {
+//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+//                        "Unable to connect to metadata store. If this problem persists, "
+//                                + "please contact the system administrators. Exception: ");
+//            }
 
             search.setUuid(uuid);
-            List<MetadataItem> userResults = search.find(userQuery);
+            List<MetadataItem> userResults = search.find(userQuery, jsonPathFilters);
 
             if (userResults.size() == 1) {
                 MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(userResults.get(0));
@@ -214,14 +193,16 @@ public class MetadataResource extends AgaveResource {
             search.setAccessibleOwnersExplicit();
 
             try {
-                if (search.getCollection() == null) {
-                    throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                            "Unable to connect to metadata store. " +
-                                    "If this problem persists, please contact the system administrators.");
-                }
+//                if (search.getCollection() == null) {
+//                    throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+//                            "Unable to connect to metadata store. " +
+//                                    "If this problem persists, please contact the system administrators.");
+//                }
 
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
-                search.parseJsonMetadata(jsonMetadata);
+//                search.parseJsonMetadata(jsonMetadata);
+                JsonHandler jsonHandler = new JsonHandler();
+                jsonHandler.parseJsonMetadata(jsonMetadata);
 
             } catch (ResourceException e) {
                 throw e;
@@ -304,11 +285,11 @@ public class MetadataResource extends AgaveResource {
             MetadataSearch search = new MetadataSearch(this.username);
             search.setAccessibleOwnersExplicit();
 
-            if (search.getCollection() == null) {
-                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                        "Unable to connect to metadata store. " +
-                                "If this problem persists, please contact the system administrators.");
-            }
+//            if (search.getCollection() == null) {
+//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+//                        "Unable to connect to metadata store. " +
+//                                "If this problem persists, please contact the system administrators.");
+//            }
 
             try {
                 search.setUuid(uuid);

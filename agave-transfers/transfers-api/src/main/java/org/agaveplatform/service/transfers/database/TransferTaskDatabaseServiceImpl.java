@@ -183,19 +183,27 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     });
     return this;
   }
-//
 
   public TransferTaskDatabaseService getActiveRootTaskIds(Handler<AsyncResult<JsonArray>> resultHandler) {
-    dbClient.query(sqlQueries.get(SqlQuery.ALL_ACTIVE_ROOT_TRANSFERTASK_IDS), fetch -> {
-      if (fetch.succeeded()) {
-        JsonArray response = new JsonArray(fetch.result().getRows());
-        LOGGER.info("getActiveRootTaskIds worked");
-        resultHandler.handle(Future.succeededFuture(response));
-      } else {
-        LOGGER.error("Failed to query active root transfer tasks.", fetch.cause());
-        resultHandler.handle(Future.failedFuture(fetch.cause()));
-      }
-    });
+    try {
+      dbClient.query(sqlQueries.get(SqlQuery.ALL_ACTIVE_ROOT_TRANSFERTASK_IDS), fetch -> {
+        if (fetch.succeeded()) {
+          JsonArray response = new JsonArray(fetch.result().getRows());
+          if (response.isEmpty()) {
+            LOGGER.info("getActiveRootTaskIds worked");
+            resultHandler.handle(Future.succeededFuture(response));
+          } else {
+            LOGGER.info("getActiveRootTaskIds worked");
+            resultHandler.handle(Future.succeededFuture(response));
+          }
+        } else {
+          LOGGER.error("Failed to query active root transfer tasks.", fetch.cause());
+          resultHandler.handle(Future.failedFuture(fetch.cause()));
+        }
+      });
+    }catch(Exception e) {
+      LOGGER.error(e.toString());
+    }
     return this;
   }
 

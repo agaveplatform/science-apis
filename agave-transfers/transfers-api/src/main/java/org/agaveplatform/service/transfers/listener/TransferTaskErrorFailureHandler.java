@@ -101,6 +101,9 @@ public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListene
 					//TODO check the parent for completeness and if not then check option and ether fail everything or fail this task or complete
 				}
 			});
+		} catch (NullPointerException e) {
+			log.error("Null Pointer Exception {}: {}", e.toString(), body.getValue("id"));
+			handler.handle(Future.failedFuture(e));
 		}
 		catch (Throwable t) {
 			log.error("Failed to process failure event for transfer task {}: {}",

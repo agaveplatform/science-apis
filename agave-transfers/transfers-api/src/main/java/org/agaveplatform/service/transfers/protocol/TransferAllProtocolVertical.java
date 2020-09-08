@@ -71,9 +71,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			log.info("Transfer task {} transferring: {} -> {}", uuid, source, dest);
 			processEvent(body, resp -> {
 				if (resp.succeeded()) {
-					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), uuid);
+					log.debug("Completed processing {} event for transfer task (TA) {}", getEventChannel(), uuid);
 				} else {
-					log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
+					log.error("Unable to process {} event for transfer task (TA) message: {}", getEventChannel(), body.encode(), resp.cause());
 				}
 			});
 		});

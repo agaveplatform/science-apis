@@ -1,36 +1,67 @@
 package org.agaveplatform.service.transfers;
 
+import com.google.common.io.Files;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
+
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.Checkpoint;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.apache.commons.io.FileUtils;
+import org.assertj.core.api.Assert;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
+import org.iplantc.service.systems.model.StorageSystem;
+import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.junit.jupiter.api.*;
+
+import static org.assertj.core.api.InstanceOfAssertFactories.PATH;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.UUID;
 
 import static io.restassured.RestAssured.given;
 import static java.util.Arrays.asList;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.*;
+
+import org.iplantc.service.*;
+import org.iplantc.service.systems.*;
+import org.iplantc.service.systems.Settings;
+import org.iplantc.service.systems.exceptions.SystemArgumentException;
+import org.iplantc.service.systems.exceptions.SystemException;
+import org.iplantc.service.systems.model.enumerations.AuthConfigType;
+import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
+import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
+import org.iplantc.service.systems.model.enumerations.SystemStatusType;
+import org.iplantc.service.systems.util.ServiceUtils;
+
 
 @ExtendWith(VertxExtension.class)
 @DisplayName("TransferApplication Tests")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Disabled
 class TransferApplicationTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferApplicationTest.class);
 	private TransferTaskDatabaseService dbService;
@@ -43,6 +74,8 @@ class TransferApplicationTest extends BaseTestCase {
 	@BeforeAll
 	@Override
 	public void setUpService(Vertx vertx, VertxTestContext ctx) throws IOException {
+
+
 		Checkpoint authCheckpoint = ctx.checkpoint();
 
 		// init the jwt auth used in the api calls
@@ -244,6 +277,7 @@ class TransferApplicationTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("testEndToEndTaskAssignmentSmoke")
+	@Disabled
 	void testEndToEndTaskAssignmentSmoke(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = _createTestTransferTask();
@@ -285,6 +319,7 @@ class TransferApplicationTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("testEndToEndTaskAssignment_CancelTest")
+	@Disabled
 	void testEndToEndTaskAssignment_CancelTest(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = _createTestTransferTask();
@@ -328,6 +363,7 @@ class TransferApplicationTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("testEndToEndTaskAssignment_PauseTest")
+	@Disabled
 	void testEndToEndTaskAssignment_PauseTest(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = _createTestTransferTask();
@@ -371,6 +407,7 @@ class TransferApplicationTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("testEndToEndTaskAssignment_PauseTest Fail")
+	@Disabled
 	void testEndToEndTaskAssignment_PauseTestFail(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = _createTestTransferTask();
@@ -411,6 +448,55 @@ class TransferApplicationTest extends BaseTestCase {
 				ctx.completeNow();
 			});
 		});
+		ctx.completeNow();
+	}
+
+	@Test
+	@DisplayName("testEndToEndTransferTaskFileMovement")
+	void testEndToEndTransferTaskFileMovement(Vertx vertx, VertxTestContext ctx) {
+
+		TransferTask tt = _createTestTransferTask();
+//		StorageSystem system = new StorageSystem();
+//		system.getStorageConfig().setRootDir("/");
+//		system.getStorageConfig().setHomeDir(Files.createTempDir().getAbsolutePath());
+
+
+		RequestSpecification requestSpecification = new RequestSpecBuilder()
+				//.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+				.setBaseUri("http://localhost:" + getPort() + "/")
+				.build();
+
+		Checkpoint requestCheckpoint = ctx.checkpoint();
+		Checkpoint assignedListenerCheckpoint = ctx.checkpoint();
+
+		String token = this.makeTestJwt(TEST_USERNAME);
+
+		String response = given()
+				.spec(requestSpecification)
+//				.auth().oauth2(token)
+				.header("X-JWT-ASSERTION-AGAVE_DEV", token)
+				.contentType(ContentType.JSON)
+				.body(tt.toJSON())
+				.post("api/transfers")
+				.then()
+				.assertThat()
+				.statusCode(201)
+				.extract()
+				.asString();
+
+		vertx.eventBus().consumer(TRANSFERTASK_ASSIGNED, m -> {
+			JsonObject json = (JsonObject) m.body();
+			ctx.verify(() -> {
+				if (json.getString("event").equalsIgnoreCase(TRANSFERTASK_ASSIGNED)) {
+					assertTrue(true, "The call succeeded.");
+				}
+				ctx.completeNow();
+			});
+		});
+		Path destPath = Paths.get(tt.getDest());
+
+		assertTrue(java.nio.file.Files.exists(destPath), "Downloaded file should be present at " + destPath.toString() );
+
 		ctx.completeNow();
 	}
 }

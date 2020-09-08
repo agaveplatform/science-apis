@@ -79,7 +79,7 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 						//   this point
 //						_doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
 					} else {
-						log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
+						log.error("Unable to process {} event for transfer task (TTRL) message: {}", getEventChannel(), body.encode(), resp.cause());
 						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
 					}
 				});

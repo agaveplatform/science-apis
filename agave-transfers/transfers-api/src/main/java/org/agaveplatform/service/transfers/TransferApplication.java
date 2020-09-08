@@ -59,6 +59,7 @@ public class TransferApplication {
                                             .setWorkerPoolName("streaming-task-worker-pool")
                                             .setWorkerPoolSize(poolSize)
                                             .setInstances(instanceSize)
+                                            .setConfig(config)
                                             .setWorker(true);
 
 

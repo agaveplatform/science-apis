@@ -98,6 +98,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid source")
+	@Disabled
 	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) {
 
 		// get the JsonObject to pass back and forth between verticles
@@ -131,6 +132,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid dest")
+	@Disabled
 	public void assignTransferTaskFailDestTest(Vertx vertx, VertxTestContext ctx) {
 
 		// get the JsonObject to pass back and forth between verticles

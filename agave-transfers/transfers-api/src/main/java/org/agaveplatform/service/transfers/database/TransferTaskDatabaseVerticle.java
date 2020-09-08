@@ -27,6 +27,7 @@ import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.serviceproxy.ServiceBinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -42,17 +43,18 @@ import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*
  */
 // tag::dbverticle[]
 public class TransferTaskDatabaseVerticle extends AbstractVerticle {
-  private static final Logger log = LoggerFactory.getLogger(TransferTaskDatabaseVerticle.class);
+  private static final  Logger log = (Logger) LoggerFactory.getLogger(TransferTaskDatabaseVerticle.class);
+
   @Override
   public void start(Promise<Void> promise) throws Exception {
 
     HashMap<SqlQuery, String> sqlQueries = loadSqlQueries();
 
     JDBCClient dbClient = JDBCClient.createShared(getVertx(), new JsonObject()
-      .put("url", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:hsqldb:mem:db/dev"))
+      .put("url", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:hsqldb:mem:db/dev")) //
       .put("username", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_USERNAME))
       .put("password", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_PASSWORD))
-      .put("driver_class", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "org.hsqldb.jdbcDriver"))
+      .put("driver_class", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "org.mysqldb.jdbcDriver"))
       .put("max_pool_size", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)), "agave-io");
 
     TransferTaskDatabaseService.create(dbClient, sqlQueries, ready -> {

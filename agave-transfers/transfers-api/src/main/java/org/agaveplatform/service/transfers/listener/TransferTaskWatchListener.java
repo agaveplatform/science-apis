@@ -86,7 +86,8 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 			if (e.toString().contains("no null address accepted")){
 				log.info("Error with TransferTaskWatchListener processEvent  error ={} }", e.toString());
 				handler.handle(Future.succeededFuture(Boolean.TRUE));
-			}else{
+			}else
+				{
 				log.error("Error with TransferTaskWatchListener processEvent  error ={} }",  e.toString());
 				handler.handle(Future.failedFuture(e));
 			}

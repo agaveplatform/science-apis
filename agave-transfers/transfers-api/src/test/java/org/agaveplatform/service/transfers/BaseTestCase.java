@@ -44,8 +44,34 @@ public abstract class BaseTestCase {
     public final String TEST_ADMIN_USERNAME = "testadminuser";
     public final String TENANT_ID = "agave.dev";
     public final String TRANSFER_SRC = "http://foo.bar/cat/in/the/hat";
-    public final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
+    //public final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
+    public final String TRANSFER_DEST = "agave://sftp.example.com//tmp/dest";
     public final String TEST_USER = "testuser";
+
+    //=====================================================================================================
+    // added section to support the TransferApplicationTest
+    //=====================================================================================================
+    public static final String SYSTEM_USER = "testuser";
+    public static final String SHARED_SYSTEM_USER = "testshareuser";
+    public static final String TEST_PROPERTIES_FILE = "test.properties";
+    public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/execution";
+    public static String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage";
+    public static String SOFTWARE_SYSTEM_TEMPLATE_DIR = "target/test-classes/software";
+    public static String INTERNAL_USER_TEMPLATE_DIR = "target/test-classes/internal_users";
+    public static String CREDENTIALS_TEMPLATE_DIR = "target/test-classes/credentials";
+
+    // standard directories and files for io tests
+    protected static String MISSING_DIRECTORY = "I/Do/Not/Exist/unless/some/evil/person/has/this/test";
+    protected static String MISSING_FILE = "I/Do/Not/Exist/unless/some/evil/person/this/test.txt";
+    protected static String LOCAL_DIR = "target/test-classes/transfer";
+    protected static String LOCAL_DOWNLOAD_DIR = "target/test-classes/download";
+    protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
+    protected static String LOCAL_BINARY_FILE = "target/test-classes/transfer/test_upload.bin";
+
+    protected static String LOCAL_DIR_NAME = "transfer";
+    protected static String LOCAL_TXT_FILE_NAME = "test_upload.txt";
+    protected static String LOCAL_BINARY_FILE_NAME = "test_upload.bin";
+    //=====================================================================================================
 
     protected JsonObject config;
     protected int port = 32331;

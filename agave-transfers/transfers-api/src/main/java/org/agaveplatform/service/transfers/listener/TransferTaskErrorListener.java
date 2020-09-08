@@ -69,7 +69,7 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 					if (resp.succeeded()) {
 						log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
 					} else {
-						log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
+						log.error("Unable to process {} event for transfer task (TTEL) message: {}", getEventChannel(), body.encode(), resp.cause());
 						_doPublishEvent(TRANSFER_FAILED, body);
 					}
 				});

@@ -5,10 +5,12 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
+import io.vertx.ext.jwt.JWT;
 import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -24,6 +26,7 @@ import org.agaveplatform.service.transfers.model.TransferTaskRequest;
 import org.agaveplatform.service.transfers.model.TransferUpdate;
 import org.agaveplatform.service.transfers.util.AgaveSchemaFactory;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
+import org.agaveplatform.service.transfers.util.ServiceUtils;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.Settings;
@@ -47,6 +50,7 @@ public class TransferAPIVertical extends AbstractVerticle {
     private JWTAuth authProvider;
     private TransferTaskDatabaseService dbService;
     protected String eventChannel = TRANSFERTASK_DB_QUEUE;
+    protected JWTAuth jwtAuth;
 
     public TransferAPIVertical(){super();}
 
@@ -78,7 +82,6 @@ public class TransferAPIVertical extends AbstractVerticle {
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, TRANSFERTASK_DB_QUEUE); // <1>
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-
         // define our routes
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
@@ -86,6 +89,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         // Bind "/" to our hello message - so we are still compatible.
         router.route("/").handler(routingContext -> {
             HttpServerResponse response = routingContext.response();
+
             JsonObject message = new JsonObject().put("message", "Hello");
             response
                     .putHeader("content-type", "application/json")
@@ -96,6 +100,17 @@ public class TransferAPIVertical extends AbstractVerticle {
         if (config().getBoolean(CONFIG_TRANSFERTASK_JWT_AUTH)) {
             router.route("/api/transfers*").handler(new AgaveJWTAuthHandlerImpl(getAuthProvider()));
         }
+
+        router.get("/api/client").handler(routingContext -> {
+            jwtAuth = getAuthProvider() ;
+            HttpServerResponse response = routingContext.response();
+
+            String token = this.makeTestJwt("testuser");
+            JsonObject message = new JsonObject().put("JWT", token);
+            response
+                    .putHeader("content-type", "application/json")
+                    .end(message.encodePrettily());
+        });
 
         // define the service routes
         router.get("/api/transfers").handler(this::getAll);
@@ -210,7 +225,8 @@ public class TransferAPIVertical extends AbstractVerticle {
      *
      * @param routingContext the current rounting context for the request
      */
-    private void addOne(RoutingContext routingContext) { Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
+    private void addOne(RoutingContext routingContext) {
+        Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
         JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
@@ -244,7 +260,7 @@ public class TransferAPIVertical extends AbstractVerticle {
     /**
      * Delete a {@link TransferTask} from the db.
      *
-     * @param routingContext the current rounting context for the request
+     * @param routingContext the current routing context for the request
      */
     private void deleteOne(RoutingContext routingContext) {
         Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
@@ -415,10 +431,11 @@ public class TransferAPIVertical extends AbstractVerticle {
                         .setPermissionsClaimKey("http://wso2.org/claims/role")
                         .addPubSecKey(new PubSecKeyOptions()
                                 .setAlgorithm("RS256")
-                                .setPublicKey(CryptoHelper.publicKey(config().getString("transfertask.jwt.public_key"))));
+                                .setPublicKey(CryptoHelper.publicKey(config().getString("transfertask.jwt.public_key")))
+                                .setSecretKey(CryptoHelper.privateKey(config().getString("transfertask.jwt.private_key"))));
 
                 authProvider = new AgaveJWTAuthProviderImpl(jwtAuthOptions);
-
+                System.out.println(authProvider.toString());
             } catch (IOException e) {
                 log.error("Failed to load public key from file.", e);
             }
@@ -486,4 +503,61 @@ public class TransferAPIVertical extends AbstractVerticle {
     public void setDbService(TransferTaskDatabaseService dbService) {
         this.dbService = dbService;
     }
+
+
+    /**
+     * Generates a JWT token to authenticate to the service. Token is signed using the
+     * test private key in the service config file.
+     *
+     * @param username Name of the test user
+     * @param roles Comma separated list of roles to append to the jwt
+     * @return signed jwt token
+     */
+    protected String makeTestJwt(String username, String roles) {
+        // Add wso2 claims set
+        String givenName = username.replace("user", "");
+        JsonObject claims = new JsonObject()
+                .put("http://wso2.org/claims/subscriber", username)
+                .put("http://wso2.org/claims/applicationid", "-9999")
+                .put("http://wso2.org/claims/applicationname", "agaveops")
+                .put("http://wso2.org/claims/applicationtier", "Unlimited")
+                .put("http://wso2.org/claims/apicontext", "/internal")
+                .put("http://wso2.org/claims/version", Settings.SERVICE_VERSION)
+                .put("http://wso2.org/claims/tier", "Unlimited")
+                .put("http://wso2.org/claims/keytype", "PRODUCTION")
+                .put("http://wso2.org/claims/usertype", "APPLICATION_USER")
+                .put("http://wso2.org/claims/enduser", username)
+                .put("http://wso2.org/claims/TenantId", "-9999")
+                .put("http://wso2.org/claims/emailaddress", username + "@example.com")
+                .put("http://wso2.org/claims/fullname", org.apache.commons.lang3.StringUtils.capitalize(givenName) + " User")
+                .put("http://wso2.org/claims/givenname", givenName)
+                .put("http://wso2.org/claims/lastname", "User")
+                .put("http://wso2.org/claims/primaryChallengeQuestion", "N/A")
+                //.put("http://wso2.org/claims/tenantId", "sandbox")
+                .put("http://wso2.org/claims/role", ServiceUtils.explode(",", List.of("Internal/everyone,Internal/subscriber", roles)))
+                .put("http://wso2.org/claims/title", "N/A");
+
+        JWTOptions jwtOptions = new JWTOptions()
+                .setAlgorithm("RS256")
+                .setExpiresInMinutes(10_080) // 7 days
+                .setIssuer("transfers-api-integration-tests")
+                .setSubject(username);
+        String jwtString = jwtAuth.generateToken(claims, jwtOptions);
+        return jwtString;
+    }
+
+    /**
+     * Generates a JWT token to authenticate to the service. Token is signed using the
+     * test private key in the service config file. Only the default user roles are assigned
+     * to this jwt.
+     *
+     * @param username Name of the test user
+     * @return signed jwt token
+     * @see #makeTestJwt(String, String)
+     */
+    protected String makeTestJwt(String username) {
+        System.out.println("username = "+username);
+        return makeTestJwt(username, "");
+    }
+
 }

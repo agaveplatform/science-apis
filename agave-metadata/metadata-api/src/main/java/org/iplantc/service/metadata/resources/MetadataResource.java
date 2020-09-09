@@ -137,7 +137,7 @@ public class MetadataResource extends AgaveResource {
 //            }
 
             search.setUuid(uuid);
-            List<MetadataItem> userResults = search.find(userQuery, jsonPathFilters);
+            List<MetadataItem> userResults = search.find(userQuery);
 
             if (userResults.size() == 1) {
                 MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(userResults.get(0));

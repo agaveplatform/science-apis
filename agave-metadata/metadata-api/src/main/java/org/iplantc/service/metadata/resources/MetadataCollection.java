@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.bson.Document;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.SortSyntaxException;
@@ -194,7 +195,7 @@ public class MetadataCollection extends AgaveResource {
                 search.setLimit(limit);
                 search.setOffset(offset);
 
-                userResults = search.find(userQuery, jsonPathFilters);
+                userResults = search.find(userQuery);
 
             } catch (MetadataQueryException e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Malformed JSON Query, " + e);

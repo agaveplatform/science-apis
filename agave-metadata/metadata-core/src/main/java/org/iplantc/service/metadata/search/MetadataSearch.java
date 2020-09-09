@@ -688,9 +688,9 @@ public class MetadataSearch {
         metadataDao.clearCollection();
     }
 
-    public List<MetadataItem> find(String userQuery) throws PermissionException, MetadataQueryException {
-        return find(userQuery, new String[0]);
-    }
+//    public List<MetadataItem> find(String userQuery) throws PermissionException, MetadataQueryException {
+//        return find(userQuery);
+//    }
 
     /**
      * Find the {@link MetadataItem} matching the {@code userQuery} and the offset/limit specified
@@ -699,7 +699,7 @@ public class MetadataSearch {
      * @return list of {@link MetadataItem} matching the {@code userQuery} in the sort order specified
      * @throws MetadataQueryException if {@code userQuery} is invalid format
      */
-    public List<MetadataItem> find(String userQuery, String[] filters) throws MetadataQueryException, PermissionException {
+    public List<MetadataItem> find(String userQuery) throws MetadataQueryException, PermissionException {
         List<MetadataItem> result = new ArrayList<>();
         try {
             Document doc = new JsonHandler().parseStringToDocument(userQuery);
@@ -710,11 +710,11 @@ public class MetadataSearch {
 
             result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
 
-            if (result.size() == 0) {
-                if (metadataDao.findSingleMetadataItem(eq("uuid", getUuid())) != null) {
-                    throw new PermissionException("User does not have permission to view this resource.");
-                }
-            }
+//            if (result.size() == 0) {
+//                if (metadataDao.findSingleMetadataItem(eq("uuid", getUuid())) != null) {
+//                    throw new PermissionException("User does not have permission to view this resource.");
+//                }
+//            }
 
         } catch (MetadataQueryException e) {
             throw new MetadataQueryException("Unable to parse query.");

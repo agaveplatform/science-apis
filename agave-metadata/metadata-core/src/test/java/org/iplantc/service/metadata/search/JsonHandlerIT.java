@@ -1,21 +1,38 @@
 package org.iplantc.service.metadata.search;
 
 import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
+import com.github.fge.jsonschema.main.AgaveJsonSchemaFactory;
+import com.github.fge.jsonschema.main.AgaveJsonValidator;
+import com.mongodb.*;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.DBCollectionCountOptions;
+import com.mongodb.util.JSON;
+import com.mongodb.util.JSONParseException;
 import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.dao.MetadataSchemaDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataSchemaValidationException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
+import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.AssociatedReference;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
+import org.iplantc.service.metadata.model.MetadataSchemaItem;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
+import org.iplantc.service.metadata.model.serialization.MetadataCollectionSerializerModifier;
+import org.iplantc.service.metadata.util.ServiceUtils;
+import org.joda.time.DateTime;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -26,6 +43,7 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 
+import static org.iplantc.service.metadata.Settings.METADATA_DB_SCHEME;
 import static org.powermock.api.mockito.PowerMockito.mock;
 
 @Test(groups = {"integration"})
@@ -291,9 +309,29 @@ public class JsonHandlerIT {
         JsonHandler jsonHandler = new JsonHandler();
 
         MetadataValidation mockMetadataValidation = mock(MetadataValidation.class);
-        Mockito.when(mockMetadataValidation.checkSchemaIdExists(schemaId)).thenReturn(new Document("schemaId", schemaId));
-        jsonHandler.setMetadataValidation(mockMetadataValidation);
+        MetadataSchemaItem toReturnItem = new MetadataSchemaItem();
+        toReturnItem.setUuid(schemaId);
+        toReturnItem.setOwner("TEST_USER");
+        toReturnItem.setSchema(mapper.createObjectNode().put("Sample Name", "Sample Value"));
 
+        Document schemaDoc = new Document("uuid", schemaId)
+                .append("owner", "TEST_USER")
+                .append("schema", "{" +
+                        "\"title\": \"Example Schema\", " +
+                        "\"type\": \"object\", "+
+                        "\"properties\": {" +
+                        "\"species\": {" +
+                        "\"type\": \"string\"" +
+                        "}" +
+                        "}," +
+                        "\"required\": [" +
+                        "\"species\"" +
+                        "]" +
+                        "}");
+
+
+        Mockito.when(mockMetadataValidation.checkSchemaIdExists(schemaId)).thenReturn(schemaDoc);
+        jsonHandler.setMetadataValidation(mockMetadataValidation);
 
         String parsedSchemaId = jsonHandler.parseSchemaIdToString(node);
         Assert.assertEquals(parsedSchemaId, schemaId);
@@ -317,7 +355,8 @@ public class JsonHandlerIT {
         JsonNode node = factory.createParser(strJson).readValueAsTree();
 
         JsonHandler jsonHandler = new JsonHandler();
-        Assert.assertTrue(jsonHandler.parseSchemaIdToString(node).length() == 0);
+        Assert.assertNull(jsonHandler.parseSchemaIdToString(node));
+//        Assert.assertTrue(jsonHandler.parseSchemaIdToString(node).length() == 0);
     }
 
     @Test
@@ -325,39 +364,30 @@ public class JsonHandlerIT {
         String strSchemaJson = "" +
                 "{" +
                 "\"title\": \"Example Schema\", " +
+                "\"type\": \"object\", "+
                 "\"properties\": {" +
-                    "\"species\": {" +
-                        "\"type\": \"string\"" +
-                        "}" +
-                    "}" +
+                "\"species\": {" +
+                "\"type\": \"string\"" +
+                "}" +
                 "}," +
                 "\"required\": [" +
                 "\"species\"" +
                 "]" +
                 "}";
 
+
         String strValue = "{" +
                 "\"title\": \"Some Metadata\", " +
                 "\"properties\": {" +
-                    "\"species\": {" +
-                        "\"type\": \"Some species type\"" +
-                        "}" +
-                    "}" +
-                "}";
-
-
-        String strJson = "{" +
-                "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
-                "\"value\": " + strValue + "," +
-                "\"associationIds\": " + "[" + "\"" + new AgaveUUID(UUIDType.JOB).toString() + "\"" + "]" + "," +
-                "\"schemaId\": " + "\"" + new AgaveUUID(UUIDType.SCHEMA).toString() + "\"" + "," +
-                "\"permissions\": " + "[\"" + PermissionType.READ_WRITE + "\"]" + "," +
-                "\"notifications\": " + "[\"" + "notifications" + "\"]" + "" +
+                "\"species\": {" +
+                "\"type\": \"Some species type\"" +
+                "}" +
+                "}, " +
+                "\"species\": \"required\"" +
                 "}";
 
         ObjectMapper mapper = new ObjectMapper();
         JsonFactory factory = mapper.getFactory();
-        JsonNode node = factory.createParser(strJson).readValueAsTree();
 
         JsonHandler jsonHandler = new JsonHandler();
         String validatedValue = jsonHandler.validateValueAgainstSchema(strValue, strSchemaJson);
@@ -365,14 +395,14 @@ public class JsonHandlerIT {
     }
 
     @Test
-    public void validateInvalidValueAgainstSchemaTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException {
+    public void validateInvalidValueAgainstSchemaTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataException, PermissionException {
         String strSchemaJson = "" +
                 "{" +
                 "\"title\": \"Example Schema\", " +
+                "\"type\": \"object\", "+
                 "\"properties\": {" +
                 "\"species\": {" +
                 "\"type\": \"string\"" +
-                "}" +
                 "}" +
                 "}," +
                 "\"required\": [" +
@@ -380,28 +410,14 @@ public class JsonHandlerIT {
                 "]" +
                 "}";
 
-        String strValue = "{\"value\":{" +
-                "\"header\": \"Some Metadata\", " +
+
+        String strValue = "{" +
                 "\"properties\": {" +
-                "\"plantSpecies\": {" +
-                "\"type\": \"Some plant species type\"" +
+                "\"species\": {" +
+                "\"type\": \"Some species type\"" +
                 "}" +
                 "}" +
-                "}}";
-
-
-        String strJson = "{" +
-                "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
-                "\"value\": " + strValue + "," +
-                "\"associationIds\": " + "[" + "\"" + new AgaveUUID(UUIDType.JOB).toString() + "\"" + "]" + "," +
-                "\"schemaId\": " + "\"" + new AgaveUUID(UUIDType.SCHEMA).toString() + "\"" + "," +
-                "\"permissions\": " + "[\"" + PermissionType.READ_WRITE + "\"]" + "," +
-                "\"notifications\": " + "[\"" + "notifications" + "\"]" + "" +
                 "}";
-
-        ObjectMapper mapper = new ObjectMapper();
-        JsonFactory factory = mapper.getFactory();
-        JsonNode node = factory.createParser(strJson).readValueAsTree();
 
         JsonHandler jsonHandler = new JsonHandler();
         Assert.assertThrows(MetadataSchemaValidationException.class, ()-> jsonHandler.validateValueAgainstSchema(strValue, strSchemaJson));

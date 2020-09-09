@@ -5,6 +5,11 @@ import java.util.Iterator;
 import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.databind.ObjectReader;
+import com.github.fge.jsonschema.main.AgaveJsonSchemaFactory;
+import com.github.fge.jsonschema.main.AgaveJsonValidator;
+import com.mongodb.BasicDBObject;
 import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
@@ -43,98 +48,86 @@ public class MetadataSchemaComplianceValidator implements ConstraintValidator<Me
 
     @Override
     public boolean isValid(Object target, final ConstraintValidatorContext constraintContext) {
-        
+
         boolean isValid = false;
+
 
         try {
             final Object metadataValue = BeanUtils.getProperty(target, valueFieldName);
             final Object schemaId = BeanUtils.getProperty(target, schemaFieldName);
 
-            if (StringUtils.isEmpty((String)schemaId)) {
+            if (StringUtils.isEmpty((String) schemaId)) {
                 isValid = true;
-            }
-            else {
-
-
+            } else {
                 Bson query = and(eq("uuid", (String) schemaId),
-                        eq("tenantId", TenancyHelper.getCurrentTenantId()) );
+                        eq("tenantId", TenancyHelper.getCurrentTenantId()));
                 Document schemaDoc = MetadataSchemaDao.getInstance().findOne(query);
 
-//                MetadataSchemaItem schemaDoc = (MetadataSchemaItem) MetadataSchemaDao.getInstance().findOne(query);
-//                MetadataSchemaItem schemaItem = null ;
-                MetadataSchemaItem schemaItem = MetadataSchemaDao.getInstance().findByUuidAndTenant((String)schemaId, TenancyHelper.getCurrentTenantId());
 
                 if (schemaDoc == null) {
-                    //nothing to validate ?
-                    return  true;
-                } else {
-                    MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager((String)schemaId, schemaItem.getOwner());
-
-
-                }
-
-//                MetadataSchemaItem schemaItem = MetadataSchemaDao.getInstance().findByUuidAndTenant((String)schemaId, TenancyHelper.getCurrentTenantId());
-                if (schemaItem == null) {
                     isValid = true;
-                }
-                else
-                {
-                    MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager((String)schemaId, schemaItem.getOwner());
-                    if (schemaPM.canRead(TenancyHelper.getCurrentTenantId()))
-                    {
+                } else {
+                    String owner = schemaDoc.getString("owner");
+                    MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager((String) schemaId, owner);
+
+                    // check user permissions to view the schema
+                    if (schemaPM.canRead("TEST_USER")) {
+                        // now validate the json against the schema
+                        Document schema = (Document) schemaDoc.get("schema");
+
                         ObjectMapper mapper = new ObjectMapper();
+                        JsonFactory factory = mapper.getFactory();
+                        ObjectReader reader = mapper.reader(JsonNode.class);
 
-                        JsonNode jsonSchemaNode = mapper.valueToTree(schemaItem);
+                        String strSchema = schema.toJson();
+                        JsonNode jsonSchemaNode = factory.createParser(strSchema).readValueAsTree();
 
-                        JsonNode metadataValueNode = null;
+                        JsonNode jsonMetadataNode = null;
                         if (metadataValue instanceof String) {
-                            metadataValueNode = mapper.readTree((String)metadataValue);
+                            jsonMetadataNode = factory.createParser((String) metadataValue).readValueAsTree();
                         } else if (!(metadataValue instanceof JsonNode)) {
-                            metadataValueNode = mapper.valueToTree(metadataValue);
+                            jsonMetadataNode = mapper.valueToTree(metadataValue);
                         } else {
-                            metadataValueNode = (JsonNode)metadataValue;
+                            jsonMetadataNode = (JsonNode) metadataValue;
                         }
 
-                        JsonValidator validator = JsonSchemaFactory.byDefault().getValidator();
-                        ProcessingReport report = validator.validate(jsonSchemaNode, metadataValueNode);
+                        AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();
+                        ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
 
                         isValid = report.isSuccess();
-
-                        if (!isValid)
-                        {
+                        if (!isValid) {
                             StringBuilder sb = new StringBuilder();
-                            for (Iterator<ProcessingMessage> reportMessageIterator = report.iterator(); reportMessageIterator.hasNext();) {
-                                sb.append(reportMessageIterator.next().toString() + "\n");
+                            for (ProcessingMessage processingMessage : report) {
+                                sb.append(processingMessage.toString());
+                                sb.append("\n");
                             }
                             throw new MetadataValidationException(
                                     "Metadata value does not conform to schema. \n" + sb.toString());
                         }
-                    }
-                    else {
+
+                    } else {
                         throw new PermissionException("User does not have permission to read metadata schema");
                     }
                 }
             }
-        }
-        catch (MetadataValidationException | PermissionException e) {
+        } catch (MetadataValidationException | PermissionException e) {
             log.error("Failed to validate metadata against schema", e);
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate(
-                        e.getMessage())
+                    e.getMessage())
                     .addConstraintViolation();
-        }
-        catch(MetadataException e) {
+
+        } catch (MetadataException e) {
             log.error("Failed to fetch metadata schema permissions", e);
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate(
-                        "Unable to fetch metadata schema permissions")
+                    "Unable to fetch metadata schema permissions")
                     .addConstraintViolation();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("Unexpected error while validating metadata value against schema.", e);
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate(
-                        "Unexpected error while validating metadata value against schema.")
+                    "Unexpected error while validating metadata value against schema.")
                     .addConstraintViolation();
         }
 

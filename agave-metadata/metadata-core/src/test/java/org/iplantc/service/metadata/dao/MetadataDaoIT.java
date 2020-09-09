@@ -77,8 +77,6 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
     @Override
     public void insertTest() throws  MetadataException, PermissionException {
-        System.out.println("Insert test complete!!");
-
         //Create item to insert
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());

@@ -271,7 +271,7 @@ public class JsonHandler {
                     sb.append(processingMessage.toString());
                     sb.append("\n");
                 }
-                return sb.toString();
+                throw new MetadataSchemaValidationException("Metadata does not conform to schema.");
             }
             return value;
         } catch (Exception e) {

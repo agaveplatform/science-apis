@@ -710,12 +710,6 @@ public class MetadataSearch {
 
             result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
 
-//            if (result.size() == 0) {
-//                if (metadataDao.findSingleMetadataItem(eq("uuid", getUuid())) != null) {
-//                    throw new PermissionException("User does not have permission to view this resource.");
-//                }
-//            }
-
         } catch (MetadataQueryException e) {
             throw new MetadataQueryException("Unable to parse query.");
         }

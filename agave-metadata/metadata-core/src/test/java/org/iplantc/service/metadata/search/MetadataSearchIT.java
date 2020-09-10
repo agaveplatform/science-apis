@@ -129,8 +129,6 @@ public class MetadataSearchIT {
 
     //basic permission check
 
-    //basic retrieval operations
-
     //no data leak - combination of permission + retrieval
 
     @BeforeClass
@@ -151,8 +149,10 @@ public class MetadataSearchIT {
 
             MongoDatabase mongoDatabase = client.getDatabase(Settings.METADATA_DB_SCHEME);
             MongoCollection mongoCollection = mongoDatabase.getCollection(Settings.METADATA_DB_COLLECTION, MetadataItem.class);
+            MongoCollection mongoSchemaCollection = mongoDatabase.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
 
             mongoCollection.deleteMany(new Document());
+            mongoSchemaCollection.deleteMany(new Document());
 
         } catch (Exception ex) {
             throw new MetadataQueryException(ex);
@@ -217,7 +217,7 @@ public class MetadataSearchIT {
         return metadataItem;
     }
 
-
+    //basic operations
     @Test
     public void createNewItemTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
         String strItemToAdd = "  {" +
@@ -233,7 +233,6 @@ public class MetadataSearchIT {
                 "   \"schemaId\": \"" + schemaUuid.toString() + "\"" +
                 "   }";
 
-//        createSchema();
         MetadataItem toAddItem = createMetadataItemFromString(strItemToAdd, this.username);
 
         MetadataSearch search = new MetadataSearch(this.username);
@@ -297,118 +296,6 @@ public class MetadataSearchIT {
                 "A model flower organism...");
     }
 
-    //    @Test
-//    public void updateExistingItemAsSharedUserWithRead() throws IOException, MetadataStoreException, MetadataException, MetadataQueryException, PermissionException, UUIDException {
-//        MetadataSearch searchAsOwner = new MetadataSearch(username);
-//        searchAsOwner.clearCollection();
-//        searchAsOwner.setAccessibleOwnersExplicit();
-////        MetadataItem metadataItem = createSingleMetadataItem("");
-//        MetadataItem metadataItem = createMetadataItemFromString("");
-//        searchAsOwner.updatePermissions(sharedUser, "", PermissionType.READ);
-//
-//        MetadataSearch search = new MetadataSearch(sharedUser);
-//        search.setAccessibleOwnersExplicit();
-//
-//        String strUpdate =
-//                "  {" +
-//                        "    \"name\": \"New Metadata\"," +
-//                        "    \"value\": {" +
-//                        "      \"title\": \"Changed Metadata Title\"," +
-//                        "      \"properties\": {" +
-//                        "        \"species\": \"wisteria\"," +
-//                        "        \"description\": \"A model flower organism...\"" +
-//                        "       }" +
-//                        "       }" +
-//                        "   }";
-//
-//        JsonFactory factory = new ObjectMapper().getFactory();
-//        JsonNode jsonMetadataNode = factory.createParser(strUpdate).readValueAsTree();
-//        search.parseJsonMetadata(jsonMetadataNode);
-//        search.setUuid(metadataItem.getUuid());
-//
-//        try {
-//            MetadataItem updatedMetadataItem = search.updateMetadataItem();
-//        } catch (PermissionException p) {
-//            Assert.assertEquals(p.getMessage(), "User does not have sufficient access to edit public metadata item.");
-//        }
-//    }
-//
-//    @Test
-//    public void updateExistingItemAsSharedUserWithReadWrite() throws IOException, MetadataStoreException, MetadataException, MetadataQueryException, PermissionException, UUIDException {
-//        MetadataSearch searchAsOwner = new MetadataSearch(username);
-//        searchAsOwner.clearCollection();
-//        searchAsOwner.setAccessibleOwnersImplicit();
-//
-//        MetadataItem metadataItem = createSingleMetadataItem("");
-//        searchAsOwner.setMetadataItem(metadataItem);
-//        searchAsOwner.updatePermissions(sharedUser, "", PermissionType.READ_WRITE);
-//
-//        MetadataSearch search = new MetadataSearch(sharedUser);
-//        search.setAccessibleOwnersImplicit();
-//
-//        search.setMetadataItem(metadataItem);
-//        String strUpdate =
-//                "  {" +
-//                        "    \"name\": \"New Metadata\"," +
-//                        "    \"value\": {" +
-//                        "      \"title\": \"Changed Metadata Title\"," +
-//                        "      \"properties\": {" +
-//                        "        \"species\": \"wisteria\"," +
-//                        "        \"description\": \"A model flower organism...\"" +
-//                        "       }" +
-//                        "       }" +
-//                        "   }";
-//
-//        JsonFactory factory = new ObjectMapper().getFactory();
-//        JsonNode jsonMetadataNode = factory.createParser(strUpdate).readValueAsTree();
-//        search.parseJsonMetadata(jsonMetadataNode);
-//        search.setUuid(metadataItem.getUuid());
-//        search.setOwner(username);
-//
-//        List<MetadataItem> allResult = search.findAll();
-//        MetadataItem updatedMetadataItem = search.updateMetadataItem();
-//
-//        String queryAfterUpdate = "{\"name\": \"New Metadata\", \"value.title\": \"Changed Metadata Title\"}";
-//        queryAfterUpdate = "{\"name\": \"New Metadata\"}";
-//        List<MetadataItem> result = search.find(queryAfterUpdate);
-//        allResult = search.findAll();
-//
-//        Assert.assertEquals(result.get(0), updatedMetadataItem);
-//    }
-//
-//    public void updateExistingItemAsSharedUserWithNoPermission() throws IOException, MetadataStoreException, MetadataException, MetadataQueryException, PermissionException, UUIDException {
-//        MetadataSearch searchAsOwner = new MetadataSearch(username);
-//        searchAsOwner.clearCollection();
-//        searchAsOwner.setAccessibleOwnersImplicit();
-//
-//        MetadataItem metadataItem = createSingleMetadataItem("");
-//
-//        MetadataSearch search = new MetadataSearch(sharedUser);
-//        search.setAccessibleOwnersImplicit();
-//
-//        String strUpdate =
-//                "  {" +
-//                        "    \"name\": \"New Metadata\"," +
-//                        "    \"value\": {" +
-//                        "      \"title\": \"Changed Metadata Title\"," +
-//                        "      \"properties\": {" +
-//                        "        \"species\": \"wisteria\"," +
-//                        "        \"description\": \"A model flower organism...\"" +
-//                        "       }" +
-//                        "       }" +
-//                        "   }";
-//
-//        JsonFactory factory = new ObjectMapper().getFactory();
-//        JsonNode jsonMetadataNode = factory.createParser(strUpdate).readValueAsTree();
-//        search.parseJsonMetadata(jsonMetadataNode);
-//        search.setUuid(metadataItem.getUuid());
-//
-//        try {
-//            MetadataItem updatedMetadataItem = search.updateMetadataItem();
-//        } catch (PermissionException p) {
-//            Assert.assertEquals(p.getMessage(), "User does not have sufficient access to edit public metadata item.");
-//        }
-//    }
     @Test
     public void findMetadataWithFiltersTest() throws MetadataException, IOException, MetadataQueryException, PermissionException {
         ObjectMapper mapper = new ObjectMapper();
@@ -502,7 +389,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void regexSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
+    public void findRegexSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch search = new MetadataSearch(username);
         search.setAccessibleOwnersImplicit();
 
@@ -527,7 +414,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void nameSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
+    public void findNameSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -552,7 +439,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void nestedValueSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
+    public void findNestedValueSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -577,7 +464,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void conditionalSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
+    public void findConditionalSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -656,115 +543,6 @@ public class MetadataSearchIT {
         Assert.assertNull(itemAfterDelete, "Item should not be found after deleting.");
     }
 
-//    @Test
-//    public void deleteMetadataItemAsReadUserTest() throws MetadataStoreException, MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException {
-//        String metadataQueryAloe =
-//                "  {" +
-//                        "    \"name\": \"Aloe\"," +
-//                        "    \"value\": {" +
-//                        "      \"type\": \"a plant\"" +
-//                        "}" +
-//                        "   }";
-//
-//
-//        MetadataSearch search = new MetadataSearch(this.username);
-//        search.setAccessibleOwnersExplicit();
-//        MetadataItem aloeMetadataItem = createSingleMetadataItem(metadataQueryAloe);
-//        search.updatePermissions(this.sharedUser, "", PermissionType.READ);
-//
-//        MetadataSearch readSearch = new MetadataSearch(this.sharedUser);
-//        readSearch.setAccessibleOwnersExplicit();
-//
-//        readSearch.setUuid(aloeMetadataItem.getUuid());
-//        MetadataItem itemToDelete = readSearch.findOne();
-//        readSearch.setMetadataItem(itemToDelete);
-//
-//        Assert.assertThrows(PermissionException.class, () -> readSearch.deleteMetadataItem());
-//    }
-//
-//    @Test
-//    public void deleteMetadataItemAsReadWriteUserTest() throws MetadataStoreException, MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException {
-//        String metadataQueryAloe =
-//                "  {" +
-//                        "    \"name\": \"Aloe\"," +
-//                        "    \"value\": {" +
-//                        "      \"type\": \"a plant\"" +
-//                        "}" +
-//                        "   }";
-//
-//
-//        MetadataSearch search = new MetadataSearch(this.username);
-//        search.setAccessibleOwnersExplicit();
-//        MetadataItem aloeMetadataItem = createSingleMetadataItem(metadataQueryAloe);
-//        search.updatePermissions(this.sharedUser, "", PermissionType.READ_WRITE);
-//
-//        MetadataSearch readWriteSearch = new MetadataSearch(this.username);
-//        readWriteSearch.setAccessibleOwnersExplicit();
-//
-//        readWriteSearch.setUuid(aloeMetadataItem.getUuid());
-//        MetadataItem itemToDelete = readWriteSearch.findOne();
-//        readWriteSearch.setMetadataItem(itemToDelete);
-//        MetadataItem deletedItem = readWriteSearch.deleteMetadataItem();
-//
-//        Assert.assertNotNull(deletedItem, "Deleting metadata item should return the item removed.");
-//        Assert.assertEquals(deletedItem.getName(), "Aloe", "Deleted metadata item returned should have name \"Aloe\"");
-//
-//    }
-//
-//    @Test
-//    public void deleteMetadataItemAsWriteUserTest() throws MetadataStoreException, MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException {
-//        String metadataQueryAloe =
-//                "  {" +
-//                        "    \"name\": \"Aloe\"," +
-//                        "    \"value\": {" +
-//                        "      \"type\": \"a plant\"" +
-//                        "}" +
-//                        "   }";
-//
-//
-//        MetadataSearch search = new MetadataSearch(this.username);
-//        search.setAccessibleOwnersExplicit();
-//        MetadataItem aloeMetadataItem = createSingleMetadataItem(metadataQueryAloe);
-//        search.updatePermissions(this.sharedUser, "", PermissionType.WRITE);
-//
-//        MetadataSearch writeSearch = new MetadataSearch(this.username);
-//        writeSearch.setAccessibleOwnersExplicit();
-//
-//        writeSearch.setUuid(aloeMetadataItem.getUuid());
-//        MetadataItem itemToDelete = writeSearch.findOne();
-//        writeSearch.setMetadataItem(itemToDelete);
-//        MetadataItem deletedItem = writeSearch.deleteMetadataItem();
-//
-//        Assert.assertNotNull(deletedItem, "Deleting metadata item should return the item removed.");
-//        Assert.assertEquals(deletedItem.getName(), "Aloe", "Deleted metadata item returned should have name \"Aloe\"");
-//
-//    }
-//
-//    @Test
-//    public void deleteMetadataItemWithNoPermissionTest() throws MetadataStoreException, MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException {
-//        String metadataQueryAloe =
-//                "  {" +
-//                        "    \"name\": \"Aloe\"," +
-//                        "    \"value\": {" +
-//                        "      \"type\": \"a plant\"" +
-//                        "}" +
-//                        "   }";
-//
-//
-//        MetadataSearch search = new MetadataSearch(this.username);
-//        search.setAccessibleOwnersExplicit();
-//        MetadataItem aloeMetadataItem = createSingleMetadataItem(metadataQueryAloe);
-//        search.updatePermissions(this.sharedUser, "", PermissionType.NONE);
-//
-//        MetadataSearch noneSearch = new MetadataSearch(this.sharedUser);
-//        noneSearch.setAccessibleOwnersExplicit();
-//        noneSearch.setUuid(aloeMetadataItem.getUuid());
-//        MetadataItem itemToDelete = noneSearch.findOne();
-//        noneSearch.setMetadataItem(itemToDelete);
-//
-//        Assert.assertThrows(PermissionException.class, () -> noneSearch.deleteMetadataItem());
-//    }
-
     @Test
     public void StringToMetadataItemTest() throws IOException, UUIDException, PermissionException, MetadataException, MetadataStoreException, MetadataQueryException, MetadataAssociationException {
         String metadataQueryAloe =
@@ -779,7 +557,6 @@ public class MetadataSearchIT {
         MetadataSearch search = new MetadataSearch(this.username);
         search.setAccessibleOwnersExplicit();
 
-//        MetadataItem aloeMetadataItem = createSingleMetadataItem(metadataQueryAloe);
         MetadataItem aloeMetadataItem = createMetadataItemFromString(metadataQueryAloe, this.username);
         String metadataQueryAgavoideae =
                 "  {" +
@@ -812,41 +589,5 @@ public class MetadataSearchIT {
             Assert.fail("Serializing MetadataItem to Json String should not throw exception");
         }
     }
-
-//    @Test
-//    public void findMetadataWithoutPermissionTest() throws MetadataStoreException, MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException {
-//        MetadataSearch search = new MetadataSearch(this.username);
-//        search.clearCollection();
-//        search.setAccessibleOwnersExplicit();
-//
-//        String metadataQueryAgavoideae =
-//                "  {" +
-//                        "    \"name\": \"Agavoideae\"," +
-//                        "    \"value\": {" +
-//                        "      \"type\": \"a flowering plant\"," +
-//                        "      \"order\": \" Asparagales\", " +
-//                        "      \"properties\": {" +
-//                        "        \"profile\": {" +
-//                        "        \"status\": \"paused\"" +
-//                        "           }," +
-//                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
-//                        "       }" +
-//                        "       }" +
-//                        "   }";
-//        //add item
-//        MetadataItem metadataItem = createSingleMetadataItem(metadataQueryAgavoideae);
-//        search.setUuid(metadataItem.getUuid());
-//        search.updatePermissions(sharedUser, "", PermissionType.READ);
-//        search.updatePermissions("readWriteUser", "", PermissionType.READ_WRITE);
-//        search.updatePermissions("writeUser", "", PermissionType.WRITE);
-//
-//        String invalidUser = "invalidUser";
-//        MetadataSearch searchAsUserWithoutPermission = new MetadataSearch(invalidUser);
-//        searchAsUserWithoutPermission.setUsername(invalidUser);
-//        searchAsUserWithoutPermission.setAccessibleOwnersExplicit();
-//        List<MetadataItem> newResult = searchAsUserWithoutPermission.findPermission_User(invalidUser, metadataItem.getUuid());
-//        Assert.assertNull(newResult, "User without permissions to view metadata item should return null value.");
-//
-//    }
 
 }

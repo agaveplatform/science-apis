@@ -41,6 +41,7 @@ public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUU
         if (isValidUUIDType(uuid)) {
             try {
                 uuid.getObjectReference();
+                isValid = true;
             } catch (Exception e) {
                 constraintContext.disableDefaultConstraintViolation();
                 constraintContext.buildConstraintViolationWithTemplate( 

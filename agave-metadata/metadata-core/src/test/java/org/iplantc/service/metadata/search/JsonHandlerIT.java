@@ -289,139 +289,139 @@ public class JsonHandlerIT {
         Assert.assertThrows(MetadataQueryException.class, () -> jsonHandler.parsePermissionToArrayNode(node));
     }
 
-    @Test
-    public void parseSchemaIdToStringTest() throws IOException, MetadataQueryException, PermissionException, MetadataStoreException {
-        String schemaId = new AgaveUUID(UUIDType.SCHEMA).toString();
-        String strJson = "{" +
-                "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
-                "\"value\": " + "{\"testKey\":\"testValue\"}" + "," +
-                "\"associationIds\": " + "[" + "\"" + new AgaveUUID(UUIDType.JOB).toString() + "\"" + "]" + "," +
-                "\"schemaId\": " + "\"" + schemaId + "\"" + "," +
-                "\"permissions\": " + "[\"" + PermissionType.READ_WRITE + "\"]" + "," +
-                "\"notifications\": " + "[\"" + "notifications" + "\"]" + "" +
-                "}";
+//    @Test
+//    public void parseSchemaIdToStringTest() throws IOException, MetadataQueryException, PermissionException, MetadataStoreException {
+//        String schemaId = new AgaveUUID(UUIDType.SCHEMA).toString();
+//        String strJson = "{" +
+//                "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
+//                "\"value\": " + "{\"testKey\":\"testValue\"}" + "," +
+//                "\"associationIds\": " + "[" + "\"" + new AgaveUUID(UUIDType.JOB).toString() + "\"" + "]" + "," +
+//                "\"schemaId\": " + "\"" + schemaId + "\"" + "," +
+//                "\"permissions\": " + "[\"" + PermissionType.READ_WRITE + "\"]" + "," +
+//                "\"notifications\": " + "[\"" + "notifications" + "\"]" + "" +
+//                "}";
+//
+//
+//        ObjectMapper mapper = new ObjectMapper();
+//        JsonFactory factory = mapper.getFactory();
+//        JsonNode node = factory.createParser(strJson).readValueAsTree();
+//
+//        JsonHandler jsonHandler = new JsonHandler();
+//
+//        MetadataValidation mockMetadataValidation = mock(MetadataValidation.class);
+//        MetadataSchemaItem toReturnItem = new MetadataSchemaItem();
+//        toReturnItem.setUuid(schemaId);
+//        toReturnItem.setOwner("TEST_USER");
+//        toReturnItem.setSchema(mapper.createObjectNode().put("Sample Name", "Sample Value"));
+//
+//        Document schemaDoc = new Document("uuid", schemaId)
+//                .append("owner", "TEST_USER")
+//                .append("schema", "{" +
+//                        "\"title\": \"Example Schema\", " +
+//                        "\"type\": \"object\", "+
+//                        "\"properties\": {" +
+//                        "\"species\": {" +
+//                        "\"type\": \"string\"" +
+//                        "}" +
+//                        "}," +
+//                        "\"required\": [" +
+//                        "\"species\"" +
+//                        "]" +
+//                        "}");
+//
+//
+//        Mockito.when(mockMetadataValidation.checkSchemaIdExists(schemaId)).thenReturn(schemaDoc);
+//        jsonHandler.setMetadataValidation(mockMetadataValidation);
+//
+//        String parsedSchemaId = jsonHandler.parseSchemaIdToString(node);
+//        Assert.assertEquals(parsedSchemaId, schemaId);
+//    }
 
+//    @Test
+//    public void parseInvalidSchemaIdToStringTest() throws IOException, MetadataQueryException, PermissionException, MetadataStoreException {
+//        String schemaId = new AgaveUUID(UUIDType.JOB).toString();
+//
+//        String strJson = "{" +
+//                "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
+//                "\"value\": " + "{\"testKey\":\"testValue\"}" + "," +
+//                "\"associationIds\": " + "[" + "\"" + new AgaveUUID(UUIDType.JOB).toString() + "\"" + "]" + "," +
+//                "\"schemaId\": " + "\"" + schemaId + "\"" + "," +
+//                "\"permissions\": " + "[\"" + PermissionType.READ_WRITE + "\"]" + "," +
+//                "\"notifications\": " + "[\"" + "notifications" + "\"]" + "" +
+//                "}";
+//
+//        ObjectMapper mapper = new ObjectMapper();
+//        JsonFactory factory = mapper.getFactory();
+//        JsonNode node = factory.createParser(strJson).readValueAsTree();
+//
+//        JsonHandler jsonHandler = new JsonHandler();
+//        Assert.assertNull(jsonHandler.parseSchemaIdToString(node));
+////        Assert.assertTrue(jsonHandler.parseSchemaIdToString(node).length() == 0);
+//    }
 
-        ObjectMapper mapper = new ObjectMapper();
-        JsonFactory factory = mapper.getFactory();
-        JsonNode node = factory.createParser(strJson).readValueAsTree();
-
-        JsonHandler jsonHandler = new JsonHandler();
-
-        MetadataValidation mockMetadataValidation = mock(MetadataValidation.class);
-        MetadataSchemaItem toReturnItem = new MetadataSchemaItem();
-        toReturnItem.setUuid(schemaId);
-        toReturnItem.setOwner("TEST_USER");
-        toReturnItem.setSchema(mapper.createObjectNode().put("Sample Name", "Sample Value"));
-
-        Document schemaDoc = new Document("uuid", schemaId)
-                .append("owner", "TEST_USER")
-                .append("schema", "{" +
-                        "\"title\": \"Example Schema\", " +
-                        "\"type\": \"object\", "+
-                        "\"properties\": {" +
-                        "\"species\": {" +
-                        "\"type\": \"string\"" +
-                        "}" +
-                        "}," +
-                        "\"required\": [" +
-                        "\"species\"" +
-                        "]" +
-                        "}");
-
-
-        Mockito.when(mockMetadataValidation.checkSchemaIdExists(schemaId)).thenReturn(schemaDoc);
-        jsonHandler.setMetadataValidation(mockMetadataValidation);
-
-        String parsedSchemaId = jsonHandler.parseSchemaIdToString(node);
-        Assert.assertEquals(parsedSchemaId, schemaId);
-    }
-
-    @Test
-    public void parseInvalidSchemaIdToStringTest() throws IOException, MetadataQueryException, PermissionException, MetadataStoreException {
-        String schemaId = new AgaveUUID(UUIDType.JOB).toString();
-
-        String strJson = "{" +
-                "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
-                "\"value\": " + "{\"testKey\":\"testValue\"}" + "," +
-                "\"associationIds\": " + "[" + "\"" + new AgaveUUID(UUIDType.JOB).toString() + "\"" + "]" + "," +
-                "\"schemaId\": " + "\"" + schemaId + "\"" + "," +
-                "\"permissions\": " + "[\"" + PermissionType.READ_WRITE + "\"]" + "," +
-                "\"notifications\": " + "[\"" + "notifications" + "\"]" + "" +
-                "}";
-
-        ObjectMapper mapper = new ObjectMapper();
-        JsonFactory factory = mapper.getFactory();
-        JsonNode node = factory.createParser(strJson).readValueAsTree();
-
-        JsonHandler jsonHandler = new JsonHandler();
-        Assert.assertNull(jsonHandler.parseSchemaIdToString(node));
-//        Assert.assertTrue(jsonHandler.parseSchemaIdToString(node).length() == 0);
-    }
-
-    @Test
-    public void validateValueAgainstSchemaTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException {
-        String strSchemaJson = "" +
-                "{" +
-                "\"title\": \"Example Schema\", " +
-                "\"type\": \"object\", "+
-                "\"properties\": {" +
-                "\"species\": {" +
-                "\"type\": \"string\"" +
-                "}" +
-                "}," +
-                "\"required\": [" +
-                "\"species\"" +
-                "]" +
-                "}";
-
-
-        String strValue = "{" +
-                "\"title\": \"Some Metadata\", " +
-                "\"properties\": {" +
-                "\"species\": {" +
-                "\"type\": \"Some species type\"" +
-                "}" +
-                "}, " +
-                "\"species\": \"required\"" +
-                "}";
-
-        ObjectMapper mapper = new ObjectMapper();
-        JsonFactory factory = mapper.getFactory();
-
-        JsonHandler jsonHandler = new JsonHandler();
-        String validatedValue = jsonHandler.validateValueAgainstSchema(strValue, strSchemaJson);
-        Assert.assertEquals(validatedValue, strValue);
-    }
-
-    @Test
-    public void validateInvalidValueAgainstSchemaTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataException, PermissionException {
-        String strSchemaJson = "" +
-                "{" +
-                "\"title\": \"Example Schema\", " +
-                "\"type\": \"object\", "+
-                "\"properties\": {" +
-                "\"species\": {" +
-                "\"type\": \"string\"" +
-                "}" +
-                "}," +
-                "\"required\": [" +
-                "\"species\"" +
-                "]" +
-                "}";
-
-
-        String strValue = "{" +
-                "\"properties\": {" +
-                "\"species\": {" +
-                "\"type\": \"Some species type\"" +
-                "}" +
-                "}" +
-                "}";
-
-        JsonHandler jsonHandler = new JsonHandler();
-        Assert.assertThrows(MetadataSchemaValidationException.class, ()-> jsonHandler.validateValueAgainstSchema(strValue, strSchemaJson));
-    }
+//    @Test
+//    public void validateValueAgainstSchemaTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException {
+//        String strSchemaJson = "" +
+//                "{" +
+//                "\"title\": \"Example Schema\", " +
+//                "\"type\": \"object\", "+
+//                "\"properties\": {" +
+//                "\"species\": {" +
+//                "\"type\": \"string\"" +
+//                "}" +
+//                "}," +
+//                "\"required\": [" +
+//                "\"species\"" +
+//                "]" +
+//                "}";
+//
+//
+//        String strValue = "{" +
+//                "\"title\": \"Some Metadata\", " +
+//                "\"properties\": {" +
+//                "\"species\": {" +
+//                "\"type\": \"Some species type\"" +
+//                "}" +
+//                "}, " +
+//                "\"species\": \"required\"" +
+//                "}";
+//
+//        ObjectMapper mapper = new ObjectMapper();
+//        JsonFactory factory = mapper.getFactory();
+//
+//        JsonHandler jsonHandler = new JsonHandler();
+//        String validatedValue = jsonHandler.validateValueAgainstSchema(strValue, strSchemaJson);
+//        Assert.assertEquals(validatedValue, strValue);
+//    }
+//
+//    @Test
+//    public void validateInvalidValueAgainstSchemaTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataException, PermissionException {
+//        String strSchemaJson = "" +
+//                "{" +
+//                "\"title\": \"Example Schema\", " +
+//                "\"type\": \"object\", "+
+//                "\"properties\": {" +
+//                "\"species\": {" +
+//                "\"type\": \"string\"" +
+//                "}" +
+//                "}," +
+//                "\"required\": [" +
+//                "\"species\"" +
+//                "]" +
+//                "}";
+//
+//
+//        String strValue = "{" +
+//                "\"properties\": {" +
+//                "\"species\": {" +
+//                "\"type\": \"Some species type\"" +
+//                "}" +
+//                "}" +
+//                "}";
+//
+//        JsonHandler jsonHandler = new JsonHandler();
+//        Assert.assertThrows(MetadataSchemaValidationException.class, ()-> jsonHandler.validateValueAgainstSchema(strValue, strSchemaJson));
+//    }
 
     public String createResponseString(AgaveUUID uuid) throws UUIDException {
         return "  {" +

@@ -245,7 +245,10 @@ public class JsonHandler {
             if (metadataValidation == null)
                 metadataValidation = new MetadataValidation();
 
-            Document schemaDoc = metadataValidation.checkSchemaIdExists(schemaNode.get("schemaId").asText());
+            Document schemaDoc = MetadataSchemaDao.getInstance().findOne(new Document("uuid", schemaNode.get("schemaId").asText())
+                                                    .append("tenantId", TenancyHelper.getCurrentTenantId()));
+
+//            Document schemaDoc = metadataValidation.checkSchemaIdExists(schemaNode.get("schemaId").asText());
 
             //where to check for permission?
             if (schemaDoc != null)

@@ -36,7 +36,7 @@ public class MetadataSchemaComplianceValidatorIT {
     private String username = "TEST_USER";
 
     @Test
-    public void testValidMetadataValueConstraint() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataStoreException {
+    public void validMetadataValueConstraintTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataStoreException {
         String strSchemaJson = "" +
                 "{" +
                 "\"title\": \"Example Schema\", " +
@@ -96,7 +96,7 @@ public class MetadataSchemaComplianceValidatorIT {
     }
 
     @Test
-    public void testInvalidMetadataValueConstraint() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataStoreException {
+    public void InvalidMetadataValueConstraintTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataStoreException {
         String strSchemaJson = "" +
                 "{" +
                 "\"title\": \"Example Schema\", " +
@@ -111,8 +111,8 @@ public class MetadataSchemaComplianceValidatorIT {
                     "]" +
                 "}";
 
-        String invalidSchemaId = new AgaveUUID(UUIDType.SCHEMA).toString();
-        Assert.assertNotNull(createSchema(invalidSchemaId,strSchemaJson));
+        String schemaId = new AgaveUUID(UUIDType.SCHEMA).toString();
+        Assert.assertNotNull(createSchema(schemaId,strSchemaJson));
 
         String strValue = "{" +
                 "\"title\": \"Some Metadata\", " +
@@ -126,7 +126,7 @@ public class MetadataSchemaComplianceValidatorIT {
         String strJson = "{" +
                 "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
                 "\"value\": " + strValue + "," +
-                "\"schemaId\": " + "\"" + invalidSchemaId + "\"" +
+                "\"schemaId\": " + "\"" + schemaId + "\"" +
                 "}";
 
         ObjectMapper mapper = new ObjectMapper();
@@ -138,7 +138,7 @@ public class MetadataSchemaComplianceValidatorIT {
         MetadataItem invalidItem = new MetadataItem();
         invalidItem.setValue(jsonHandler.parseValueToJsonNode(node));
         invalidItem.setName(jsonHandler.parseNameToString(node));
-        invalidItem.setSchemaId(invalidSchemaId);
+        invalidItem.setSchemaId(schemaId);
         invalidItem.setTenantId(TenancyHelper.getCurrentTenantId());
 
         invalidItem.setOwner(this.username);
@@ -154,6 +154,53 @@ public class MetadataSchemaComplianceValidatorIT {
         Assert.assertEquals(constraintViolations.size(), 1);
         Assert.assertTrue(constraintViolations.iterator().next().getMessage().contains("Metadata value does not conform to schema"));
 
+    }
+
+    @Test
+    public void invalidSchemaIDConstraintTest() throws IOException, MetadataStoreException, MetadataQueryException {
+        String invalidSchemaId = new AgaveUUID(UUIDType.JOB).toString();
+
+        String strValue = "{" +
+                "\"title\": \"Some Metadata\", " +
+                "\"properties\": {" +
+                "\"species\": {" +
+                "\"type\": \"Some species type\"" +
+                "}" +
+                "}, " +
+                "\"species\": \"required\"" +
+                "}";
+
+        String strJson = "{" +
+                "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
+                "\"value\": " + strValue + "," +
+                "\"schemaId\": " + "\"" + invalidSchemaId + "\"" +
+                "}";
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonFactory factory = mapper.getFactory();
+        JsonNode node = factory.createParser(strJson).readValueAsTree();
+
+        JsonHandler jsonHandler = new JsonHandler();
+
+        MetadataItem validItem = new MetadataItem();
+        validItem.setValue(jsonHandler.parseValueToJsonNode(node));
+        validItem.setName(jsonHandler.parseNameToString(node));
+        validItem.setSchemaId(invalidSchemaId);
+        validItem.setTenantId(TenancyHelper.getCurrentTenantId());
+
+        validItem.setOwner(this.username);
+        validItem.setInternalUsername(this.username);
+
+        //validator
+        Validator validator;
+        ValidatorFactory validatorFactory = Validation.buildDefaultValidatorFactory();
+        validator = validatorFactory.getValidator();
+
+        Set<ConstraintViolation<MetadataItem>> constraintViolations = validator.validate(validItem);
+
+        Assert.assertEquals(constraintViolations.size(), 1);
+        Assert.assertEquals(constraintViolations.iterator().next().getMessage(), "The given uuid " +
+                invalidSchemaId + " does not match the expected type SCHEMA");
     }
 
 

@@ -33,8 +33,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @Test(groups = {"integration"})
 
-public class MetadataDataLeakIT {
-    List<String> queryList = new ArrayList<>();
+public class MetadataDataProcessingTest {
     String username = "TEST_USER";
     String readUser = "READ_USER";
     String readWriteUser = "READWRITE_USER";
@@ -85,7 +84,7 @@ public class MetadataDataLeakIT {
     }
 
     @AfterTest
-    public void cleanUpCollection(){
+    public void cleanUpCollection() {
         collection.deleteMany(new Document());
     }
 
@@ -98,7 +97,7 @@ public class MetadataDataLeakIT {
         List<MetadataItem> result = search.find("{\"name\":\"mustard plant\"}");
 
         Assert.assertEquals(result.size(), 1);
-        Assert.assertEquals(result.get(0),addedMetadataItem );
+        Assert.assertEquals(result.get(0), addedMetadataItem);
     }
 
     //find metadata item - with read/write permission
@@ -109,7 +108,7 @@ public class MetadataDataLeakIT {
         List<MetadataItem> result = search.find("{\"name\":\"mustard plant\"}");
 
         Assert.assertEquals(result.size(), 1);
-        Assert.assertEquals(result.get(0),addedMetadataItem );
+        Assert.assertEquals(result.get(0), addedMetadataItem);
     }
 
     //find metadata item - with no permissions
@@ -135,10 +134,12 @@ public class MetadataDataLeakIT {
         metadataItem.setName("New Name");
         search.setMetadataItem(metadataItem);
 
-        Assert.assertThrows(PermissionException.class, ()->search.updateMetadataItem());
+        Assert.assertThrows(PermissionException.class, () -> search.updateMetadataItem());
 
         List<MetadataItem> originalResult = search.find("{\"name\":\"mustard plant\"}");
         Assert.assertEquals(originalResult.size(), 1);
+        List<MetadataItem> updatedResult = search.find("{\"name\":\"NewName\"}");
+        Assert.assertEquals(updatedResult.size(), 0);
     }
 
     //update metadata item - with read/write permission
@@ -159,6 +160,8 @@ public class MetadataDataLeakIT {
 
         List<MetadataItem> originalResult = search.find("{\"name\":\"mustard plant\"}");
         Assert.assertEquals(originalResult.size(), 0);
+        List<MetadataItem> updatedResult = search.find("{\"name\":\"New Name\"}");
+        Assert.assertEquals(updatedResult.size(), 1);
     }
 
     //update metadata item - with no permissions
@@ -174,7 +177,10 @@ public class MetadataDataLeakIT {
         search.setMetadataItem(metadataItem);
         search.setAccessibleOwnersImplicit();
 
-        Assert.assertThrows(PermissionException.class, ()->search.updateMetadataItem());
+        Assert.assertThrows(PermissionException.class, () -> search.updateMetadataItem());
+
+        List<MetadataItem> originalResult = search.find("{\"name\":\"New Name\"}");
+        Assert.assertEquals(originalResult.size(), 0);
     }
 
     //delete metadata item - with no permissions
@@ -189,7 +195,10 @@ public class MetadataDataLeakIT {
         search.setMetadataItem(metadataItem);
         search.setAccessibleOwnersImplicit();
 
-        Assert.assertThrows(PermissionException.class, ()->search.deleteMetadataItem());
+        Assert.assertThrows(PermissionException.class, () -> search.deleteMetadataItem());
+
+        List<MetadataItem> originalResult = search.find("{\"name\":\"New Name\"}");
+        Assert.assertEquals(originalResult.size(), 0);
     }
 
     //delete metadata item - with read permission
@@ -204,7 +213,7 @@ public class MetadataDataLeakIT {
         search.setMetadataItem(metadataItem);
         search.setAccessibleOwnersImplicit();
 
-        Assert.assertThrows(PermissionException.class, ()->search.deleteMetadataItem());
+        Assert.assertThrows(PermissionException.class, () -> search.deleteMetadataItem());
 
         List<MetadataItem> originalResult = search.find("{\"name\":\"New Name\"}");
         Assert.assertEquals(originalResult.size(), 1);
@@ -224,8 +233,8 @@ public class MetadataDataLeakIT {
 
         Assert.assertNotNull(search.deleteMetadataItem());
 
-        List<MetadataItem> originalResult = search.find("{\"name\":\"mustard plant\"}");
-        Assert.assertEquals(originalResult.size(), 0);
+        List<MetadataItem> updatedResult = search.find("{\"name\":\"New Name\"}");
+        Assert.assertEquals(updatedResult.size(), 0);
     }
 
 }

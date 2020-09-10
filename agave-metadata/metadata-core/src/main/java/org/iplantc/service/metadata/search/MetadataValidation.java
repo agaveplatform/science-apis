@@ -150,91 +150,91 @@ public class MetadataValidation {
     }
 
 
-    /**
-     * Check if given {@code schemaId} exists
-     * @param schemaId uuid of the schema to validate
-     * @return {@link Document} of the schema if exists, null otherwise
-     * @throws MetadataStoreException if unable to connect to the mongo collection
-     */
-    public Document checkSchemaIdExists(String schemaId) throws MetadataStoreException {
-        if (schemaId != null) {
-            Bson schemaQuery = and(eq("uuid", schemaId), eq("tenantId", TenancyHelper.getCurrentTenantId()));
-            MetadataSchemaDao schemaDao = new MetadataSchemaDao().getInstance();
+//    /**
+//     * Check if given {@code schemaId} exists
+//     * @param schemaId uuid of the schema to validate
+//     * @return {@link Document} of the schema if exists, null otherwise
+//     * @throws MetadataStoreException if unable to connect to the mongo collection
+//     */
+//    public Document checkSchemaIdExists(String schemaId) throws MetadataStoreException {
+//        if (schemaId != null) {
+//            Bson schemaQuery = and(eq("uuid", schemaId), eq("tenantId", TenancyHelper.getCurrentTenantId()));
+//            MetadataSchemaDao schemaDao = new MetadataSchemaDao().getInstance();
+//
+//            Document schemaDocument = schemaDao.findOne(schemaQuery);
+//
+//            // lookup the schema
+//            if (schemaDocument != null)
+//                return schemaDocument;
+//        }
+//        return null;
+//    }
 
-            Document schemaDocument = schemaDao.findOne(schemaQuery);
+//    /**
+//     * Check if {@code username} has read permissions for the given schema
+//     * @param schemaDocument {@link Document} of the given schema
+//     * @param username to check permissions for
+//     * @return true if {@code username} has read permissions
+//     * @throws MetadataQueryException
+//     */
+//    public boolean checkSchemaIdPermission(Document schemaDocument, String username) throws PermissionException {
+//        // check user permsisions to view the schema
+//        try {
+//            String schemaId = (String) schemaDocument.get("uuid");
+//            MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager(schemaId,
+//                    (String) schemaDocument.get("owner"));
+//            if (schemaPM.canRead(username)) {
+//                return true;
+//            }
+//                else{
+//                throw new MetadataException("User does not have permission to read metadata schema");
+//            }
+//        } catch (MetadataException e) {
+//            throw new PermissionException(e.getMessage());
+//        }
+//    }
 
-            // lookup the schema
-            if (schemaDocument != null)
-                return schemaDocument;
-        }
-        return null;
-    }
-
-    /**
-     * Check if {@code username} has read permissions for the given schema
-     * @param schemaDocument {@link Document} of the given schema
-     * @param username to check permissions for
-     * @return true if {@code username} has read permissions
-     * @throws MetadataQueryException
-     */
-    public boolean checkSchemaIdPermission(Document schemaDocument, String username) throws PermissionException {
-        // check user permsisions to view the schema
-        try {
-            String schemaId = (String) schemaDocument.get("uuid");
-            MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager(schemaId,
-                    (String) schemaDocument.get("owner"));
-            if (schemaPM.canRead(username)) {
-                return true;
-            }
-                else{
-                throw new MetadataException("User does not have permission to read metadata schema");
-            }
-        } catch (MetadataException e) {
-            throw new PermissionException(e.getMessage());
-        }
-    }
-
-    /**
-     * Verify that the {@code value} conforms to the schema in {@code schemaDoc}
-     *a
-     * @param schemaDoc {@link Document} of the schema
-     * @param value Json string to verify against the schema
-     * @return validated schema id, empty string otherwise
-     * @throws MetadataSchemaValidationException if the value does not conform to the {@code schemaId}
-     */
-    public String validateValueAgainstSchema(Document schemaDoc, String value) throws MetadataSchemaValidationException {
-        // if a schema is given, validate the metadata against that registered schema
-        if (schemaDoc != null) {
-            // now validate the json against the schema
-            String schema;
-            try {
-                schema = schemaDoc.getString("schema");
-                JsonFactory factory = new ObjectMapper().getFactory();
-                JsonNode jsonSchemaNode = factory.createParser(schema).readValueAsTree();
-                JsonNode jsonMetadataNode = factory.createParser(value).readValueAsTree();
-                AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();
-
-                ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
-                if (!report.isSuccess()) {
-                    StringBuilder sb = new StringBuilder();
-                    for (Iterator<ProcessingMessage> reportMessageIterator = report.iterator(); reportMessageIterator.hasNext(); ) {
-                        sb.append(reportMessageIterator.next().toString() + "\n");
-                    }
-                    throw new MetadataSchemaValidationException(
-                            "Metadata value does not conform to schema. \n" + sb.toString());
-                }
-
-                return (String)schemaDoc.get("uuid");
-
-            } catch (MetadataSchemaValidationException e) {
-                throw e;
-            } catch (Exception e) {
-                throw new MetadataSchemaValidationException(
-                        "Metadata does not conform to schema.");
-            }
-        }
-        return "";
-    }
+//    /**
+//     * Verify that the {@code value} conforms to the schema in {@code schemaDoc}
+//     *a
+//     * @param schemaDoc {@link Document} of the schema
+//     * @param value Json string to verify against the schema
+//     * @return validated schema id, empty string otherwise
+//     * @throws MetadataSchemaValidationException if the value does not conform to the {@code schemaId}
+//     */
+//    public String validateValueAgainstSchema(Document schemaDoc, String value) throws MetadataSchemaValidationException {
+//        // if a schema is given, validate the metadata against that registered schema
+//        if (schemaDoc != null) {
+//            // now validate the json against the schema
+//            String schema;
+//            try {
+//                schema = schemaDoc.getString("schema");
+//                JsonFactory factory = new ObjectMapper().getFactory();
+//                JsonNode jsonSchemaNode = factory.createParser(schema).readValueAsTree();
+//                JsonNode jsonMetadataNode = factory.createParser(value).readValueAsTree();
+//                AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();
+//
+//                ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
+//                if (!report.isSuccess()) {
+//                    StringBuilder sb = new StringBuilder();
+//                    for (Iterator<ProcessingMessage> reportMessageIterator = report.iterator(); reportMessageIterator.hasNext(); ) {
+//                        sb.append(reportMessageIterator.next().toString() + "\n");
+//                    }
+//                    throw new MetadataSchemaValidationException(
+//                            "Metadata value does not conform to schema. \n" + sb.toString());
+//                }
+//
+//                return (String)schemaDoc.get("uuid");
+//
+//            } catch (MetadataSchemaValidationException e) {
+//                throw e;
+//            } catch (Exception e) {
+//                throw new MetadataSchemaValidationException(
+//                        "Metadata does not conform to schema.");
+//            }
+//        }
+//        return "";
+//    }
 
     /**
      * Verify if all the uuids of the MetadataItems in the given list are valid

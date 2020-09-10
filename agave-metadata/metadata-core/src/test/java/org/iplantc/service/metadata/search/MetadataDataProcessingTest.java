@@ -15,14 +15,13 @@ import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
+import org.iplantc.service.metadata.managers.MetadataItemPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataItemCodec;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,7 +56,7 @@ public class MetadataDataProcessingTest {
         return toAdd;
     }
 
-    @BeforeTest
+    @BeforeMethod
     public void setUpDatabase() throws MetadataException {
         ClassModel<JsonNode> valueModel = ClassModel.builder(JsonNode.class).build();
         ClassModel<MetadataPermission> metadataPermissionModel = ClassModel.builder(MetadataPermission.class).build();
@@ -83,7 +82,7 @@ public class MetadataDataProcessingTest {
         collection.insertOne(setupMetadataItem());
     }
 
-    @AfterTest
+    @AfterMethod
     public void cleanUpCollection() {
         collection.deleteMany(new Document());
     }
@@ -96,6 +95,8 @@ public class MetadataDataProcessingTest {
         search.setUuid(addedMetadataItem.getUuid());
         List<MetadataItem> result = search.find("{\"name\":\"mustard plant\"}");
 
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(this.readUser, addedMetadataItem.getUuid());
+        Assert.assertTrue(pemManager.canRead());
         Assert.assertEquals(result.size(), 1);
         Assert.assertEquals(result.get(0), addedMetadataItem);
     }
@@ -185,7 +186,7 @@ public class MetadataDataProcessingTest {
 
     //delete metadata item - with no permissions
     @Test
-    public void zDeleteMetadataItemNoPermissionTest() throws PermissionException, MetadataQueryException, MetadataException {
+    public void DeleteMetadataItemNoPermissionTest() throws PermissionException, MetadataQueryException, MetadataException {
         MetadataSearch ownerSearch = new MetadataSearch(this.username);
         ownerSearch.setUuid(addedMetadataItem.getUuid());
         MetadataItem metadataItem = ownerSearch.findOne();
@@ -203,7 +204,7 @@ public class MetadataDataProcessingTest {
 
     //delete metadata item - with read permission
     @Test
-    public void zDeleteMetadataItemReadPermissionTest() throws PermissionException, MetadataQueryException, MetadataException {
+    public void DeleteMetadataItemReadPermissionTest() throws PermissionException, MetadataQueryException, MetadataException {
         MetadataSearch ownerSearch = new MetadataSearch(this.username);
         ownerSearch.setUuid(addedMetadataItem.getUuid());
         MetadataItem metadataItem = ownerSearch.findOne();
@@ -216,12 +217,12 @@ public class MetadataDataProcessingTest {
         Assert.assertThrows(PermissionException.class, () -> search.deleteMetadataItem());
 
         List<MetadataItem> originalResult = search.find("{\"name\":\"New Name\"}");
-        Assert.assertEquals(originalResult.size(), 1);
+        Assert.assertEquals(originalResult.size(), 0);
     }
 
     //delete metadata item - with read/write permission
     @Test
-    public void zDeleteMetadataItemReadWritePermissionTest() throws PermissionException, MetadataQueryException, MetadataException {
+    public void DeleteMetadataItemReadWritePermissionTest() throws PermissionException, MetadataQueryException, MetadataException {
         MetadataSearch ownerSearch = new MetadataSearch(this.username);
         ownerSearch.setUuid(addedMetadataItem.getUuid());
         MetadataItem metadataItem = ownerSearch.findOne();

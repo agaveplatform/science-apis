@@ -1,6 +1,8 @@
 package org.iplantc.service.metadata.managers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.client.MongoCollection;
+import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -15,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.testng.Assert;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -25,6 +28,8 @@ import java.util.List;
 @Test(groups={"integration"})
 public class MetadataItemPermissionManagerIT {
     private ObjectMapper mapper = new ObjectMapper();
+    String TEST_USER = "TEST_USER";
+    String SHARED_USER = "SHARE_USER";
 
     @Mock
     private MetadataDao metadataDao;
@@ -38,10 +43,16 @@ public class MetadataItemPermissionManagerIT {
         MockitoAnnotations.initMocks(this);
     }
 
+    @AfterTest
+    public void cleanup(){
+        MongoCollection collection = metadataDao.getInstance().getDefaultCollection();
+        collection.deleteMany(new Document());
+    }
+
     //add new permission
     @Test
     public void addNewPermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
-        String TEST_USER = "testuser";
+        //create metadata item
         MetadataItem metadataItem = new MetadataItem();
         metadataItem.setName(MetadataItemPermissionManagerIT.class.getName());
         metadataItem.setValue(mapper.createObjectNode().put("testKey", "testValue"));
@@ -52,18 +63,14 @@ public class MetadataItemPermissionManagerIT {
         search.setMetadataItem(metadataItem);
         MetadataItem addedMetadataItem = search.updateMetadataItem();
 
-
-        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER);
-        String SHARED_USER = "shareuser";
+        //create and add permission
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
         MetadataPermission permissionToUpdate = new MetadataPermission(addedMetadataItem.getUuid(), SHARED_USER, PermissionType.READ);
-
-        List<MetadataPermission> updatedResult = pemManager.updatePermissions(SHARED_USER, permissionToUpdate, addedMetadataItem);
+        List<MetadataPermission> updatedResult = pemManager.updatePermissions(permissionToUpdate);
 
         MetadataSearch updatedSearch = new MetadataSearch(TEST_USER);
-        updatedSearch.setAccessibleOwnersExplicit();
-
-        addedMetadataItem.updatePermissions(permissionToUpdate);
-        updatedSearch.setMetadataItem(addedMetadataItem);
+        updatedSearch.setUuid(metadataItem.getUuid());
         MetadataItem updatedMetadataItem = updatedSearch.findOne();
 
         Assert.assertNotNull(updatedMetadataItem);
@@ -73,7 +80,6 @@ public class MetadataItemPermissionManagerIT {
 
     @Test
     public void addInvalidPermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
-        String TEST_USER = "testuser";
         MetadataItem metadataItem = new MetadataItem();
         metadataItem.setName(MetadataItemPermissionManagerIT.class.getName());
         metadataItem.setValue(mapper.createObjectNode().put("testKey", "testValue"));
@@ -84,14 +90,15 @@ public class MetadataItemPermissionManagerIT {
         search.setMetadataItem(metadataItem);
         MetadataItem addedMetadataItem = search.updateMetadataItem();
 
-        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER);
-        String SHARED_USER = "shareuser";
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
+
 
         MetadataPermission permissionToUpdate = new MetadataPermission(addedMetadataItem.getUuid(), SHARED_USER, PermissionType.getIfPresent("read"));
         Assert.assertEquals(permissionToUpdate.getPermission(), PermissionType.UNKNOWN);
 
         try {
-            pemManager.updatePermissions(SHARED_USER, permissionToUpdate, addedMetadataItem);
+            pemManager.updatePermissions(permissionToUpdate);
             Assert.fail("Updating with unknown permission should throw Metadata Exception");
         } catch (MetadataException e) {
             Assert.assertEquals(e.getMessage(), "Unknown metadata permission.");
@@ -102,9 +109,6 @@ public class MetadataItemPermissionManagerIT {
     //update existing permission
     @Test
     public void updateExistingPermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
-        String TEST_USER = "testuser";
-        String SHARED_USER = "shareuser";
-
         MetadataItem metadataItem = new MetadataItem();
         metadataItem.setName(MetadataItemPermissionManagerIT.class.getName());
         metadataItem.setValue(mapper.createObjectNode().put("testKey", "testValue"));
@@ -118,30 +122,48 @@ public class MetadataItemPermissionManagerIT {
         search.setMetadataItem(metadataItem);
         MetadataItem addedMetadataItem = search.updateMetadataItem();
 
-        //verify it was added
-        MetadataSearch updatedSearch = new MetadataSearch(TEST_USER);
-        updatedSearch.setAccessibleOwnersExplicit();
-        updatedSearch.setUuid(addedMetadataItem.getUuid());
-
-        MetadataItem initialMetadataItem = updatedSearch.findOne();
-        Assert.assertEquals(initialMetadataItem.getPermissions_User(SHARED_USER).getPermission(), PermissionType.READ);
-
         //update
-        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER);
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
         MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), SHARED_USER, PermissionType.READ_WRITE);
-        pemManager.updatePermissions(SHARED_USER, updatedPermission, addedMetadataItem);
+        pemManager.updatePermissions(updatedPermission);
 
+        MetadataSearch updatedSearch = new MetadataSearch(TEST_USER);
+        updatedSearch.setUuid(metadataItem.getUuid());
         MetadataItem updatedMetadataItem = updatedSearch.findOne();
         Assert.assertEquals(updatedMetadataItem.getPermissions_User(SHARED_USER).getPermission(), PermissionType.READ_WRITE, "User permission should be updated from READ to READ_WRITE.");
+
+    }
+
+    @Test
+    public void updatePermissionWithoutWritePermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
+        MetadataItem metadataItem = new MetadataItem();
+        metadataItem.setName(MetadataItemPermissionManagerIT.class.getName());
+        metadataItem.setValue(mapper.createObjectNode().put("testKey", "testValue"));
+        metadataItem.setOwner(TEST_USER);
+
+        //add item
+        MetadataSearch search = new MetadataSearch(TEST_USER);
+        search.setAccessibleOwnersExplicit();
+        search.setMetadataItem(metadataItem);
+        MetadataItem addedMetadataItem = search.updateMetadataItem();
+
+        //update
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(SHARED_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
+        MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), "NEW_USER", PermissionType.READ_WRITE);
+        Assert.assertThrows(PermissionException.class, ()->pemManager.updatePermissions(updatedPermission));
+
+        MetadataSearch updatedSearch = new MetadataSearch(TEST_USER);
+        updatedSearch.setUuid(metadataItem.getUuid());
+        MetadataItem updatedMetadataItem = updatedSearch.findOne();
+        Assert.assertNull(updatedMetadataItem.getPermissions_User(SHARED_USER), "User with insufficient permissions should not be able to update Metadata Item permissions.");
 
     }
 
     //delete permission
     @Test
     public void deletePermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
-        String TEST_USER = "testuser";
-        String SHARED_USER = "shareuser";
-
         MetadataItem metadataItem = new MetadataItem();
         metadataItem.setName(MetadataItemPermissionManagerIT.class.getName());
         metadataItem.setValue(mapper.createObjectNode().put("testKey", "testValue"));
@@ -156,28 +178,21 @@ public class MetadataItemPermissionManagerIT {
         search.setMetadataItem(metadataItem);
         MetadataItem addedMetadataItem = search.updateMetadataItem();
 
-        //verify it was added
-        MetadataSearch updatedSearch = new MetadataSearch(TEST_USER);
-        updatedSearch.setAccessibleOwnersExplicit();
-        updatedSearch.setUuid(addedMetadataItem.getUuid());
-
-        MetadataItem initialMetadataItem = updatedSearch.findOne();
-        Assert.assertEquals(initialMetadataItem.getPermissions_User(SHARED_USER).getPermission(), PermissionType.READ);
-
         //delete
-        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER);
-        MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), SHARED_USER, PermissionType.NONE);
-        pemManager.updatePermissions(SHARED_USER, updatedPermission, addedMetadataItem);
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
 
+        MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), SHARED_USER, PermissionType.NONE);
+        pemManager.updatePermissions(updatedPermission);
+
+        MetadataSearch updatedSearch = new MetadataSearch(TEST_USER);
+        updatedSearch.setUuid(metadataItem.getUuid());
         MetadataItem updatedMetadataItem = updatedSearch.findOne();
         Assert.assertNull(updatedMetadataItem.getPermissions_User(SHARED_USER), "Removed user permission should return null. ");
     }
 
     @Test
-    public void deleteNonExistentPermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
-        String TEST_USER = "testuser";
-        String SHARED_USER = "shareuser";
-
+    public void deletePermissionWithReadPermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
         MetadataItem metadataItem = new MetadataItem();
         metadataItem.setName(MetadataItemPermissionManagerIT.class.getName());
         metadataItem.setValue(mapper.createObjectNode().put("testKey", "testValue"));
@@ -192,14 +207,42 @@ public class MetadataItemPermissionManagerIT {
         search.setMetadataItem(metadataItem);
         MetadataItem addedMetadataItem = search.updateMetadataItem();
 
+        //delete
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(SHARED_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
+
+        MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), SHARED_USER, PermissionType.NONE);
+        Assert.assertThrows(PermissionException.class,() -> pemManager.updatePermissions(updatedPermission));
+
+        MetadataSearch updatedSearch = new MetadataSearch(SHARED_USER);
+        updatedSearch.setUuid(metadataItem.getUuid());
+        MetadataItem updatedMetadataItem = updatedSearch.findOne();
+        Assert.assertNotNull(updatedMetadataItem.getPermissions_User(SHARED_USER), "User with insufficient permissions should not be able to delete Metadata Item permissions.");
+    }
+
+    @Test
+    public void deleteNonExistentPermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
+        MetadataItem metadataItem = new MetadataItem();
+        metadataItem.setName(MetadataItemPermissionManagerIT.class.getName());
+        metadataItem.setValue(mapper.createObjectNode().put("testKey", "testValue"));
+        metadataItem.setOwner(TEST_USER);
+
+        //add item
+        MetadataSearch search = new MetadataSearch(TEST_USER);
+        search.setAccessibleOwnersExplicit();
+        search.setMetadataItem(metadataItem);
+        MetadataItem addedMetadataItem = search.updateMetadataItem();
+
+        //delete permission
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
+
+        MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), "invalidUser", PermissionType.NONE);
+        Assert.assertNull(pemManager.updatePermissions(updatedPermission));
+
         MetadataSearch updatedSearch = new MetadataSearch(TEST_USER);
         updatedSearch.setAccessibleOwnersExplicit();
         updatedSearch.setUuid(addedMetadataItem.getUuid());
-
-        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER);
-        MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), "invalidUser", PermissionType.NONE);
-        Assert.assertNull(pemManager.updatePermissions("invalidUser", updatedPermission, addedMetadataItem));
-
         MetadataItem updatedMetadataItem = updatedSearch.findOne();
         Assert.assertNull(updatedMetadataItem.getPermissions_User("invalidUser"));
     }
@@ -223,9 +266,9 @@ public class MetadataItemPermissionManagerIT {
         search.setMetadataItem(metadataItem);
         MetadataItem addedMetadataItem = search.updateMetadataItem();
 
-        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER);
-        pemManager.setAccessibleOwnersImplicit();
-        List<MetadataItem> foundMetadataItem = pemManager.findPermission_User(SHARED_USER, addedMetadataItem.getUuid());
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
+        List<MetadataItem> foundMetadataItem = pemManager.findPermission_User(SHARED_USER);
 
         Assert.assertEquals(foundMetadataItem.get(0).getPermissions_User(SHARED_USER).getPermission(), PermissionType.READ_WRITE);
     }
@@ -245,9 +288,9 @@ public class MetadataItemPermissionManagerIT {
         search.setMetadataItem(metadataItem);
         MetadataItem addedMetadataItem = search.updateMetadataItem();
 
-        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER);
-        pemManager.setAccessibleOwnersImplicit();
-        List<MetadataItem> foundMetadataItem = pemManager.findPermission_User(TEST_USER, addedMetadataItem.getUuid());
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
+        List<MetadataItem> foundMetadataItem = pemManager.findPermission_User(TEST_USER);
 
         Assert.assertEquals(foundMetadataItem.get(0).getPermissions_User(TEST_USER).getPermission(), PermissionType.ALL);
 
@@ -269,9 +312,9 @@ public class MetadataItemPermissionManagerIT {
         search.setMetadataItem(metadataItem);
         MetadataItem addedMetadataItem = search.updateMetadataItem();
 
-        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER);
-        pemManager.setAccessibleOwnersImplicit();
-        List<MetadataItem> foundMetadataItem = pemManager.findPermission_User(SHARED_USER, addedMetadataItem.getUuid());
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
+        List<MetadataItem> foundMetadataItem = pemManager.findPermission_User(SHARED_USER);
 
         Assert.assertEquals(foundMetadataItem.size(), 0, "User without permissions should not return anything.");
     }
@@ -279,9 +322,6 @@ public class MetadataItemPermissionManagerIT {
     //find metadata permission
     @Test
     public void findPermissionForMetadataItemTest() throws MetadataException, PermissionException {
-        String TEST_USER = "testuser";
-        String SHARED_USER = "shareuser";
-
         MetadataItem metadataItem = new MetadataItem();
         metadataItem.setName(MetadataItemPermissionManagerIT.class.getName());
         metadataItem.setValue(mapper.createObjectNode().put("testKey", "testValue"));
@@ -295,20 +335,19 @@ public class MetadataItemPermissionManagerIT {
         search.setMetadataItem(metadataItem);
         MetadataItem addedMetadataItem = search.updateMetadataItem();
 
-        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER);
-        pemManager.setAccessibleOwnersImplicit();
-        MetadataItem foundMetadataItem = pemManager.findPermission_Uuid(addedMetadataItem.getUuid());
-        Assert.assertEquals(foundMetadataItem, addedMetadataItem, "Metadata item found should match the Metadata item added.");
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
+        pemManager.setAccessibleOwnersExplicit();
+        List<MetadataPermission> foundMetadataItem = pemManager.findPermission_Uuid();
+        Assert.assertEquals(foundMetadataItem, addedMetadataItem.getPermissions(), "Metadata item found should match the Metadata item added.");
     }
 
     //find invalid metadata permission
     @Test
-    public void findPermissionForNonExistentMetadataItemTest() throws MetadataException, PermissionException {
-        String TEST_USER = "testuser";
+    public void findPermissionForNonExistentMetadataItemTest() throws PermissionException {
         String uuid = new AgaveUUID(UUIDType.JOB).toString();
-        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER);
-        pemManager.setAccessibleOwnersImplicit();
-        MetadataItem foundMetadataItem = pemManager.findPermission_Uuid(uuid);
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, uuid);
+        pemManager.setAccessibleOwnersExplicit();
+        List<MetadataPermission> foundMetadataItem = pemManager.findPermission_Uuid();
         Assert.assertNull(foundMetadataItem, "Invalid uuid should return null.");
     }
 }

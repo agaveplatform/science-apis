@@ -155,8 +155,8 @@ public class MetadataShareResource extends AgaveResource {
             List<MetadataItem> permissionResult = new ArrayList<>();
             if (StringUtils.isEmpty(sharedUsername)) {
                 //get all permissions
-                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username);
-                permissionResult = metadataItemPermissionManager.findPermission_User(username, uuid);
+                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username, uuid);
+                permissionResult = metadataItemPermissionManager.findPermission_User(username);
 //                permissionResult = search.findPermission_User(username, uuid);
 
                 if (permissionResult == null || permissionResult.size() == 0) {
@@ -178,13 +178,13 @@ public class MetadataShareResource extends AgaveResource {
             } else {
                 //get single permission
                 MetadataPermission foundPermission;
-                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username);
+                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username, uuid);
 
                 if (ServiceUtils.isAdmin(sharedUsername) || StringUtils.equals(owner, sharedUsername)) {
                     foundPermission = new MetadataPermission(uuid, sharedUsername, PermissionType.ALL);
 //                    return new IplantSuccessRepresentation(foundPermission.toJSON());
                 } else {
-                    permissionResult = metadataItemPermissionManager.findPermission_User(username, uuid);
+                    permissionResult = metadataItemPermissionManager.findPermission_User(username);
 //                    permissionResult = search.findPermission_User(sharedUsername, uuid);
 
                     if (permissionResult == null) {
@@ -303,7 +303,7 @@ public class MetadataShareResource extends AgaveResource {
 //            }
 
             try {
-                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username);
+                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username, uuid);
 //                metadataItemPermissionManager.updatePermissions(name, "", PermissionType.getIfPresent(sPermission))
 //                search.updatePermissions(name, "", PermissionType.valueOf(sPermission));
 
@@ -379,7 +379,7 @@ public class MetadataShareResource extends AgaveResource {
                 search.updateMetadataItem();
 
             } else {
-                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username);
+                MetadataItemPermissionManager metadataItemPermissionManager = new MetadataItemPermissionManager(username, uuid);
 
                 // clear for user
 //                search.updatePermissions(sharedUsername, "", PermissionType.NONE);

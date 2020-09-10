@@ -59,7 +59,7 @@ public class MetadataItem {
 
     @Length(max = 64, message = "Metadata schemaId must be a valid schema uuid")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
-//    @ValidAgaveUUID(type = UUIDType.SCHEMA, value = "")
+    @ValidAgaveUUID(type = UUIDType.SCHEMA, value = "")
     private String schemaId;
 
     @NotNull

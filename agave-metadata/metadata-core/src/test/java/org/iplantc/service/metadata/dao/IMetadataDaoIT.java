@@ -20,7 +20,10 @@ public interface IMetadataDaoIT {
     void removePermissionTest()  throws MetadataStoreException, MetadataException, PermissionException;
     void updateTest() throws MetadataStoreException, MetadataException, PermissionException;
     void updatePermissionTest() throws MetadataStoreException, MetadataException, PermissionException;
-    void findMetadataTest() throws MetadataException, PermissionException;
+    void findTest() throws MetadataException, PermissionException;
+    void findWithOffsetAndLimitTest() throws MetadataException, PermissionException;
+    void findSingleMetadataItemTest() throws MetadataException, PermissionException;
+    void findSingleMetadataItemNonexistentTest();
     void findPermissionTest() throws MetadataException, PermissionException;
     void findMetadataItemWithFiltersTest() throws MetadataException, PermissionException;
     void findMetadataItemWithInvalidFiltersTest() throws MetadataException, PermissionException;

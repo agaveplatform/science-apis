@@ -1,23 +1,37 @@
 package org.iplantc.service.metadata.dao;
 
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mongodb.BasicDBObject;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoCredential;
+import com.mongodb.ServerAddress;
 import com.mongodb.client.*;
 import com.mongodb.client.MongoClient;
+import org.bson.codecs.configuration.CodecRegistries;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.ClassModel;
+import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.bson.Document;
+import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.uuid.AgaveUUID;
+import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.managers.MetadataPermissionManagerIT;
 import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataItemCodec;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
 import java.net.UnknownHostException;
@@ -26,6 +40,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import static com.mongodb.client.model.Filters.eq;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @Test(groups={"integration"})
 public class MetadataDaoIT extends AbstractMetadataDaoIT {
@@ -46,6 +62,32 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
     @InjectMocks
     private MetadataDao wrapper;
+
+    @AfterMethod
+    public void cleanUp(){
+        ClassModel<JsonNode> valueModel = ClassModel.builder(JsonNode.class).build();
+        ClassModel<MetadataPermission> metadataPermissionModel = ClassModel.builder(MetadataPermission.class).build();
+        PojoCodecProvider pojoCodecProvider = PojoCodecProvider.builder().register(valueModel, metadataPermissionModel).build();
+
+        CodecRegistry registry = CodecRegistries.fromCodecs(new MetadataItemCodec());
+
+        CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
+                fromProviders(pojoCodecProvider),
+                registry);
+
+        MongoClient mongo4Client = MongoClients.create(MongoClientSettings.builder()
+                .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
+                        new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT))))
+                .credential(MongoCredential.createScramSha1Credential(
+                        Settings.METADATA_DB_USER, Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_PWD.toCharArray()))
+                .codecRegistry(pojoCodecRegistry)
+                .build());
+
+        MongoDatabase db = mongo4Client.getDatabase(Settings.METADATA_DB_SCHEME);
+        MongoCollection collection = db.getCollection(Settings.METADATA_DB_COLLECTION, MetadataItem.class);
+
+        collection.deleteMany(new Document());
+    }
 
     /**
      * Create a test entity persisted and available for lookup.
@@ -344,7 +386,48 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Override
-    public void findMetadataTest() throws MetadataException, PermissionException {
+    public void findTest() throws MetadataException, PermissionException {
+        MetadataDao inst = wrapper.getInstance();
+        MetadataItem testEntity = new MetadataItem();
+        testEntity.setName(MetadataDaoIT.class.getName());
+        testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
+        testEntity.setOwner(TEST_USER);
+
+        inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
+        inst.updateMetadata(testEntity, TEST_USER);
+
+        List<MetadataItem> foundItem = inst.find(TEST_USER, new Document("value.testKey", "testValue"));
+        Assert.assertEquals(foundItem.get(0), testEntity, "MetadataItem found should match the created entity.");
+    }
+
+    @Override
+    public void findWithOffsetAndLimitTest() throws MetadataException, PermissionException {
+        MetadataDao inst = wrapper.getInstance();
+
+        int offset = 2;
+        int limit = 3;
+
+        for (int numItems = 0; numItems < 5; numItems++){
+            MetadataItem testEntity = new MetadataItem();
+            testEntity.setName(MetadataDaoIT.class.getName() + numItems);
+            testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
+            testEntity.setOwner(TEST_USER);
+
+            inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
+            inst.updateMetadata(testEntity, TEST_USER);
+
+        }
+
+        List<MetadataItem> foundItems = inst.find(TEST_USER, new Document("value.testKey", "testValue"), offset, limit, new BasicDBObject());
+
+        Assert.assertEquals(foundItems.size(), 3);
+        for (int numFound = 0; numFound < foundItems.size(); numFound ++){
+            Assert.assertEquals(foundItems.get(numFound).getName(), MetadataDaoIT.class.getName() + (numFound + offset));
+        }
+    }
+
+    @Override
+    public void findSingleMetadataItemTest() throws MetadataException, PermissionException {
         MetadataDao inst = wrapper.getInstance();
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -355,9 +438,18 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
         inst.updateMetadata(testEntity, TEST_USER);
 
-
         MetadataItem foundItem = inst.findSingleMetadataItem(new Document("uuid", testEntity.getUuid()));
         Assert.assertEquals(foundItem, testEntity, "MetadataItem found should match the created entity.");
+    }
+
+    @Override
+    public void findSingleMetadataItemNonexistentTest(){
+        String invalidUuid = new AgaveUUID(UUIDType.METADATA).toString();
+
+        MetadataDao inst = wrapper.getInstance();
+        inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
+        MetadataItem foundItem = inst.findSingleMetadataItem(new Document("uuid", invalidUuid));
+        Assert.assertNull(foundItem, "No item should be found for an item that doesn't exist");
     }
 
     @Override

@@ -93,6 +93,8 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
       JsonNode node = mapper.readTree(queriesInputStream);
 
       HashMap<SqlQuery, String> sqlQueries = new HashMap<>();
+      sqlQueries.put(SqlQuery.CREATE_SYSTEMS_TABLE, node.get("create-systems-table").textValue());
+
       sqlQueries.put(SqlQuery.CREATE_TRANSFERTASKS_TABLE, node.get("create-transfertasks-table").textValue());
       sqlQueries.put(SqlQuery.ALL_TRANSFERTASKS, node.get("all-transfertasks").textValue());
       sqlQueries.put(SqlQuery.ALL_USER_TRANSFERTASKS, node.get("all-user-transfertasks").textValue());

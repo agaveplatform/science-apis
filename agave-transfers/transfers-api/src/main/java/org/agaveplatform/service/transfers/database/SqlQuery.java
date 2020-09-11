@@ -21,6 +21,7 @@ package org.agaveplatform.service.transfers.database;
  * @author deardooley
  */
 enum SqlQuery {
+  CREATE_SYSTEMS_TABLE,
   CREATE_TRANSFERTASKS_TABLE,
   ALL_TRANSFERTASKS,
   ALL_USER_TRANSFERTASKS,

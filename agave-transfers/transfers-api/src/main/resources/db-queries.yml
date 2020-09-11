@@ -1,3 +1,27 @@
+create-systems-table: |
+  SET PROPERTY "sql.enforce_strict_size" TRUE;
+  SET PROPERTY "sql.ignorecase" FALSE;
+
+  CREATE TABLE systems (
+      "id" BIGINT IDENTITY PRIMARY KEY,
+      "available" tinyint NOT NULL,
+      "created" TIMESTAMP,
+      "description" VARCHAR(32768),
+      "global_default" TINYINT,
+      "last_updated" TIMESTAME,
+      "name" varchar(64),
+      "owner" varchar(32),
+      "publicly_available" TINYINT,
+      "revision" INTEGER,
+      "site" varchar(64),
+      "status" VARCHAR(16),
+      "tenant_id" VARCHAR(128) NOT NULL,
+      "type" varchar(32),
+      "uuid" varchar(128),
+      "storage_config" bigint,
+);
+
+
 create-transfertasks-table: |
   SET PROPERTY "sql.enforce_strict_size" TRUE;
   SET PROPERTY "sql.ignorecase" FALSE;

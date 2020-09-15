@@ -68,6 +68,7 @@ import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.powermock.core.classloader.annotations.PrepareEverythingForTest;
 
 import javax.swing.*;
 import java.io.BufferedReader;
@@ -722,7 +723,18 @@ public class MetadataSearch {
      * @return list of {@link MetadataItem} found
      * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
      */
-    public List<MetadataItem> findAll(String[] filters) {
+    public List<MetadataItem> findAll() {
+        return metadataDao.findAll();
+    }
+
+
+    /**
+     * Find all documents in the collection
+     *
+     * @return list of {@link MetadataItem} found
+     * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
+     */
+    public List<MetadataItem> filterFindAll(String[] filters) {
         return metadataDao.findAll();
     }
 
@@ -793,6 +805,9 @@ public class MetadataSearch {
                 docFilter.append(filter, 1);
             }
         }
+
+        //don't include mongo id
+        docFilter.append("_id", 0);
         return docFilter;
     }
 
@@ -1018,5 +1033,7 @@ public class MetadataSearch {
 //        return metadataItemList.get(0);
 //    }
     //------------------------------
+
+
 
 }

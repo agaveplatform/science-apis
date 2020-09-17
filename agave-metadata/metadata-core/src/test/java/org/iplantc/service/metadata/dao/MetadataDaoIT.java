@@ -118,7 +118,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Override
-    public void insertTest() throws  MetadataException, PermissionException {
+    public void insertTest() throws MetadataException, PermissionException, MetadataStoreException {
         //Create item to insert
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -135,7 +135,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         List<String> accessibleOwners = new ArrayList<>();
         accessibleOwners.add(TEST_USER);
         inst.setAccessibleOwners(accessibleOwners);
-        MetadataItem updatedItem = inst.updateMetadata(testEntity, TEST_USER);
+        MetadataItem updatedItem = inst.insert(testEntity);
 
         List<MetadataItem>  firstResult = inst.find(TEST_USER, new Document("uuid", updatedItem.getUuid()));
         Assert.assertEquals(firstResult.get(0).getOwner(), TEST_USER);
@@ -157,7 +157,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setOwner(TEST_USER);
 
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
-        MetadataItem addedItem = inst.updateMetadata(testEntity, TEST_USER);
+        MetadataItem addedItem = inst.insert(testEntity);
 
         MetadataPermission pemShareUser = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.ALL);
         MetadataPermission pemShareUser2 = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER2, PermissionType.READ_WRITE);
@@ -186,7 +186,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setOwner(TEST_USER);
 
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
-        MetadataItem addedItem = inst.updateMetadata(testEntity, TEST_USER);
+        MetadataItem addedItem = inst.insert(testEntity);
         MetadataPermission metaPem = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
         testEntity.setPermissions(new ArrayList<>(Arrays.asList(metaPem)));
 
@@ -201,7 +201,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Override
-    public void removeMetadataTest() throws MetadataException, PermissionException {
+    public void removeMetadataTest() throws MetadataException, PermissionException, MetadataStoreException {
         //add entity
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -217,11 +217,11 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         inst.clearCollection();
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
 
-        MetadataItem addedMetadataItem = inst.updateMetadata(testEntity, TEST_USER);
+        MetadataItem addedMetadataItem = inst.insert(testEntity);
 
         Assert.assertNotNull(addedMetadataItem, "Metadata item should be added before removal.");
 
-        MetadataItem removedItem = inst.deleteMetadata(addedMetadataItem, TEST_USER);
+        MetadataItem removedItem = inst.deleteMetadata(addedMetadataItem);
         List<MetadataItem> resultList  = inst.find(TEST_USER, new Document("uuid", addedMetadataItem.getUuid()));
 
         Assert.assertNotNull(removedItem, "Removed item should be returned after successful delete.");
@@ -367,7 +367,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setPermissions(listPem);
 
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
-        MetadataItem addedItem = inst.updateMetadata(testEntity, TEST_USER);
+        MetadataItem addedItem = inst.insert(testEntity);
 
         pemShareUser.setPermission(PermissionType.READ);
         MetadataPermission pemShareUser2 = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER2, PermissionType.READ_WRITE);
@@ -386,7 +386,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Override
-    public void findTest() throws MetadataException, PermissionException {
+    public void findTest() throws MetadataException, PermissionException, MetadataStoreException {
         MetadataDao inst = wrapper.getInstance();
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -394,14 +394,14 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setOwner(TEST_USER);
 
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
-        inst.updateMetadata(testEntity, TEST_USER);
+        inst.insert(testEntity);
 
         List<MetadataItem> foundItem = inst.find(TEST_USER, new Document("value.testKey", "testValue"));
         Assert.assertEquals(foundItem.get(0), testEntity, "MetadataItem found should match the created entity.");
     }
 
     @Override
-    public void findWithOffsetAndLimitTest() throws MetadataException, PermissionException {
+    public void findWithOffsetAndLimitTest() throws MetadataException, PermissionException, MetadataStoreException {
         MetadataDao inst = wrapper.getInstance();
 
         int offset = 2;
@@ -414,7 +414,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
             testEntity.setOwner(TEST_USER);
 
             inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
-            inst.updateMetadata(testEntity, TEST_USER);
+            inst.insert(testEntity);
 
         }
 
@@ -427,7 +427,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Override
-    public void findSingleMetadataItemTest() throws MetadataException, PermissionException {
+    public void findSingleMetadataItemTest() throws MetadataException, PermissionException, MetadataStoreException {
         MetadataDao inst = wrapper.getInstance();
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -436,7 +436,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
 
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
-        inst.updateMetadata(testEntity, TEST_USER);
+        inst.insert(testEntity);
 
         MetadataItem foundItem = inst.findSingleMetadataItem(new Document("uuid", testEntity.getUuid()));
         Assert.assertEquals(foundItem, testEntity, "MetadataItem found should match the created entity.");
@@ -453,7 +453,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Override
-    public void findPermissionTest() throws MetadataException,PermissionException {
+    public void findPermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
         MetadataDao inst = wrapper.getInstance();
         MetadataItem testEntity = new MetadataItem();
         testEntity.setName(MetadataDaoIT.class.getName());
@@ -464,13 +464,13 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setPermissions(listPem);
 
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
-        inst.updateMetadata(testEntity, TEST_USER);
+        inst.insert(testEntity);
         MetadataItem foundItem = inst.findSingleMetadataItem(new Document("uuid", testEntity.getUuid()));
         Assert.assertEquals(foundItem.getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.READ);
     }
 
     @Override
-    public void findMetadataItemWithFiltersTest() throws MetadataException, PermissionException {
+    public void findMetadataItemWithFiltersTest() throws MetadataException, PermissionException, MetadataStoreException {
         ObjectNode value = mapper.createObjectNode().put("testKey", "testValue");
 
         MetadataDao inst = wrapper.getInstance();
@@ -482,7 +482,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         List<MetadataPermission> listPem = new ArrayList<>(Arrays.asList(pemShareUser));
         testEntity.setPermissions(listPem);
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
-        inst.updateMetadata(testEntity, TEST_USER);
+        inst.insert(testEntity);
 
         Document docFilter = new Document("uuid", 1)
                 .append("name",1)
@@ -497,7 +497,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     }
 
     @Override
-    public void findMetadataItemWithInvalidFiltersTest() throws MetadataException, PermissionException {
+    public void findMetadataItemWithInvalidFiltersTest() throws MetadataException, PermissionException, MetadataStoreException {
         ObjectNode value = mapper.createObjectNode().put("testKey", "testValue");
 
         MetadataDao inst = wrapper.getInstance();
@@ -509,7 +509,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         List<MetadataPermission> listPem = new ArrayList<>(Arrays.asList(pemShareUser));
         testEntity.setPermissions(listPem);
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
-        inst.updateMetadata(testEntity, TEST_USER);
+        inst.insert(testEntity);
 
         Document docFilter = new Document("uuid", 1)
                 .append("name",1)

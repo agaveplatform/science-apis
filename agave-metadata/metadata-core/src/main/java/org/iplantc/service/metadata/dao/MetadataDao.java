@@ -16,6 +16,7 @@ import com.mongodb.*;
 //import com.mongodb.MongoClient;
 import com.mongodb.client.*;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.result.DeleteResult;
@@ -38,10 +39,9 @@ import org.iplantc.service.common.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
-import org.iplantc.service.metadata.model.MetadataItem;
-import org.iplantc.service.metadata.model.MetadataItemCodec;
-import org.iplantc.service.metadata.model.MetadataPermission;
+import org.iplantc.service.metadata.model.*;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
+import org.iplantc.service.notification.model.Notification;
 
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.*;
@@ -53,7 +53,7 @@ public class MetadataDao {
     private MongoDatabase db = null;
     //    private MongoClient mongoClient = null;
     private MongoClients mongoClients = null;
-    private com.mongodb.client.MongoClient mongo4Client = null;
+    private com.mongodb.client.MongoClient mongov4Client = null;
 
     private static MetadataDao dao = null;
 
@@ -110,7 +110,7 @@ public class MetadataDao {
 //        return mongoClient;
 //    }
     public MongoClient getMongoClients() {
-        if (mongo4Client == null) {
+        if (mongov4Client == null) {
 
             //testing for custom codec
             ClassModel<JsonNode> valueModel = ClassModel.builder(JsonNode.class).build();
@@ -123,14 +123,14 @@ public class MetadataDao {
                     fromProviders(pojoCodecProvider),
                     registry);
 
-            mongo4Client = mongoClients.create(MongoClientSettings.builder()
-                    .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
-                            new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT))))
-                    .credential(getMongoCredential())
-                    .codecRegistry(pojoCodecRegistry)
-                    .build());
+                mongov4Client = mongoClients.create(MongoClientSettings.builder()
+                        .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
+                                new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT))))
+                        .credential(getMongoCredential())
+                        .codecRegistry(pojoCodecRegistry)
+                        .build());
         }
-        return mongo4Client;
+        return mongov4Client;
     }
 
     /**
@@ -461,7 +461,8 @@ public class MetadataDao {
             uuid = metadataItem.getUuid();
 
             List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
-            update = metadataItemMongoCollection.updateOne(eq("uuid", uuid), set("permissions", metadataPermissionsList));
+            update = metadataItemMongoCollection.updateOne(getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId()),
+                    set("permissions", metadataPermissionsList));
             if (update.getModifiedCount() > 0)
                 //update success
                 return metadataPermissionsList;
@@ -495,6 +496,27 @@ public class MetadataDao {
         return null;
     }
 
+    public Document updateDocument(Document doc) throws MetadataException {
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+
+        try {
+            metadataItemMongoCollection = getDefaultCollection();
+
+            //update last updated time
+//            Date lastUpdated = new Date();
+//            metadataItem.setLastUpdated(lastUpdated);
+
+
+            //push instead of replace
+            UpdateResult update = metadataItemMongoCollection.updateOne(and(eq("uuid", doc.get("uuid")),
+                    eq("tenantId", doc.get("tenantId"))), new Document("$set", doc));
+
+            return doc;
+        } catch (MongoException e) {
+            throw new MetadataException("Failed to add/update metadata item.", e);
+        }
+    }
+
     /**
      * Update the {@link MetadataItem} as the provided user
      *
@@ -503,35 +525,19 @@ public class MetadataDao {
      * @return the inserted {@link MetadataItem}
      * @throws MetadataException when update failed
      */
-    public MetadataItem updateMetadata(MetadataItem metadataItem, String user) throws MetadataException, PermissionException {
+    public MetadataItem updateMetadata(MetadataItem metadataItem, String user) throws
+            MetadataException, PermissionException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
         try {
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
             if (hasWrite(user, metadataItem.getUuid())) {
-                //update last updated time
-                Date lastUpdated = new Date();
-                metadataItem.setLastUpdated(lastUpdated);
-                ReplaceOptions replaceOptions = new ReplaceOptions();
-                replaceOptions.upsert(true);
-                UpdateResult replace = metadataItemMongoCollection.replaceOne(and(eq("uuid", metadataItem.getUuid()),
-                        eq("tenantId", metadataItem.getTenantId())), metadataItem, replaceOptions);
+                //push instead of replace
+                UpdateResult update = metadataItemMongoCollection.updateOne(
+                        getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId()),
+                        new Document("$set", metadataItem));
 
-//                SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
-//                formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-//
-//                UpdateOptions updateOptions = new UpdateOptions();
-//                UpdateResult replace = metadataItemMongoCollection.updateOne(eq("uuid", metadataItem.getUuid()),
-//                        combine(set("name", metadataItem.getName()),
-//                                set("value", metadataItem.getValue()),
-//                                set("associationIds", metadataItem.getAssociations().getAssociatedIds().keySet()),
-//                                set("schemaId", metadataItem.getSchemaId()),
-//                                set("lastUpdated", formatter.format(metadataItem.getLastUpdated()))
-//                                ), updateOptions);
-
-
-                replace.getModifiedCount();
             } else {
                 throw new PermissionException("User does not have sufficient access to edit public metadata item.");
             }
@@ -546,32 +552,25 @@ public class MetadataDao {
      * Delete {@code metadataItem} from the collection as the specified user
      *
      * @param metadataItem {@link MetadataItem} to delete
-     * @param user         deleting the item
      * @return the deleted {@link MetadataItem}
      * @throws PermissionException if the user does not have write permissions
      */
-    public MetadataItem deleteMetadata(MetadataItem metadataItem, String user) throws PermissionException {
+    public MetadataItem deleteMetadata(MetadataItem metadataItem) throws PermissionException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
-
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-        if (hasWrite(user, metadataItem.getUuid())) {
 //            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
-            Bson deleteFilter = and(eq("uuid", metadataItem.getUuid()),
-                    eq("tenantId", metadataItem.getTenantId()));
+//            Bson deleteFilter = and(eq("uuid", metadataItem.getUuid()),
+//                    eq("tenantId", metadataItem.getTenantId()));
 //            Bson queryFilter = and(deleteFilter, or(eq("owner", user), docPermissions));
 
-            DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(deleteFilter);
+            DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(
+                    getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId()));
             if (deleteResult.getDeletedCount() == 0) {
                 //delete unsuccessful
                 return null;
             }
-        } else {
-            throw new PermissionException("User does not have permission to delete this item");
-        }
-
         return metadataItem;
-
     }
 
     public Bson createQuery(String uuid, String tenantId, Bson query) {
@@ -740,6 +739,10 @@ public class MetadataDao {
 
     public Bson getTenantIdQuery(String tenantId) {
         return eq("tenantId", tenantId);
+    }
+
+    public Bson getUuidAndTenantIdQuery(String uuid, String tenantId){
+        return and(eq("uuid", uuid), eq("tenantId", tenantId));
     }
 
 //    public MetadataItem persist(MetadataItem item) throws MetadataStoreException {
@@ -1266,7 +1269,8 @@ public class MetadataDao {
      * @throws MetadataQueryException
      */
     @SuppressWarnings("unchecked")
-    protected DBObject parseUserSearchCriteria(Map<SearchTerm, Object> searchCriteria) throws MetadataQueryException {
+    protected DBObject parseUserSearchCriteria(Map<SearchTerm, Object> searchCriteria) throws
+            MetadataQueryException {
         DBObject userCriteria = null;
         QueryBuilder queryBuilder = null;
 
@@ -1286,7 +1290,7 @@ public class MetadataDao {
 
                         // TODO: throw exception on unsafe mongo keywords in freeform search
 
-                        // we're just going one layer deep on the regex support. anything else won't work anyway due to 
+                        // we're just going one layer deep on the regex support. anything else won't work anyway due to
                         // the lack of freeform query support in the java driver
                         if (userCriteria.get(key) instanceof String) {
                             if (((String) userCriteria.get(key)).contains("*")) {

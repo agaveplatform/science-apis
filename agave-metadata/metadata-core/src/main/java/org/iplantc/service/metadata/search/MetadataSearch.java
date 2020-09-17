@@ -811,8 +811,12 @@ public class MetadataSearch {
         return docFilter;
     }
 
+    public MetadataItem insertMetadataItem() throws MetadataStoreException {
+        return metadataDao.insert(this.metadataItem);
+    }
+
     /**
-     * Update the metadata item
+     * Update collection using {@link MetadataItem}, replaces the existing item
      *
      * @return {@link MetadataItem} that was updated successfully
      * @throws MetadataException   if unable to update the {@link MetadataItem} in the metadata collection
@@ -820,9 +824,42 @@ public class MetadataSearch {
      */
     public MetadataItem updateMetadataItem() throws MetadataException, PermissionException {
         metadataDao.setAccessibleOwners(this.accessibleOwners);
+        MetadataItem currentMetadata = metadataDao.findSingleMetadataItem(and(eq("uuid", this.metadataItem.getUuid()),
+                eq("tenantId", this.metadataItem.getTenantId())));
+
+        this.metadataItem.setCreated(currentMetadata.getCreated());
+        this.metadataItem.setTenantId(currentMetadata.getTenantId());
+        this.metadataItem.setOwner(currentMetadata.getOwner());
+//        this.setOwner(currentMetadata.getOwner());
+        this.metadataItem.setPermissions(currentMetadata.getPermissions());
+
         return metadataDao.updateMetadata(this.metadataItem, this.username);
     }
 
+    /** Update collection using {@link Document} doc, merges with the existing item
+     *
+     * @param doc {@link Document} to update Metadata Item with
+     * @return updated {@link Document}
+     * @throws MetadataException
+     * @throws PermissionException
+     */
+    public Document updateMetadataItem(Document doc) throws MetadataException {
+        metadataDao.setAccessibleOwners(this.accessibleOwners);
+        doc = updateLastUpdatedDateForDocument(doc);
+        return metadataDao.updateDocument(doc);
+    }
+
+    /**
+     * Append to {@code doc} the lastUpdated time
+     * @param doc {@link Document} to update
+     * @return updated {@link Document}
+     */
+    public Document updateLastUpdatedDateForDocument(Document doc){
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        doc.append("lastUpdated", formatter.format(new Date()));
+        return doc;
+    }
     /**
      * Delete the metadata item
      *
@@ -831,7 +868,7 @@ public class MetadataSearch {
      */
     public MetadataItem deleteMetadataItem() throws PermissionException {
         metadataDao.setAccessibleOwners(this.accessibleOwners);
-        return metadataDao.deleteMetadata(this.metadataItem, this.username);
+        return metadataDao.deleteMetadata(this.metadataItem);
     }
 
     //---------------------------------------------

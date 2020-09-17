@@ -11,6 +11,7 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.util.JSON;
 import com.mongodb.util.JSONParseException;
+import io.grpc.Metadata;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.iplantc.service.common.Settings;
@@ -20,14 +21,20 @@ import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.metadata.dao.MetadataDao;
+import org.iplantc.service.metadata.dao.MetadataSchemaDao;
 import org.iplantc.service.metadata.exceptions.MetadataAssociationException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
+import org.iplantc.service.metadata.managers.MetadataItemPermissionManager;
+import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
 import org.iplantc.service.metadata.model.AssociatedReference;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataPermission;
+import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.iplantc.service.metadata.util.ServiceUtils;
 import org.iplantc.service.notification.managers.NotificationManager;
@@ -39,6 +46,7 @@ import org.testng.Assert;
 import org.testng.annotations.*;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -48,8 +56,8 @@ import static org.powermock.api.mockito.PowerMockito.mock;
 @Test(groups = {"integration"})
 public class MetadataSearchIT {
     String uuid;
-    String username = "testuser";
-    String sharedUser = "testSharedUser";
+    String username = "TEST_USER";
+    String sharedUser = "SHARED_USER";
     List<String> queryList = new ArrayList<>();
     AgaveUUID jobUuid = new AgaveUUID(UUIDType.JOB);
     AgaveUUID schemaUuid = new AgaveUUID(UUIDType.SCHEMA);
@@ -132,7 +140,7 @@ public class MetadataSearchIT {
     //no data leak - combination of permission + retrieval
 
     @BeforeClass
-    public void setup(){
+    public void setup() {
         createSchema();
     }
 
@@ -170,22 +178,30 @@ public class MetadataSearchIT {
         MongoCollection mongoCollection = mongoDatabase.getCollection(org.iplantc.service.metadata.Settings.METADATA_DB_SCHEMATA_COLLECTION);
 
 
-        String strItemToAdd = "  {" +
-                "    \"name\": \"Sample Name\"," +
-                "    \"value\": {" +
-                "      \"type\": \"Sample type\"," +
-                "        \"profile\": {" +
-                "        \"status\": \"Sample Status\"" +
-                "           }," +
-                "        \"description\": \"Sample description...\"" +
-                "       }," +
+//        String strItemToAdd = "  {" +
+//                "      \"type\": \"Sample type\"," +
+//                "        \"profile\": {" +
+//                "        \"status\": \"Sample Status\"" +
+//                "           }," +
+//                "        \"description\": \"Sample description...\"" +
+//                "       }," +
+//                "   }";
+
+        String strItemToAdd = "{" +
+                "\"order\": \"sample order\"," +
+                "\"type\": \"object\"," +
+                "\"properties\" : {" +
+                "\"profile\" : {\"type\": \"string\"}," +
+                "\"status\": {\"enum\" : [\"active\", \"retired\", \"disabled\", \"banned\"]} " +
+                "}, " +
+                "\"description\": {\"type\" : \"string\"}" +
                 "   }";
 
         Document doc;
         String timestamp = new DateTime().toString();
-            doc = new Document("internalUsername", this.username)
-                    .append("lastUpdated", timestamp)
-                    .append("schema", ServiceUtils.escapeSchemaRefFieldNames(strItemToAdd));
+        doc = new Document("internalUsername", this.username)
+                .append("lastUpdated", timestamp)
+                .append("schema", ServiceUtils.escapeSchemaRefFieldNames(strItemToAdd));
 
         doc.put("uuid", schemaUuid.toString());
         doc.append("created", timestamp);
@@ -213,32 +229,36 @@ public class MetadataSearchIT {
 
         MetadataItem metadataItem = jsonHandler.getMetadataItem();
         metadataItem.setOwner(owner);
+        metadataItem.setPermissions(Arrays.asList(new MetadataPermission(metadataItem.getUuid(), this.sharedUser, PermissionType.READ)));
 
         return metadataItem;
     }
 
     //basic operations
     @Test
-    public void createNewItemTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
-        String strItemToAdd = "  {" +
-                "    \"name\": \"mustard plant\"," +
-                "    \"value\": {" +
-                "      \"type\": \"a plant\"," +
-                "        \"profile\": {" +
-                "        \"status\": \"active\"" +
-                "           }," +
-                "        \"description\": \"The seed of the mustard plant is used as a spice...\"" +
-                "       }," +
-                "   \"associationIds\": [\"" + jobUuid.toString() + "\"]," +
-                "   \"schemaId\": \"" + schemaUuid.toString() + "\"" +
-                "   }";
+    public void createNewItemTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
+        String strItemToAdd =
+                "  {" +
+                        "   \"name\": \"Agavoideae\"," +
+                        "   \"value\": {" +
+                        "      \"order\": \" Asparagales\", " +
+                        "      \"properties\": {" +
+                        "        \"profile\": {" +
+                        "        \"status\": \"active\"" +
+                        "           }," +
+                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+                        "       }" +
+                        "       }," +
+                        "   \"associationIds\": [\"" + jobUuid.toString() + "\"]," +
+                        "   \"schemaId\": \"" + schemaUuid.toString() + "\"" +
+                        "   }";
 
         MetadataItem toAddItem = createMetadataItemFromString(strItemToAdd, this.username);
 
         MetadataSearch search = new MetadataSearch(this.username);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(toAddItem);
-        MetadataItem addedItem = search.updateMetadataItem();
+        MetadataItem addedItem = search.insertMetadataItem();
 
         Assert.assertEquals(addedItem, toAddItem, "updateMetadataItem should return the MetadataItem successfully added/updated.");
         List<MetadataItem> foundItems = search.find("{\"uuid\": \"" + toAddItem.getUuid() + "\"}");
@@ -246,7 +266,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void updateExistingItemAsOwner() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
+    public void updateExistingItemAsOwner() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         MetadataSearch createItem = new MetadataSearch(this.username);
         createItem.clearCollection();
         createItem.setAccessibleOwnersImplicit();
@@ -265,7 +285,7 @@ public class MetadataSearchIT {
 
         MetadataItem toAddItem = createMetadataItemFromString(toAdd, this.username);
         createItem.setMetadataItem(toAddItem);
-        createItem.updateMetadataItem();
+        createItem.insertMetadataItem();
 
         String strUpdate =
                 "  {" +
@@ -279,25 +299,48 @@ public class MetadataSearchIT {
                         "       }" +
                         "   }";
 
-        MetadataItem toUpdateItem = createMetadataItemFromString(strUpdate, this.username);
+        JsonHandler updateJsonHandler = new JsonHandler();
+        JsonNode updateJsonNode = updateJsonHandler.parseStringToJson(strUpdate);
+        updateJsonHandler.parseJsonMetadata(updateJsonNode);
+        MetadataItem toUpdateItem = updateJsonHandler.getMetadataItem();
+        JsonNode updatedValueNode = updateJsonHandler.parseValueToJsonNode(updateJsonNode);
 
         MetadataSearch updateItem = new MetadataSearch(this.username);
         updateItem.setAccessibleOwnersImplicit();
         updateItem.setMetadataItem(toUpdateItem);
-
         updateItem.setUuid(createItem.getUuid());
-        MetadataItem existingItem = updateItem.findOne();
-        updateItem.setOwner(existingItem.getOwner());
         updateItem.updateMetadataItem();
 
         String queryAfterUpdate = "{\"name\": \"New Metadata\", \"value.properties.species\": \"wisteria\"}";
         List<MetadataItem> result = updateItem.find(queryAfterUpdate);
-        Assert.assertEquals(result.get(0).getValue().get("properties").get("description").textValue(),
+        MetadataItem updatedItem = result.get(0);
+
+        Assert.assertEquals(updatedItem.getValue(), updatedValueNode, "MetadataItem value should be updated.");
+        Assert.assertEquals(updatedItem.getValue().get("properties").get("description").textValue(),
                 "A model flower organism...");
+        Assert.assertEquals(updatedItem.getName(), "New Metadata",
+                "MetadataItem name should be updated to \"New Metadata\".");
+        Assert.assertEquals(updatedItem.getSchemaId(), toAddItem.getSchemaId(),
+                "MetadataItem schemaId should not be changed since it was not included in the update.");
+        Assert.assertEquals(updatedItem.getOwner(), toAddItem.getOwner(),
+                "MetadataItem owner should not be changed.");
+        Assert.assertEquals(updatedItem.getUuid(), toAddItem.getUuid(),
+                "MetadataItem uuid should not be changed.");
+        Assert.assertEquals(updatedItem.getTenantId(), toAddItem.getTenantId(), "" +
+                "MetadataItem tenantId should not be changed.");
+        Assert.assertEquals(updatedItem.getPermissions(), toAddItem.getPermissions(),
+                "MetadataItem permissions should not be changed since it was not included in the update.");
+        Assert.assertTrue(updatedItem.getAssociations().getAssociatedIds().keySet().equals(toAddItem.getAssociations().getAssociatedIds().keySet()), "MetadataItem associatedIds should not be changed since it was not included in the update.");
+        Assert.assertEquals(updatedItem.getNotifications(), toAddItem.getNotifications(),
+                "MetadataItem notifications should not be changed since it was not included in the update.");
+        Assert.assertTrue((updatedItem.getCreated().compareTo(toAddItem.getCreated()) == 0),
+                "MetadataItem created date should not be changed.");
+        Assert.assertTrue((updatedItem.getLastUpdated().compareTo(toAddItem.getLastUpdated()) >= 1),
+                "MetadataItem lastUpdated should be updated to after the initial item's lastUpdated date.");
     }
 
     @Test
-    public void findMetadataWithFiltersTest() throws MetadataException, IOException, MetadataQueryException, PermissionException {
+    public void findMetadataWithFiltersTest() throws MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException, MetadataStoreException {
         ObjectMapper mapper = new ObjectMapper();
 
         MetadataItem testEntity = new MetadataItem();
@@ -319,77 +362,148 @@ public class MetadataSearchIT {
         MetadataSearch toAdd = new MetadataSearch(username);
         toAdd.setMetadataItem(testEntity);
         toAdd.setAccessibleOwnersExplicit();
-        toAdd.updateMetadataItem();
+        toAdd.insertMetadataItem();
 
         String strQuery = "{ \"value.type\": { \"$regex\": \".*flowering.*\"}}";
-        String[] filters = {"name", "value.type"};
+        String[] filters = {"name", "value.type", "lastUpdated"};
 
         MetadataSearch search = new MetadataSearch(username);
-        List<MetadataItem> all = search.findAll(new String[0]);
+        List<MetadataItem> all = search.findAll();
 
 
         List<Document> foundItems = search.filterFind(strQuery, filters);
         Assert.assertEquals(foundItems.size(), 1);
         Assert.assertTrue(Arrays.asList("wisteria", "Agavoideae").contains(foundItems.get(0).get("name")));
         Assert.assertTrue(foundItems.get(0).getEmbedded(List.of("value", "type"), String.class).contains("flowering"));
+
     }
 
     @Test
-    public void findAllMetadataForUserImplicitSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
+    public void findAllMetadataForUserImplicitSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
+        if (this.queryList.isEmpty())
+            setQueryList(new ArrayList<String>());
+
+        for (String query : this.queryList) {
+            MetadataItem toAdd = createMetadataItemFromString(query, Settings.PUBLIC_USER_USERNAME);
+            MetadataSearch addSearch = new MetadataSearch(Settings.PUBLIC_USER_USERNAME);
+            addSearch.setAccessibleOwnersImplicit();
+            addSearch.setMetadataItem(toAdd);
+            addSearch.insertMetadataItem();
+        }
+        String userQuery = "";
+        List<MetadataItem> searchResult;
         MetadataSearch implicitSearch = new MetadataSearch(this.username);
+        implicitSearch.setAccessibleOwnersImplicit();
 
-        MetadataSearch spyImplicitSearch = Mockito.spy(implicitSearch);
+        searchResult = implicitSearch.find(userQuery);
+        Assert.assertEquals(searchResult.size(), 0, "Implicit Search should find 0 metadata items ");
+    }
 
-        spyImplicitSearch.clearCollection();
-        spyImplicitSearch.setAccessibleOwnersImplicit();
-
+    @Test
+    public void findAllMetadataForUserExplicitSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         if (this.queryList.isEmpty())
             setQueryList(new ArrayList<String>());
 
         for (String query : this.queryList) {
-            MetadataItem toAdd = createMetadataItemFromString(query, this.username);
-            MetadataSearch addSearch = new MetadataSearch(this.username);
-            addSearch.setAccessibleOwnersImplicit();
+            MetadataItem toAdd = createMetadataItemFromString(query, Settings.PUBLIC_USER_USERNAME);
+            MetadataSearch addSearch = new MetadataSearch(Settings.PUBLIC_USER_USERNAME);
+            addSearch.setAccessibleOwnersExplicit();
             addSearch.setMetadataItem(toAdd);
-            addSearch.updateMetadataItem();
+            addSearch.insertMetadataItem();
         }
+
+        MetadataSearch explicitSearch = new MetadataSearch(this.username);
+        explicitSearch.setAccessibleOwnersExplicit();
 
         String userQuery = "";
         List<MetadataItem> searchResult;
 
-        searchResult = spyImplicitSearch.find(userQuery);
-        Assert.assertEquals(searchResult.size(), 4, "Implicit Search should find 4 metadata items ");
+        searchResult = explicitSearch.find(userQuery);
+        Assert.assertEquals(searchResult.size(), 4, "Explicit Search should find 4 metadata items ");
+
+        for (MetadataItem foundItem : searchResult) {
+            MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(foundItem.getUuid(), this.username);
+            permissionManager.setAccessibleOwnersExplicit();
+            if (permissionManager.canRead()) {
+                //pass
+            } else {
+                Assert.fail("Users should be able to read metadata items.");
+            }
+        }
     }
 
     @Test
-    public void findAllMetadataForUserExplicitSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
-        MetadataSearch explicitSearch = new MetadataSearch(this.sharedUser);
+    public void findMetadataItemAsSharedUser() throws MetadataQueryException, MetadataException, PermissionException, MetadataStoreException, UUIDException, MetadataAssociationException {
+        //parse json
+        String metadataQueryAgavoideae =
+                "  {" +
+                        "    \"name\": \"Agavoideae\"," +
+                        "    \"value\": {" +
+                        "      \"order\": \" Asparagales\", " +
+                        "      \"properties\": {" +
+                        "        \"profile\": {" +
+                        "        \"status\": \"active\"" +
+                        "           }," +
+                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+                        "       }" +
+                        "       }," +
+                        "       \"schemaId\": \"" + uuid + "\"" +
+                        "   }";
 
-        MetadataSearch spyExplicitSearch = Mockito.spy(explicitSearch);
-        spyExplicitSearch.clearCollection();
-        spyExplicitSearch.setAccessibleOwnersExplicit();
+        //validate metadata item from json handler
+        JsonHandler agavoideaeJsonHandler = new JsonHandler();
+        JsonNode agavoideaeJsonNode = agavoideaeJsonHandler.parseStringToJson(metadataQueryAgavoideae);
+        agavoideaeJsonHandler.parseJsonMetadata(agavoideaeJsonNode);
+        MetadataItem agavoideaeMetadataItem = agavoideaeJsonHandler.getMetadataItem();
 
-        if (this.queryList.isEmpty())
-            setQueryList(new ArrayList<String>());
+        //add Metadata Item and permissions
+        MetadataSearch search = new MetadataSearch(this.username);
+        search.setMetadataItem(agavoideaeMetadataItem);
+        search.setOwner(this.username);
+        search.insertMetadataItem();
 
-        for (String query : this.queryList) {
-            MetadataItem toAdd = createMetadataItemFromString(query, this.username);
-            MetadataSearch addSearch = new MetadataSearch(this.username);
-            addSearch.setAccessibleOwnersImplicit();
-            addSearch.setMetadataItem(toAdd);
-            addSearch.updateMetadataItem();
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(this.username, agavoideaeMetadataItem.getUuid());
+
+        MetadataPermission readUserPermission = new MetadataPermission(pemManager.getMetadataUUID(), "READ_USER", PermissionType.READ);
+        MetadataPermission readWriteUserPermission = new MetadataPermission(pemManager.getMetadataUUID(), "READWRITE_USER", PermissionType.READ_WRITE);
+        MetadataPermission invalidUserPermission = new MetadataPermission(pemManager.getMetadataUUID(), "UNKNOWN_USER", PermissionType.UNKNOWN);
+        pemManager.updatePermissions(readUserPermission);
+        pemManager.updatePermissions(readWriteUserPermission);
+
+        MetadataItem addedItem = search.findOne();
+
+        //search
+        MetadataItemPermissionManager readPemManager = new MetadataItemPermissionManager("READ_USER", agavoideaeMetadataItem.getUuid());
+        if (readPemManager.canRead()) {
+            MetadataSearch getSearch = new MetadataSearch("READ_USER");
+            getSearch.setUuid(pemManager.getMetadataUUID());
+
+            MetadataItem foundItem = getSearch.findOne();
+            Assert.assertEquals(foundItem, addedItem);
+        } else {
+            Assert.fail("Shared user with READ permission should have read access to the Metadata item");
         }
 
-        String userQuery = "";
-        List<MetadataItem> searchResult;
+        MetadataItemPermissionManager readWritePemManager = new MetadataItemPermissionManager("READWRITE_USER", agavoideaeMetadataItem.getUuid());
+        if (readWritePemManager.canRead()) {
+            MetadataSearch getSearch = new MetadataSearch("READWRITE_USER");
+            getSearch.setUuid(pemManager.getMetadataUUID());
 
-        searchResult = spyExplicitSearch.find(userQuery);
-        Assert.assertEquals(searchResult.size(), 0, "Search should find 0 metadata items because user has not been given explicit permissions for the items.");
+            MetadataItem foundItem = getSearch.findOne();
+            Assert.assertEquals(foundItem, addedItem);
+        } else {
+            Assert.fail("Shared user with READ WRITE permission should have read access to the Metadata item");
+        }
 
+        MetadataItemPermissionManager invalidPemManager = new MetadataItemPermissionManager("UNKNOWN_USER", agavoideaeMetadataItem.getUuid());
+        if (invalidPemManager.canRead()) {
+            Assert.fail("User with no permissions should not have read access to the Metadata item");
+        }
     }
 
+
     @Test
-    public void findRegexSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException {
+    public void findRegexSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         MetadataSearch search = new MetadataSearch(username);
         search.setAccessibleOwnersImplicit();
 
@@ -403,7 +517,7 @@ public class MetadataSearchIT {
             MetadataSearch addSearch = new MetadataSearch(this.username);
             addSearch.setAccessibleOwnersImplicit();
             addSearch.setMetadataItem(toAdd);
-            addSearch.updateMetadataItem();
+            addSearch.insertMetadataItem();
         }
 
         String queryByValueRegex = "{ \"value.description\": { \"$regex\": \".*monocots.*\", \"$options\": \"m\"}}";
@@ -414,7 +528,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findNameSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
+    public void findNameSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -428,7 +542,7 @@ public class MetadataSearchIT {
             MetadataSearch addSearch = new MetadataSearch(this.username);
             addSearch.setAccessibleOwnersImplicit();
             addSearch.setMetadataItem(toAdd);
-            addSearch.updateMetadataItem();
+            addSearch.insertMetadataItem();
         }
 
         String queryByName = "{\"name\":\"mustard plant\"}";
@@ -439,7 +553,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findNestedValueSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
+    public void findNestedValueSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -453,7 +567,7 @@ public class MetadataSearchIT {
             MetadataSearch addSearch = new MetadataSearch(this.username);
             addSearch.setAccessibleOwnersImplicit();
             addSearch.setMetadataItem(toAdd);
-            addSearch.updateMetadataItem();
+            addSearch.insertMetadataItem();
         }
 
         String queryByValue = "{\"value.type\":\"a plant\"}";
@@ -464,7 +578,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findConditionalSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException {
+    public void findConditionalSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -477,7 +591,7 @@ public class MetadataSearchIT {
             MetadataSearch addSearch = new MetadataSearch(this.username);
             addSearch.setAccessibleOwnersImplicit();
             addSearch.setMetadataItem(toAdd);
-            addSearch.updateMetadataItem();
+            addSearch.insertMetadataItem();
         }
 
         String queryByValueConditional = "{" +
@@ -507,7 +621,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void deleteMetadataItemAsOwnerTest() throws MetadataQueryException, PermissionException, MetadataException, UUIDException, MetadataAssociationException {
+    public void deleteMetadataItemTest() throws MetadataQueryException, PermissionException, MetadataException, UUIDException, MetadataAssociationException, MetadataStoreException {
         //create metadata item to delete
         String metadataQueryAloe =
                 "  {" +
@@ -525,22 +639,25 @@ public class MetadataSearchIT {
         MetadataSearch addItem = new MetadataSearch(this.username);
         addItem.setAccessibleOwnersImplicit();
         addItem.setMetadataItem(aloeMetadataItem);
-        addItem.updateMetadataItem();
+        addItem.insertMetadataItem();
 
-        //find item to delete
-        MetadataSearch ownerSearch = new MetadataSearch(this.username);
-        ownerSearch.setAccessibleOwnersExplicit();
-        ownerSearch.setUuid(aloeMetadataItem.getUuid());
-        MetadataItem itemToDelete = ownerSearch.findOne();
-        ownerSearch.setMetadataItem(itemToDelete);
+        MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(addItem.getUuid(), this.username);
 
-        MetadataItem deletedItem = ownerSearch.deleteMetadataItem();
+        if (permissionManager.canWrite()) {
+            MetadataSearch deleteSearch = new MetadataSearch(this.username);
+            deleteSearch.setAccessibleOwnersExplicit();
+            deleteSearch.setUuid(aloeMetadataItem.getUuid());
 
-        Assert.assertNotNull(deletedItem, "Deleting metadata item should return the item removed.");
-        Assert.assertEquals(deletedItem.getName(), "Aloe", "Deleted metadata item returned should have name \"Aloe\"");
+            MetadataItem deletedItem = deleteSearch.deleteMetadataItem();
 
-        MetadataItem itemAfterDelete = ownerSearch.findOne();
-        Assert.assertNull(itemAfterDelete, "Item should not be found after deleting.");
+            Assert.assertNotNull(deletedItem, "Deleting metadata item should return the item removed.");
+
+            MetadataItem itemAfterDelete = deleteSearch.findOne();
+            Assert.assertNull(itemAfterDelete, "Item should not be found after deleting.");
+
+        } else {
+            Assert.fail("Owner should have permission to delete item.");
+        }
     }
 
     @Test
@@ -589,5 +706,389 @@ public class MetadataSearchIT {
             Assert.fail("Serializing MetadataItem to Json String should not throw exception");
         }
     }
+
+
+    //Metadata Collection
+//    @Test
+//    public void createMetadataItemWithSchema() throws MetadataException, MetadataQueryException, MetadataAssociationException, UUIDException, PermissionException, UnknownHostException, MetadataStoreException {
+//        //parse json
+//
+//        String strItemToAdd = "  {" +
+//                "    \"name\": \"Sample Name\"," +
+//                "    \"value\": {" +
+//                "      \"type\": \"Sample type\"," +
+//                "        \"profile\": {" +
+//                "        \"status\": \"Sample Status\"" +
+//                "           }," +
+//                "        \"description\": \"Sample description...\"" +
+//                "       }," +
+//                "   }";
+//
+//        //AssociatedMetadataItem
+//        String metadataAgave = "{" +
+//                "    \"name\": \"Agave\"," +
+//                "    \"value\": {" +
+//                "      \"type\": \"a desert/dry-zone type plant\"" +
+//                "       }" +
+//                "   }";
+//
+////
+////        //Schema Setup
+////        String strAgavoideaeSchema = "{" +
+////                "\"order\": \"sample order\"," +
+////                "\"type\": \"object\"," +
+////                "\"properties\" : {" +
+////                "\"profile\" : {\"type\": \"string\"}," +
+////                "\"status\": {\"enum\" : [\"active\", \"retired\", \"disabled\", \"banned\"]} " +
+////                "}, " +
+////                "\"description\": {\"type\" : \"string\"}" +
+////                "   }";
+////
+////
+////        String timestamp = new DateTime().toString();
+////        Document doc = new Document("internalUsername", this.username)
+////                .append("lastUpdated", timestamp)
+////                .append("schema", JSON.parse(ServiceUtils.escapeSchemaRefFieldNames(strAgavoideaeSchema)));
+////
+////        MetadataSchemaPermissionManager pm = null;
+////
+////        String uuid = new AgaveUUID(UUIDType.SCHEMA).toString();
+////        doc.put("uuid", uuid);
+////        doc.append("created", timestamp);
+////        doc.append("owner", username);
+////        doc.append("tenantId", TenancyHelper.getCurrentTenantId());
+////        MetadataSchemaDao.getInstance().getDefaultCollection().insertOne(doc);
+////
+////        pm = new MetadataSchemaPermissionManager(uuid, username);
+////        pm.setPermission(username, "ALL");
+//
+//        String metadataQueryAgavoideae =
+//                "  {" +
+//                        "    \"name\": \"Agavoideae\"," +
+//                        "    \"value\": {" +
+//                        "      \"order\": \" Asparagales\", " +
+//                        "      \"properties\": {" +
+//                        "        \"profile\": {" +
+//                        "        \"status\": \"active\"" +
+//                        "           }," +
+//                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+//                        "       }" +
+//                        "       }," +
+//                        "       \"schemaId\": \"" + schemaUuid + "\"" +
+//                        "   }";
+//
+//        //validate metadata item from json handler
+//        JsonHandler agavoideaeJsonHandler = new JsonHandler();
+//        JsonNode agavoideaeJsonNode = agavoideaeJsonHandler.parseStringToJson(metadataQueryAgavoideae);
+//        agavoideaeJsonHandler.parseJsonMetadata(agavoideaeJsonNode);
+//        MetadataItem agavoideaeMetadataItem = agavoideaeJsonHandler.getMetadataItem();
+//
+//        //add metadata item to collection
+//        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(this.username, agavoideaeMetadataItem.getUuid());
+//
+//        if (pemManager.canWrite()) {
+//            MetadataSearch search = new MetadataSearch(this.username);
+//            search.setMetadataItem(agavoideaeMetadataItem);
+//            search.setOwner(this.username);
+//            MetadataItem addedMetadataItem = search.insertMetadataItem();
+//
+//            //return metadata item added
+//            Assert.assertNotNull(addedMetadataItem);
+//        } else {
+//            Assert.fail("Permission Manager should allow write for metadata item that doesn't exist.");
+//        }
+//    }
+
+    @Test
+    public void findMetadataItemAsOwner() throws MetadataQueryException, MetadataException, PermissionException, MetadataStoreException {
+        //parse json
+        String metadataQueryAgavoideae =
+                "  {" +
+                        "    \"name\": \"Agavoideae\"," +
+                        "    \"value\": {" +
+                        "      \"order\": \" Asparagales\", " +
+                        "      \"properties\": {" +
+                        "        \"profile\": {" +
+                        "        \"status\": \"active\"" +
+                        "           }," +
+                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+                        "       }" +
+                        "       }," +
+                        "       \"schemaId\": \"" + uuid + "\"" +
+                        "   }";
+
+        //validate metadata item from json handler
+        JsonHandler agavoideaeJsonHandler = new JsonHandler();
+        JsonNode agavoideaeJsonNode = agavoideaeJsonHandler.parseStringToJson(metadataQueryAgavoideae);
+        agavoideaeJsonHandler.parseJsonMetadata(agavoideaeJsonNode);
+        MetadataItem agavoideaeMetadataItem = agavoideaeJsonHandler.getMetadataItem();
+
+        MetadataSearch search = new MetadataSearch(this.username);
+        search.setMetadataItem(agavoideaeMetadataItem);
+        search.setOwner(this.username);
+        search.insertMetadataItem();
+
+        MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(this.username, agavoideaeMetadataItem.getUuid());
+        if (pemManager.canRead()) {
+            MetadataSearch getSearch = new MetadataSearch(this.username);
+            getSearch.setUuid(pemManager.getMetadataUUID());
+
+            MetadataItem foundItem = getSearch.findOne();
+            Assert.assertEquals(foundItem, agavoideaeMetadataItem);
+        } else {
+            Assert.fail("Owner should have read access to the Metadata item");
+        }
+    }
+
+
+    //user is not the owner but the admin - it should still be returned
+    @Test
+    public void getAllMetadataItemsImplicit() {
+        //insert multiple metadata items
+        List<MetadataItem> addedItemsList = new ArrayList<>();
+
+
+        //get all metadata items where user is the owner or admin, or has read access
+        MetadataSearch search = new MetadataSearch(this.username);
+        search.setAccessibleOwnersImplicit();
+        List<MetadataItem> resultList = search.findAll();
+
+        Assert.assertEquals(resultList, addedItemsList);
+
+    }
+
+    //user is not the owner but the admin - it should only be returned if
+    //user is explicitly given permission
+    @Test
+    public void getAllMetadataItemsExplicit() {
+        //insert multiple metadata items
+        List<MetadataItem> addedItemsList = new ArrayList<>();
+
+        //get all metadata items where user is the owner or has read access
+        MetadataSearch search = new MetadataSearch(this.username);
+        search.setAccessibleOwnersExplicit();
+        List<MetadataItem> resultList = search.findAll();
+
+        Assert.assertEquals(resultList, addedItemsList);
+    }
+
+//    @Test
+//    public void findMetadataItemByUuid() {
+//        //get metadata by uuid
+//        MetadataItem metadataItemToAdd = new MetadataItem();
+//
+//        //use permission manager to verify that user is owner, admin, or has read access
+//
+//        MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(this.username, metadataItemToAdd.getUuid());
+//
+//        if (permissionManager.canRead()) {
+//            MetadataSearch search = new MetadataSearch(this.username);
+//            search.setAccessibleOwnersImplicit();
+//            search.setUuid(metadataItemToAdd.getUuid());
+//
+//            MetadataItem foundItem = search.findOne();
+//            Assert.assertEquals(foundItem, metadataItemToAdd);
+//        } else {
+//            Assert.fail("User with READ permission should allow find Metadata Item.");
+//        }
+//
+//
+//    }
+
+    @Test
+    public void updateUsingDocument() throws MetadataException, PermissionException, MetadataQueryException, MetadataStoreException, UUIDException, MetadataAssociationException {
+        //parse json
+        String strMetadata =
+                "  {" +
+                        "    \"name\": \"Agavoideae\"," +
+                        "    \"value\": {" +
+                        "      \"order\": \" Asparagales\", " +
+                        "      \"properties\": {" +
+                        "        \"profile\": {" +
+                        "        \"status\": \"active\"" +
+                        "           }," +
+                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+                        "       }" +
+                        "       }" +
+                        "   }";
+        MetadataItem addedItem = createMetadataItemFromString(strMetadata, this.username);
+        MetadataDao.getInstance().getDefaultMetadataItemCollection().insertOne(addedItem);
+
+        String toUpdate = "  {" +
+                "    \"name\": \"Agavoideae\"," +
+                "    \"value\": {" +
+                "      \"order\": \" Inactive - Asparagales\", " +
+                "      \"properties\": {" +
+                "        \"profile\": {" +
+                "        \"status\": \"inactive\"" +
+                "           }," +
+                "        \"description\": \"Inactive - Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+                "       }" +
+                "       }" +
+                "   }";
+
+        JsonHandler updateJsonHandler = new JsonHandler();
+        JsonNode updateJsonNode = updateJsonHandler.parseStringToJson(toUpdate);
+        JsonNode updatedValueNode = updateJsonHandler.parseValueToJsonNode(updateJsonNode);
+
+        Document doc = updateJsonHandler.parseJsonMetadataToDocument(updateJsonNode);
+        doc.append("uuid", addedItem.getUuid());
+        doc.append("tenantId", addedItem.getTenantId());
+
+        MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(this.username, addedItem.getUuid());
+        if (permissionManager.canWrite()) {
+            //using doc
+            MetadataSearch updateWithDoc = new MetadataSearch(this.username);
+
+            updateWithDoc.updateMetadataItem(doc);
+
+            MetadataSearch afterUpdate = new MetadataSearch(this.username);
+            afterUpdate.setUuid(addedItem.getUuid());
+            afterUpdate.setAccessibleOwnersImplicit();
+            MetadataItem updatedItem = afterUpdate.findOne();
+
+            Assert.assertEquals(updatedItem.getValue(), updatedValueNode, "MetadataItem value should be updated.");
+            Assert.assertEquals(updatedItem.getValue().get("properties").get("description").textValue(),
+                    "Inactive - Includes desert and dry-zone types such as the agaves and yuucas.");
+            Assert.assertEquals(updatedItem.getName(), "Agavoideae",
+                    "MetadataItem name should be \"Agavoideae\".");
+            Assert.assertEquals(updatedItem.getSchemaId(), addedItem.getSchemaId(),
+                    "MetadataItem schemaId should not be changed since it was not included in the update.");
+            Assert.assertEquals(updatedItem.getOwner(), addedItem.getOwner(),
+                    "MetadataItem owner should not be changed.");
+            Assert.assertEquals(updatedItem.getUuid(), addedItem.getUuid(),
+                    "MetadataItem uuid should not be changed.");
+            Assert.assertEquals(updatedItem.getTenantId(), addedItem.getTenantId(), "" +
+                    "MetadataItem tenantId should not be changed.");
+            Assert.assertEquals(updatedItem.getPermissions(), addedItem.getPermissions(),
+                    "MetadataItem permissions should not be changed since it was not included in the update.");
+            Assert.assertTrue(updatedItem.getAssociations().getAssociatedIds().keySet().equals(addedItem.getAssociations().getAssociatedIds().keySet()), "MetadataItem associatedIds should not be changed since it was not included in the update.");
+            Assert.assertEquals(updatedItem.getNotifications(), addedItem.getNotifications(),
+                    "MetadataItem notifications should not be changed since it was not included in the update.");
+            Assert.assertTrue((updatedItem.getCreated().compareTo(addedItem.getCreated()) == 0),
+                    "MetadataItem created date should not be changed.");
+            Assert.assertTrue((updatedItem.getLastUpdated().compareTo(addedItem.getLastUpdated()) >= 1),
+                    "MetadataItem lastUpdated should be updated to after the initial item's lastUpdated date.");
+
+        } else {
+            Assert.fail("User with WRITE permission should allow updating Metadata Item.");
+        }
+    }
+
+
+//    @Test
+//    public void updateUsingMetadataItemTest() throws MetadataException, MetadataStoreException, PermissionException {
+//        //add metadata item with permissions
+//        MetadataItem addedItem = new MetadataItem();
+//        addedItem.setName("Sample Name");
+//        ObjectMapper mapper = new ObjectMapper();
+//        addedItem.setValue(mapper.createObjectNode().put("testKey", "testValue"));
+//        addedItem.setOwner(this.username);
+//        addedItem.setPermissions(Arrays.asList(new MetadataPermission(addedItem.getUuid(), "NEW_USER", PermissionType.READ)));
+//
+//        MetadataSearch search = new MetadataSearch(this.username);
+//        search.setMetadataItem(addedItem);
+//        search.setOwner(this.username);
+//        search.setAccessibleOwnersImplicit();
+//        search.insertMetadataItem();
+//
+//        MetadataItem afterAdd = search.findOne();
+//        Assert.assertNotNull(afterAdd);
+//
+//        //create query to update item
+//        MetadataItem updateItem = new MetadataItem();
+//        updateItem.setUuid(addedItem.getUuid());
+//        updateItem.setName("Updated Name");
+//        updateItem.setValue(mapper.createObjectNode().put("updatedKey", "updatedValue"));
+//
+//        MetadataSearch updateSearch = new MetadataSearch(this.username);
+//        updateSearch.setMetadataItem(updateItem);
+//        updateSearch.setAccessibleOwnersImplicit();
+//
+//        MetadataItem updatedItem = updateSearch.updateMetadataItem();
+//
+//        MetadataSearch afterUpdateSearch = new MetadataSearch(this.username);
+//        afterUpdateSearch.setUuid(updatedItem.getUuid());
+//        afterUpdateSearch.setAccessibleOwnersImplicit();
+//        MetadataItem afterUpdate = afterUpdateSearch.findOne();
+//
+//        System.out.println("Before updating afterAdd");
+//        System.out.println("Get Created: " + afterUpdate.getCreated() + " == " + afterAdd.getCreated());
+//        System.out.println("Get lastUpdated: " + afterUpdate.getLastUpdated() + " == " + afterAdd.getLastUpdated());
+//
+//
+//        afterAdd.setName("Updated Name");
+//        afterAdd.setValue(mapper.createObjectNode().put("updatedKey", "updatedValue"));
+//        afterAdd.setLastUpdated(afterUpdate.getLastUpdated());
+//
+//        System.out.println("After updating afterAdd");
+//
+//        System.out.println(afterUpdate.getName() + " == " + afterAdd.getName());
+//        System.out.println(afterUpdate.getValue() + " == " + afterAdd.getValue());
+//
+//        System.out.println("Get Created: " + afterUpdate.getCreated() + " == " + afterAdd.getCreated());
+//        System.out.println("Get lastUpdated: " + afterUpdate.getLastUpdated() + " == " + afterAdd.getLastUpdated());
+//
+//        System.out.println(StringUtils.equals(afterUpdate.getName(), afterAdd.getName()));
+//        System.out.println(afterUpdate.getValue().equals(afterAdd.getValue()));
+//        System.out.println(StringUtils.equals(afterUpdate.getSchemaId(), afterAdd.getSchemaId()));
+//        System.out.println(StringUtils.equals(afterUpdate.getOwner(), afterAdd.getOwner()));
+//        System.out.println(StringUtils.equals(afterUpdate.getUuid(), afterAdd.getUuid()));
+//        System.out.println(StringUtils.equals(afterUpdate.getTenantId(), afterAdd.getTenantId()));
+//        System.out.println(afterUpdate.getLastUpdated().compareTo(afterAdd.getLastUpdated()) == 0);
+//        System.out.println(afterUpdate.getAssociations().getAssociatedIds().keySet().equals(afterAdd.getAssociations().getAssociatedIds().keySet()));
+//
+//        Assert.assertNotNull(afterUpdate);
+//        Assert.assertEquals(afterUpdate, afterAdd);
+//    }
+
+
+//    @Test
+//    public void deleteMetadataItemByUuid() throws PermissionException {
+//        //get metadata by uuid
+//        MetadataItem itemToDelete = new MetadataItem();
+//
+//        //use permission manager to verify that user is owner, admin, or has write access
+//        MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(this.username, itemToDelete.getUuid());
+//
+//        if (permissionManager.canWrite()) {
+//            MetadataSearch search = new MetadataSearch(this.username);
+//            search.setAccessibleOwnersImplicit();
+//            search.setUuid(itemToDelete.getUuid());
+//            MetadataItem deletedItem = search.deleteMetadataItem();
+//            Assert.assertEquals(deletedItem, itemToDelete);
+//        } else {
+//            Assert.fail("User with WRITE permission should allow deleting Metadata Item.");
+//        }
+//
+//    }
+
+
+//    public MetadataItem createMetadataItem() throws IOException, MetadataException {
+//        String name = "Agavoideae";
+//        String value =
+//                "  {" +
+//                        "    \"value\": {" +
+//                        "      \"order\": \" Asparagales\", " +
+//                        "      \"properties\": {" +
+//                        "        \"profile\": {" +
+//                        "        \"status\": \"active\"" +
+//                        "           }," +
+//                        "        \"description\": \"Includes desert and dry-zone types such as the agaves and yuucas.\"" +
+//                        "       }" +
+//                        "       }" +
+//                        "   }";
+//        ObjectMapper mapper = new ObjectMapper();
+//        JsonNode node = mapper.getFactory().createParser(value).readValueAsTree();
+//
+//        MetadataItem metadataItem = new MetadataItem();
+//        metadataItem.setName(name);
+//        metadataItem.setValue(node);
+//        metadataItem.setOwner(this.username);
+//        metadataItem.setInternalUsername(this.username);
+//        metadataItem.setPermissions(Arrays.asList(new MetadataPermission(metadataItem.getUuid(), "SHARED_USER", PermissionType.READ)));
+//
+//        return metadataItem;
+//    }
 
 }

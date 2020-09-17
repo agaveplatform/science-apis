@@ -49,127 +49,125 @@ public class TransferApplication {
                 dbVerticleDeployment.future().compose(id -> {
 
                     Promise<String> httpVerticleDeployment = Promise.promise();
-                    vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferAPIVertical",
-                            new DeploymentOptions().setConfig(config),
-                            res -> {
-                                if (res.succeeded()) {
-                                    log.info("TransferAPIVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
+                    vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferAPIVertical", new DeploymentOptions().setConfig(config), res -> {
+                        if (res.succeeded()) {
+                            log.info("TransferAPIVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
 
-                                    DeploymentOptions localOptions = new DeploymentOptions()
-                                            .setWorkerPoolName("streaming-task-worker-pool")
-                                            .setWorkerPoolSize(poolSize)
-                                            .setInstances(instanceSize)
-                                            .setConfig(config)
-                                            .setWorker(true);
+                            DeploymentOptions localOptions = new DeploymentOptions()
+                                    .setWorkerPoolName("streaming-task-worker-pool")
+                                    .setWorkerPoolSize(poolSize)
+                                    .setInstances(instanceSize)
+                                    .setConfig(config)
+                                    .setWorker(true);
 
 
-                                    deployTTC(vertx, localOptions, resp -> {
-                                        if (resp.succeeded()) {
-                                            log.info("TransferTaskCreatedListener Deployment id is " + resp.result());
+                            deployTTC(vertx, localOptions, resp -> {
+                                if (resp.succeeded()) {
+                                    log.info("TransferTaskCreatedListener Deployment id is " + resp.result());
+                                } else {
+                                    log.error("TransferTaskCreatedListener Deployment failed !");
+                                }
+                            });
+                            // Deployment TransferTaskCreatedListener verticle
+                            vertx.deployVerticle(TransferTaskCreatedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskCreatedListener",
+                                    localOptions, res1 -> {
+                                        if (res1.succeeded()) {
+                                            log.info("TransferTaskCreatedListener Deployment id is " + res.result());
                                         } else {
                                             log.error("TransferTaskCreatedListener Deployment failed !");
                                         }
                                     });
-                                    // Deployment TransferTaskCreatedListener verticle
-                                    vertx.deployVerticle(TransferTaskCreatedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskCreatedListener",
-                                            localOptions, res1 -> {
-                                                if (res1.succeeded()) {
-                                                    log.info("TransferTaskCreatedListener Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("TransferTaskCreatedListener Deployment failed !");
-                                                }
-                                            });
 
-                                    //Deploy the TransferTaskAssignedListener vertical
-                                    vertx.deployVerticle(TransferTaskAssignedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener",
-                                            localOptions, res0 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("TransferTaskAssignedListener Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("TransferTaskAssignedListener Deployment failed !");
-                                                }
-                                            });
+                            //Deploy the TransferTaskAssignedListener vertical
+                            vertx.deployVerticle(TransferTaskAssignedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener",
+                                    localOptions, res0 -> {
+                                        if (res.succeeded()) {
+                                            log.info("TransferTaskAssignedListener Deployment id is " + res.result());
+                                        } else {
+                                            log.error("TransferTaskAssignedListener Deployment failed !");
+                                        }
+                                    });
 
-                                    // Deploy the TransferRetryListener vertical
-                                    vertx.deployVerticle(TransferTaskRetryListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferRetryListener",
-                                            localOptions, res3 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("TransferRetryListener Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("TransferRetryListener Deployment failed !");
-                                                }
-                                            });
+                            // Deploy the TransferRetryListener vertical
+                            vertx.deployVerticle(TransferTaskRetryListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferRetryListener",
+                                    localOptions, res3 -> {
+                                        if (res.succeeded()) {
+                                            log.info("TransferRetryListener Deployment id is " + res.result());
+                                        } else {
+                                            log.error("TransferRetryListener Deployment failed !");
+                                        }
+                                    });
 
-                                    // Deploy the TransferAllProtocolVertical vertical
-                                    vertx.deployVerticle(TransferAllProtocolVertical.class.getName(), //"org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical",
-                                            localOptions, res4 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("TransferAllProtocolVertical Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("TransferAllProtocolVertical Deployment failed !");
-                                                }
-                                            });
+                            // Deploy the TransferAllProtocolVertical vertical
+                            vertx.deployVerticle(TransferAllProtocolVertical.class.getName(), //"org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical",
+                                    localOptions, res4 -> {
+                                        if (res.succeeded()) {
+                                            log.info("TransferAllProtocolVertical Deployment id is " + res.result());
+                                        } else {
+                                            log.error("TransferAllProtocolVertical Deployment failed !");
+                                        }
+                                    });
 
-                                    // Deploy the TransferCompleteTaskListener vertical
-                                    vertx.deployVerticle(TransferTaskCompleteTaskListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferCompleteTaskListener",
-                                            localOptions, res5 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("TransferCompleteTaskListener Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("TransferCompleteTaskListener Deployment failed !");
-                                                }
-                                            });
+                            // Deploy the TransferCompleteTaskListener vertical
+                            vertx.deployVerticle(TransferTaskCompleteTaskListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferCompleteTaskListener",
+                                    localOptions, res5 -> {
+                                        if (res.succeeded()) {
+                                            log.info("TransferCompleteTaskListener Deployment id is " + res.result());
+                                        } else {
+                                            log.error("TransferCompleteTaskListener Deployment failed !");
+                                        }
+                                    });
 
 
-                                    // Deploy the TransferErrorTaskListener vertical
-                                    vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorTaskListener",
-                                            localOptions, res6 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("ErrorTaskListener Deployment id is " + res.result());
-                                                } else {
-                                                    log.info("ErrorTaskListener Deployment failed !");
-                                                }
-                                            });
+                            // Deploy the TransferErrorTaskListener vertical
+                            vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorTaskListener",
+                                    localOptions, res6 -> {
+                                        if (res.succeeded()) {
+                                            log.info("ErrorTaskListener Deployment id is " + res.result());
+                                        } else {
+                                            log.info("ErrorTaskListener Deployment failed !");
+                                        }
+                                    });
 
-                                    // Deploy the TransferFailureHandler vertical
-                                    vertx.deployVerticle(TransferTaskErrorFailureHandler.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferFailureHandler",
-                                            localOptions, res7 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("TransferFailureHandler Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("TransferFailureHandler Deployment failed !");
-                                                }
-                                            });
+                            // Deploy the TransferFailureHandler vertical
+                            vertx.deployVerticle(TransferTaskErrorFailureHandler.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferFailureHandler",
+                                    localOptions, res7 -> {
+                                        if (res.succeeded()) {
+                                            log.info("TransferFailureHandler Deployment id is " + res.result());
+                                        } else {
+                                            log.error("TransferFailureHandler Deployment failed !");
+                                        }
+                                    });
 
-                                    // Deploy the TransferTaskCancelListener vertical
-                                    vertx.deployVerticle(TransferTaskCancelListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskCancelListener",
-                                            localOptions, res8 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("TransferTaskCancelListener Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("TransferTaskCancelListener Deployment failed !");
-                                                }
-                                            });
+                            // Deploy the TransferTaskCancelListener vertical
+                            vertx.deployVerticle(TransferTaskCancelListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskCancelListener",
+                                    localOptions, res8 -> {
+                                        if (res.succeeded()) {
+                                            log.info("TransferTaskCancelListener Deployment id is " + res.result());
+                                        } else {
+                                            log.error("TransferTaskCancelListener Deployment failed !");
+                                        }
+                                    });
 
-                                    // Deploy the TransferTaskPausedListener vertical
-                                    vertx.deployVerticle(TransferTaskPausedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskPausedListener",
-                                            localOptions, res9 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("TransferTaskPausedListener Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("TransferTaskPausedListener Deployment failed !");
-                                                }
-                                            });
+                            // Deploy the TransferTaskPausedListener vertical
+                            vertx.deployVerticle(TransferTaskPausedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskPausedListener",
+                                    localOptions, res9 -> {
+                                        if (res.succeeded()) {
+                                            log.info("TransferTaskPausedListener Deployment id is " + res.result());
+                                        } else {
+                                            log.error("TransferTaskPausedListener Deployment failed !");
+                                        }
+                                    });
 
-                                    // Deploy the NotificationListener vertical
-                                    vertx.deployVerticle(TransferTaskNotificationListener.class.getName(), //"org.agaveplatform.service.transfers.listener.NotificationListener",
-                                            localOptions, res10 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("NotificationListener Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("NotificationListener Deployment failed !");
-                                                }
-                                            });
+                            // Deploy the NotificationListener vertical
+                            vertx.deployVerticle(TransferTaskNotificationListener.class.getName(), //"org.agaveplatform.service.transfers.listener.NotificationListener",
+                                    localOptions, res10 -> {
+                                        if (res.succeeded()) {
+                                            log.info("NotificationListener Deployment id is " + res.result());
+                                        } else {
+                                            log.error("NotificationListener Deployment failed !");
+                                        }
+                                    });
 
 //                                    // Deploy the TransferErrorListener vertical
 //                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferErrorListener",
@@ -181,31 +179,31 @@ public class TransferApplication {
 //                                                }
 //                                            });
 
-                                    // Deploy the TransferHealthcheckListener vertical
-                                    vertx.deployVerticle(TransferTaskHealthcheckListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",
-                                            localOptions, res12 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("TransferHealthcheckListener Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("TransferHealthcheckListener Deployment failed !");
-                                                }
-                                            });
+                            // Deploy the TransferHealthcheckListener vertical
+                            vertx.deployVerticle(TransferTaskHealthcheckListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",
+                                    localOptions, res12 -> {
+                                        if (res.succeeded()) {
+                                            log.info("TransferHealthcheckListener Deployment id is " + res.result());
+                                        } else {
+                                            log.error("TransferHealthcheckListener Deployment failed !");
+                                        }
+                                    });
 
-                                    // Deploy the TransferWatchListener vertical
-                                    vertx.deployVerticle(TransferTaskWatchListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferWatchListener",
-                                            localOptions, res13 -> {
-                                                if (res.succeeded()) {
-                                                    log.info("TransferWatchListener Deployment id is " + res.result());
-                                                } else {
-                                                    log.error("TransferWatchListener Deployment failed !");
-                                                }
-                                            });
+                            // Deploy the TransferWatchListener vertical
+                            vertx.deployVerticle(TransferTaskWatchListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferWatchListener",
+                                    localOptions, res13 -> {
+                                        if (res.succeeded()) {
+                                            log.info("TransferWatchListener Deployment id is " + res.result());
+                                        } else {
+                                            log.error("TransferWatchListener Deployment failed !");
+                                        }
+                                    });
 
-                                } else {
-                                    log.error("TransferAPIVertical deployment failed !\n" + res.cause());
-                                    res.cause().printStackTrace();
-                                }
-                            });
+                        } else {
+                            log.error("TransferAPIVertical deployment failed !\n" + res.cause());
+                            res.cause().printStackTrace();
+                        }
+                    });
 
                     return httpVerticleDeployment.future();
 

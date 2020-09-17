@@ -35,6 +35,7 @@ public class AgaveJWTAuthProviderImpl implements JWTAuth {
         this.permissionsClaimKey = config.getPermissionsClaimKey();
         this.jwtOptions = config.getJWTOptions();
 
+
         try {
             // attempt to load pem keys
             this.jwt = new JWT();

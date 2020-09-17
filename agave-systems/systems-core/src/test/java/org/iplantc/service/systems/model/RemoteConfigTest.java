@@ -25,13 +25,10 @@ public class RemoteConfigTest extends SystemsModelTestCommon{
         try {
         // pull in storage configs
     	for(StorageProtocolType storageProtocol: StorageProtocolType.values()) {
-    		String protocolName = storageProtocol == StorageProtocolType.IRODS ?
-					"irods3" : storageProtocol.name().toLowerCase();
-    		File testSystem = new File(JSONTestDataUtil.TEST_SYSTEM_FOLDER + "storage/" +
-					protocolName + ".example.com.json");
+    		String protocolName = storageProtocol == StorageProtocolType.IRODS ? "irods3" : storageProtocol.name().toLowerCase();
+    		File testSystem = new File(JSONTestDataUtil.TEST_SYSTEM_FOLDER + "storage/" + protocolName + ".example.com.json");
     		if (testSystem.exists()) {
-	    		jsonTree = jtd.getTestDataObject(testSystem.getPath())
-	    				.getJSONObject("storage");
+	    		jsonTree = jtd.getTestDataObject(testSystem.getPath()).getJSONObject("storage");
 	    		
 	    		storageConfigs.put(storageProtocol, StorageConfig.fromJSON(jsonTree));
     		}
@@ -39,11 +36,9 @@ public class RemoteConfigTest extends SystemsModelTestCommon{
     	
     	// pull in login configs
     	for(LoginProtocolType loginProtocol: LoginProtocolType.values()) {
-    		File testSystem = new File(JSONTestDataUtil.TEST_SYSTEM_FOLDER + "execution/" + 
-    				loginProtocol.name().toLowerCase() + ".example.com.json");
+    		File testSystem = new File(JSONTestDataUtil.TEST_SYSTEM_FOLDER + "execution/" + loginProtocol.name().toLowerCase() + ".example.com.json");
     		if (testSystem.exists()) {
-	    		jsonTree = jtd.getTestDataObject(testSystem.getPath())
-	    				.getJSONObject("login");
+	    		jsonTree = jtd.getTestDataObject(testSystem.getPath()).getJSONObject("login");
 	    		
 	    		loginConfigs.put(loginProtocol, LoginConfig.fromJSON(jsonTree));
     		}

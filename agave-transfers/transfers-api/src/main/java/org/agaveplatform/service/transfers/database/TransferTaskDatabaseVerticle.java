@@ -51,10 +51,10 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
     HashMap<SqlQuery, String> sqlQueries = loadSqlQueries();
 
     JDBCClient dbClient = JDBCClient.createShared(getVertx(), new JsonObject()
-      .put("url", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:hsqldb:mem:db/dev")) //
+      .put("url", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:mysql://127.0.0.1:3306/agavecore")) //
       .put("username", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_USERNAME))
       .put("password", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_PASSWORD))
-      .put("driver_class", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "org.mysqldb.jdbcDriver"))
+      .put("driver_class", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "com.mysql.cj.jdbc.Driver"))
       .put("max_pool_size", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)), "agave-io");
 
     TransferTaskDatabaseService.create(dbClient, sqlQueries, ready -> {
@@ -65,11 +65,11 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
           .register(TransferTaskDatabaseService.class, ready.result());
         promise.complete();
       } else {
+        ready.result();
         promise.fail(ready.cause());
       }
     });
   }
-
   /*
    * Note: this uses blocking APIs, but data is small...
    */
@@ -93,8 +93,6 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
       JsonNode node = mapper.readTree(queriesInputStream);
 
       HashMap<SqlQuery, String> sqlQueries = new HashMap<>();
-      sqlQueries.put(SqlQuery.CREATE_SYSTEMS_TABLE, node.get("create-systems-table").textValue());
-
       sqlQueries.put(SqlQuery.CREATE_TRANSFERTASKS_TABLE, node.get("create-transfertasks-table").textValue());
       sqlQueries.put(SqlQuery.ALL_TRANSFERTASKS, node.get("all-transfertasks").textValue());
       sqlQueries.put(SqlQuery.ALL_USER_TRANSFERTASKS, node.get("all-user-transfertasks").textValue());

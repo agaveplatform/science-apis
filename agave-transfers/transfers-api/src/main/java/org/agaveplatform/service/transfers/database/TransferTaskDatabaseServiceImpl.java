@@ -55,8 +55,6 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
       } else {
         SQLConnection connection = ar.result();
 
-
-
         connection.execute(sqlQueries.get(SqlQuery.CREATE_TRANSFERTASKS_TABLE), create -> {
           connection.close();
           if (create.failed()) {
@@ -66,8 +64,6 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             readyHandler.handle(Future.succeededFuture(this));
           }
         });
-
-
       }
     });
   }

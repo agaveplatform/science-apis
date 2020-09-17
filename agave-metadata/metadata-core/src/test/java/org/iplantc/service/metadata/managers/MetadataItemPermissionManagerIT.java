@@ -61,13 +61,13 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         //create and add permission
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
         pemManager.setAccessibleOwnersExplicit();
         MetadataPermission permissionToUpdate = new MetadataPermission(addedMetadataItem.getUuid(), SHARED_USER, PermissionType.READ);
-        List<MetadataPermission> updatedResult = pemManager.updatePermissions(permissionToUpdate);
+        MetadataPermission updatedResult = pemManager.updatePermissions(permissionToUpdate);
 
         MetadataSearch updatedSearch = new MetadataSearch(TEST_USER);
         updatedSearch.setUuid(metadataItem.getUuid());
@@ -88,7 +88,7 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
         pemManager.setAccessibleOwnersExplicit();
@@ -120,7 +120,7 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         //update
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
@@ -146,7 +146,7 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         //update
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(SHARED_USER, metadataItem.getUuid());
@@ -176,7 +176,7 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         //delete
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
@@ -205,7 +205,7 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         //delete
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(SHARED_USER, metadataItem.getUuid());
@@ -231,14 +231,12 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         //delete permission
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
-        pemManager.setAccessibleOwnersExplicit();
-
         MetadataPermission updatedPermission = new MetadataPermission(addedMetadataItem.getUuid(), "invalidUser", PermissionType.NONE);
-        Assert.assertNull(pemManager.updatePermissions(updatedPermission));
+        pemManager.deletePermission(addedMetadataItem, updatedPermission);
 
         MetadataSearch updatedSearch = new MetadataSearch(TEST_USER);
         updatedSearch.setAccessibleOwnersExplicit();
@@ -249,7 +247,7 @@ public class MetadataItemPermissionManagerIT {
 
     //find user permission
     @Test
-    public void findUserPermissionTest() throws MetadataException, PermissionException {
+    public void findUserPermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
         String TEST_USER = "testuser";
         String SHARED_USER = "shareuser";
 
@@ -264,17 +262,17 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersImplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
         pemManager.setAccessibleOwnersExplicit();
-        List<MetadataItem> foundMetadataItem = pemManager.findPermission_User(SHARED_USER);
+        MetadataPermission foundMetadataItem = pemManager.findPermission_User(SHARED_USER);
 
-        Assert.assertEquals(foundMetadataItem.get(0).getPermissions_User(SHARED_USER).getPermission(), PermissionType.READ_WRITE);
+        Assert.assertEquals(foundMetadataItem.getPermission(), PermissionType.READ_WRITE);
     }
 
     @Test
-    public void findOwnerPermissionTest() throws MetadataException, PermissionException {
+    public void findOwnerPermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
         String TEST_USER = "testuser";
         String SHARED_USER = "shareuser";
 
@@ -286,19 +284,20 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
         pemManager.setAccessibleOwnersExplicit();
-        List<MetadataItem> foundMetadataItem = pemManager.findPermission_User(TEST_USER);
+        pemManager.setAccessibleOwnersExplicit();
+        MetadataPermission foundMetadataItem = pemManager.findPermission_User(TEST_USER);
 
-        Assert.assertEquals(foundMetadataItem.get(0).getPermissions_User(TEST_USER).getPermission(), PermissionType.ALL);
+        Assert.assertEquals(foundMetadataItem.getPermission(), PermissionType.ALL);
 
     }
 
     //find invalid user permission
     @Test
-    public void findNonExistentUserPermissionTest() throws MetadataException, PermissionException {
+    public void findNonExistentUserPermissionTest() throws MetadataException, PermissionException, MetadataStoreException {
         String TEST_USER = "testuser";
         String SHARED_USER = "shareuser";
 
@@ -310,18 +309,18 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
         pemManager.setAccessibleOwnersExplicit();
-        List<MetadataItem> foundMetadataItem = pemManager.findPermission_User(SHARED_USER);
+        MetadataPermission foundMetadataItem = pemManager.findPermission_User(SHARED_USER);
 
-        Assert.assertEquals(foundMetadataItem.size(), 0, "User without permissions should not return anything.");
+        Assert.assertNull(foundMetadataItem, "User without permissions should not return anything.");
     }
 
     //find metadata permission
     @Test
-    public void findPermissionForMetadataItemTest() throws MetadataException, PermissionException {
+    public void findPermissionForMetadataItemTest() throws MetadataException, PermissionException, MetadataStoreException {
         MetadataItem metadataItem = new MetadataItem();
         metadataItem.setName(MetadataItemPermissionManagerIT.class.getName());
         metadataItem.setValue(mapper.createObjectNode().put("testKey", "testValue"));
@@ -333,7 +332,7 @@ public class MetadataItemPermissionManagerIT {
         MetadataSearch search = new MetadataSearch(TEST_USER);
         search.setAccessibleOwnersExplicit();
         search.setMetadataItem(metadataItem);
-        MetadataItem addedMetadataItem = search.updateMetadataItem();
+        MetadataItem addedMetadataItem = search.insertMetadataItem();
 
         MetadataItemPermissionManager pemManager = new MetadataItemPermissionManager(TEST_USER, metadataItem.getUuid());
         pemManager.setAccessibleOwnersExplicit();

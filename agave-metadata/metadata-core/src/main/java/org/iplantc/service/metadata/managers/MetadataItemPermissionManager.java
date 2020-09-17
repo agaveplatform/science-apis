@@ -96,6 +96,10 @@ public class MetadataItemPermissionManager {
         if (ServiceUtils.isAdmin(this.authenticatedUsername))
             return true;
 
+        if (this.accessibleOwners == null)
+            this.setAccessibleOwnersImplicit();
+
+        metadataDao.setAccessibleOwners(this.accessibleOwners);
         return metadataDao.hasRead(this.authenticatedUsername, this.metadataUUID);
     }
 
@@ -112,6 +116,10 @@ public class MetadataItemPermissionManager {
         if (ServiceUtils.isAdmin(this.authenticatedUsername))
             return true;
 
+        if (this.accessibleOwners == null)
+            this.setAccessibleOwnersImplicit();
+
+        metadataDao.setAccessibleOwners(this.accessibleOwners);
         return metadataDao.hasWrite(this.authenticatedUsername, this.metadataUUID);
     }
 
@@ -125,13 +133,25 @@ public class MetadataItemPermissionManager {
     }
 
     /**
+     * Retrieve the owner of the {@link MetadataItem} corresponding to the {@code metadataUUID}
+     *
+     * @return String owner of the {@link MetadataItem}, null if {@link MetadataItem} doesn't exist
+     */
+    public String getOwner() {
+        MetadataItem metadataItem = getMetadataItem();
+        if (metadataItem != null)
+            return getMetadataItem().getOwner();
+        return null;
+    }
+
+    /**
      * Create/Update permission for user
      *
      * @param permissionToUpdate
      * @throws MetadataException
      * @throws PermissionException
      */
-    public List<MetadataPermission> updatePermissions(MetadataPermission permissionToUpdate) throws MetadataException, PermissionException, MetadataStoreException {
+    public MetadataPermission updatePermissions(MetadataPermission permissionToUpdate) throws MetadataException, PermissionException, MetadataStoreException {
         if (permissionToUpdate == null)
             throw new MetadataException("Metadata permission cannot be null.");
 
@@ -147,14 +167,17 @@ public class MetadataItemPermissionManager {
                 throw new MetadataException("No Metadata item found with uuid " + this.metadataUUID);
 
             if (permissionToUpdate.getPermission().equals(PermissionType.NONE) || permissionToUpdate == null) {
-                MetadataPermission pemDelete = itemToUpdate.getPermissions_User(permissionToUpdate.getUsername());
-                if (pemDelete == null)
-                    return null; //nothing to delete
-                itemToUpdate.updatePermissions_delete(pemDelete);
+                deletePermission(itemToUpdate, permissionToUpdate);
+//                MetadataPermission pemDelete = itemToUpdate.getPermissions_User(permissionToUpdate.getUsername());
+//                if (pemDelete == null)
+//                    return null; //nothing to delete
+//                itemToUpdate.updatePermissions_delete(pemDelete);
+                return null;
             } else {
                 itemToUpdate.updatePermissions(permissionToUpdate);
+                metadataDao.updatePermission(itemToUpdate, this.authenticatedUsername);
+                return permissionToUpdate;
             }
-            return metadataDao.updatePermission(itemToUpdate, this.authenticatedUsername);
         } else {
             throw new PermissionException("User does not have sufficient permissions to update metadata item.");
         }
@@ -168,12 +191,16 @@ public class MetadataItemPermissionManager {
      * @return list of {@link MetadataItem} where the user was specified permissions; null if the user making the query
      * does not have permission to view the metadata item
      */
-    public List<MetadataItem> findPermission_User(String user) throws PermissionException {
+    public MetadataPermission findPermission_User(String user) throws PermissionException, MetadataException {
         if (canRead()) {
             //only the owner or tenantAdmin can access if no permissions are explicitly set
             metadataDao.setAccessibleOwners(this.accessibleOwners);
-            return metadataDao.find(this.authenticatedUsername, and(eq("uuid", this.metadataUUID),
+            List<MetadataItem> foundItem = metadataDao.find(this.authenticatedUsername, and(eq("uuid", this.metadataUUID),
                     or(eq("owner", user), eq("permissions.username", user))));
+
+            if (foundItem.size() > 0)
+                return foundItem.get(0).getPermissions_User(user);
+            return null;
         } else {
             throw new PermissionException("User does not have sufficient permissions to update metadata item.");
         }
@@ -194,5 +221,24 @@ public class MetadataItemPermissionManager {
         } else {
             throw new PermissionException("User does not have sufficient permissions to update metadata item.");
         }
+    }
+
+    public void deletePermission(MetadataItem itemToUpdate, MetadataPermission permission) throws MetadataException, PermissionException, MetadataStoreException {
+        if (this.accessibleOwners == null)
+            this.setAccessibleOwnersImplicit();
+        metadataDao.setAccessibleOwners(this.accessibleOwners);
+
+        MetadataPermission pemDelete = itemToUpdate.getPermissions_User(permission.getUsername());
+        itemToUpdate.updatePermissions_delete(pemDelete);
+        metadataDao.updatePermission(itemToUpdate, this.authenticatedUsername);
+    }
+
+    public void deleteAllPermissions(MetadataItem itemToUpdate) throws MetadataException, PermissionException, MetadataStoreException {
+        if (this.accessibleOwners == null)
+            this.setAccessibleOwnersImplicit();
+        metadataDao.setAccessibleOwners(this.accessibleOwners);
+
+        itemToUpdate.setPermissions(new ArrayList<>());
+        metadataDao.updatePermission(itemToUpdate, this.authenticatedUsername);
     }
 }

@@ -59,8 +59,8 @@ public class MetadataItemPermissionManagerTest {
         when(mockMetadataDao.findSingleMetadataItem(any())).thenReturn(metadataItemToUpdate);
         when(mockMetadataDao.updatePermission(any(), any())).thenReturn(metadataItemToUpdate.getPermissions());
 
-        List<MetadataPermission> updatedPem = pemManager.updatePermissions(metadataPermission);
-        Assert.assertEquals(updatedPem.get(0), metadataPermission, "Permission should be updated for " + userToUpdate + " to " + PermissionType.READ);
+        MetadataPermission updatedPem = pemManager.updatePermissions(metadataPermission);
+        Assert.assertEquals(updatedPem, metadataPermission, "Permission should be updated for " + userToUpdate + " to " + PermissionType.READ);
 
     }
 

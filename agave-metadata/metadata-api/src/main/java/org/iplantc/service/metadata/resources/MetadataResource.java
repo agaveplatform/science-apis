@@ -10,11 +10,14 @@ import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKe
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.time.Period;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.mongodb.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.bson.Document;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.UUIDException;
@@ -24,7 +27,10 @@ import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.AgaveResource;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.managers.MetadataItemPermissionManager;
+import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.iplantc.service.metadata.search.JsonHandler;
 import org.iplantc.service.metadata.search.MetadataSearch;
@@ -42,6 +48,8 @@ import org.restlet.resource.Variant;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+
+import javax.print.Doc;
 
 /**
  * Class to handle CRUD operations on metadata entities.
@@ -127,33 +135,69 @@ public class MetadataResource extends AgaveResource {
             // How would one browse all their metadata?
             // does that even make sense?
 
-            MetadataSearch search = new MetadataSearch(username);
-            search.setAccessibleOwnersExplicit();
-
 //            if (search.getCollection() == null) {
 //                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 //                        "Unable to connect to metadata store. If this problem persists, "
 //                                + "please contact the system administrators. Exception: ");
 //            }
 
-            search.setUuid(uuid);
-            List<MetadataItem> userResults = search.find(userQuery);
+            List<String> resultList = new ArrayList<>();
+            String strResult = "";
 
-            if (userResults.size() == 1) {
-                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(userResults.get(0));
-                return new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString());
+            MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(this.username, uuid);
+            if (permissionManager.canRead()){
+                MetadataSearch search = new MetadataSearch(username);
+                search.setAccessibleOwnersImplicit();
+                search.setUuid(uuid);
+
+                if (hasJsonPathFilters()){
+                    List<Document> userResults= search.filterFind(userQuery, jsonPathFilters);
+                    if (userResults.isEmpty())
+                        throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+                                "No metadata item found for user with id " + uuid);
+
+                    for (Document doc : userResults) {
+                        resultList.add(doc.toJson());
+                    }
+                    strResult = userResults.get(0).toJson();
+
+//                    MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(userResults.get(0));
+//                    return new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString());
+
+                } else {
+                    List<MetadataItem> userResults = search.find(userQuery);
+                    if (userResults.isEmpty())
+                        throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+                                "No metadata item found for user with id " + uuid);
+                    MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(userResults.get(0));
+                    strResult = metadataItemSerializer.formatMetadataItemResult().toString();
+//                    return new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString());
+                }
+
+                return new IplantSuccessRepresentation(strResult);
             } else {
-                //nothing found, check if uuid exists
-                MetadataItem foundMetadataItem = search.findOne();
-                if (foundMetadataItem == null) {
-                    throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-                            "No metadata item found for user with id " + uuid);
-                }
-                else {
-                    getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
-                    return new IplantErrorRepresentation("User does not have permission to read this metadata entry.");
-                }
+                getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
+                return new IplantErrorRepresentation("User does not have permission to read this metadata entry.");
             }
+
+
+//            List<MetadataItem> userResults = search.find(userQuery);
+
+//            if (userResults.size() == 1) {
+//                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(userResults.get(0));
+//                return new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString());
+//            } else {
+//                //nothing found, check if uuid exists
+//                MetadataItem foundMetadataItem = search.findOne();
+//                if (foundMetadataItem == null) {
+//                    throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+//                            "No metadata item found for user with id " + uuid);
+//                }
+//                else {
+//                    getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
+//                    return new IplantErrorRepresentation("User does not have permission to read this metadata entry.");
+//                }
+//            }
 
         }
         catch (ResourceException e) {
@@ -189,8 +233,9 @@ public class MetadataResource extends AgaveResource {
             ArrayNode items = mapper.createArrayNode();
             MetadataItem updatedMetadataItem = null;
 
-            MetadataSearch search = new MetadataSearch(this.username);
-            search.setAccessibleOwnersExplicit();
+//            MetadataItem metadataItem;
+
+            Document metadataDocument;
 
             try {
 //                if (search.getCollection() == null) {
@@ -200,9 +245,10 @@ public class MetadataResource extends AgaveResource {
 //                }
 
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
-//                search.parseJsonMetadata(jsonMetadata);
                 JsonHandler jsonHandler = new JsonHandler();
                 jsonHandler.parseJsonMetadata(jsonMetadata);
+//                metadataItem = jsonHandler.getMetadataItem();
+                metadataDocument = jsonHandler.parseJsonMetadataToDocument(jsonMetadata);
 
             } catch (ResourceException e) {
                 throw e;
@@ -212,19 +258,29 @@ public class MetadataResource extends AgaveResource {
             }
 
             try {
-                search.setUuid(uuid);
 
-                MetadataItem existingItem = search.findOne();
+                MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(uuid, this.username);
 
-                if (existingItem != null) {
-                    search.setOwner(existingItem.getOwner());
+                if (permissionManager.canWrite()){
+
                 } else {
-                    search.setOwner(this.username);
+                    throw new PermissionException("User does not have permission to update metadata.");
                 }
+                MetadataSearch search = new MetadataSearch(this.username);
+                search.setAccessibleOwnersImplicit();
+                search.setUuid(uuid);
+                Document updatedMetadataDoc = search.updateMetadataItem(metadataDocument);
+//                MetadataItem existingItem = search.findOne();
+//
+//                if (existingItem != null) {
+//                    search.setOwner(existingItem.getOwner());
+//                } else {
+//                    search.setOwner(this.username);
+//                }
+//
+//                updatedMetadataItem = search.updateMetadataItem();
 
-                updatedMetadataItem = search.updateMetadataItem();
-
-                if (updatedMetadataItem == null) {
+                if (updatedMetadataDoc == null) {
                     throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
                             "No metadata item found for user with id " + uuid);
                 } else {
@@ -237,8 +293,9 @@ public class MetadataResource extends AgaveResource {
                     getResponse().setStatus(Status.SUCCESS_OK);
                 }
 
-                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(updatedMetadataItem);
-                getResponse().setEntity(new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString()));
+//                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(updatedMetadataItem);
+//                getResponse().setEntity(new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString()));
+                getResponse().setEntity(new IplantSuccessRepresentation(updatedMetadataDoc.toJson()));
 
 
             } catch (PermissionException e) {
@@ -283,7 +340,7 @@ public class MetadataResource extends AgaveResource {
             }
 
             MetadataSearch search = new MetadataSearch(this.username);
-            search.setAccessibleOwnersExplicit();
+            search.setAccessibleOwnersImplicit();
 
 //            if (search.getCollection() == null) {
 //                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
@@ -292,20 +349,28 @@ public class MetadataResource extends AgaveResource {
 //            }
 
             try {
-                search.setUuid(uuid);
-                deletedMetadataItem = search.deleteMetadataItem();
 
-                if (deletedMetadataItem == null) {
-                    throw new Exception();
+                MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(uuid, this.username);
+
+                if (permissionManager.canWrite()) {
+                    search.setUuid(uuid);
+                    deletedMetadataItem = search.deleteMetadataItem();
+
+                    if (deletedMetadataItem == null) {
+                        throw new Exception();
+                    }
+                    for (String aid : deletedMetadataItem.getAssociations().getAssociatedIds().keySet()) {
+                        NotificationManager.process((String) aid, "METADATA_DELETED", username);
+                    }
+
+                    NotificationManager.process(uuid, "DELETED", username);
+
+                    getResponse().setStatus(Status.SUCCESS_OK);
+                    getResponse().setEntity(new IplantSuccessRepresentation());
+                } else {
+                    throw new PermissionException("User does not have permission to update metadata");
                 }
-                for (String aid : deletedMetadataItem.getAssociations().getAssociatedIds().keySet()) {
-                    NotificationManager.process((String) aid, "METADATA_DELETED", username);
-                }
 
-                NotificationManager.process(uuid, "DELETED", username);
-
-                getResponse().setStatus(Status.SUCCESS_OK);
-                getResponse().setEntity(new IplantSuccessRepresentation());
 
             } catch (PermissionException e) {
                 getResponse().setStatus(Status.CLIENT_ERROR_UNAUTHORIZED);

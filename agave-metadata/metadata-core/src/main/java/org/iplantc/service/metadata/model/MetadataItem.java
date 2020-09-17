@@ -107,7 +107,7 @@ public class MetadataItem {
     private List<Notification> notifications = new ArrayList<Notification>();
 
     //KL
-    //@JsonIgnore
+    @JsonIgnore
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private List<MetadataPermission> permissions = new ArrayList<MetadataPermission>();
 
@@ -423,7 +423,9 @@ public class MetadataItem {
                 (StringUtils.equals(this.getOwner(), metadataItem.getOwner())) &&
                 (StringUtils.equals(this.getUuid(), metadataItem.getUuid())) &&
                 (StringUtils.equals(this.getTenantId(), metadataItem.getTenantId())) &&
+                (this.getCreated().compareTo(metadataItem.getCreated()) == 0) &&
                 (this.getLastUpdated().compareTo(metadataItem.getLastUpdated()) == 0) &&
+                (this.getPermissions()).equals(metadataItem.getPermissions()) &&
                 (this.getAssociations().getAssociatedIds().keySet().equals(metadataItem.getAssociations().getAssociatedIds().keySet()));
     }
 

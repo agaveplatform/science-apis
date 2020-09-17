@@ -14,19 +14,19 @@ public interface IMetadataDaoIT {
     MongoCollection getDefaultCollection();
     MetadataItem insert();
     MetadataItem createEntity();
-    void insertTest() throws  MetadataException, PermissionException;
+    void insertTest() throws MetadataException, PermissionException, MetadataStoreException;
     void insertPermissionTest() throws MetadataStoreException, MetadataException, PermissionException;
     void removeMetadataTest() throws MetadataStoreException, MetadataException, PermissionException;
     void removePermissionTest()  throws MetadataStoreException, MetadataException, PermissionException;
     void updateTest() throws MetadataStoreException, MetadataException, PermissionException;
     void updatePermissionTest() throws MetadataStoreException, MetadataException, PermissionException;
-    void findTest() throws MetadataException, PermissionException;
-    void findWithOffsetAndLimitTest() throws MetadataException, PermissionException;
-    void findSingleMetadataItemTest() throws MetadataException, PermissionException;
+    void findTest() throws MetadataException, PermissionException, MetadataStoreException;
+    void findWithOffsetAndLimitTest() throws MetadataException, PermissionException, MetadataStoreException;
+    void findSingleMetadataItemTest() throws MetadataException, PermissionException, MetadataStoreException;
     void findSingleMetadataItemNonexistentTest();
-    void findPermissionTest() throws MetadataException, PermissionException;
-    void findMetadataItemWithFiltersTest() throws MetadataException, PermissionException;
-    void findMetadataItemWithInvalidFiltersTest() throws MetadataException, PermissionException;
+    void findPermissionTest() throws MetadataException, PermissionException, MetadataStoreException;
+    void findMetadataItemWithFiltersTest() throws MetadataException, PermissionException, MetadataStoreException;
+    void findMetadataItemWithInvalidFiltersTest() throws MetadataException, PermissionException, MetadataStoreException;
 
 
 }

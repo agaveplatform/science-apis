@@ -194,12 +194,10 @@ public class JsonHandlerIT {
 
     @Test
     public void parseInvalidAssociationIdsToArrayNodeTest() throws IOException, MetadataQueryException {
-        String associationId = "00000-0000000-00000000";
-
         String strJson = "{" +
                 "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
                 "\"value\": " + "{\"testKey\":\"testValue\"}" + "," +
-                "\"associationIds\": " + "[" + "\"" + associationId + "\"" + "]" + "," +
+                "\"associationIds\": " + "[" + "\"00000-0000000-00000000\"" + "]" + "," +
                 "\"schemaId\": " + "\"" + new AgaveUUID(UUIDType.SCHEMA).toString() + "\"" + "," +
                 "\"permissions\": " + "[\"" + PermissionType.READ_WRITE + "\"]" + "," +
                 "\"notifications\": " + "[\"" + "notifications" + "\"]" + "" +

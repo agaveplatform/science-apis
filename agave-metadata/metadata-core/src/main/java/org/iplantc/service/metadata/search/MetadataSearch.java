@@ -88,8 +88,6 @@ import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.*;
 
 public class MetadataSearch {
-    //    private boolean bolImplicitPermissions;
-//    private String owner;
     private String value;
     private String username;
     private MetadataAssociationList associationList;

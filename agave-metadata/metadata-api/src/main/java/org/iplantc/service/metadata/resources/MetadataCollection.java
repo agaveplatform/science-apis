@@ -13,6 +13,7 @@ import com.mongodb.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.bson.Document;
 import org.iplantc.service.common.auth.AuthorizationHelper;
@@ -153,6 +154,11 @@ public class MetadataCollection extends AgaveResource {
     @Override
     public Representation represent(Variant variant) throws ResourceException {
         SimpleTimer st = null;
+        List<String> str_permittedResults = new ArrayList<>();
+        log.log(Level.DEBUG, "Starting GET request");
+        System.setProperty("DEBUG.MONGO", "true");
+        System.setProperty("DB.TRACE", "true");
+        Logger mongoLog = Logger.getLogger("org.mongodb.driver.protocol.query");
 
         try {
             MetadataSearch search = new MetadataSearch(this.username);
@@ -170,61 +176,89 @@ public class MetadataCollection extends AgaveResource {
 //            List<MetadataItem> userResults;
             List<DBObject> agg_permittedResults = new ArrayList<>();
 
-            List<String> str_permittedResults = new ArrayList<>();
-
             try {
 
+                try {
                     if (StringUtils.isNotBlank(uuid)) {
                         MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(this.username, uuid);
                         if (!permissionManager.canRead())
                             throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, "User does not have permission to view resource.");
                     }
+                } catch (Exception e) {
+                    throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+                            "Unable to verify permissions for given uuid.", e);
+                }
 
 //                    MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(this.username, uuid);
 
 //                    if (permissionManager.canRead()) {
 
-                        List<String> sortableFields = Arrays.asList("uuid",
-                                "tenantId",
-                                "schemaId",
-                                "internalUsername",
-                                "lastUpdated",
-                                "name",
-                                "value",
-                                "created",
-                                "owner");
+                List<String> sortableFields = Arrays.asList("uuid",
+                        "tenantId",
+                        "schemaId",
+                        "internalUsername",
+                        "lastUpdated",
+                        "name",
+                        "value",
+                        "created",
+                        "owner");
 
-                        String orderField = getOrderBy("lastUpdated");
+                String orderField = getOrderBy("lastUpdated");
 
-                        if (StringUtils.isBlank(orderField) || !sortableFields.contains(orderField)) {
-                            throw new SortSyntaxException("Invalid order field. Please specify one of " +
-                                    StringUtils.join(sortableFields, ","), new MetadataException("Invalid sort field"));
-                        }
+                if (StringUtils.isBlank(orderField) || !sortableFields.contains(orderField)) {
+                    throw new SortSyntaxException("Invalid order field. Please specify one of " +
+                            StringUtils.join(sortableFields, ","), new MetadataException("Invalid sort field"));
+                }
 
-                        int orderDirection = getOrder(AgaveResourceResultOrdering.DESC).isAscending() ? 1 : -1;
+                int orderDirection = getOrder(AgaveResourceResultOrdering.DESC).isAscending() ? 1 : -1;
 
-                        search.setOrderField(orderField);
-                        search.setOrderDirection(orderDirection);
-                        search.setLimit(limit);
-                        search.setOffset(offset);
+                search.setOrderField(orderField);
+                search.setOrderDirection(orderDirection);
+                search.setLimit(limit);
+                search.setOffset(offset);
 
-                        if (hasJsonPathFilters()) {
-                            List<Document> userResults = search.filterFind(userQuery, jsonPathFilters);
 
-                            for (Document metadataDoc : userResults) {
-                                str_permittedResults.add(metadataDoc.toJson());
-                            }
+                if (hasJsonPathFilters()) {
+                    try {
+                    List<Document> userResults = search.filterFind(userQuery, jsonPathFilters);
 
-                        } else {
-                            List<MetadataItem> userResults = search.find(userQuery);
+                    for (Document metadataDoc : userResults) {
+                        str_permittedResults.add(metadataDoc.toJson());
+                    }} catch (Exception e) {
+                        throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+                                "Unable to find matching items based on filters: ", e);
+                    }
 
-                            for (MetadataItem metadataItem : userResults) {
-                                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
+                } else {
+                    List<MetadataItem> userResults = new ArrayList<>();
+                    try {
+                        log.log(Level.DEBUG, "DB Query: " + userQuery);
+                        mongoLog.trace("tracing mongo logs");
+
+                        userResults = search.find(userQuery);
+                        mongoLog.setLevel(Level.ALL);
+                        mongoLog.trace("tracing mongo logs");
+
+                    } catch (MetadataQueryException e) {
+                        throw new MetadataQueryException(e.getMessage());
+                    } catch (Exception e) {
+                        throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+                                "Unable to find matching items " , e);
+                    }
+
+                    try {
+                        for (MetadataItem metadataItem : userResults) {
+                            MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
 //                            agg_permittedResults.add(metadataItemSerializer.formatMetadataItemResult());
-                                str_permittedResults.add(metadataItemSerializer.formatMetadataItemResult().toString());
-                            }
-//                        str_permittedResults = agg_permittedResults.toString();
+                            str_permittedResults.add(metadataItemSerializer.formatMetadataItemResult().toString());
                         }
+                    } catch (Exception e) {
+                        throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+                                "Unable to serialize response", e);
+
+                    }
+//                        str_permittedResults = agg_permittedResults.toString();
+                }
 //                        return new IplantSuccessRepresentation(str_permittedResults.toString());
 
 //                    } else {
@@ -246,7 +280,7 @@ public class MetadataCollection extends AgaveResource {
             throw new ResourceException(org.restlet.data.Status.SERVER_ERROR_INTERNAL,
                     "An error occurred while fetching the metadata item. " +
                             "If this problem persists, " +
-                            "please contact the system administrators. + " + e.getMessage() , e);
+                            "please contact the system administrators. ", e);
         }
     }
 
@@ -307,7 +341,7 @@ public class MetadataCollection extends AgaveResource {
             notificationProcessor.process(search.getNotifications());
 
             MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(addedMetadataItem);
-             strMetadataItem = metadataItemSerializer.formatMetadataItemResult().toString();
+            strMetadataItem = metadataItemSerializer.formatMetadataItemResult().toString();
 
             eventProcessor.processContentEvent(uuid,
                     MetadataEventType.CREATED,

@@ -23,11 +23,14 @@ import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import com.mongodb.client.MongoClients;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
+import org.bson.codecs.pojo.Convention;
+import org.bson.codecs.pojo.Conventions;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.hibernate.sql.Update;
@@ -113,23 +116,29 @@ public class MetadataDao {
         if (mongov4Client == null) {
 
             //testing for custom codec
+            log.log(Level.DEBUG,"building json class model");
             ClassModel<JsonNode> valueModel = ClassModel.builder(JsonNode.class).build();
+            log.log(Level.DEBUG,"building MetadataPermission class model");
             ClassModel<MetadataPermission> metadataPermissionModel = ClassModel.builder(MetadataPermission.class).build();
+            log.log(Level.DEBUG,"building pojocodecprovider");
             PojoCodecProvider pojoCodecProvider = PojoCodecProvider.builder().register(valueModel, metadataPermissionModel).build();
-
+            log.log(Level.DEBUG,"building codec registry");
             CodecRegistry registry = CodecRegistries.fromCodecs(new MetadataItemCodec());
-
+            log.log(Level.DEBUG,"pojo codec registry");
             CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
                     fromProviders(pojoCodecProvider),
                     registry);
+            log.log(Level.DEBUG,"creating client");
 
-                mongov4Client = mongoClients.create(MongoClientSettings.builder()
+            mongov4Client = mongoClients.create(MongoClientSettings.builder()
                         .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
                                 new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT))))
                         .credential(getMongoCredential())
                         .codecRegistry(pojoCodecRegistry)
                         .build());
         }
+        log.log(Level.DEBUG,"finished");
+
         return mongov4Client;
     }
 
@@ -314,6 +323,8 @@ public class MetadataDao {
         Bson withPermissionQuery = and(query, getHasReadQuery(user, accessibleOwners));
 
         try {
+            log.log(Level.DEBUG, withPermissionQuery.toString());
+
             cursor = metadataItemMongoCollection.find(withPermissionQuery)
                     .sort(order)
                     .skip(offset)

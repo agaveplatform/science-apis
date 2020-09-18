@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
+import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 
@@ -16,14 +17,21 @@ import java.util.List;
  */
 public class MetadataRequestPermissionProcessor {
 
-	private List<MetadataPermission> permissions;
+//	private List<MetadataPermission> permissions;
 	private String owner;
 	private String uuid;
+	private MetadataItem metadataItem;
 	
-	public MetadataRequestPermissionProcessor(String owner, String uuid) {
-		this.setPermissions(new ArrayList<MetadataPermission>());
-		this.setOwner(owner);
-		this.setUuid(uuid);
+	public MetadataRequestPermissionProcessor() {
+//		this.setPermissions(new ArrayList<MetadataPermission>());
+		this.metadataItem = new MetadataItem();
+	}
+
+	public MetadataRequestPermissionProcessor(MetadataItem metadataItem) throws MetadataException {
+		if (metadataItem == null) {
+			throw new MetadataException("Metadata item cannot be null");
+		}
+		this.metadataItem = metadataItem;
 	}
 	
 	/**
@@ -33,11 +41,10 @@ public class MetadataRequestPermissionProcessor {
 	 *  
 	 * @param json
 	 * @throws MetadataException
-	 * @throws PermissionException
 	 */
-	public void process(ArrayNode json) throws MetadataException, PermissionException {
+	public void process(ArrayNode json) throws MetadataException {
 		
-		getPermissions().clear();
+		getMetadataItem().getPermissions().clear();
 		
 		if (json == null || json.isNull()) {
 			// ignore the null value
@@ -60,15 +67,24 @@ public class MetadataRequestPermissionProcessor {
 					// to validate the embedded {@link MetadataPermission}.
 					try {
 //						MetadataPermissionManager pm = new MetadataPermissionManager(getUuid(), getOwner());
-						
+
+
 						// extract the username and permission from the json node. we leave validation up 
 						// to the manager class.
 						String pemUsername = jsonPermission.hasNonNull("username") ? jsonPermission.get("username").asText() : null;
 						String pemName = jsonPermission.hasNonNull("permission") ? jsonPermission.get("permission").asText().toUpperCase() : null;
 
-						PermissionType permissionType = PermissionType.getIfPresent(pemName);
+						if (pemUsername == null) {
+							throw new MetadataException("Username cannot be null");
+						}
 
-						getPermissions().add(new MetadataPermission(pemUsername, permissionType));
+						PermissionType permissionType = PermissionType.getIfPresent(pemName);
+						if (permissionType == PermissionType.UNKNOWN)
+							throw new MetadataException("Unable to process metadata permission["+i+"]. " +
+									 pemName + " is not a valid permission.");
+
+						if (permissionType != PermissionType.NONE)
+							getMetadataItem().getPermissions().add(new MetadataPermission(pemUsername, permissionType));
 					} 
 					catch (MetadataException e) {
 						throw e;
@@ -82,9 +98,14 @@ public class MetadataRequestPermissionProcessor {
 		
 	}
 
+	/**
+	 * @deprecated duplicate of MetadataRequestPermissionProcessor.process()
+	 * @param json
+	 * @throws MetadataException
+	 */
 
 	public void processToCollection(ArrayNode json) throws MetadataException {
-		getPermissions().clear();
+		getMetadataItem().getPermissions().clear();
 
 		if (json == null || json.isNull()) {
 			// ignore the null value
@@ -113,7 +134,7 @@ public class MetadataRequestPermissionProcessor {
 
 						PermissionType permissionType = PermissionType.getIfPresent(pemName);
 
-						getPermissions().add(new MetadataPermission(pemUsername, permissionType));
+						getMetadataItem().getPermissions().add(new MetadataPermission(pemUsername, permissionType));
 					}
 					catch (MetadataException e) {
 						throw e;
@@ -126,46 +147,53 @@ public class MetadataRequestPermissionProcessor {
 		}
 	}
 
-	/**
-	 * @return the permissions
-	 */
-	public List<MetadataPermission> getPermissions() {
-		return permissions;
+//	/**
+//	 * @return the permissions
+//	 */
+//	public List<MetadataPermission> getPermissions() {
+//		return permissions;
+//	}
+//
+//	/**
+//	 * @param permissions the permissions to set
+//	 */
+//	public void setPermissions(List<MetadataPermission> permissions) {
+//		this.permissions = permissions;
+//	}
+//
+//	/**
+//	 * @return the owner
+//	 */
+//	public String getOwner() {
+//		return owner;
+//	}
+//
+//	/**
+//	 * @param owner the owner to set
+//	 */
+//	public void setOwner(String owner) {
+//		this.owner = owner;
+//	}
+//
+//	/**
+//	 * @return the uuid
+//	 */
+//	public String getUuid() {
+//		return uuid;
+//	}
+//
+//	/**
+//	 * @param uuid the uuid to set
+//	 */
+//	public void setUuid(String uuid) {
+//		this.uuid = uuid;
+//	}
+
+	public MetadataItem getMetadataItem() {
+		return metadataItem;
 	}
 
-	/**
-	 * @param permissions the permissions to set
-	 */
-	public void setPermissions(List<MetadataPermission> permissions) {
-		this.permissions = permissions;
+	public void setMetadataItem(MetadataItem metadataItem) {
+		this.metadataItem = metadataItem;
 	}
-
-	/**
-	 * @return the owner
-	 */
-	public String getOwner() {
-		return owner;
-	}
-
-	/**
-	 * @param owner the owner to set
-	 */
-	public void setOwner(String owner) {
-		this.owner = owner;
-	}
-
-	/**
-	 * @return the uuid
-	 */
-	public String getUuid() {
-		return uuid;
-	}
-
-	/**
-	 * @param uuid the uuid to set
-	 */
-	public void setUuid(String uuid) {
-		this.uuid = uuid;
-	}
-
 }

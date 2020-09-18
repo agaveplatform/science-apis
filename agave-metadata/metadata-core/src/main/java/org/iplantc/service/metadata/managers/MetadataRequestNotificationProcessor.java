@@ -20,7 +20,9 @@ public class MetadataRequestNotificationProcessor {
 	private List<Notification> notifications;
 	private String owner;
 	private String uuid;
-	
+	private NotificationDao dao = new NotificationDao();
+
+
 	public MetadataRequestNotificationProcessor(String owner, String uuid) {
 		this.setNotifications(new ArrayList<Notification>());
 		this.setOwner(owner);
@@ -45,7 +47,6 @@ public class MetadataRequestNotificationProcessor {
 		}
 		else
 		{
-			NotificationDao dao = new NotificationDao();
 			for (int i=0; i<json.size(); i++)
 			{
 				JsonNode jsonNotif = json.get(i);
@@ -62,6 +63,7 @@ public class MetadataRequestNotificationProcessor {
 					Notification notification = new Notification();
 					try {
 						((ObjectNode)jsonNotif).put("associatedUuid", getUuid());
+
 						notification = Notification.fromJSON(jsonNotif);
 						notification.setOwner(getOwner());
 					} 
@@ -72,7 +74,7 @@ public class MetadataRequestNotificationProcessor {
 						throw new NotificationException("Unable to process notification.", e);
 					}
 					
-					dao.persist(notification);
+					getDao().persist(notification);
 					
 					getNotifications().add(notification);
 				}
@@ -123,4 +125,11 @@ public class MetadataRequestNotificationProcessor {
 		this.uuid = uuid;
 	}
 
+	public NotificationDao getDao() {
+		return dao;
+	}
+
+	public void setDao(NotificationDao dao) {
+		this.dao = dao;
+	}
 }

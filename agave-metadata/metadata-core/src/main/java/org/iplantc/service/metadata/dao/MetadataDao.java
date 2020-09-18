@@ -1,53 +1,39 @@
 package org.iplantc.service.metadata.dao;
 
-import static org.bson.codecs.configuration.CodecRegistries.*;
-import static org.iplantc.service.metadata.model.enumerations.PermissionType.ALL;
-
-import java.net.UnknownHostException;
-//import java.sql.Date;
-import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.regex.Pattern;
-
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-//import com.mongodb.*;
 import com.mongodb.*;
-//import com.mongodb.MongoClient;
-import com.mongodb.client.*;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.ReplaceOptions;
-import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.*;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
-import com.mongodb.client.MongoClients;
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistries;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
-import org.bson.codecs.pojo.Convention;
-import org.bson.codecs.pojo.Conventions;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
-import org.hibernate.sql.Update;
+import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.search.SearchTerm;
-import org.iplantc.service.common.Settings;
-//import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
-import org.iplantc.service.metadata.model.*;
+import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataItemCodec;
+import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.iplantc.service.notification.model.Notification;
+
+import java.util.*;
+import java.util.regex.Pattern;
 
 import static com.mongodb.client.model.Filters.*;
-import static com.mongodb.client.model.Updates.*;
+import static com.mongodb.client.model.Updates.set;
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+import static org.iplantc.service.metadata.model.enumerations.PermissionType.ALL;
 
 public class MetadataDao {
 
@@ -340,7 +326,6 @@ public class MetadataDao {
         return resultList;
     }
 
-
     /**
      * Find the {@link MetadataItem} with the provided {@link Bson} filter
      *
@@ -456,12 +441,13 @@ public class MetadataDao {
 //    }
 
     /**
-     * Update the permision for the specified user to the specified permission
+     * Update the permission for the specified user to the specified permission
      *
      * @param metadataItem to be updated
-     * @param user         making the update
+     * @retun all the permissions for the metadata item including the updated one.
+     *
      */
-    public List<MetadataPermission> updatePermission(MetadataItem metadataItem, String user) throws MetadataStoreException, PermissionException {
+    public List<MetadataPermission> updatePermission(MetadataItem metadataItem) throws MetadataStoreException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         UpdateResult update;
         String uuid;
@@ -469,19 +455,26 @@ public class MetadataDao {
         try {
             //get collection
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
-            uuid = metadataItem.getUuid();
 
             List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
-            update = metadataItemMongoCollection.updateOne(getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId()),
-                    set("permissions", metadataPermissionsList));
-            if (update.getModifiedCount() > 0)
-                //update success
-                return metadataPermissionsList;
-
+            Bson uuidAndTenantQuery = getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId());
+            update = metadataItemMongoCollection.updateOne(uuidAndTenantQuery, set("permissions", metadataPermissionsList));
+            if (update.getModifiedCount() > 0) {
+                //update success. fetch the doc
+                MetadataItem updatedItem = findSingleMetadataItem(uuidAndTenantQuery);
+                if (updatedItem != null) {
+                    return updatedItem.getPermissions();
+                } else {
+                    throw new MetadataStoreException("Metadata item " + metadataItem.getUuid() + " is no longer present.");
+                }
+            } else {
+                throw new MetadataStoreException("Failed to update permissions of metadata item " + metadataItem.getUuid());
+            }
+        } catch (MetadataStoreException e) {
+            throw e;
         } catch (Exception e) {
             throw new MetadataStoreException("Failed to update permission", e);
         }
-        return null;
     }
 
     public List<MetadataPermission> updatePermission(String uuid, List<MetadataPermission> permissionList, String user) throws MetadataStoreException, PermissionException {
@@ -507,22 +500,32 @@ public class MetadataDao {
         return null;
     }
 
+    /**
+     * Updates a single document representing a {@link MetadataItem}.
+     * @param doc the metadata item fields to update, marshalled to a {@link Document}.
+     * @return freshly updated Document representing the metadata item
+     * @throws MetadataException
+     */
     public Document updateDocument(Document doc) throws MetadataException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
 
         try {
             metadataItemMongoCollection = getDefaultCollection();
 
-            //update last updated time
-//            Date lastUpdated = new Date();
-//            metadataItem.setLastUpdated(lastUpdated);
-
-
             //push instead of replace
             UpdateResult update = metadataItemMongoCollection.updateOne(and(eq("uuid", doc.get("uuid")),
                     eq("tenantId", doc.get("tenantId"))), new Document("$set", doc));
 
-            return doc;
+            if (update.getModifiedCount() == 0) {
+                throw new MetadataException("No document found with uuid " + doc.get("uuid") + ".");
+            } else {
+                Document uuidLookupDoc = new Document().append("uuid", doc.get("uuid")).append("tenantId", doc.get("tenantId"));
+                List<Document> foundDocuments = filterFind(uuidLookupDoc, new Document());
+                if (foundDocuments.size() > 0)
+                    return foundDocuments.get(0);
+
+                throw new MetadataException("No metadata item found for user with id " + doc.get("uuid"));
+            }
         } catch (MongoException e) {
             throw new MetadataException("Failed to add/update metadata item.", e);
         }

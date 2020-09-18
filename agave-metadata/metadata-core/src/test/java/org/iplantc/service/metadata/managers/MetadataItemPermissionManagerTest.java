@@ -1,34 +1,21 @@
 package org.iplantc.service.metadata.managers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.client.MongoCollection;
-import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.testng.Assert;
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
-import static org.powermock.api.mockito.PowerMockito.doReturn;
 import static org.powermock.api.mockito.PowerMockito.mock;
 
 //@Test(groups={"unit"})
@@ -57,7 +44,7 @@ public class MetadataItemPermissionManagerTest {
         pemManager.setMetadataDao(mockMetadataDao);
         when(mockMetadataDao.hasWrite(any(), any())).thenReturn(true);
         when(mockMetadataDao.findSingleMetadataItem(any())).thenReturn(metadataItemToUpdate);
-        when(mockMetadataDao.updatePermission(any(), any())).thenReturn(metadataItemToUpdate.getPermissions());
+        when(mockMetadataDao.updatePermission(any())).thenReturn(metadataItemToUpdate.getPermissions());
 
         MetadataPermission updatedPem = pemManager.updatePermissions(metadataPermission);
         Assert.assertEquals(updatedPem, metadataPermission, "Permission should be updated for " + userToUpdate + " to " + PermissionType.READ);

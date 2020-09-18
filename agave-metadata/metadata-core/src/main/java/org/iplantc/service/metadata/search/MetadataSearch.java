@@ -1,91 +1,25 @@
 package org.iplantc.service.metadata.search;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.fge.jsonschema.main.AgaveJsonSchemaFactory;
-import com.github.fge.jsonschema.main.AgaveJsonValidator;
-import com.github.fge.jsonschema.report.ProcessingMessage;
-import com.github.fge.jsonschema.report.ProcessingReport;
-import com.google.gson.JsonObject;
-import com.mongodb.util.JSON;
-import com.mongodb.util.JSONParseException;
-import io.grpc.Metadata;
-import io.grpc.internal.JsonParser;
-import org.apache.commons.lang.StringUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.StatusLine;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
-import org.apache.log4j.Logger;
-import org.bson.conversions.Bson;
-import com.mongodb.*;
-import com.mongodb.MongoClient;
-import com.mongodb.client.*;
-import com.mongodb.client.result.DeleteResult;
-import com.mongodb.client.result.UpdateResult;
-import com.mongodb.client.MongoClients;
+import com.mongodb.BasicDBObject;
 import org.bson.Document;
-import org.bson.codecs.configuration.CodecRegistries;
-import org.bson.codecs.configuration.CodecRegistry;
-import org.bson.codecs.pojo.ClassModel;
-import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
-import org.iplantc.service.common.auth.AuthorizationHelper;
-import org.iplantc.service.common.auth.JWTClient;
-import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.common.exceptions.SortSyntaxException;
-import org.iplantc.service.common.exceptions.TenantException;
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.search.AgaveResourceResultOrdering;
-import org.iplantc.service.common.util.SimpleTimer;
-import org.iplantc.service.common.util.StringToTime;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataDao;
-import org.iplantc.service.metadata.exceptions.*;
-import org.iplantc.service.metadata.managers.MetadataRequestNotificationProcessor;
-import org.iplantc.service.metadata.managers.MetadataRequestPermissionProcessor;
-import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
-import org.iplantc.service.metadata.model.AssociatedReference;
+import org.iplantc.service.metadata.exceptions.MetadataException;
+import org.iplantc.service.metadata.exceptions.MetadataQueryException;
+import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
-import org.iplantc.service.metadata.model.MetadataPermission;
-import org.iplantc.service.metadata.model.enumerations.MetadataEventType;
-import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.iplantc.service.notification.exceptions.NotificationException;
-import org.iplantc.service.notification.managers.NotificationManager;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.powermock.core.classloader.annotations.PrepareEverythingForTest;
 
-import javax.swing.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.lang.reflect.Array;
-import java.net.*;
-import java.security.Permission;
-import java.text.DateFormat;
-import java.text.ParseException;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.regex.Pattern;
 
-import static com.mongodb.client.model.Filters.*;
-import static com.mongodb.client.model.Updates.*;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
 
 public class MetadataSearch {
     private String value;
@@ -819,6 +753,7 @@ public class MetadataSearch {
      * @return {@link MetadataItem} that was updated successfully
      * @throws MetadataException   if unable to update the {@link MetadataItem} in the metadata collection
      * @throws PermissionException if user does not have permission to update the {@link MetadataItem}
+     * @deprecated
      */
     public MetadataItem updateMetadataItem() throws MetadataException, PermissionException {
         metadataDao.setAccessibleOwners(this.accessibleOwners);
@@ -844,6 +779,8 @@ public class MetadataSearch {
     public Document updateMetadataItem(Document doc) throws MetadataException {
         metadataDao.setAccessibleOwners(this.accessibleOwners);
         doc = updateLastUpdatedDateForDocument(doc);
+        doc.append("uuid", getUuid());
+        doc.append("tenantId", TenancyHelper.getCurrentTenantId());
         return metadataDao.updateDocument(doc);
     }
 

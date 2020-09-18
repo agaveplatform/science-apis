@@ -3,17 +3,9 @@
  */
 package org.iplantc.service.metadata.resources;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaDelete;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaEdit;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaGetById;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
-
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.time.Period;
-import java.util.ArrayList;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.mongodb.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -27,29 +19,26 @@ import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.AgaveResource;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.managers.MetadataItemPermissionManager;
-import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
-import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.iplantc.service.metadata.search.JsonHandler;
 import org.iplantc.service.metadata.search.MetadataSearch;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.restlet.Context;
-import org.restlet.data.Form;
-import org.restlet.data.MediaType;
-import org.restlet.data.Request;
-import org.restlet.data.Response;
-import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.List;
 
-import javax.print.Doc;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
 
 /**
  * Class to handle CRUD operations on metadata entities.
@@ -144,34 +133,28 @@ public class MetadataResource extends AgaveResource {
             List<String> resultList = new ArrayList<>();
             String strResult = "";
 
+
             MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(this.username, uuid);
             if (permissionManager.canRead()){
+                Document uuidLookupDoc = new Document().append("uuid", uuid).append("tenantId", TenancyHelper.getCurrentTenantId());
                 MetadataSearch search = new MetadataSearch(username);
                 search.setAccessibleOwnersImplicit();
                 search.setUuid(uuid);
 
                 if (hasJsonPathFilters()){
-                    List<Document> userResults= search.filterFind(userQuery, jsonPathFilters);
-                    if (userResults.isEmpty())
+                    Document userResult = search.filterFindOne(uuidLookupDoc, jsonPathFilters);
+                    if (userResult == null)
                         throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
                                 "No metadata item found for user with id " + uuid);
 
-                    for (Document doc : userResults) {
-                        resultList.add(doc.toJson());
-                    }
-                    strResult = userResults.get(0).toJson();
-
-//                    MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(userResults.get(0));
-//                    return new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString());
-
+                    strResult = userResult.toJson();
                 } else {
-                    List<MetadataItem> userResults = search.find(userQuery);
-                    if (userResults.isEmpty())
+                    MetadataItem metadataItem = MetadataDao.getInstance().findSingleMetadataItem(uuidLookupDoc);
+                    if (metadataItem == null)
                         throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
                                 "No metadata item found for user with id " + uuid);
-                    MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(userResults.get(0));
+                    MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
                     strResult = metadataItemSerializer.formatMetadataItemResult().toString();
-//                    return new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString());
                 }
 
                 return new IplantSuccessRepresentation(strResult);
@@ -179,29 +162,9 @@ public class MetadataResource extends AgaveResource {
                 getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
                 return new IplantErrorRepresentation("User does not have permission to read this metadata entry.");
             }
-
-
-//            List<MetadataItem> userResults = search.find(userQuery);
-
-//            if (userResults.size() == 1) {
-//                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(userResults.get(0));
-//                return new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString());
-//            } else {
-//                //nothing found, check if uuid exists
-//                MetadataItem foundMetadataItem = search.findOne();
-//                if (foundMetadataItem == null) {
-//                    throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-//                            "No metadata item found for user with id " + uuid);
-//                }
-//                else {
-//                    getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
-//                    return new IplantErrorRepresentation("User does not have permission to read this metadata entry.");
-//                }
-//            }
-
         }
         catch (ResourceException e) {
-            log.error("Failed to list metadata " + uuid + " for user " + username, e);
+            log.error("Failed to fetch metadata " + uuid + " for user " + username, e);
             throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, e.getMessage());
         }
 
@@ -246,7 +209,7 @@ public class MetadataResource extends AgaveResource {
 
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
                 JsonHandler jsonHandler = new JsonHandler();
-                jsonHandler.parseJsonMetadata(jsonMetadata);
+//                jsonHandler.parseJsonMetadata(jsonMetadata);
 //                metadataItem = jsonHandler.getMetadataItem();
                 metadataDocument = jsonHandler.parseJsonMetadataToDocument(jsonMetadata);
 
@@ -261,14 +224,12 @@ public class MetadataResource extends AgaveResource {
 
                 MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(uuid, this.username);
 
-                if (permissionManager.canWrite()){
-
-                } else {
+                if (!permissionManager.canWrite()){
                     throw new PermissionException("User does not have permission to update metadata.");
                 }
-                MetadataSearch search = new MetadataSearch(this.username);
+                MetadataSearch search = new MetadataSearch(getAuthenticatedUsername());
                 search.setAccessibleOwnersImplicit();
-                search.setUuid(uuid);
+                search.setUuid((String)getRequest().getAttributes().get("uuid"));
                 Document updatedMetadataDoc = search.updateMetadataItem(metadataDocument);
 //                MetadataItem existingItem = search.findOne();
 //
@@ -284,10 +245,10 @@ public class MetadataResource extends AgaveResource {
                     throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
                             "No metadata item found for user with id " + uuid);
                 } else {
-                    for (int i = 0; i < items.size(); i++) {
-                        String aid = items.get(i).asText();
-                        NotificationManager.process(aid, "METADATA_UPDATED", username);
-                    }
+//                    for (int i = 0; i < items.size(); i++) {
+//                        String aid = items.get(i).asText();
+//                        NotificationManager.process(aid, "METADATA_UPDATED", username);
+//                    }
 
                     NotificationManager.process(uuid, "UPDATED", username);
                     getResponse().setStatus(Status.SUCCESS_OK);

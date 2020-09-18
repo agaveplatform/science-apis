@@ -1,7 +1,6 @@
 package org.iplantc.service.metadata.search;
 
 import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -9,8 +8,6 @@ import com.github.fge.jsonschema.main.AgaveJsonSchemaFactory;
 import com.github.fge.jsonschema.main.AgaveJsonValidator;
 import com.github.fge.jsonschema.report.ProcessingMessage;
 import com.github.fge.jsonschema.report.ProcessingReport;
-import com.mongodb.BasicDBObject;
-import io.grpc.Metadata;
 import org.apache.commons.lang.StringUtils;
 import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -18,19 +15,12 @@ import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.metadata.dao.MetadataSchemaDao;
-import org.iplantc.service.metadata.exceptions.MetadataException;
-import org.iplantc.service.metadata.exceptions.MetadataQueryException;
-import org.iplantc.service.metadata.exceptions.MetadataSchemaValidationException;
-import org.iplantc.service.metadata.exceptions.MetadataStoreException;
-import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
-import org.iplantc.service.metadata.model.*;
-import org.iplantc.service.metadata.model.validation.MetadataSchemaComplianceValidator;
-import org.iplantc.service.notification.model.Notification;
+import org.iplantc.service.metadata.exceptions.*;
+import org.iplantc.service.metadata.model.MetadataAssociationList;
+import org.iplantc.service.metadata.model.MetadataItem;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.regex.Pattern;
 
 
@@ -41,7 +31,7 @@ public class JsonHandler {
     private ArrayNode permissions;
     private ArrayNode notifications;
     private MetadataValidation metadataValidation;
-    private MetadataItem metadataItem;
+    private MetadataItem metadataItem = new MetadataItem();
     ObjectMapper mapper = new ObjectMapper();
 
 
@@ -77,11 +67,7 @@ public class JsonHandler {
         this.metadataItem = metadataItem;
     }
 
-
-    public JsonHandler() {
-        this.metadataItem = new MetadataItem();
-    }
-
+    public JsonHandler() {}
 
     /**
      * Parse String in Json format to {@link JsonNode}
@@ -89,7 +75,7 @@ public class JsonHandler {
      * @return JsonNode of {@code strJson}
      * @throws MetadataQueryException if {@code strJson} is invalid json format
      */
-    public JsonNode parseStringToJson(String strJson) throws MetadataQueryException {
+    protected JsonNode parseStringToJson(String strJson) throws MetadataQueryException {
         try {
             JsonFactory factory = this.mapper.getFactory();
             return factory.createParser(strJson).readValueAsTree();
@@ -121,7 +107,7 @@ public class JsonHandler {
      * @return {@link Document} of the JsonString {@code userQuery}
      * @throws MetadataQueryException if invalid Json format
      */
-    public Document parseStringToDocument(String strJson) throws MetadataQueryException {
+    protected Document parseStringToDocument(String strJson) throws MetadataQueryException {
         Document doc = new Document();
         if (StringUtils.isNotEmpty(strJson)){
             try {
@@ -142,28 +128,32 @@ public class JsonHandler {
      * Parse {@link JsonNode} to {@link MetadataItem}
      *
      * @param jsonMetadata {@link JsonNode} parse from the query string
-     * @throws MetadataQueryException if query values are missing or invalid
+     * @throws MetadataValidationException if query values are missing or invalid
      */
-    public void parseJsonMetadata(JsonNode jsonMetadata) throws MetadataQueryException {
+    public void parseJsonMetadata(JsonNode jsonMetadata) throws MetadataValidationException {
         try {
-            this.permissions = this.mapper.createArrayNode();
-            this.notifications = this.mapper.createArrayNode();
+            setPermissions(this.mapper.createArrayNode());
+            setNotifications(this.mapper.createArrayNode());
 
-            this.metadataItem.setName(parseNameToString(jsonMetadata));
-            this.metadataItem.setValue(parseValueToJsonNode(jsonMetadata));
-            this.metadataItem.setAssociations(parseAssociationIdsToArrayNode(jsonMetadata));
-            this.metadataItem.setSchemaId(parseSchemaIdToString(jsonMetadata));
-            this.permissions = parsePermissionToArrayNode(jsonMetadata);
+            if (jsonMetadata.has("uuid")) {
+                String muuid = jsonMetadata.get("uuid").asText();
+                if (StringUtils.isNotBlank(muuid)) {
+                    getMetadataItem().setUuid(muuid);
+                }
+            }
+            getMetadataItem().setName(parseNameToString(jsonMetadata));
+            getMetadataItem().setValue(parseValueToJsonNode(jsonMetadata));
+            getMetadataItem().setAssociations(parseAssociationIdsToMetadataAssociationList(jsonMetadata));
+            getMetadataItem().setSchemaId(parseSchemaIdToString(jsonMetadata));
+            setPermissions(parsePermissionToArrayNode(jsonMetadata));
 
 //            if (this.permissions == null)
-//                this.metadataItem.setPermissions(null);
+//                getMetadataItem().setPermissions(null);
 
-            this.notifications = parseNotificationToArrayNode(jsonMetadata);
+            setNotifications(parseNotificationToArrayNode(jsonMetadata));
 
-        } catch (MetadataQueryException e) {
-            throw e;
         } catch (Exception e) {
-            throw new MetadataQueryException(
+            throw new MetadataValidationException(
                     "Unable to parse form. " + e.getMessage());
         }
     }
@@ -191,6 +181,13 @@ public class JsonHandler {
         Document doc = new Document();
         ObjectMapper mapper = new ObjectMapper();
 
+        if (jsonMetadata.has("uuid")) {
+            String muuid = jsonMetadata.get("uuid").asText();
+            if (StringUtils.isNotBlank(muuid)) {
+                doc.append("uuid", muuid);
+            }
+        }
+
         String name = parseNameToString(jsonMetadata);
         if (name != null)
             doc.append("name", name);
@@ -201,7 +198,7 @@ public class JsonHandler {
             doc.append("value", valueDoc);
         }
 
-        MetadataAssociationList associationList = parseAssociationIdsToArrayNode(jsonMetadata);
+        MetadataAssociationList associationList = parseAssociationIdsToMetadataAssociationList(jsonMetadata);
         if (associationList.size() > 0)
             doc.append("associationIds", associationList.getAssociatedIds().keySet().toArray());
 
@@ -218,7 +215,7 @@ public class JsonHandler {
         if (notifications != null)
             doc.append("notifications", notifications);
 
-        doc.append("uuid", this.metadataItem.getUuid());
+
         return doc;
     }
 
@@ -230,8 +227,7 @@ public class JsonHandler {
      * @throws MetadataQueryException if name field is missing or invalid format
      */
     public String parseNameToString(JsonNode nameNode) throws MetadataQueryException {
-        if (nameNode.has("name") && nameNode.get("name").isTextual()
-                && !nameNode.get("name").isNull()) {
+        if (nameNode.has("name") && nameNode.get("name").isTextual()) {
             return nameNode.get("name").asText();
         } else {
             throw new MetadataQueryException(
@@ -261,7 +257,7 @@ public class JsonHandler {
      * @param associationNode {@link JsonNode} to parse field from
      * @return {@link ArrayNode} of {@link AgaveUUID} listed in the associationIds field
      */
-    public MetadataAssociationList parseAssociationIdsToArrayNode(JsonNode associationNode) throws UUIDException, MetadataException, MetadataQueryException {
+    public MetadataAssociationList parseAssociationIdsToMetadataAssociationList(JsonNode associationNode) throws UUIDException, MetadataException, MetadataQueryException {
         ArrayNode associationItems = this.mapper.createArrayNode();
 
         MetadataAssociationList associationList = new MetadataAssociationList();

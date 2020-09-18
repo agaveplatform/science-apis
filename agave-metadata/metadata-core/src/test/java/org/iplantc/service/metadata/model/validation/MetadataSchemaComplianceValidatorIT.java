@@ -3,14 +3,6 @@ package org.iplantc.service.metadata.model.validation;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
-import com.mongodb.MongoCredential;
-import com.mongodb.ServerAddress;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-import org.bson.Document;
-import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -21,7 +13,6 @@ import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataSchemaItem;
 import org.iplantc.service.metadata.search.JsonHandler;
-import org.iplantc.service.metadata.search.JsonHandlerIT;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -65,7 +56,7 @@ public class MetadataSchemaComplianceValidatorIT {
                 "}";
 
         String strJson = "{" +
-                "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
+                "\"name\": \"" + getClass().getName() + "\"," +
                 "\"value\": " + strValue + "," +
                 "\"schemaId\": " + "\"" + validSchemaId + "\"" +
                 "}";
@@ -124,7 +115,7 @@ public class MetadataSchemaComplianceValidatorIT {
                 "}";
 
         String strJson = "{" +
-                "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
+                "\"name\": \"" + getClass().getName() + "\"," +
                 "\"value\": " + strValue + "," +
                 "\"schemaId\": " + "\"" + schemaId + "\"" +
                 "}";
@@ -171,7 +162,7 @@ public class MetadataSchemaComplianceValidatorIT {
                 "}";
 
         String strJson = "{" +
-                "\"name\": \"" + JsonHandlerIT.class.getName() + "\"," +
+                "\"name\": \"" + getClass().getName() + "\"," +
                 "\"value\": " + strValue + "," +
                 "\"schemaId\": " + "\"" + invalidSchemaId + "\"" +
                 "}";

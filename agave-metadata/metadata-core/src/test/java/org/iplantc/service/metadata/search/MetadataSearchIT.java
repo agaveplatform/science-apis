@@ -1,18 +1,13 @@
 package org.iplantc.service.metadata.search;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.*;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
+import com.mongodb.MongoCredential;
+import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.util.JSON;
-import com.mongodb.util.JSONParseException;
-import io.grpc.Metadata;
-import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.auth.AuthorizationHelper;
@@ -22,31 +17,24 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.dao.MetadataDao;
-import org.iplantc.service.metadata.dao.MetadataSchemaDao;
-import org.iplantc.service.metadata.exceptions.MetadataAssociationException;
-import org.iplantc.service.metadata.exceptions.MetadataException;
-import org.iplantc.service.metadata.exceptions.MetadataQueryException;
-import org.iplantc.service.metadata.exceptions.MetadataStoreException;
+import org.iplantc.service.metadata.exceptions.*;
 import org.iplantc.service.metadata.managers.MetadataItemPermissionManager;
-import org.iplantc.service.metadata.managers.MetadataPermissionManager;
-import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
-import org.iplantc.service.metadata.model.AssociatedReference;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.iplantc.service.metadata.util.ServiceUtils;
-import org.iplantc.service.notification.managers.NotificationManager;
 import org.joda.time.DateTime;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.annotations.*;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -213,7 +201,7 @@ public class MetadataSearchIT {
         return schemaUuid.toString();
     }
 
-    public MetadataItem createMetadataItemFromString(String strMetadataItem, String owner) throws MetadataQueryException, UUIDException, MetadataException, PermissionException, MetadataAssociationException {
+    public MetadataItem createMetadataItemFromString(String strMetadataItem, String owner) throws MetadataValidationException, MetadataValidationException,  MetadataQueryException, UUIDException, MetadataException, PermissionException, MetadataAssociationException {
         ObjectMapper mapper = new ObjectMapper();
         MetadataValidation mockValidation = mock(MetadataValidation.class);
 
@@ -236,7 +224,7 @@ public class MetadataSearchIT {
 
     //basic operations
     @Test
-    public void createNewItemTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
+    public void createNewItemTest() throws MetadataException, MetadataValidationException, MetadataValidationException,  MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         String strItemToAdd =
                 "  {" +
                         "   \"name\": \"Agavoideae\"," +
@@ -266,7 +254,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void updateExistingItemAsOwner() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
+    public void updateExistingItemAsOwner() throws MetadataException, MetadataValidationException,  MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         MetadataSearch createItem = new MetadataSearch(this.username);
         createItem.clearCollection();
         createItem.setAccessibleOwnersImplicit();
@@ -301,15 +289,13 @@ public class MetadataSearchIT {
 
         JsonHandler updateJsonHandler = new JsonHandler();
         JsonNode updateJsonNode = updateJsonHandler.parseStringToJson(strUpdate);
-        updateJsonHandler.parseJsonMetadata(updateJsonNode);
-        MetadataItem toUpdateItem = updateJsonHandler.getMetadataItem();
+        Document toUpdateItem = updateJsonHandler.parseJsonMetadataToDocument(updateJsonNode);
         JsonNode updatedValueNode = updateJsonHandler.parseValueToJsonNode(updateJsonNode);
 
         MetadataSearch updateItem = new MetadataSearch(this.username);
         updateItem.setAccessibleOwnersImplicit();
-        updateItem.setMetadataItem(toUpdateItem);
         updateItem.setUuid(createItem.getUuid());
-        updateItem.updateMetadataItem();
+        updateItem.updateMetadataItem(toUpdateItem);
 
         String queryAfterUpdate = "{\"name\": \"New Metadata\", \"value.properties.species\": \"wisteria\"}";
         List<MetadataItem> result = updateItem.find(queryAfterUpdate);
@@ -340,7 +326,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findMetadataWithFiltersTest() throws MetadataException, IOException, MetadataQueryException, PermissionException, UUIDException, MetadataStoreException {
+    public void findMetadataWithFiltersTest() throws MetadataException, IOException, MetadataValidationException,  MetadataQueryException, PermissionException, UUIDException, MetadataStoreException {
         ObjectMapper mapper = new ObjectMapper();
 
         MetadataItem testEntity = new MetadataItem();
@@ -379,7 +365,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findAllMetadataForUserImplicitSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
+    public void findAllMetadataForUserImplicitSearchTest() throws MetadataException, MetadataValidationException,  MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         if (this.queryList.isEmpty())
             setQueryList(new ArrayList<String>());
 
@@ -400,7 +386,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findAllMetadataForUserExplicitSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
+    public void findAllMetadataForUserExplicitSearchTest() throws MetadataException, MetadataValidationException,  MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         if (this.queryList.isEmpty())
             setQueryList(new ArrayList<String>());
 
@@ -433,7 +419,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findMetadataItemAsSharedUser() throws MetadataQueryException, MetadataException, PermissionException, MetadataStoreException, UUIDException, MetadataAssociationException {
+    public void findMetadataItemAsSharedUser() throws MetadataValidationException,  MetadataQueryException, MetadataException, PermissionException, MetadataStoreException, UUIDException, MetadataAssociationException {
         //parse json
         String metadataQueryAgavoideae =
                 "  {" +
@@ -503,7 +489,7 @@ public class MetadataSearchIT {
 
 
     @Test
-    public void findRegexSearchTest() throws MetadataException, MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
+    public void findRegexSearchTest() throws MetadataException, MetadataValidationException,  MetadataQueryException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         MetadataSearch search = new MetadataSearch(username);
         search.setAccessibleOwnersImplicit();
 
@@ -528,7 +514,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findNameSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
+    public void findNameSearchTest() throws MetadataValidationException,  MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -553,7 +539,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findNestedValueSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
+    public void findNestedValueSearchTest() throws MetadataValidationException,  MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -578,7 +564,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void findConditionalSearchTest() throws MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
+    public void findConditionalSearchTest() throws MetadataValidationException,  MetadataQueryException, MetadataException, PermissionException, UUIDException, MetadataAssociationException, MetadataStoreException {
         MetadataSearch search = new MetadataSearch(username);
         search.clearCollection();
         search.setAccessibleOwnersImplicit();
@@ -621,7 +607,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void deleteMetadataItemTest() throws MetadataQueryException, PermissionException, MetadataException, UUIDException, MetadataAssociationException, MetadataStoreException {
+    public void deleteMetadataItemTest() throws MetadataValidationException,  MetadataQueryException, PermissionException, MetadataException, UUIDException, MetadataAssociationException, MetadataStoreException {
         //create metadata item to delete
         String metadataQueryAloe =
                 "  {" +
@@ -661,7 +647,7 @@ public class MetadataSearchIT {
     }
 
     @Test
-    public void StringToMetadataItemTest() throws IOException, UUIDException, PermissionException, MetadataException, MetadataStoreException, MetadataQueryException, MetadataAssociationException {
+    public void StringToMetadataItemTest() throws IOException, UUIDException, PermissionException, MetadataException, MetadataStoreException, MetadataValidationException,  MetadataQueryException, MetadataAssociationException {
         String metadataQueryAloe =
                 "  {" +
                         "    \"name\": \"Aloe\"," +
@@ -710,7 +696,7 @@ public class MetadataSearchIT {
 
     //Metadata Collection
 //    @Test
-//    public void createMetadataItemWithSchema() throws MetadataException, MetadataQueryException, MetadataAssociationException, UUIDException, PermissionException, UnknownHostException, MetadataStoreException {
+//    public void createMetadataItemWithSchema() throws MetadataException, MetadataValidationException,  MetadataQueryException, MetadataAssociationException, UUIDException, PermissionException, UnknownHostException, MetadataStoreException {
 //        //parse json
 //
 //        String strItemToAdd = "  {" +
@@ -800,7 +786,7 @@ public class MetadataSearchIT {
 //    }
 
     @Test
-    public void findMetadataItemAsOwner() throws MetadataQueryException, MetadataException, PermissionException, MetadataStoreException {
+    public void findMetadataItemAsOwner() throws MetadataValidationException,  MetadataQueryException, MetadataException, PermissionException, MetadataStoreException {
         //parse json
         String metadataQueryAgavoideae =
                 "  {" +
@@ -896,7 +882,7 @@ public class MetadataSearchIT {
 //    }
 
     @Test
-    public void updateUsingDocument() throws MetadataException, PermissionException, MetadataQueryException, MetadataStoreException, UUIDException, MetadataAssociationException {
+    public void updateUsingDocument() throws MetadataException, PermissionException, MetadataValidationException,  MetadataQueryException, MetadataStoreException, UUIDException, MetadataAssociationException {
         //parse json
         String strMetadata =
                 "  {" +

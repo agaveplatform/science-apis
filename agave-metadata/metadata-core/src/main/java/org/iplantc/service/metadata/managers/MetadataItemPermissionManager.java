@@ -1,27 +1,20 @@
 package org.iplantc.service.metadata.managers;
 
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.auth.AuthorizationHelper;
-import org.iplantc.service.common.auth.JWTClient;
 import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
-import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.util.ServiceUtils;
 
-import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import static com.mongodb.client.model.Filters.*;
-import static com.mongodb.client.model.Filters.eq;
 
 public class MetadataItemPermissionManager {
 
@@ -175,7 +168,7 @@ public class MetadataItemPermissionManager {
                 return null;
             } else {
                 itemToUpdate.updatePermissions(permissionToUpdate);
-                metadataDao.updatePermission(itemToUpdate, this.authenticatedUsername);
+                metadataDao.updatePermission(itemToUpdate);
                 return permissionToUpdate;
             }
         } else {
@@ -230,7 +223,7 @@ public class MetadataItemPermissionManager {
 
         MetadataPermission pemDelete = itemToUpdate.getPermissions_User(permission.getUsername());
         itemToUpdate.updatePermissions_delete(pemDelete);
-        metadataDao.updatePermission(itemToUpdate, this.authenticatedUsername);
+        metadataDao.updatePermission(itemToUpdate);
     }
 
     public void deleteAllPermissions(MetadataItem itemToUpdate) throws MetadataException, PermissionException, MetadataStoreException {
@@ -239,6 +232,6 @@ public class MetadataItemPermissionManager {
         metadataDao.setAccessibleOwners(this.accessibleOwners);
 
         itemToUpdate.setPermissions(new ArrayList<>());
-        metadataDao.updatePermission(itemToUpdate, this.authenticatedUsername);
+        metadataDao.updatePermission(itemToUpdate);
     }
 }

@@ -20,7 +20,6 @@ import org.iplantc.service.common.resource.AgaveResource;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataDao;
-import org.iplantc.service.metadata.managers.MetadataItemPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.iplantc.service.metadata.search.JsonHandler;
@@ -34,8 +33,6 @@ import org.restlet.resource.Variant;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
@@ -114,76 +111,61 @@ public class MetadataResource extends AgaveResource {
     public Representation represent(Variant variant) throws ResourceException {
         DBCursor cursor = null;
         try {
-
-//            BasicDBObject query = null;
-
             // Include user defined query clauses given within the URL as q=<clauses>
             AgaveLogServiceClient.log(METADATA02.name(), MetaGetById.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 
-            // do we not want to support general collection queries?
-            // How would one browse all their metadata?
-            // does that even make sense?
-
-//            if (search.getCollection() == null) {
-//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-//                        "Unable to connect to metadata store. If this problem persists, "
-//                                + "please contact the system administrators. Exception: ");
-//            }
-
-            List<String> resultList = new ArrayList<>();
             String strResult = "";
 
+            MetadataDao dao = MetadataDao.getInstance();
 
-            MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(this.username, uuid);
-            if (permissionManager.canRead()){
-                Document uuidLookupDoc = new Document().append("uuid", uuid).append("tenantId", TenancyHelper.getCurrentTenantId());
-                MetadataSearch search = new MetadataSearch(username);
-                search.setAccessibleOwnersImplicit();
-                search.setUuid(uuid);
-
-                if (hasJsonPathFilters()){
-                    Document userResult = search.filterFindOne(uuidLookupDoc, jsonPathFilters);
-                    if (userResult == null)
-                        throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-                                "No metadata item found for user with id " + uuid);
-
-                    strResult = userResult.toJson();
-                } else {
-                    MetadataItem metadataItem = MetadataDao.getInstance().findSingleMetadataItem(uuidLookupDoc);
-                    if (metadataItem == null)
-                        throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-                                "No metadata item found for user with id " + uuid);
-                    MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
-                    strResult = metadataItemSerializer.formatMetadataItemResult().toString();
-                }
-
-                return new IplantSuccessRepresentation(strResult);
-            } else {
+            // TODO: Should be folded into the fetch call? Much faster, but also removes ability to determine pems
+            //   vs a standard not found.
+            if (dao.hasRead(getAuthenticatedUsername(), uuid)){
                 getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
                 return new IplantErrorRepresentation("User does not have permission to read this metadata entry.");
             }
+
+            Document uuidLookupDoc = new Document().append("uuid", uuid).append("tenantId", TenancyHelper.getCurrentTenantId());
+            MetadataSearch search = new MetadataSearch(username);
+            search.setAccessibleOwnersImplicit();
+            search.setUuid(uuid);
+
+            if (hasJsonPathFilters()){
+                Document userResult = search.filterFindOne(uuidLookupDoc, jsonPathFilters);
+                if (userResult == null)
+                    throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+                            "No metadata item found for user with id " + uuid);
+
+                strResult = userResult.toJson();
+            } else {
+                MetadataItem metadataItem = MetadataDao.getInstance().findSingleMetadataItem(uuidLookupDoc);
+                if (metadataItem == null)
+                    throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+                            "No metadata item found for user with id " + uuid);
+                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
+                strResult = metadataItemSerializer.formatMetadataItemResult().toString();
+            }
+
+            return new IplantSuccessRepresentation(strResult);
+
         }
         catch (ResourceException e) {
             log.error("Failed to fetch metadata " + uuid + " for user " + username, e);
             throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, e.getMessage());
         }
-
         catch (Throwable e) {
             log.error("Failed to list metadata " + uuid, e);
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                     "An unexpected error occurred while fetching the metadata item. "
                             + "If this continues, please contact your tenant administrator.", e);
         } finally {
-            try {
-                cursor.close();
-            } catch (Exception e) {
-            }
+            try { cursor.close(); } catch (Exception ignore) {}
         }
     }
 
     /**
      * HTTP POST for Creating and Updating Metadata
-     * @param entity
+     * @param entity the entity to process and update the existing metadata item with
      */
     @Override
     public void acceptRepresentation(Representation entity) {
@@ -195,22 +177,13 @@ public class MetadataResource extends AgaveResource {
             ObjectMapper mapper = new ObjectMapper();
             ArrayNode items = mapper.createArrayNode();
             MetadataItem updatedMetadataItem = null;
-
-//            MetadataItem metadataItem;
-
             Document metadataDocument;
+            MetadataDao dao = MetadataDao.getInstance();
 
             try {
-//                if (search.getCollection() == null) {
-//                    throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-//                            "Unable to connect to metadata store. " +
-//                                    "If this problem persists, please contact the system administrators.");
-//                }
 
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
                 JsonHandler jsonHandler = new JsonHandler();
-//                jsonHandler.parseJsonMetadata(jsonMetadata);
-//                metadataItem = jsonHandler.getMetadataItem();
                 metadataDocument = jsonHandler.parseJsonMetadataToDocument(jsonMetadata);
 
             } catch (ResourceException e) {
@@ -221,41 +194,26 @@ public class MetadataResource extends AgaveResource {
             }
 
             try {
-
-                MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(uuid, this.username);
-
-                if (!permissionManager.canWrite()){
-                    throw new PermissionException("User does not have permission to update metadata.");
+                // TODO: Should be folded into the fetch call? Much faster, but also removes ability to determine pems
+                //   vs a standard not found.
+                if (dao.hasWrite(getAuthenticatedUsername(), uuid)){
+                    getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
+                    throw new PermissionException("User does not have permission to update metadata");
                 }
+
                 MetadataSearch search = new MetadataSearch(getAuthenticatedUsername());
                 search.setAccessibleOwnersImplicit();
                 search.setUuid((String)getRequest().getAttributes().get("uuid"));
                 Document updatedMetadataDoc = search.updateMetadataItem(metadataDocument);
-//                MetadataItem existingItem = search.findOne();
-//
-//                if (existingItem != null) {
-//                    search.setOwner(existingItem.getOwner());
-//                } else {
-//                    search.setOwner(this.username);
-//                }
-//
-//                updatedMetadataItem = search.updateMetadataItem();
 
                 if (updatedMetadataDoc == null) {
                     throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
                             "No metadata item found for user with id " + uuid);
                 } else {
-//                    for (int i = 0; i < items.size(); i++) {
-//                        String aid = items.get(i).asText();
-//                        NotificationManager.process(aid, "METADATA_UPDATED", username);
-//                    }
-
                     NotificationManager.process(uuid, "UPDATED", username);
                     getResponse().setStatus(Status.SUCCESS_OK);
                 }
 
-//                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(updatedMetadataItem);
-//                getResponse().setEntity(new IplantSuccessRepresentation(metadataItemSerializer.formatMetadataItemResult().toString()));
                 getResponse().setEntity(new IplantSuccessRepresentation(updatedMetadataDoc.toJson()));
 
 
@@ -277,10 +235,7 @@ public class MetadataResource extends AgaveResource {
             getResponse().setEntity(new IplantErrorRepresentation("Unable to store the metadata object. " +
                     "If this problem persists, please contact the system administrators."));
         } finally {
-            try {
-                cursor.close();
-            } catch (Exception e1) {
-            }
+            try { cursor.close(); } catch (Exception ignore) {}
         }
     }
 
@@ -293,6 +248,7 @@ public class MetadataResource extends AgaveResource {
 
         DBCursor cursor = null;
         MetadataItem deletedMetadataItem = null;
+        MetadataDao dao = MetadataDao.getInstance();
         try {
 
             if (StringUtils.isEmpty(uuid)) {
@@ -303,35 +259,29 @@ public class MetadataResource extends AgaveResource {
             MetadataSearch search = new MetadataSearch(this.username);
             search.setAccessibleOwnersImplicit();
 
-//            if (search.getCollection() == null) {
-//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-//                        "Unable to connect to metadata store. " +
-//                                "If this problem persists, please contact the system administrators.");
-//            }
-
             try {
 
-                MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(uuid, this.username);
-
-                if (permissionManager.canWrite()) {
-                    search.setUuid(uuid);
-                    deletedMetadataItem = search.deleteMetadataItem();
-
-                    if (deletedMetadataItem == null) {
-                        throw new Exception();
-                    }
-                    for (String aid : deletedMetadataItem.getAssociations().getAssociatedIds().keySet()) {
-                        NotificationManager.process((String) aid, "METADATA_DELETED", username);
-                    }
-
-                    NotificationManager.process(uuid, "DELETED", username);
-
-                    getResponse().setStatus(Status.SUCCESS_OK);
-                    getResponse().setEntity(new IplantSuccessRepresentation());
-                } else {
-                    throw new PermissionException("User does not have permission to update metadata");
+                // TODO: Should be folded into the fetch call? Much faster, but also removes ability to determine pems
+                //   vs a standard not found.
+                if (dao.hasWrite(getAuthenticatedUsername(), uuid)){
+                    getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
+                    throw new PermissionException("User does not have permission to delete this metadata entry.");
                 }
 
+                search.setUuid(uuid);
+                deletedMetadataItem = search.deleteCurrentMetadataItem();
+
+                if (deletedMetadataItem == null) {
+                    throw new Exception();
+                }
+                for (String aid : deletedMetadataItem.getAssociations().getAssociatedIds().keySet()) {
+                    NotificationManager.process((String) aid, "METADATA_DELETED", username);
+                }
+
+                NotificationManager.process(uuid, "DELETED", username);
+
+                getResponse().setStatus(Status.SUCCESS_OK);
+                getResponse().setEntity(new IplantSuccessRepresentation());
 
             } catch (PermissionException e) {
                 getResponse().setStatus(Status.CLIENT_ERROR_UNAUTHORIZED);
@@ -352,11 +302,7 @@ public class MetadataResource extends AgaveResource {
             getResponse().setEntity(new IplantErrorRepresentation("Unable to delete the associated metadata. " +
                     "If this problem persists, please contact the system administrators."));
         } finally {
-            try {
-                cursor.close();
-            } catch (Exception e) {
-            }
-//	       	try { mongoClient.close(); } catch (Exception e1) {}
+            try { cursor.close(); } catch (Exception ignore) {}
         }
     }
 

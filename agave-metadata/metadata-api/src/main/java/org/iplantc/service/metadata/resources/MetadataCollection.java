@@ -3,14 +3,10 @@
  */
 package org.iplantc.service.metadata.resources;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaCreate;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
-
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-
-import com.mongodb.*;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.mongodb.BasicDBList;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
@@ -31,7 +27,6 @@ import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.events.MetadataEventProcessor;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
-import org.iplantc.service.metadata.managers.MetadataItemPermissionManager;
 import org.iplantc.service.metadata.managers.MetadataRequestNotificationProcessor;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.enumerations.MetadataEventType;
@@ -46,9 +41,14 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaCreate;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
 
 /**
  * Class to handle CRUD operations on metadata entities.
@@ -61,7 +61,6 @@ public class MetadataCollection extends AgaveResource {
 
     private String username;
     private String internalUsername;
-    private String uuid;
     private String userQuery;
     private boolean includeRecordsWithImplicitPermissions = true;
     private MetadataEventProcessor eventProcessor;
@@ -79,8 +78,6 @@ public class MetadataCollection extends AgaveResource {
         if (log.isDebugEnabled()) st = SimpleTimer.start("META instrument : call MetadataCollection constructor");
 
         this.username = getAuthenticatedUsername();
-
-        this.uuid = (String) request.getAttributes().get("uuid");
 
         this.eventProcessor = new MetadataEventProcessor();
 
@@ -167,32 +164,7 @@ public class MetadataCollection extends AgaveResource {
             else
                 search.setAccessibleOwnersExplicit();
 
-//            if (search.getCollection() == null) {
-//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-//                        "Unable to connect to metadata store. If this problem persists, "
-//                                + "please contact the system administrators.");
-//            }
-
-//            List<MetadataItem> userResults;
-            List<DBObject> agg_permittedResults = new ArrayList<>();
-
             try {
-
-                try {
-                    if (StringUtils.isNotBlank(uuid)) {
-                        MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(this.username, uuid);
-                        if (!permissionManager.canRead())
-                            throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, "User does not have permission to view resource.");
-                    }
-                } catch (Exception e) {
-                    throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                            "Unable to verify permissions for given uuid.", e);
-                }
-
-//                    MetadataItemPermissionManager permissionManager = new MetadataItemPermissionManager(this.username, uuid);
-
-//                    if (permissionManager.canRead()) {
-
                 List<String> sortableFields = Arrays.asList("uuid",
                         "tenantId",
                         "schemaId",
@@ -327,8 +299,7 @@ public class MetadataCollection extends AgaveResource {
                 metadataItem.setInternalUsername(internalUsername);
                 search.setMetadataItem(metadataItem);
                 search.setOwner(this.username);
-                addedMetadataItem = search.insertMetadataItem();
-                uuid = addedMetadataItem.getUuid();
+                addedMetadataItem = search.insertCurrentMetadataItem();
             } catch (Exception e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
                         "Unable to add metadata. " + e.getMessage());
@@ -337,13 +308,13 @@ public class MetadataCollection extends AgaveResource {
             // process any embedded notifications
             MetadataRequestNotificationProcessor notificationProcessor = new MetadataRequestNotificationProcessor(
                     username,
-                    uuid);
+                    addedMetadataItem.getUuid());
             notificationProcessor.process(search.getNotifications());
 
             MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(addedMetadataItem);
             strMetadataItem = metadataItemSerializer.formatMetadataItemResult().toString();
 
-            eventProcessor.processContentEvent(uuid,
+            eventProcessor.processContentEvent(addedMetadataItem.getUuid(),
                     MetadataEventType.CREATED,
                     username,
                     strMetadataItem);

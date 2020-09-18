@@ -1,14 +1,14 @@
 package org.iplantc.service.metadata.managers;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.MetadataPermission;
+import org.iplantc.service.metadata.model.enumerations.PermissionType;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author dooley
@@ -59,18 +59,18 @@ public class MetadataRequestPermissionProcessor {
 					// here we reuse the validation built into the {@link MetadataPermissionManager}
 					// to validate the embedded {@link MetadataPermission}.
 					try {
-						MetadataPermissionManager pm = new MetadataPermissionManager(getUuid(), getOwner());
+//						MetadataPermissionManager pm = new MetadataPermissionManager(getUuid(), getOwner());
 						
 						// extract the username and permission from the json node. we leave validation up 
 						// to the manager class.
 						String pemUsername = jsonPermission.hasNonNull("username") ? jsonPermission.get("username").asText() : null;
-						String pemPem = jsonPermission.hasNonNull("permission") ? jsonPermission.get("permission").asText() : null;
-						
-						pm.setPermission(pemUsername, pemPem);
-						
-						getPermissions().add(pm.getPermission(pemUsername));
+						String pemName = jsonPermission.hasNonNull("permission") ? jsonPermission.get("permission").asText().toUpperCase() : null;
+
+						PermissionType permissionType = PermissionType.getIfPresent(pemName);
+
+						getPermissions().add(new MetadataPermission(pemUsername, permissionType));
 					} 
-					catch (MetadataException | PermissionException e) {
+					catch (MetadataException e) {
 						throw e;
 					} 
 					catch (Throwable e) {
@@ -83,7 +83,7 @@ public class MetadataRequestPermissionProcessor {
 	}
 
 
-	public void processToCollection(ArrayNode json) throws MetadataException, PermissionException{
+	public void processToCollection(ArrayNode json) throws MetadataException {
 		getPermissions().clear();
 
 		if (json == null || json.isNull()) {
@@ -106,18 +106,16 @@ public class MetadataRequestPermissionProcessor {
 					// here we reuse the validation built into the {@link MetadataPermissionManager}
 					// to validate the embedded {@link MetadataPermission}.
 					try {
-						MetadataPermissionManager pm = new MetadataPermissionManager(getUuid(), getOwner());
-
 						// extract the username and permission from the json node. we leave validation up
 						// to the manager class.
 						String pemUsername = jsonPermission.hasNonNull("username") ? jsonPermission.get("username").asText() : null;
-						String pemPem = jsonPermission.hasNonNull("permission") ? jsonPermission.get("permission").asText() : null;
+						String pemName = jsonPermission.hasNonNull("permission") ? jsonPermission.get("permission").asText().toUpperCase() : null;
 
-						pm.setPermission(pemUsername, pemPem);
+						PermissionType permissionType = PermissionType.getIfPresent(pemName);
 
-						getPermissions().add(pm.getPermission(pemUsername));
+						getPermissions().add(new MetadataPermission(pemUsername, permissionType));
 					}
-					catch (MetadataException | PermissionException e) {
+					catch (MetadataException e) {
 						throw e;
 					}
 					catch (Throwable e) {

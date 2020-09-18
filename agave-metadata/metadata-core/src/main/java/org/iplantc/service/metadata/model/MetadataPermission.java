@@ -4,20 +4,15 @@
 package org.iplantc.service.metadata.model;
 
 import org.apache.commons.lang.StringUtils;
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.Filters;
-import org.hibernate.annotations.ParamDef;
 import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.iplantc.service.metadata.Settings;
 import org.json.JSONException;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
 import javax.persistence.*;
-
 import java.util.Date;
 
 /**
@@ -26,72 +21,23 @@ import java.util.Date;
  * @author dooley
  * 
  */
-@Entity
-@Table(name = "metadata_permissions", uniqueConstraints=
-@UniqueConstraint(columnNames={"uuid","username"}))
-@FilterDef(name="metadataPemTenantFilter", parameters=@ParamDef(name="tenantId", type="string"))
-@Filters(@Filter(name="metadataPemTenantFilter", condition="tenant_id=:tenantId"))
 public class MetadataPermission {
 
-	private Long				id;
-	private String				uuid;
 	private String				username;
 	private PermissionType		permission;
 	private Date				lastUpdated = new Date();
 	private String 				tenantId;
-
-	@Transient
 	private String				group;
 	
 	public MetadataPermission() {
 		this.setTenantId(TenancyHelper.getCurrentTenantId());
 	}
 
-	public MetadataPermission(String uuid, String username, PermissionType permissionType) throws MetadataException
+	public MetadataPermission(String username, PermissionType permissionType) throws MetadataException
 	{
 		this();
-		setUuid(uuid);
 		setUsername(username);
 		setPermission(permissionType);
-		this.group = "";
-	}
-
-	/**
-	 * @return the id
-	 */
-	@Id
-	@GeneratedValue
-	@Column(name = "id", unique = true, nullable = false)
-	public Long getId()
-	{
-		return id;
-	}
-
-	/**
-	 * @param id
-	 *            the id to set
-	 */
-	public void setId(Long id)
-	{
-		this.id = id;
-	}
-
-	/**
-	 * @return the uuid
-	 */
-	@Column(name = "uuid", nullable = false)
-	public String getUuid()
-	{
-		return uuid;
-	}
-
-	/**
-	 * @param uuid
-	 *            the jobId to set
-	 */
-	public void setUuid(String uuid)
-	{
-		this.uuid = uuid;
 	}
 
 	/**
@@ -106,7 +52,7 @@ public class MetadataPermission {
 	/**
 	 * @param username
 	 *            the username to set
-     * @throws MetadataException
+     * @throws MetadataException if username is too long
 	 */
 	public void setUsername(String username) throws MetadataException
 	{
@@ -178,13 +124,11 @@ public class MetadataPermission {
 		return permission.canExecute();
 	}
 
-	@Transient
 	public String getGroup() {return this.group;}
 
-	@Transient
 	public void setGroup(String group) {this.group = group;}
 
-	public String toJSON() throws JSONException
+	public String toJSON(String uuid) throws JSONException
 	{
 		JSONWriter writer = new JSONStringer();
 		writer.object()
@@ -211,14 +155,13 @@ public class MetadataPermission {
 	
 	public String toString()
 	{
-		return "[" + uuid + "] " + username + " " + permission;
+		return username + " " + permission;
 	}
 
 	public boolean equals(Object o)
 	{
 		if (o instanceof MetadataPermission) {
 			return ( 
-				( (MetadataPermission) o ).uuid.equals(uuid) &&
 				( (MetadataPermission) o ).username.equals(username) &&
 				( (MetadataPermission) o ).permission.equals(permission) );
 		}

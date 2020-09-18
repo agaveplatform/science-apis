@@ -103,7 +103,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
             entity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
             entity.setOwner(TEST_USER);
 
-            MetadataPermission metaPem = new MetadataPermission(entity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
+            MetadataPermission metaPem = new MetadataPermission(TEST_SHARED_USER, PermissionType.READ);
             List<MetadataPermission> listPem = new ArrayList<>();
             listPem.add(metaPem);
             entity.setPermissions(listPem);
@@ -124,7 +124,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setName(MetadataDaoIT.class.getName());
         testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
         testEntity.setOwner(TEST_USER);
-        MetadataPermission metaPem = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.ALL);
+        MetadataPermission metaPem = new MetadataPermission(TEST_SHARED_USER, PermissionType.ALL);
         testEntity.setPermissions(new ArrayList<>(Arrays.asList(metaPem)));
 
         MetadataDao inst = wrapper.getInstance();
@@ -142,7 +142,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         assertEquals(firstResult.get(0).getName(),MetadataDaoIT.class.getName());
         assertEquals(firstResult.get(0).getValue().get("testKey"), testEntity.getValue().get("testKey"));
         assertEquals(firstResult.get(0).getPermissions().size(), 1);
-        assertEquals(firstResult.get(0).getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.ALL);
+        assertEquals(firstResult.get(0).getPermissionForUsername(TEST_SHARED_USER).getPermission(), PermissionType.ALL);
         assertEquals(firstResult.get(0), updatedItem, "Added Metadata item should be found in the collection.");
     }
 
@@ -159,8 +159,8 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
         MetadataItem addedItem = inst.insert(testEntity);
 
-        MetadataPermission pemShareUser = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.ALL);
-        MetadataPermission pemShareUser2 = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER2, PermissionType.READ_WRITE);
+        MetadataPermission pemShareUser = new MetadataPermission(TEST_SHARED_USER, PermissionType.ALL);
+        MetadataPermission pemShareUser2 = new MetadataPermission(TEST_SHARED_USER2, PermissionType.READ_WRITE);
         List<MetadataPermission> addList = new ArrayList<>(Arrays.asList(pemShareUser, pemShareUser2));
         addedItem.setPermissions(addList);
         List<MetadataPermission> updatedPermissions = inst.updatePermission(addedItem);
@@ -169,9 +169,9 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
         List<MetadataItem> updatedItem = inst.find(TEST_USER, new Document("uuid", addedItem.getUuid()));
         assertEquals(updatedItem.get(0).getPermissions().size(), 2, "There should be 2 permissions added.");
-        assertEquals(updatedItem.get(0).getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.ALL,
+        assertEquals(updatedItem.get(0).getPermissionForUsername(TEST_SHARED_USER).getPermission(), PermissionType.ALL,
                 "Permission added for " + TEST_SHARED_USER + " should be ALL.");
-        assertEquals(updatedItem.get(0).getPermissions_User(TEST_SHARED_USER2).getPermission(), PermissionType.READ_WRITE,
+        assertEquals(updatedItem.get(0).getPermissionForUsername(TEST_SHARED_USER2).getPermission(), PermissionType.READ_WRITE,
                 "Permission added for " + TEST_SHARED_USER2 + " should be READ_WRITE.");
     }
 
@@ -187,17 +187,18 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
         MetadataItem addedItem = inst.insert(testEntity);
-        MetadataPermission metaPem = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
+        MetadataPermission metaPem = new MetadataPermission(TEST_SHARED_USER, PermissionType.READ);
         testEntity.setPermissions(new ArrayList<>(Arrays.asList(metaPem)));
 
-        MetadataPermission sharedUserPermission = testEntity.getPermissions_User(TEST_SHARED_USER);
+        MetadataPermission sharedUserPermission = testEntity.getPermissionForUsername(TEST_SHARED_USER);
 
-        testEntity.updatePermissions_delete(sharedUserPermission);
-        List<MetadataPermission> updatedPermissions = inst.updatePermission(testEntity);
+        testEntity.removePermission(sharedUserPermission);
+
+//        List<MetadataPermission> updatedPermissions = inst.updatePermission(testEntity);
 
         List<MetadataItem> resultList = inst.find(TEST_USER, new Document("uuid", testEntity.getUuid()));
 
-        Assert.assertNull(resultList.get(0).getPermissions_User(TEST_SHARED_USER), "Removed permission should return null.");
+        Assert.assertNull(resultList.get(0).getPermissionForUsername(TEST_SHARED_USER), "Removed permission should return null.");
     }
 
     @Override
@@ -207,8 +208,8 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setName(MetadataDaoIT.class.getName());
         testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
         testEntity.setOwner(TEST_USER);
-        MetadataPermission metaPem = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.ALL);
-        MetadataPermission metaPem2 = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER2, PermissionType.ALL);
+        MetadataPermission metaPem = new MetadataPermission(TEST_SHARED_USER, PermissionType.ALL);
+        MetadataPermission metaPem2 = new MetadataPermission(TEST_SHARED_USER2, PermissionType.ALL);
         testEntity.setPermissions(new ArrayList<>(Arrays.asList(metaPem, metaPem2)));
 
         MetadataDao inst = wrapper.getInstance();
@@ -302,7 +303,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         assertEquals(inst.getCollectionSize(), 1);
 
         //add permission for test share user with read
-        MetadataPermission sharedUserPermission = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
+        MetadataPermission sharedUserPermission = new MetadataPermission(TEST_SHARED_USER, PermissionType.READ);
         List<MetadataPermission> metadataPermissionList = testEntity.getPermissions();
         metadataPermissionList.add(sharedUserPermission);
         testEntity.setPermissions(metadataPermissionList);
@@ -318,24 +319,25 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         List<MetadataItem> resultList = inst.findAll();
 
         Assert.assertNotNull(updatePemResult, "Item should be found after adding");
-        assertEquals(updatePemResult.get(0).getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.READ,
+        assertEquals(updatePemResult.get(0).getPermissionForUsername(TEST_SHARED_USER).getPermission(), PermissionType.READ,
                 "Permission for user should be READ after updating.");
 
         //change metadata value
         testEntity.setValue(mapper.createObjectNode().put("newKey", "newValue"));
 
+        // whi is this optional?
         MetadataItem updateResultItem = null;
         if (inst.hasWrite(TEST_SHARED_USER, testEntity.getUuid())) {
             updateResultItem = inst.updateMetadata(testEntity, TEST_SHARED_USER);
-        }
 
-        assertEquals(updateResultItem.getUuid(), testEntity.getUuid(),"UUID should be present in response from update");
+            assertEquals(updateResultItem.getUuid(), testEntity.getUuid(),"UUID should be present in response from update");
+        }
 
         //metadata should not be updated
         Assert.assertNull(updateResultItem, "User does not have correct permissions, metataItem should not be updated.");
 
         //update permission to read_write
-        sharedUserPermission = testEntity.getPermissions_User(TEST_SHARED_USER);
+        sharedUserPermission = testEntity.getPermissionForUsername(TEST_SHARED_USER);
         sharedUserPermission.setPermission(PermissionType.READ_WRITE);
         testEntity.updatePermissions(sharedUserPermission);
 
@@ -364,7 +366,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setName(MetadataDaoIT.class.getName());
         testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
         testEntity.setOwner(TEST_USER);
-        MetadataPermission pemShareUser = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.ALL);
+        MetadataPermission pemShareUser = new MetadataPermission(TEST_SHARED_USER, PermissionType.ALL);
         List<MetadataPermission> listPem = new ArrayList<>(Arrays.asList(pemShareUser));
         testEntity.setPermissions(listPem);
 
@@ -372,7 +374,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         MetadataItem addedItem = inst.insert(testEntity);
 
         pemShareUser.setPermission(PermissionType.READ);
-        MetadataPermission pemShareUser2 = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER2, PermissionType.READ_WRITE);
+        MetadataPermission pemShareUser2 = new MetadataPermission(TEST_SHARED_USER2, PermissionType.READ_WRITE);
         List<MetadataPermission> updatedList = new ArrayList<>(Arrays.asList(pemShareUser, pemShareUser2));
         addedItem.setPermissions(updatedList);
         List<MetadataPermission> updatedPermissions = inst.updatePermission(addedItem);
@@ -381,9 +383,9 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
 
         List<MetadataItem> updatedItem = inst.find(TEST_USER, new Document("uuid", addedItem.getUuid()));
         assertEquals(updatedItem.get(0).getPermissions().size(), 2, "There should be 2 permissions added.");
-        assertEquals(updatedItem.get(0).getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.READ,
+        assertEquals(updatedItem.get(0).getPermissionForUsername(TEST_SHARED_USER).getPermission(), PermissionType.READ,
                 "Permission for " + TEST_SHARED_USER + " should be updated to READ.");
-        assertEquals(updatedItem.get(0).getPermissions_User(TEST_SHARED_USER2).getPermission(), PermissionType.READ_WRITE,
+        assertEquals(updatedItem.get(0).getPermissionForUsername(TEST_SHARED_USER2).getPermission(), PermissionType.READ_WRITE,
                 "Permission for " + TEST_SHARED_USER2 + " should be added as READ_WRITE.");
     }
 
@@ -461,14 +463,14 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setName(MetadataDaoIT.class.getName());
         testEntity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
         testEntity.setOwner(TEST_USER);
-        MetadataPermission pemShareUser = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
+        MetadataPermission pemShareUser = new MetadataPermission(TEST_SHARED_USER, PermissionType.READ);
         List<MetadataPermission> listPem = new ArrayList<>(Arrays.asList(pemShareUser));
         testEntity.setPermissions(listPem);
 
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
         inst.insert(testEntity);
         MetadataItem foundItem = inst.findSingleMetadataItem(new Document("uuid", testEntity.getUuid()));
-        assertEquals(foundItem.getPermissions_User(TEST_SHARED_USER).getPermission(), PermissionType.READ);
+        assertEquals(foundItem.getPermissionForUsername(TEST_SHARED_USER).getPermission(), PermissionType.READ);
     }
 
     @Override
@@ -480,7 +482,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setName(MetadataDaoIT.class.getName());
         testEntity.setValue(value);
         testEntity.setOwner(TEST_USER);
-        MetadataPermission pemShareUser = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
+        MetadataPermission pemShareUser = new MetadataPermission(TEST_SHARED_USER, PermissionType.READ);
         List<MetadataPermission> listPem = new ArrayList<>(Arrays.asList(pemShareUser));
         testEntity.setPermissions(listPem);
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));
@@ -507,7 +509,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         testEntity.setName(MetadataDaoIT.class.getName());
         testEntity.setValue(value);
         testEntity.setOwner(TEST_USER);
-        MetadataPermission pemShareUser = new MetadataPermission(testEntity.getUuid(), TEST_SHARED_USER, PermissionType.READ);
+        MetadataPermission pemShareUser = new MetadataPermission(TEST_SHARED_USER, PermissionType.READ);
         List<MetadataPermission> listPem = new ArrayList<>(Arrays.asList(pemShareUser));
         testEntity.setPermissions(listPem);
         inst.setAccessibleOwners(new ArrayList<>(Arrays.asList(TEST_USER)));

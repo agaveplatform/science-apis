@@ -2,48 +2,25 @@ package org.iplantc.service.metadata.managers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.*;
-import com.mongodb.MongoClient;
-import com.mongodb.client.*;
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.DBCollectionUpdateOptions;
-import io.grpc.Metadata;
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.auth.JWTClient;
 import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.common.exceptions.SortSyntaxException;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.search.AgaveResourceResultOrdering;
 import org.iplantc.service.common.uuid.AbstractUUIDTest;
-import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDEntityLookup;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataDao;
-import org.iplantc.service.metadata.dao.MetadataPermissionDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
-import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.iplantc.service.metadata.uuid.MetadataItemUUIDEntityLookupIT;
-import org.joda.time.DateTime;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
-import java.security.BasicPermission;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
-import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.powermock.api.mockito.PowerMockito.when;
 
@@ -78,7 +55,7 @@ public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataIte
             entity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
             entity.setOwner(TEST_USER);
 
-            MetadataPermission metaPem = new MetadataPermission(entity.getUuid(), TEST_USER, PermissionType.ALL);
+            MetadataPermission metaPem = new MetadataPermission(TEST_USER, PermissionType.ALL);
             List<MetadataPermission> listPem = new ArrayList<MetadataPermission>();
             listPem.add(metaPem);
             entity.setPermissions(listPem);
@@ -148,26 +125,17 @@ public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataIte
     }
 
 
-    @Mock
-    private MongoClient mockClient;
-    @Mock
-    private MongoCollection mockCollection;
-    @Mock
-    private MongoDatabase mockDB;
-    @InjectMocks
-    private MetadataDao metadataDao;
-
     @Test
-    public void testSetClearPermissions() throws MetadataException, PermissionException {
+    public void testSetClearPermissions() throws MetadataException, PermissionException, MetadataStoreException {
         MetadataItem testEntity = createEntity();
 
-        MetadataPermissionManager pmTest = new MetadataPermissionManager(getEntityUuid(testEntity), TEST_USER);
+        MetadataPermissionManager pmTest = new MetadataPermissionManager(testEntity, TEST_USER);
         Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Owner has implicit permissions.");
         Assert.assertFalse(pmTest.canRead(TEST_SHARED_USER), "User doesn't have permissions yet.");
         Assert.assertFalse(pmTest.canWrite(TEST_SHARED_USER), "User doesn't have any permissions yet.");
 
         pmTest.setPermission(TEST_SHARED_USER, PermissionType.READ.toString());
-         pmTest = new MetadataPermissionManager(getEntityUuid(testEntity), TEST_USER);
+         pmTest = new MetadataPermissionManager(testEntity, TEST_USER);
         Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Owner has implicit permissions.");
 
         Assert.assertTrue(pmTest.canRead(TEST_SHARED_USER), "User should have updated permission to READ.");
@@ -205,9 +173,9 @@ public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataIte
     }
 
     @Test
-    public void testRemovePermission() throws MetadataException, PermissionException {
+    public void testRemovePermission() throws MetadataException, PermissionException, MetadataStoreException {
             MetadataItem testEntity = createEntity();
-            MetadataPermissionManager pmTest = new MetadataPermissionManager(getEntityUuid(testEntity), TEST_USER);
+            MetadataPermissionManager pmTest = new MetadataPermissionManager(testEntity, TEST_USER);
 
             pmTest.setPermission(TEST_SHARED_USER, "");
 

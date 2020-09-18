@@ -6,7 +6,6 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.*;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
-import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistries;
@@ -40,7 +39,6 @@ public class MetadataDao {
     private static final Logger log = Logger.getLogger(MetadataDao.class);
 
     private MongoDatabase db = null;
-    //    private MongoClient mongoClient = null;
     private MongoClients mongoClients = null;
     private com.mongodb.client.MongoClient mongov4Client = null;
 
@@ -102,19 +100,19 @@ public class MetadataDao {
         if (mongov4Client == null) {
 
             //testing for custom codec
-            log.log(Level.DEBUG,"building json class model");
+//            log.log(Level.DEBUG,"building json class model");
             ClassModel<JsonNode> valueModel = ClassModel.builder(JsonNode.class).build();
-            log.log(Level.DEBUG,"building MetadataPermission class model");
+//            log.log(Level.DEBUG,"building MetadataPermission class model");
             ClassModel<MetadataPermission> metadataPermissionModel = ClassModel.builder(MetadataPermission.class).build();
-            log.log(Level.DEBUG,"building pojocodecprovider");
+//            log.log(Level.DEBUG,"building pojocodecprovider");
             PojoCodecProvider pojoCodecProvider = PojoCodecProvider.builder().register(valueModel, metadataPermissionModel).build();
-            log.log(Level.DEBUG,"building codec registry");
+//            log.log(Level.DEBUG,"building codec registry");
             CodecRegistry registry = CodecRegistries.fromCodecs(new MetadataItemCodec());
-            log.log(Level.DEBUG,"pojo codec registry");
+//            log.log(Level.DEBUG,"pojo codec registry");
             CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
                     fromProviders(pojoCodecProvider),
                     registry);
-            log.log(Level.DEBUG,"creating client");
+//            log.log(Level.DEBUG,"creating client");
 
             mongov4Client = mongoClients.create(MongoClientSettings.builder()
                         .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
@@ -123,7 +121,7 @@ public class MetadataDao {
                         .codecRegistry(pojoCodecRegistry)
                         .build());
         }
-        log.log(Level.DEBUG,"finished");
+//        log.log(Level.DEBUG,"finished");
 
         return mongov4Client;
     }
@@ -309,7 +307,7 @@ public class MetadataDao {
         Bson withPermissionQuery = and(query, getHasReadQuery(user, accessibleOwners));
 
         try {
-            log.log(Level.DEBUG, withPermissionQuery.toString());
+            log.trace(withPermissionQuery.toString());
 
             cursor = metadataItemMongoCollection.find(withPermissionQuery)
                     .sort(order)
@@ -456,10 +454,9 @@ public class MetadataDao {
             //get collection
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-            List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
             Bson uuidAndTenantQuery = getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId());
-            update = metadataItemMongoCollection.updateOne(uuidAndTenantQuery, set("permissions", metadataPermissionsList));
-            if (update.getModifiedCount() > 0) {
+            update = metadataItemMongoCollection.updateOne(uuidAndTenantQuery, set("permissions", metadataItem.getPermissions()));
+            if (update.getMatchedCount() == 1) {
                 //update success. fetch the doc
                 MetadataItem updatedItem = findSingleMetadataItem(uuidAndTenantQuery);
                 if (updatedItem != null) {
@@ -475,29 +472,6 @@ public class MetadataDao {
         } catch (Exception e) {
             throw new MetadataStoreException("Failed to update permission", e);
         }
-    }
-
-    public List<MetadataPermission> updatePermission(String uuid, List<MetadataPermission> permissionList, String user) throws MetadataStoreException, PermissionException {
-        MongoCollection<MetadataItem> metadataItemMongoCollection;
-        UpdateResult update;
-
-        try {
-            //get collection
-            metadataItemMongoCollection = getDefaultMetadataItemCollection();
-
-            if (hasWrite(user, uuid)) {
-                update = metadataItemMongoCollection.updateOne(eq("uuid", uuid), set("permissions", permissionList));
-                if (update.getModifiedCount() > 0)
-                    //update success
-                    return permissionList;
-            } else {
-                throw new PermissionException("User does not have sufficient access to edit metadata permissions.");
-            }
-
-        } catch (Exception e) {
-            throw new MetadataStoreException("Failed to update permission", e);
-        }
-        return null;
     }
 
     /**
@@ -546,20 +520,29 @@ public class MetadataDao {
         try {
             metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-            if (hasWrite(user, metadataItem.getUuid())) {
+            // TODO: This should be handled before we get here. DAO is just for interacting with db
+//            if (hasWrite(user, metadataItem.getUuid())) {
                 //push instead of replace
                 UpdateResult update = metadataItemMongoCollection.updateOne(
                         getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId()),
                         new Document("$set", metadataItem));
 
-            } else {
-                throw new PermissionException("User does not have sufficient access to edit public metadata item.");
-            }
+                if (update.getModifiedCount() == 0) {
+                    throw new MetadataException("No document found with uuid " + metadataItem.getUuid() + ".");
+                } else {
+                    Document uuidLookupDoc = new Document().append("uuid", metadataItem.getUuid()).append("tenantId", metadataItem.getTenantId());
+                    MetadataItem foundDocument = findSingleMetadataItem(uuidLookupDoc);
+                    if (foundDocument != null)
+                        return foundDocument;
 
+                    throw new MetadataException("No metadata item found for user with id " + metadataItem.getUuid());
+                }
+//            } else {
+//                throw new PermissionException("User does not have sufficient access to edit public metadata item.");
+//            }
         } catch (MongoException e) {
             throw new MetadataException("Failed to add/update metadata item.", e);
         }
-        return metadataItem;
     }
 
     /**
@@ -578,12 +561,13 @@ public class MetadataDao {
 //                    eq("tenantId", metadataItem.getTenantId()));
 //            Bson queryFilter = and(deleteFilter, or(eq("owner", user), docPermissions));
 
-            DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(
-                    getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId()));
-            if (deleteResult.getDeletedCount() == 0) {
-                //delete unsuccessful
-                return null;
-            }
+        DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(
+                getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId()));
+        if (deleteResult.getDeletedCount() == 0) {
+            //delete unsuccessful
+            return null;
+        }
+
         return metadataItem;
     }
 

@@ -4,27 +4,25 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.grpc.netty.shaded.io.netty.util.internal.StringUtil;
 import org.apache.commons.lang.StringUtils;
 import org.bson.BsonReader;
-import org.bson.BsonTimestamp;
 import org.bson.BsonWriter;
 import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.DocumentCodec;
 import org.bson.codecs.EncoderContext;
-import org.bson.json.JsonParseException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.metadata.exceptions.MetadataAssociationException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.joda.time.DateTime;
 
-import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.TimeZone;
 
 /**
  * Custom Codec for processing MetadataItem to Bson
@@ -142,7 +140,6 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
                 MetadataPermission newPem = new MetadataPermission();
                 try {
                     newPem.setUsername((String) doc.get("username"));
-                    newPem.setUuid(uuid);
                     newPem.setGroup((String) doc.get("group"));
                     newPem.setPermission(PermissionType.getIfPresent(doc.get("permission").toString().toUpperCase()));
                     permissionList.add(newPem);
@@ -194,8 +191,9 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
             writer.writeStartDocument();
             writer.writeName("username");
             writer.writeString(pem.getUsername());
-            writer.writeName("group");
-            writer.writeString(pem.getGroup());
+            writer.writeNull("group");
+//            writer.writeName("group");
+//            writer.writeString(pem.getGroup());
             writer.writeName("permission");
             writer.writeString(pem.getPermission().toString());
             writer.writeEndDocument();

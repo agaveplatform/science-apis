@@ -3,17 +3,9 @@ package org.iplantc.service.metadata.dao;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.common.persistence.HibernateUtil;
-import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
-import org.iplantc.service.metadata.model.MetadataPermission;
-import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
-
-import java.util.List;
-import java.util.UUID;
 
 public abstract class AbstractMetadataPermissionDaoIT implements IMetadataPermissionDaoIT {
     protected String TEST_OWNER = "testuser";
@@ -45,8 +37,6 @@ public abstract class AbstractMetadataPermissionDaoIT implements IMetadataPermis
 
             //noinspection JpaQlInspection
             session.createQuery("delete MetadataSchemaPermission").executeUpdate();
-            //noinspection JpaQlInspection
-            session.createQuery("delete MetadataPermission").executeUpdate();
         }
         catch (HibernateException ex)
         {

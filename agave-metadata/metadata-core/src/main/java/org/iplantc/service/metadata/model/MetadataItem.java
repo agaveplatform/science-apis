@@ -1,15 +1,8 @@
 
 package org.iplantc.service.metadata.model;
 
-import static com.fasterxml.jackson.annotation.JsonInclude.Include;
-
-import java.util.*;
-
-import javax.persistence.Id;
-import javax.validation.Constraint;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Past;
-
+import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
@@ -24,16 +17,16 @@ import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.model.validation.constraints.MetadataSchemaComplianceConstraint;
 import org.iplantc.service.metadata.model.validation.constraints.ValidAgaveUUID;
-import org.iplantc.service.metadata.model.validation.constraints.ValidJsonSchema;
 import org.iplantc.service.notification.model.Notification;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonUnwrapped;
-import com.fasterxml.jackson.annotation.JsonView;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.mongodb.DBObject;
+import javax.persistence.Id;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Past;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 /**
  * @author dooley
@@ -346,7 +339,7 @@ public class MetadataItem {
     }
 
     public synchronized void updatePermissions(MetadataPermission pem) throws MetadataException {
-        MetadataPermission currentUserPermission = this.getPermissions_User(pem.getUsername());
+        MetadataPermission currentUserPermission = this.getPermissionForUsername(pem.getUsername());
 
         if (currentUserPermission != null) {
             Integer indx = this.permissions.indexOf(currentUserPermission);
@@ -356,18 +349,18 @@ public class MetadataItem {
         }
     }
 
-    public synchronized void updatePermissions_delete(MetadataPermission pem) {
+    public synchronized void removePermission(MetadataPermission pem) {
         this.permissions.remove(pem);
     }
 
-    public synchronized MetadataPermission getPermissions_User(String user) throws MetadataException {
+    public synchronized MetadataPermission getPermissionForUsername(String username) throws MetadataException {
         for (MetadataPermission pem : this.permissions) {
-            if (pem.getUsername().equals(user)) {
+            if (pem.getUsername().equals(username)) {
                 return pem;
             }
         }
-        if (StringUtils.equals(user, this.getOwner())) {
-            return new MetadataPermission(user, "", PermissionType.ALL);
+        if (StringUtils.equals(username, this.getOwner())) {
+            return new MetadataPermission(username, PermissionType.ALL);
         }
         return null;
     }
@@ -399,11 +392,10 @@ public class MetadataItem {
         }
 
         if (StringUtils.isNotEmpty(getSchemaId())) {
-            hal.put(UUIDType.SCHEMA.name().toLowerCase(),
-                    mapper.createObjectNode().put("href",
-                            TenancyHelper.resolveURLToCurrentTenant(getSchemaId())));
+            hal.putObject(UUIDType.SCHEMA.name().toLowerCase())
+                    .put("href", TenancyHelper.resolveURLToCurrentTenant(getSchemaId()));
         }
-        json.put("_links", hal);
+        json.set("_links", hal);
 
         return json;
     }

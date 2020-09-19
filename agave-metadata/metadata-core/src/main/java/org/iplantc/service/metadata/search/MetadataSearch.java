@@ -106,6 +106,7 @@ public class MetadataSearch {
 
     /**
      * Remove all documents from the Metadata collection
+     * @deprecated
      */
     public void clearCollection() {
         metadataDao.clearCollection();
@@ -117,11 +118,12 @@ public class MetadataSearch {
      * @param userQuery String query to search the collection for
      * @return list of {@link MetadataItem} matching the {@code userQuery} in the sort order specified
      * @throws MetadataQueryException if {@code userQuery} is invalid format
+     * @deprecated  use find (Bson userQuery)
      */
-    public List<MetadataItem> find(String userQuery) throws MetadataQueryException, PermissionException {
+    public List<MetadataItem> find(String userQuery) throws MetadataQueryException {
         List<MetadataItem> result = new ArrayList<>();
         try {
-            Document doc = new JsonHandler().parseStringToDocument(userQuery);
+            Document doc = new JsonHandler().parseUserQueryToDocument(userQuery);
             Bson permissionFilter = and(getTenantIdQuery(), doc);
 
             BasicDBObject order = (orderField == null) ? new BasicDBObject() : new BasicDBObject(orderField, orderDirection);
@@ -135,7 +137,22 @@ public class MetadataSearch {
         return result;
     }
 
+    public List<MetadataItem> find(Bson userQuery) throws MetadataStoreException {
+        try {
+            Bson permissionFilter = and(getTenantIdQuery(), userQuery);
+
+            BasicDBObject order = (orderField == null) ? new BasicDBObject() : new BasicDBObject(orderField, orderDirection);
+            metadataDao.setAccessibleOwners(this.accessibleOwners);
+
+             return metadataDao.find(this.username, permissionFilter, offset, limit, order);
+
+        } catch (Exception e) {
+            throw new MetadataStoreException("Unable to find resource based on query.");
+        }
+    }
+
     /**
+     * @deprecated
      * Find all documents in the collection
      *
      * @return list of {@link MetadataItem} found
@@ -144,7 +161,6 @@ public class MetadataSearch {
     public List<MetadataItem> findAll() {
         return metadataDao.findAll();
     }
-
 
     /**
      * Find all documents in the collection
@@ -188,7 +204,7 @@ public class MetadataSearch {
      * @return {@link List} of {@link Document} matching the query
      */
     public List<Document> filterFind(String query, String[] filters) throws MetadataQueryException {
-        Document docQuery = new JsonHandler().parseStringToDocument(query);
+        Document docQuery = new JsonHandler().parseUserQueryToDocument(query);
         Document docFilter = parseDocumentfromList(filters);
         return metadataDao.filterFind(docQuery, docFilter);
     }
@@ -208,7 +224,6 @@ public class MetadataSearch {
             return foundDocuments.get(0);
         return null;
     }
-
 
     /**
      * Parse String List to a Document with String key and value of 1
@@ -290,10 +305,14 @@ public class MetadataSearch {
      * @return {@link MetadataItem} that was deleted successfully, null otherwise
      * @throws PermissionException if user does not have permission to update the {@link MetadataItem}
      */
-    public MetadataItem deleteCurrentMetadataItem() throws PermissionException {
-        metadataDao.setAccessibleOwners(this.accessibleOwners);
-        setMetadataItem(metadataDao.deleteMetadata(this.metadataItem));
-        return getMetadataItem();
+    public MetadataItem deleteCurrentMetadataItem() throws PermissionException, MetadataException {
+        if (getMetadataItem().getPermissionForUsername(this.username).canWrite()){
+            metadataDao.setAccessibleOwners(this.accessibleOwners);
+            setMetadataItem(metadataDao.deleteMetadata(this.metadataItem));
+            return getMetadataItem();
+        } else {
+            throw new PermissionException("User does not have permission to modify this resource.");
+        }
     }
 
     //---------------------------------------------

@@ -56,7 +56,7 @@ public class MetadataValidation {
      * @throws UUIDException          if unable to run query
      * @throws MetadataException      if unable to validate uuid using the agave-uuid api
      */
-    public MetadataAssociationList checkAssociationIds_uuidApi(ArrayNode items) throws MetadataQueryException, UUIDException, MetadataException {
+    public MetadataAssociationList checkAssociationIdsUuidApi(ArrayNode items) throws MetadataQueryException, UUIDException, MetadataException {
         MetadataAssociationList associationList = new MetadataAssociationList();
 
         if (items != null) {
@@ -93,7 +93,7 @@ public class MetadataValidation {
      * @throws PermissionException          if user does not have read permissions
      * @throws MetadataAssociationException if the uuid is invalid
      */
-    public MetadataAssociationList checkAssociationIds(ArrayNode items, String username) throws MetadataQueryException, UUIDException, PermissionException, MetadataAssociationException, MetadataStoreException {
+    public MetadataAssociationList checkAssociationIds(ArrayNode items, String username) throws MetadataQueryException, UUIDException, PermissionException, MetadataAssociationException {
         MetadataAssociationList associationList = new MetadataAssociationList();
 
         if (associationList == null) {

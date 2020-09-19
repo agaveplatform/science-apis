@@ -268,7 +268,6 @@ public class MetadataDao {
         return resultList;
     }
 
-
     /**
      * Find the {@link MetadataItem} from the mongo collection based on the {@link Bson} query as the {@code user}
      * with the default offset, limit, and sort settings
@@ -442,7 +441,7 @@ public class MetadataDao {
      * Update the permission for the specified user to the specified permission
      *
      * @param metadataItem to be updated
-     * @retun all the permissions for the metadata item including the updated one.
+     * @return all the permissions for the metadata item including the updated one.
      *
      */
     public List<MetadataPermission> updatePermission(MetadataItem metadataItem) throws MetadataStoreException {
@@ -478,7 +477,7 @@ public class MetadataDao {
      * Updates a single document representing a {@link MetadataItem}.
      * @param doc the metadata item fields to update, marshalled to a {@link Document}.
      * @return freshly updated Document representing the metadata item
-     * @throws MetadataException
+     * @throws MetadataException if unable to find Metadata item
      */
     public Document updateDocument(Document doc) throws MetadataException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
@@ -605,6 +604,7 @@ public class MetadataDao {
      * Return all documents in the collection
      *
      * @return list of all documents in collection
+     * @deprecated
      */
     public List<MetadataItem> findAll() {
         List<MetadataItem> resultList = new ArrayList<>();
@@ -632,9 +632,9 @@ public class MetadataDao {
         if (AuthorizationHelper.isTenantAdmin(user))
             return true;
 
-//        Bson userFilter = elemMatch("permissions", and(eq("username", user),
-//                in("permission", PermissionType.ALL.toString(), PermissionType.READ.toString(),
-//                        PermissionType.READ_WRITE.toString(), PermissionType.READ_EXECUTE.toString())));
+        if (this.accessibleOwners == null)
+            setAccessibleOwners(Arrays.asList(user));
+
         return checkPermission(uuid, user, this.getHasReadQuery(user, this.accessibleOwners));
     }
 
@@ -648,11 +648,9 @@ public class MetadataDao {
     public boolean hasWrite(String user, String uuid) {
         if (AuthorizationHelper.isTenantAdmin(user))
             return true;
-//
-//        Bson userFilter = elemMatch("permissions", and(eq("username", user),
-//                in("permission", Arrays.asList(PermissionType.ALL.toString(),
-//                        PermissionType.READ_WRITE.toString(), PermissionType.READ_EXECUTE.toString(),
-//                        PermissionType.WRITE.toString(), PermissionType.WRITE_EXECUTE.toString()))));
+
+        if (this.accessibleOwners == null)
+            setAccessibleOwners(Arrays.asList(user));
 
         return checkPermission(uuid, user, getHasWriteQuery(user, this.accessibleOwners));
     }

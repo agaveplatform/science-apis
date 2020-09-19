@@ -2,6 +2,7 @@ package org.iplantc.service.metadata.managers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -14,7 +15,9 @@ import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
+import org.iplantc.service.metadata.search.MetadataSearch;
 import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
@@ -24,11 +27,13 @@ import java.util.List;
 import static org.mockito.Mockito.mock;
 import static org.powermock.api.mockito.PowerMockito.when;
 
-@Test(groups={"integration"})
+@Test(groups = {"integration"})
 public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataItem> {
-    private final String TEST_USER = "testuser";
-    private final String TEST_SHARED_USER = "testshareuser";
+    private final String TEST_USER = "TEST_USER";
+    private final String TEST_SHARED_USER = "TEST_SHARED_USER";
+    private final String TEST_WRITE_USER = "TEST_WRITE_USER";
 
+    private MetadataItem addedItem;
     private ObjectMapper mapper = new ObjectMapper();
 
     /**
@@ -48,28 +53,32 @@ public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataIte
      */
     @Override
     public MetadataItem createEntity() {
-        MetadataItem entity = null;
+        MetadataItem toAdd = null;
         try {
-            entity = new MetadataItem();
-            entity.setName(MetadataPermissionManagerIT.class.getName());
-            entity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
-            entity.setOwner(TEST_USER);
+            toAdd = new MetadataItem();
+            toAdd.setName(MetadataPermissionManagerIT.class.getName());
+            toAdd.setValue(mapper.createObjectNode().put("testKey", "testValue"));
+            toAdd.setOwner(TEST_USER);
+            toAdd.setInternalUsername(TEST_USER);
+            MetadataPermission readPermission = new MetadataPermission(TEST_SHARED_USER, PermissionType.READ);
+            toAdd.getPermissions().addAll(List.of(readPermission));
 
-            MetadataPermission metaPem = new MetadataPermission(TEST_USER, PermissionType.ALL);
-            List<MetadataPermission> listPem = new ArrayList<MetadataPermission>();
-            listPem.add(metaPem);
-            entity.setPermissions(listPem);
 
-            MetadataDao inst = mock(MetadataDao.class);
+//            addedItem = MetadataDao.getInstance().insert(toAdd);
 
-            when(inst.insert(entity)).thenReturn(entity);
+            MetadataSearch search = new MetadataSearch(TEST_USER);
+            search.setMetadataItem(toAdd);
+            addedItem = search.insertCurrentMetadataItem();
+
+//            MetadataDao inst = mock(MetadataDao.class);
+//            when(inst.insert(toAdd)).thenReturn(toAdd);
 
             //MetadataDao.getInstance().insert(entity);
         } catch (Exception e) {
             Assert.fail("Unable to create metadata item", e);
         }
 
-        return entity;
+        return addedItem;
     }
 
     /**
@@ -106,6 +115,12 @@ public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataIte
         return testEntity.getUuid();
     }
 
+    @AfterMethod
+    public void cleanUpCollection() {
+        MetadataDao.getInstance().getDefaultMetadataItemCollection().deleteMany(new Document());
+    }
+
+
     @Test
     public void testGetResourceUrl() {
         try {
@@ -126,66 +141,57 @@ public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataIte
 
 
     @Test
-    public void testSetClearPermissions() throws MetadataException, PermissionException, MetadataStoreException {
+    public void testGetPermissions() throws MetadataException {
         MetadataItem testEntity = createEntity();
+        Assert.assertNotNull(testEntity, "Metadata item should not be after added to collection.");
+        MetadataPermissionManager pmTest = new MetadataPermissionManager(testEntity, TEST_USER);
+        MetadataPermission ownerPem = pmTest.getPermission(TEST_USER);
+        MetadataPermission sharedUserPem = pmTest.getPermission(TEST_SHARED_USER);
+
+        Assert.assertEquals(ownerPem, new MetadataPermission(TEST_USER, PermissionType.ALL));
+        Assert.assertEquals(sharedUserPem, new MetadataPermission(TEST_SHARED_USER, PermissionType.READ));
+        Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Owner should have all permissions. ");
+        Assert.assertTrue(pmTest.canRead(TEST_SHARED_USER) && !pmTest.canWrite(TEST_SHARED_USER),
+                "Shared user should have same permissions as in the added metadata item.");
+
+    }
+
+    @Test
+    public void testClearPermissions() throws MetadataException, MetadataStoreException {
+        MetadataItem testEntity = createEntity();
+        Assert.assertNotNull(testEntity, "Metadata item should not be after added to collection.");
 
         MetadataPermissionManager pmTest = new MetadataPermissionManager(testEntity, TEST_USER);
-        Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Owner has implicit permissions.");
-        Assert.assertFalse(pmTest.canRead(TEST_SHARED_USER), "User doesn't have permissions yet.");
-        Assert.assertFalse(pmTest.canWrite(TEST_SHARED_USER), "User doesn't have any permissions yet.");
-
-        pmTest.setPermission(TEST_SHARED_USER, PermissionType.READ.toString());
-         pmTest = new MetadataPermissionManager(testEntity, TEST_USER);
-        Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Owner has implicit permissions.");
-
-        Assert.assertTrue(pmTest.canRead(TEST_SHARED_USER), "User should have updated permission to READ.");
-        Assert.assertFalse(pmTest.canWrite(TEST_SHARED_USER), "User should not have permission to WRITE.");
-
-        pmTest.setPermission(TEST_SHARED_USER, PermissionType.NONE.toString());
-        Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Owner has implicit permissions.");
-
-        Assert.assertFalse(pmTest.canRead(TEST_SHARED_USER), "User should no longer have permission to READ.");
-        Assert.assertFalse(pmTest.canWrite(TEST_SHARED_USER), "User should no longer have permission to WRITE.");
-
-        pmTest.setPermission(TEST_SHARED_USER, PermissionType.READ_WRITE.toString());
-        Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Owner has implicit permissions.");
-        Assert.assertTrue(pmTest.canRead(TEST_SHARED_USER) && pmTest.canWrite(TEST_SHARED_USER), "User should have updated permissions to READ_WRITE.");
-
         pmTest.clearPermissions();
 
         Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Clearing permissions should save ownership. ");
         Assert.assertFalse(pmTest.canRead(TEST_SHARED_USER) && pmTest.canWrite(TEST_SHARED_USER), "Clearing permissions should remove permissions for user.");
-
-        pmTest.setPermission(TEST_SHARED_USER, "");
-        Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Clearing permissions should save ownership. ");
-        Assert.assertFalse(pmTest.canRead(TEST_SHARED_USER) && pmTest.canWrite(TEST_SHARED_USER), "Clearing permissions should remove permissions for user.");
-
-        pmTest.setPermission(TEST_USER, PermissionType.NONE.toString());
-        Assert.assertTrue(pmTest.canRead(TEST_USER) && pmTest.canWrite(TEST_USER), "Permissions will not be changed for the wner. ");
-
-
-        try {
-            pmTest.setPermission("", PermissionType.READ_WRITE.toString());
-            Assert.fail("Empty username should throw exception.");
-        } catch (MetadataException e ){
-            //pass
-        }
     }
 
     @Test
-    public void testRemovePermission() throws MetadataException, PermissionException, MetadataStoreException {
-            MetadataItem testEntity = createEntity();
-            MetadataPermissionManager pmTest = new MetadataPermissionManager(testEntity, TEST_USER);
+    public void testSetPermission() throws MetadataException, PermissionException, MetadataStoreException {
+        MetadataItem testEntity = createEntity();
+        Assert.assertNotNull(testEntity, "Metadata item should not be after added to collection.");
+        MetadataPermissionManager pmTest = new MetadataPermissionManager(testEntity, TEST_USER);
 
-            pmTest.setPermission(TEST_SHARED_USER, "");
+        //add permissions
+        pmTest.setPermission(TEST_WRITE_USER, PermissionType.READ_WRITE.toString());
+        MetadataPermission pem = pmTest.getPermission(TEST_WRITE_USER);
+        Assert.assertEquals(pem.getPermission(), PermissionType.READ_WRITE,
+                "Permission for TEST_WRITE_USER should be READ_WRITE after update.");
 
-            MetadataPermission pem = pmTest.getPermission(TEST_SHARED_USER);
-            Assert.assertEquals(pem.getPermission(), PermissionType.NONE, "Removing a permission that doesn't exist.");
+        //update permissions
+        pmTest.setPermission(TEST_WRITE_USER, PermissionType.READ.toString());
+        pem = pmTest.getPermission(TEST_WRITE_USER);
+        Assert.assertEquals(pem.getPermission(), PermissionType.READ,
+                "Permission for TEST_WRITE_USER should be READ after update.");
 
-            pmTest.setPermission(TEST_SHARED_USER, PermissionType.READ_WRITE.toString());
+        //delete permissions
+        pmTest.setPermission(TEST_WRITE_USER, PermissionType.NONE.toString());
+        pem = pmTest.getPermission(TEST_WRITE_USER);
+        Assert.assertEquals(pem.getPermission(), PermissionType.NONE,
+                "Permission for TEST_WRITE_USER should be removed after update.");
 
-            pem = pmTest.getPermission(TEST_SHARED_USER);
-            Assert.assertEquals(pem.getPermission(), PermissionType.NONE, "There should be no permissions.");
     }
 
     /**
@@ -195,7 +201,7 @@ public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataIte
      * @param entityJson the serialized json from which to extract the self link
      * @return the value of the HAL self link for the json object
      * @throws JsonProcessingException if the json is invalid
-     * @throws IOException if the entity cannot be read
+     * @throws IOException             if the entity cannot be read
      */
     private String getUrlFromEntityJson(String entityJson)
             throws JsonProcessingException, IOException {

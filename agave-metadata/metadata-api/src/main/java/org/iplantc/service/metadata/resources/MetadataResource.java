@@ -20,6 +20,7 @@ import org.iplantc.service.common.resource.AgaveResource;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataDao;
+import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.iplantc.service.metadata.search.JsonHandler;
@@ -120,9 +121,11 @@ public class MetadataResource extends AgaveResource {
 
             // TODO: Should be folded into the fetch call? Much faster, but also removes ability to determine pems
             //   vs a standard not found.
-            if (dao.hasRead(getAuthenticatedUsername(), uuid)){
+
+
+            if (!dao.hasRead(getAuthenticatedUsername(), uuid)){
                 getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
-                return new IplantErrorRepresentation("User does not have permission to read this metadata entry.");
+                return new IplantErrorRepresentation("Cannot validate - User does not have permission to read this metadata entry.");
             }
 
             Document uuidLookupDoc = new Document().append("uuid", uuid).append("tenantId", TenancyHelper.getCurrentTenantId());
@@ -196,9 +199,9 @@ public class MetadataResource extends AgaveResource {
             try {
                 // TODO: Should be folded into the fetch call? Much faster, but also removes ability to determine pems
                 //   vs a standard not found.
-                if (dao.hasWrite(getAuthenticatedUsername(), uuid)){
+                if (!dao.hasWrite(getAuthenticatedUsername(), uuid)){
                     getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
-                    throw new PermissionException("User does not have permission to update metadata");
+                    throw new PermissionException("Cannot validate - User does not have permission to update metadata");
                 }
 
                 MetadataSearch search = new MetadataSearch(getAuthenticatedUsername());
@@ -263,7 +266,7 @@ public class MetadataResource extends AgaveResource {
 
                 // TODO: Should be folded into the fetch call? Much faster, but also removes ability to determine pems
                 //   vs a standard not found.
-                if (dao.hasWrite(getAuthenticatedUsername(), uuid)){
+                if (!dao.hasWrite(getAuthenticatedUsername(), uuid)){
                     getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
                     throw new PermissionException("User does not have permission to delete this metadata entry.");
                 }

@@ -6,8 +6,6 @@ import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
 
-import java.net.UnknownHostException;
-
 public interface IMetadataDaoIT {
 
     MongoCollection getCollection();
@@ -16,7 +14,7 @@ public interface IMetadataDaoIT {
     MetadataItem createEntity();
     void insertTest() throws MetadataException, PermissionException, MetadataStoreException;
     void insertPermissionTest() throws MetadataStoreException, MetadataException, PermissionException;
-    void removeMetadataTest() throws MetadataStoreException, MetadataException, PermissionException;
+    void deleteMetadataTest() throws MetadataStoreException, MetadataException, PermissionException;
     void removePermissionTest()  throws MetadataStoreException, MetadataException, PermissionException;
     void updateTest() throws MetadataStoreException, MetadataException, PermissionException;
     void updatePermissionTest() throws MetadataStoreException, MetadataException, PermissionException;

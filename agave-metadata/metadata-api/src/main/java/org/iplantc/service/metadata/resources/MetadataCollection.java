@@ -204,12 +204,8 @@ public class MetadataCollection extends AgaveResource {
                 } else {
                     List<MetadataItem> userResults = new ArrayList<>();
                     try {
-                        log.log(Level.DEBUG, "DB Query: " + userQuery);
-                        mongoLog.trace("tracing mongo logs");
 
                         userResults = search.find(userQuery);
-                        mongoLog.setLevel(Level.ALL);
-                        mongoLog.trace("tracing mongo logs");
 
                     } catch (MetadataQueryException e) {
                         throw new MetadataQueryException(e.getMessage());

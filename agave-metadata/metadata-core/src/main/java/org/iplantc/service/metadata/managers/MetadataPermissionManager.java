@@ -95,7 +95,8 @@ public class MetadataPermissionManager {
             return false;
         }
 
-        if (StringUtils.equals(getAuthenticatedUsername(), username) || AuthorizationHelper.isTenantAdmin(username))
+        if (StringUtils.equals(getAuthenticatedUsername(), username) || AuthorizationHelper.isTenantAdmin(username)
+                || StringUtils.equals(getMetadataItem().getOwner(), username))
             return true;
 
         for (MetadataPermission pem : getMetadataItem().getPermissions()) {
@@ -122,7 +123,8 @@ public class MetadataPermissionManager {
             return false;
         }
 
-        if (getAuthenticatedUsername().equals(username) || AuthorizationHelper.isTenantAdmin(username))
+        if (getAuthenticatedUsername().equals(username) || AuthorizationHelper.isTenantAdmin(username)
+                || getMetadataItem().getOwner().equals(username))
             return true;
 
         for (MetadataPermission pem : getMetadataItem().getPermissions()) {
@@ -171,6 +173,7 @@ public class MetadataPermissionManager {
             if (userPermission != null) {
                 getMetadataItem().removePermission(userPermission);
                 getMetadataItem().setPermissions(getMetadataDao().updatePermission(getMetadataItem()));
+
                 // getEventProcessor().processPermissionEvent(getMetadataItem().getUuid(), pem, MetadataEventType.PERMISSION_REVOKE, getAuthenticatedUsername(), new MetadataDao().getByUuid(getMetadataItem().getUuid()).toJSON());
                 NotificationManager.process(getMetadataItem().getUuid(), MetadataEventType.PERMISSION_REVOKE.name(), username);
             } else {
@@ -180,21 +183,34 @@ public class MetadataPermissionManager {
         // they're updating/adding a permission, so resolve the permission and
         // and alert the appropriate subscriptions
         else {
-            PermissionType permissionType = PermissionType
-                .valueOf(sPermission.toUpperCase());
+            PermissionType permissionType = PermissionType.
+//                    valueOf(sPermission.toUpperCase());
+                    getIfPresent(sPermission.toUpperCase());    //handles invalid permission types
+
+            if (permissionType == PermissionType.UNKNOWN) {
+                throw new PermissionException("Unable to set unknown permission, please use " +
+                        PermissionType.READ.toString() + ", " +
+                        PermissionType.READ_WRITE.toString() + ", " +
+                        PermissionType.NONE.toString());
+            }
 
             // if not present, add it
             if (userPermission == null) {
                 userPermission = new MetadataPermission(username, permissionType);
-                getMetadataItem().removePermission(userPermission);
+
+                getMetadataItem().getPermissions().add(userPermission);
                 getMetadataItem().setPermissions(getMetadataDao().updatePermission(getMetadataItem()));
+
                 // getEventProcessor().processPermissionEvent(getMetadataItem().getUuid(), pem, MetadataEventType.PERMISSION_GRANT, getAuthenticatedUsername(), new MetadataDao().getByUuid(getMetadataItem().getUuid()).toJSON());
                 NotificationManager.process(getMetadataItem().getUuid(), MetadataEventType.PERMISSION_GRANT.name(), username);
             }
             // otherwise, update the existing permission
             else {
+                userPermission.setPermission(permissionType);
                 getMetadataItem().updatePermissions(userPermission);
-                getMetadataDao().updatePermission(getMetadataItem());
+                getMetadataItem().setPermissions(getMetadataDao().updatePermission(getMetadataItem()));
+
+//                this.metadataItem = getMetadataDao().findSingleMetadataItem();
                 // getEventProcessor().processPermissionEvent(getMetadataItem().getUuid(), pem, MetadataEventType.PERMISSION_UPDATE, getAuthenticatedUsername(), new MetadataDao().getByUuid(getMetadataItem().getUuid()).toJSON());
                 NotificationManager.process(getMetadataItem().getUuid(), MetadataEventType.PERMISSION_UPDATE.name(), username);
             }
@@ -218,7 +234,7 @@ public class MetadataPermissionManager {
      * permission manager.
      *
      * @param username
-     * @return the assigned permission for the
+     * @return the assigned permission for the user
      * @throws MetadataException
      */
     public MetadataPermission getPermission(String username) throws MetadataException {
@@ -232,7 +248,7 @@ public class MetadataPermissionManager {
         } else {
             for (MetadataPermission dbPems : getMetadataItem().getPermissions()) {
                 if (dbPems.getUsername().equals(username)) {
-                    return pem;
+                    return dbPems;
                 } else if (dbPems.getUsername().equals(Settings.WORLD_USER_USERNAME) ||
                     dbPems.getUsername().equals(Settings.PUBLIC_USER_USERNAME)) {
                     pem = dbPems;

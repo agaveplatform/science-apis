@@ -25,6 +25,7 @@ import org.iplantc.service.metadata.model.MetadataItemCodec;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -43,9 +44,6 @@ public class MetadataDao {
     private com.mongodb.client.MongoClient mongov4Client = null;
 
     private static MetadataDao dao = null;
-
-    private boolean bolRead;
-    private boolean bolWrite;
 
     private MetadataItem metadataItem = null;
     private List<String> accessibleOwners = null;
@@ -77,52 +75,27 @@ public class MetadataDao {
         if (dao == null) {
             dao = new MetadataDao();
         }
-
         return dao;
     }
 
-    /**
-     * @return valid mongo client connection
-     * @Deprecated moved to MetadataDao.getMongoClients
-     * Establishes a connection to the mongo server
-     */
-//    public MongoClient getMongoClient() {
-//        if (mongoClient == null) {
-//            mongoClient = new MongoClient(
-//                    new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT),
-//                    getMongoCredential(),
-//                    MongoClientOptions.builder().build());
-//        }
-//
-//        return mongoClient;
-//    }
     public MongoClient getMongoClients() {
         if (mongov4Client == null) {
 
-            //testing for custom codec
-//            log.log(Level.DEBUG,"building json class model");
             ClassModel<JsonNode> valueModel = ClassModel.builder(JsonNode.class).build();
-//            log.log(Level.DEBUG,"building MetadataPermission class model");
             ClassModel<MetadataPermission> metadataPermissionModel = ClassModel.builder(MetadataPermission.class).build();
-//            log.log(Level.DEBUG,"building pojocodecprovider");
             PojoCodecProvider pojoCodecProvider = PojoCodecProvider.builder().register(valueModel, metadataPermissionModel).build();
-//            log.log(Level.DEBUG,"building codec registry");
             CodecRegistry registry = CodecRegistries.fromCodecs(new MetadataItemCodec());
-//            log.log(Level.DEBUG,"pojo codec registry");
             CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
                     fromProviders(pojoCodecProvider),
                     registry);
-//            log.log(Level.DEBUG,"creating client");
 
             mongov4Client = mongoClients.create(MongoClientSettings.builder()
-                        .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
-                                new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT))))
-                        .credential(getMongoCredential())
-                        .codecRegistry(pojoCodecRegistry)
-                        .build());
+                    .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
+                            new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT))))
+                    .credential(getMongoCredential())
+                    .codecRegistry(pojoCodecRegistry)
+                    .build());
         }
-//        log.log(Level.DEBUG,"finished");
-
         return mongov4Client;
     }
 
@@ -154,10 +127,7 @@ public class MetadataDao {
      */
     public MongoCollection getCollection(String dbName, String collectionName) {
 
-//        db = getMongoClient().getDatabase(dbName);
         db = getMongoClients().getDatabase(dbName); //update to 4.0
-
-        MongoCollection<MetadataItem> newDb = db.getCollection("api", MetadataItem.class);
 
         // Gets a collection, if it does not exist creates it
         return db.getCollection(collectionName);
@@ -192,7 +162,10 @@ public class MetadataDao {
      * @return the inserted {@link MetadataItem}
      * @throws MetadataStoreException when the insertion failed
      */
-    public MetadataItem insert(MetadataItem metadataItem) throws MetadataStoreException {
+    public MetadataItem insert(MetadataItem metadataItem) throws MetadataStoreException, MetadataException {
+        if (metadataItem == null)
+            throw new MetadataException("Cannot insert a null MetadataItem");
+
         MongoCollection<MetadataItem> metadataItemCollection;
         try {
             //using POJO Codec
@@ -205,27 +178,6 @@ public class MetadataDao {
         }
     }
 
-//    /**
-//     * Duplicate of insert
-//     * Insert the provided {@link MetadataItem} in the mongo collection
-//     *
-//     * @param metadataItem the {@link MetadataItem} to be inserted
-//     * @return the inserted {@link MetadataItem}
-//     * @throws MetadataStoreException when the insertion failed
-//     */
-//    public MetadataItem insertMetadataItem(MetadataItem metadataItem) throws MetadataStoreException {
-//        MongoCollection<MetadataItem> metadataItemCollection;
-//        try {
-//            metadataItemCollection = getDefaultMetadataItemCollection();
-//            metadataItemCollection.insertOne(metadataItem);
-//
-//            return metadataItem;
-//        } catch (MongoException e) {
-//            throw new MetadataStoreException("Failed to insert metadata item", e);
-//        }
-//    }
-
-
     /**
      * Find the {@link MetadataItem} from the mongo collection based on the {@link Bson query} filtered
      * by {@code filter}
@@ -237,7 +189,6 @@ public class MetadataDao {
     public List<Document> filterFind(Bson query, Bson filter) {
         MongoCursor cursor;
         List<Document> resultList = new ArrayList<>();
-
 
         //Don't use custom codecs for faster processing with filters/projections
         MongoCollection mongoCollection;
@@ -277,7 +228,7 @@ public class MetadataDao {
      * @return metadataItem
      */
     public List<MetadataItem> find(String user, Bson query) {
-        return find(user, query, 0, org.iplantc.service.common.Settings.DEFAULT_PAGE_SIZE, new BasicDBObject());
+        return find(user, query, 0, org.iplantc.service.common.Settings.DEFAULT_PAGE_SIZE, new Document());
     }
 
     /**
@@ -285,9 +236,10 @@ public class MetadataDao {
      *
      * @param user  making the query
      * @param query {@link Bson} query to search with
+     * @param offset int offset
      * @return metadataItem
      */
-    public List<MetadataItem> find(String user, Bson query, int offset, int limit, BasicDBObject order) {
+    public List<MetadataItem> find(String user, Bson query, int offset, int limit, Document order) {
         MongoCursor cursor;
         List<MetadataItem> resultList = new ArrayList<>();
 
@@ -300,14 +252,12 @@ public class MetadataDao {
         }
 
         if (accessibleOwners == null) {
-            accessibleOwners = new ArrayList<String>();
+            accessibleOwners = new ArrayList<>();
         }
 
         Bson withPermissionQuery = and(query, getHasReadQuery(user, accessibleOwners));
 
         try {
-            log.trace(withPermissionQuery.toString());
-
             cursor = metadataItemMongoCollection.find(withPermissionQuery)
                     .sort(order)
                     .skip(offset)
@@ -326,128 +276,29 @@ public class MetadataDao {
     /**
      * Find the {@link MetadataItem} with the provided {@link Bson} filter
      *
-     * @param filter {@link Bson} filter to search the collection with
-     * @return {@link MetadataItem} matching the {@link Bson} filter
+     * @param query {@link Bson} filter to search the collection with
+     * @return {@link MetadataItem} matching the {@link Bson} filter, null if nothing found
      */
-    public MetadataItem findSingleMetadataItem(Bson filter) {
+    public MetadataItem findSingleMetadataItem(Bson query) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
         try {
-            return metadataItemMongoCollection.find(filter).first();
+            return metadataItemMongoCollection.find(query).first();
         } catch (Exception e) {
             return null;
         }
     }
-
-
-    /**
-     * Find the {@link MetadataItem} with the provided {@link Bson} query using
-     * aggregate
-     *
-     * @param user  performing the search
-     * @param query {@link} to search the collection with
-     * @return list of all {@link MetadataItem} matching the {@link Bson} query
-     * @throws MetadataStoreException when unable to query the collection
-     */
-    public List<MetadataItem> aggFind(String user, Bson query) throws MetadataStoreException {
-        List<MetadataItem> resultList = new ArrayList<>();
-        MongoCollection collection;
-        MetadataItem returnEntity;
-        MongoCursor cursor;
-
-        //POGO
-        MongoCollection<MetadataItem> metadataItemMongoCollection;
-        try {
-            metadataItemMongoCollection = getDefaultMetadataItemCollection();
-
-            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
-
-            Bson docFilter = or(eq("username", user), elemMatch("permissions", eq("username", user)));
-
-            List<Bson> aggregateList = new ArrayList<>();
-            aggregateList.add(docFilter);
-            aggregateList.add(query);
-
-            cursor = metadataItemMongoCollection.aggregate(aggregateList).cursor();
-            while (cursor.hasNext()) {
-                resultList.add((MetadataItem) cursor.next());
-            }
-
-
-        } catch (Exception e) {
-            throw new MetadataStoreException("Unable to find query ", e);
-        }
-        return resultList;
-    }
-
-    /**
-     * Removes the permission for the specified user
-     *
-     * @param metadataItem to be updated
-     * @param user         to be removed
-     * @return {@link MetadataItem} with the permission removed for the {@code user}
-     */
-//    public MetadataItem deleteUserPermission(MetadataItem metadataItem, String user) throws MetadataStoreException, PermissionException {
-//        MongoCollection<MetadataItem> metadataItemMongoCollection;
-//
-//        String uuid = metadataItem.getUuid();
-//        metadataItemMongoCollection = getDefaultMetadataItemCollection();
-//
-//        if (hasWrite(user, this.accessibleOwners)) {
-//            Document docQuery = new Document("uuid", uuid)
-//                    .append("permissions", new Document("$elemMatch", new Document("username", user)));
-//
-//            Bson permissionQuery = and(eq("uuid", uuid), getHasWriteQuery(user, this.accessibleOwners));
-////        MetadataPermission pemDelete = metadataItem.getPermissions_User(user);
-////        metadataItem.updatePermissions_delete(pemDelete);
-//            List<MetadataPermission> metadataPermissionsList = metadataItem.getPermissions();
-//
-//            UpdateResult update = metadataItemMongoCollection.updateOne(permissionQuery, set("permissions", metadataPermissionsList));
-//
-//            if (update.getModifiedCount() > 0) {
-//                return metadataItem;
-//            } else {
-//                throw new MetadataStoreException("Unable to delete user permissions");
-//            }
-//        } else {
-//            throw new PermissionException("User does not have sufficient access to edit metadata permissions.");
-//        }
-//    }
-
-//    /**
-//     * Removes all permissions for the metadataItem
-//     *
-//     * @param metadataItem to be updated
-//     */
-//    public void deleteAllPermissions(MetadataItem metadataItem) throws MetadataStoreException {
-//        MongoCollection collection;
-//        MongoCollection<MetadataItem> metadataItemMongoCollection;
-//        try {
-//            collection = getDefaultCollection();
-//            metadataItemMongoCollection = getDefaultMetadataItemCollection();
-//
-//            metadataItem.setPermissions(new ArrayList<>());
-//
-//            BasicDBObject query = new BasicDBObject("uuid", metadataItem.getUuid());
-//            collection.updateOne(query, new BasicDBObject("$set", new BasicDBObject("permissions", new ArrayList<MetadataPermission>())));
-//            metadataItemMongoCollection.updateOne(query, set("permissions", new ArrayList<MetadataItem>()));
-//        } catch (Exception e) {
-//            throw new MetadataStoreException("Unable to delete all permissions", e);
-//        }
-//    }
 
     /**
      * Update the permission for the specified user to the specified permission
      *
      * @param metadataItem to be updated
      * @return all the permissions for the metadata item including the updated one.
-     *
      */
     public List<MetadataPermission> updatePermission(MetadataItem metadataItem) throws MetadataStoreException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         UpdateResult update;
-        String uuid;
 
         try {
             //get collection
@@ -485,6 +336,10 @@ public class MetadataDao {
         try {
             metadataItemMongoCollection = getDefaultCollection();
 
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
+            formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+            doc.append("lastUpdated", formatter.format(new Date()));
+
             //push instead of replace
             UpdateResult update = metadataItemMongoCollection.updateOne(and(eq("uuid", doc.get("uuid")),
                     eq("tenantId", doc.get("tenantId"))), new Document("$set", doc));
@@ -504,61 +359,66 @@ public class MetadataDao {
         }
     }
 
-    /**
-     * Update the {@link MetadataItem} as the provided user
-     *
-     * @param metadataItem the {@link MetadataItem} to be updated
-     * @param user         the user performing the update
-     * @return the inserted {@link MetadataItem}
-     * @throws MetadataException when update failed
-     */
-    public MetadataItem updateMetadata(MetadataItem metadataItem, String user) throws
-            MetadataException, PermissionException {
-        MongoCollection<MetadataItem> metadataItemMongoCollection;
-
-        try {
-            metadataItemMongoCollection = getDefaultMetadataItemCollection();
-
-            // TODO: This should be handled before we get here. DAO is just for interacting with db
-//            if (hasWrite(user, metadataItem.getUuid())) {
-                //push instead of replace
-                UpdateResult update = metadataItemMongoCollection.updateOne(
-                        getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId()),
-                        new Document("$set", metadataItem));
-
-                if (update.getModifiedCount() == 0) {
-                    throw new MetadataException("No document found with uuid " + metadataItem.getUuid() + ".");
-                } else {
-                    Document uuidLookupDoc = new Document().append("uuid", metadataItem.getUuid()).append("tenantId", metadataItem.getTenantId());
-                    MetadataItem foundDocument = findSingleMetadataItem(uuidLookupDoc);
-                    if (foundDocument != null)
-                        return foundDocument;
-
-                    throw new MetadataException("No metadata item found for user with id " + metadataItem.getUuid());
-                }
+//    /**
+//     * Update the {@link MetadataItem} as the provided user
+//     *
+//     * @param metadataItem the {@link MetadataItem} to be updated
+//     * @param user         the user performing the update
+//     * @return the inserted {@link MetadataItem}
+//     * @throws MetadataException when update failed
+//     * @deprecated
+//     */
+//    public MetadataItem updateMetadata(MetadataItem metadataItem, String user) throws
+//            MetadataException {
+//        MongoCollection<MetadataItem> metadataItemMongoCollection;
+//
+//        try {
+//            metadataItemMongoCollection = getDefaultMetadataItemCollection();
+//
+//            // TODO: This should be handled before we get here. DAO is just for interacting with db
+////            if (hasWrite(user, metadataItem.getUuid())) {
+//            //push instead of replace
+//            UpdateResult update = metadataItemMongoCollection.updateOne(
+//                    getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId()),
+//                    new Document("$set", metadataItem));
+//
+//            if (update.getModifiedCount() == 0) {
+//                throw new MetadataException("No document found with uuid " + metadataItem.getUuid() + ".");
 //            } else {
-//                throw new PermissionException("User does not have sufficient access to edit public metadata item.");
+//                Document uuidLookupDoc = new Document().append("uuid", metadataItem.getUuid()).append("tenantId", metadataItem.getTenantId());
+//                MetadataItem foundDocument = findSingleMetadataItem(uuidLookupDoc);
+//                if (foundDocument != null)
+//                    return foundDocument;
+//
+//                throw new MetadataException("No metadata item found for user with id " + metadataItem.getUuid());
 //            }
-        } catch (MongoException e) {
-            throw new MetadataException("Failed to add/update metadata item.", e);
-        }
-    }
+////            } else {
+////                throw new PermissionException("User does not have sufficient access to edit public metadata item.");
+////            }
+//        } catch (MongoException e) {
+//            throw new MetadataException("Failed to add/update metadata item.", e);
+//        }
+//    }
+
 
     /**
      * Delete {@code metadataItem} from the collection as the specified user
      *
      * @param metadataItem {@link MetadataItem} to delete
      * @return the deleted {@link MetadataItem}
-     * @throws PermissionException if the user does not have write permissions
      */
-    public MetadataItem deleteMetadata(MetadataItem metadataItem) throws PermissionException {
+    public MetadataItem deleteMetadata(MetadataItem metadataItem) throws MetadataException {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
 //            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
 //            Bson deleteFilter = and(eq("uuid", metadataItem.getUuid()),
 //                    eq("tenantId", metadataItem.getTenantId()));
-//            Bson queryFilter = and(deleteFilter, or(eq("owner", user), docPermissions));
+//            Bson queryFilter = and(deleteFilter, or(eq("owner", user), docPermissions));\\
+
+        if (metadataItem == null)
+            throw new MetadataException("Unable to delete null MetadataItem.");
+
 
         DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(
                 getUuidAndTenantIdQuery(metadataItem.getUuid(), metadataItem.getTenantId()));
@@ -570,62 +430,12 @@ public class MetadataDao {
         return metadataItem;
     }
 
-    public Bson createQuery(String uuid, String tenantId, Bson query) {
-        return and(eq("uuid", uuid), eq("tenantId", tenantId), query);
-    }
-
-    public Bson createQueryFromMetadataItem(MetadataItem metadataItem) {
-        return and(eq("tenantId", metadataItem.getTenantId()), eq("uuid", metadataItem.getUuid()));
-    }
-
-    /**
-     * Remove all documents in the collection
-     */
-    public void clearCollection() {
-        if (this.getCollectionSize() > 0) {
-            MongoCollection<MetadataItem> metadataPermissionMongoCollection;
-            metadataPermissionMongoCollection = getDefaultMetadataItemCollection();
-            metadataPermissionMongoCollection.deleteMany(new Document());
-        }
-    }
-
-    /**
-     * Get total number of documents in collection
-     *
-     * @return number of documents in collection
-     */
-    long getCollectionSize() {
-        MongoCollection<MetadataItem> metadataItemMongoCollection;
-        metadataItemMongoCollection = getDefaultMetadataItemCollection();
-        return metadataItemMongoCollection.countDocuments();
-    }
-
-    /**
-     * Return all documents in the collection
-     *
-     * @return list of all documents in collection
-     * @deprecated
-     */
-    public List<MetadataItem> findAll() {
-        List<MetadataItem> resultList = new ArrayList<>();
-        MongoCollection<MetadataItem> metadataItemMongoCollection;
-        MongoCursor cursor = null;
-
-        metadataItemMongoCollection = getDefaultMetadataItemCollection();
-
-        cursor = metadataItemMongoCollection.find(new Document()).cursor();
-
-        while (cursor.hasNext()) {
-            resultList.add((MetadataItem) cursor.next());
-        }
-        return resultList;
-    }
 
     /**
      * Check if {@code user} has read permissions for the {@code uuid}
      *
-     * @param user to check permissions for
-     * @param uuid valid AgaveUuid string
+     * @param user to lookup permissions for
+     * @param uuid the uuid of {@link MetadataItem} to lookup
      * @return true if user has read permission, false otherwise
      */
     public boolean hasRead(String user, String uuid) {
@@ -641,8 +451,8 @@ public class MetadataDao {
     /**
      * Check if {@code user} has writer permissions for the {@code uuid}
      *
-     * @param user to check permissions for
-     * @param uuid valid AgaveUuid string
+     * @param user to lookup permissions for
+     * @param uuid the uuid of {@link MetadataItem}  to lookup
      * @return true if user has write permissions, false otherwise
      */
     public boolean hasWrite(String user, String uuid) {
@@ -655,20 +465,41 @@ public class MetadataDao {
         return checkPermission(uuid, user, getHasWriteQuery(user, this.accessibleOwners));
     }
 
+
+    /**
+     * Find MetadataPermission for user for Metadata item with matching uuid and tenantId
+     * @param uuid the uuid of {@link MetadataItem}  to lookup
+     * @param username user to lookup permission of
+     * @param tenantId the tenant to lookup
+     * @return {@link MetadataPermission} of {@code username}, null if no permissions found
+     * @throws MetadataException if unable to retrieve MetadataPermission
+     */
+    public MetadataPermission getPermission(String uuid, String username, String tenantId) throws MetadataException {
+        MongoCollection<MetadataItem> metadataItemMongoCollection;
+        metadataItemMongoCollection = getDefaultMetadataItemCollection();
+
+        MetadataItem result;
+        try {
+            result = metadataItemMongoCollection.find(getUuidAndTenantIdQuery(uuid, tenantId)).first();
+            return result.getPermissionForUsername(username);
+        } catch (NullPointerException e) {
+            return null;
+        }
+    }
+
     /**
      * Check the mongodb if the {@code user} has the correct permissios for the metadata item for the specified {@code uuid}
      *
-     * @param uuid       of metadata item
-     * @param user       to check permission for
-     * @param userFilter permission query
-     * @return
+     * @param uuid       the uuid of {@link MetadataItem}  to lookup
+     * @param user       the user to lookup permissions for
+     * @param userFilter permission query for read or write
+     * @return true if user has permissions specified by userFilter
      */
     public boolean checkPermission(String uuid, String user, Bson userFilter) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
         MetadataItem result;
-        MongoCursor cursor;
         try {
             //check if user has permission
             result = metadataItemMongoCollection.find(and(eq("uuid", uuid),
@@ -690,24 +521,33 @@ public class MetadataDao {
     }
 
     /**
-     * Get Bson filter to check for read permissions for the user
+     * Get Bson query that checks if user is an accessible owner or if user's permission is
+     * {@link PermissionType#ALL}, {@link PermissionType#READ}, {@link PermissionType#READ_WRITE},
+     * {@link PermissionType#READ_EXECUTE}, {@link PermissionType#READ_PERMISSION}, or
+     * {@link PermissionType#READ_WRITE_PERMISSION},
      *
-     * @param user
-     * @param accessibleOwners
-     * @return
+     * @param user to find permission for
+     * @param accessibleOwners list of possible owners
+     * @return {@link Bson} query
      */
     public Bson getHasReadQuery(String user, List<String> accessibleOwners) {
         return or(in("owner", accessibleOwners),
                 elemMatch("permissions", and(
                         eq("username", user),
                         in("permission", PermissionType.ALL.toString(), PermissionType.READ.toString(),
-                                PermissionType.READ_WRITE.toString(), PermissionType.READ_EXECUTE.toString()))));
+                                PermissionType.READ_WRITE.toString(), PermissionType.READ_EXECUTE.toString(),
+                                PermissionType.READ_PERMISSION.toString(), PermissionType.READ_WRITE_PERMISSION.toString()))));
     }
 
     /**
-     * @param user
-     * @param accessibleOwners
-     * @return
+     * Get Bson query that checks if user is an accessible owner or if user's permission is
+     * {@link PermissionType#ALL}, {@link PermissionType#READ_WRITE}, {@link PermissionType#WRITE},
+     * {@link PermissionType#WRITE_EXECUTE}, {@link PermissionType#WRITE_PERMISSION}, or
+     * {@link PermissionType#READ_WRITE_PERMISSION}
+     *
+     * @param user to find permission for
+     * @param accessibleOwners list of possible owners to search with
+     * @return {@link Bson} query
      */
     public Bson getHasWriteQuery(String user, List<String> accessibleOwners) {
         return or(in("owner", accessibleOwners),
@@ -733,11 +573,21 @@ public class MetadataDao {
         return accessibleOwners;
     }
 
+    /**
+     * @param tenantId the tenant to lookup
+     * @return {@link Bson} query that checks if tenantId is matching the given id
+     */
     public Bson getTenantIdQuery(String tenantId) {
         return eq("tenantId", tenantId);
     }
 
-    public Bson getUuidAndTenantIdQuery(String uuid, String tenantId){
+    /**
+     *
+     * @param uuid the uuid of {@link MetadataItem} to lookup
+     * @param tenantId the tenant to lookup
+     * @return {@link Bson} query that checks if tenantId and uuid is matching the given ids
+     */
+    public Bson getUuidAndTenantIdQuery(String uuid, String tenantId) {
         return and(eq("uuid", uuid), eq("tenantId", tenantId));
     }
 
@@ -1221,149 +1071,149 @@ public class MetadataDao {
 //        }       
 //    }
 
-    /**
-     * Creates a {@link DBObject} representing the appropriate permission check
-     * for {@code username} to establish they have @{link permission) for a
-     * {@link MetadataItem}.
-     *
-     * @param username
-     * @param permission
-     * @return
-     */
-    protected DBObject createAuthCriteria(String username, PermissionType permission) {
-        BasicDBList ownerList = new BasicDBList();
-        ownerList.addAll(Arrays.asList(Settings.PUBLIC_USER_USERNAME, Settings.WORLD_USER_USERNAME, username));
+//    /**
+//     * Creates a {@link DBObject} representing the appropriate permission check
+//     * for {@code username} to establish they have @{link permission) for a
+//     * {@link MetadataItem}.
+//     *
+//     * @param username
+//     * @param permission
+//     * @return
+//     */
+//    protected DBObject createAuthCriteria(String username, PermissionType permission) {
+//        BasicDBList ownerList = new BasicDBList();
+//        ownerList.addAll(Arrays.asList(Settings.PUBLIC_USER_USERNAME, Settings.WORLD_USER_USERNAME, username));
+//
+//        BasicDBList aclCriteria = new BasicDBList();
+//        aclCriteria.add(QueryBuilder.start("username").in(ownerList).get());
+//        if (permission == ALL) {
+//            aclCriteria.add(QueryBuilder.start("read").is(true).and("write").is(true).get());
+//        } else if (permission.canRead() && permission.canWrite()) {
+//            aclCriteria.add(QueryBuilder.start("read").is(true).and("write").is(true).get());
+//        } else if (permission.canRead()) {
+//            aclCriteria.add(QueryBuilder.start("read").is(true).get());
+//        } else if (permission.canWrite()) {
+//            aclCriteria.add(QueryBuilder.start("write").is(true).get());
+//        }
+//
+//        BasicDBList authConditions = new BasicDBList();
+//        authConditions.add(QueryBuilder.start("owner").in(ownerList).get());
+//        authConditions.add(QueryBuilder.start("acl").all(aclCriteria).get());
+//
+//        DBObject authCriteria = QueryBuilder.start().all(
+//                authConditions).get();
+//
+//        return authCriteria;
+//    }
 
-        BasicDBList aclCriteria = new BasicDBList();
-        aclCriteria.add(QueryBuilder.start("username").in(ownerList).get());
-        if (permission == ALL) {
-            aclCriteria.add(QueryBuilder.start("read").is(true).and("write").is(true).get());
-        } else if (permission.canRead() && permission.canWrite()) {
-            aclCriteria.add(QueryBuilder.start("read").is(true).and("write").is(true).get());
-        } else if (permission.canRead()) {
-            aclCriteria.add(QueryBuilder.start("read").is(true).get());
-        } else if (permission.canWrite()) {
-            aclCriteria.add(QueryBuilder.start("write").is(true).get());
-        }
-
-        BasicDBList authConditions = new BasicDBList();
-        authConditions.add(QueryBuilder.start("owner").in(ownerList).get());
-        authConditions.add(QueryBuilder.start("acl").all(aclCriteria).get());
-
-        DBObject authCriteria = QueryBuilder.start().all(
-                authConditions).get();
-
-        return authCriteria;
-    }
-
-    /**
-     * Turns the search criteria supplied by the user in the URL query into a
-     * {@link DBObject} we can pass to the MongoDB driver.
-     *
-     * @param searchCriteria
-     * @return
-     * @throws MetadataQueryException
-     */
-    @SuppressWarnings("unchecked")
-    protected DBObject parseUserSearchCriteria(Map<SearchTerm, Object> searchCriteria) throws
-            MetadataQueryException {
-        DBObject userCriteria = null;
-        QueryBuilder queryBuilder = null;
-
-        if (searchCriteria == null || searchCriteria.isEmpty()) {
-            return new BasicDBObject();
-        } else {
-            for (SearchTerm searchTerm : searchCriteria.keySet()) {
-
-                // this is a freeform search query. Support regex then move on. if this exists, it is the only
-                // search criteria
-                if (searchCriteria.get(searchTerm) instanceof DBObject) {
-
-                    userCriteria = (DBObject) searchCriteria.get(searchTerm);
-
-                    // support regex in the freeform queries
-                    for (String key : userCriteria.keySet()) {
-
-                        // TODO: throw exception on unsafe mongo keywords in freeform search
-
-                        // we're just going one layer deep on the regex support. anything else won't work anyway due to
-                        // the lack of freeform query support in the java driver
-                        if (userCriteria.get(key) instanceof String) {
-                            if (((String) userCriteria.get(key)).contains("*")) {
-                                try {
-                                    Pattern regexPattern = Pattern.compile((String) userCriteria.get(key), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
-                                    userCriteria.put(key, regexPattern);
-                                } catch (Exception e) {
-                                    throw new MetadataQueryException("Invalid regular expression for " + key + " query", e);
-                                }
-                            }
-                        }
-                    }
-                }
-                // they are using the json.sql notation to search their metadata value
-                else { // if (searchTerm.getSearchField().equalsIgnoreCase("value")) {
-                    if (queryBuilder == null) {
-                        queryBuilder = QueryBuilder.start(searchTerm.getMappedField());
-                    } else {
-                        queryBuilder.and(searchTerm.getMappedField());
-                    }
-
-                    if (searchTerm.getOperator() == SearchTerm.Operator.EQ) {
-                        queryBuilder.is(searchCriteria.get(searchTerm));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.NEQ) {
-                        queryBuilder.notEquals(searchCriteria.get(searchTerm));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.IN) {
-                        queryBuilder.in(Arrays.asList(searchCriteria.get(searchTerm)));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.NIN) {
-                        queryBuilder.notIn(Arrays.asList(searchCriteria.get(searchTerm)));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.GT) {
-                        queryBuilder.greaterThan(searchCriteria.get(searchTerm));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.GTE) {
-                        queryBuilder.greaterThanEquals(searchCriteria.get(searchTerm));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.LT) {
-                        queryBuilder.lessThan(searchCriteria.get(searchTerm));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.LTE) {
-                        queryBuilder.lessThanEquals(searchCriteria.get(searchTerm));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.LIKE) {
-                        try {
-                            Pattern regexPattern = Pattern.compile((String) searchCriteria.get(searchTerm), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
-                            queryBuilder.regex(regexPattern);
-                        } catch (Exception e) {
-                            throw new MetadataQueryException("Invalid regular expression for " + searchTerm.getMappedField() + " query", e);
-                        }
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.NLIKE) {
-                        try {
-                            Pattern regexPattern = Pattern.compile((String) searchCriteria.get(searchTerm), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
-                            queryBuilder.not().regex(regexPattern);
-                        } catch (Exception e) {
-                            throw new MetadataQueryException("Invalid regular expression for " + searchTerm.getMappedField() + " query", e);
-                        }
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.ON) {
-                        queryBuilder.is(searchCriteria.get(searchTerm));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.BEFORE) {
-
-                        queryBuilder.lessThan((Date) searchCriteria.get(searchTerm));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.AFTER) {
-                        queryBuilder.greaterThan((Date) searchCriteria.get(searchTerm));
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.BETWEEN) {
-                        List<Date> dateRange = (List<Date>) searchCriteria.get(searchTerm);
-                        queryBuilder.greaterThan(dateRange.get(0))
-                                .and(searchTerm.getMappedField())
-                                .lessThan(dateRange.get(1));
-                    }
-                }
-            }
-
-            // generate the query if we used the query builder
-            if (queryBuilder != null) {
-                userCriteria = queryBuilder.get();
-            }
-            // if there wasn't a freeform search query, we need to init
-            else if (userCriteria == null) {
-                userCriteria = new BasicDBObject();
-            }
-
-            return userCriteria;
-        }
-    }
+//    /**
+//     * Turns the search criteria supplied by the user in the URL query into a
+//     * {@link DBObject} we can pass to the MongoDB driver.
+//     *
+//     * @param searchCriteria
+//     * @return
+//     * @throws MetadataQueryException
+//     */
+//    @SuppressWarnings("unchecked")
+//    protected DBObject parseUserSearchCriteria(Map<SearchTerm, Object> searchCriteria) throws
+//            MetadataQueryException {
+//        DBObject userCriteria = null;
+//        QueryBuilder queryBuilder = null;
+//
+//        if (searchCriteria == null || searchCriteria.isEmpty()) {
+//            return new BasicDBObject();
+//        } else {
+//            for (SearchTerm searchTerm : searchCriteria.keySet()) {
+//
+//                // this is a freeform search query. Support regex then move on. if this exists, it is the only
+//                // search criteria
+//                if (searchCriteria.get(searchTerm) instanceof DBObject) {
+//
+//                    userCriteria = (DBObject) searchCriteria.get(searchTerm);
+//
+//                    // support regex in the freeform queries
+//                    for (String key : userCriteria.keySet()) {
+//
+//                        // TODO: throw exception on unsafe mongo keywords in freeform search
+//
+//                        // we're just going one layer deep on the regex support. anything else won't work anyway due to
+//                        // the lack of freeform query support in the java driver
+//                        if (userCriteria.get(key) instanceof String) {
+//                            if (((String) userCriteria.get(key)).contains("*")) {
+//                                try {
+//                                    Pattern regexPattern = Pattern.compile((String) userCriteria.get(key), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+//                                    userCriteria.put(key, regexPattern);
+//                                } catch (Exception e) {
+//                                    throw new MetadataQueryException("Invalid regular expression for " + key + " query", e);
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//                // they are using the json.sql notation to search their metadata value
+//                else { // if (searchTerm.getSearchField().equalsIgnoreCase("value")) {
+//                    if (queryBuilder == null) {
+//                        queryBuilder = QueryBuilder.start(searchTerm.getMappedField());
+//                    } else {
+//                        queryBuilder.and(searchTerm.getMappedField());
+//                    }
+//
+//                    if (searchTerm.getOperator() == SearchTerm.Operator.EQ) {
+//                        queryBuilder.is(searchCriteria.get(searchTerm));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.NEQ) {
+//                        queryBuilder.notEquals(searchCriteria.get(searchTerm));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.IN) {
+//                        queryBuilder.in(Arrays.asList(searchCriteria.get(searchTerm)));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.NIN) {
+//                        queryBuilder.notIn(Arrays.asList(searchCriteria.get(searchTerm)));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.GT) {
+//                        queryBuilder.greaterThan(searchCriteria.get(searchTerm));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.GTE) {
+//                        queryBuilder.greaterThanEquals(searchCriteria.get(searchTerm));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.LT) {
+//                        queryBuilder.lessThan(searchCriteria.get(searchTerm));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.LTE) {
+//                        queryBuilder.lessThanEquals(searchCriteria.get(searchTerm));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.LIKE) {
+//                        try {
+//                            Pattern regexPattern = Pattern.compile((String) searchCriteria.get(searchTerm), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+//                            queryBuilder.regex(regexPattern);
+//                        } catch (Exception e) {
+//                            throw new MetadataQueryException("Invalid regular expression for " + searchTerm.getMappedField() + " query", e);
+//                        }
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.NLIKE) {
+//                        try {
+//                            Pattern regexPattern = Pattern.compile((String) searchCriteria.get(searchTerm), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+//                            queryBuilder.not().regex(regexPattern);
+//                        } catch (Exception e) {
+//                            throw new MetadataQueryException("Invalid regular expression for " + searchTerm.getMappedField() + " query", e);
+//                        }
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.ON) {
+//                        queryBuilder.is(searchCriteria.get(searchTerm));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.BEFORE) {
+//
+//                        queryBuilder.lessThan((Date) searchCriteria.get(searchTerm));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.AFTER) {
+//                        queryBuilder.greaterThan((Date) searchCriteria.get(searchTerm));
+//                    } else if (searchTerm.getOperator() == SearchTerm.Operator.BETWEEN) {
+//                        List<Date> dateRange = (List<Date>) searchCriteria.get(searchTerm);
+//                        queryBuilder.greaterThan(dateRange.get(0))
+//                                .and(searchTerm.getMappedField())
+//                                .lessThan(dateRange.get(1));
+//                    }
+//                }
+//            }
+//
+//            // generate the query if we used the query builder
+//            if (queryBuilder != null) {
+//                userCriteria = queryBuilder.get();
+//            }
+//            // if there wasn't a freeform search query, we need to init
+//            else if (userCriteria == null) {
+//                userCriteria = new BasicDBObject();
+//            }
+//
+//            return userCriteria;
+//        }
+//    }
 }

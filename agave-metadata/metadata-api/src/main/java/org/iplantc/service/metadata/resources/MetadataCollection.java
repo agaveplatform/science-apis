@@ -189,10 +189,18 @@ public class MetadataCollection extends AgaveResource {
                 search.setLimit(limit);
                 search.setOffset(offset);
 
+                Document docUserQuery;
+                try{
+                    JsonHandler jsonHandler = new JsonHandler();
+                    docUserQuery= jsonHandler.parseUserQueryToDocument(userQuery);
+                } catch (MetadataQueryException e ) {
+                    throw new MetadataQueryException(e.getMessage());
+
+                }
 
                 if (hasJsonPathFilters()) {
                     try {
-                    List<Document> userResults = search.filterFind(userQuery, jsonPathFilters);
+                    List<Document> userResults = search.filterFind(docUserQuery, jsonPathFilters);
 
                     for (Document metadataDoc : userResults) {
                         str_permittedResults.add(metadataDoc.toJson());
@@ -205,10 +213,8 @@ public class MetadataCollection extends AgaveResource {
                     List<MetadataItem> userResults = new ArrayList<>();
                     try {
 
-                        userResults = search.find(userQuery);
+                        userResults = search.find(docUserQuery);
 
-                    } catch (MetadataQueryException e) {
-                        throw new MetadataQueryException(e.getMessage());
                     } catch (Exception e) {
                         throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                                 "Unable to find matching items " , e);

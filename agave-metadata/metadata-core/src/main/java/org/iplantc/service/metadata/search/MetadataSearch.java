@@ -1,7 +1,6 @@
 package org.iplantc.service.metadata.search;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.mongodb.BasicDBObject;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -9,13 +8,10 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
-import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
 import org.iplantc.service.metadata.model.MetadataItem;
 
-import java.net.UnknownHostException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static com.mongodb.client.model.Filters.and;
@@ -105,43 +101,17 @@ public class MetadataSearch {
     }
 
     /**
-     * Remove all documents from the Metadata collection
-     * @deprecated
-     */
-    public void clearCollection() {
-        metadataDao.clearCollection();
-    }
-
-    /**
      * Find the {@link MetadataItem} matching the {@code userQuery} and the offset/limit specified
      *
-     * @param userQuery String query to search the collection for
+     * @param userQuery {@link Bson} query to search collection for
      * @return list of {@link MetadataItem} matching the {@code userQuery} in the sort order specified
-     * @throws MetadataQueryException if {@code userQuery} is invalid format
-     * @deprecated  use find (Bson userQuery)
+     * @throws MetadataStoreException if {@code userQuery} is unable to find matching {@link MetadataItem}
      */
-    public List<MetadataItem> find(String userQuery) throws MetadataQueryException {
-        List<MetadataItem> result = new ArrayList<>();
-        try {
-            Document doc = new JsonHandler().parseUserQueryToDocument(userQuery);
-            Bson permissionFilter = and(getTenantIdQuery(), doc);
-
-            BasicDBObject order = (orderField == null) ? new BasicDBObject() : new BasicDBObject(orderField, orderDirection);
-            metadataDao.setAccessibleOwners(this.accessibleOwners);
-
-            result = metadataDao.find(this.username, permissionFilter, offset, limit, order);
-
-        } catch (MetadataQueryException e) {
-            throw new MetadataQueryException("Unable to parse query.");
-        }
-        return result;
-    }
-
     public List<MetadataItem> find(Bson userQuery) throws MetadataStoreException {
         try {
-            Bson permissionFilter = and(getTenantIdQuery(), userQuery);
+            Bson permissionFilter = and(eq("tenantId", this.metadataItem.getTenantId()), userQuery);
 
-            BasicDBObject order = (orderField == null) ? new BasicDBObject() : new BasicDBObject(orderField, orderDirection);
+            Document order = (orderField == null) ? new Document() : new Document(orderField, orderDirection);
             metadataDao.setAccessibleOwners(this.accessibleOwners);
 
              return metadataDao.find(this.username, permissionFilter, offset, limit, order);
@@ -152,36 +122,14 @@ public class MetadataSearch {
     }
 
     /**
-     * @deprecated
-     * Find all documents in the collection
-     *
-     * @return list of {@link MetadataItem} found
-     * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
-     */
-    public List<MetadataItem> findAll() {
-        return metadataDao.findAll();
-    }
-
-    /**
-     * Find all documents in the collection
-     *
-     * @return list of {@link MetadataItem} found
-     * @throws UnknownHostException if the connection cannot be found/created, or db connection is bad
-     */
-    public List<MetadataItem> filterFindAll(String[] filters) {
-        return metadataDao.findAll();
-    }
-
-
-    /**
      * Find single document in the collection
      * matching the {@link MetadataItem} uuid and tenantId
      *
      * @return {@link MetadataItem} matching the criteria
      */
     public MetadataItem findOne() {
-        return metadataDao.findSingleMetadataItem(and(eq("uuid", this.getUuid()),
-                eq("tenantId", this.metadataItem.getTenantId())));
+        return metadataDao.findSingleMetadataItem(and(eq("uuid", getMetadataItem().getUuid()),
+                eq("tenantId", getMetadataItem().getTenantId())));
     }
 
     /**
@@ -190,7 +138,7 @@ public class MetadataSearch {
      * @param query to search the collection with
      * @return {@link MetadataItem} matching the criteria
      */
-    public MetadataItem findOne(Bson query) throws MetadataQueryException {
+    public MetadataItem findOne(Bson query){
 //        Document docQuery = getDocumentFromQuery(query);
         return metadataDao.findSingleMetadataItem(query);
     }
@@ -203,10 +151,9 @@ public class MetadataSearch {
      * @param filters {@link List} of fields to filter result with
      * @return {@link List} of {@link Document} matching the query
      */
-    public List<Document> filterFind(String query, String[] filters) throws MetadataQueryException {
-        Document docQuery = new JsonHandler().parseUserQueryToDocument(query);
-        Document docFilter = parseDocumentfromList(filters);
-        return metadataDao.filterFind(docQuery, docFilter);
+    public List<Document> filterFind(Bson query, String[] filters) {
+        Document docFilter = parseDocumentFromList(filters);
+        return metadataDao.filterFind(query, docFilter);
     }
 
     /**
@@ -217,7 +164,7 @@ public class MetadataSearch {
      * @return {@link Document} matching the query, null if nothing is found
      */
     public Document filterFindOne(Bson query, String[] filters) {
-        Document docFilter = parseDocumentfromList(filters);
+        Document docFilter = parseDocumentFromList(filters);
 
         List<Document> foundDocuments = metadataDao.filterFind(query, docFilter);
         if (foundDocuments.size() > 0)
@@ -231,7 +178,7 @@ public class MetadataSearch {
      * @param filters List of String specifying fields to filter by
      * @return Document with the each String as the key with value of 1
      */
-    public Document parseDocumentfromList(String[] filters) {
+    public Document parseDocumentFromList(String[] filters) {
         Document docFilter = new Document();
         if (filters.length > 0) {
             for (String filter : filters) {
@@ -244,7 +191,7 @@ public class MetadataSearch {
         return docFilter;
     }
 
-    public MetadataItem insertCurrentMetadataItem() throws MetadataStoreException {
+    public MetadataItem insertCurrentMetadataItem() throws MetadataStoreException, MetadataException {
         setMetadataItem(metadataDao.insert(getMetadataItem()));
         return getMetadataItem();
     }
@@ -255,21 +202,21 @@ public class MetadataSearch {
      * @return {@link MetadataItem} that was updated successfully
      * @throws MetadataException   if unable to update the {@link MetadataItem} in the metadata collection
      * @throws PermissionException if user does not have permission to update the {@link MetadataItem}
-     * @deprecated
+     * @deprecated - use updateMetadataItem(Document)
      */
     public MetadataItem updateCurrentMetadataItem() throws MetadataException, PermissionException {
-        metadataDao.setAccessibleOwners(this.accessibleOwners);
-        MetadataItem currentMetadata = metadataDao.findSingleMetadataItem(and(eq("uuid", this.metadataItem.getUuid()),
-                eq("tenantId", this.metadataItem.getTenantId())));
-
-        this.metadataItem.setCreated(currentMetadata.getCreated());
-        this.metadataItem.setTenantId(currentMetadata.getTenantId());
-        this.metadataItem.setOwner(currentMetadata.getOwner());
-//        this.setOwner(currentMetadata.getOwner());
-        this.metadataItem.setPermissions(currentMetadata.getPermissions());
-
-        setMetadataItem(metadataDao.updateMetadata(this.metadataItem, this.username));
-
+//        metadataDao.setAccessibleOwners(this.accessibleOwners);
+//        MetadataItem currentMetadata = metadataDao.findSingleMetadataItem(and(eq("uuid", this.metadataItem.getUuid()),
+//                eq("tenantId", this.metadataItem.getTenantId())));
+//
+//        this.metadataItem.setCreated(currentMetadata.getCreated());
+//        this.metadataItem.setTenantId(currentMetadata.getTenantId());
+//        this.metadataItem.setOwner(currentMetadata.getOwner());
+////        this.setOwner(currentMetadata.getOwner());
+//        this.metadataItem.setPermissions(currentMetadata.getPermissions());
+//
+//        setMetadataItem(metadataDao.updateMetadata(this.metadataItem, this.username));
+//
         return getMetadataItem();
     }
 
@@ -277,28 +224,17 @@ public class MetadataSearch {
      *
      * @param doc {@link Document} to update Metadata Item with
      * @return updated {@link Document}
-     * @throws MetadataException
-     * @throws PermissionException
+     * @throws MetadataException if no {@link Document} found matching the document
+     * based on the uuid and tenantId
      */
     public Document updateMetadataItem(Document doc) throws MetadataException {
         metadataDao.setAccessibleOwners(this.accessibleOwners);
-        doc = updateLastUpdatedDateForDocument(doc);
         doc.append("uuid", getUuid());
         doc.append("tenantId", TenancyHelper.getCurrentTenantId());
         return metadataDao.updateDocument(doc);
     }
 
-    /**
-     * Append to {@code doc} the lastUpdated time
-     * @param doc {@link Document} to update
-     * @return updated {@link Document}
-     */
-    public Document updateLastUpdatedDateForDocument(Document doc){
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-        doc.append("lastUpdated", formatter.format(new Date()));
-        return doc;
-    }
+
     /**
      * Delete the metadata item
      *
@@ -306,7 +242,7 @@ public class MetadataSearch {
      * @throws PermissionException if user does not have permission to update the {@link MetadataItem}
      */
     public MetadataItem deleteCurrentMetadataItem() throws PermissionException, MetadataException {
-        if (getMetadataItem().getPermissionForUsername(this.username).canWrite()){
+        if (metadataDao.hasWrite(this.username, getMetadataItem().getUuid())){
             metadataDao.setAccessibleOwners(this.accessibleOwners);
             setMetadataItem(metadataDao.deleteMetadata(this.metadataItem));
             return getMetadataItem();
@@ -321,6 +257,7 @@ public class MetadataSearch {
 
     /**
      * @return {@link Bson} filter for the current tenantId
+     * @deprecated
      */
     public Bson getTenantIdQuery() {
         return eq("tenantId", this.metadataItem.getTenantId());

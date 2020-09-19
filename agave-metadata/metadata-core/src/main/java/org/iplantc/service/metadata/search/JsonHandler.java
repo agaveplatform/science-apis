@@ -110,7 +110,7 @@ public class JsonHandler {
      * @return {@link Document} of the JsonString {@code userQuery}
      * @throws MetadataQueryException if invalid Json format
      */
-    protected Document parseUserQueryToDocument(String strJson) throws MetadataQueryException {
+    public Document parseUserQueryToDocument(String strJson) throws MetadataQueryException {
         Document doc = new Document();
         if (StringUtils.isNotEmpty(strJson)) {
             try {

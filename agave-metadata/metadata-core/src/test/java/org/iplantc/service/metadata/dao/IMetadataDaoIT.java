@@ -5,26 +5,43 @@ import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
+import org.iplantc.service.metadata.model.MetadataPermission;
 
 public interface IMetadataDaoIT {
 
     MongoCollection getCollection();
+
     MongoCollection getDefaultCollection();
+
     MetadataItem insert();
+
     MetadataItem createEntity();
-    void insertTest() throws MetadataException, PermissionException, MetadataStoreException;
-    void insertPermissionTest() throws MetadataStoreException, MetadataException, PermissionException;
-    void deleteMetadataTest() throws MetadataStoreException, MetadataException, PermissionException;
-    void removePermissionTest()  throws MetadataStoreException, MetadataException, PermissionException;
-    void updateTest() throws MetadataStoreException, MetadataException, PermissionException;
-    void updatePermissionTest() throws MetadataStoreException, MetadataException, PermissionException;
-    void findTest() throws MetadataException, PermissionException, MetadataStoreException;
-    void findWithOffsetAndLimitTest() throws MetadataException, PermissionException, MetadataStoreException;
-    void findSingleMetadataItemTest() throws MetadataException, PermissionException, MetadataStoreException;
-    void findSingleMetadataItemNonexistentTest();
-    void findPermissionTest() throws MetadataException, PermissionException, MetadataStoreException;
-    void findMetadataItemWithFiltersTest() throws MetadataException, PermissionException, MetadataStoreException;
-    void findMetadataItemWithInvalidFiltersTest() throws MetadataException, PermissionException, MetadataStoreException;
 
+    MetadataItem insertEntity();
 
+    void insertTest();
+
+    void insertNullMetadataItem() throws MetadataStoreException;
+
+    void deleteMetadataTest(MetadataItem metadataItem, String message, int resultSize, boolean bolThrowException);
+
+    void updateDocumentTest() throws MetadataException;
+
+    void updatePermissionTest(MetadataPermission permission) throws MetadataStoreException;
+
+    void findTest(MetadataItem metadataItem, String message, int findSize, boolean bolThrowException);
+
+    void findWithOffsetAndLimitTest(int offset, int limit, int expectedSize, String message);
+
+    void findSingleMetadataItemTest(MetadataItem metadataItem, String message, int findSize, boolean bolThrowException);
+
+    void findSingleMetadataItemEmptyFilterTest() throws MetadataStoreException, MetadataException;
+
+    void getPermissionTest() throws MetadataException;
+
+    void findMetadataItemWithFiltersTest();
+
+    void checkHasReadQueryTest() throws MetadataStoreException, MetadataException;
+
+    void checkHasWriteQueryTest() throws MetadataStoreException, MetadataException;
 }

@@ -27,7 +27,6 @@ import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.serviceproxy.ServiceBinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.event.Level;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -37,6 +36,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
+
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 /**
  * @author deardooley
@@ -51,12 +51,24 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
     HashMap<SqlQuery, String> sqlQueries = loadSqlQueries();
 
     JDBCClient dbClient = JDBCClient.createShared(getVertx(), new JsonObject()
-      .put("provider_class", "io.vertx.ext.jdbc.spi.impl.HikariCPDataSourceProvider")
-      .put("jdbcUrl", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:mysql://127.0.0.1:3306/agavecore")) //
-      .put("username", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_USERNAME))
-      .put("password", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_PASSWORD))
-      .put("driverClassName", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "com.mysql.cj.jdbc.Driver"))
-      .put("maximumPoolSize", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)));
+            .put("provider_class", "io.vertx.ext.jdbc.spi.impl.HikariCPDataSourceProvider")
+            .put("jdbcUrl", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:mysql://127.0.0.1:3306/agavecore")) //
+            .put("username", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_USERNAME))
+            .put("password", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_PASSWORD))
+            .put("useServerPrepStmts", true)
+            .put("useLocalSesessionState", true)
+            .put("useLocalTransactionState", true)
+            .put("rewriteBatchedStatements", true)
+            .put("cacheResultSetMetadata", true)
+            .put("cacheServerConfiguration", true)
+            .put("elideSetAutoComits", true)
+            .put("idleTimeout", 60000)
+            .put("connectionTimeout", 60000)
+            .put("maxLifetime", 60000)
+            .put("validationTimeout", 3000)
+            .put("leakDetectionThreshold", 5000)
+            .put("driverClassName", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "com.mysql.cj.jdbc.Driver"))
+            .put("maximumPoolSize", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)));
 
     TransferTaskDatabaseService.create(dbClient, sqlQueries, ready -> {
       if (ready.succeeded()) {
@@ -101,6 +113,7 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
       sqlQueries.put(SqlQuery.CREATE_TRANSFERTASK, node.get("create-transfertask").textValue());
       sqlQueries.put(SqlQuery.SAVE_TRANSFERTASK, node.get("save-transfertask").textValue());
       sqlQueries.put(SqlQuery.DELETE_TRANSFERTASK, node.get("delete-transfertask").textValue());
+      sqlQueries.put(SqlQuery.DELETE_ALL_TRANSFERTASKS, node.get("delete-all-transfertasks").textValue());
       sqlQueries.put(SqlQuery.UPDATE_TRANSFERTASK_STATUS, node.get("update-transfertask-status").textValue());
       sqlQueries.put(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED, node.get("all-transfertask-children-cancelled-or-completed").textValue());
       sqlQueries.put(SqlQuery.ALL_ACTIVE_ROOT_TRANSFERTASK_IDS, node.get("all-active-root-transfertask-ids").textValue());

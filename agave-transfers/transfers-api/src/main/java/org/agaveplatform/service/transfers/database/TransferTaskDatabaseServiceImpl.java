@@ -54,16 +54,18 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         readyHandler.handle(Future.failedFuture(ar.cause()));
       } else {
         SQLConnection connection = ar.result();
+        connection.close();
+        readyHandler.handle(Future.succeededFuture(this));
 
-        connection.execute(sqlQueries.get(SqlQuery.CREATE_TRANSFERTASKS_TABLE), create -> {
-          connection.close();
-          if (create.failed()) {
-            LOGGER.error("Database preparation error", create.cause());
-            readyHandler.handle(Future.failedFuture(create.cause()));
-          } else {
-            readyHandler.handle(Future.succeededFuture(this));
-          }
-        });
+//        connection.execute(sqlQueries.get(SqlQuery.CREATE_TRANSFERTASKS_TABLE), create -> {
+//          connection.close();
+//          if (create.failed()) {
+//            LOGGER.error("Database preparation error", create.cause());
+//            readyHandler.handle(Future.failedFuture(create.cause()));
+//          } else {
+//            readyHandler.handle(Future.succeededFuture(this));
+//          }
+//        });
       }
     });
   }
@@ -439,6 +441,21 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         resultHandler.handle(Future.succeededFuture());
       } else {
         LOGGER.error("Failed to delete transfer task {}.", uuid, res.cause());
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      }
+    });
+    return this;
+  }
+
+  @Override
+  public TransferTaskDatabaseService deleteAll(String tenantId, Handler<AsyncResult<Void>> resultHandler) {
+    JsonArray data = new JsonArray()
+            .add(tenantId);
+    dbClient.updateWithParams(sqlQueries.get(SqlQuery.DELETE_ALL_TRANSFERTASKS), data, res -> {
+      if (res.succeeded()) {
+        resultHandler.handle(Future.succeededFuture());
+      } else {
+        LOGGER.error("Failed to delete all transfer tasks for tenant {}.", tenantId, res.cause());
         resultHandler.handle(Future.failedFuture(res.cause()));
       }
     });

@@ -84,6 +84,8 @@ public interface TransferTaskDatabaseService {
   @Fluent
   TransferTaskDatabaseService delete(String tenantId, String uuid, Handler<AsyncResult<Void>> resultHandler);
 
+  @Fluent
+  TransferTaskDatabaseService deleteAll(String tenantId, Handler<AsyncResult<Void>> resultHandler);
 
   @GenIgnore
   static TransferTaskDatabaseService create(JDBCClient dbClient, HashMap<SqlQuery, String> sqlQueries, Handler<AsyncResult<TransferTaskDatabaseService>> readyHandler) {

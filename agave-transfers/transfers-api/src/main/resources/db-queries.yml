@@ -1,43 +1,41 @@
 create-transfertasks-table: |
-  DROP TABLE IF EXISTS transfertasks;
+  DROP TABLE IF EXISTS `transferapitasks`
 
-  CREATE TABLE transfertasks (
-    `id` bigint(20) NOT NULL AUTO_INCREMENT,
-    `attempts` int(11) DEFAULT NULL,
-    `bytes_transferred` bigint(20) NOT NULL DEFAULT 0,
-    `created` datetime NOT NULL,
-    `dest` varchar(2048) NOT NULL DEFAULT '',
-    `end_time` datetime DEFAULT NULL,
-    `event_id` varchar(255) DEFAULT NULL,
-    `last_updated` datetime NOT NULL,
-    `owner` varchar(32) NOT NULL,
-    `source` varchar(2048) NOT NULL DEFAULT '',
-    `start_time` datetime DEFAULT NULL,
-    `status` varchar(16) DEFAULT NULL,
-    `tenant_id` varchar(128) NOT NULL,
-    `total_size` bigint(20) DEFAULT NULL,
-    `transfer_rate` double DEFAULT NULL,
-    `parent_task` varchar(64) DEFAULT NULL,
-    `root_task` varchar(64) DEFAULT NULL,
-    `uuid` varchar(64) NOT NULL DEFAULT '',
-    `total_files` bigint(20) NOT NULL DEFAULT 0,
-    `total_skipped` bigint(20) NOT NULL DEFAULT 0,
-    `optlock` int(11) DEFAULT NULL,
-    `last_attempt` datetime DEFAULT NULL,
-    `next_attempt` datetime DEFAULT NULL,
-    `total_skipped_files` bigint(20) NOT NULL DEFAULT 0,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uuid_tenant` (`uuid`,`tenant_id`)
-  ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-#  CREATE INDEX 'root_task' ON 'transfertasks'('root_task');
-#    CREATE INDEX uuid_tenant ON transfertasks('uuid','tenant_id')
-#    CREATE INDEX parent_task_tenant ON transfertasks('parent_task', 'tenant_id')
-#  ALTER TABLE transfertasks ADD INDEX uuid_tenant ('uuid','tenant_id');
-
+  CREATE TABLE IF NOT EXISTS transferapitasks (
+      `id` bigint(20) NOT NULL AUTO_INCREMENT,
+      `attempts` int(11) DEFAULT NULL,
+      `bytes_transferred` bigint(20) NOT NULL DEFAULT 0,
+      `created` TIMESTAMP NOT NULL,
+      `dest` varchar(2048) NOT NULL DEFAULT '',
+      `end_time` TIMESTAMP DEFAULT NULL,
+      `event_id` varchar(255) DEFAULT NULL,
+      `last_updated` TIMESTAMP NOT NULL,
+      `owner` varchar(32) NOT NULL,
+      `source` varchar(2048) NOT NULL DEFAULT '',
+      `start_time` TIMESTAMP DEFAULT NULL,
+      `status` varchar(16) DEFAULT NULL,
+      `tenant_id` varchar(128) NOT NULL,
+      `total_size` bigint(20) DEFAULT NULL,
+      `transfer_rate` double DEFAULT NULL,
+      `parent_task` varchar(64) DEFAULT NULL,
+      `root_task` varchar(64) DEFAULT NULL,
+      `uuid` varchar(64) NOT NULL DEFAULT '',
+      `total_files` bigint(20) NOT NULL DEFAULT 0,
+      `total_skipped` bigint(20) NOT NULL DEFAULT 0,
+      `optlock` int(11) DEFAULT NULL,
+      `last_attempt` TIMESTAMP DEFAULT NULL,
+      `next_attempt` TIMESTAMP DEFAULT NULL,
+      `total_skipped_files` bigint(20) NOT NULL DEFAULT 0,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `uuid_tenant` (`uuid`,`tenant_id`),
+      KEY `parent_task_tenant_id` (`parent_task`,`tenant_id`),
+      KEY `root_task_tenant_id` (`root_task`,`tenant_id`)
+  ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+  
 get-transfertask: |
-  SELECT * FROM transfertasks WHERE `uuid` = ? and `tenant_id` = ?
+  SELECT * FROM transferapitasks WHERE `uuid` = ? and `tenant_id` = ?
 create-transfertask: |
-  INSERT INTO transfertasks (
+  INSERT INTO transferapitasks (
     `attempts`,
     `bytes_transferred`,
     `created`,
@@ -62,7 +60,7 @@ create-transfertask: |
   VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 save-transfertask: |
-  UPDATE transfertasks
+  UPDATE transferapitasks
   SET `attempts` = ?,
     `bytes_transferred` = ?,
     `end_time` = ?,
@@ -77,52 +75,52 @@ save-transfertask: |
     `last_updated` = NOW()
   WHERE `uuid` = ? AND `tenant_id` = ?
 all-transfertasks: |
-  SELECT * FROM transfertasks WHERE tenant_id = ? LIMIT ? OFFSET ?
+  SELECT * FROM transferapitasks WHERE tenant_id = ? LIMIT ? OFFSET ?
 all-user-transfertasks: |
-  SELECT * FROM transfertasks WHERE owner = ? AND `tenant_id` = ? LIMIT ? OFFSET ?
+  SELECT * FROM transferapitasks WHERE owner = ? AND `tenant_id` = ? LIMIT ? OFFSET ?
 delete-transfertask: |
-  DELETE FROM transfertasks WHERE uuid = ? AND `tenant_id` = ?
+  DELETE FROM transferapitasks WHERE uuid = ? AND `tenant_id` = ?
 delete-all-transfertasks: |
-  DELETE FROM transfertasks WHERE `tenant_id` = ?
+  DELETE FROM transferapitasks WHERE `tenant_id` = ?
 update-transfertask-status: |
-  UPDATE transfertasks
+  UPDATE transferapitasks
   SET status = ?, last_updated = NOW()
   WHERE `uuid` = ? AND `tenant_id` = ?
 all-transfertask-children-cancelled-or-completed: |
   SELECT count(`id`) AS active_child_count
-  FROM transfertasks
+  FROM transferapitasks
   WHERE `tenant_id` = ? AND `parent_task` = ? AND `status` NOT IN ('COMPLETED','CANCELLED','FAILED')
 all-active-root-transfertask-ids: |
   SELECT distinct `uuid`, `tenant_id`
-  FROM transfertasks
+  FROM transferapitasks
   WHERE `root_task` is NULL AND `parent_task` is NULL AND `status` NOT IN ('COMPLETED','CANCELLED','FAILED')
 single-not-canceled-or-completed: |
   SELECT count(`id`) AS active_uuid
-  FROM transfertasks
+  FROM transferapitasks
   WHERE `tenant_id` = ? AND `uuid` = ? AND `status` NOT IN ('COMPLETED','CANCELLED','FAILED')
 all-children-canceled-or-completed: |
   SELECT count(id)
-  FROM transfertasks
+  FROM transferapitasks
   WHERE `tenant_id` = ? AND `parentTask` = ? AND status not in ('COMPLETED', 'CANCELLED','FAILED')
 set-transfertask-cancelled-where-not-completed: |
-  UPDATE transfertasks
+  UPDATE transferapitasks
   SET status = CANCELLED, lastUpdated = NOW()
   WHERE `tenant_id` = ? AND `uuid` = ? AND status not in ('COMPLETED', 'CANCELLED','FAILED')
 get_transfertask_tree: |
   SELECT *
-  FROM transfertasks
-  WHERE parent_task = (SELECT parent_task from transfertasks where `uuid` = ? )
+  FROM transferapitasks
+  WHERE parent_task = (SELECT parent_task from transferapitasks where `uuid` = ? )
     AND status NOT IN ('COMPLETED', 'CANCELLED','FAILED')
     AND `tenant_id` = ?
   UNION
   SELECT *
-  FROM transfertasks
+  FROM transferapitasks
   WHERE `uuid` = ?
   AND `root_task` IS NULL
   AND `tenant_id` = ?
 find_transfertask_by_root_task_id_src_dest: |
   SELECT *
-  FROM transfertasks
+  FROM transferapitasks
   WHERE `root_task` = ?
     AND `source` = ?
     AND `dest` = ?

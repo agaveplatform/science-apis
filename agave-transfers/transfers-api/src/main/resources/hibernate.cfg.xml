@@ -8,7 +8,7 @@
 
     <session-factory>
         <!-- Local JNDI connection properties -->
-        <property name="hibernate.connection.url"><![CDATA[${foundation.db.test.url}]]></property>
+        <property name="hibernate.connection.url"><![CDATA[${foundation.db.test.url}&serverTimezone=America/Chicago&autoReconnect=True&failOverReadOnly=false&autoReconnectForPools=true&useUnicode=true&characterEncoding=utf8]]></property>
         <property name="hibernate.connection.username">${foundation.db.test.username}</property>
         <property name="hibernate.connection.password">${foundation.db.test.password}</property>
         <property name="hibernate.connection.driver_class">${foundation.db.test.driver}</property>

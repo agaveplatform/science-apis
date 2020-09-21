@@ -56,16 +56,6 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         SQLConnection connection = ar.result();
         connection.close();
         readyHandler.handle(Future.succeededFuture(this));
-
-//        connection.execute(sqlQueries.get(SqlQuery.CREATE_TRANSFERTASKS_TABLE), create -> {
-//          connection.close();
-//          if (create.failed()) {
-//            LOGGER.error("Database preparation error", create.cause());
-//            readyHandler.handle(Future.failedFuture(create.cause()));
-//          } else {
-//            readyHandler.handle(Future.succeededFuture(this));
-//          }
-//        });
       }
     });
   }

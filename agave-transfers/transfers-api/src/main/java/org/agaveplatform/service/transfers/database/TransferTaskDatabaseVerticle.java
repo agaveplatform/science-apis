@@ -51,11 +51,12 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
     HashMap<SqlQuery, String> sqlQueries = loadSqlQueries();
 
     JDBCClient dbClient = JDBCClient.createShared(getVertx(), new JsonObject()
-      .put("url", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:mysql://127.0.0.1:3306/agavecore")) //
+      .put("provider_class", "io.vertx.ext.jdbc.spi.impl.HikariCPDataSourceProvider")
+      .put("jdbcUrl", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:mysql://127.0.0.1:3306/agavecore")) //
       .put("username", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_USERNAME))
       .put("password", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_PASSWORD))
-      .put("driver_class", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "com.mysql.cj.jdbc.Driver"))
-      .put("max_pool_size", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)), "agave-io");
+      .put("driverClassName", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "com.mysql.cj.jdbc.Driver"))
+      .put("maximumPoolSize", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)));
 
     TransferTaskDatabaseService.create(dbClient, sqlQueries, ready -> {
       if (ready.succeeded()) {

@@ -5,7 +5,7 @@
   "transfertask.jwt.public_key": "src/test/resources/public_key.pem",
   "transfertask.jdbc.database": "${foundation.db.database}",
   "transfertask.jdbc.driver_class": "com.mysql.cj.jdbc.Driver",
-  "transfertask.jdbc.url": "jdbc:mysql://localhost:3306/agavecore",
+  "transfertask.jdbc.url": "jdbc:mysql://127.0.0.1:3306/agavecore",
   "transfertask.jdbc.max_pool_size": 100,
   "transfertask.db.queue": "transfertaskdb.queue",
   "transfertask.sqlqueries.resource.file": "db-queries.yml",

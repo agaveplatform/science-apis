@@ -453,6 +453,7 @@ class TransferApplicationTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("testEndToEndTransferTaskFileMovement")
+	@Disabled
 	void testEndToEndTransferTaskFileMovement(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = _createTestTransferTask();

@@ -12,6 +12,7 @@ import org.apache.commons.lang.StringUtils;
 import org.bson.Document;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.exceptions.UUIDException;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.metadata.exceptions.*;
 import org.iplantc.service.metadata.model.MetadataAssociationList;
@@ -177,9 +178,9 @@ public class JsonHandler {
         ObjectMapper mapper = new ObjectMapper();
 
         if (jsonMetadata.has("uuid")) {
-            String muuid = jsonMetadata.get("uuid").asText();
-            if (StringUtils.isNotBlank(muuid)) {
-                doc.append("uuid", muuid);
+            String uuid = jsonMetadata.get("uuid").asText();
+            if (StringUtils.isNotBlank(uuid)) {
+                doc.append("uuid", uuid);
             }
         }
 
@@ -297,10 +298,23 @@ public class JsonHandler {
                     getMetadataItem().setUuid(muuid);
                 }
             }
-            getMetadataItem().setName(parseNameToString(jsonMetadata));
-            getMetadataItem().setValue(parseValueToJsonNode(jsonMetadata));
+
+            String name = parseNameToString(jsonMetadata);
+            if (name == null)
+                throw new MetadataQueryException(
+                        "Invalid notifications value. notifications should be an "
+                                + "JSON array of notification objects.");
+
+            JsonNode value = parseValueToJsonNode(jsonMetadata);
+            if (value == null)
+                throw new MetadataQueryException(
+                        "No value attribute specified. Please associate a value with the metadata value.");
+
+            getMetadataItem().setName(name);
+            getMetadataItem().setValue(value);
             getMetadataItem().getAssociations().addAll(parseAssociationIdsToList(jsonMetadata));
             getMetadataItem().setSchemaId(parseSchemaIdToString(jsonMetadata));
+
 
             //MetadataRequestPermissionProcessor will handle the notification parsing
             setPermissions(parsePermissionToArrayNode(jsonMetadata));
@@ -318,15 +332,11 @@ public class JsonHandler {
      *
      * @param nameNode {@link JsonNode} to parse field from
      * @return {@link String} value for the name field
-     * @throws MetadataQueryException if name field is missing or invalid format
      */
-    public String parseNameToString(JsonNode nameNode) throws MetadataQueryException {
-        if (nameNode.has("name") && nameNode.get("name").isTextual()) {
+    public String parseNameToString(JsonNode nameNode){
+        if (nameNode.has("name") && nameNode.get("name").isTextual())
             return nameNode.get("name").asText();
-        } else {
-            throw new MetadataQueryException(
-                    "No name attribute specified. Please associate a value with the metadata name.");
-        }
+        return null;
     }
 
     /**
@@ -334,14 +344,11 @@ public class JsonHandler {
      *
      * @param valueNode {@link JsonNode} to parse field from
      * @return {@link JsonNode} of {@code value}
-     * @throws MetadataQueryException if value field is invalid json format or missing
      */
-    public JsonNode parseValueToJsonNode(JsonNode valueNode) throws MetadataQueryException {
-        if (valueNode.has("value") && !valueNode.get("value").isNull()) {
+    public JsonNode parseValueToJsonNode(JsonNode valueNode)  {
+        if (valueNode.has("value") && !valueNode.get("value").isNull())
             return valueNode.get("value");
-        } else
-            throw new MetadataQueryException(
-                    "No value attribute specified. Please associate a value with the metadata value.");
+        return null;
     }
 
     /**

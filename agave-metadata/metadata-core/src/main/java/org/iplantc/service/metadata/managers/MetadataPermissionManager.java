@@ -1,6 +1,7 @@
 package org.iplantc.service.metadata.managers;
 
 import org.apache.commons.lang.StringUtils;
+import org.bson.conversions.Bson;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.auth.JWTClient;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -18,6 +19,8 @@ import org.iplantc.service.notification.managers.NotificationManager;
 
 import java.util.List;
 
+import static com.mongodb.client.model.Filters.*;
+
 /**
  * Management class for handling operations on {@link MetadataItem} objects.
  * The constructor assigns a calling user to whom all events resulting from
@@ -32,14 +35,16 @@ public class MetadataPermissionManager {
     private final MetadataEventProcessor eventProcessor = new MetadataEventProcessor();
     private final MetadataDao metadataDao = new MetadataDao();
     private MetadataItem metadataItem;
+    private String uuid;
+
 
     /**
      * Base constructor binding a {@link MetadataItem} to a new
      * instance of this {@link MetadataPermissionManager}.
      *
-     * @param metadataItem                  the {@link MetadataItem} to which permission checks apply
+     * @param metadataItem          the {@link MetadataItem} to which permission checks apply
      * @param authenticatedUsername the username of the user responsible for invoking methods on the {@code metadataItem}
-     * @throws MetadataException if the argumetns are invalid
+     * @throws MetadataException if the arguments are invalid
      */
     public MetadataPermissionManager(MetadataItem metadataItem, String authenticatedUsername) throws MetadataException {
         if (metadataItem == null) {
@@ -53,33 +58,59 @@ public class MetadataPermissionManager {
     }
 
     /**
-     * Checks whether the given {@code username} has the given {@code jobPermissionType}
-     * for the the {@link MetadataItem} associated with this permission manager.
+     * Base constructor binding a {@link MetadataItem} to a new
+     * instance of this {@link MetadataPermissionManager}.
      *
-     * @param username          the user to whom the permission will be checked
-     * @param desiredPermissionType the permission to check
-     * @return
-     * @throws MetadataException
+     * @param uuid                  the uuid of {@link MetadataItem} to which permission checks apply
+     * @param authenticatedUsername the username of the user responsible for invoking methods on the {@code metadataItem}
+     * @throws MetadataException if the arguments are invalid
      */
-    public boolean hasPermission(String username,
-                                 PermissionType desiredPermissionType) throws MetadataException {
-
-        if (StringUtils.isBlank(username)) {
-            return false;
+    public MetadataPermissionManager(String uuid, String authenticatedUsername) throws MetadataException {
+        if (uuid == null) {
+            throw new MetadataException("Metadata item Uuid cannot be null");
         }
+//        this.metadataItem = new MetadataItem();
+//        this.metadataItem.setUuid(uuid);
+        this.uuid = uuid;
 
-        if (getAuthenticatedUsername().equals(username) || AuthorizationHelper.isTenantAdmin(username))
-            return true;
-
-        for (MetadataPermission pem : getMetadataItem().getPermissions()) {
-            if (List.of(username, Settings.WORLD_USER_USERNAME, Settings.PUBLIC_USER_USERNAME).contains(pem.getUsername())
-                    && pem.getPermission().equals(desiredPermissionType)) {
-                return true;
-            }
+        if (authenticatedUsername == null) {
+            throw new MetadataException("Authenticated username cannot be null");
         }
-
-        return false;
+        this.authenticatedUsername = authenticatedUsername;
     }
+
+
+//    /**
+//     * Checks whether the given {@code username} has the given {@code jobPermissionType}
+//     * for the the {@link MetadataItem} associated with this permission manager.
+//     *
+//     * @param username              the user to whom the permission will be checked
+//     * @param desiredPermissionType the permission to check
+//     * @return
+//     * @throws MetadataException
+//     *
+//     * @deprecated
+//     */
+//    public boolean hasPermission(String username,
+//                                 PermissionType desiredPermissionType) throws MetadataException {
+//
+//        if (StringUtils.isBlank(username)) {
+//            return false;
+//        }
+//
+//        if (getAuthenticatedUsername().equals(username) || AuthorizationHelper.isTenantAdmin(username))
+//            return true;
+//
+//
+//        for (MetadataPermission pem : getMetadataItem().getPermissions()) {
+//            if (List.of(username, Settings.WORLD_USER_USERNAME, Settings.PUBLIC_USER_USERNAME).contains(pem.getUsername())
+//                    && pem.getPermission().equals(desiredPermissionType)) {
+//                return true;
+//            }
+//        }
+//
+//        return false;
+//    }
 
     /**
      * Checks whether the given {@code username} has {@link PermissionType#READ},
@@ -95,9 +126,14 @@ public class MetadataPermissionManager {
             return false;
         }
 
+        if (metadataItem == null)
+            return getMetadataDao().hasRead(username, uuid);
+
+
         if (StringUtils.equals(getAuthenticatedUsername(), username) || AuthorizationHelper.isTenantAdmin(username)
                 || StringUtils.equals(getMetadataItem().getOwner(), username))
             return true;
+
 
         for (MetadataPermission pem : getMetadataItem().getPermissions()) {
             if (List.of(username, Settings.WORLD_USER_USERNAME, Settings.PUBLIC_USER_USERNAME).contains(pem.getUsername())
@@ -123,6 +159,9 @@ public class MetadataPermissionManager {
             return false;
         }
 
+        if (metadataItem == null)
+            return getMetadataDao().hasWrite(username, uuid);
+
         if (getAuthenticatedUsername().equals(username) || AuthorizationHelper.isTenantAdmin(username)
                 || getMetadataItem().getOwner().equals(username))
             return true;
@@ -146,6 +185,7 @@ public class MetadataPermissionManager {
      * @param sPermission the permission to set
      * @throws MetadataException
      * @throws PermissionException if the permission value is invalid
+     * @throws MetadataStoreException if unable to set the permission
      */
     public void setPermission(String username, String sPermission)
             throws MetadataException, PermissionException, MetadataStoreException {
@@ -157,13 +197,17 @@ public class MetadataPermissionManager {
             return;
 
         if (StringUtils.equals(Settings.PUBLIC_USER_USERNAME, username) ||
-            StringUtils.equals(Settings.WORLD_USER_USERNAME, username)) {
+                StringUtils.equals(Settings.WORLD_USER_USERNAME, username)) {
             boolean worldAdmin = JWTClient.isWorldAdmin();
             boolean tenantAdmin = AuthorizationHelper.isTenantAdmin(TenancyHelper.getCurrentEndUser());
             if (!tenantAdmin && !worldAdmin) {
                 throw new PermissionException("User does not have permission to edit public metadata item permissions");
             }
         }
+
+        if (metadataItem == null)
+            setMetadataItem(getMetadataDao().findSingleMetadataItem(
+                    and(eq("uuid", uuid), eq("tenantId", TenancyHelper.getCurrentTenantId()))));
 
         MetadataPermission userPermission = getMetadataItem().getPermissionForUsername(username);
 
@@ -185,7 +229,7 @@ public class MetadataPermissionManager {
         else {
             PermissionType permissionType = PermissionType.
 //                    valueOf(sPermission.toUpperCase());
-                    getIfPresent(sPermission.toUpperCase());    //handles invalid permission types
+        getIfPresent(sPermission.toUpperCase());    //handles invalid permission types
 
             if (permissionType == PermissionType.UNKNOWN) {
                 throw new PermissionException("Unable to set unknown permission, please use " +
@@ -220,9 +264,9 @@ public class MetadataPermissionManager {
     /**
      * Removes all permissions, save ownership
      *
-     * @throws MetadataException
+     * @throws MetadataStoreException if MetadataItem cannot be found or updating MetadataItem failed
      */
-    public void clearPermissions() throws MetadataException, MetadataStoreException {
+    public void clearPermissions() throws MetadataStoreException {
         getMetadataItem().getPermissions().clear();
         getMetadataItem().setPermissions(getMetadataDao().updatePermission(getMetadataItem()));
 
@@ -233,7 +277,7 @@ public class MetadataPermissionManager {
      * Fetches the user permission for the the {@link MetadataItem} associated with this
      * permission manager.
      *
-     * @param username
+     * @param username user to lookup permission for
      * @return the assigned permission for the user
      * @throws MetadataException
      */
@@ -250,7 +294,7 @@ public class MetadataPermissionManager {
                 if (dbPems.getUsername().equals(username)) {
                     return dbPems;
                 } else if (dbPems.getUsername().equals(Settings.WORLD_USER_USERNAME) ||
-                    dbPems.getUsername().equals(Settings.PUBLIC_USER_USERNAME)) {
+                        dbPems.getUsername().equals(Settings.PUBLIC_USER_USERNAME)) {
                     pem = dbPems;
                 }
             }

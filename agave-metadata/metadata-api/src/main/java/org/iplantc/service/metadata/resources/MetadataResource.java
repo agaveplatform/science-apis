@@ -87,19 +87,6 @@ public class MetadataResource extends AgaveResource {
 
         getVariants().add(new Variant(MediaType.APPLICATION_JSON));
 
-        // Set up MongoDB connection
-//        try {
-//            mongoClient = ((MetadataApplication) getApplication()).getMongoClient();
-//            db = mongoClient.getDB(Settings.METADATA_DB_SCHEME);
-//            // Gets a collection, if it does not exist creates it
-//            collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
-//            schemaCollection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
-//        } catch (Exception e) {
-//            log.error("Unable to connect to metadata store", e);
-////        	try { mongoClient.close(); } catch (Exception e1) {}
-//            response.setStatus(Status.SERVER_ERROR_INTERNAL);
-//            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store."));
-//        }
     }
 
     /**
@@ -118,30 +105,29 @@ public class MetadataResource extends AgaveResource {
             String strResult = "";
 
             MetadataDao dao = MetadataDao.getInstance();
+            MetadataPermissionManager permissionManager = new MetadataPermissionManager(uuid, username);
+
 
             // TODO: Should be folded into the fetch call? Much faster, but also removes ability to determine pems
             //   vs a standard not found.
-
-
-            if (!dao.hasRead(getAuthenticatedUsername(), uuid)){
+            if (!permissionManager.canRead(username)) {
                 getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
                 return new IplantErrorRepresentation("Cannot validate - User does not have permission to read this metadata entry.");
             }
 
-            Document uuidLookupDoc = new Document().append("uuid", uuid).append("tenantId", TenancyHelper.getCurrentTenantId());
             MetadataSearch search = new MetadataSearch(username);
             search.setAccessibleOwnersImplicit();
-            search.setUuid(uuid);
+            String tenantId = TenancyHelper.getCurrentTenantId();
 
             if (hasJsonPathFilters()){
-                Document userResult = search.filterFindOne(uuidLookupDoc, jsonPathFilters);
+                Document userResult = search.filterFindById(uuid, tenantId, jsonPathFilters);
                 if (userResult == null)
                     throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
                             "No metadata item found for user with id " + uuid);
 
                 strResult = userResult.toJson();
             } else {
-                MetadataItem metadataItem = MetadataDao.getInstance().findSingleMetadataItem(uuidLookupDoc);
+                MetadataItem metadataItem = search.findById(uuid, tenantId);
                 if (metadataItem == null)
                     throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
                             "No metadata item found for user with id " + uuid);
@@ -177,14 +163,9 @@ public class MetadataResource extends AgaveResource {
         DBCursor cursor = null;
 
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            ArrayNode items = mapper.createArrayNode();
-            MetadataItem updatedMetadataItem = null;
             Document metadataDocument;
-            MetadataDao dao = MetadataDao.getInstance();
 
             try {
-
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
                 JsonHandler jsonHandler = new JsonHandler();
                 metadataDocument = jsonHandler.parseJsonMetadataToDocument(jsonMetadata);
@@ -197,17 +178,18 @@ public class MetadataResource extends AgaveResource {
             }
 
             try {
+                MetadataPermissionManager permissionManager = new MetadataPermissionManager(uuid, username);
+
                 // TODO: Should be folded into the fetch call? Much faster, but also removes ability to determine pems
                 //   vs a standard not found.
-                if (!dao.hasWrite(getAuthenticatedUsername(), uuid)){
+                if (!permissionManager.canWrite(username)){
                     getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
                     throw new PermissionException("Cannot validate - User does not have permission to update metadata");
                 }
 
-                MetadataSearch search = new MetadataSearch(getAuthenticatedUsername());
+                MetadataSearch search = new MetadataSearch(username);
                 search.setAccessibleOwnersImplicit();
-                search.setUuid((String)getRequest().getAttributes().get("uuid"));
-                Document updatedMetadataDoc = search.updateMetadataItem(metadataDocument);
+                Document updatedMetadataDoc = search.updateMetadataItem(metadataDocument, uuid);
 
                 if (updatedMetadataDoc == null) {
                     throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
@@ -232,7 +214,7 @@ public class MetadataResource extends AgaveResource {
             getResponse().setStatus(e.getStatus());
             getResponse().setEntity(new IplantErrorRepresentation(e.getMessage()));
         } catch (Exception e) {
-            log.error("Failed to update metadata item " + uuid);
+            log.error("Failed to update metadata item " + uuid + ". " + e.getMessage());
 
             getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
             getResponse().setEntity(new IplantErrorRepresentation("Unable to store the metadata object. " +
@@ -263,16 +245,17 @@ public class MetadataResource extends AgaveResource {
             search.setAccessibleOwnersImplicit();
 
             try {
+                MetadataPermissionManager permissionManager = new MetadataPermissionManager(uuid, username);
 
                 // TODO: Should be folded into the fetch call? Much faster, but also removes ability to determine pems
                 //   vs a standard not found.
-                if (!dao.hasWrite(getAuthenticatedUsername(), uuid)){
+                if (!permissionManager.canWrite(username)){
                     getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
                     throw new PermissionException("User does not have permission to delete this metadata entry.");
                 }
 
-                search.setUuid(uuid);
-                deletedMetadataItem = search.deleteCurrentMetadataItem();
+//                search.setUuid(uuid);
+                deletedMetadataItem = search.deleteMetadataItem(uuid, TenancyHelper.getCurrentTenantId());
 
                 if (deletedMetadataItem == null) {
                     throw new Exception();

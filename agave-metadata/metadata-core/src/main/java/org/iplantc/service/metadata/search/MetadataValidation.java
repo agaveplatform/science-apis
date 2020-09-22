@@ -82,7 +82,7 @@ public class MetadataValidation {
      * @throws PermissionException          if user does not have read permissions
      * @throws MetadataAssociationException if the uuid is invalid
      */
-    public MetadataAssociationList checkAssociationIds(ArrayNode items, String username) throws MetadataQueryException, UUIDException, PermissionException, MetadataAssociationException {
+    public MetadataAssociationList checkAssociationIds(ArrayNode items, String username) throws MetadataQueryException, UUIDException, PermissionException, MetadataAssociationException, MetadataException {
         MetadataAssociationList associationList = new MetadataAssociationList();
 
         if (associationList == null) {
@@ -90,6 +90,7 @@ public class MetadataValidation {
         }
 
         BasicDBList associations = new BasicDBList();
+        String tenantId = TenancyHelper.getCurrentTenantId();
         if (items != null) {
             for (int i = 0; i < items.size(); i++) {
                 String associationId = items.get(i).asText();
@@ -102,7 +103,7 @@ public class MetadataValidation {
                     if (UUIDType.METADATA == associationUuid.getResourceType()) {
                         //retrieve item with given id
                         MetadataSearch search = new MetadataSearch(username);
-                        MetadataItem associationItem = search.findOne(associationQuery);
+                        MetadataItem associationItem = search.findById(associationId, tenantId);
                         if (associationItem == null) {
                             throw new MetadataQueryException(
                                     "No metadata resource found with uuid " + associationId);

@@ -187,16 +187,24 @@ public class MetadataDao {
      * @return List of {@link Document} matching the query criteria
      */
     public List<Document> filterFind(Bson query, Bson filter) {
+        return filterFind(query, filter, 0, Settings.DEFAULT_PAGE_SIZE, new Document());
+    }
+
+    /**
+     * Find the {@link MetadataItem} from the mongo collection based on the {@link Bson query} filtered
+     * by {@code filter}
+     *
+     * @param query  {@link Bson} query to search with
+     * @param filter list of String to specify which fields to return
+     * @return List of {@link Document} matching the query criteria
+     */
+    public List<Document> filterFind(Bson query, Bson filter, int offset, int limit, Document order) {
         MongoCursor cursor;
         List<Document> resultList = new ArrayList<>();
 
         //Don't use custom codecs for faster processing with filters/projections
         MongoCollection mongoCollection;
         mongoCollection = getDefaultCollection();
-
-        int offset = 0;
-        int limit = org.iplantc.service.common.Settings.DEFAULT_PAGE_SIZE;
-        BasicDBObject order = new BasicDBObject();
 
         if (query == null) {
             query = new Document();
@@ -234,8 +242,8 @@ public class MetadataDao {
     /**
      * Find all {@link MetadataItem} from the mongo collection based on the {@link Bson} query as the {@code user}
      *
-     * @param user  making the query
-     * @param query {@link Bson} query to search with
+     * @param user   making the query
+     * @param query  {@link Bson} query to search with
      * @param offset int offset
      * @return metadataItem
      */
@@ -326,6 +334,7 @@ public class MetadataDao {
 
     /**
      * Updates a single document representing a {@link MetadataItem}.
+     *
      * @param doc the metadata item fields to update, marshalled to a {@link Document}.
      * @return freshly updated Document representing the metadata item
      * @throws MetadataException if unable to find Metadata item
@@ -411,11 +420,6 @@ public class MetadataDao {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
-//            Document docPermissions = new Document("permissions", new Document("$elemMatch", new Document("username", user)));
-//            Bson deleteFilter = and(eq("uuid", metadataItem.getUuid()),
-//                    eq("tenantId", metadataItem.getTenantId()));
-//            Bson queryFilter = and(deleteFilter, or(eq("owner", user), docPermissions));\\
-
         if (metadataItem == null)
             throw new MetadataException("Unable to delete null MetadataItem.");
 
@@ -443,9 +447,10 @@ public class MetadataDao {
             return true;
 
         if (this.accessibleOwners == null)
-            setAccessibleOwners(Arrays.asList(user));
+            setAccessibleOwners(
+                    List.of(user, Settings.WORLD_USER_USERNAME, Settings.PUBLIC_USER_USERNAME));
 
-        return checkPermission(uuid, user, this.getHasReadQuery(user, this.accessibleOwners));
+        return checkPermission(uuid, this.getHasReadQuery(user, this.accessibleOwners));
     }
 
     /**
@@ -460,15 +465,17 @@ public class MetadataDao {
             return true;
 
         if (this.accessibleOwners == null)
-            setAccessibleOwners(Arrays.asList(user));
+            setAccessibleOwners(
+                    List.of(user, Settings.WORLD_USER_USERNAME, Settings.PUBLIC_USER_USERNAME));
 
-        return checkPermission(uuid, user, getHasWriteQuery(user, this.accessibleOwners));
+        return checkPermission(uuid, getHasWriteQuery(user, this.accessibleOwners));
     }
 
 
     /**
      * Find MetadataPermission for user for Metadata item with matching uuid and tenantId
-     * @param uuid the uuid of {@link MetadataItem}  to lookup
+     *
+     * @param uuid     the uuid of {@link MetadataItem}  to lookup
      * @param username user to lookup permission of
      * @param tenantId the tenant to lookup
      * @return {@link MetadataPermission} of {@code username}, null if no permissions found
@@ -488,14 +495,15 @@ public class MetadataDao {
     }
 
     /**
-     * Check the mongodb if the {@code user} has the correct permissios for the metadata item for the specified {@code uuid}
+     * Check the mongodb if the {@code user} has the correct permissions
+     * specified in {@code userFilter} for the metadata item for the
+     * specified {@code uuid}
      *
      * @param uuid       the uuid of {@link MetadataItem}  to lookup
-     * @param user       the user to lookup permissions for
-     * @param userFilter permission query for read or write
+     * @param userFilter {@link Bson} query to check if user has the correct permissions
      * @return true if user has permissions specified by userFilter
      */
-    public boolean checkPermission(String uuid, String user, Bson userFilter) {
+    public boolean checkPermission(String uuid, Bson userFilter) {
         MongoCollection<MetadataItem> metadataItemMongoCollection;
         metadataItemMongoCollection = getDefaultMetadataItemCollection();
 
@@ -503,7 +511,7 @@ public class MetadataDao {
         try {
             //check if user has permission
             result = metadataItemMongoCollection.find(and(eq("uuid", uuid),
-                    or(eq("owner", user), userFilter))).first();
+                    userFilter)).first();
 
             if (result == null) {
                 //check if uuid exists
@@ -526,8 +534,8 @@ public class MetadataDao {
      * {@link PermissionType#READ_EXECUTE}, {@link PermissionType#READ_PERMISSION}, or
      * {@link PermissionType#READ_WRITE_PERMISSION},
      *
-     * @param user to find permission for
-     * @param accessibleOwners list of possible owners
+     * @param user             to find permission for
+     * @param accessibleOwners list of valid owners for the resource
      * @return {@link Bson} query
      */
     public Bson getHasReadQuery(String user, List<String> accessibleOwners) {
@@ -545,8 +553,8 @@ public class MetadataDao {
      * {@link PermissionType#WRITE_EXECUTE}, {@link PermissionType#WRITE_PERMISSION}, or
      * {@link PermissionType#READ_WRITE_PERMISSION}
      *
-     * @param user to find permission for
-     * @param accessibleOwners list of possible owners to search with
+     * @param user             to find permission for
+     * @param accessibleOwners list of valid owners for the resource
      * @return {@link Bson} query
      */
     public Bson getHasWriteQuery(String user, List<String> accessibleOwners) {
@@ -582,8 +590,7 @@ public class MetadataDao {
     }
 
     /**
-     *
-     * @param uuid the uuid of {@link MetadataItem} to lookup
+     * @param uuid     the uuid of {@link MetadataItem} to lookup
      * @param tenantId the tenant to lookup
      * @return {@link Bson} query that checks if tenantId and uuid is matching the given ids
      */

@@ -4,6 +4,7 @@
 package org.iplantc.service.metadata.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
@@ -12,6 +13,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.SortSyntaxException;
@@ -24,10 +26,12 @@ import org.iplantc.service.common.search.AgaveResourceResultOrdering;
 import org.iplantc.service.common.util.SimpleTimer;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.metadata.Settings;
+import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.events.MetadataEventProcessor;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.managers.MetadataRequestNotificationProcessor;
+import org.iplantc.service.metadata.managers.MetadataRequestPermissionProcessor;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.enumerations.MetadataEventType;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
@@ -119,27 +123,6 @@ public class MetadataCollection extends AgaveResource {
         internalUsername = (String) context.getAttributes().get("internalUsername");
 
         getVariants().add(new Variant(MediaType.APPLICATION_JSON));
-
-        // Set up MongoDB connection
-//        try {
-//            //Mongo connection handled in Metadata Dao
-////            mongoClient = ((MetadataApplication) getApplication()).getMongoClient();
-////            db = mongoClient.getDB(Settings.METADATA_DB_SCHEME);
-////            // Gets a collection, if it does not exist creates it
-////            collection = db.getCollection(Settings.METADATA_DB_COLLECTION);
-////            schemaCollection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
-////
-////            //KL
-////            mongoDB = mongoClient.getDatabase(Settings.METADATA_DB_SCHEME);
-////            mongoCollection = mongoDB.getCollection(Settings.METADATA_DB_COLLECTION);
-////            mongoSchemaCollection = mongoDB.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION);
-//
-//        } catch (Throwable e) {
-//            log.error("Unable to connect to metadata store", e);
-//            response.setStatus(Status.SERVER_ERROR_INTERNAL);
-//            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store."));
-//        }
-
         log.debug(st.getShortStopMsg());
     }
 
@@ -190,21 +173,22 @@ public class MetadataCollection extends AgaveResource {
                 search.setOffset(offset);
 
                 Document docUserQuery;
-                try{
+                try {
                     JsonHandler jsonHandler = new JsonHandler();
-                    docUserQuery= jsonHandler.parseUserQueryToDocument(userQuery);
-                } catch (MetadataQueryException e ) {
+                    docUserQuery = jsonHandler.parseUserQueryToDocument(userQuery);
+                } catch (MetadataQueryException e) {
                     throw new MetadataQueryException(e.getMessage());
-
                 }
 
                 if (hasJsonPathFilters()) {
                     try {
-                    List<Document> userResults = search.filterFind(docUserQuery, jsonPathFilters);
 
-                    for (Document metadataDoc : userResults) {
-                        str_permittedResults.add(metadataDoc.toJson());
-                    }} catch (Exception e) {
+                        List<Document> userResults = search.filterFind(docUserQuery, jsonPathFilters);
+
+                        for (Document metadataDoc : userResults) {
+                            str_permittedResults.add(metadataDoc.toJson());
+                        }
+                    } catch (Exception e) {
                         throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                                 "Unable to find matching items based on filters: ", e);
                     }
@@ -212,18 +196,15 @@ public class MetadataCollection extends AgaveResource {
                 } else {
                     List<MetadataItem> userResults = new ArrayList<>();
                     try {
-
                         userResults = search.find(docUserQuery);
-
                     } catch (Exception e) {
                         throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                                "Unable to find matching items " , e);
+                                "Unable to find matching items ", e);
                     }
 
                     try {
                         for (MetadataItem metadataItem : userResults) {
                             MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
-//                            agg_permittedResults.add(metadataItemSerializer.formatMetadataItemResult());
                             str_permittedResults.add(metadataItemSerializer.formatMetadataItemResult().toString());
                         }
                     } catch (Exception e) {
@@ -231,18 +212,11 @@ public class MetadataCollection extends AgaveResource {
                                 "Unable to serialize response", e);
 
                     }
-//                        str_permittedResults = agg_permittedResults.toString();
                 }
-//                        return new IplantSuccessRepresentation(str_permittedResults.toString());
-
-//                    } else {
-//                        throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN, "User does not have permission to view resource.");
-//                    }
             } catch (MetadataQueryException e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Malformed JSON Query, " + e);
             }
 
-//            return new IplantSuccessRepresentation(agg_permittedResults.toString());
             return new IplantSuccessRepresentation(str_permittedResults.toString());
 
 
@@ -278,17 +252,20 @@ public class MetadataCollection extends AgaveResource {
             else
                 search.setAccessibleOwnersExplicit();
 
-//            if (search.getCollection() == null) {
-//                throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-//                        "Unable to connect to metadata store. " +
-//                                "If this problem persists, please contact the system administrators.");
-//            }
             MetadataItem metadataItem;
+            JsonHandler jsonHandler;
+
             try {
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
-                JsonHandler jsonHandler = new JsonHandler();
+                jsonHandler = new JsonHandler();
                 jsonHandler.parseJsonMetadata(jsonMetadata);
                 metadataItem = jsonHandler.getMetadataItem();
+
+                //process permissions
+                MetadataRequestPermissionProcessor permissionProcessor = new MetadataRequestPermissionProcessor(metadataItem);
+                permissionProcessor.process(jsonHandler.getPermissions());
+                metadataItem = permissionProcessor.getMetadataItem();
+
             } catch (ResourceException e) {
                 throw e;
             } catch (Exception e) {
@@ -299,9 +276,8 @@ public class MetadataCollection extends AgaveResource {
 
             try {
                 metadataItem.setInternalUsername(internalUsername);
-                search.setMetadataItem(metadataItem);
-                search.setOwner(this.username);
-                addedMetadataItem = search.insertCurrentMetadataItem();
+                metadataItem.setOwner(this.username);
+                addedMetadataItem = search.insertMetadataItem(metadataItem);
             } catch (Exception e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
                         "Unable to add metadata. " + e.getMessage());
@@ -311,7 +287,7 @@ public class MetadataCollection extends AgaveResource {
             MetadataRequestNotificationProcessor notificationProcessor = new MetadataRequestNotificationProcessor(
                     username,
                     addedMetadataItem.getUuid());
-            notificationProcessor.process(search.getNotifications());
+            notificationProcessor.process(jsonHandler.getNotifications());
 
             MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(addedMetadataItem);
             strMetadataItem = metadataItemSerializer.formatMetadataItemResult().toString();

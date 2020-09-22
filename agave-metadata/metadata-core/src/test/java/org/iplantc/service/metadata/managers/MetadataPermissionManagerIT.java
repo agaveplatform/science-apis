@@ -67,8 +67,8 @@ public class MetadataPermissionManagerIT implements AbstractUUIDTest<MetadataIte
 //            addedItem = MetadataDao.getInstance().insert(toAdd);
 
             MetadataSearch search = new MetadataSearch(TEST_USER);
-            search.setMetadataItem(toAdd);
-            addedItem = search.insertCurrentMetadataItem();
+//            search.setMetadataItem(toAdd);
+            addedItem = search.insertMetadataItem(toAdd);
 
 //            MetadataDao inst = mock(MetadataDao.class);
 //            when(inst.insert(toAdd)).thenReturn(toAdd);

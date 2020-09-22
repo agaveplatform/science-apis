@@ -328,7 +328,7 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
     @DataProvider(name = "initOffsetAndLimitDataProvider")
     public Object[][] initOffsetAndLimitDataProvider() {
         return new Object[][]{
-                {0, Settings.DEFAULT_PAGE_SIZE, 5, "Offset of 0 and limit of DEFAULT_PAGE_SIZE should return all matching items."},
+                {0, Settings.DEFAULT_PAGE_SIZE, 5, "Offset of 0 and limit of DEFAULT_PAGE_SIZE should return all matching items."}, //default offset and limit
                 {2, 3, 3, "Result should have an offset of 2 with a limit of 3 matching items."},
                 {10, 0, 0, "Nothing should be returned if offset is more than matched items."},
                 {0, 10, 5, "All matched items should be returned if limit is more than matched items."},
@@ -394,7 +394,40 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
         assertNull(invalidPermission, "Null should be returned if no permissions found for user for given uuid.");
     }
 
+//    @Override
+//    public void findMetadataItemWithFiltersTest() {
+//        MetadataDao dao = MetadataDao.getInstance();
+//
+//        MetadataItem metadataItem = insertEntity();
+//
+//        Document docFilter = new Document("uuid", 1)
+//                .append("name", 1)
+//                .append("value", 1)
+//                .append("invalidField", 1);
+//
+//        List<Document> foundItems = dao.filterFind(new Document("uuid", metadataItem.getUuid()), docFilter);
+//
+//        for (Document foundDoc : foundItems) {
+//            assertEquals(foundDoc.get("uuid"), metadataItem.getUuid(), "Document found should include the filtered field 'uuid' and match with the added MetadataItem.");
+//            assertEquals(foundDoc.get("name"), metadataItem.getName(), "Document found should include the filtered field 'name' and match with the added MetadataItem.");
+//            assertEquals(foundDoc.getEmbedded(List.of("value", "testKey"), String.class), metadataItem.getValue().get("testKey").asText(), "Document found should include the filtered field 'value' and match with the added MetadataItem.");
+//            assertNull(foundDoc.get("permissions"), "Items not included in the filter should return null.");
+//            assertNull(foundDoc.get("associationId"), "Item not included in the filter should return null.");
+//            assertNull(foundDoc.get("invalidField"), "Invalid/missing fields should not be included in the result.");
+//        }
+//    }
+
+    @DataProvider(name = "initFiltersDataProvider")
+    public Object[][] initFiltersDataProvider() {
+        return new Object[][]{
+                {new Document("uuid", 1).append("name", 1).append("value.testKey", 1)},
+                {new Document()},
+                {new Document("invalidField", 1)}
+        };
+    }
+
     @Override
+    @Test
     public void findMetadataItemWithFiltersTest() {
         MetadataDao dao = MetadataDao.getInstance();
 
@@ -405,7 +438,10 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
                 .append("value", 1)
                 .append("invalidField", 1);
 
-        List<Document> foundItems = dao.filterFind(new Document("uuid", metadataItem.getUuid()), docFilter);
+        List<Document> foundItems = dao.filterFind(new Document("name", MetadataPermissionManagerIT.class.getName()), docFilter);
+
+        assertEquals(foundItems.size(), 1, "Added item should be found.");
+        assertEquals(foundItems.get(0).size(), docFilter.size(), "Number of fields in found item should match the number of filters.");
 
         for (Document foundDoc : foundItems) {
             assertEquals(foundDoc.get("uuid"), metadataItem.getUuid(), "Document found should include the filtered field 'uuid' and match with the added MetadataItem.");
@@ -415,30 +451,46 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
             assertNull(foundDoc.get("associationId"), "Item not included in the filter should return null.");
             assertNull(foundDoc.get("invalidField"), "Invalid/missing fields should not be included in the result.");
         }
+    }
 
+    @DataProvider(name="initUsersForReadPermissionCheckDataProvider")
+    public Object[][] initUsersForReadPermissionCheckDataProvider(){
+        return new Object[][]{
+                {TEST_USER, true, "Owner should be able to read Metadata Item."},
+                {TEST_SHARED_USER, true, "User with READ permission should be able to read Metadata Item."},
+                {TEST_SHARED_USER2, false, "User without permission set should not be able to read Metadata Item."},
+        };
     }
 
     @Override
-    public void checkHasReadQueryTest() throws MetadataStoreException, MetadataException {
+    @Test(dataProvider = "initUsersForReadPermissionCheckDataProvider")
+    public void checkHasReadQueryTest(String user, boolean bolHasRead, String message) throws MetadataStoreException, MetadataException {
         MetadataItem toAdd = createEntity();
-        MetadataDao dao = new MetadataDao().getInstance();
+        MetadataDao dao = new MetadataDao();
         MetadataItem addedItem = dao.insert(toAdd);
-        assertTrue(dao.hasRead(TEST_SHARED_USER, addedItem.getUuid()), "User with READ permission should be able to read Metadata Item.");
-        assertTrue(dao.hasRead(TEST_USER, addedItem.getUuid()), "Owner should be able to read Metadata Item.");
-        assertFalse(dao.hasRead(TEST_SHARED_USER2, addedItem.getUuid()), "User without permission set should not be able to read Metadata Item.");
+        assertEquals(dao.hasRead(user, addedItem.getUuid()), bolHasRead, message);
+
+    }
+
+    @DataProvider(name="initUsersForWritePermissionCheckDataProvider")
+    public Object[][] initUsersForWritePermissionCheckDataProvider(){
+        return new Object[][]{
+                {TEST_USER, true, "Owner should be able to write to Metadata Item."},
+                {TEST_SHARED_USER, false, "User with READ permission should not be able to  write to  Metadata Item."},
+                {TEST_SHARED_USER2, true, "User with READ_WRITE permission should be able to  write to  Metadata Item."},
+                {"INVALID_USER", false, "User without permission set should not be able to read Metadata Item."},
+        };
     }
 
     @Override
-    public void checkHasWriteQueryTest() throws MetadataStoreException, MetadataException {
+    @Test(dataProvider = "initUsersForWritePermissionCheckDataProvider")
+    public void checkHasWriteQueryTest(String user, boolean bolHasWrite, String message) throws MetadataStoreException, MetadataException {
         MetadataItem toAdd = createEntity();
         toAdd.getPermissions().add(new MetadataPermission(TEST_SHARED_USER2, PermissionType.READ_WRITE));
 
-        MetadataDao dao = new MetadataDao().getInstance();
+        MetadataDao dao = new MetadataDao();
         MetadataItem addedItem = dao.insert(toAdd);
-        assertTrue(dao.hasWrite(TEST_SHARED_USER2, addedItem.getUuid()), "User with READ_WRITE permission should be able to  write to  Metadata Item.");
-        assertTrue(dao.hasWrite(TEST_USER, addedItem.getUuid()), "Owner should be able to write to Metadata Item.");
-        assertFalse(dao.hasWrite(TEST_SHARED_USER, addedItem.getUuid()), "User with READ permission should not be able to  write to  Metadata Item.");
-        assertFalse(dao.hasWrite("INVALID_USER", addedItem.getUuid()), "User without permission set should not be able to write to Metadata Item.");
+        assertEquals(dao.hasWrite(user, addedItem.getUuid()), bolHasWrite, message);
     }
 
 }

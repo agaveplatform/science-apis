@@ -41,7 +41,7 @@ public interface IMetadataDaoIT {
 
     void findMetadataItemWithFiltersTest();
 
-    void checkHasReadQueryTest() throws MetadataStoreException, MetadataException;
+    void checkHasReadQueryTest(String user, boolean bolHasRead, String message) throws MetadataStoreException, MetadataException;
 
-    void checkHasWriteQueryTest() throws MetadataStoreException, MetadataException;
+    void checkHasWriteQueryTest(String user, boolean bolHasWrite, String message) throws MetadataStoreException, MetadataException;
 }

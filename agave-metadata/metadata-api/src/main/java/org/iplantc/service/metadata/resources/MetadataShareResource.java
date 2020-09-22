@@ -4,9 +4,11 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.AgaveResource;
+import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataPermission;
@@ -25,6 +27,7 @@ import org.restlet.resource.Variant;
 
 import java.util.List;
 
+import static com.mongodb.client.model.Filters.*;
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
 
@@ -65,12 +68,11 @@ public class MetadataShareResource extends AgaveResource {
      * @return metadata item with the uuid from the path
      * @throws ResourceException if no matching uuid found
      */
-    public MetadataItem getRequestedMetadataItem() throws ResourceException{
+    public MetadataItem getRequestedMetadataItem() throws ResourceException, MetadataException {
         MetadataSearch search = new MetadataSearch(this.username);
-        search.setUuid(uuid);
         search.setAccessibleOwnersExplicit();
 
-        MetadataItem metadataItem = search.findOne();
+        MetadataItem metadataItem = search.findById(uuid, TenancyHelper.getCurrentTenantId());
         // clear all permissions
         if (metadataItem == null) {
             throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,

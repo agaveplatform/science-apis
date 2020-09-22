@@ -16,6 +16,7 @@ import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
@@ -27,13 +28,17 @@ import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+import static org.testng.Assert.*;
 
 @Test(groups = {"integration"})
 public class MetadataDataProcessingIT {
@@ -92,192 +97,239 @@ public class MetadataDataProcessingIT {
     }
 
 
+    @DataProvider(name = "initMetadataItemDataProvider")
+    public Object[][] initMetadataItemDataProvider() {
+        return new Object[][]{
+                {this.username, "{\"name\":\"mustard plant\"}", true, "Owner should have READ permission for the MetadataItem."},
+                {this.readUser, "{\"name\":\"mustard plant\"}", true, "User with READ permission should find the MetadataItem."},
+                {this.readWriteUser, "{\"name\":\"mustard plant\"}", true, "User with READ_WRITE permission should find the MetadataItem."},
+                {this.noneUser, "{\"name\":\"mustard plant\"}", false, "User without any permissions should not find the MetadataItem."}
+        };
+    }
+
+    @DataProvider(name = "initUpdateMetadataItemDataProvider")
+    public Object[][] initUpdateMetadataItemDataProvider() {
+        return new Object[][]{
+                {this.username, "{\"name\":\"mustard plant\"}",
+                        true, "Owner should have READ_WRITE permission for the MetadataItem."},
+                {this.readUser, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\"}}",
+                        false, "User with READ permission should not be able to change the MetadataItem."},
+                {this.readWriteUser, "{\"name\":\"mustard plant\"}",
+                        true, "User with READ_WRITE permission should be able to change the MetadataItem."},
+                {this.noneUser, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\"}}",
+                        false, "User without any permissions should not be able to change the MetadataItem."}
+        };
+    }
+
+    @DataProvider(name = "initMultipleMetadataItemDataProvider")
+    public Object[][] initMultipleMetadataItemDataProvider()  {
+        return new Object[][]{
+                {this.username, 2},
+                {this.readUser, 1},
+                {this.readWriteUser, 1},
+                {this.noneUser, 0}
+        };
+    }
+
     //find metadata item - with read permission
-    @Test
-    public void findMetadataItemReadPermissionTest() throws PermissionException, MetadataQueryException, MetadataException, MetadataStoreException {
-        MetadataSearch search = new MetadataSearch(this.readUser);
-        search.setUuid(addedMetadataItem.getUuid());
+    @Test(dataProvider = "initMetadataItemDataProvider")
+    public void findSingleMetadataItemTest(String user, String jsonQuery, boolean bolCanRead, String message) throws MetadataException, MetadataStoreException, MetadataQueryException {
         JsonHandler jsonHandler = new JsonHandler();
-        Document docQuery = jsonHandler.parseUserQueryToDocument("{\"name\":\"mustard plant\"}");
+        Document docQuery = jsonHandler.parseUserQueryToDocument(jsonQuery);
+        MetadataSearch search = new MetadataSearch(user);
+        search.setAccessibleOwnersImplicit();
         List<MetadataItem> result = search.find(docQuery);
 
+
         for (MetadataItem metadataItem : result) {
-            Assert.assertEquals(metadataItem, addedMetadataItem);
+            Assert.assertEquals(metadataItem, addedMetadataItem, "Found MetadataItem should match the added MetadataItem.");
             MetadataPermissionManager pemManager = new MetadataPermissionManager(metadataItem, metadataItem.getOwner());
-            Assert.assertTrue(pemManager.canRead(readUser));
+
+            assertEquals(pemManager.canRead(user), bolCanRead, message);
         }
     }
 
-    //find metadata item - with read/write permission
-    @Test
-    public void findMetadataItemReadWritePermissionTest() throws PermissionException, MetadataQueryException, MetadataException, MetadataStoreException {
-        MetadataSearch search = new MetadataSearch(this.readWriteUser);
-        search.setUuid(addedMetadataItem.getUuid());
+    @Test(dataProvider = "initMetadataItemDataProvider")
+    public void filterFindSingleMetadataItemTest(String user, String jsonQuery, boolean bolCanRead, String message) throws MetadataQueryException, MetadataException {
         JsonHandler jsonHandler = new JsonHandler();
-        Document docQuery = jsonHandler.parseUserQueryToDocument("{\"name\":\"mustard plant\"}");
-        List<MetadataItem> result = search.find(docQuery);
+        Document docQuery = jsonHandler.parseUserQueryToDocument(jsonQuery);
+        MetadataSearch search = new MetadataSearch(user);
+        search.setAccessibleOwnersImplicit();
+        String[] filters = new String[]{"uuid", "name", "schemaId"};
 
-        for (MetadataItem metadataItem : result) {
-            Assert.assertEquals(metadataItem, addedMetadataItem);
-            MetadataPermissionManager pemManager = new MetadataPermissionManager(metadataItem, metadataItem.getOwner());
-            Assert.assertTrue(pemManager.canRead(readWriteUser));
-            Assert.assertTrue(pemManager.canWrite(readWriteUser));
+        Document result = search.filterFindById(addedMetadataItem.getUuid(), addedMetadataItem.getTenantId(), filters);
+
+        if (result == null) {
+            if (bolCanRead)
+                fail(message);
+        } else {
+            if (!bolCanRead)
+                fail(message);
+            else {
+                assertEquals(result.size(), filters.length, "Size of document should match number of filters.");
+                assertEquals(result.getString("uuid"), addedMetadataItem.getUuid(), "Found document should have matching uuid as added MetadataItem");
+                assertEquals(result.getString("name"), addedMetadataItem.getName(), "Found document should have matching name as added MetadataItem");
+                assertEquals(result.getString("schemaId"), addedMetadataItem.getSchemaId(), "Found document should have matching schemaId as added MetadataItem");
+                assertNull(result.get("value"), "Field not specified in the filters should not be in the found document.");
+            }
         }
     }
 
-    //find metadata item - with no permissions
-    @Test
-    public void findMetadataItemNoPermissionTest() throws PermissionException, MetadataQueryException, MetadataException, MetadataStoreException {
-        MetadataSearch search = new MetadataSearch(this.noneUser);
-        search.setUuid(addedMetadataItem.getUuid());
+    @Test(dataProvider = "initMultipleMetadataItemDataProvider")
+    public void findMetadataItemTest(String user, int foundSize) throws MetadataQueryException, MetadataStoreException, MetadataException {
+        //create multiple MetadataItem
+        List<MetadataItem> addedItems = new ArrayList<>();
+        addedItems.add(addedMetadataItem);
+
+        MetadataItem toAdd = setupMetadataItem();
+        toAdd.removePermission(toAdd.getPermissionForUsername(this.readUser));
+        toAdd.removePermission(toAdd.getPermissionForUsername(this.readWriteUser));
+        MetadataDao.getInstance().insert(toAdd);
+        addedItems.add(toAdd);
+
+
+        MetadataSearch search = new MetadataSearch(user);
+        search.setAccessibleOwnersImplicit();
 
         JsonHandler jsonHandler = new JsonHandler();
-        Document docQuery = jsonHandler.parseUserQueryToDocument("{\"name\":\"mustard plant\"}");
-        List<MetadataItem> result = search.find(docQuery);
-        Assert.assertEquals(result.size(), 0);
+        Document docUserQuery = jsonHandler.parseUserQueryToDocument("{\"name\":\"mustard plant\"}");
+        List<MetadataItem> foundItems = search.find(docUserQuery);
 
-        MetadataPermissionManager pemManager = new MetadataPermissionManager(addedMetadataItem, this.noneUser);
-        Assert.assertFalse(pemManager.canRead(noneUser));
+        assertEquals(foundItems.size(), foundSize, "Results found should only include items that user has READ permissions for.");
+
+        if (foundSize > 0) {
+            for (MetadataItem foundItem : foundItems) {
+
+                boolean found = false;
+                for (MetadataItem addedItem : addedItems) {
+                    if (foundItem.getUuid().equals(addedItem.getUuid())) {
+                        found = true;
+                        assertEquals(foundItem, addedItem, "Found MetadataItem should match the added MetadataItem.");
+                        break;
+                    }
+                }
+                if (!found)
+                    fail("All items found should be in the added Metadata Items.");
+            }
+        }
+    }
+
+    @Test(dataProvider = "initMultipleMetadataItemDataProvider")
+    public void filterFindMetadataItemTest(String user, int foundSize) throws MetadataException, MetadataStoreException, MetadataQueryException {
+        //create multiple MetadataItem
+        List<MetadataItem> addedItems = new ArrayList<>();
+        addedItems.add(addedMetadataItem);
+
+        MetadataItem toAdd = setupMetadataItem();
+        toAdd.removePermission(toAdd.getPermissionForUsername(this.readUser));
+        toAdd.removePermission(toAdd.getPermissionForUsername(this.readWriteUser));
+        MetadataDao.getInstance().insert(toAdd);
+        addedItems.add(toAdd);
+
+
+        MetadataSearch search = new MetadataSearch(user);
+        search.setAccessibleOwnersImplicit();
+
+        JsonHandler jsonHandler = new JsonHandler();
+        Document docUserQuery = jsonHandler.parseUserQueryToDocument("{\"name\":\"mustard plant\"}");
+
+        String[] filters = new String[]{"uuid", "name"};
+
+        List<Document> foundItems = search.filterFind(docUserQuery, filters);
+
+        assertEquals(foundItems.size(), foundSize, "Results found should only include items that user has READ permissions for.");
+
+        if (foundSize > 0) {
+            for (Document foundItem : foundItems) {
+                boolean found = false;
+
+                assertEquals(foundItem.size(), filters.length, "Result should only contain the fields specified in filters.");
+
+                for (MetadataItem addedItem : addedItems) {
+                    if (foundItem.getString("uuid").equals(addedItem.getUuid())) {
+                        found = true;
+                        assertEquals(foundItem.get("name"), addedItem.getName(), "Found Document name should match the added MetadataItem.");
+                        break;
+                    }
+                }
+                if (!found)
+                    fail("All items found should be in the added Metadata Items.");
+            }
+        }
     }
 
     //update metadata item - with read permission
-    @Test(expectedExceptions = PermissionException.class)
-    public void updateMetadataItemReadPermissionTest() throws PermissionException, MetadataQueryException, MetadataException {
-        MetadataSearch ownerSearch = new MetadataSearch(this.username);
-        ownerSearch.setUuid(addedMetadataItem.getUuid());
-        MetadataItem metadataItem = ownerSearch.findOne();
-        Assert.assertNotNull(metadataItem);
-
-        MetadataSearch search = new MetadataSearch(this.readUser);
-        search.setAccessibleOwnersImplicit();
-        metadataItem.setName("New Name");
-        search.setMetadataItem(metadataItem);
-
-        MetadataPermissionManager pemManager = new MetadataPermissionManager(addedMetadataItem, this.readUser);
-        Assert.assertFalse(pemManager.canWrite(readUser));
-
-        search.updateCurrentMetadataItem();
-    }
-
-    //update metadata item - with read/write permission
-    @Test
-    public void updateMetadataItemReadWritePermissionTest() throws PermissionException, MetadataQueryException, MetadataException, MetadataStoreException {
-        MetadataSearch ownerSearch = new MetadataSearch(this.username);
-        ownerSearch.setUuid(addedMetadataItem.getUuid());
-        MetadataItem metadataItem = ownerSearch.findOne();
-        Assert.assertNotNull(metadataItem);
-
-        MetadataSearch search = new MetadataSearch(this.readWriteUser);
-        search.setAccessibleOwnersImplicit();
-
-        metadataItem.setName("New Name");
-        search.setMetadataItem(metadataItem);
-
-        MetadataPermissionManager pemManager = new MetadataPermissionManager(addedMetadataItem, this.readWriteUser);
-        Assert.assertTrue(pemManager.canWrite(readWriteUser));
-
-        Assert.assertNotNull(search.updateCurrentMetadataItem());
-
+    @Test(dataProvider = "initUpdateMetadataItemDataProvider")
+    public void updateMetadataItemTest(String user, String jsonQuery, boolean bolCanWrite, String message) throws MetadataException, IOException, MetadataQueryException {
+        //parse fields to update
         JsonHandler jsonHandler = new JsonHandler();
-        Document docQuery = jsonHandler.parseUserQueryToDocument("{\"name\":\"mustard plant\"}");
-        List<MetadataItem> originalResult = search.find(docQuery);
-        Assert.assertEquals(originalResult.size(), 0);
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode node = mapper.getFactory().createParser(jsonQuery).readValueAsTree();
 
-        Document updatedQuery = jsonHandler.parseUserQueryToDocument("{\"name\":\"New Name\"}");
-        List<MetadataItem> updatedResult = search.find(updatedQuery);
-        Assert.assertEquals(updatedResult.size(), 1);
+        //return as document
+        Document toUpdate = jsonHandler.parseJsonMetadataToDocument(node);
 
-
-//        List<MetadataItem> originalResult = search.find("{\"name\":\"mustard plant\"}");
-//        Assert.assertEquals(originalResult.size(), 0);
-//        List<MetadataItem> updatedResult = search.find("{\"name\":\"New Name\"}");
-//        Assert.assertEquals(updatedResult.size(), 1);
-    }
-
-    //update metadata item - with no permissions
-    @Test(expectedExceptions = PermissionException.class)
-    public void updateMetadataItemNoPermissionTest() throws PermissionException, MetadataQueryException, MetadataException {
-        MetadataSearch ownerSearch = new MetadataSearch(this.username);
-        ownerSearch.setUuid(addedMetadataItem.getUuid());
-        MetadataItem metadataItem = ownerSearch.findOne();
-        Assert.assertNotNull(metadataItem);
-
-        MetadataSearch search = new MetadataSearch(this.noneUser);
-        metadataItem.setName("New Name");
-        search.setMetadataItem(metadataItem);
+        //set up for updating
+        MetadataSearch search = new MetadataSearch(user);
         search.setAccessibleOwnersImplicit();
 
-        MetadataPermissionManager pemManager = new MetadataPermissionManager(addedMetadataItem, this.noneUser);
-        Assert.assertFalse(pemManager.canWrite(noneUser));
+        //check for permission
+        MetadataPermissionManager pemManager = new MetadataPermissionManager(addedMetadataItem.getUuid(), addedMetadataItem.getOwner());
 
-        search.updateCurrentMetadataItem();
+        if (pemManager.canWrite(user)) {
+            assertTrue(bolCanWrite, message);
+
+            //update
+            Document updatedDoc = search.updateMetadataItem(toUpdate, addedMetadataItem.getUuid());
+
+            for (String field : toUpdate.keySet()) {
+                assertEquals(updatedDoc.get(field), toUpdate.get(field), "Updated document fields should match the document used for updating.");
+            }
+
+            MetadataItem updatedItem = search.findById(addedMetadataItem.getUuid(), addedMetadataItem.getTenantId());
+
+            assertEquals(updatedItem.getOwner(), addedMetadataItem.getOwner(), "Owner should not be changed.");
+            assertEquals(updatedItem.getTenantId(), addedMetadataItem.getTenantId(), "TenantId should not be changed.");
+            assertEquals(updatedItem.getName(), toUpdate.getString("name"), "MetadataItem name should be match the document used for updating.");
+
+            for (String key : toUpdate.keySet())
+                assertEquals(updatedItem.getValue().get(key), toUpdate.getEmbedded(List.of("value", key), String.class), "MetadataItem value should be match the document used for updating.");
+
+            assertEquals(updatedItem.getSchemaId(), addedMetadataItem.getSchemaId(), "SchemaId should not be changed because it was not included in the update query.");
+            assertEquals(updatedItem.getPermissions(), addedMetadataItem.getPermissions(), "SchemaId should not be changed because it was not included in the update query.");
+
+            assertEquals(updatedItem.getAssociations().getAssociatedIds(), addedMetadataItem.getAssociations().getAssociatedIds(), "AssociationIds should not be changed because it was not included in the update query.");
+            assertEquals(updatedItem.getNotifications(), addedMetadataItem.getNotifications(), "Notifications should not be changed because it was not included in the update query.");
+        } else {
+            assertFalse(bolCanWrite, message);
+        }
+
     }
 
-    //delete metadata item - with no permissions
-    @Test(expectedExceptions = PermissionException.class)
-    public void DeleteMetadataItemNoPermissionTest() throws PermissionException, MetadataQueryException, MetadataException {
-        MetadataSearch ownerSearch = new MetadataSearch(this.username);
-        ownerSearch.setUuid(addedMetadataItem.getUuid());
-        MetadataItem metadataItem = ownerSearch.findOne();
+    @Test(dataProvider = "initUpdateMetadataItemDataProvider")
+    public void deleteMetadataItemTest(String user, String jsonQuery, boolean bolCanWrite, String message) throws MetadataException {
+        MetadataSearch ownerSearch = new MetadataSearch(user);
+        MetadataItem metadataItem = ownerSearch.findById(addedMetadataItem.getUuid(), addedMetadataItem.getTenantId());
         Assert.assertNotNull(metadataItem);
 
-        MetadataSearch search = new MetadataSearch(this.noneUser);
-        search.setMetadataItem(metadataItem);
+        MetadataSearch search = new MetadataSearch(user);
         search.setAccessibleOwnersImplicit();
 
-        MetadataPermissionManager pemManager = new MetadataPermissionManager(addedMetadataItem, this.username);
-        Assert.assertFalse(pemManager.canWrite(noneUser));
+        MetadataPermissionManager pemManager = new MetadataPermissionManager(addedMetadataItem.getUuid(), addedMetadataItem.getOwner());
 
-        search.deleteCurrentMetadataItem();
+        if (pemManager.canWrite(user)) {
+            assertTrue(bolCanWrite, message);
+            MetadataItem deletedItem = search.deleteMetadataItem(addedMetadataItem.getUuid(), addedMetadataItem.getTenantId());
 
-    }
+            assertEquals(deletedItem, addedMetadataItem, "Deleted item should match the original MetadataItem.");
 
-    //delete metadata item - with read permission
-    @Test
-    public void DeleteMetadataItemReadPermissionTest() throws MetadataException, PermissionException {
-//        //verify that metadata item exists before trying to delete
-//        MetadataSearch ownerSearch = new MetadataSearch(this.username);
-//        MetadataItem metadataItem = ownerSearch.findOne(addedMetadataItem.getUuid(), addedMetadataItem.getTenantId());
-//        Assert.assertNotNull(metadataItem);
-//
-//        //verify that user cannot write
-//        MetadataPermissionManager pemManager = new MetadataPermissionManager(metadataItem, metadataItem.getOwner());
-//        Assert.assertFalse(pemManager.canWrite(readUser));
-//
-//        //try to delete -- should fail
-//        MetadataSearch search = new MetadataSearch(this.readUser);
-//        search.setMetadataItem(metadataItem);
-//        Assert.assertThrows(PermissionException.class, ()->search.deleteCurrentMetadataItem());
-//
-//        //verify metadataitem was not updated
-//        search.setMetadataItem(metadataItem);
-//        MetadataItem afterDelete = search.findByUuidAndTenant(addedMetadataItem.getUuid(), addedMetadataItem.getTenantId());
-//        Assert.assertNotNull(afterDelete);
-    }
+            MetadataItem afterDelete = search.findById(addedMetadataItem.getUuid(), addedMetadataItem.getTenantId());
+            assertNull(afterDelete, "MetadataItem should not be found after delete.");
+        } else {
+            assertFalse(bolCanWrite, message);
+        }
 
-    //delete metadata item - with read/write permission
-    @Test
-    public void DeleteMetadataItemReadWritePermissionTest() throws PermissionException, MetadataQueryException, MetadataException, MetadataStoreException {
-        MetadataSearch ownerSearch = new MetadataSearch(this.username);
-        ownerSearch.setUuid(addedMetadataItem.getUuid());
-        MetadataItem metadataItem = ownerSearch.findOne();
-        Assert.assertNotNull(metadataItem);
 
-        MetadataSearch search = new MetadataSearch(this.readWriteUser);
-        search.setMetadataItem(metadataItem);
-        search.setAccessibleOwnersImplicit();
-
-        MetadataPermissionManager pemManager = new MetadataPermissionManager(addedMetadataItem, this.username);
-        Assert.assertTrue(pemManager.canWrite(readWriteUser));
-
-        Assert.assertNotNull(search.deleteCurrentMetadataItem());
-
-        JsonHandler jsonHandler = new JsonHandler();
-        Document docQuery = jsonHandler.parseUserQueryToDocument("{\"name\":\"New Name\"}");
-        List<MetadataItem> updatedResult = search.find(docQuery);
-
-//        List<MetadataItem> updatedResult = search.find("{\"name\":\"New Name\"}");
-        Assert.assertEquals(updatedResult.size(), 0);
     }
 
 }

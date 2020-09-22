@@ -1,7 +1,7 @@
 create-transfertasks-table: |
-  DROP TABLE IF EXISTS `transferapitasks`
+  DROP TABLE IF EXISTS `TransferApiTasks`
 
-  CREATE TABLE IF NOT EXISTS transferapitasks (
+  CREATE TABLE IF NOT EXISTS TransferApiTasks (
       `id` bigint(20) NOT NULL AUTO_INCREMENT,
       `attempts` int(11) DEFAULT NULL,
       `bytes_transferred` bigint(20) NOT NULL DEFAULT 0,
@@ -33,9 +33,9 @@ create-transfertasks-table: |
   ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
   
 get-transfertask: |
-  SELECT * FROM transferapitasks WHERE `uuid` = ? and `tenant_id` = ?
+  SELECT * FROM TransferApiTasks WHERE `uuid` = ? and `tenant_id` = ?
 create-transfertask: |
-  INSERT INTO transferapitasks (
+  INSERT INTO TransferApiTasks (
     `attempts`,
     `bytes_transferred`,
     `created`,
@@ -60,7 +60,7 @@ create-transfertask: |
   VALUES
     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 save-transfertask: |
-  UPDATE transferapitasks
+  UPDATE TransferApiTasks
   SET `attempts` = ?,
     `bytes_transferred` = ?,
     `end_time` = ?,
@@ -75,52 +75,52 @@ save-transfertask: |
     `last_updated` = NOW()
   WHERE `uuid` = ? AND `tenant_id` = ?
 all-transfertasks: |
-  SELECT * FROM transferapitasks WHERE tenant_id = ? LIMIT ? OFFSET ?
+  SELECT * FROM TransferApiTasks WHERE tenant_id = ? LIMIT ? OFFSET ?
 all-user-transfertasks: |
-  SELECT * FROM transferapitasks WHERE owner = ? AND `tenant_id` = ? LIMIT ? OFFSET ?
+  SELECT * FROM TransferApiTasks WHERE owner = ? AND `tenant_id` = ? LIMIT ? OFFSET ?
 delete-transfertask: |
-  DELETE FROM transferapitasks WHERE uuid = ? AND `tenant_id` = ?
+  DELETE FROM TransferApiTasks WHERE uuid = ? AND `tenant_id` = ?
 delete-all-transfertasks: |
-  DELETE FROM transferapitasks WHERE `tenant_id` = ?
+  DELETE FROM TransferApiTasks WHERE `tenant_id` = ?
 update-transfertask-status: |
-  UPDATE transferapitasks
+  UPDATE TransferApiTasks
   SET status = ?, last_updated = NOW()
   WHERE `uuid` = ? AND `tenant_id` = ?
 all-transfertask-children-cancelled-or-completed: |
   SELECT count(`id`) AS active_child_count
-  FROM transferapitasks
+  FROM TransferApiTasks
   WHERE `tenant_id` = ? AND `parent_task` = ? AND `status` NOT IN ('COMPLETED','CANCELLED','FAILED')
 all-active-root-transfertask-ids: |
   SELECT distinct `uuid`, `tenant_id`
-  FROM transferapitasks
+  FROM TransferApiTasks
   WHERE `root_task` is NULL AND `parent_task` is NULL AND `status` NOT IN ('COMPLETED','CANCELLED','FAILED')
 single-not-canceled-or-completed: |
   SELECT count(`id`) AS active_uuid
-  FROM transferapitasks
+  FROM TransferApiTasks
   WHERE `tenant_id` = ? AND `uuid` = ? AND `status` NOT IN ('COMPLETED','CANCELLED','FAILED')
 all-children-canceled-or-completed: |
   SELECT count(id)
-  FROM transferapitasks
+  FROM TransferApiTasks
   WHERE `tenant_id` = ? AND `parentTask` = ? AND status not in ('COMPLETED', 'CANCELLED','FAILED')
 set-transfertask-cancelled-where-not-completed: |
-  UPDATE transferapitasks
+  UPDATE TransferApiTasks
   SET status = CANCELLED, lastUpdated = NOW()
   WHERE `tenant_id` = ? AND `uuid` = ? AND status not in ('COMPLETED', 'CANCELLED','FAILED')
 get_transfertask_tree: |
   SELECT *
-  FROM transferapitasks
-  WHERE parent_task = (SELECT parent_task from transferapitasks where `uuid` = ? )
+  FROM TransferApiTasks
+  WHERE parent_task = (SELECT parent_task from TransferApiTasks where `uuid` = ? )
     AND status NOT IN ('COMPLETED', 'CANCELLED','FAILED')
     AND `tenant_id` = ?
   UNION
   SELECT *
-  FROM transferapitasks
+  FROM TransferApiTasks
   WHERE `uuid` = ?
   AND `root_task` IS NULL
   AND `tenant_id` = ?
 find_transfertask_by_root_task_id_src_dest: |
   SELECT *
-  FROM transferapitasks
+  FROM TransferApiTasks
   WHERE `root_task` = ?
     AND `source` = ?
     AND `dest` = ?

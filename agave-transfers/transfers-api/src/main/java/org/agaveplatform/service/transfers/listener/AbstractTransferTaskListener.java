@@ -231,13 +231,17 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @return false if the transfertask's uuid, parentTaskId, or rootTaskId are in the {@link #cancelledTasks} or {@link #pausedTasks} list
      */
     public boolean taskIsNotInterrupted(TransferTask transferTask) {
-        final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
-        if (cancelledTasks.stream().anyMatch(uuids::contains) || pausedTasks.stream().anyMatch(uuids::contains)) {
-            String msg = "Transfer was Canceled or Paused";
-            logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
-            JsonObject json = new JsonObject()
-                    .put("message", msg);
-            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+        try {
+            final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
+            if (cancelledTasks.stream().anyMatch(uuids::contains) || pausedTasks.stream().anyMatch(uuids::contains)) {
+                String msg = "Transfer was Canceled or Paused";
+                logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
+                JsonObject json = new JsonObject()
+                        .put("message", msg);
+                _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+                return false;
+            }
+        } catch (Exception e){
             return false;
         }
         return true;

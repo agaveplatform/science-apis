@@ -101,7 +101,7 @@ single-not-canceled-or-completed: |
 all-children-canceled-or-completed: |
   SELECT count(id)
   FROM TransferApiTasks
-  WHERE `tenant_id` = ? AND `parentTask` = ? AND status not in ('COMPLETED', 'CANCELLED','FAILED')
+  WHERE `tenant_id` = ? AND `parent_task` = ? AND status not in ('COMPLETED', 'CANCELLED','FAILED')
 set-transfertask-cancelled-where-not-completed: |
   UPDATE TransferApiTasks
   SET status = CANCELLED, lastUpdated = NOW()

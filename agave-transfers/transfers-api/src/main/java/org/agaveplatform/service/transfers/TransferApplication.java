@@ -5,6 +5,7 @@ import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
 import io.vertx.config.ConfigStoreOptions;
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.*;
 import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
@@ -54,11 +55,12 @@ public class TransferApplication {
                             log.info("TransferAPIVertical ({}) started on port {}", res.result(), config.getInteger("HTTP_PORT"));
 
                             DeploymentOptions localOptions = new DeploymentOptions()
-                                    .setWorkerPoolName("streaming-task-worker-pool")
-                                    .setWorkerPoolSize(poolSize)
-                                    .setInstances(instanceSize)
+//                                    .setWorkerPoolName("streaming-task-worker-pool")
+//                                    .setWorkerPoolSize(poolSize)
+//                                    .setInstances(instanceSize)
                                     .setConfig(config)
-                                    .setWorker(true);
+                                    .setWorker(true)
+                                    .setMaxWorkerExecuteTime(3600);
 
 
                             deployTTC(vertx, localOptions, resp -> {

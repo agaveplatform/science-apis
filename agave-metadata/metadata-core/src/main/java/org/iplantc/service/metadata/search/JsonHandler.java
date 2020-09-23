@@ -302,13 +302,14 @@ public class JsonHandler {
             String name = parseNameToString(jsonMetadata);
             if (name == null)
                 throw new MetadataQueryException(
-                        "Invalid notifications value. notifications should be an "
-                                + "JSON array of notification objects.");
+                        "No name attribute specified. " +
+                                "Please associate a value with the metadata name.");
 
             JsonNode value = parseValueToJsonNode(jsonMetadata);
             if (value == null)
                 throw new MetadataQueryException(
-                        "No value attribute specified. Please associate a value with the metadata value.");
+                        "No value attribute specified. " +
+                                "Please associate a value with the metadata value.");
 
             getMetadataItem().setName(name);
             getMetadataItem().setValue(value);

@@ -15,7 +15,6 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
@@ -48,10 +47,9 @@ public class MetadataDataProcessingIT {
     String noneUser = "NONE_USER";
     MetadataItem addedMetadataItem;
     MongoCollection collection;
+    ObjectMapper mapper = new ObjectMapper();
 
     public MetadataItem setupMetadataItem() throws MetadataException {
-        ObjectMapper mapper = new ObjectMapper();
-
         MetadataItem toAdd = new MetadataItem();
         toAdd.setOwner(username);
         toAdd.setInternalUsername(username);
@@ -110,11 +108,11 @@ public class MetadataDataProcessingIT {
     @DataProvider(name = "initUpdateMetadataItemDataProvider")
     public Object[][] initUpdateMetadataItemDataProvider() {
         return new Object[][]{
-                {this.username, "{\"name\":\"mustard plant\"}",
+                {this.username, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\"}}",
                         true, "Owner should have READ_WRITE permission for the MetadataItem."},
                 {this.readUser, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\"}}",
                         false, "User with READ permission should not be able to change the MetadataItem."},
-                {this.readWriteUser, "{\"name\":\"mustard plant\"}",
+                {this.readWriteUser, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\"}}",
                         true, "User with READ_WRITE permission should be able to change the MetadataItem."},
                 {this.noneUser, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\"}}",
                         false, "User without any permissions should not be able to change the MetadataItem."}
@@ -130,6 +128,47 @@ public class MetadataDataProcessingIT {
                 {this.noneUser, 0}
         };
     }
+
+    @DataProvider(name = "initJsonMetadataItemDataProvider")
+    public Object[][] initJsonMetadataItemDataProvider() throws MetadataException {
+        return new Object[][]{
+
+                {"{\"name\": \"sample name\", \"value\": {\"title\": \"sample title\", \"description\": { \"species\" : \"sample species\" }}}",
+                        false, "Valid Json request should not throw exception."},
+                {"{\"value\": {\"title\": \"sample title\", \"description\": { \"species\" : \"sample\" \"species\" }}}",
+                        true, "Json request missing the required name field should throw exception."},
+                {"{\"name\": \"sample name\", \"schemaId\": null, \"associationIds\":[]}",
+                        true,  "Json request missing the required name field should throw exception."}
+        };
+    }
+
+    @Test(dataProvider = "initJsonMetadataItemDataProvider")
+    public void createMetadataItemTest(String strJson, boolean bolThrowException, String message) {
+        JsonHandler handler = new JsonHandler();
+
+        try {
+            JsonNode jsonNode = mapper.getFactory().createParser(strJson).readValueAsTree();
+            handler.parseJsonMetadata(jsonNode);
+
+            if (bolThrowException)
+                fail(message);
+            MetadataItem toAdd = handler.getMetadataItem();
+            toAdd.setInternalUsername(this.username);
+            toAdd.setOwner(this.username);
+
+            MetadataSearch search = new MetadataSearch(this.username);
+            search.insertMetadataItem(toAdd);
+
+            MetadataItem foundItem = search.findById(toAdd.getUuid(), toAdd.getTenantId());
+            assertEquals(toAdd, foundItem, "Found item should match the added item.");
+
+        } catch (Exception e) {
+            if (!bolThrowException)
+                fail(message);
+
+        }
+    }
+
 
     //find metadata item - with read permission
     @Test(dataProvider = "initMetadataItemDataProvider")
@@ -258,7 +297,6 @@ public class MetadataDataProcessingIT {
         }
     }
 
-    //update metadata item - with read permission
     @Test(dataProvider = "initUpdateMetadataItemDataProvider")
     public void updateMetadataItemTest(String user, String jsonQuery, boolean bolCanWrite, String message) throws MetadataException, IOException, MetadataQueryException {
         //parse fields to update
@@ -295,7 +333,11 @@ public class MetadataDataProcessingIT {
             for (String key : toUpdate.keySet())
                 assertEquals(updatedItem.getValue().get(key), toUpdate.getEmbedded(List.of("value", key), String.class), "MetadataItem value should be match the document used for updating.");
 
-            assertEquals(updatedItem.getSchemaId(), addedMetadataItem.getSchemaId(), "SchemaId should not be changed because it was not included in the update query.");
+            if (updatedDoc.containsKey("schemaId"))
+                assertEquals(updatedItem.getSchemaId(), updatedDoc.getString("schemaId"), "SchemaId field should match the document used for updating.");
+            else
+                assertEquals(updatedItem.getSchemaId(), addedMetadataItem.getSchemaId(), "SchemaId should not be changed because it was not included in the update query.");
+
             assertEquals(updatedItem.getPermissions(), addedMetadataItem.getPermissions(), "SchemaId should not be changed because it was not included in the update query.");
 
             assertEquals(updatedItem.getAssociations().getAssociatedIds(), addedMetadataItem.getAssociations().getAssociatedIds(), "AssociationIds should not be changed because it was not included in the update query.");

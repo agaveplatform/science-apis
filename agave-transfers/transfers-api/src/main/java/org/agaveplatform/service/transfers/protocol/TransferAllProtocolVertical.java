@@ -162,48 +162,55 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 				// pull the dest system out of the url. system id is the hostname in an agave uri
 				if (false) destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
 
-				if (taskIsNotInterrupted(tt)) {
-					legacyTransferTask =
-							new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
+				// check to be sure if the root task and parent task are present
+				if (tt.getRootTaskId() != null && tt.getParentTaskId() != null) {
 
-					legacyTransferTask.setUuid(tt.getUuid());
-					legacyTransferTask.setTenantId(tt.getTenantId());
-					legacyTransferTask.setStatus(TransferStatusType.valueOf(tt.getStatus().name()));
-					legacyTransferTask.setAttempts(tt.getAttempts());
-					legacyTransferTask.setBytesTransferred(tt.getBytesTransferred());
-					legacyTransferTask.setTotalSize(tt.getTotalSize());
-					legacyTransferTask.setCreated(Date.from(tt.getCreated()));
-					legacyTransferTask.setLastUpdated(Date.from(tt.getLastUpdated()));
-					legacyTransferTask.setStartTime(Date.from(tt.getStartTime()));
-					legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));
-					if (tt.getParentTaskId() != null) {
-						org.iplantc.service.transfer.model.TransferTask legacyParentTask = new org.iplantc.service.transfer.model.TransferTask();
-						legacyParentTask.setUuid(tt.getParentTaskId());
-						legacyTransferTask.setParentTask(legacyParentTask);
-					}
-					if (tt.getRootTaskId() != null) {
-						org.iplantc.service.transfer.model.TransferTask legacyRootTask = new org.iplantc.service.transfer.model.TransferTask();
-						legacyRootTask.setUuid(tt.getRootTaskId());
-						legacyTransferTask.setRootTask(legacyRootTask);
-					}
 
-					log.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+					if (taskIsNotInterrupted(tt)) {
+						legacyTransferTask =
+								new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
 
-					result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
-
-					handler.handle(Future.succeededFuture(result));
-					log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
-				} else {
-					log.info("Transfer task {} was interrupted", tt.getUuid());
-					getDbService().updateStatus(tt.getTenantId(), tt.getUuid(),TransferStatusType.CANCELLED.name(), updateReply -> {
-						if (updateReply.succeeded()) {
-							_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
-							handler.handle(Future.succeededFuture(false));
-						} else {
-							handler.handle(Future.failedFuture(updateReply.cause()));
+						legacyTransferTask.setUuid(tt.getUuid());
+						legacyTransferTask.setTenantId(tt.getTenantId());
+						legacyTransferTask.setStatus(TransferStatusType.valueOf(tt.getStatus().name()));
+						legacyTransferTask.setAttempts(tt.getAttempts());
+						legacyTransferTask.setBytesTransferred(tt.getBytesTransferred());
+						legacyTransferTask.setTotalSize(tt.getTotalSize());
+						legacyTransferTask.setCreated(Date.from(tt.getCreated()));
+						legacyTransferTask.setLastUpdated(Date.from(tt.getLastUpdated()));
+						legacyTransferTask.setStartTime(Date.from(tt.getStartTime()));
+						legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));
+						if (tt.getParentTaskId() != null) {
+							org.iplantc.service.transfer.model.TransferTask legacyParentTask = new org.iplantc.service.transfer.model.TransferTask();
+							legacyParentTask.setUuid(tt.getParentTaskId());
+							legacyTransferTask.setParentTask(legacyParentTask);
 						}
-					});
+						if (tt.getRootTaskId() != null) {
+							org.iplantc.service.transfer.model.TransferTask legacyRootTask = new org.iplantc.service.transfer.model.TransferTask();
+							legacyRootTask.setUuid(tt.getRootTaskId());
+							legacyTransferTask.setRootTask(legacyRootTask);
+						}
 
+						log.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+
+						result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
+
+						handler.handle(Future.succeededFuture(result));
+						log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
+					} else {
+						log.info("Transfer task {} was interrupted", tt.getUuid());
+						getDbService().updateStatus(tt.getTenantId(), tt.getUuid(), TransferStatusType.CANCELLED.name(), updateReply -> {
+							if (updateReply.succeeded()) {
+								_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
+								handler.handle(Future.succeededFuture(false));
+							} else {
+								handler.handle(Future.failedFuture(updateReply.cause()));
+							}
+						});
+
+					}
+				} else {
+					log.info("rootTaskId or parentTaskId are null {}  {}", tt.getParentTaskId(), tt.getRootTaskId());
 				}
 			} else {
 				log.debug("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());

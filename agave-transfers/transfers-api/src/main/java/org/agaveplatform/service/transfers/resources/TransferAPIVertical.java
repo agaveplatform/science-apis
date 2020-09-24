@@ -115,6 +115,9 @@ public class TransferAPIVertical extends AbstractVerticle {
         // define the service routes
         router.get("/api/transfers").handler(this::getAll);
         router.get("/api/transfers/:uuid").handler(this::getOne);
+
+        router.delete("/api/transfers/deleteAll").handler(this::deleteAll);
+
         router.delete("/api/transfers/:uuid").handler(this::deleteOne);
 
         // Accept post of a TransferTask, validates the request, and inserts into the db.
@@ -301,6 +304,53 @@ public class TransferAPIVertical extends AbstractVerticle {
             }
         });
     }
+
+    /**
+     * Delete a {@link TransferTask} from the db.
+     *
+     * @param routingContext the current routing context for the request
+     */
+    private void deleteAll(RoutingContext routingContext) {
+        log.info("Got into deleteAll.");
+        Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
+        JsonObject principal = user.principal();
+        String tenantId = principal.getString("tenantId");
+        String username = principal.getString("username");
+        String uuid = routingContext.pathParam("uuid");
+
+        // lookup task to get the id
+        dbService.getById(tenantId, uuid, getByIdReply -> {
+            if (getByIdReply.succeeded()) {
+                if (getByIdReply.result() == null) {
+                    // not found
+                    routingContext.fail(404);
+                } else {
+                    // if the current user is the owner or has admin privileges, allow the action
+                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
+                            user.isAdminRoleExists()) {
+                        dbService.deleteAll(tenantId, deleteReply -> {
+                            if (deleteReply.succeeded()) {
+                                _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                                routingContext.response()
+                                        .putHeader("content-type", "application/json")
+                                        .setStatusCode(203).end();
+                            } else {
+                                // delete failed
+                                routingContext.fail(deleteReply.cause());
+                            }
+                        });
+                    } else {
+                        // permission denied if they don't have access
+                        routingContext.fail(403);
+                    }
+                }
+            } else {
+                // task lookup failed
+                routingContext.fail(getByIdReply.cause());
+            }
+        });
+    }
+
 
     /**
      * Fetches a single {@link TransferTask} from the db.

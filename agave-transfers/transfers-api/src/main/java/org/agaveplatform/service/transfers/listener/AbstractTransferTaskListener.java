@@ -242,6 +242,8 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
                 return false;
             }
         } catch (Exception e){
+            logger.error("taskIsNotInterrupted Error.  {}", e.toString());
+
             return false;
         }
         return true;

@@ -151,212 +151,217 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                 throw new RemoteDataSyntaxException(msg, e);
             }
 
-            // check for task interruption
-            if (taskIsNotInterrupted(assignedTransferTask)) {
+            // check to see if the parentTaskId or the rootTaskId are null.
+            // If either one of them are then skipp the processing
+            // otherwise process the task
+            if (assignedTransferTask.getRootTaskId() != null && assignedTransferTask.getParentTaskId() != null) {
+                // check for task interruption
+                if (taskIsNotInterrupted(assignedTransferTask)) {
 
-                // basic sanity check on uri again
-                // basic sanity check on uri again
-                if (uriSchemeIsNotSupported(srcUri)) {
-                    String msg = String.format("Failing transfer task %s due to invalid scheme in source URI, %s",
-                            assignedTransferTask.getUuid(), assignedTransferTask.getSource());
-                    throw new RemoteDataSyntaxException(msg);
-                } else if (uriSchemeIsNotSupported(destUri)) {
-                    String msg = String.format("Failing transfer task %s due to invalid scheme in destination URI, %s",
-                            assignedTransferTask.getUuid(), assignedTransferTask.getDest());
-                    throw new RemoteDataSyntaxException(msg);
-                } else {
-                    // get a remote data client for the source target
-                    srcClient = getRemoteDataClient(tenantId, username, srcUri);
-                    // get a remote data client for the dest target
-                    destClient = getRemoteDataClient(tenantId, username, destUri);
+                    // basic sanity check on uri again
+                    // basic sanity check on uri again
+                    if (uriSchemeIsNotSupported(srcUri)) {
+                        String msg = String.format("Failing transfer task %s due to invalid scheme in source URI, %s",
+                                assignedTransferTask.getUuid(), assignedTransferTask.getSource());
+                        throw new RemoteDataSyntaxException(msg);
+                    } else if (uriSchemeIsNotSupported(destUri)) {
+                        String msg = String.format("Failing transfer task %s due to invalid scheme in destination URI, %s",
+                                assignedTransferTask.getUuid(), assignedTransferTask.getDest());
+                        throw new RemoteDataSyntaxException(msg);
+                    } else {
+                        // get a remote data client for the source target
+                        srcClient = getRemoteDataClient(tenantId, username, srcUri);
+                        // get a remote data client for the dest target
+                        destClient = getRemoteDataClient(tenantId, username, destUri);
 
-                    // stat the remote path to check its type and existence
-                    RemoteFileInfo srcFileInfo = srcClient.getFileInfo(srcUri.getPath());
+                        // stat the remote path to check its type and existence
+                        RemoteFileInfo srcFileInfo = srcClient.getFileInfo(srcUri.getPath());
 
-                    // if the path is a file, then we can move it directly, so we raise an event telling the protocol
-                    // listener to move the file item
-                    if (srcFileInfo.isFile()) {
-                        // but first, we udpate the transfer task status to ASSIGNED
-                        getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
-                            if (updateResult.succeeded()) {
-                                log.debug("Assigning single file transfer task {} directly to the transfer queue.", uuid);
-                                // write to the catchall transfer event channel. Nothing to update in the transfer task
-                                // as the status will be updated when the transfer begins.
-                                _doPublishEvent(TRANSFER_ALL, updateResult.result());
-                                handler.handle(Future.succeededFuture(true));
-                            }
-                            // we couldn't update the transfer task value
-                            else {
-                                String message = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
-                                        uuid, updateResult.cause().getMessage());
-
-                                doHandleFailure(updateResult.cause(), message, body, handler);
-                            }
-                        });
-                    }
-                    // the path is a directory, so walk the first level of the directory, spawning new child transfer
-                    // tasks for every file item found. folders will be put back on the created queue for further
-                    // traversal in depth. files will be forwarded to the transfer channel for immediate processing
-                    else {
-                        // list the remote directory
-                        List<RemoteFileInfo> remoteFileInfoList = srcClient.ls(srcUri.getPath());
-
-                        // if the directory is empty, the listing will only contain the target path as the "." folder.
-                        // mark as complete and wrap it up.
-                        if (remoteFileInfoList.size() <= 1) {
+                        // if the path is a file, then we can move it directly, so we raise an event telling the protocol
+                        // listener to move the file item
+                        if (srcFileInfo.isFile()) {
                             // but first, we udpate the transfer task status to ASSIGNED
                             getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
                                 if (updateResult.succeeded()) {
-                                    log.debug("Assigning single file transfer task {} to the TRANSFER_COMPLETED queue as the remote source directory path is empty.", uuid);
-                                    // write to the completed event channel.
-                                    _doPublishEvent(TRANSFER_COMPLETED, updateResult.result());
+                                    log.debug("Assigning single file transfer task {} directly to the transfer queue.", uuid);
+                                    // write to the catchall transfer event channel. Nothing to update in the transfer task
+                                    // as the status will be updated when the transfer begins.
+                                    _doPublishEvent(TRANSFER_ALL, updateResult.result());
                                     handler.handle(Future.succeededFuture(true));
                                 }
                                 // we couldn't update the transfer task value
                                 else {
                                     String message = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
                                             uuid, updateResult.cause().getMessage());
-                                    // write to error queue. we can retry
-                                    doHandleError(updateResult.cause(), message, body, handler);
+
+                                    doHandleFailure(updateResult.cause(), message, body, handler);
                                 }
                             });
                         }
-                        // if there are contents, walk the first level, creating directories on the remote side
-                        // as we go to ensure that out of order processing by worker tasks can still succeed.
+                        // the path is a directory, so walk the first level of the directory, spawning new child transfer
+                        // tasks for every file item found. folders will be put back on the created queue for further
+                        // traversal in depth. files will be forwarded to the transfer channel for immediate processing
                         else {
-                            // create the remote directory to ensure it's present when the transfers begin. This
-                            // also allows us to check for things like permissions ahead of time and save the
-                            // traversal in the event it's not allowed.
-                            destClient.mkdirs(destUri.getPath());
+                            // list the remote directory
+                            List<RemoteFileInfo> remoteFileInfoList = srcClient.ls(srcUri.getPath());
 
-                            // if the created transfertask does not have a rootTask, it is the rootTask of all
-                            // the child tasks we create processing the directory listing
-                            final String rootTaskId = StringUtils.isEmpty(body.getString("rootTask")) ?
-                                    body.getString("uuid") : body.getString("rootTaskId");
+                            // if the directory is empty, the listing will only contain the target path as the "." folder.
+                            // mark as complete and wrap it up.
+                            if (remoteFileInfoList.size() <= 1) {
+                                // but first, we udpate the transfer task status to ASSIGNED
+                                getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
+                                    if (updateResult.succeeded()) {
+                                        log.debug("Assigning single file transfer task {} to the TRANSFER_COMPLETED queue as the remote source directory path is empty.", uuid);
+                                        // write to the completed event channel.
+                                        _doPublishEvent(TRANSFER_COMPLETED, updateResult.result());
+                                        handler.handle(Future.succeededFuture(true));
+                                    }
+                                    // we couldn't update the transfer task value
+                                    else {
+                                        String message = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
+                                                uuid, updateResult.cause().getMessage());
+                                        // write to error queue. we can retry
+                                        doHandleError(updateResult.cause(), message, body, handler);
+                                    }
+                                });
+                            }
+                            // if there are contents, walk the first level, creating directories on the remote side
+                            // as we go to ensure that out of order processing by worker tasks can still succeed.
+                            else {
+                                // create the remote directory to ensure it's present when the transfers begin. This
+                                // also allows us to check for things like permissions ahead of time and save the
+                                // traversal in the event it's not allowed.
+                                destClient.mkdirs(destUri.getPath());
 
-                            // create a new executor pool so we don't block the event thread with the potentially large number of network operations
-                            MutableBoolean ongoing = new MutableBoolean(true);
-                            List<Future> childFutures = remoteFileInfoList.stream()
-                                    .takeWhile(childFileItem -> ongoing.booleanValue())
-                                    .filter(childFileItem -> !childFileItem.getName().endsWith("."))
+                                // if the created transfertask does not have a rootTask, it is the rootTask of all
+                                // the child tasks we create processing the directory listing
+                                final String rootTaskId = StringUtils.isEmpty(body.getString("rootTask")) ?
+                                        body.getString("uuid") : body.getString("rootTaskId");
 
-                                    .map(childFileItem -> {
-                                        Promise promise = Promise.promise();
-                                        String childBaseFileName = Paths.get(childFileItem.getName()).normalize().getFileName().toString();
-                                        // build the child paths
-                                        String childSource = source + "/" + childBaseFileName;
-                                        String childDest = dest + "/" + childBaseFileName;
+                                // create a new executor pool so we don't block the event thread with the potentially large number of network operations
+                                MutableBoolean ongoing = new MutableBoolean(true);
+                                List<Future> childFutures = remoteFileInfoList.stream()
+                                        .takeWhile(childFileItem -> ongoing.booleanValue())
+                                        .filter(childFileItem -> !childFileItem.getName().endsWith("."))
 
-                                        try {
-                                            // if the assigned or ancestor transfer task were cancelled while this was running,
-                                            // skip the rest.
-                                            if (taskIsNotInterrupted(assignedTransferTask)) {
+                                        .map(childFileItem -> {
+                                            Promise promise = Promise.promise();
+                                            String childBaseFileName = Paths.get(childFileItem.getName()).normalize().getFileName().toString();
+                                            // build the child paths
+                                            String childSource = source + "/" + childBaseFileName;
+                                            String childDest = dest + "/" + childBaseFileName;
 
-                                                TransferTask childTransferTask = new TransferTask(childSource, childDest, tenantId);
-                                                childTransferTask.setTenantId(tenantId);
-                                                childTransferTask.setOwner(username);
-                                                childTransferTask.setParentTaskId(uuid);
-                                                childTransferTask.setRootTaskId(rootTaskId);
-                                                childTransferTask.setStatus(childFileItem.isDirectory() ? TransferStatusType.CREATED : TransferStatusType.ASSIGNED);
+                                            try {
+                                                // if the assigned or ancestor transfer task were cancelled while this was running,
+                                                // skip the rest.
+                                                if (taskIsNotInterrupted(assignedTransferTask)) {
 
-                                                getDbService().createOrUpdateChildTransferTask(tenantId, childTransferTask, childResult -> {
-                                                    String fileItemType = childFileItem.isFile() ? "file" : "directory";
-                                                    if (childResult.succeeded()) {
-                                                        String childMessageType = childFileItem.isFile() ? TRANSFER_ALL : TRANSFERTASK_CREATED;
+                                                    TransferTask childTransferTask = new TransferTask(childSource, childDest, tenantId);
+                                                    childTransferTask.setTenantId(tenantId);
+                                                    childTransferTask.setOwner(username);
+                                                    childTransferTask.setParentTaskId(uuid);
+                                                    childTransferTask.setRootTaskId(rootTaskId);
+                                                    childTransferTask.setStatus(childFileItem.isDirectory() ? TransferStatusType.CREATED : TransferStatusType.ASSIGNED);
 
-                                                        log.debug("Finished processing child {} transfer tasks for {}: {} => {}",
-                                                                fileItemType,
-                                                                childResult.result().getString("uuid"),
-                                                                childSource,
-                                                                childDest);
+                                                    getDbService().createOrUpdateChildTransferTask(tenantId, childTransferTask, childResult -> {
+                                                        String fileItemType = childFileItem.isFile() ? "file" : "directory";
+                                                        if (childResult.succeeded()) {
+                                                            String childMessageType = childFileItem.isFile() ? TRANSFER_ALL : TRANSFERTASK_CREATED;
 
-                                                        _doPublishEvent(childMessageType, childResult.result());
+                                                            log.debug("Finished processing child {} transfer tasks for {}: {} => {}",
+                                                                    fileItemType,
+                                                                    childResult.result().getString("uuid"),
+                                                                    childSource,
+                                                                    childDest);
 
-                                                        promise.complete();
-                                                    }
-                                                    // we couldn't create a new task and none previously existed for this child, so we must
-                                                    // fail the transfer for this transfertask. The decision about whether to delete the entire
-                                                    // root transfer task will be made based on the TransferPolicy assigned to the root task in
-                                                    // the failed handler.
-                                                    else {
-                                                        // this will break the stream processing and exit the loop without completing the
-                                                        // remaining RemoteFileItem in the listing.
-                                                        ongoing.setFalse();
+                                                            _doPublishEvent(childMessageType, childResult.result());
 
-                                                        String message = String.format("Error creating new child file transfer task for %s: %s -> %s. %s",
-                                                                uuid, childSource, childDest, childResult.cause().getMessage());
+                                                            promise.complete();
+                                                        }
+                                                        // we couldn't create a new task and none previously existed for this child, so we must
+                                                        // fail the transfer for this transfertask. The decision about whether to delete the entire
+                                                        // root transfer task will be made based on the TransferPolicy assigned to the root task in
+                                                        // the failed handler.
+                                                        else {
+                                                            // this will break the stream processing and exit the loop without completing the
+                                                            // remaining RemoteFileItem in the listing.
+                                                            ongoing.setFalse();
 
-                                                        doHandleFailure(childResult.cause(), message, body, null);
+                                                            String message = String.format("Error creating new child file transfer task for %s: %s -> %s. %s",
+                                                                    uuid, childSource, childDest, childResult.cause().getMessage());
 
-                                                        promise.fail(childResult.cause());
-                                                    }
-                                                });
-                                            } else {
-                                                // interrupt happened while processing children. skip the rest.
-                                                // TODO: How do we know it wasn't a pause?
-                                                log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
-                                                _doPublishEvent(TRANSFERTASK_CANCELED_ACK, body);
+                                                            doHandleFailure(childResult.cause(), message, body, null);
 
+                                                            promise.fail(childResult.cause());
+                                                        }
+                                                    });
+                                                } else {
+                                                    // interrupt happened while processing children. skip the rest.
+                                                    // TODO: How do we know it wasn't a pause?
+                                                    log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
+                                                    _doPublishEvent(TRANSFERTASK_CANCELED_ACK, body);
+
+                                                    // this will break the stream processing and exit the loop without completing the
+                                                    // remaining RemoteFileItem in the listing.
+                                                    ongoing.setFalse();
+                                                    promise.fail(new InterruptedException("Interrupt event occurred wile processing child file item "));
+                                                }
+                                            } catch (Throwable t) {
                                                 // this will break the stream processing and exit the loop without completing the
                                                 // remaining RemoteFileItem in the listing.
                                                 ongoing.setFalse();
-                                                promise.fail(new InterruptedException("Interrupt event occurred wile processing child file item "));
+
+                                                String message = String.format("Failed processing child file transfer task for %s: %s -> %s. %s",
+                                                        uuid, childSource, childDest, t.getMessage());
+
+                                                doHandleFailure(t, message, body, null);
+                                                promise.fail(t);
                                             }
-                                        } catch (Throwable t) {
-                                            // this will break the stream processing and exit the loop without completing the
-                                            // remaining RemoteFileItem in the listing.
-                                            ongoing.setFalse();
 
-                                            String message = String.format("Failed processing child file transfer task for %s: %s -> %s. %s",
-                                                    uuid, childSource, childDest, t.getMessage());
+                                            return promise.future();
+                                        })
+                                        .collect(Collectors.toList());
 
-                                            doHandleFailure(t, message, body, null);
-                                            promise.fail(t);
-                                        }
+                                // Now we wait for all the futures to complete. A single failure will fail all futures
+                                // here, and each of our futures will fail itself on an interrupt. Thus, in our
+                                // completion handler, we just deal with whether it finished as expected or not.
 
-                                        return promise.future();
-                                    })
-                                    .collect(Collectors.toList());
-
-                            // Now we wait for all the futures to complete. A single failure will fail all futures
-                            // here, and each of our futures will fail itself on an interrupt. Thus, in our
-                            // completion handler, we just deal with whether it finished as expected or not.
-
-                            CompositeFuture.join(childFutures).onComplete(ar -> {
-                                // all file items were processed successfully
-                                if (ar.succeeded()) {
-                                    // update the original task now that we've processed all of its children
-                                    getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
-                                        if (updateResult.succeeded()) {
-                                            log.debug("Updated parent transfer task {} to ASSIGNED after processing all its children.", uuid);
-                                            // write to the completed event channel.
-                                            handler.handle(Future.succeededFuture(true));
-                                        }
-                                        // we couldn't update the transfer task value
-                                        else {
-                                            String message = String.format("Error updating status of parent transfer task %s to ASSIGNED. %s",
-                                                    uuid, updateResult.cause().getMessage());
-                                            // write to error queue. we can retry
-                                            doHandleError(updateResult.cause(), message, body, handler);
-                                        }
-                                    });
-                                } else if (!ongoing.booleanValue()) {
-                                    // if a task failed due to interruption, return false. The ack has already been
-                                    // handled by the child promises
-                                    handler.handle(Future.succeededFuture(false));
-                                } else {
-                                    // general failure.
-                                    handler.handle(Future.failedFuture(ar.cause()));
-                                }
-                            });
+                                CompositeFuture.join(childFutures).onComplete(ar -> {
+                                    // all file items were processed successfully
+                                    if (ar.succeeded()) {
+                                        // update the original task now that we've processed all of its children
+                                        getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
+                                            if (updateResult.succeeded()) {
+                                                log.debug("Updated parent transfer task {} to ASSIGNED after processing all its children.", uuid);
+                                                // write to the completed event channel.
+                                                handler.handle(Future.succeededFuture(true));
+                                            }
+                                            // we couldn't update the transfer task value
+                                            else {
+                                                String message = String.format("Error updating status of parent transfer task %s to ASSIGNED. %s",
+                                                        uuid, updateResult.cause().getMessage());
+                                                // write to error queue. we can retry
+                                                doHandleError(updateResult.cause(), message, body, handler);
+                                            }
+                                        });
+                                    } else if (!ongoing.booleanValue()) {
+                                        // if a task failed due to interruption, return false. The ack has already been
+                                        // handled by the child promises
+                                        handler.handle(Future.succeededFuture(false));
+                                    } else {
+                                        // general failure.
+                                        handler.handle(Future.failedFuture(ar.cause()));
+                                    }
+                                });
+                            }
                         }
                     }
+                } else {
+                    // task was interrupted, so don't attempt a retry
+                    log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
+                    handler.handle(Future.succeededFuture(false));
                 }
-            } else {
-                // task was interrupted, so don't attempt a retry
-                log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
-                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
-                handler.handle(Future.succeededFuture(false));
             }
         }
         catch (RemoteDataSyntaxException e) {

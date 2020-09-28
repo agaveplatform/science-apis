@@ -65,52 +65,53 @@ public class MetadataSchemaComplianceValidator implements ConstraintValidator<Me
 
 
                 if (schemaDoc == null) {
-                    isValid = true;
+                    //no schema for the given schemaId
+                    isValid = false;
                 } else {
                     String owner = schemaDoc.getString("owner");
                     MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager((String) schemaId, owner);
 
-                    // check user permissions to view the schema
-                    if (schemaPM.canRead("TEST_USER")) {
-                        // now validate the json against the schema
-                        Document schema = (Document) schemaDoc.get("schema");
+                    // now validate the json against the schema
+//                    try {
+//                        Document schema = (Document) schemaDoc.get("schema");
+//                    } catch (Exception e) {
+                    String schemaString = (String) schemaDoc.get("schema");
+//                    }
 
-                        ObjectMapper mapper = new ObjectMapper();
-                        JsonFactory factory = mapper.getFactory();
-                        ObjectReader reader = mapper.reader(JsonNode.class);
+                    ObjectMapper mapper = new ObjectMapper();
+                    JsonFactory factory = mapper.getFactory();
+                    ObjectReader reader = mapper.reader(JsonNode.class);
 
-                        String strSchema = schema.toJson();
-                        JsonNode jsonSchemaNode = factory.createParser(strSchema).readValueAsTree();
+//                    String strSchema = schemaString.toJson();
+                    String strSchema = schemaString;
+                    JsonNode jsonSchemaNode = factory.createParser(strSchema).readValueAsTree();
 
-                        JsonNode jsonMetadataNode = null;
-                        if (metadataValue instanceof String) {
-                            jsonMetadataNode = factory.createParser((String) metadataValue).readValueAsTree();
-                        } else if (!(metadataValue instanceof JsonNode)) {
-                            jsonMetadataNode = mapper.valueToTree(metadataValue);
-                        } else {
-                            jsonMetadataNode = (JsonNode) metadataValue;
-                        }
-
-                        AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();
-                        ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
-
-                        isValid = report.isSuccess();
-                        if (!isValid) {
-                            StringBuilder sb = new StringBuilder();
-                            for (ProcessingMessage processingMessage : report) {
-                                sb.append(processingMessage.toString());
-                                sb.append("\n");
-                            }
-                            throw new MetadataValidationException(
-                                    "Metadata value does not conform to schema. \n" + sb.toString());
-                        }
-
+                    JsonNode jsonMetadataNode = null;
+                    if (metadataValue instanceof String) {
+                        jsonMetadataNode = factory.createParser((String) metadataValue).readValueAsTree();
+                    } else if (!(metadataValue instanceof JsonNode)) {
+                        jsonMetadataNode = mapper.valueToTree(metadataValue);
                     } else {
-                        throw new PermissionException("User does not have permission to read metadata schema");
+                        jsonMetadataNode = (JsonNode) metadataValue;
                     }
+
+                    AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();
+                    ProcessingReport report = validator.validate(jsonSchemaNode, jsonMetadataNode);
+
+                    isValid = report.isSuccess();
+                    if (!isValid) {
+                        StringBuilder sb = new StringBuilder();
+                        for (ProcessingMessage processingMessage : report) {
+                            sb.append(processingMessage.toString());
+                            sb.append("\n");
+                        }
+                        throw new MetadataValidationException(
+                                "Metadata value does not conform to schema. \n" + sb.toString());
+                    }
+
                 }
             }
-        } catch (MetadataValidationException | PermissionException e) {
+        } catch (MetadataValidationException e) {
             log.error("Failed to validate metadata against schema", e);
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate(

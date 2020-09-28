@@ -15,22 +15,26 @@ import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.ClassModel;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.iplantc.service.common.Settings;
+import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.common.uuid.AgaveUUID;
+import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
+import org.iplantc.service.metadata.exceptions.MetadataValidationException;
 import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataItemCodec;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
+import org.iplantc.service.metadata.util.ServiceUtils;
+import org.joda.time.DateTime;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -47,6 +51,7 @@ public class MetadataDataProcessingIT {
     String noneUser = "NONE_USER";
     MetadataItem addedMetadataItem;
     MongoCollection collection;
+    MongoCollection schemaCollection;
     ObjectMapper mapper = new ObjectMapper();
 
     public MetadataItem setupMetadataItem() throws MetadataException {
@@ -63,8 +68,8 @@ public class MetadataDataProcessingIT {
         return toAdd;
     }
 
-    @BeforeMethod
-    public void setUpDatabase() throws MetadataException {
+    @BeforeTest
+    public void setUpDatabase() {
         ClassModel<JsonNode> valueModel = ClassModel.builder(JsonNode.class).build();
         ClassModel<MetadataPermission> metadataPermissionModel = ClassModel.builder(MetadataPermission.class).build();
         PojoCodecProvider pojoCodecProvider = PojoCodecProvider.builder().register(valueModel, metadataPermissionModel).build();
@@ -85,7 +90,11 @@ public class MetadataDataProcessingIT {
 
         MongoDatabase db = mongo4Client.getDatabase(Settings.METADATA_DB_SCHEME);
         collection = db.getCollection(Settings.METADATA_DB_COLLECTION, MetadataItem.class);
+        schemaCollection = db.getCollection(Settings.METADATA_DB_SCHEMATA_COLLECTION, MetadataItem.class);
+    }
 
+    @BeforeMethod
+    public void setupMetadataCollection() throws MetadataException {
         collection.insertOne(setupMetadataItem());
     }
 
@@ -94,6 +103,33 @@ public class MetadataDataProcessingIT {
         collection.deleteMany(new Document());
     }
 
+    public String setupSchema() {
+        String schemaUuid = new AgaveUUID(UUIDType.SCHEMA).toString();
+
+        String strItemToAdd = "{" +
+                "\"order\" : \"sample order\"," +
+                "\"type\" : \"object\", " +
+                "\"properties\" : {" +
+                "\"profile\" : { \"type\" : \"string\" }, " +
+                "\"description\" : { \"type\" : \"string\" }, " +
+                "\"status\" : {\"enum\" : [\"active\", \"retired\", \"disabled\"]}" +
+                "}" +
+                "}";
+
+        Document doc;
+        String timestamp = new DateTime().toString();
+        doc = new Document("internalUsername", this.username)
+                .append("lastUpdated", timestamp)
+                .append("schema", ServiceUtils.escapeSchemaRefFieldNames(strItemToAdd))
+                .append("uuid", schemaUuid)
+                .append("created", timestamp)
+                .append("owner", this.username)
+                .append("tenantId", TenancyHelper.getCurrentTenantId());
+
+        schemaCollection.insertOne(doc);
+
+        return schemaUuid;
+    }
 
     @DataProvider(name = "initMetadataItemDataProvider")
     public Object[][] initMetadataItemDataProvider() {
@@ -106,21 +142,36 @@ public class MetadataDataProcessingIT {
     }
 
     @DataProvider(name = "initUpdateMetadataItemDataProvider")
-    public Object[][] initUpdateMetadataItemDataProvider() {
+    public Object[][] initUpdateMetadataItemDataProvider() throws UnknownHostException {
+        String schemaId = setupSchema();
+        String nonexistentSchemaId = new AgaveUUID(UUIDType.SCHEMA).toString();
+        String invalidId = new AgaveUUID(UUIDType.METADATA).toString();
+
+
         return new Object[][]{
-                {this.username, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\"}}",
-                        true, "Owner should have READ_WRITE permission for the MetadataItem."},
+                {this.username, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\", " +
+                        "\"status\":\"active\"}, \"schemaId\":\"" + schemaId + "\"}",
+                        true, "Owner should have READ_WRITE permission for the MetadataItem.", false,},
+                {this.username, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\", " +
+                        "\"status\":\"invalid status\"}, \"schemaId\":\"" + schemaId + "\"}",
+                        true, "Owner should have READ_WRITE permission for the MetadataItem.", true},
+                {this.username, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\", " +
+                        "\"status\":\"active\"}, \"schemaId\":\"" + nonexistentSchemaId + "\"}",
+                        true, "Owner should have READ_WRITE permission for the MetadataItem.", true},
+                {this.username, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\", " +
+                        "\"status\":\"invalid status\"}, \"schemaId\":\"" + invalidId + "\"}",
+                        true, "Owner should have READ_WRITE permission for the MetadataItem.", true},
                 {this.readUser, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\"}}",
-                        false, "User with READ permission should not be able to change the MetadataItem."},
+                        false, "User with READ permission should not be able to change the MetadataItem.", false},
                 {this.readWriteUser, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\"}}",
-                        true, "User with READ_WRITE permission should be able to change the MetadataItem."},
+                        true, "User with READ_WRITE permission should be able to change the MetadataItem.", false},
                 {this.noneUser, "{\"name\":\"mustard plant\", \"value\": {\"description\": \"sample description\"}}",
-                        false, "User without any permissions should not be able to change the MetadataItem."}
+                        false, "User without any permissions should not be able to change the MetadataItem.", false}
         };
     }
 
     @DataProvider(name = "initMultipleMetadataItemDataProvider")
-    public Object[][] initMultipleMetadataItemDataProvider()  {
+    public Object[][] initMultipleMetadataItemDataProvider() {
         return new Object[][]{
                 {this.username, 2},
                 {this.readUser, 1},
@@ -138,7 +189,7 @@ public class MetadataDataProcessingIT {
                 {"{\"value\": {\"title\": \"sample title\", \"description\": { \"species\" : \"sample\" \"species\" }}}",
                         true, "Json request missing the required name field should throw exception."},
                 {"{\"name\": \"sample name\", \"schemaId\": null, \"associationIds\":[]}",
-                        true,  "Json request missing the required name field should throw exception."}
+                        true, "Json request missing the required name field should throw exception."}
         };
     }
 
@@ -148,11 +199,10 @@ public class MetadataDataProcessingIT {
 
         try {
             JsonNode jsonNode = mapper.getFactory().createParser(strJson).readValueAsTree();
-            handler.parseJsonMetadata(jsonNode);
+            MetadataItem toAdd = handler.parseJsonMetadata(jsonNode);
 
             if (bolThrowException)
                 fail(message);
-            MetadataItem toAdd = handler.getMetadataItem();
             toAdd.setInternalUsername(this.username);
             toAdd.setOwner(this.username);
 
@@ -298,14 +348,28 @@ public class MetadataDataProcessingIT {
     }
 
     @Test(dataProvider = "initUpdateMetadataItemDataProvider")
-    public void updateMetadataItemTest(String user, String jsonQuery, boolean bolCanWrite, String message) throws MetadataException, IOException, MetadataQueryException {
+    public void updateMetadataItemTest(String user, String jsonQuery, boolean bolCanWrite, String message, boolean bolThrowException) throws MetadataException, IOException, MetadataQueryException, MetadataValidationException {
         //parse fields to update
-        JsonHandler jsonHandler = new JsonHandler();
         ObjectMapper mapper = new ObjectMapper();
         JsonNode node = mapper.getFactory().createParser(jsonQuery).readValueAsTree();
 
-        //return as document
+        MetadataValidation partialValidation = new MetadataValidation();
+        try {
+            if (partialValidation.validateMetadataDocumentFields(node, username) == null) {
+                fail("Validation should not return null if node fields are valid.");
+            }
+            if (bolThrowException) {
+                fail("Invalid field should throw exception");
+            }
+
+        } catch (Exception e) {
+            if (!bolThrowException)
+                fail("Valid node fields should not throw exception.");
+        }
+
+        JsonHandler jsonHandler = new JsonHandler();
         Document toUpdate = jsonHandler.parseJsonMetadataToDocument(node);
+
 
         //set up for updating
         MetadataSearch search = new MetadataSearch(user);
@@ -349,7 +413,7 @@ public class MetadataDataProcessingIT {
     }
 
     @Test(dataProvider = "initUpdateMetadataItemDataProvider")
-    public void deleteMetadataItemTest(String user, String jsonQuery, boolean bolCanWrite, String message) throws MetadataException {
+    public void deleteMetadataItemTest(String user, String jsonQuery, boolean bolCanWrite, String message, boolean bolThrowException) throws MetadataException {
         MetadataSearch ownerSearch = new MetadataSearch(user);
         MetadataItem metadataItem = ownerSearch.findById(addedMetadataItem.getUuid(), addedMetadataItem.getTenantId());
         Assert.assertNotNull(metadataItem);

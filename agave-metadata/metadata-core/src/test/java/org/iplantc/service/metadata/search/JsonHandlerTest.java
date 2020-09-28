@@ -132,8 +132,7 @@ public class JsonHandlerTest {
         JsonNode node = createTestMetadataItem();
 
         JsonHandler jsonHandler = new JsonHandler();
-        jsonHandler.parseJsonMetadata(node);
-        MetadataItem metadataItem = jsonHandler.getMetadataItem();
+        MetadataItem metadataItem = jsonHandler.parseJsonMetadata(node);
         assertNotNull(metadataItem, "Metadata item should not be null after handler parses it");
         assertEquals(metadataItem.getUuid(), node.get("uuid").asText(), "Metadata item uuid should be the uuid in the original json object");
         assertNotNull(metadataItem.getValue(), "Metadata item value should not be null");

@@ -287,15 +287,16 @@ public class JsonHandler {
      * @param jsonMetadata {@link JsonNode} parse from the query string
      * @throws MetadataValidationException if query values are missing or invalid
      */
-    public void parseJsonMetadata(JsonNode jsonMetadata) throws MetadataValidationException {
+    public MetadataItem parseJsonMetadata(JsonNode jsonMetadata) throws MetadataValidationException {
         try {
+            MetadataItem metadataItem = new MetadataItem();
             setPermissions(this.mapper.createArrayNode());
             setNotifications(this.mapper.createArrayNode());
 
             if (jsonMetadata.has("uuid")) {
                 String muuid = jsonMetadata.get("uuid").asText();
                 if (StringUtils.isNotBlank(muuid)) {
-                    getMetadataItem().setUuid(muuid);
+                    metadataItem.setUuid(muuid);
                 }
             }
 
@@ -311,16 +312,18 @@ public class JsonHandler {
                         "No value attribute specified. " +
                                 "Please associate a value with the metadata value.");
 
-            getMetadataItem().setName(name);
-            getMetadataItem().setValue(value);
-            getMetadataItem().getAssociations().addAll(parseAssociationIdsToList(jsonMetadata));
-            getMetadataItem().setSchemaId(parseSchemaIdToString(jsonMetadata));
+            metadataItem.setName(name);
+            metadataItem.setValue(value);
+            metadataItem.getAssociations().addAll(parseAssociationIdsToList(jsonMetadata));
+            metadataItem.setSchemaId(parseSchemaIdToString(jsonMetadata));
 
 
             //MetadataRequestPermissionProcessor will handle the notification parsing
             setPermissions(parsePermissionToArrayNode(jsonMetadata));
             //MetadataRequestNotificationProcessor will handle the notification parsing
             setNotifications(parseNotificationToArrayNode(jsonMetadata));
+
+            return metadataItem;
 
         } catch (Exception e) {
             throw new MetadataValidationException(

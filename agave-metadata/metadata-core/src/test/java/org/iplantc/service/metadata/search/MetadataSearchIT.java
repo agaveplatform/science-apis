@@ -197,9 +197,8 @@ public class MetadataSearchIT {
 
 
         JsonNode node = mapper.getFactory().createParser(strMetadataItem).readValueAsTree();
-        jsonHandler.parseJsonMetadata(node);
+        MetadataItem metadataItem = jsonHandler.parseJsonMetadata(node);
 
-        MetadataItem metadataItem = jsonHandler.getMetadataItem();
         metadataItem.setOwner(owner);
         metadataItem.setInternalUsername(owner);
         metadataItem.setPermissions(Arrays.asList(new MetadataPermission(this.readUser, PermissionType.READ)));

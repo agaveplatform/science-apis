@@ -258,8 +258,7 @@ public class MetadataCollection extends AgaveResource {
             try {
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
                 jsonHandler = new JsonHandler();
-                jsonHandler.parseJsonMetadata(jsonMetadata);
-                metadataItem = jsonHandler.getMetadataItem();
+                metadataItem = jsonHandler.parseJsonMetadata(jsonMetadata);
 
                 //process permissions
                 MetadataRequestPermissionProcessor permissionProcessor = new MetadataRequestPermissionProcessor(metadataItem);

@@ -20,11 +20,13 @@ import org.iplantc.service.common.resource.AgaveResource;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataDao;
+import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.iplantc.service.metadata.search.JsonHandler;
 import org.iplantc.service.metadata.search.MetadataSearch;
+import org.iplantc.service.metadata.search.MetadataValidation;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.restlet.Context;
 import org.restlet.data.*;
@@ -32,6 +34,7 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
+import javax.validation.Valid;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 
@@ -160,19 +163,27 @@ public class MetadataResource extends AgaveResource {
     public void acceptRepresentation(Representation entity) {
         AgaveLogServiceClient.log(METADATA02.name(), MetaEdit.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 
-        DBCursor cursor = null;
-
         try {
             Document metadataDocument;
 
             try {
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
+
+                MetadataValidation docValidation = new MetadataValidation();
+                if (docValidation.validateMetadataDocumentFields(jsonMetadata, username) == null)
+                    throw new MetadataQueryException("Invalid field in request.");
+
                 JsonHandler jsonHandler = new JsonHandler();
                 metadataDocument = jsonHandler.parseJsonMetadataToDocument(jsonMetadata);
 
+
             } catch (ResourceException e) {
+                log.error("Failed to parse form. " + e.getMessage());
+
                 throw e;
             } catch (Exception e) {
+                log.error("Failed to parse form. " + e.getMessage());
+
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
                         "Unable to parse form. " + e.getMessage());
             }
@@ -219,8 +230,6 @@ public class MetadataResource extends AgaveResource {
             getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
             getResponse().setEntity(new IplantErrorRepresentation("Unable to store the metadata object. " +
                     "If this problem persists, please contact the system administrators."));
-        } finally {
-            try { cursor.close(); } catch (Exception ignore) {}
         }
     }
 

@@ -1,5 +1,6 @@
 package org.iplantc.service.metadata.search;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.mongodb.BasicDBList;
 import org.apache.commons.lang.StringUtils;
@@ -28,9 +29,11 @@ import org.iplantc.service.metadata.model.MetadataItem;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import javax.validation.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Set;
 
 import static com.mongodb.client.model.Filters.*;
 
@@ -73,71 +76,104 @@ public class MetadataValidation {
     }
 
     /**
-     * Verify and return list of verified associated Uuids from {@link ArrayNode} items
+     * Validate that fields in node conform to MetadataItem field constraints
      *
-     * @param items {@link ArrayNode} of String uuids
-     * @return {@link MetadataAssociationList} of valid associated Uuids from {@code items}
-     * @throws MetadataQueryException       if query is missing or invalid
-     * @throws UUIDException                if unable to run query
-     * @throws PermissionException          if user does not have read permissions
-     * @throws MetadataAssociationException if the uuid is invalid
+     * @param node {@link JsonNode} to validate
+     * @return validated {@link MetadataItem}
+     * @throws MetadataValidationException if fields do not confirm to MetadataItem constraints
      */
-    public MetadataAssociationList checkAssociationIds(ArrayNode items, String username) throws MetadataQueryException, UUIDException, PermissionException, MetadataAssociationException, MetadataException {
-        MetadataAssociationList associationList = new MetadataAssociationList();
+    public MetadataItem validateMetadataDocumentFields(JsonNode node, String username) throws MetadataValidationException {
+        MetadataItem item;
+        JsonHandler handler = new JsonHandler();
 
-        if (associationList == null) {
-            associationList = new MetadataAssociationList();
+        item = handler.parseJsonMetadata(node);
+        item.setOwner(username);
+        item.setInternalUsername(username);
+
+        try {
+
+            //validator
+            Validator validator;
+
+            ValidatorFactory validatorFactory = Validation.buildDefaultValidatorFactory();
+            validator = validatorFactory.getValidator();
+
+            Set<ConstraintViolation<MetadataItem>> constraintViolations = validator.validate(item);
+
+            if (constraintViolations.size() != 0)
+                throw new MetadataValidationException(constraintViolations.iterator().next().getMessage());
+            return item;
+        } catch (Exception e) {
+            throw new MetadataValidationException(e.getMessage());
         }
-
-        BasicDBList associations = new BasicDBList();
-        String tenantId = TenancyHelper.getCurrentTenantId();
-        if (items != null) {
-            for (int i = 0; i < items.size(); i++) {
-                String associationId = items.get(i).asText();
-                Bson associationQuery = and(eq("uuid", associationId),
-                        eq("tenantId", TenancyHelper.getCurrentTenantId()));
-
-                if (StringUtils.isNotEmpty(associationId)) {
-                    AgaveUUID associationUuid = new AgaveUUID(associationId);
-
-                    if (UUIDType.METADATA == associationUuid.getResourceType()) {
-                        //retrieve item with given id
-                        MetadataSearch search = new MetadataSearch(username);
-                        MetadataItem associationItem = search.findById(associationId, tenantId);
-                        if (associationItem == null) {
-                            throw new MetadataQueryException(
-                                    "No metadata resource found with uuid " + associationId);
-                        }
-
-                    } else if (UUIDType.SCHEMA == associationUuid.getResourceType()) {
-
-                        try {
-                            MetadataSchemaDao schemaDao = new MetadataSchemaDao().getInstance();
-                            Document associationDocument = schemaDao.findOne(associationQuery);
-
-                            if (associationDocument == null) {
-                                throw new MetadataQueryException(
-                                        "No metadata schema resource found with uuid " + associationId);
-                            }
-                        } catch (MetadataStoreException e) {
-                            throw new MetadataQueryException(
-                                    "No metadata schema resource found with uuid " + associationId);
-                        }
-                    } else {
-                        try {
-                            associationUuid.getObjectReference();
-                        } catch (Exception e) {
-                            throw new MetadataQueryException(
-                                    "No associated object found with uuid " + associationId);
-                        }
-                    }
-                    associations.add(items.get(i).asText());
-                    associationList.add(items.get(i).asText());
-                }
-            }
-        }
-        return associationList;
     }
+
+//    /**
+//     * Verify and return list of verified associated Uuids from {@link ArrayNode} items
+//     *
+//     * @param items {@link ArrayNode} of String uuids
+//     * @return {@link MetadataAssociationList} of valid associated Uuids from {@code items}
+//     * @throws MetadataQueryException       if query is missing or invalid
+//     * @throws UUIDException                if unable to run query
+//     * @throws PermissionException          if user does not have read permissions
+//     * @throws MetadataAssociationException if the uuid is invalid
+//     */
+//    public MetadataAssociationList checkAssociationIds(ArrayNode items, String username) throws MetadataQueryException, UUIDException, PermissionException, MetadataAssociationException, MetadataException {
+//        MetadataAssociationList associationList = new MetadataAssociationList();
+//
+//        if (associationList == null) {
+//            associationList = new MetadataAssociationList();
+//        }
+//
+//        BasicDBList associations = new BasicDBList();
+//        String tenantId = TenancyHelper.getCurrentTenantId();
+//        if (items != null) {
+//            for (int i = 0; i < items.size(); i++) {
+//                String associationId = items.get(i).asText();
+//                Bson associationQuery = and(eq("uuid", associationId),
+//                        eq("tenantId", TenancyHelper.getCurrentTenantId()));
+//
+//                if (StringUtils.isNotEmpty(associationId)) {
+//                    AgaveUUID associationUuid = new AgaveUUID(associationId);
+//
+//                    if (UUIDType.METADATA == associationUuid.getResourceType()) {
+//                        //retrieve item with given id
+//                        MetadataSearch search = new MetadataSearch(username);
+//                        MetadataItem associationItem = search.findById(associationId, tenantId);
+//                        if (associationItem == null) {
+//                            throw new MetadataQueryException(
+//                                    "No metadata resource found with uuid " + associationId);
+//                        }
+//
+//                    } else if (UUIDType.SCHEMA == associationUuid.getResourceType()) {
+//
+//                        try {
+//                            MetadataSchemaDao schemaDao = new MetadataSchemaDao().getInstance();
+//                            Document associationDocument = schemaDao.findOne(associationQuery);
+//
+//                            if (associationDocument == null) {
+//                                throw new MetadataQueryException(
+//                                        "No metadata schema resource found with uuid " + associationId);
+//                            }
+//                        } catch (MetadataStoreException e) {
+//                            throw new MetadataQueryException(
+//                                    "No metadata schema resource found with uuid " + associationId);
+//                        }
+//                    } else {
+//                        try {
+//                            associationUuid.getObjectReference();
+//                        } catch (Exception e) {
+//                            throw new MetadataQueryException(
+//                                    "No associated object found with uuid " + associationId);
+//                        }
+//                    }
+//                    associations.add(items.get(i).asText());
+//                    associationList.add(items.get(i).asText());
+//                }
+//            }
+//        }
+//        return associationList;
+//    }
 
 
 //    /**

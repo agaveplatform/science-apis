@@ -22,7 +22,7 @@ public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUU
         
         boolean isValid = false;
         if (target == null) {
-            return false;
+            return true;
         }
         
         AgaveUUID uuid = null;

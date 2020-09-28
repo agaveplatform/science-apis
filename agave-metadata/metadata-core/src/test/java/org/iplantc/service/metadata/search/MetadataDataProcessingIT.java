@@ -355,7 +355,7 @@ public class MetadataDataProcessingIT {
 
         MetadataValidation partialValidation = new MetadataValidation();
         try {
-            if (partialValidation.validateMetadataDocumentFields(node, username) == null) {
+            if (partialValidation.validateMetadataNodeFields(node, username) == null) {
                 fail("Validation should not return null if node fields are valid.");
             }
             if (bolThrowException) {

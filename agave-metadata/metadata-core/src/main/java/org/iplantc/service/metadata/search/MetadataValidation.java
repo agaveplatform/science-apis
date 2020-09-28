@@ -82,15 +82,16 @@ public class MetadataValidation {
      * @return validated {@link MetadataItem}
      * @throws MetadataValidationException if fields do not confirm to MetadataItem constraints
      */
-    public MetadataItem validateMetadataDocumentFields(JsonNode node, String username) throws MetadataValidationException {
+    public MetadataItem validateMetadataNodeFields(JsonNode node, String username) throws MetadataValidationException {
         MetadataItem item;
         JsonHandler handler = new JsonHandler();
 
-        item = handler.parseJsonMetadata(node);
-        item.setOwner(username);
-        item.setInternalUsername(username);
 
         try {
+            item = handler.parseJsonMetadata(node);
+            item.setOwner(username);
+            item.setInternalUsername(username);
+
 
             //validator
             Validator validator;

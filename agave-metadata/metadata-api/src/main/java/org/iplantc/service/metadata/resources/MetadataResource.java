@@ -169,9 +169,9 @@ public class MetadataResource extends AgaveResource {
             try {
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
 
-                MetadataValidation docValidation = new MetadataValidation();
-                if (docValidation.validateMetadataDocumentFields(jsonMetadata, username) == null)
-                    throw new MetadataQueryException("Invalid field in request.");
+//                MetadataValidation docValidation = new MetadataValidation();
+//                if (docValidation.validateMetadataDocumentFields(jsonMetadata, username) == null)
+//                    throw new MetadataQueryException("Invalid field in request.");
 
                 JsonHandler jsonHandler = new JsonHandler();
                 metadataDocument = jsonHandler.parseJsonMetadataToDocument(jsonMetadata);

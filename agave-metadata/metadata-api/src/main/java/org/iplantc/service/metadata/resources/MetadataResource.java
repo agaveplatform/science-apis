@@ -215,7 +215,7 @@ public class MetadataResource extends AgaveResource {
 
 
             } catch (PermissionException e) {
-                throw new ResourceException(Status.CLIENT_ERROR_UNAUTHORIZED,
+                throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
                         "User does not have permission to update metadata");
             }
 
@@ -280,7 +280,7 @@ public class MetadataResource extends AgaveResource {
                 getResponse().setEntity(new IplantSuccessRepresentation());
 
             } catch (PermissionException e) {
-                getResponse().setStatus(Status.CLIENT_ERROR_UNAUTHORIZED);
+                getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
                 getResponse().setEntity(new IplantErrorRepresentation(
                         "User does not have permission to update metadata"));
                 return;

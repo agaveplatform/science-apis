@@ -43,9 +43,8 @@ public abstract class BaseTestCase {
     public final String TEST_SHARE_USERNAME = "testshareuser";
     public final String TEST_ADMIN_USERNAME = "testadminuser";
     public final String TENANT_ID = "agave.dev";
-    public final String TRANSFER_SRC = "http://foo.bar/cat/in/the/hat";
-    //public final String TRANSFER_DEST = "agave://sftp.example.com//dev/null";
-    public final String TRANSFER_DEST = "agave://sftp.example.com//tmp/dest";
+    public final String TRANSFER_SRC = "http://httpbin:8000/stream-bytes/32768";
+    public final String TRANSFER_DEST = "agave://sftp/";
     public final String TEST_USER = "testuser";
 
     //=====================================================================================================
@@ -91,9 +90,20 @@ public abstract class BaseTestCase {
     /**
      * Creates a legacy {@link org.iplantc.service.transfer.model.TransferTask} for use when mocking URLCopy operations
      * @return a legacy transfertask object
+     * @see #_createTestTransferTaskIPC(String, String)
      */
     protected org.iplantc.service.transfer.model.TransferTask _createTestTransferTaskIPC() {
-        return new org.iplantc.service.transfer.model.TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USER, null, null);
+        return _createTestTransferTaskIPC(TRANSFER_SRC, TRANSFER_DEST);
+    }
+
+    /**
+     * Creates a legacy {@link org.iplantc.service.transfer.model.TransferTask} for use when generating transfer tasks
+     * @param srcUri the uri of the transfer source data item
+     * @param destUri the agave uri of the target folder of the transfer
+     * @return a legacy transfertask object
+     */
+    protected org.iplantc.service.transfer.model.TransferTask _createTestTransferTaskIPC(String srcUri, String destUri) {
+        return new org.iplantc.service.transfer.model.TransferTask(srcUri, destUri, TEST_USER, null, null);
     }
 
     /**

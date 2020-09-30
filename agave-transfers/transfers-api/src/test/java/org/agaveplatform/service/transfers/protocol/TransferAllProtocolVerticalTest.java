@@ -8,7 +8,6 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -33,7 +32,6 @@ import java.time.Instant;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_ALL;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
@@ -48,8 +46,6 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		TransferAllProtocolVertical listener = Mockito.mock(TransferAllProtocolVertical.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFER_ALL);
 		when(listener.getVertx()).thenReturn(vertx);
-//		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
-//		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;
 	}
 
@@ -68,6 +64,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 	@DisplayName("Test the processCopyRequest")
 	public void testProcessCopyRequest (Vertx vertx, VertxTestContext ctx) throws SystemUnknownException, AgaveNamespaceException, RemoteCredentialException,
 			PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
+
 		// set up the parameters
 		org.iplantc.service.transfer.model.TransferTask legacyTransferTask = _createTestTransferTaskIPC();
 		legacyTransferTask.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());

@@ -19,6 +19,7 @@ import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
+import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
@@ -30,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
@@ -152,44 +152,45 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			// over in the coming week to handle current transfertask objects so we
 			// don' tneed this shim
 			org.iplantc.service.transfer.model.TransferTask legacyTransferTask;
-			if (false) {
+			boolean makeRealCopy = true;
+			if (makeRealCopy) {
 
 				// pull the system out of the url. system id is the hostname in an agave uri
 				log.debug("Creating source remote data client to {} for transfer task {}", srcUri.getHost(), tt.getUuid());
-				if (false) srcClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), srcUri);
+				if (makeRealCopy) srcClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), srcUri);
 
 				log.debug("Creating dest remote data client to {} for transfer task {}", destUri.getHost(), tt.getUuid());
 				// pull the dest system out of the url. system id is the hostname in an agave uri
-				if (false) destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
+				if (makeRealCopy) destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
 
 				if (taskIsNotInterrupted(tt)) {
-					legacyTransferTask =
-							new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
-
-					legacyTransferTask.setUuid(tt.getUuid());
-					legacyTransferTask.setTenantId(tt.getTenantId());
-					legacyTransferTask.setStatus(TransferStatusType.valueOf(tt.getStatus().name()));
-					legacyTransferTask.setAttempts(tt.getAttempts());
-					legacyTransferTask.setBytesTransferred(tt.getBytesTransferred());
-					legacyTransferTask.setTotalSize(tt.getTotalSize());
-					legacyTransferTask.setCreated(Date.from(tt.getCreated()));
-					legacyTransferTask.setLastUpdated(Date.from(tt.getLastUpdated()));
-					legacyTransferTask.setStartTime(Date.from(tt.getStartTime()));
-					legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));
-					if (tt.getParentTaskId() != null) {
-						org.iplantc.service.transfer.model.TransferTask legacyParentTask = new org.iplantc.service.transfer.model.TransferTask();
-						legacyParentTask.setUuid(tt.getParentTaskId());
-						legacyTransferTask.setParentTask(legacyParentTask);
-					}
-					if (tt.getRootTaskId() != null) {
-						org.iplantc.service.transfer.model.TransferTask legacyRootTask = new org.iplantc.service.transfer.model.TransferTask();
-						legacyRootTask.setUuid(tt.getRootTaskId());
-						legacyTransferTask.setRootTask(legacyRootTask);
-					}
+//					legacyTransferTask =
+//							new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
+//
+//					legacyTransferTask.setUuid(tt.getUuid());
+//					legacyTransferTask.setTenantId(tt.getTenantId());
+//					legacyTransferTask.setStatus(TransferStatusType.valueOf(tt.getStatus().name()));
+//					legacyTransferTask.setAttempts(tt.getAttempts());
+//					legacyTransferTask.setBytesTransferred(tt.getBytesTransferred());
+//					legacyTransferTask.setTotalSize(tt.getTotalSize());
+//					legacyTransferTask.setCreated(Date.from(tt.getCreated()));
+//					legacyTransferTask.setLastUpdated(Date.from(tt.getLastUpdated()));
+//					legacyTransferTask.setStartTime(Date.from(tt.getStartTime()));
+//					legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));
+//					if (tt.getParentTaskId() != null) {
+//						org.iplantc.service.transfer.model.TransferTask legacyParentTask = new org.iplantc.service.transfer.model.TransferTask();
+//						legacyParentTask.setUuid(tt.getParentTaskId());
+//						legacyTransferTask.setParentTask(legacyParentTask);
+//					}
+//					if (tt.getRootTaskId() != null) {
+//						org.iplantc.service.transfer.model.TransferTask legacyRootTask = new org.iplantc.service.transfer.model.TransferTask();
+//						legacyRootTask.setUuid(tt.getRootTaskId());
+//						legacyTransferTask.setRootTask(legacyRootTask);
+//					}
 
 					log.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 
-					result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
+					result = processCopyRequest(srcClient, destClient, tt);
 
 					handler.handle(Future.succeededFuture(result));
 					log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
@@ -206,8 +207,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 				}
 			} else {
-				log.debug("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
-				log.debug("Completed transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
+				log.debug("Initiating fake transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+				log.debug("Completed fake transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
 
 				_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 				handler.handle(Future.succeededFuture(true));
@@ -248,29 +249,33 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		}
 	}
 
-	protected Boolean processCopyRequest(String source, RemoteDataClient srcClient, String dest, RemoteDataClient destClient, org.iplantc.service.transfer.model.TransferTask legacyTransferTask)
+	protected TransferTask processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
 
-		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
-			if (updateReply.succeeded()) {
-				Future.succeededFuture(Boolean.TRUE);
-			} else {
-				// update failed
-				Future.succeededFuture(Boolean.FALSE);
-			}
-		});
+//		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
+//			if (updateReply.succeeded()) {
+//				Future.succeededFuture(Boolean.TRUE);
+//			} else {
+//				// update failed
+//				Future.succeededFuture(Boolean.FALSE);
+//			}
+//		});
+
+
+		URI srcUri = URI.create(transferTask.getSource());
+		URI destUri = URI.create(transferTask.getDest());
 
 		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for
 		//   interrupts in this method upon updates from the transfer thread and interrupt it. Alternatively, we can
 		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
-		legacyTransferTask = urlCopy.copy(source, dest, legacyTransferTask);
+		transferTask = urlCopy.copy(srcUri.getPath(), destUri.getPath());
 
-		return legacyTransferTask.getStatus() == TransferStatusType.COMPLETED;
+		return transferTask;
 	}
 
 	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient){
-		return new URLCopy(srcClient,destClient);
+		return new URLCopy(this, srcClient,destClient);
 	}
 
 	/**
@@ -299,6 +304,25 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 	public void setDbService(TransferTaskDatabaseService dbService) {
 		this.dbService = dbService;
+	}
+
+
+	protected TransferTask copy(String src, String dest, TransferTask transferTask) {
+		if (sourceClient.equals(destClient)) {
+			RemoteTransferListener listener = null;
+
+			// we can potentially make a server-side copy here. attempt that first
+			// before making an unnecessary round-trip
+			sourceClient.copy(srcPath + "/", destPath, listener);
+
+			// everything was copied over server side, so delete whatever was in the
+			// list of exclusions
+			for (String excludedOutputFile : exclusions) {
+				try {
+					destClient.delete(destPath + "/" + excludedOutputFile);
+				} catch (Exception ignored) {
+				}
+			}
 	}
 
 }

@@ -116,11 +116,12 @@ public class MetadataDataProcessingIT {
                 "}" +
                 "}";
 
+        Document docSchema = Document.parse(strItemToAdd);
         Document doc;
         String timestamp = new DateTime().toString();
         doc = new Document("internalUsername", this.username)
                 .append("lastUpdated", timestamp)
-                .append("schema", ServiceUtils.escapeSchemaRefFieldNames(strItemToAdd))
+                .append("schema", docSchema)
                 .append("uuid", schemaUuid)
                 .append("created", timestamp)
                 .append("owner", this.username)

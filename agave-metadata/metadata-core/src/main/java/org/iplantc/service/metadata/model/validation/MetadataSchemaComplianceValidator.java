@@ -72,18 +72,13 @@ public class MetadataSchemaComplianceValidator implements ConstraintValidator<Me
                     MetadataSchemaPermissionManager schemaPM = new MetadataSchemaPermissionManager((String) schemaId, owner);
 
                     // now validate the json against the schema
-//                    try {
-//                        Document schema = (Document) schemaDoc.get("schema");
-//                    } catch (Exception e) {
-                    String schemaString = (String) schemaDoc.get("schema");
-//                    }
+                    Document schema = (Document) schemaDoc.get("schema");
 
                     ObjectMapper mapper = new ObjectMapper();
                     JsonFactory factory = mapper.getFactory();
-                    ObjectReader reader = mapper.reader(JsonNode.class);
+//                    ObjectReader reader = mapper.reader(JsonNode.class);
 
-//                    String strSchema = schemaString.toJson();
-                    String strSchema = schemaString;
+                    String strSchema = schema.toJson();
                     JsonNode jsonSchemaNode = factory.createParser(strSchema).readValueAsTree();
 
                     JsonNode jsonMetadataNode = null;

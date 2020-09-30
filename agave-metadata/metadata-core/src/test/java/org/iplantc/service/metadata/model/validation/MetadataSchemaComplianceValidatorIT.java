@@ -47,10 +47,8 @@ public class MetadataSchemaComplianceValidatorIT {
 
         String strValue = "{" +
                 "\"title\": \"Some Metadata\", " +
-                "\"properties\": {" +
                 "\"species\": {" +
                 "\"type\": \"Some species type\"" +
-                "}" +
                 "}, " +
                 "\"species\": \"required\"" +
                 "}";

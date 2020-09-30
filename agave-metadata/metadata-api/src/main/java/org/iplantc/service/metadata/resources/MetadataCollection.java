@@ -37,6 +37,7 @@ import org.iplantc.service.metadata.model.enumerations.MetadataEventType;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
 import org.iplantc.service.metadata.search.JsonHandler;
 import org.iplantc.service.metadata.search.MetadataSearch;
+import org.iplantc.service.metadata.search.MetadataValidation;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.restlet.Context;
@@ -258,7 +259,12 @@ public class MetadataCollection extends AgaveResource {
             try {
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
                 jsonHandler = new JsonHandler();
-                metadataItem = jsonHandler.parseJsonMetadata(jsonMetadata);
+//                metadataItem = jsonHandler.parseJsonMetadata(jsonMetadata);
+
+                //validate
+                MetadataValidation validation = new MetadataValidation();
+                metadataItem = validation.validateMetadataNodeFields(jsonMetadata, username);
+
 
                 //process permissions
                 MetadataRequestPermissionProcessor permissionProcessor = new MetadataRequestPermissionProcessor(metadataItem);
@@ -276,6 +282,7 @@ public class MetadataCollection extends AgaveResource {
             try {
                 metadataItem.setInternalUsername(internalUsername);
                 metadataItem.setOwner(this.username);
+
                 addedMetadataItem = search.insertMetadataItem(metadataItem);
             } catch (Exception e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,

@@ -12,7 +12,7 @@ import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
-import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.COMPLETED;
+import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskHealthcheckListener extends AbstractTransferTaskListener {
 	private final static Logger logger = LoggerFactory.getLogger(TransferTaskHealthcheckListener.class);
@@ -57,17 +57,22 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 	}
 
 	public Future<Boolean> processEvent(JsonObject body) {
+		logger.info("Got into TransferTaskHealthcheckListener.processEvent");
 		Promise<Boolean> promise = Promise.promise();
 
 		String uuid = body.getString("uuid");
-		String tenantId = body.getString("tenantId");
+		String tenantId = body.getString("tenant_id");
 
 		getDbService().allChildrenCancelledOrCompleted(tenantId, uuid, reply -> {
+			logger.info("got into getDbService().allChildrenCancelledOrCompleted");
 			if (reply.succeeded()) {
+				logger.info("reply from getDBSerivce.allChildrenCancelledOrCompleted " + reply.toString());
 				if (reply.result()) {
 					getDbService().updateStatus(tenantId, uuid, COMPLETED.name(), updateStatus -> {
+						logger.info("Got into getDBService.updateStatus(complete) ");
 						if (updateStatus.succeeded()) {
 							logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
+							//parentList.remove(uuid);
 							_doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, updateStatus.result());
 							promise.handle(Future.succeededFuture(Boolean.TRUE));
 						} else {
@@ -82,7 +87,26 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 						}
 					});
 				} else {
+					logger.info("allChildrenCancelledOrCompleted succeeded but the result is returns false.");
 					logger.info("[{}] Transfer task {} is still active", tenantId, uuid);
+					getDbService().updateStatus(tenantId, uuid, CANCELLED_ERROR.name(), updateStatus -> {
+						logger.info("Got into getDBService.updateStatus(ERROR)");
+						if (updateStatus.succeeded()){
+							logger.info("[{}] Transfer task {} updated to CANCELLED_ERROR.", tenantId, uuid);
+							//_doPublishEvent(MessageType.TRANSFERTASK_ERROR, updateStatus.result());
+							//promise.handle(Future.succeededFuture(Boolean.TRUE));
+						}else{
+							logger.error("[{}] Task {} completed, but unable to update status to CANCELLED_ERROR: {}",
+									tenantId, uuid, reply.cause());
+							JsonObject json = new JsonObject()
+									.put("cause", updateStatus.cause().getClass().getName())
+									.put("message", updateStatus.cause().getMessage())
+									.mergeIn(body);
+							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+							//promise.handle(Future.failedFuture(updateStatus.cause()));
+						}
+					});
+
 					promise.handle(Future.succeededFuture(Boolean.TRUE));
 				}
 			} else {

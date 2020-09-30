@@ -127,6 +127,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
     }
 
     protected void processTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
+        log.info("Got into TransferTaskAssignedListener.processTransferTask");
         //Promise<Boolean> promise = Promise.promise();
         String uuid = body.getString("uuid");
         String source = body.getString("source");
@@ -148,6 +149,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             } catch (Exception e) {
                 String msg = String.format("Unable to parse source uri %s for transfertask %s: %s",
                         source, uuid, e.getMessage());
+                log.error(msg);
                 throw new RemoteDataSyntaxException(msg, e);
             }
 
@@ -156,6 +158,8 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             // otherwise process the task
             if (assignedTransferTask.getRootTaskId() != null && assignedTransferTask.getParentTaskId() != null) {
                 // check for task interruption
+                log.info("Check for task interruption TransferTaskAssignedListener.processTransferTask");
+                log.info("Root task {} Parent task {}", assignedTransferTask.getRootTaskId(), assignedTransferTask.getParentTaskId());
                 if (taskIsNotInterrupted(assignedTransferTask)) {
 
                     // basic sanity check on uri again
@@ -366,6 +370,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         }
         catch (RemoteDataSyntaxException e) {
             String message = String.format("Failing transfer task %s due to invalid source syntax. %s", uuid, e.getMessage());
+            log.error(message);
             doHandleFailure(e, message, body, handler);
         }
         catch (Exception e) {

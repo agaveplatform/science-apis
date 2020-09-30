@@ -232,18 +232,19 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      */
     public boolean taskIsNotInterrupted(TransferTask transferTask) {
         try {
-            final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
-            if (cancelledTasks.stream().anyMatch(uuids::contains) || pausedTasks.stream().anyMatch(uuids::contains)) {
-                String msg = "Transfer was Canceled or Paused";
-                logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
-                JsonObject json = new JsonObject()
-                        .put("message", msg);
-                _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                return false;
+            if (transferTask.getParentTaskId() != null && transferTask.getRootTaskId() != null) {
+                final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
+                if (cancelledTasks.stream().anyMatch(uuids::contains) || pausedTasks.stream().anyMatch(uuids::contains)) {
+                    String msg = "Transfer was Canceled or Paused";
+                    logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
+                    JsonObject json = new JsonObject()
+                            .put("message", msg);
+                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+                    return false;
+                }
             }
         } catch (Exception e){
             logger.error("taskIsNotInterrupted Error.  {}", e.toString());
-
             return false;
         }
         return true;

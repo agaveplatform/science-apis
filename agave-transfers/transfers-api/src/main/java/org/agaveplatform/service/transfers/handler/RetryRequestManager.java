@@ -21,6 +21,7 @@ public class RetryRequestManager  {
      * @param vertx instance of vertx
      */
     public RetryRequestManager(Vertx vertx) {
+        log.info("RetryRequestManager starting");
         setVertx(vertx);
     }
 
@@ -31,6 +32,7 @@ public class RetryRequestManager  {
      * @param maxAttempts the maximum times to retry delivery of the message
      */
     public void request(final String address, final JsonObject body, final int maxAttempts) {
+        log.info("Got into the RetryRequestManager.request method.");
         getVertx().eventBus().request(address, body, new DeliveryOptions(), new Handler<AsyncResult<Message<JsonObject>>>() {
                 private int attempts = 0;
 
@@ -41,6 +43,7 @@ public class RetryRequestManager  {
                  */
                 @Override
                 public void handle (AsyncResult < Message < JsonObject >> event) {
+                    log.info("Got into the RetryReqestManager.handle method.");
                 if (event.failed()) {
                     if (attempts < maxAttempts) {
                         log.error("Unable to send {} event for transfer task {} after {} attempts. No further attempts will be made.",

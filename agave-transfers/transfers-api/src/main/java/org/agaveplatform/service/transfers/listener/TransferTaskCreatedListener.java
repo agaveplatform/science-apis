@@ -191,12 +191,16 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
 
             // check for interrupted before proceeding
             log.info("checking for interrupted before proceeding");
+            log.info(" rootTaskID = {}", createdTransferTask.getRootTaskId() );
+            log.info(" parentTaskID = {}", createdTransferTask.getParentTaskId() );
 
             // check to be sure that the root task or parent task are not null first
-            if (createdTransferTask.getRootTaskId() != null && createdTransferTask.getParentTaskId() != null) {
+            //if (createdTransferTask.getRootTaskId() != null && createdTransferTask.getParentTaskId() != null) {
+                log.info("Got past the rootTaskID and parentTaskID");
                 // if there are values for root task and parent task then do the following
                 if (taskIsNotInterrupted(createdTransferTask)) {
                     // update dt DB status here
+                    log.info("set status to ASSIGNED");
                     getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateResult -> {
                         if (updateResult.succeeded()) {
                             // continue assigning the task and return
@@ -212,11 +216,13 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                         }
                     });
                 } else {
-                    log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
+                    log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
                     _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
                     handler.handle(Future.succeededFuture(false));
                 }
-            }
+//            } else {
+//                log.info("Error. Root and parent tasks are null.");
+//            }
         } catch (Exception e) {
             log.error("Error with TransferTaskCreatedListener {}", e.toString());
             doHandleError(e, e.getMessage(), body, handler);

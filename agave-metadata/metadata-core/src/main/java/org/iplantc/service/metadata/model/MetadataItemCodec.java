@@ -47,7 +47,7 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         MetadataItem metadataItem = new MetadataItem();
         Document document = documentCodec.decode(reader, decoderContext);
 
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SS'Z'-05:00");
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
 
         String created = document.getString("created");
@@ -156,7 +156,7 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
     public void encode(BsonWriter writer, MetadataItem value, EncoderContext encoderContext) {
 
         writer.writeStartDocument();
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
+        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SS'Z'-05:00");
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         writer.writeName("created");
         writer.writeString(formatter.format(value.getCreated()));

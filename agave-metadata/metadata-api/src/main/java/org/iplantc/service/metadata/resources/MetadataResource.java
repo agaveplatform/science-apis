@@ -134,8 +134,8 @@ public class MetadataResource extends AgaveResource {
                 if (metadataItem == null)
                     throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
                             "No metadata item found for user with id " + uuid);
-                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
-                strResult = metadataItemSerializer.formatMetadataItemResult().toString();
+                MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer();
+                strResult = metadataItemSerializer.formatMetadataItemJsonResult(metadataItem).toString();
             }
 
             return new IplantSuccessRepresentation(strResult);
@@ -211,7 +211,10 @@ public class MetadataResource extends AgaveResource {
                     getResponse().setStatus(Status.SUCCESS_OK);
                 }
 
-                getResponse().setEntity(new IplantSuccessRepresentation(updatedMetadataDoc.toJson()));
+                MetadataItemSerializer serializer = new MetadataItemSerializer( );
+                Document formattedDocument = serializer.formatDocumentResult(updatedMetadataDoc);
+
+                getResponse().setEntity(new IplantSuccessRepresentation(serializer.formatMetadataItemDocumentResult(formattedDocument).toJson()));
 
 
             } catch (PermissionException e) {

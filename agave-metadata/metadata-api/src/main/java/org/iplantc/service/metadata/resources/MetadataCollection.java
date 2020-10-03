@@ -204,9 +204,9 @@ public class MetadataCollection extends AgaveResource {
                     }
 
                     try {
+                        MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer();
                         for (MetadataItem metadataItem : userResults) {
-                            MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(metadataItem);
-                            str_permittedResults.add(metadataItemSerializer.formatMetadataItemResult().toString());
+                            str_permittedResults.add(metadataItemSerializer.formatMetadataItemJsonResult(metadataItem).toString());
                         }
                     } catch (Exception e) {
                         throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
@@ -295,8 +295,8 @@ public class MetadataCollection extends AgaveResource {
                     addedMetadataItem.getUuid());
             notificationProcessor.process(jsonHandler.getNotifications());
 
-            MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer(addedMetadataItem);
-            strMetadataItem = metadataItemSerializer.formatMetadataItemResult().toString();
+            MetadataItemSerializer metadataItemSerializer = new MetadataItemSerializer();
+            strMetadataItem = metadataItemSerializer.formatMetadataItemJsonResult(addedMetadataItem).toString();
 
             eventProcessor.processContentEvent(addedMetadataItem.getUuid(),
                     MetadataEventType.CREATED,

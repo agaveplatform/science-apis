@@ -345,7 +345,7 @@ public class MetadataDao {
         try {
             metadataItemMongoCollection = getDefaultCollection();
 
-            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ-05:00");
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SS'Z'-05:00");
             formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
             doc.append("lastUpdated", formatter.format(new Date()));
 

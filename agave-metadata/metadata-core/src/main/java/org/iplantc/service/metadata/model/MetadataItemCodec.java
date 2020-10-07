@@ -17,12 +17,10 @@ import org.iplantc.service.metadata.exceptions.MetadataAssociationException;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.TimeZone;
+import java.util.Date;
 
 /**
  * Custom Codec for processing MetadataItem to Bson
@@ -47,18 +45,15 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         MetadataItem metadataItem = new MetadataItem();
         Document document = documentCodec.decode(reader, decoderContext);
 
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SS'Z'-05:00");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-
-        String created = document.getString("created");
-        String lastUpdated = document.getString("lastUpdated");
-
         try {
-            if (StringUtils.isNotEmpty(created))
-                metadataItem.setCreated(formatter.parse(created));
-            if (StringUtils.isNotEmpty(lastUpdated))
-                metadataItem.setLastUpdated(formatter.parse(lastUpdated));
-        } catch (ParseException e) {
+            Date createdDate = document.getDate("created");
+            if (createdDate != null)
+                metadataItem.setCreated(createdDate);
+
+            Date lastUpdatedDate = document.getDate("lastUpdated");
+            if (lastUpdatedDate != null)
+                metadataItem.setLastUpdated(lastUpdatedDate);
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -121,7 +116,7 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
                     doc = (Document) value.get(key);
                     JsonFactory factory = new ObjectMapper().getFactory();
                     JsonNode jsonMetadataNode = factory.createParser(doc.toJson()).readValueAsTree();
-                    json.put(key, jsonMetadataNode);
+                    json.replace(key, jsonMetadataNode);
 
                 } catch (Exception e) {
                     json.put(key, String.valueOf(value.get(key)));
@@ -156,12 +151,8 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
     public void encode(BsonWriter writer, MetadataItem value, EncoderContext encoderContext) {
 
         writer.writeStartDocument();
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SS'Z'-05:00");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-        writer.writeName("created");
-        writer.writeString(formatter.format(value.getCreated()));
-        writer.writeName("lastUpdated");
-        writer.writeString(formatter.format(value.getLastUpdated()));
+        writer.writeDateTime("created", value.getCreated().getTime());
+        writer.writeDateTime("lastUpdated", value.getLastUpdated().getTime());
         writer.writeName("uuid");
         writer.writeString(value.getUuid());
         writer.writeName("owner");

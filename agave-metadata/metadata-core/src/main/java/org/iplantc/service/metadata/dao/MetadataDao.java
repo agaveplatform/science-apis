@@ -15,25 +15,22 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.auth.AuthorizationHelper;
-import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.metadata.exceptions.MetadataException;
-import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataItemCodec;
 import org.iplantc.service.metadata.model.MetadataPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 
-import java.text.SimpleDateFormat;
-import java.util.*;
-import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.set;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
-import static org.iplantc.service.metadata.model.enumerations.PermissionType.ALL;
 
 public class MetadataDao {
 
@@ -214,6 +211,7 @@ public class MetadataDao {
             cursor = mongoCollection.find(query)
                     .sort(order)
                     .skip(offset)
+                    .batchSize(-Settings.MAX_PAGE_SIZE)
                     .limit(limit)
                     .projection(filter).cursor();
 
@@ -266,9 +264,11 @@ public class MetadataDao {
         Bson withPermissionQuery = and(query, getHasReadQuery(user, accessibleOwners));
 
         try {
+            //negative batch size limits response docs, positive sets size limit of each batch
             cursor = metadataItemMongoCollection.find(withPermissionQuery)
                     .sort(order)
                     .skip(offset)
+                    .batchSize(-Settings.MAX_PAGE_SIZE)
                     .limit(limit).cursor();
 
             while (cursor.hasNext()) {
@@ -345,9 +345,7 @@ public class MetadataDao {
         try {
             metadataItemMongoCollection = getDefaultCollection();
 
-            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SS'Z'-05:00");
-            formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-            doc.append("lastUpdated", formatter.format(new Date()));
+            doc.append("lastUpdated", new Date());
 
             //push instead of replace
             UpdateResult update = metadataItemMongoCollection.updateOne(and(eq("uuid", doc.get("uuid")),

@@ -3,17 +3,17 @@
  */
 package org.iplantc.service.transfer.irods;
 
-import java.io.IOException;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;
+
+import java.io.IOException;
 
 /**
  * @author dooley
  *
  */
-@Test(groups={"irods3","irods3-pam.operations"})
+@Test(groups={"integration", "irods3","irods3-pam.operations"})
 public class IrodsPamPasswordRemoteDataClientTest extends IrodsPasswordRemoteDataClientIT {
 
 	/* (non-Javadoc)

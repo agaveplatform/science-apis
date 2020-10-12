@@ -3,17 +3,7 @@
  */
 package org.iplantc.service.transfer.irods;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.UUID;
-
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.JSONTestDataUtil;
-import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.transfer.AbstractRemoteDataClientTest;
 import org.iplantc.service.transfer.IRemoteDataClientIT;
 import org.iplantc.service.transfer.RemoteDataClientTestUtils;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -21,17 +11,20 @@ import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
 import org.irods.jargon.core.connection.AuthScheme;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.UUID;
 
 /**
  * @author dooley
  *
  */
-@Test(groups={"irods3","irods3.operations"})
+@Test(groups={"integration", "irods3","irods3.operations"})
 public class IrodsPasswordRemoteDataClientIT  extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
 
 	/* (non-Javadoc)

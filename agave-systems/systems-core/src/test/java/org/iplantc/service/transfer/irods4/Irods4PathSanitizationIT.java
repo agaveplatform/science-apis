@@ -3,24 +3,18 @@
  */
 package org.iplantc.service.transfer.irods4;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.UUID;
-
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.AbstractPathSanitizationTest;
 import org.iplantc.service.transfer.IPathSanitizationTest;
-import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.mockito.Mockito;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.UUID;
 
 /**
  * @author dooley
@@ -39,40 +33,39 @@ public class Irods4PathSanitizationIT extends AbstractPathSanitizationTest imple
         return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "irods4.example.com.json");
     }
 
-    @BeforeClass
-    @Override
-    protected void beforeSubclass() throws Exception {
-
-        super.beforeClass();
-
-        JSONObject json = getSystemJson();
-        json.remove("id");
-        json.put("id", this.getClass().getSimpleName());
-        system = (StorageSystem)StorageSystem.fromJSON(json);
-        system.setOwner(SYSTEM_USER);
-        String homeDir = system.getStorageConfig().getHomeDir();
-        homeDir = StringUtils.isEmpty(homeDir) ? "" : homeDir;
-        system.getStorageConfig().setHomeDir( homeDir + "/" + getClass().getSimpleName());
-        storageConfig = system.getStorageConfig();
-        salt = system.getSystemId() + storageConfig.getHost() +
-                storageConfig.getDefaultAuthConfig().getUsername();
-
-        SystemDao dao = Mockito.mock(SystemDao.class);
-        Mockito.when(dao.findBySystemId(Mockito.anyString()))
-                .thenReturn(system);
-
-        log.debug("Pausing to allow irods4 to catchup.");
-        Thread.sleep(3000);
-
-        try {
-            RemoteDataClient client = system.getRemoteDataClient();
-            client.authenticate();
-            client.delete("/testuser/" + getClass().getSimpleName());
-        } catch (Exception e) {
-            log.debug("IRODS4 home directory " + system.getStorageConfig().getHomeDir() +
-                    " not present at start of test.");
-        }
-    }
+//    @BeforeClass
+//    @Override
+//    protected void beforeSubclass() throws Exception {
+//        super.beforeClass();
+//
+//        JSONObject json = getSystemJson();
+//        json.remove("id");
+//        json.put("id", this.getClass().getSimpleName());
+//        system = (StorageSystem)StorageSystem.fromJSON(json);
+//        system.setOwner(SYSTEM_USER);
+//        String homeDir = system.getStorageConfig().getHomeDir();
+//        homeDir = StringUtils.isEmpty(homeDir) ? "" : homeDir;
+//        system.getStorageConfig().setHomeDir( homeDir + "/" + getClass().getSimpleName());
+//        storageConfig = system.getStorageConfig();
+//        salt = system.getSystemId() + storageConfig.getHost() +
+//                storageConfig.getDefaultAuthConfig().getUsername();
+//
+//        SystemDao dao = Mockito.mock(SystemDao.class);
+//        Mockito.when(dao.findBySystemId(Mockito.anyString()))
+//                .thenReturn(system);
+//
+//        log.debug("Pausing to allow irods4 to catchup.");
+//        Thread.sleep(3000);
+//
+//        try {
+//            RemoteDataClient client = system.getRemoteDataClient();
+//            client.authenticate();
+//            client.delete("/testuser/" + getClass().getSimpleName());
+//        } catch (Exception e) {
+//            log.debug("IRODS4 home directory " + system.getStorageConfig().getHomeDir() +
+//                    " not present at start of test.");
+//        }
+//    }
 
 
 
@@ -111,10 +104,6 @@ public class Irods4PathSanitizationIT extends AbstractPathSanitizationTest imple
     {
         _mkDirSanitizationTest(filename, false, message);
     }
-
-
-
-
 
     @Override
     @Test(groups={"mkdirs"}, dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", retryAnalyzer = TransferTestRetryAnalyzer.class)

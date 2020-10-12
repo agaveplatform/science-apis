@@ -72,9 +72,9 @@ services:
         condition: on-failure
       resources:
         limits:
-          memory: 512M
+          memory: 512m
         reservations:
-          memory: 128M
+          memory: 128m
 
   beanstalkd-console:
     image: kusmierz/beanstalk-console:latest
@@ -87,9 +87,9 @@ services:
         condition: on-failure
       resources:
         limits:
-          memory: 512M
+          memory: 512m
         reservations:
-          memory: 128M
+          memory: 128m
 
 #  maildev:
 #    image: agaveplatform/maildev:latest

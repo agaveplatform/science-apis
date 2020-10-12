@@ -53,6 +53,7 @@ clean()
  done 
 
  for gomodule in ${gomodules}; do
+   delete_docker_image_if_exists ${gomodule}:$2
    delete_docker_image_if_exists $1/${gomodule}:$2
  done
 
@@ -129,7 +130,7 @@ build()
    echo "Building image for ${gomodule}"
    pushd agave-transfers/${gomodule} >> /dev/null
    make image
-   docker tag ${gomodule}:develop ${image}
+   docker tag ${gomodule}:$2 ${image}
    popd >> /dev/null
   else
    echo "${image} already exists. Skipping rebuild."

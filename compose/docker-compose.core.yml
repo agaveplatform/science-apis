@@ -69,11 +69,11 @@ services:
       traefik.http.routers.jobs_ssl.entrypoints: websecure
       traefik.http.routers.jobs_ssl.tls: true
 
-    #mem_limit: 8Gi
+    #mem_limit: 8g
     deploy:
       resources:
         limits:
-          memory: 8Gi
+          memory: 8g
 
   files:
     image: agaveplatform/files-api:${AGAVE_VERSION}
@@ -101,14 +101,14 @@ services:
       traefik.http.routers.files_ssl.entrypoints: websecure
       traefik.http.routers.files_ssl.tls: true
 
-    #mem_limit: 8Gi
+    #mem_limit: 8g
     deploy:
       resources:
         limits:
-          memory: 8Gi
+          memory: 8g
 
   sftp-relay:
-    image: agaveplatform/sftp-relay:develop
+    image: agaveplatform/sftp-relay:${AGAVE_VERSION}
     ports:
       - 80
       - 52911
@@ -130,11 +130,11 @@ services:
       traefik.http.routers.sftprelay.rule: Host(`sftprelay`) || PathPrefix(`/sftprelay`)
       traefik.http.routers.sftprelay.entrypoints: grpc
       traefik.http.middlewares.stripsftprelay.stripprefix.prefixes: /sftprelay
-    #mem_limit: 2Gi
+    #mem_limit: 2g
     deploy:
       resources:
         limits:
-          memory: 2Gi
+          memory: 2g
           
   apps:
     image: agaveplatform/apps-api:${AGAVE_VERSION}
@@ -165,11 +165,11 @@ services:
       traefik.http.routers.apps_ssl.middlewares: stripapps
       traefik.http.middlewares.stripapps.stripprefix.prefixes: /apps
       traefik.http.middlewares.stripapps.stripprefix.forceslash: true
-    #mem_limit: 2Gi
+    #mem_limit: 2g
     deploy:
       resources:
         limits:
-          memory: 2Gi
+          memory: 2g
 
   systems:
     image: agaveplatform/systems-api:${AGAVE_VERSION}
@@ -202,7 +202,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2Gi
+          memory: 2g
 
   monitors:
     image: agaveplatform/monitors-api:${AGAVE_VERSION}
@@ -233,11 +233,11 @@ services:
       traefik.http.routers.monitors_ssl.tls: true
       traefik.http.middlewares.stripmonitors.stripprefix.prefixes: /monitors
       traefik.http.middlewares.stripmonitors.stripprefix.forceslash: true
-    #mem_limit: 2Gi
+    #mem_limit: 2g
     deploy:
       resources:
         limits:
-          memory: 2Gi
+          memory: 2g
 
   metadata:
     image: agaveplatform/metadata-api:${AGAVE_VERSION}
@@ -268,11 +268,11 @@ services:
       traefik.http.routers.metadata_ssl.tls: true
       traefik.http.middlewares.stripmetadata.stripprefix.prefixes: /meta
       traefik.http.middlewares.stripmetadata.stripprefix.forceslash: true
-    #mem_limit: 2Gi
+    #mem_limit: 2g
     deploy:
       resources:
         limits:
-          memory: 2Gi
+          memory: 2g
 
   notifications:
     image: agaveplatform/notifications-api:${AGAVE_VERSION}
@@ -303,11 +303,11 @@ services:
       traefik.http.routers.notifications_ssl.tls: true
       traefik.http.middlewares.stripnotifications.stripprefix.prefixes: /notifications
       traefik.http.middlewares.stripnotifications.stripprefix.forceslash: true
-    #mem_limit: 2Gi
+    #mem_limit: 2g
     deploy:
       resources:
         limits:
-          memory: 2Gi
+          memory: 2g
 
   tags:
     image: agaveplatform/tags-api:${AGAVE_VERSION}
@@ -337,11 +337,11 @@ services:
       traefik.http.routers.tags_ssl.tls: true
       traefik.http.middlewares.striptags.stripprefix.prefixes: /tags
       traefik.http.middlewares.striptags.stripprefix.forceslash: true
-    #mem_limit: 2Gi
+    #mem_limit: 2g
     deploy:
       resources:
         limits:
-          memory: 2Gi
+          memory: 2g
 
   uuids:
     image: agaveplatform/uuids-api:${AGAVE_VERSION}
@@ -371,11 +371,11 @@ services:
       traefik.http.routers.uuids_ssl.tls: true
       traefik.http.middlewares.stripuuids.stripprefix.prefixes: /uuids
       traefik.http.middlewares.stripuuids.stripprefix.forceslash: true
-    #mem_limit: 2Gi
+    #mem_limit: 2g
     deploy:
       resources:
         limits:
-          memory: 2Gi
+          memory: 2g
 
   postits:
     image: agaveplatform/postits-api:${AGAVE_VERSION}
@@ -406,11 +406,11 @@ services:
       traefik.http.routers.postits_ssl.tls: true
       traefik.http.middlewares.strippostits.stripprefix.prefixes: /postits
       traefik.http.middlewares.strippostits.stripprefix.forceslash: true
-    #mem_limit: 2Gi
+    #mem_limit: 2g
     deploy:
       resources:
         limits:
-          memory: 2Gi
+          memory: 2g
 
   tenants:
     image: agaveplatform/tenants-api:${AGAVE_VERSION}
@@ -440,11 +440,11 @@ services:
       traefik.http.middlewares.striptenants.stripprefix.prefixes: /tenants
       traefik.http.middlewares.striptenants.stripprefix.forceslash: true
 
-    #mem_limit: 1Gi
+    #mem_limit: 1g
     deploy:
       resources:
         limits:
-          memory: 1Gi
+          memory: 1g
 
   logging:
     image: agaveplatform/logging-api:${AGAVE_VERSION}
@@ -474,8 +474,8 @@ services:
       traefik.http.routers.logging_ssl.tls: true
       traefik.http.middlewares.striplogging.stripprefix.prefixes: /logging
       traefik.http.middlewares.striplogging.stripprefix.forceslash: true
-    #mem_limit: 1Gi
+    #mem_limit: 1g
     deploy:
       resources:
         limits:
-          memory: 1Gi
+          memory: 1g

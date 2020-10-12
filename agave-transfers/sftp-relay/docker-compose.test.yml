@@ -10,7 +10,7 @@ services:
     volumes:
       - ./scratch:/scratch
   test:
-    image: sftp-relay:develop
+    image: sftp-relay:${AGAVE_VERSION}
     entrypoint: "make test"
     volumes:
       - .:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay

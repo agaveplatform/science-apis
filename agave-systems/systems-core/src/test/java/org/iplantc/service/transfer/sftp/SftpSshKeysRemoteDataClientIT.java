@@ -20,7 +20,7 @@ import java.util.UUID;
  * @author dooley
  *
  */
-@Test(singleThreaded = false, groups={"sftp.operations"})
+@Test(singleThreaded = false, groups={"sftp","sftp.operations"})
 public class SftpSshKeysRemoteDataClientIT extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
 
 	protected String containerName;

@@ -36,7 +36,7 @@ services:
       - "traefik.enable=true"
 
   sftp-relay:
-    image: sftp-relay:develop
+    image: sftp-relay:${project.version}
     ports:
       - 50051:50051
       - 9092

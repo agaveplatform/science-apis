@@ -3,34 +3,23 @@
  */
 package org.iplantc.service.transfer.sftp;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.RemoteCredentialException;
-import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.transfer.BaseTransferTestCase;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientTestUtils;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.sftp.MaverickSFTP;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 /**
  * @author dooley
  *
  */
-@Test(groups={"sftp-sshkeys-kbi.auth","broken"})
+@Test(groups={"sftp","sftp-sshkeys-kbi.auth","broken"})
 public class SftpSshKeysKBIAuthTest extends RemoteDataClientTestUtils {
 
 private static final Logger log = Logger.getLogger(SftpSshKeysKBIAuthTest.class);

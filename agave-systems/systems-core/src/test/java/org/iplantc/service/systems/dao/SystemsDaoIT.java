@@ -436,7 +436,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 	}
 	
 	@Test (dataProvider="updateSystemRoleProvider", dependsOnMethods = {"persistSystemRole", "updateSystemRole"})
-	public void deleteSystemRoleTest(RoleType originalType, RoleType updateType, String message, Boolean shouldThrowException)
+	public void deleteSystemRole(RoleType originalType, RoleType updateType, String message, Boolean shouldThrowException)
 	throws Exception 
 	{
 		RemoteSystem system = createExecutionSystem();
@@ -454,17 +454,16 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertNotNull(system.getId(), "Failed to generate a system ID.");
 			
 			system = dao.findById(system.getId());
+			SystemRole savedSystemRole = system.getRoles().iterator().next();
 
 			Assert.assertEquals(system.getRoles().size(), 1, "Failed to save role.");
 			Assert.assertTrue(system.getRoles().contains(pem), "Role was not saved.");
 			
-			system.getRoles().clear();
+			system.removeRole(savedSystemRole);
 			dao.persist(system);
 			
 			system = dao.findById(system.getId());
 			Assert.assertEquals(system.getRoles().size(), 0, "Roles were not deleted.");
-			
-			
 		} 
 		catch(Exception e) 
 		{
@@ -473,6 +472,46 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
             if (actuallyThrewException != shouldThrowException) e.printStackTrace();
 		}
 		
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
+	}
+
+	@Test (dataProvider="updateSystemRoleProvider", dependsOnMethods = {"persistSystemRole", "deleteSystemRole"})
+	public void clearSystemRoleTest(RoleType originalType, RoleType updateType, String message, Boolean shouldThrowException)
+			throws Exception
+	{
+		RemoteSystem system = createExecutionSystem();
+		SystemDao dao = new SystemDao();
+
+		boolean actuallyThrewException = false;
+		String exceptionMsg = "";
+
+		try
+		{
+			SystemRole pem = new SystemRole(SYSTEM_USER, originalType);
+			system.addRole(pem);
+			dao.persist(system);
+
+			Assert.assertNotNull(system.getId(), "Failed to generate a system ID.");
+
+			system = dao.findById(system.getId());
+
+			Assert.assertEquals(system.getRoles().size(), 1, "Failed to save role.");
+			Assert.assertTrue(system.getRoles().contains(pem), "Role was not saved.");
+
+			system.getRoles().clear();
+			dao.persist(system);
+
+			system = dao.findById(system.getId());
+			Assert.assertEquals(system.getRoles().size(), 0, "Roles were not deleted.");
+		}
+		catch(Exception e)
+		{
+			actuallyThrewException = true;
+			exceptionMsg = "Error persisting system " + system.getName() + ": " + message;
+			if (actuallyThrewException != shouldThrowException) e.printStackTrace();
+		}
+
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
 		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}

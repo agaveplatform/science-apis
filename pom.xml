@@ -226,6 +226,10 @@
         <skip.integration.tests>true</skip.integration.tests>
         <skip.unit.tests>true</skip.unit.tests>
         <skip.integration.s3.tests>true</skip.integration.s3.tests>
+        <skip.integration.irods3.tests>true</skip.integration.irods3.tests>
+        <skip.integration.irods4.tests>true</skip.integration.irods4.tests>
+        <skip.integration.sftp.tests>true</skip.integration.sftp.tests>
+        <skip.integration.http.tests>true</skip.integration.http.tests>
 
     </properties>
 

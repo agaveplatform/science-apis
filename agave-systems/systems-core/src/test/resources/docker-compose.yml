@@ -36,7 +36,7 @@ services:
       - "traefik.enable=true"
 
   sftp-relay:
-    image: sftp-relay:develop
+    image: sftp-relay:${project.version}
     ports:
       - 50051:50051
       - 9092
@@ -89,7 +89,7 @@ services:
         condition: on-failure
       resources:
         limits:
-          memory: 2G
+          memory: 4G
 
   irods3:
     image: agaveplatform/irods:3.3.1
@@ -118,7 +118,7 @@ services:
         condition: on-failure
       resources:
         limits:
-          memory: 2G
+          memory: 4G
 
   requestbin:
     image: agaveplatform/requestbin:2.0.0

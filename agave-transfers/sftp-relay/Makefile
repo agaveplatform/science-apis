@@ -7,7 +7,7 @@ PROJECT_PROTO_SRC_DIR := $(abspath $(PROJECT_DIR)/../../agave-protos)/proto/
 PROJECT_PROTO_OUT_DIR := pkg/sftpproto
 PROJECT_NAME := "sftp-relay"
 CLIENT_NAME := "sftp-client"
-
+GIT_BRANCH := $(shell git branch | grep '^\*' | sed 's/^\* //g')
 #PROJECT_PROTOS := $(wildcard $(PROJECT_PROTO_SRC_DIR)/*.proto)
 #PROJECT_GEN_PB := $(addprefix pkg/sftprelay/,$(notdir $(patsubst %.proto,%.pb.go,$(PROJECT_PROTOS))))
 
@@ -69,7 +69,7 @@ image:
 	@# Copying protobuf file locally to avoid import of entire project repo and speed up build
 	@ mkdir -p tmp
 	@ cp -rf $(PROJECT_PROTO_SRC_DIR) tmp
-	-docker build -t $(PROJECT_NAME):develop .
+	-docker build -t $(PROJECT_NAME):$(GIT_BRANCH) .
 	@- rm -rf tmp
 
 # Build protobuf

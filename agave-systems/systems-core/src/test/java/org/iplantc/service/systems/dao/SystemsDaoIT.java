@@ -436,7 +436,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 	}
 	
 	@Test (dataProvider="updateSystemRoleProvider", dependsOnMethods = {"persistSystemRole", "updateSystemRole"})
-	public void deleteSystemRoleTest(RoleType originalType, RoleType updateType, String message, Boolean shouldThrowException)
+	public void deleteSystemRole(RoleType originalType, RoleType updateType, String message, Boolean shouldThrowException)
 	throws Exception 
 	{
 		RemoteSystem system = createExecutionSystem();

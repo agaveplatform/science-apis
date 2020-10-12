@@ -224,6 +224,8 @@
         <skip.integration.tests>true</skip.integration.tests>
         <skip.unit.tests>true</skip.unit.tests>
         <skip.integration.s3.tests>true</skip.integration.s3.tests>
+        <skip.integration.irods3.tests>true</skip.integration.irods3.tests>
+        <skip.integration.irods4.tests>true</skip.integration.irods4.tests>
 
     </properties>
 

@@ -8,7 +8,6 @@ import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.AuthConfig;
 import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.enumerations.AuthConfigType;
-import org.iplantc.service.transfer.AbstractRemoteDataClientTest;
 import org.iplantc.service.transfer.IRemoteDataClientIT;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientTestUtils;
@@ -30,7 +29,7 @@ import java.util.UUID;
  * @author dooley
  *
  */
-@Test(groups={"sftprelay.operations"})
+@Test(groups={"sftp","sftprelay.operations"})
 public class SftpRelayPasswordRemoteDataClientIT extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
 
 	/* (non-Javadoc)

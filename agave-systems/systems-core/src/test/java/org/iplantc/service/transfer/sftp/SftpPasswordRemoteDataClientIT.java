@@ -3,20 +3,12 @@
  */
 package org.iplantc.service.transfer.sftp;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.iplantc.service.transfer.IRemoteDataClientIT;
 import org.iplantc.service.transfer.RemoteDataClientTestUtils;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.s3.S3Jcloud;
 import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
-import org.jclouds.blobstore.domain.BlobMetadata;
-import org.jclouds.s3.blobstore.S3BlobStore;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.FileNotFoundException;
@@ -28,7 +20,7 @@ import java.util.UUID;
  * @author dooley
  *
  */
-@Test(groups={"sftp.operations"})
+@Test(groups={"sftp","sftp.operations"})
 public class SftpPasswordRemoteDataClientIT extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
 
 	protected String containerName;

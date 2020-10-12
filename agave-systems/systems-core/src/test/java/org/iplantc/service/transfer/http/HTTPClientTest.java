@@ -4,21 +4,19 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpStatus;
-import org.apache.http.ProtocolVersion;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.message.BasicStatusLine;
 import org.iplantc.service.systems.Settings;
 import org.iplantc.service.transfer.BaseTransferTestCase;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,7 +27,7 @@ import java.util.UUID;
 /**
  * Reduced test harness for http client tests.
  */
-@Test(groups={"http.operations"})
+@Test(groups={"http","http.operations"})
 public class HTTPClientTest extends BaseTransferTestCase 
 {
 	private URI httpUri = null;

@@ -3,18 +3,17 @@
  */
 package org.iplantc.service.transfer.sftp;
 
-import java.io.IOException;
-
-import org.iplantc.service.transfer.AbstractRemoteDataClientTest;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;
+
+import java.io.IOException;
 
 /**
  * @author dooley
  *
  */
-@Test(groups= {"sftp-password-tunnel.operations","disabled"})
+@Test(groups= {"sftp","sftp-password-tunnel.operations","disabled"})
 public class SftpPasswordTunnelRemoteDataClientTest extends SftpPasswordRemoteDataClientIT {
 
 	@Override

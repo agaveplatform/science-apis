@@ -3,10 +3,6 @@
  */
 package org.iplantc.service.transfer.sftp;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.UUID;
-
 import org.iplantc.service.transfer.AbstractPathSanitizationTest;
 import org.iplantc.service.transfer.IPathSanitizationTest;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -15,11 +11,15 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.Test;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.UUID;
+
 /**
  * @author dooley
  *
  */
-@Test(groups= {"sftp.path.sanitization"})
+@Test(groups= {"sftp","sftp.path.sanitization"})
 public class SftpPathSanitizationIT extends AbstractPathSanitizationTest implements IPathSanitizationTest {
 
     /* (non-Javadoc)

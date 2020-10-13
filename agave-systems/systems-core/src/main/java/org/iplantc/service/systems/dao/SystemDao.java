@@ -59,7 +59,7 @@ public class SystemDao extends AbstractDao {
         try {
             Session session = getSession();
             session.saveOrUpdate(system);
-            session.flush();
+
         } catch (HibernateException ex) {
             try {
                 if (HibernateUtil.getSession().isOpen()) {
@@ -107,6 +107,17 @@ public class SystemDao extends AbstractDao {
                 HibernateUtil.commitTransaction();
             } catch (Throwable ignored) {
             }
+        }
+    }
+
+    public RemoteSystem refresh(RemoteSystem system) {
+        try {
+            Session session = HibernateUtil.getSession();
+            session.refresh(system);
+
+            return system;
+        } catch (HibernateException ex) {
+            throw ex;
         }
     }
 
@@ -208,18 +219,21 @@ public class SystemDao extends AbstractDao {
 
     /**
      * Finds system by systemId regardless of avaialbility and ownership.
+     * Note: the tenant id will be pulled from the current context.
      *
-     * @param systemId
-     * @return
+     * @param systemId id of the system to fetch.
+     * @return the system with the given {@code systemId} or null if no match is found.
      */
     public RemoteSystem findActiveAndInactiveSystemBySystemId(String systemId) {
+        RemoteSystem system = null;
         try {
             Session session = getSession();
+            session.clear();
 
             String hql = "from RemoteSystem " + "where systemId = :systemId "
                     + "		and tenantId = :tenantId ";
 
-            RemoteSystem system = (RemoteSystem) session.createQuery(hql)
+            system = (RemoteSystem) session.createQuery(hql)
                     .setString("systemId", systemId)
                     .setString("tenantId", TenancyHelper.getCurrentTenantId())
                     .setCacheable(false)
@@ -227,11 +241,11 @@ public class SystemDao extends AbstractDao {
                     .setMaxResults(1)
                     .uniqueResult();
 
-            session.flush();
 
-            return system;
         } catch (ObjectNotFoundException ex) {
             return null;
+        } catch (StaleStateException ex) {
+            // skip due to unrelated issue
         } catch (HibernateException ex) {
             throw ex;
         } finally {
@@ -240,12 +254,14 @@ public class SystemDao extends AbstractDao {
             } catch (Throwable ignored) {
             }
         }
+
+        return system;
     }
 
     public RemoteSystem findBySystemId(String systemId) {
         try {
             Session session = getSession();
-
+            session.clear();
             String hql = "from RemoteSystem " + "where systemId = :systemId "
                     + "		and tenantId = :tenantId "
                     + "		and available = :available";
@@ -892,7 +908,7 @@ public class SystemDao extends AbstractDao {
     }
 
     /**
-     * Returns the current path to the {@link org.iplantc.service.jobs.model.Job} output data on a
+     * Returns the current path to the {@code org.iplantc.service.jobs.model.Job} output data on a
      * {@link RemoteSystem}.
      * Depending on the job status, the returned system may change over time.
      *

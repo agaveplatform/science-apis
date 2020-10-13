@@ -1,28 +1,19 @@
 package org.iplantc.service.systems.manager;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.UniqueId;
 import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.dao.SystemRoleDao;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.JSONTestDataUtil;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemRole;
-import org.iplantc.service.systems.model.PersistedSystemsModelTestCommon;
+import org.iplantc.service.systems.model.*;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.json.JSONException;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Test(groups={"integration"})
 public class SystemRoleManagerIT extends PersistedSystemsModelTestCommon {
@@ -130,10 +121,17 @@ public class SystemRoleManagerIT extends PersistedSystemsModelTestCommon {
             SystemRoleManager manager = new SystemRoleManager(system);
             manager.clearRoles(system.getOwner());
             
-            RemoteSystem clearedSystem = new SystemDao().findById(system.getId());
-            
+            RemoteSystem clearedSystem = new SystemDao().findActiveAndInactiveSystemBySystemId(system.getSystemId());
             Assert.assertNotNull(clearedSystem, "Unable to fetch system by id after clearing roles.");
             Assert.assertTrue(clearedSystem.getRoles().isEmpty(), "System roles should be empty after clearing.");
+
+            // Confirm the same is true when querying from the manager
+            manager = new SystemRoleManager(clearedSystem);
+            List<SystemRole> updatedRolesFromManager = manager.getRoles(9999, 0);
+            Assert.assertNotNull(updatedRolesFromManager, "Null should not be returned from SystemRoleManager#getRoles(int, int).");
+            Assert.assertEquals(updatedRolesFromManager.size(), 1, "SystemRoleManager#getRoles(int, int) should only return one role role after clearing roles.");
+            Assert.assertEquals(updatedRolesFromManager.get(0).getRole(), RoleType.OWNER, "SystemRoleManager#getRoles(int, int) should only return the owner role after clearing roles");
+            Assert.assertEquals(updatedRolesFromManager.get(0).getUsername(), system.getOwner(), "SystemRoleManager#getRoles(int, int) should only return a role belonging to the system owner after clearing roles");
         } 
         catch (Exception e) {
             if (!shouldThrowException) {
@@ -149,16 +147,16 @@ public class SystemRoleManagerIT extends PersistedSystemsModelTestCommon {
     public Object[][] setRoleFailsOnPublicSystemsProvider() throws Exception {
         return new Object[][] {
 //            { getStorageSystem(true), TENANT_ADMIN, false, "Setting role on public storage system should not throw exception for a tenant admin." },
-            { getStorageSystem(true), SYSTEM_OWNER, true, "Setting role on public storage system should throw exception for system owner." },
-            { getStorageSystem(true), SYSTEM_SHARE_USER, true, "Setting role on public storage system should throw exception for system shared user." },
-            { getStorageSystem(true), SYSTEM_PUBLIC_USER, true, "Setting role on public storage system should throw exception for public user." },
-            { getStorageSystem(true), SYSTEM_UNSHARED_USER, true, "Setting role on public storage system should throw exception for random user." },
+            { getStorageSystem(true), SYSTEM_OWNER, true, "Setting role on public storage system should throw exception for the system owner." },
+            { getStorageSystem(true), SYSTEM_SHARE_USER, true, "Setting role on public storage system should throw exception for a system shared user." },
+            { getStorageSystem(true), SYSTEM_PUBLIC_USER, true, "Setting role on public storage system should throw exception for a public user." },
+            { getStorageSystem(true), SYSTEM_UNSHARED_USER, true, "Setting role on public storage system should throw exception for a random user." },
 
-            { getExecutionSystem(true), TENANT_ADMIN, false, "Setting role on public execution system should not throw exception a tenant admin." },
-            { getExecutionSystem(true), SYSTEM_OWNER, true, "Setting role on public execution system should throw exception for system owner." },
-            { getExecutionSystem(true), SYSTEM_SHARE_USER, true, "Setting role on public execution system should throw exception for system shared user." },
-            { getExecutionSystem(true), SYSTEM_PUBLIC_USER, true, "Setting role on public execution system should throw exception for public user." },
-            { getExecutionSystem(true), SYSTEM_UNSHARED_USER, true, "Setting role on public execution system should throw exception for random user." },
+//            { getExecutionSystem(true), TENANT_ADMIN, false, "Setting role on public execution system should not throw exception a tenant admin." },
+            { getExecutionSystem(true), SYSTEM_OWNER, true, "Setting role on public execution system should throw exception for the system owner." },
+            { getExecutionSystem(true), SYSTEM_SHARE_USER, true, "Setting role on public execution system should throw exception for a system shared user." },
+            { getExecutionSystem(true), SYSTEM_PUBLIC_USER, true, "Setting role on public execution system should throw exception for a public user." },
+            { getExecutionSystem(true), SYSTEM_UNSHARED_USER, true, "Setting role on public execution system should throw exception for a random user." },
         };
     }
 
@@ -273,7 +271,7 @@ public class SystemRoleManagerIT extends PersistedSystemsModelTestCommon {
         List<Object[]> testCases = new ArrayList<Object[]>();
         
         for (RoleType roleType: RoleType.values()) {
-            if (roleType != RoleType.ADMIN) {
+            if (roleType != RoleType.ADMIN && roleType != RoleType.NONE) {
                 if (roleType != RoleType.PUBLISHER) {
                     testCases.add(new Object[]{getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, roleType, RoleType.ADMIN, false, "setRole should not alter tenant admin permission on public storage system"});
                     testCases.add(new Object[]{getStorageSystem(false), TENANT_ADMIN, TENANT_ADMIN, roleType, RoleType.ADMIN, false, "setRole should not alter tenant admin permission on private storage system"});
@@ -285,7 +283,7 @@ public class SystemRoleManagerIT extends PersistedSystemsModelTestCommon {
         
         return testCases.toArray(new Object[][] {});
     }
-    
+
 //    @Test(dependsOnMethods={"setRoleDoesNotChangeExistingOwnerRole"}, dataProvider="setRoleDoesNotChangeExistingSuperAdminRoleProvider")
     @Test(dataProvider="setRoleDoesNotChangeExistingSuperAdminRoleProvider")
     public void setRoleDoesNotChangeExistingSuperAdminRole(RemoteSystem system, String requestingUser, String roleUsername, RoleType roleType, RoleType expectedRoleType, boolean shouldThrowException, String message) {
@@ -326,119 +324,76 @@ public class SystemRoleManagerIT extends PersistedSystemsModelTestCommon {
     public Object[][] getRolesSetByTenantAdminProvider() throws Exception {
         
         return new Object[][] {
-                {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.OWNER, RoleType.ADMIN, false, "setRole should throw exception when an owner permission is applied"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.OWNER, RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER , RoleType.OWNER, RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.OWNER, RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
+                {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.OWNER, RoleType.ADMIN, false, "setRole should not throw exception when an owner permission is applied"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.OWNER, RoleType.OWNER, false, "setRole should not throw exception when an owner permission is applied"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER , RoleType.OWNER, RoleType.OWNER, false, "setRole should not throw exception when an owner permission is applied"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.OWNER, RoleType.OWNER, false, "setRole should not throw exception when an owner permission is applied"},
                 
                 {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should throw exception when a tenant admin sets an admin permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should throw exception when a tenant admin sets an admin permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should throw exception when a tenant admin sets an admin permission on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
                 
 //                {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.PUBLISHER, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
 //                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.PUBLISHER, RoleType.OWNER, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
-//                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should throw exception when a tenant admin sets an publisher permission on a public system"},
-//                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should throw exception when a tenant admin sets an publisher permission on a public system"},
-//                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should throw exception when a tenant admin sets an publisher permission on a public system"},
+//                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
+//                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
+//                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
 //                
                 {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.USER, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an user permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.USER, RoleType.USER, false, "setRole should throw exception when a tenant admin sets an user permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.USER, RoleType.USER, false, "setRole should throw exception when a tenant admin sets an user permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.USER, RoleType.USER, false, "setRole should throw exception when a tenant admin sets an user user on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.USER, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets an user permission on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.USER, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets an user permission on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.USER, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets an user user on a public system"},
                 
                 {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.GUEST, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should throw exception when a tenant admin sets a guest user on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should not throw exception when a tenant admin sets a guest user on a public system"},
                 
                 {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.NONE, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.NONE, RoleType.USER, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.NONE, RoleType.USER, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.NONE, RoleType.USER, false, "setRole should throw exception when a tenant admin sets a guest user on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.NONE, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.NONE, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
+                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.NONE, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets a guest user on a public system"},
                 
                 // execution tests
-                {getExecutionSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.OWNER, RoleType.ADMIN, false, "setRole should throw exception when an owner permission is applied"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.OWNER, RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER , RoleType.OWNER, RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.OWNER, RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
+                {getExecutionSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.OWNER, RoleType.ADMIN, false, "setRole should not throw exception when an owner permission is applied"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.OWNER, RoleType.OWNER, false, "setRole should not throw exception when an owner permission is applied"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER , RoleType.OWNER, RoleType.OWNER, false, "setRole should not throw exception when an owner permission is applied"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.OWNER, RoleType.OWNER, false, "setRole should not throw exception when an owner permission is applied"},
                 
                 {getExecutionSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
                 {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.ADMIN, RoleType.OWNER, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should throw exception when a tenant admin sets an admin permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should throw exception when a tenant admin sets an admin permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should throw exception when a tenant admin sets an admin permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.ADMIN, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
                 
                 {getExecutionSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.PUBLISHER, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
                 {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.PUBLISHER, RoleType.OWNER, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should throw exception when a tenant admin sets an publisher permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should throw exception when a tenant admin sets an publisher permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should throw exception when a tenant admin sets an publisher permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.PUBLISHER, RoleType.PUBLISHER, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
                 
                 {getExecutionSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.USER, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an user permission on a public system"},
                 {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.USER, RoleType.OWNER, false, "setRole should not throw exception when a tenant admin sets an user permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.USER, RoleType.USER, false, "setRole should throw exception when a tenant admin sets an user permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.USER, RoleType.USER, false, "setRole should throw exception when a tenant admin sets an user permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.USER, RoleType.USER, false, "setRole should throw exception when a tenant admin sets an user user on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.USER, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets an user permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.USER, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets an user permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.USER, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets an user user on a public system"},
                 
                 {getExecutionSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.GUEST, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
                 {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.GUEST, RoleType.OWNER, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should throw exception when a tenant admin sets a guest user on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.GUEST, RoleType.GUEST, false, "setRole should not throw exception when a tenant admin sets a guest user on a public system"},
                 
                 {getExecutionSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.NONE, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
                 {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.NONE, RoleType.OWNER, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.NONE, RoleType.USER, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.NONE, RoleType.USER, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.NONE, RoleType.USER, false, "setRole should throw exception when a tenant admin sets a guest user on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.NONE, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.NONE, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
+                {getExecutionSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.NONE, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets a guest user on a public system"},
                 
         };
     }
-    
-    @DataProvider
-    public Object[][] getRolesSetBySystemOwnerProvider() throws Exception {
-        
-        return new Object[][] {
-                {getStorageSystem(true), SYSTEM_OWNER, TENANT_ADMIN, RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER , RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.OWNER, false, "setRole should throw exception when an owner permission is applied"},
-                
-                {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.ADMIN, false, "setRole should not throw exception when a tenant admin sets an admin permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.ADMIN, false, "setRole should throw exception when a tenant admin sets an admin permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.ADMIN, false, "setRole should throw exception when a tenant admin sets an admin permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.ADMIN, false, "setRole should throw exception when a tenant admin sets an admin permission on a public system"},
-                
-                {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.PUBLISHER, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.PUBLISHER, false, "setRole should not throw exception when a tenant admin sets an publisher permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.PUBLISHER, false, "setRole should throw exception when a tenant admin sets an publisher permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.PUBLISHER, false, "setRole should throw exception when a tenant admin sets an publisher permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.PUBLISHER, false, "setRole should throw exception when a tenant admin sets an publisher permission on a public system"},
-                
-                {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets an user permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.USER, false, "setRole should not throw exception when a tenant admin sets an user permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.USER, false, "setRole should throw exception when a tenant admin sets an user permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.USER, false, "setRole should throw exception when a tenant admin sets an user permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.USER, false, "setRole should throw exception when a tenant admin sets an user user on a public system"},
-                
-                {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.GUEST, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.GUEST, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.GUEST, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.GUEST, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.GUEST, false, "setRole should throw exception when a tenant admin sets a guest user on a public system"},
-                
-                {getStorageSystem(true), TENANT_ADMIN, TENANT_ADMIN, RoleType.NONE, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_OWNER, RoleType.NONE, false, "setRole should not throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_SHARE_USER, RoleType.NONE, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_UNSHARED_USER, RoleType.NONE, false, "setRole should throw exception when a tenant admin sets a guest permission on a public system"},
-                {getStorageSystem(true), TENANT_ADMIN, SYSTEM_PUBLIC_USER, RoleType.NONE, false, "setRole should throw exception when a tenant admin sets a guest user on a public system"},
-                
-        };
-    }
-    
+
     @Test(dependsOnMethods={"setRoleDoesNotChangeExistingSuperAdminRole"}, dataProvider="getRolesSetByTenantAdminProvider")
     public void setNewRoleForUser(RemoteSystem system, String requestingUser, String roleUsername, RoleType roleType, RoleType expectedRoleType, boolean shouldThrowException, String message) {
         
@@ -480,7 +435,7 @@ public class SystemRoleManagerIT extends PersistedSystemsModelTestCommon {
             
             RemoteSystem updatedSystem = dao.findById(system.getId());
             SystemRole udpatedRole = updatedSystem.getUserRole(roleUsername);
-            
+
             Assert.assertNotNull(udpatedRole, "No user role retured after adding to system.");
             Assert.assertEquals(udpatedRole.getUsername(), roleUsername, "getUserRole returned role for incorrect user after adding to system.");
             Assert.assertEquals(udpatedRole.getRole(), expectedRoleType, "Incorrect user roleType retured after adding to system.");         
@@ -489,6 +444,72 @@ public class SystemRoleManagerIT extends PersistedSystemsModelTestCommon {
             if (!shouldThrowException) {
                 Assert.fail(message, e);
             }
+        }
+        finally {
+            try { dao.remove(system); } catch (Exception ignored) {}
+        }
+    }
+
+    @DataProvider
+    protected Object[][] updateRoleForUserProvider() throws SystemArgumentException, JSONException, IOException {
+        return new Object[][]{
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.GUEST, RoleType.GUEST, RoleType.GUEST},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.GUEST, RoleType.USER, RoleType.USER},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.GUEST, RoleType.ADMIN, RoleType.ADMIN},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.GUEST, RoleType.OWNER, RoleType.OWNER},
+
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.USER, RoleType.GUEST, RoleType.GUEST},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.USER, RoleType.USER, RoleType.USER},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.USER, RoleType.ADMIN, RoleType.ADMIN},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.USER, RoleType.OWNER, RoleType.OWNER},
+
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.ADMIN, RoleType.GUEST, RoleType.GUEST},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.ADMIN, RoleType.USER, RoleType.USER},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.ADMIN, RoleType.ADMIN, RoleType.ADMIN},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.ADMIN, RoleType.OWNER, RoleType.OWNER},
+
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.OWNER, RoleType.GUEST, RoleType.GUEST},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.OWNER, RoleType.USER, RoleType.USER},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.OWNER, RoleType.ADMIN, RoleType.ADMIN},
+                {getStorageSystem(false), SYSTEM_OWNER, SYSTEM_SHARE_USER, RoleType.OWNER, RoleType.OWNER, RoleType.OWNER},
+        };
+    }
+
+    @Test(dataProvider="updateRoleForUserProvider", dependsOnMethods={"setDuplicateRoleForUserReturnsSameRole"})
+    public void updateRoleForUser(RemoteSystem system, String requestingUser, String roleUsername, RoleType originalRoleType, RoleType updatedRoleType, RoleType expectedRoleType) {
+
+        try {
+            system.addRole(new SystemRole(roleUsername, originalRoleType));
+            dao.persist(system);
+
+            TenancyHelper.setCurrentEndUser(requestingUser);
+
+            // update the user role via the SystemRoleManager
+            SystemRoleManager manager = new SystemRoleManager(system);
+            manager.setRole(roleUsername, updatedRoleType, requestingUser);
+
+            // Query the system to get the user role after updating by the manager
+            RemoteSystem updatedSystem = dao.findById(system.getId());
+            SystemRole updatedRole = updatedSystem.getUserRole(roleUsername);
+            Assert.assertNotNull(updatedRole, "No user role found in system role set after manager update.");
+            Assert.assertEquals(updatedRole.getUsername(), roleUsername, "getUserRole returned role for incorrect user after manager update.");
+            Assert.assertEquals(updatedRole.getRole(), expectedRoleType, "Incorrect user roleType found in system role set after manager update.");
+
+            // Confirm the same is true when querying from the manager
+            manager = new SystemRoleManager(updatedSystem);
+            SystemRole updatedRoleFromManager = manager.getUserRole(roleUsername);
+            Assert.assertNotNull(updatedRoleFromManager, "No user role returned from SystemRoleManager#dRoleFromManager() after manager update.");
+            Assert.assertEquals(updatedRoleFromManager.getUsername(), roleUsername, "SystemRoleManager#dRoleFromManager() returned role for incorrect user after manager update.");
+            Assert.assertEquals(updatedRoleFromManager.getRole(), expectedRoleType, "Incorrect user roleType returned from SystemRoleManager#dRoleFromManager() after manager update.");
+
+            // Confirm object is present in db
+            SystemRole updatedRoleFromDao = SystemRoleDao.getSystemRoleForUser(roleUsername, system.getSystemId());
+            Assert.assertNotNull(updatedRoleFromManager, "No user role returned from SystemRoleDao.getSystemRoleForUser(String, String) after manager update.");
+            Assert.assertEquals(updatedRoleFromManager.getUsername(), roleUsername, "SystemRoleDao.getSystemRoleForUser(String, String) returned role for incorrect user after manager update.");
+            Assert.assertEquals(updatedRoleFromManager.getRole(), expectedRoleType, "Incorrect user roleType returned from SystemRoleDao.getSystemRoleForUser(String, String) after manager update.");
+        }
+        catch (Exception e) {
+            Assert.fail("System role update for user should not thorw exception.", e);
         }
         finally {
             try { dao.remove(system); } catch (Exception ignored) {}

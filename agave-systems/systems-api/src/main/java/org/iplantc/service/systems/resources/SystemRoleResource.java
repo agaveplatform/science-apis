@@ -3,10 +3,6 @@
  */
 package org.iplantc.service.systems.resources;
 
-import java.io.FileNotFoundException;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -18,12 +14,7 @@ import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.AgaveResource;
 import org.iplantc.service.systems.Settings;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.dao.SystemRoleDao;
-import org.iplantc.service.systems.exceptions.SystemArgumentException;
-import org.iplantc.service.systems.exceptions.SystemException;
-import org.iplantc.service.systems.exceptions.SystemRoleException;
-import org.iplantc.service.systems.exceptions.SystemUnavailableException;
-import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.systems.exceptions.*;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.manager.SystemRoleManager;
 import org.iplantc.service.systems.model.RemoteSystem;
@@ -38,6 +29,9 @@ import org.restlet.data.Status;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
+
+import java.io.FileNotFoundException;
+import java.util.Map;
 
 /**
  * Handles system sharing interfaces
@@ -116,17 +110,14 @@ public class SystemRoleResource extends AgaveResource
 				
 				if (StringUtils.isEmpty(sharedUsername) ) 
 				{
-					// add the owner 
-					jsonPermissions = new SystemRole(system.getOwner(), RoleType.OWNER).toJSON(system);
-						
-					List<SystemRole> roles = SystemRoleDao.getSystemRoles(system.getId(), limit, offset);
-					
-					for (SystemRole role: roles)
+					SystemRoleManager systemRoleManager = new SystemRoleManager(system);
+
+					for (SystemRole role: systemRoleManager.getRoles(limit, offset))
 					{
 						jsonPermissions += "," + role.toJSON(system);
 					}
 					
-					jsonPermissions = "[" + jsonPermissions + "]";
+					jsonPermissions = "[" + jsonPermissions.substring(1) + "]";
 				} 
 				else 
 				{
@@ -156,15 +147,12 @@ public class SystemRoleResource extends AgaveResource
 							jsonPermissions = role.toJSON(system);
 						}
 					} 
-					catch (ResourceException e) {
+					catch (FileNotFoundException|ResourceException e) {
 						throw e;
 					}
 					catch (SystemRoleException e) {
 						throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 								"Unable to fetch system roles for " + sharedUsername, e);
-					}
-					catch (FileNotFoundException e) {
-						throw e;
 					}
 					catch (Exception e) {
 						throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
@@ -342,12 +330,12 @@ public class SystemRoleResource extends AgaveResource
 						
 						roleManager.setRole(name, roleType, username);
 						
-						if (roleType == null || roleType.equals(RoleType.NONE)) {
+						if (roleType.equals(RoleType.NONE)) {
 							getResponse().setStatus(Status.SUCCESS_OK);
 						} else {
 							getResponse().setStatus(Status.SUCCESS_CREATED);
 						}
-						SystemRole role = system.getUserRole(name);
+						SystemRole role = roleManager.getUserRole(name);
 						
 						getResponse().setEntity(new IplantSuccessRepresentation("[" + role.toJSON(system) + "]"));
 					} 
@@ -445,15 +433,14 @@ public class SystemRoleResource extends AgaveResource
 						throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
 							"No roles found for user " + sharedUsername);
 					} else {
-						SystemRole userRole = system.getUserRole(sharedUsername);
-						system.getRoles().remove(userRole);
-						dao.persist(system);
+						SystemRoleManager systemRoleManager = new SystemRoleManager(system);
+						systemRoleManager.setRole(sharedUsername, RoleType.NONE, username);
 					}
 				} 
 				else // delete all roles for this system 
 				{
-					system.getRoles().clear();
-					dao.persist(system);
+					SystemRoleManager systemRoleManager = new SystemRoleManager(system);
+					systemRoleManager.clearRoles(username);
 				}	
 					
 				getResponse().setEntity(new IplantSuccessRepresentation());

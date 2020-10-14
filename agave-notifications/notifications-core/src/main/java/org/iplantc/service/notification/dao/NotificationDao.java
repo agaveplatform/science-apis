@@ -256,14 +256,14 @@ public class NotificationDao extends AbstractDao
 		try
 		{
 			Session session = getSession();
-			
+			session.clear();
 			String hql = "from Notification t where t.uuid = :uuid";
 			
 			Notification notification = (Notification)session.createQuery(hql)
 					.setString("uuid",uuid)
 					.uniqueResult();
 			
-//			session.flush();
+			session.flush();
 			
 			return notification;
 		}

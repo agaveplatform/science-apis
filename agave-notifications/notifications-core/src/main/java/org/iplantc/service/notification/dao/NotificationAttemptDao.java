@@ -47,7 +47,7 @@ public class NotificationAttemptDao extends AbstractDao {
 		try
 		{
 			Session session = getSession();
-			
+			session.clear();
 			String hql = "from NotificationAttempt where uuid = :uuid";
 			
 			NotificationAttempt attempt = (NotificationAttempt)session.createQuery(hql)

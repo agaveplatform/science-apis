@@ -156,12 +156,13 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             // check to see if the parentTaskId or the rootTaskId are null.
             // If either one of them are then skipp the processing
             // otherwise process the task
-            if (assignedTransferTask.getRootTaskId() != null && assignedTransferTask.getParentTaskId() != null) {
+            log.info("check to be sure root and parent are not null");
+           // if (assignedTransferTask.getRootTaskId() != null && assignedTransferTask.getParentTaskId() != null) {
                 // check for task interruption
                 log.info("Check for task interruption TransferTaskAssignedListener.processTransferTask");
                 log.info("Root task {} Parent task {}", assignedTransferTask.getRootTaskId(), assignedTransferTask.getParentTaskId());
                 if (taskIsNotInterrupted(assignedTransferTask)) {
-
+                    log.info("got past taskIsNotInterrupted");
                     // basic sanity check on uri again
                     // basic sanity check on uri again
                     if (uriSchemeIsNotSupported(srcUri)) {
@@ -173,40 +174,48 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                 assignedTransferTask.getUuid(), assignedTransferTask.getDest());
                         throw new RemoteDataSyntaxException(msg);
                     } else {
+                        log.info("got into srcClient & destCleint");
                         // get a remote data client for the source target
                         srcClient = getRemoteDataClient(tenantId, username, srcUri);
                         // get a remote data client for the dest target
                         destClient = getRemoteDataClient(tenantId, username, destUri);
 
                         // stat the remote path to check its type and existence
+                        log.info("stat the remote path to check its type and existence");
                         RemoteFileInfo srcFileInfo = srcClient.getFileInfo(srcUri.getPath());
-
+                        log.info("Remote path was checked.");
                         // if the path is a file, then we can move it directly, so we raise an event telling the protocol
                         // listener to move the file item
                         if (srcFileInfo.isFile()) {
+                            log.info("srcFileInfo is a file.");
                             // but first, we udpate the transfer task status to ASSIGNED
-                            getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
-                                if (updateResult.succeeded()) {
-                                    log.debug("Assigning single file transfer task {} directly to the transfer queue.", uuid);
-                                    // write to the catchall transfer event channel. Nothing to update in the transfer task
-                                    // as the status will be updated when the transfer begins.
-                                    _doPublishEvent(TRANSFER_ALL, updateResult.result());
-                                    handler.handle(Future.succeededFuture(true));
-                                }
-                                // we couldn't update the transfer task value
-                                else {
-                                    String message = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
-                                            uuid, updateResult.cause().getMessage());
+                            _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson() );
 
-                                    doHandleFailure(updateResult.cause(), message, body, handler);
-                                }
-                            });
+//                            getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
+//                                if (updateResult.succeeded()) {
+//                                    log.debug("Assigning single file transfer task {} directly to the transfer queue.", uuid);
+//                                    // write to the catchall transfer event channel. Nothing to update in the transfer task
+//                                    // as the status will be updated when the transfer begins.
+//                                    _doPublishEvent(TRANSFER_ALL, updateResult.result());
+//                                    log.info("Sending message to TRANSFER_ALL worked");
+//
+//                                    handler.handle(Future.succeededFuture(true));
+//                                }
+//                                // we couldn't update the transfer task value
+//                                else {
+//                                    String message = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
+//                                            uuid, updateResult.cause().getMessage());
+//
+//                                    doHandleFailure(updateResult.cause(), message, body, handler);
+//                                }
+//                            });
                         }
                         // the path is a directory, so walk the first level of the directory, spawning new child transfer
                         // tasks for every file item found. folders will be put back on the created queue for further
                         // traversal in depth. files will be forwarded to the transfer channel for immediate processing
                         else {
                             // list the remote directory
+                            log.info("list the remote directory");
                             List<RemoteFileInfo> remoteFileInfoList = srcClient.ls(srcUri.getPath());
 
                             // if the directory is empty, the listing will only contain the target path as the "." folder.
@@ -247,7 +256,6 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                 List<Future> childFutures = remoteFileInfoList.stream()
                                         .takeWhile(childFileItem -> ongoing.booleanValue())
                                         .filter(childFileItem -> !childFileItem.getName().endsWith("."))
-
                                         .map(childFileItem -> {
                                             Promise promise = Promise.promise();
                                             String childBaseFileName = Paths.get(childFileItem.getName()).normalize().getFileName().toString();
@@ -270,6 +278,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                                     getDbService().createOrUpdateChildTransferTask(tenantId, childTransferTask, childResult -> {
                                                         String fileItemType = childFileItem.isFile() ? "file" : "directory";
                                                         if (childResult.succeeded()) {
+
                                                             String childMessageType = childFileItem.isFile() ? TRANSFER_ALL : TRANSFERTASK_CREATED;
 
                                                             log.debug("Finished processing child {} transfer tasks for {}: {} => {}",
@@ -366,7 +375,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
                     handler.handle(Future.succeededFuture(false));
                 }
-            }
+            //}
         }
         catch (RemoteDataSyntaxException e) {
             String message = String.format("Failing transfer task %s due to invalid source syntax. %s", uuid, e.getMessage());
@@ -374,6 +383,8 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             doHandleFailure(e, message, body, handler);
         }
         catch (Exception e) {
+            String message = String.format("Caught a general exception. %s  %s", uuid, e.getMessage());
+            log.error(message);
             doHandleError(e, e.getMessage(), body, handler);
         }
         finally {

@@ -100,63 +100,81 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 			// update dt DB status here
 			getDbService().getById(tenantId, uuid, getByIdReply -> {
 				if (getByIdReply.succeeded()) {
-					TransferTask errorTask = new TransferTask(getByIdReply.result());
+					if (getByIdReply.result() != null) {
+						TransferTask errorTask = new TransferTask(getByIdReply.result());
 
-					// check to be sure if the root task and parent task are present
-					if (tt.getRootTaskId() != null && tt.getParentTaskId() != null) {
+						// check to be sure if the root task and parent task are present
+						if (tt.getRootTaskId() != null && tt.getParentTaskId() != null) {
 
-
-						// check to see if the job was canceled so we don't retry an interrupted task
-						if (taskIsNotInterrupted(tt)) {
-							// see if the error in the event is recoverable or not
-							if (getRecoverableExceptionsClassNames().contains(cause)) {
-								// now check its status
-								if (tt.getStatus().isActive()) {
-									// check the retry count on the transfer task. if it has not yet tapped out, examine the error to see if
-									if (errorTask.getAttempts() <= maxTries) {
-										getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.name(), updateStatusResult -> {
-											if (updateStatusResult.succeeded()) {
-												log.error("Transfer task {} experienced a non-terminal error and will be retried. The error was {}", tt.getUuid(), message);
-												_doPublishEvent(TRANSFER_RETRY, updateStatusResult.result());
-												handler.handle(Future.succeededFuture(true));
-											} else {
-												String msg = String.format("Error updating status of transfer task %s to ERROR. %s",
-														uuid, updateStatusResult.cause().getMessage());
-												// write to error queue. we can retry
-												doHandleError(updateStatusResult.cause(), msg, body, handler);
-											}
-										});
+							// check to see if the job was canceled so we don't retry an interrupted task
+							if (taskIsNotInterrupted(tt)) {
+								// see if the error in the event is recoverable or not
+								if (getRecoverableExceptionsClassNames().contains(cause)) {
+									// now check its status
+									if (tt.getStatus().isActive()) {
+										// check the retry count on the transfer task. if it has not yet tapped out, examine the error to see if
+										if (errorTask.getAttempts() <= maxTries) {
+											getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.name(), updateStatusResult -> {
+												if (updateStatusResult.succeeded()) {
+													log.error("Transfer task {} experienced a non-terminal error and will be retried. The error was {}", tt.getUuid(), message);
+													_doPublishEvent(TRANSFER_RETRY, updateStatusResult.result());
+													handler.handle(Future.succeededFuture(true));
+												} else {
+													String msg = String.format("Error updating status of transfer task %s to ERROR. %s",
+															uuid, updateStatusResult.cause().getMessage());
+													// write to error queue. we can retry
+													doHandleError(updateStatusResult.cause(), msg, body, handler);
+												}
+											});
+										} else {
+											log.info("Maximum attempts have been exceeded for transfer task {}. No further retries will be attempted.",
+													tt.getUuid());
+											getDbService().updateStatus(tenantId, uuid, TransferStatusType.FAILED.name(), updateStatusResult -> {
+												if (updateStatusResult.succeeded()) {
+													log.error("Updated status of transfer task {} to FAILED. No retires will be attempted.", tt.getUuid());
+													handler.handle(Future.succeededFuture(true));
+												} else {
+													String msg = String.format("Error updating status of transfer task %s to FAILED. %s",
+															uuid, updateStatusResult.cause().getMessage());
+													// write to error queue. we can retry
+													doHandleError(updateStatusResult.cause(), msg, body, handler);
+												}
+											});
+										}
 									} else {
-										log.info("Maximum attempts have been exceeded for transfer task {}. No further retries will be attempted.",
-												tt.getUuid());
-										getDbService().updateStatus(tenantId, uuid, TransferStatusType.FAILED.name(), updateStatusResult -> {
-											if (updateStatusResult.succeeded()) {
-												log.error("Updated status of transfer task {} to FAILED. No retires will be attempted.", tt.getUuid());
-												handler.handle(Future.succeededFuture(true));
-											} else {
-												String msg = String.format("Error updating status of transfer task %s to FAILED. %s",
-														uuid, updateStatusResult.cause().getMessage());
-												// write to error queue. we can retry
-												doHandleError(updateStatusResult.cause(), msg, body, handler);
-											}
-										});
+										// skip any new message as the task was already done, so this was a redundant operation
+										log.info("Skipping retry of transfer task {} as the job was already in a terminal state.", uuid);
+										handler.handle(Future.succeededFuture(false));
+										return;
 									}
 								} else {
-									// skip any new message as the task was already done, so this was a redundant operation
-									log.info("Skipping retry of transfer task {} as the job was already in a terminal state.", uuid);
-									handler.handle(Future.succeededFuture(false));
-									return;
+									log.info("Unrecoverable exception occurred while processing transfer task {}. " +
+											"No further retries will be attempted.", tt.getUuid());
+									// TODO: support failure policy so we can continue if some files/folders failed to transfer
+									getDbService().updateStatus(tenantId, uuid, TransferStatusType.FAILED.name(), updateStatusResult -> {
+										if (updateStatusResult.succeeded()) {
+											log.error("Updated status of transfer task {} to FAILED. No retires will be attempted.", tt.getUuid());
+											handler.handle(Future.succeededFuture(true));
+										} else {
+											String msg = String.format("Error updating status of transfer task %s to FAILED. %s",
+													uuid, updateStatusResult.cause().getMessage());
+											// write to error queue. we can retry
+											doHandleError(updateStatusResult.cause(), msg, body, handler);
+										}
+									});
 								}
 							} else {
-								log.info("Unrecoverable exception occurred while processing transfer task {}. " +
-										"No further retries will be attempted.", tt.getUuid());
-								// TODO: support failure policy so we can continue if some files/folders failed to transfer
-								getDbService().updateStatus(tenantId, uuid, TransferStatusType.FAILED.name(), updateStatusResult -> {
+								// task was interrupted, so don't attempt a retry
+								// TODO: handle pause and cancelled interupts independently here
+								log.info("Skipping error processing of transfer task {} due to interrupt event.", tt.getUuid());
+								getDbService().updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(), updateStatusResult -> {
 									if (updateStatusResult.succeeded()) {
-										log.error("Updated status of transfer task {} to FAILED. No retires will be attempted.", tt.getUuid());
+										log.error("Updated status of transfer task {} to CANCELLED after interrupt received. No retires will be attempted.", uuid);
+										_doPublishEvent(TRANSFERTASK_CANCELED_ACK, updateStatusResult.result());
+
 										handler.handle(Future.succeededFuture(true));
 									} else {
-										String msg = String.format("Error updating status of transfer task %s to FAILED. %s",
+										String msg = String.format("Error updating status of transfer task %s to CANCELLED. %s",
 												uuid, updateStatusResult.cause().getMessage());
 										// write to error queue. we can retry
 										doHandleError(updateStatusResult.cause(), msg, body, handler);
@@ -164,32 +182,22 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 								});
 							}
 						} else {
-							// task was interrupted, so don't attempt a retry
-							// TODO: handle pause and cancelled interupts independently here
-							log.info("Skipping error processing of transfer task {} due to interrupt event.", tt.getUuid());
-							getDbService().updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(), updateStatusResult -> {
-								if (updateStatusResult.succeeded()) {
-									log.error("Updated status of transfer task {} to CANCELLED after interrupt received. No retires will be attempted.", uuid);
-									_doPublishEvent(TRANSFERTASK_CANCELED_ACK, updateStatusResult.result());
-
-									handler.handle(Future.succeededFuture(true));
-								} else {
-									String msg = String.format("Error updating status of transfer task %s to CANCELLED. %s",
-											uuid, updateStatusResult.cause().getMessage());
-									// write to error queue. we can retry
-									doHandleError(updateStatusResult.cause(), msg, body, handler);
-								}
-							});
+							String msg = String.format("rootTaskId or parentTaskId are null %s   %s", tt.getParentTaskId(), tt.getRootTaskId());
+							log.error(msg);
+							//doHandleError(getByIdReply.cause(), msg, body, handler);
 						}
-					}else{
-						log.info("rootTaskId or parentTaskId are null {}  {}", tt.getParentTaskId(), tt.getRootTaskId());
+					}else {
+						String msg = String.format("getByIdReply.result() was null %s ",
+								uuid);
+						log.error(msg);
+						//doHandleError(getByIdReply.cause(), msg, body, handler);
 					}
-
 				} else {
-					String msg = String.format("Error fetching current state of transfer task %s. %s",
+					String msg = String.format("Error fetching current state of transfer task %s   %s",
 							uuid, getByIdReply.cause().getMessage());
 					// write to error queue. we can retry, but we need a circuite breaker here at some point to avoid
 					// an infinite loop.
+					log.error(msg);
 					doHandleError(getByIdReply.cause(), msg, body, handler);
 				}
 			});

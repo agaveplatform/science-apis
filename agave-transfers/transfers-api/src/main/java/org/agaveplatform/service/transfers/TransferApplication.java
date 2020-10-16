@@ -63,13 +63,13 @@ public class TransferApplication {
                                     .setMaxWorkerExecuteTime(3600);
 
 
-                            deployTTC(vertx, localOptions, resp -> {
-                                if (resp.succeeded()) {
-                                    log.info("TransferTaskCreatedListener Deployment id is " + resp.result());
-                                } else {
-                                    log.error("TransferTaskCreatedListener Deployment failed !");
-                                }
-                            });
+//                            deployTTC(vertx, localOptions, resp -> {
+//                                if (resp.succeeded()) {
+//                                    log.info("TransferTaskCreatedListener Deployment id is " + resp.result());
+//                                } else {
+//                                    log.error("TransferTaskCreatedListener Deployment failed !");
+//                                }
+//                            });
                             // Deployment TransferTaskCreatedListener verticle
                             vertx.deployVerticle(TransferTaskCreatedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskCreatedListener",
                                     localOptions, res1 -> {
@@ -223,18 +223,18 @@ public class TransferApplication {
         });
     }
 
-    protected static void deployTTC(Vertx vertx, DeploymentOptions localOptions, Handler<AsyncResult<Boolean>> handler ){
-    // Deployment TransferTaskCreatedListener verticle
-    log.info("got to deployTTC");
-        vertx.deployVerticle(TransferTaskCreatedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskCreatedListener",
-        localOptions,res1 -> {
-            if (res1.succeeded()) {
-                log.info("TransferTaskCreatedListener Deployment id is " + res1.result());
-                handler.handle(Future.succeededFuture(true));
-            } else {
-                log.error("TransferTaskCreatedListener Deployment failed !");
-                handler.handle(Future.succeededFuture(false));
-            }
-        });
-    }
+//    protected static void deployTTC(Vertx vertx, DeploymentOptions localOptions, Handler<AsyncResult<Boolean>> handler ){
+//    // Deployment TransferTaskCreatedListener verticle
+//    log.info("got to deployTTC");
+//        vertx.deployVerticle(TransferTaskCreatedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskCreatedListener",
+//        localOptions,res1 -> {
+//            if (res1.succeeded()) {
+//                log.info("TransferTaskCreatedListener Deployment id is " + res1.result());
+//                handler.handle(Future.succeededFuture(true));
+//            } else {
+//                log.error("TransferTaskCreatedListener Deployment failed !");
+//                handler.handle(Future.succeededFuture(false));
+//            }
+//        });
+//    }
 }

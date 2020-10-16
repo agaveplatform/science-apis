@@ -62,6 +62,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
     public void _doPublishEvent(String eventName, JsonObject body) {
+        logger.info("_doPublishEvent({}, {})", eventName, body);
         getRetryRequestManager().request(eventName, body, config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, 0));
     }
 
@@ -276,7 +277,9 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     public abstract String getDefaultEventChannel();
 
     public RetryRequestManager getRetryRequestManager() {
+        logger.info("Got into the getRetryRequestManager call");
         if (retryRequestManager == null) {
+            logger.info("getRetryRequestManager check for null");
             retryRequestManager = new RetryRequestManager(getVertx());
         }
         return retryRequestManager;

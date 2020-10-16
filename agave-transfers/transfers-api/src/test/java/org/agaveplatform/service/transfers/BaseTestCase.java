@@ -353,6 +353,23 @@ public abstract class BaseTestCase {
 
     /**
      * Creates a mock {@link AsyncResult<TransferTask>} that can be used as a handler controlling
+     * the success outcomes
+     * @param result the expected {@link TransferTask} returned from {@link AsyncResult#result()}
+     * @return a valid mock for testing {@link TransferTask} result behavior
+     */
+    protected AsyncResult<String> getMockStringResult(String result) {
+        AsyncResult<String> asyncResult = mock(AsyncResult.class);
+        when(asyncResult.result()).thenReturn(result);
+        when(asyncResult.succeeded()).thenReturn(true);
+        when(asyncResult.failed()).thenReturn(false);
+        when(asyncResult.cause()).thenReturn(null);
+
+        return asyncResult;
+    }
+
+
+    /**
+     * Creates a mock {@link AsyncResult<TransferTask>} that can be used as a handler controlling
      * failure outcomes and response
      * @param cause the expected exception to be bubbled up
      * @return a valid mock for testing {@link TransferTask} result behavior

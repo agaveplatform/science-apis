@@ -19,6 +19,7 @@ import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
+import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
@@ -57,6 +58,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	@Override
 	public void start() {
 		EventBus bus = vertx.eventBus();
+		log.info("Got into TransferAllProtocolVertical");
 
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
@@ -68,12 +70,12 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			String source = body.getString("source");
 			String dest = body.getString("dest");
 
-			log.info("Transfer task {} transferring: {} -> {}", uuid, source, dest);
+			log.info("Transfer task (ALL) {} transferring: {} -> {}", uuid, source, dest);
 			processEvent(body, resp -> {
 				if (resp.succeeded()) {
-					log.debug("Completed processing {} event for transfer task (TA) {}", getEventChannel(), uuid);
+					log.debug("Completed processing (ALL) {} event for transfer task (TA) {}", getEventChannel(), uuid);
 				} else {
-					log.error("Unable to process {} event for transfer task (TA) message: {}", getEventChannel(), body.encode(), resp.cause());
+					log.error("Unable to process (ALL) {} event for transfer task (TA) message: {}", getEventChannel(), body.encode(), resp.cause());
 				}
 			});
 		});
@@ -129,6 +131,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	 * @param handler the callback receiving the result of the event processing
 	 */
 	public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
+		log.info("Got into TransferAllProtocolVertical.processEvent");
+
 		TransferTask tt = new TransferTask(body);
 		String source = tt.getSource();
 		String dest = tt.getDest();
@@ -165,7 +169,6 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 				// check to be sure if the root task and parent task are present
 				if (tt.getRootTaskId() != null && tt.getParentTaskId() != null) {
 
-
 					if (taskIsNotInterrupted(tt)) {
 						legacyTransferTask =
 								new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
@@ -192,8 +195,10 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 						}
 
 						log.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
+						//result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
 
-						result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
+						URLCopy urlCopy = getUrlCopy(srcClient, destClient);
+						legacyTransferTask = urlCopy.copy(source, dest, legacyTransferTask);
 
 						handler.handle(Future.succeededFuture(result));
 						log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
@@ -207,7 +212,6 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 								handler.handle(Future.failedFuture(updateReply.cause()));
 							}
 						});
-
 					}
 				} else {
 					log.info("rootTaskId or parentTaskId are null {}  {}", tt.getParentTaskId(), tt.getRootTaskId());
@@ -258,6 +262,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	protected Boolean processCopyRequest(String source, RemoteDataClient srcClient, String dest, RemoteDataClient destClient, org.iplantc.service.transfer.model.TransferTask legacyTransferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
 		log.info("Got into TransferAllProtocolVertical.processCopyRequest ");
+
+		log.info("Changing status to TRANSFERING");
 		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
 			if (updateReply.succeeded()) {
 				Future.succeededFuture(Boolean.TRUE);
@@ -267,10 +273,12 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			}
 		});
 
+		log.info("Get up to the urlCopy");
 		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for
 		//   interrupts in this method upon updates from the transfer thread and interrupt it. Alternatively, we can
 		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
+		log.info("legacyTransferTask");
 		legacyTransferTask = urlCopy.copy(source, dest, legacyTransferTask);
 
 		return legacyTransferTask.getStatus() == TransferStatusType.COMPLETED;

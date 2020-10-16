@@ -1,17 +1,19 @@
 package org.agaveplatform.service.transfers.handler;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
 
-public class RetryRequestManager  {
+public class RetryRequestManager {
     private static final Logger log = LoggerFactory.getLogger(RetryRequestManager.class);
     private Vertx vertx;
 
@@ -33,8 +35,10 @@ public class RetryRequestManager  {
      */
     public void request(final String address, final JsonObject body, final int maxAttempts) {
         log.info("Got into the RetryRequestManager.request method.");
+
         getVertx().eventBus().request(address, body, new DeliveryOptions(), new Handler<AsyncResult<Message<JsonObject>>>() {
-                private int attempts = 0;
+            private int attempts = 0;
+            private final Logger logger = LoggerFactory.getLogger(RetryRequestManager.class);
 
                 /**
                  * Something has happened, so handle it.
@@ -71,6 +75,7 @@ public class RetryRequestManager  {
                 }
             }
         });
+
     }
 
     public Vertx getVertx() {

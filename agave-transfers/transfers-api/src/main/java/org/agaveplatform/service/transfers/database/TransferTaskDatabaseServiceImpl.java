@@ -208,6 +208,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(uuid)
             .add(tenantId);
     dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED), data, fetch -> {
+      LOGGER.info("dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED)");
       if (fetch.succeeded()) {
         ResultSet resultSet = fetch.result();
         LOGGER.info("db.allChildrenCancelledOrCompleted, Number of rows ={}", resultSet.getNumRows());
@@ -411,11 +412,12 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonArray params = new JsonArray().add(uuid).add(tenantId);
         dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
           if (ar.succeeded()) {
-            LOGGER.info("updateStatus works");
+            LOGGER.info("updateStatus succeeded");
             if (ar.result().getRows().isEmpty()) {
+              LOGGER.info("Number of rows updates is 0.");
               resultHandler.handle(Future.failedFuture(new ObjectNotFoundException("Transform task was deleted by another process after the update completed successfully. ")));
             } else {
-              LOGGER.info("updateStatus result = " + ar.result().getRows().get(0));
+              LOGGER.info("updateStatus succeeded, result = " + ar.result().getRows().get(0));
               resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
             }
           } else {

@@ -4,13 +4,12 @@
   "transfertask.jwt.private_key": "src/main/resources/private_key.pem",
   "transfertask.jwt.public_key": "src/main/resources/public_key.pem",
   "transfertask.jdbc.data_source": "org.mariadb.jdbc.MariaDbDataSource",
-  "transfertask.jdbc.database": "agavecore",
+  "transfertask.jdbc.driver_class": "${foundation.db.test.driver}",
   "transfertask.jdbc.username": "${foundation.db.test.username}",
   "transfertask.jdbc.password": "${foundation.db.test.password}",
-  "transfertask.jdbc.driver_class": "${foundation.db.test.driver}&serverTimezone=America/Chicago&autoReconnect=True&failOverReadOnly=false&autoReconnectForPools=true&useUnicode=true&characterEncoding=utf8",
-  "transfertask.jdbc.url": "jdbc:mysql://mysql:3306/agavecore",
+  "transfertask.jdbc.url": "${foundation.db.test.url}&serverTimezone=America/Chicago&autoReconnect=True&failOverReadOnly=false&autoReconnectForPools=true&useUnicode=true&characterEncoding=utf8",
   "transfertask.jdbc.max_pool_size": 3,
   "transfertask.db.queue": "transfertaskdb.queue",
-  "transfertasks.sqlqueries.resource.file": "src/main/resources/db-queries.yml",
+  "transfertask.sqlqueries.resource.file": "src/main/resources/db-queries.yml",
   "transfertask.max.attempts": 3
 }

@@ -139,20 +139,24 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             URI srcUri;
             URI destUri;
             try {
+                log.info("got into TransferTaskCreatedListener.processEvent");
                 srcUri = URI.create(source);
                 destUri = URI.create(dest);
             } catch (Exception e) {
                 String msg = String.format("Unable to parse source uri %s for transfer task %s: %s",
                         source, uuid, e.getMessage());
+                log.error(msg);
                 throw new RemoteDataSyntaxException(msg, e);
             }
 
             // ensure we can make the transfer based on protocol
             if (uriSchemeIsNotSupported(srcUri)) {
+                log.info("uriSchemeIsNotSupported {}", srcUri);
                 throw new RemoteDataSyntaxException(String.format("Unknown source schema %s for the transfer task %s",
                         destUri.getScheme(), uuid));
             } else {
                 // look up the system to check permissions
+                log.info("got into the look up the system to check permissions");
                 if (srcUri.getScheme().equalsIgnoreCase("agave")) {
                     // TODO: ensure user has access to the system. We may need to look up file permissions her as well.
                     //  though it's a lot easier to say this is an internal service and permissions will be checked and
@@ -160,15 +164,18 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                     if (!userHasMinimumRoleOnSystem(tenantId, username, srcUri.getHost(), RoleType.GUEST)) {
                         String message = String.format("User does not have sufficient permissions to access the " +
                                 "source file item %s for transfer task %s.", source, uuid);
+                        log.info(message);
                         throw new PermissionException(message);
                     }
 }
             }
 
             if (uriSchemeIsNotSupported(destUri)) {
+                log.info("uri is not supported. {}", destUri);
                 throw new RemoteDataSyntaxException(String.format("Unknown destination schema %s for the transfer task %s",
                         destUri.getScheme(), uuid));
             } else {
+                log.info("uri is supported. {}", destUri);
                 SystemDao systemDao = new SystemDao();
                 if (destUri.getScheme().equalsIgnoreCase("agave")) {
                     // TODO: ensure user has access to the system. We may need to look up file permissions her as well.
@@ -183,26 +190,39 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             }
 
             // check for interrupted before proceeding
-            if (taskIsNotInterrupted(createdTransferTask)) {
-                // update dt DB status here
-                getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateResult -> {
-                    if (updateResult.succeeded()) {
-                        // continue assigning the task and return
-                        log.info("Assigning transfer task {} for processing.", uuid);
-                        _doPublishEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
-                        handler.handle(Future.succeededFuture(true));
-                    } else {
-                        // update failed
-                        String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
-                                uuid, updateResult.cause().getMessage());
-                        doHandleError(updateResult.cause(), msg, body, handler);
-                    }
-                });
-            } else {
-                log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
-                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
-                handler.handle(Future.succeededFuture(false));
-            }
+            log.info("checking for interrupted before proceeding");
+            log.info(" rootTaskID = {}", createdTransferTask.getRootTaskId() );
+            log.info(" parentTaskID = {}", createdTransferTask.getParentTaskId() );
+
+            // check to be sure that the root task or parent task are not null first
+            //if (createdTransferTask.getRootTaskId() != null && createdTransferTask.getParentTaskId() != null) {
+                log.info("Got past the rootTaskID and parentTaskID");
+                // if there are values for root task and parent task then do the following
+                if (taskIsNotInterrupted(createdTransferTask)) {
+                    // update dt DB status here
+                    log.info("set status to ASSIGNED");
+                    getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateResult -> {
+                        if (updateResult.succeeded()) {
+                            // continue assigning the task and return
+                            log.info("Assigning transfer task {} for processing.", uuid);
+                            _doPublishEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
+                            handler.handle(Future.succeededFuture(true));
+                        } else {
+                            // update failed
+                            String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
+                                    uuid, updateResult.cause().getMessage());
+                            log.info(msg);
+                            doHandleError(updateResult.cause(), msg, body, handler);
+                        }
+                    });
+                } else {
+                    log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
+                    handler.handle(Future.succeededFuture(false));
+                }
+//            } else {
+//                log.info("Error. Root and parent tasks are null.");
+//            }
         } catch (Exception e) {
             log.error("Error with TransferTaskCreatedListener {}", e.toString());
             doHandleError(e, e.getMessage(), body, handler);

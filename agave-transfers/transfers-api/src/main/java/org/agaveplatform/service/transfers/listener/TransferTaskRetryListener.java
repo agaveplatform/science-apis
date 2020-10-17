@@ -240,21 +240,25 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 				throw new RemoteDataSyntaxException(msg, e);
 			}
 
-			// check for task interruption
-			if (taskIsNotInterrupted(retryTransferTask)) {
+			// check to be sure if the root task and parent task are present
+			if (retryTransferTask.getRootTaskId() != null && retryTransferTask.getParentTaskId() != null) {
 
-				// basic sanity check on uri again
-				if (uriSchemeIsNotSupported(srcUri)) {
-					String msg = String.format("Failing transfer task %s due to invalid scheme in source URI, %s",
-							retryTransferTask.getUuid(), retryTransferTask.getSource());
-					throw new RemoteDataSyntaxException(msg);
-				} else if (uriSchemeIsNotSupported(destUri)) {
-					String msg = String.format("Failing transfer task %s due to invalid scheme in destination URI, %s",
-							retryTransferTask.getUuid(), retryTransferTask.getDest());
-					throw new RemoteDataSyntaxException(msg);
-				} else {
-					// if it's an "agave://" uri, look up the connection info, get a rdc, and process the remote
-					// file item
+
+				// check for task interruption
+				if (taskIsNotInterrupted(retryTransferTask)) {
+
+					// basic sanity check on uri again
+					if (uriSchemeIsNotSupported(srcUri)) {
+						String msg = String.format("Failing transfer task %s due to invalid scheme in source URI, %s",
+								retryTransferTask.getUuid(), retryTransferTask.getSource());
+						throw new RemoteDataSyntaxException(msg);
+					} else if (uriSchemeIsNotSupported(destUri)) {
+						String msg = String.format("Failing transfer task %s due to invalid scheme in destination URI, %s",
+								retryTransferTask.getUuid(), retryTransferTask.getDest());
+						throw new RemoteDataSyntaxException(msg);
+					} else {
+						// if it's an "agave://" uri, look up the connection info, get a rdc, and process the remote
+						// file item
 //					if (srcUri.getScheme().equalsIgnoreCase("agave")) {
 						// get a remote data client for the source and dest system
 						srcClient = getRemoteDataClient(retryTransferTask.getTenantId(), retryTransferTask.getOwner(), srcUri);
@@ -344,14 +348,17 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 								}
 							}
 						}
-				}
+					}
 
-				handler.handle(Future.succeededFuture(true));
+					handler.handle(Future.succeededFuture(true));
+				} else {
+					// task was interrupted, so don't attempt a retry
+					log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", retryTransferTask.getUuid());
+					_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+					handler.handle(Future.succeededFuture(false));
+				}
 			} else {
-				// task was interrupted, so don't attempt a retry
-				log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", retryTransferTask.getUuid());
-				_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
-				handler.handle(Future.succeededFuture(false));
+				log.info("rootTaskId or parentTaskId are null {}  {}", retryTransferTask.getParentTaskId(), retryTransferTask.getRootTaskId());
 			}
 		} catch (RemoteDataSyntaxException e) {
 			String message = String.format("Failing transfer task %s due to invalid source syntax. %s", retryTransferTask.getTenantId(), e.getMessage());

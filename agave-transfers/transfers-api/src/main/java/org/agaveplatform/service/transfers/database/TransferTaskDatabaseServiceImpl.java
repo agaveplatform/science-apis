@@ -183,10 +183,11 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         if (fetch.succeeded()) {
           JsonArray response = new JsonArray(fetch.result().getRows());
           if (response.isEmpty()) {
-            LOGGER.info("getActiveRootTaskIds worked");
+            LOGGER.info("getActiveRootTaskIds is empty");
             resultHandler.handle(Future.succeededFuture(response));
           } else {
-            LOGGER.info("getActiveRootTaskIds worked");
+            LOGGER.info("getActiveRootTaskIds is not empty");
+            LOGGER.info("Num Rows in query for getActiveRootTaskIds is = {}", fetch.result().getNumRows());
             resultHandler.handle(Future.succeededFuture(response));
           }
         } else {
@@ -202,15 +203,23 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
 
   @Override
   public TransferTaskDatabaseService allChildrenCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
+    LOGGER.info("Got into db.allChildrenCancelledOrCompleted");
     JsonArray data = new JsonArray()
             .add(uuid)
             .add(tenantId);
     dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED), data, fetch -> {
+      LOGGER.info("dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED)");
       if (fetch.succeeded()) {
         ResultSet resultSet = fetch.result();
+        LOGGER.info("db.allChildrenCancelledOrCompleted, Number of rows ={}", resultSet.getNumRows());
         Boolean response = Boolean.FALSE;
         if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") > 0) {
           response = Boolean.TRUE;
+        } else if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0){
+          // this should be marked as status of 'ERROR' since we don't know what caused the task to fail
+          LOGGER.info("This should be marked as status of 'ERROR' since we don't know what caused the task to fail uuid = {}", uuid);
+
+          response = Boolean.FALSE;
         }
         resultHandler.handle(Future.succeededFuture(response));
       } else {
@@ -403,9 +412,12 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         JsonArray params = new JsonArray().add(uuid).add(tenantId);
         dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
           if (ar.succeeded()) {
+            LOGGER.info("updateStatus succeeded");
             if (ar.result().getRows().isEmpty()) {
+              LOGGER.info("Number of rows updates is 0.");
               resultHandler.handle(Future.failedFuture(new ObjectNotFoundException("Transform task was deleted by another process after the update completed successfully. ")));
             } else {
+              LOGGER.info("updateStatus succeeded, result = " + ar.result().getRows().get(0));
               resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
             }
           } else {

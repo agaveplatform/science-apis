@@ -129,10 +129,6 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(txfrAllVert.getDbService()).thenReturn(dbService);
 
-
-
-
-
 		// now actually call the mehtod under test
 		Boolean result = txfrAllVert.processCopyRequest(srcUri.getPath(), srcRemoteDataClientMock, destUri.getPath(), destRemoteDataClientMock, legacyTransferTask);
 		ctx.verify(() -> {
@@ -149,7 +145,6 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 			ctx.completeNow();
 		});
 	}
-
 
 	@Test
 	@DisplayName("Test the processCopyRequest exception handling")

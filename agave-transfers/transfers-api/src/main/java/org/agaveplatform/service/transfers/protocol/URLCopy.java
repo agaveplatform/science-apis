@@ -292,20 +292,9 @@ public class URLCopy {
                         getProtocolForClass(sourceClient.getClass()),
                         "local"));
                 try {
-                    srcChildTransferTask = new TransferTask(
-                            aggregateTransferTask.getSource(),
-                            "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
-                            aggregateTransferTask.getOwner(),
-                            aggregateTransferTask,
-                            aggregateTransferTask);
-
-                    TransferTaskDao.persist(srcChildTransferTask);
-                    srcChildRemoteTransferListener = new RemoteTransferListener(srcChildTransferTask);
-
                     sourceClient.get(srcPath, tmpFile.getPath(),
                             srcChildRemoteTransferListener);
 
-                    srcChildTransferTask = srcChildRemoteTransferListener.getTransferTask();
 
                     aggregateTransferTask.updateSummaryStats(srcChildTransferTask);
 
@@ -316,8 +305,6 @@ public class URLCopy {
                     }
 
                     srcChildTransferTask.setEndTime(new Date());
-
-                    TransferTaskDao.updateProgress(srcChildTransferTask);
 
                     // must be in here as the LOCAL files will not have a src transfer listener associated with them.
                     checkCancelled(srcChildRemoteTransferListener);

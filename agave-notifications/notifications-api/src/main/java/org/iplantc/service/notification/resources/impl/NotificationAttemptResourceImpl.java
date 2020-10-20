@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package org.iplantc.service.notification.resources.impl;
 
@@ -17,11 +17,9 @@ import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.notification.Settings;
+import org.iplantc.service.common.search.SearchTerm;
+import org.iplantc.service.notification.dao.FailedNotificationAttemptQueue;
 import org.iplantc.service.notification.dao.NotificationAttemptDao;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
@@ -35,8 +33,8 @@ import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 import org.apache.log4j.Logger;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * @author dooley
@@ -50,20 +48,21 @@ public class NotificationAttemptResourceImpl extends AbstractNotificationResourc
 	protected NotificationDao dao = new NotificationDao();
 	protected NotificationPermissionManager pm = null;
 	protected NotificationAttemptDao attemptDao = new NotificationAttemptDao();
-	
+	protected FailedNotificationAttemptQueue failedNotificationQueue = FailedNotificationAttemptQueue.getInstance();
+
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.notification.resources.NotificationResource#getNotifications()
 	 */
 	@Override
 	@GET
-	public Response getNotificationAttempt(@PathParam("notificationUuid") String notificationUuid, 
+	public Response getNotificationAttempt(@PathParam("notificationUuid") String notificationUuid,
 		   							 	   @PathParam("attemptUuid") String attemptUuid)
-	{	
-		AgaveLogServiceClient.log(NOTIFICATIONS02.name(), 
-				NotifAttemptDetails.name(), 
-				getAuthenticatedUsername(), "", 
+	{
+		AgaveLogServiceClient.log(NOTIFICATIONS02.name(),
+				NotifAttemptDetails.name(),
+				getAuthenticatedUsername(), "",
 				Request.getCurrent().getClientInfo().getUpstreamAddress());
-		
+
 		try
 		{
 			// redirect if there is a trailing slash
@@ -74,15 +73,25 @@ public class NotificationAttemptResourceImpl extends AbstractNotificationResourc
 			}
 			else {
 				Notification notification = getResourceFromPathValue(notificationUuid);
-				
-				NotificationAttempt attempt = attemptDao.findByUuid(attemptUuid);
-				
+
+				NotificationAttempt attempt = null;
+
+				List<NotificationAttempt> failedAttemptQueue = failedNotificationQueue.findMatching(notificationUuid, new HashMap<SearchTerm, Object>(), getLimit(), getOffset());
+
+                if (failedAttemptQueue.size() > 0) {
+                    for (NotificationAttempt failedAttempt : failedAttemptQueue) {
+                        if (StringUtils.equals(failedAttempt.getUuid(), attemptUuid)) {
+                            attempt = failedAttempt;
+                        }
+                    }
+                }
+
 				if (attempt == null) {
 		            throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-		                    "No notification attempt found matching " + attemptUuid + " for notification " + 
+		                    "No notification attempt found matching " + attemptUuid + " for notification " +
 		                    notificationUuid);
-		        } 
-				
+		        }
+
 //				ObjectMapper mapper = new ObjectMapper();
 //				ObjectNode json = mapper.valueToTree(attempt);
 //
@@ -104,7 +113,7 @@ public class NotificationAttemptResourceImpl extends AbstractNotificationResourc
 //	            } catch (UUIDException e) {
 //	            	log.debug("Unknown associatedUuid found for notification attempt " + attempt.getUuid());
 //	    		}
-					
+
 	            return Response.ok(new AgaveSuccessRepresentation(attempt.toJson())).build();
 			}
 		}
@@ -113,7 +122,7 @@ public class NotificationAttemptResourceImpl extends AbstractNotificationResourc
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to retrieve notifications.", e);
 		}
-		
+
 	}
 
 	/* (non-Javadoc)
@@ -121,33 +130,33 @@ public class NotificationAttemptResourceImpl extends AbstractNotificationResourc
 	 */
 	@Override
 	@DELETE
-	public Response deleteNotificationAttempt(@PathParam("notificationUuid") String notificationUuid, 
+	public Response deleteNotificationAttempt(@PathParam("notificationUuid") String notificationUuid,
 		 	   								  @PathParam("attemptUuid") String attemptUuid)
 	{
-		AgaveLogServiceClient.log(NOTIFICATIONS02.name(), 
-				NotifAttemptDelete.name(), 
-				getAuthenticatedUsername(), "", 
+		AgaveLogServiceClient.log(NOTIFICATIONS02.name(),
+				NotifAttemptDelete.name(),
+				getAuthenticatedUsername(), "",
 				Request.getCurrent().getClientInfo().getUpstreamAddress());
-		
+
 		try
 		{
 			Notification notification = getResourceFromPathValue(notificationUuid);
-			
-			NotificationAttempt attempt = attemptDao.findByUuid(attemptUuid);
-			
-			if (attempt == null) {
+
+			List<NotificationAttempt> attempt = failedNotificationQueue.findMatching(notificationUuid, new HashMap<>(), getLimit(), getOffset());
+
+			if (attempt.size() <= 0) {
 	            throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-	                    "No notification attempt found matching " + attemptUuid + " for notification " + 
+	                    "No notification attempt found matching " + attemptUuid + " for notification " +
 	                    notificationUuid);
-	        } 
-			
+	        }
+
 			pm = new NotificationPermissionManager(notification);
-			if (pm.canWrite(getAuthenticatedUsername())) 
+			if (pm.canWrite(getAuthenticatedUsername()))
 			{
-				attemptDao.delete(attempt);
+				failedNotificationQueue.remove(notificationUuid, attemptUuid);
 				return Response.ok(new AgaveSuccessRepresentation()).build();
-			} 
-			else 
+			}
+			else
 			{
 				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
 						"User does not have access to delete this notification attempt");
@@ -155,9 +164,9 @@ public class NotificationAttemptResourceImpl extends AbstractNotificationResourc
 		}
 		catch (ResourceException e) {
 			throw e;
-		} 
+		}
 		catch (Exception e) {
-			throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
+			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to delete notification: " + e.getMessage());
 		}
 	}

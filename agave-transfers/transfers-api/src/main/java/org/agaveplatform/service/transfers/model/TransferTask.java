@@ -176,13 +176,26 @@ public class TransferTask {
 		setTenantId(tenantId);
 	}
 	
-	public TransferTask(String source, String dest, String owner, String tenantId, String parentTaskId, String rootTaskId)
+	public TransferTask(String source, String dest, String owner, String parentTaskId, String rootTaskId)
 	{
-		this(source, dest, tenantId);
+		this(source, dest);
 		this.parentTaskId = parentTaskId;
 		this.rootTaskId = rootTaskId;
 		this.owner = owner;
 		setTenantId(tenantId);
+	}
+
+	public TransferTask(String source, String dest){
+		this.source = source;
+		this.dest = dest;
+	}
+
+	public TransferTask(String tenantId, String source, String dest, String owner, String parentTaskID, String rootTaskID )
+	{
+		this(source, dest, tenantId);
+		this.parentTaskId = parentTaskID;
+		this.rootTaskId = rootTaskId;
+		this.owner = owner;
 	}
 
 	/**

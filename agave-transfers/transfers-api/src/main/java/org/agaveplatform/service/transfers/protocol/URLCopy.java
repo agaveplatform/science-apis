@@ -3,6 +3,7 @@
  */
 package org.agaveplatform.service.transfers.protocol;
 
+import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -12,6 +13,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.globus.ftp.GridFTPSession;
 import org.iplantc.service.transfer.*;
+import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RangeValidationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
@@ -42,6 +44,7 @@ public class URLCopy {
     private RemoteDataClient sourceClient;
     private RemoteDataClient destClient;
     private AtomicBoolean killed = new AtomicBoolean(false);
+    private TransferTaskDatabaseService dbService;
 
     public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient) {
         this.sourceClient = sourceClient;
@@ -93,8 +96,8 @@ public class URLCopy {
      * protocol, file size, and locality of the data. Progress is written to the transfer task
      * via a {@link RemoteTransferListener}
      *
-     * @param srcPath
-     * @param destPath
+     * @param
+     * @param
      * @param transferTask
      * @throws RemoteDataException
      * @throws IOException
@@ -113,8 +116,6 @@ public class URLCopy {
      * protocol, file size, and locality of the data. Progress is written to the transfer task
      * via a {@link RemoteTransferListener}
      *
-     * @param srcPath
-     * @param destPath
      * @param transferTask the reference transfer task
      * @param exclusions blacklist of paths relative to {@code srcPath} not to copy
      * @throws RemoteDataException
@@ -135,10 +136,12 @@ public class URLCopy {
         if (exclusions == null) {
             exclusions = new ArrayList<String>();
         }
-
+        String srcPath = URI.create(transferTask.getSource()).getPath();
+        String destPath = URI.create(transferTask.getDest()).getPath();
         try {
-            String srcPath = URI.create(transferTask.getSource()).getPath();
-            String destPath = URI.create(transferTask.getDest()).getPath();
+
+            RemoteTransferListener listener;
+            listener = new RemoteTransferListener(convTransferTask(transferTask));
 
             // we're transferring a file
 
@@ -155,23 +158,26 @@ public class URLCopy {
 
                 sourceClient.copy(srcPath, destPath);
 
+                File f = new File(srcPath);
+                long fileSize = f.length();
+
                 transferTask.setEndTime(Instant.now());
-                transferTask.setTotalSize(len);
-                transferTask.setBytesTransferred(len);
+                transferTask.setTotalSize(fileSize);
+                transferTask.setBytesTransferred(0L);
                 transferTask.setLastUpdated(transferTask.getEndTime());
             }
             // delegate to third-party transfer if supported
             else if (sourceClient.isThirdPartyTransferSupported() &&
                     destClient.isThirdPartyTransferSupported() &&
                     sourceClient.getClass().equals(destClient.getClass())) {
-                dothirdPartyTransfer(srcPath, destPath);
+                dothirdPartyTransfer(srcPath, destPath, listener);
             }
             // otherwise, we're doing the heavy lifting ourselves
             else {
 //                    listener = new RemoteTransferListener(transferTask);
 
                 try {
-
+                    double srcFileLength = sourceClient.length(srcPath);
                     long availableBytes = new File("/").getUsableSpace();
 
                     // we have a choice of using a relay or streaming transfer. For relay transfers,
@@ -189,12 +195,12 @@ public class URLCopy {
                             log.debug("Local disk has insufficient space (" + availableBytes +
                                     " < " + srcFileLength + ") for relay transfer of transfer task "
                                     + transferTask.getUuid() + ". Switching to streaming transfer instead.");
-                            streamingTransfer(srcPath, destPath);
+                            streamingTransfer(srcPath, destPath, listener);
                         }
                     }
                     // only streaming transfers are supported at this point, so carry on with those.
                     else {
-                        streamingTransfer(srcPath, destPath);
+                        streamingTransfer(srcPath, destPath, listener);
                     }
 
                     if (transferTask != null) {
@@ -206,7 +212,9 @@ public class URLCopy {
 
                         transferTask.setEndTime(Instant.now());
 
-                        TransferTaskDao.persist(transferTask);
+                        org.iplantc.service.transfer.model.TransferTask transferTask2 = convTransferTask(transferTask);
+
+                        TransferTaskDao.persist(transferTask2);
                     }
                 } catch (ClosedByInterruptException e) {
                     try {
@@ -222,7 +230,7 @@ public class URLCopy {
                 }
             }
 
-            return listener.getTransferTask();
+            return transferTask;
         } finally {
             try {
                 if (destClient.isPermissionMirroringRequired()) {
@@ -233,6 +241,62 @@ public class URLCopy {
                 log.error("Failed to set permissions on " + destClient.getHost() + " for user " + transferTask.getOwner(), e);
             }
         }
+    }
+
+    org.iplantc.service.transfer.model.TransferTask convTransferTask(TransferTask transferTask){
+
+        org.iplantc.service.transfer.model.TransferTask convTransferTask = new org.iplantc.service.transfer.model.TransferTask();
+        convTransferTask.setId(transferTask.getId());
+        convTransferTask.setSource(transferTask.getSource());
+        convTransferTask.setDest(transferTask.getDest());
+        convTransferTask.setOwner(transferTask.getOwner());
+        convTransferTask.setEventId(transferTask.getEventId());
+        convTransferTask.setAttempts(transferTask.getAttempts());
+        convTransferTask.setStatus( org.iplantc.service.transfer.model.enumerations.TransferStatusType.valueOf(transferTask.getStatus().toString()));
+        convTransferTask.setTotalSize(transferTask.getTotalSize());
+        convTransferTask.setTotalFiles(transferTask.getTotalFiles());
+        convTransferTask.setTotalSkippedFiles(transferTask.getTotalSkippedFiles());
+        convTransferTask.setBytesTransferred(transferTask.getBytesTransferred());
+        convTransferTask.setTransferRate(transferTask.getTransferRate());
+        convTransferTask.setTenantId(transferTask.getTenantId());
+
+        org.iplantc.service.transfer.model.TransferTask tParent = new org.iplantc.service.transfer.model.TransferTask( transferTask.getSource(), transferTask.getDest() );
+        org.iplantc.service.transfer.model.TransferTask tRoot = new org.iplantc.service.transfer.model.TransferTask( transferTask.getSource(), transferTask.getDest() );
+        convTransferTask.setParentTask(tParent);
+        convTransferTask.setRootTask(tRoot);
+
+        convTransferTask.setStartTime( Date.from(transferTask.getStartTime()));
+        convTransferTask.setEndTime(Date.from(transferTask.getEndTime()));
+        convTransferTask.setCreated(Date.from(transferTask.getCreated()));
+        convTransferTask.setLastUpdated(Date.from(transferTask.getLastUpdated()));
+        convTransferTask.setUuid(transferTask.getUuid());
+        convTransferTask.setVersion(0);
+
+        return convTransferTask;
+    }
+
+    TransferTask convToAgaveTransferTask(org.iplantc.service.transfer.model.TransferTask txfrTsk){
+        TransferTask newTransferTask = new TransferTask(txfrTsk.getSource(), txfrTsk.getDest());
+        newTransferTask.setOwner(txfrTsk.getOwner());
+        newTransferTask.setEventId(txfrTsk.getEventId());
+        newTransferTask.setAttempts(txfrTsk.getAttempts());
+        newTransferTask.setStatus(org.agaveplatform.service.transfers.enumerations.TransferStatusType.valueOf(txfrTsk.getStatus().toString()));
+        newTransferTask.setTotalSize(txfrTsk.getTotalSize());
+        newTransferTask.setTotalFiles(txfrTsk.getTotalFiles());
+        newTransferTask.setTotalSkippedFiles(txfrTsk.getTotalSkippedFiles());
+        newTransferTask.setBytesTransferred(txfrTsk.getBytesTransferred());
+        newTransferTask.setTransferRate(txfrTsk.getTransferRate());
+        newTransferTask.setTenantId(txfrTsk.getTenantId());
+        newTransferTask.setStartTime(txfrTsk.getStartTime().toInstant());
+        newTransferTask.setEndTime(txfrTsk.getEndTime().toInstant());
+        newTransferTask.setCreated(txfrTsk.getCreated().toInstant());
+        newTransferTask.setLastUpdated(txfrTsk.getLastUpdated().toInstant());
+        newTransferTask.setUuid(txfrTsk.getUuid());
+
+        newTransferTask.setParentTaskId(txfrTsk.getParentTask().getUuid());
+        newTransferTask.setRootTaskId(txfrTsk.getRootTask().getUuid());
+
+        return newTransferTask;
     }
 
     /**
@@ -296,7 +360,7 @@ public class URLCopy {
                             srcChildRemoteTransferListener);
 
 
-                    aggregateTransferTask.updateSummaryStats(srcChildTransferTask);
+                    //aggregateTransferTask.updateSummaryStats(srcChildTransferTask);
 
                     if (isKilled()) {
                         srcChildTransferTask.setStatus(TransferStatusType.CANCELLED);
@@ -304,7 +368,7 @@ public class URLCopy {
                         srcChildTransferTask.setStatus(TransferStatusType.COMPLETED);
                     }
 
-                    srcChildTransferTask.setEndTime(new Date());
+                    srcChildTransferTask.setEndTime(Instant.now());
 
                     // must be in here as the LOCAL files will not have a src transfer listener associated with them.
                     checkCancelled(srcChildRemoteTransferListener);
@@ -314,8 +378,10 @@ public class URLCopy {
                     try {
                         if (srcChildTransferTask != null) {
                             srcChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            srcChildTransferTask.setEndTime(new Date());
-                            TransferTaskDao.updateProgress(srcChildTransferTask);
+                            srcChildTransferTask.setEndTime(Instant.now());
+
+
+                            TransferTaskDao.updateProgress(convTransferTask(srcChildTransferTask));
                         }
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay source child task to failed.", t);
@@ -333,8 +399,8 @@ public class URLCopy {
                     try {
                         if (srcChildTransferTask != null) {
                             srcChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            srcChildTransferTask.setEndTime(new Date());
-                            TransferTaskDao.updateProgress(srcChildTransferTask);
+                            srcChildTransferTask.setEndTime(Instant.now());
+                            TransferTaskDao.updateProgress(convTransferTask(srcChildTransferTask));
                         }
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay source child task to failed.", t);
@@ -366,19 +432,19 @@ public class URLCopy {
                             "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
                             aggregateTransferTask.getDest(),
                             aggregateTransferTask.getOwner(),
-                            aggregateTransferTask,
-                            aggregateTransferTask);
+                            aggregateTransferTask.getParentTaskId(),
+                            aggregateTransferTask.getRootTaskId());
 
-                    TransferTaskDao.persist(destChildTransferTask);
+                    TransferTaskDao.persist(convTransferTask(destChildTransferTask));
 
-                    destChildRemoteTransferListener = new RemoteTransferListener(destChildTransferTask);
+                    destChildRemoteTransferListener = new RemoteTransferListener(convTransferTask(destChildTransferTask));
 
                     destClient.put(tmpFile.getPath(), destPath,
                             destChildRemoteTransferListener);
 
-                    destChildTransferTask = destChildRemoteTransferListener.getTransferTask();
+                    destChildTransferTask = convToAgaveTransferTask(destChildRemoteTransferListener.getTransferTask());
 
-                    aggregateTransferTask.updateSummaryStats(destChildTransferTask);
+                    //aggregateTransferTask.updateSummaryStats(destChildTransferTask);
 
                     if (isKilled()) {
                         destChildTransferTask.setStatus(TransferStatusType.CANCELLED);
@@ -386,16 +452,16 @@ public class URLCopy {
                         destChildTransferTask.setStatus(TransferStatusType.COMPLETED);
                     }
 
-                    destChildTransferTask.setEndTime(new Date());
+                    destChildTransferTask.setEndTime(Instant.now());
 
-                    TransferTaskDao.updateProgress(destChildTransferTask);
+                    TransferTaskDao.updateProgress(convTransferTask(destChildTransferTask));
 
                 } catch (RemoteDataException e) {
                     try {
                         if (destChildTransferTask != null) {
                             destChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            destChildTransferTask.setEndTime(new Date());
-                            TransferTaskDao.updateProgress(destChildTransferTask);
+                            destChildTransferTask.setEndTime(Instant.now());
+                            TransferTaskDao.updateProgress(convTransferTask(destChildTransferTask));
                         }
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay dest child task to failed.", t);
@@ -414,8 +480,8 @@ public class URLCopy {
                     try {
                         if (destChildTransferTask != null) {
                             destChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            destChildTransferTask.setEndTime(new Date());
-                            TransferTaskDao.updateProgress(destChildTransferTask);
+                            destChildTransferTask.setEndTime(Instant.now());
+                            TransferTaskDao.updateProgress(convTransferTask(destChildTransferTask));
                         }
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay dest child task to failed.", t);
@@ -444,8 +510,8 @@ public class URLCopy {
                         "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
                         aggregateTransferTask.getDest(),
                         aggregateTransferTask.getOwner(),
-                        aggregateTransferTask,
-                        aggregateTransferTask);
+                        aggregateTransferTask.getParentTaskId(),
+                        aggregateTransferTask.getRootTaskId());
 
                 destChildTransferTask.setStartTime(destChildTransferTask.getCreated());
                 destChildTransferTask.setEndTime(destChildTransferTask.getCreated());
@@ -464,9 +530,9 @@ public class URLCopy {
                     destChildTransferTask.setTransferRate(0);
                 }
 
-                TransferTaskDao.persist(destChildTransferTask);
+                TransferTaskDao.persist(convTransferTask(destChildTransferTask));
 
-                aggregateTransferTask.updateSummaryStats(destChildTransferTask);
+                //aggregateTransferTask.updateSummaryStats(destChildTransferTask);
             }
         } catch (ClosedByInterruptException e) {
             log.debug(String.format(
@@ -480,9 +546,9 @@ public class URLCopy {
             throw e;
         } catch (RemoteDataException e) {
             try {
-                aggregateTransferTask.setEndTime(new Date());
+                aggregateTransferTask.setEndTime(Instant.now());
                 aggregateTransferTask.setStatus(TransferStatusType.FAILED);
-                TransferTaskDao.persist(aggregateTransferTask);
+                TransferTaskDao.persist(convTransferTask(aggregateTransferTask));
             } catch (TransferException e1) {
                 log.error("Failed to update parent transfer task "
                         + aggregateTransferTask.getUuid() + " status to FAILED", e1);
@@ -493,9 +559,9 @@ public class URLCopy {
             throw e;
         } catch (Exception e) {
             try {
-                aggregateTransferTask.setEndTime(new Date());
+                aggregateTransferTask.setEndTime(Instant.now());
                 aggregateTransferTask.setStatus(TransferStatusType.FAILED);
-                TransferTaskDao.persist(aggregateTransferTask);
+                TransferTaskDao.persist(convTransferTask(aggregateTransferTask));
             } catch (TransferException e1) {
                 log.error("Failed to update parent transfer task "
                         + aggregateTransferTask.getUuid() + " status to FAILED", e1);
@@ -505,7 +571,7 @@ public class URLCopy {
 
             throw new RemoteDataException(
                     getDefaultErrorMessage(
-                            srcPath, new RemoteTransferListener(aggregateTransferTask)), e);
+                            srcPath, new RemoteTransferListener(convTransferTask(aggregateTransferTask))), e);
         } finally {
             if (aggregateTransferTask != null) {
                 log.info(String.format(
@@ -756,7 +822,7 @@ public class URLCopy {
                 throw new TransferException("Range transfers are not supported on directories");
             } else {
                 RemoteTransferListener listener = null;
-                listener = new RemoteTransferListener(transferTask);
+                listener = new RemoteTransferListener(convTransferTask(transferTask));
                 if (StringUtils.equals(FilenameUtils.getName(srcPath), ".") ||
                         StringUtils.equals(FilenameUtils.getName(srcPath), "..")) {
                     // skip current directory and parent to avoid infinite loops and
@@ -794,7 +860,7 @@ public class URLCopy {
                     }
                 }
 
-                return listener.getTransferTask();
+                return convToAgaveTransferTask(listener.getTransferTask());
             }
         } finally {
             try {
@@ -1278,4 +1344,6 @@ public class URLCopy {
             }
         }
     }
+
+
 }

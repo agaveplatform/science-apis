@@ -90,14 +90,14 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		// Mock the URLCopy class that will be returned from the getter in our tested class. That will allow us
 		// to check the parameter order in the method signature.
 		URLCopy urlCopyMock = mock(URLCopy.class);
-		when(urlCopyMock.copy(any(TransferTask.class))).thenReturn(transferTask);
+		when(urlCopyMock.copy(any(TransferTask.class), eq(null))).thenReturn(transferTask);
 
 		// pull in the mock for TransferAllProtocolVertical
 		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);
 		// mock out everything call, but not being tested in the method
 		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(srcUri)) ).thenReturn(srcRemoteDataClientMock);
 		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(destUri)) ).thenReturn(destRemoteDataClientMock);
-		//when(txfrAllVert.getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock)).thenReturn(getMockUrlCopyInstance);
+		when(txfrAllVert.getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock)).thenReturn(urlCopyMock);
 		// make the actual call to our method under test
 		when(txfrAllVert.processCopyRequest(any(), any(), any())).thenCallRealMethod();
 
@@ -140,7 +140,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 			// this should be called as the method get
 			verify(txfrAllVert).getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock);
 			// verify the URLCopy#copy method was called
-			verify(urlCopyMock).copy( transferTask);
+			verify(urlCopyMock).copy(transferTask, null);
 
 			//assertTrue(result, "processCopyRequest should return true when the transfertask returned form URLCopy has status COMPLETED");
 			ctx.completeNow();
@@ -176,7 +176,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		// to check the parameter order in the method signature.
 		URLCopy urlCopyMock = mock(URLCopy.class);
 		// mock out an exception thrown from the copy call to test our exception handling
-		when(urlCopyMock.copy(eq( any(TransferTask.class)))).thenThrow(new RemoteDataException("Permission Denied"));
+		when(urlCopyMock.copy(any(TransferTask.class))).thenThrow(new RemoteDataException("Permission Denied"));
 
 		// pull in the mock for TransferAllProtocolVertical
 		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);

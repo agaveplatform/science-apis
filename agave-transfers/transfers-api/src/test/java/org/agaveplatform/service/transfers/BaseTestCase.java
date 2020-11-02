@@ -21,6 +21,7 @@ import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.agaveplatform.service.transfers.util.ServiceUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.common.Settings;
+import org.jclouds.googlecloudstorage.domain.Owner;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
@@ -77,7 +78,7 @@ public abstract class BaseTestCase {
     protected AgaveJWTAuthProviderImpl jwtAuth;
 
     protected TransferTask _createTestTransferTask() {
-        return new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USER, TENANT_ID, null, null);
+        return new TransferTask(TENANT_ID, TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, null, null);
     }
 
     /**

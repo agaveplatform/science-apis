@@ -275,7 +275,29 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for
 		//   interrupts in this method upon updates from the transfer thread and interrupt it. Alternatively, we can
 		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
-		transferTask = urlCopy.copy(transferTask, null);
+
+		// note:  run the following as Blocking code.
+		vertx.executeBlocking(future -> {
+			TransferTask tt = transferTask;
+			try {
+				tt = urlCopy.copy(transferTask, null);
+				future.complete();
+			} catch (TransferException e){
+				log.error(e.toString());
+				future.fail(e.getCause());
+			} catch (RemoteDataException e){
+				log.error(e.toString());
+				future.fail(e.getCause());
+			}catch (RemoteDataSyntaxException e){
+				log.error(e.toString());
+				future.fail(e.getCause());
+			} catch (IOException e){
+				log.error(e.toString());
+				future.fail(e.getCause());
+			}
+		}, res -> {
+			log.info("Blocking code worked properly.");
+		});
 
 		return transferTask;
 	}

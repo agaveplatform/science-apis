@@ -48,4 +48,5 @@ public interface MessageType {
     public static final String  TRANSFER_RETRY = "transfer.retry";
     public static final String  TRANSFER_ALL = "transfer.all";
     public static final String  TRANSFERTASK_NOTIFICATION = "transfertask.notification";
+    public static final String  UrlCopy = "transfertask.UrlCopy";
 }

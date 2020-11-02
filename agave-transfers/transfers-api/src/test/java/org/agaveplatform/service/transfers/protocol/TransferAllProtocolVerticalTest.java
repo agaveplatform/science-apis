@@ -16,7 +16,7 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.URLCopy;
+import org.agaveplatform.service.transfers.protocol.URLCopy;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
@@ -51,7 +51,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 
 	URLCopy getMockUrlCopyInstance(RemoteDataClient sourceClient, RemoteDataClient destClient) throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
 		URLCopy urlCopy = Mockito.mock(URLCopy.class);
-		doCallRealMethod().when(urlCopy).copy(anyString(), anyString(), any());
+		doCallRealMethod().when(urlCopy).copy(any());
 
 		return urlCopy;
 	}
@@ -74,6 +74,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		legacyTransferTask.setAttempts(1);
 		legacyTransferTask.setStatus(TransferStatusType.COMPLETED);
 
+		TransferTask transferTask = _createTestTransferTask();
 
 		URI srcUri;
 		URI destUri;
@@ -89,16 +90,16 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		// Mock the URLCopy class that will be returned from the getter in our tested class. That will allow us
 		// to check the parameter order in the method signature.
 		URLCopy urlCopyMock = mock(URLCopy.class);
-		when(urlCopyMock.copy(eq(srcUri.getPath()), eq(destUri.getPath()), any(org.iplantc.service.transfer.model.TransferTask.class))).thenReturn(legacyTransferTask);
+		when(urlCopyMock.copy(any(TransferTask.class))).thenReturn(transferTask);
 
 		// pull in the mock for TransferAllProtocolVertical
 		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);
 		// mock out everything call, but not being tested in the method
 		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(srcUri)) ).thenReturn(srcRemoteDataClientMock);
 		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(destUri)) ).thenReturn(destRemoteDataClientMock);
-		when(txfrAllVert.getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock)).thenReturn(urlCopyMock);
+		//when(txfrAllVert.getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock)).thenReturn(getMockUrlCopyInstance);
 		// make the actual call to our method under test
-		when(txfrAllVert.processCopyRequest(any(), any(), any(), any(), any())).thenCallRealMethod();
+		when(txfrAllVert.processCopyRequest(any(), any(), any())).thenCallRealMethod();
 
 
 		// mock out the db service so we can can isolate method logic rather than db
@@ -130,7 +131,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		when(txfrAllVert.getDbService()).thenReturn(dbService);
 
 		// now actually call the mehtod under test
-		Boolean result = txfrAllVert.processCopyRequest(srcUri.getPath(), srcRemoteDataClientMock, destUri.getPath(), destRemoteDataClientMock, legacyTransferTask);
+		TransferTask result = txfrAllVert.processCopyRequest( srcRemoteDataClientMock, destRemoteDataClientMock,transferTask);
 		ctx.verify(() -> {
 			// this shouldn't be called because we're passing in the src rdc
 			verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, srcUri);
@@ -139,9 +140,9 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 			// this should be called as the method get
 			verify(txfrAllVert).getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock);
 			// verify the URLCopy#copy method was called
-			verify(urlCopyMock).copy(srcUri.getPath(), destUri.getPath(), legacyTransferTask);
+			verify(urlCopyMock).copy( transferTask);
 
-			assertTrue(result, "processCopyRequest should return true when the transfertask returned form URLCopy has status COMPLETED");
+			//assertTrue(result, "processCopyRequest should return true when the transfertask returned form URLCopy has status COMPLETED");
 			ctx.completeNow();
 		});
 	}
@@ -152,6 +153,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 			RemoteCredentialException, PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
 		// set up the parameters
 		org.iplantc.service.transfer.model.TransferTask legacyTransferTask = _createTestTransferTaskIPC();
+		TransferTask transferTask = _createTestTransferTask();
 		legacyTransferTask.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
 		// set the totalSize value so the check for a positive file size will succeed
 		legacyTransferTask.setTotalSize(1024);
@@ -174,7 +176,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		// to check the parameter order in the method signature.
 		URLCopy urlCopyMock = mock(URLCopy.class);
 		// mock out an exception thrown from the copy call to test our exception handling
-		when(urlCopyMock.copy(eq(srcUri.getPath()), eq(destUri.getPath()), any(org.iplantc.service.transfer.model.TransferTask.class))).thenThrow(new RemoteDataException("Permission Denied"));
+		when(urlCopyMock.copy(eq( any(TransferTask.class)))).thenThrow(new RemoteDataException("Permission Denied"));
 
 		// pull in the mock for TransferAllProtocolVertical
 		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);
@@ -183,13 +185,13 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		when(txfrAllVert.getRemoteDataClient(eq(TENANT_ID), eq(TEST_USERNAME), eq(destUri)) ).thenReturn(destRemoteDataClientMock);
 		when(txfrAllVert.getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock)).thenReturn(urlCopyMock);
 		// make the actual call to our method under test
-		when(txfrAllVert.processCopyRequest(any(), any(), any(), any(), any())).thenCallRealMethod();
+		when(txfrAllVert.processCopyRequest(any(), any(), any())).thenCallRealMethod();
 
 		// now actually call the mehtod under test
 		ctx.verify(() -> {
 			try {
 				// an exception should be thrown here
-				txfrAllVert.processCopyRequest(srcUri.getPath(), srcRemoteDataClientMock, destUri.getPath(), destRemoteDataClientMock, legacyTransferTask);
+				txfrAllVert.processCopyRequest( srcRemoteDataClientMock, destRemoteDataClientMock, transferTask);
 				fail("processCopyRequest should rethrow RemoteDataException thrown by URLCopy#copy");
 			} catch (RemoteDataException e) {
 				// we wanted the exception and got it. Now every the rest of the behavior worked as expected
@@ -202,7 +204,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 				// this should be called as the method get
 				verify(txfrAllVert).getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock);
 				// verify the URLCopy#copy method was called
-				verify(urlCopyMock).copy(srcUri.getPath(), destUri.getPath(), legacyTransferTask);
+				verify(urlCopyMock).copy( transferTask);
 			} finally {
 				ctx.completeNow();
 			}

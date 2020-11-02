@@ -50,8 +50,6 @@ import org.joda.time.DateTime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
-
 /**
  * Container class to hold records of current and scheduled transfers.
  * Transfers are fine-grained entities and can be reused throughout
@@ -59,9 +57,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  * be executed by a pool of transfer worker processes, but it is conceivable
  * that a syncronous transfer may occur, in which case the parent process
  * should update the task themself.
- * 
  * @author dooley
- *
  */
 @Entity
 @Table(name = "transfertasks")
@@ -77,6 +73,8 @@ public class TransferTask {
 	private String owner;
 	private String eventId;
 	private int attempts = 0;
+
+
 	private TransferStatusType status = TransferStatusType.QUEUED;
 	private long totalSize = 0;
 	private long totalFiles = 0;

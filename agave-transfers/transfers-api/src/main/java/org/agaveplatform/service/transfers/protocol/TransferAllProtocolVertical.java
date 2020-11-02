@@ -20,7 +20,7 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.URLCopy;
+import org.agaveplatform.service.transfers.protocol.URLCopy;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
@@ -193,11 +193,11 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 						log.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 						//result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
-
-					result = processCopyRequest(srcClient, destClient, tt);
+					TransferTask resultingTransferTask = new TransferTask();
+					resultingTransferTask = processCopyRequest(srcClient, destClient, tt);
 
 					handler.handle(Future.succeededFuture(result));
-					log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
+					log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), resultingTransferTask);
 				} else {
 					log.info("Transfer task {} was interrupted", tt.getUuid());
 					getDbService().updateStatus(tt.getTenantId(), tt.getUuid(),TransferStatusType.CANCELLED.name(), updateReply -> {
@@ -275,13 +275,13 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for
 		//   interrupts in this method upon updates from the transfer thread and interrupt it. Alternatively, we can
 		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
-		transferTask = urlCopy.copy(srcUri.getPath(), destUri.getPath());
+		transferTask = urlCopy.copy(transferTask, null);
 
 		return transferTask;
 	}
 
 	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient){
-		return new URLCopy(this, srcClient,destClient);
+		return new URLCopy(srcClient,destClient);
 	}
 
 	/**
@@ -313,22 +313,22 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	}
 
 
-	protected TransferTask copy(String src, String dest, TransferTask transferTask) {
-		if (sourceClient.equals(destClient)) {
-			RemoteTransferListener listener = null;
-
-			// we can potentially make a server-side copy here. attempt that first
-			// before making an unnecessary round-trip
-			sourceClient.copy(srcPath + "/", destPath, listener);
-
-			// everything was copied over server side, so delete whatever was in the
-			// list of exclusions
-			for (String excludedOutputFile : exclusions) {
-				try {
-					destClient.delete(destPath + "/" + excludedOutputFile);
-				} catch (Exception ignored) {
-				}
-			}
-	}
+//	protected TransferTask copy(String src, String dest, TransferTask transferTask) {
+//		if (sourceClient.equals(destClient)) {
+//			RemoteTransferListener listener = null;
+//
+//			// we can potentially make a server-side copy here. attempt that first
+//			// before making an unnecessary round-trip
+//			sourceClient.copy(srcPath + "/", destPath, listener);
+//
+//			// everything was copied over server side, so delete whatever was in the
+//			// list of exclusions
+//			for (String excludedOutputFile : exclusions) {
+//				try {
+//					destClient.delete(destPath + "/" + excludedOutputFile);
+//				} catch (Exception ignored) {
+//				}
+//			}
+//	}
 
 }

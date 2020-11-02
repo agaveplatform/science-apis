@@ -244,8 +244,6 @@ public class TransferTaskDao
 			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
-	
-	
 
 	/**
 	 * Saves a {@link TransferTask} or updates if already saved.

@@ -179,7 +179,9 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 	@Disabled
 	public void processTransferTaskPublishesErrorOnSystemUnavailble(Vertx vertx, VertxTestContext ctx) {
 
-		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
+		TransferTask tt = _createTestTransferTask();
+		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
+		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
 		JsonObject body = tt.toJson();
 
@@ -213,8 +215,9 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTaskRetryListenerTest - error event thrown on unknown dest system")
 	public void processTransferTaskPublishesErrorOnSystemUnknown(Vertx vertx, VertxTestContext ctx) {
-
-		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
+		TransferTask tt = _createTestTransferTask();
+		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
+		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
 		RemoteDataClient srcClient = mock(RemoteDataClient.class);
 
@@ -245,9 +248,9 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferRetryListenerTest - error event thrown on unknown source system")
 	public void processTransferTaskPublishesErrorOnSrcSystemUnknown(Vertx vertx, VertxTestContext ctx) {
-
-		TransferTask tt = new TransferTask(TRANSFER_DEST, TRANSFER_SRC, TEST_USERNAME, TENANT_ID, null, null);
-
+		TransferTask tt = _createTestTransferTask();
+		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
+		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		RemoteDataClient destClient = mock(RemoteDataClient.class);
 
 		TransferTaskRetryListener ta = getMockTransferRetryListenerInstance(vertx);

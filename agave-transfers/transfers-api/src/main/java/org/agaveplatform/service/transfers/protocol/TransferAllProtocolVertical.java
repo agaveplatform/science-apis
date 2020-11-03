@@ -277,7 +277,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
 
 		// note:  run the following as Blocking code.
-		vertx.executeBlocking(future -> {
+		getVertx().executeBlocking(future -> {
 			TransferTask tt = transferTask;
 			try {
 				tt = urlCopy.copy(transferTask, null);

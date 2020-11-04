@@ -90,23 +90,19 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 
 
-		AsyncResult<String> stringResult = getMockStringResult(tt.getParentTaskId());
-		doAnswer((Answer<AsyncResult<String>>) arguments -> {
-			Handler<AsyncResult<String>> handler = arguments.getArgumentAt(1, Handler.class);
-			handler.handle(stringResult);
-			return null;
-		}).when(tt.getParentTaskId());
-
-		AsyncResult<String> rootStringResult = getMockStringResult(tt.getRootTaskId());
-		doAnswer((Answer<AsyncResult<String>>) arguments -> {
-			Handler<AsyncResult<String>> handler = arguments.getArgumentAt(1, Handler.class);
-			handler.handle(stringResult);
-			return null;
-		}).when(tt.getRootTaskId());
-
-
-
-
+		//		AsyncResult<String> stringResult = getMockStringResult(tt.getParentTaskId());
+//		doAnswer((Answer<AsyncResult<String>>) arguments -> {
+//			Handler<AsyncResult<String>> handler = arguments.getArgumentAt(1, Handler.class);
+//			handler.handle(stringResult);
+//			return null;
+//		}).when(tt.getParentTaskId());
+//
+//		AsyncResult<String> rootStringResult = getMockStringResult(tt.getRootTaskId());
+//		doAnswer((Answer<AsyncResult<String>>) arguments -> {
+//			Handler<AsyncResult<String>> handler = arguments.getArgumentAt(1, Handler.class);
+//			handler.handle(stringResult);
+//			return null;
+//		}).when(tt.getRootTaskId());
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(txfrErrorListener.getDbService()).thenReturn(dbService);

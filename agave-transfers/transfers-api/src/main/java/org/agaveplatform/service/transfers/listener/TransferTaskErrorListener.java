@@ -182,9 +182,21 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 								});
 							}
 						} else {
+							//if null, task is the parent/root
 							String msg = String.format("rootTaskId or parentTaskId are null %s   %s", tt.getParentTaskId(), tt.getRootTaskId());
 							log.error(msg);
 							//doHandleError(getByIdReply.cause(), msg, body, handler);
+							getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.name(), updateStatusResult -> {
+								if (updateStatusResult.succeeded()) {
+									_doPublishEvent(TRANSFER_RETRY, updateStatusResult.result());
+									handler.handle(Future.succeededFuture(true));
+								} else {
+									String updateErrorMsg = String.format("Error updating status of transfer task %s to ERROR. %s",
+											uuid, updateStatusResult.cause().getMessage());
+									// write to error queue. we can retry
+									doHandleError(updateStatusResult.cause(), updateErrorMsg, body, handler);
+								}
+							});
 						}
 					}else {
 						String msg = String.format("getByIdReply.result() was null %s ",

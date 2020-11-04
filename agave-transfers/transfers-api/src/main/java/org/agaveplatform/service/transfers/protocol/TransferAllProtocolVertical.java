@@ -255,7 +255,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 	protected TransferTask processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
-		log.info("Got into TransferAllProtocolVertical.processCopyRequest ");
+//		log.info("Got into TransferAllProtocolVertical.processCopyRequest ");
 
 //		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
 //			if (updateReply.succeeded()) {
@@ -270,14 +270,14 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		URI srcUri = URI.create(transferTask.getSource());
 		URI destUri = URI.create(transferTask.getDest());
 
-		log.info("Get up to the urlCopy");
+//		log.info("Get up to the urlCopy");
 		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for
 		//   interrupts in this method upon updates from the transfer thread and interrupt it. Alternatively, we can
 		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
 
 		// note:  run the following as Blocking code.
-		vertx.executeBlocking(future -> {
+		getVertx().executeBlocking(future -> {
 			TransferTask tt = transferTask;
 			try {
 				tt = urlCopy.copy(transferTask, null);

@@ -981,7 +981,6 @@ public class HTTP implements RemoteDataClient {
 			RemoteDataException
 	{
 		throw new NotImplementedException();
-		
 	}
 
 	@Override

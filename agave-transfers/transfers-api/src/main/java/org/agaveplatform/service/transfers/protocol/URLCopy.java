@@ -5,6 +5,7 @@ package org.agaveplatform.service.transfers.protocol;
 
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.listener.TransferTaskNotificationListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -21,6 +22,7 @@ import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.gridftp.GridFTP;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.Range;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URI;
@@ -40,7 +42,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  */
 public class URLCopy {
-    private static Logger log = Logger.getLogger(URLCopy.class);
+    //private static Logger log = Logger.getLogger(URLCopy.class);
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(URLCopy.class);
+
     private RemoteDataClient sourceClient;
     private RemoteDataClient destClient;
     private AtomicBoolean killed = new AtomicBoolean(false);
@@ -125,6 +129,7 @@ public class URLCopy {
      */
     public TransferTask copy(TransferTask transferTask, List<String> exclusions)
             throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, ClosedByInterruptException {
+        log.info("UrlCopy.copy method.");
         if (transferTask == null) {
             throw new TransferException("TransferTask cannot be null. Please provide"
                     + "a valid transfer task to track this operation.");
@@ -227,6 +232,8 @@ public class URLCopy {
                     throw e;
                 } catch (TransferException e) {
                     throw new RemoteDataException("Failed to udpate transfer record.", e);
+                } catch (Exception e) {
+                    log.error("NPE {}", e.getCause());
                 }
             }
 
@@ -265,10 +272,31 @@ public class URLCopy {
         convTransferTask.setParentTask(tParent);
         convTransferTask.setRootTask(tRoot);
 
-        convTransferTask.setStartTime( Date.from(transferTask.getStartTime()));
-        convTransferTask.setEndTime(Date.from(transferTask.getEndTime()));
-        convTransferTask.setCreated(Date.from(transferTask.getCreated()));
-        convTransferTask.setLastUpdated(Date.from(transferTask.getLastUpdated()));
+        if (transferTask.getStartTime() == null){
+            log.error("transferTask.getStartTime is null");
+        }else {
+            convTransferTask.setStartTime(Date.from(transferTask.getStartTime()));
+        }
+
+        if (transferTask.getEndTime() == null){
+            log.error("transferTask.getEndTime is null");
+        }else {
+            convTransferTask.setEndTime(Date.from(transferTask.getEndTime()));
+        }
+
+        if (transferTask.getCreated() == null){
+            log.error("transferTask.getEndTime is null");
+        }else {
+            convTransferTask.setCreated(Date.from(transferTask.getCreated()));
+        }
+
+        if (transferTask.getLastUpdated() == null){
+            log.error("transferTask.getEndTime is null");
+        }else {
+            convTransferTask.setLastUpdated(Date.from(transferTask.getLastUpdated()));
+        }
+
+
         convTransferTask.setUuid(transferTask.getUuid());
         convTransferTask.setVersion(0);
 

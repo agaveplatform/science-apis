@@ -35,6 +35,8 @@ public class TransferApplication {
                 .addStore(fileStore)
                 .addStore(envPropsStore);
 
+
+
         ConfigRetriever retriever = ConfigRetriever.create(vertx, options);
 
         retriever.getConfig(json -> {
@@ -59,7 +61,7 @@ public class TransferApplication {
 //                                    .setWorkerPoolSize(poolSize)
 //                                    .setInstances(instanceSize)
                                     .setConfig(config)
-                                    .setWorker(true)
+                                    .setWorker(false)
                                     .setMaxWorkerExecuteTime(3600);
 
 
@@ -100,9 +102,17 @@ public class TransferApplication {
                                         }
                                     });
 
+                            DeploymentOptions workerOptions = new DeploymentOptions()
+                                    .setWorkerPoolName("all-task-worker-pool")
+                                    .setWorkerPoolSize(poolSize)
+                                    .setInstances(instanceSize)
+                                    .setConfig(config)
+                                    .setWorker(true)
+                                    .setMaxWorkerExecuteTime(36000);
+
                             // Deploy the TransferAllProtocolVertical vertical
                             vertx.deployVerticle(TransferAllProtocolVertical.class.getName(), //"org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical",
-                                    localOptions, res4 -> {
+                                    workerOptions, res4 -> {
                                         if (res.succeeded()) {
                                             log.info("TransferAllProtocolVertical Deployment id is " + res.result());
                                         } else {
@@ -200,7 +210,6 @@ public class TransferApplication {
                                             log.error("TransferWatchListener Deployment failed !");
                                         }
                                     });
-
                         } else {
                             log.error("TransferAPIVertical deployment failed !\n" + res.cause());
                             res.cause().printStackTrace();

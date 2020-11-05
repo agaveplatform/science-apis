@@ -179,7 +179,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 //					legacyTransferTask.setCreated(Date.from(tt.getCreated()));
 //					legacyTransferTask.setLastUpdated(Date.from(tt.getLastUpdated()));
 //					legacyTransferTask.setStartTime(Date.from(tt.getStartTime()));
-//					legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));
+//					legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));a
 //					if (tt.getParentTaskId() != null) {
 //						org.iplantc.service.transfer.model.TransferTask legacyParentTask = new org.iplantc.service.transfer.model.TransferTask();
 //						legacyParentTask.setUuid(tt.getParentTaskId());
@@ -255,7 +255,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 	protected TransferTask processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
-//		log.info("Got into TransferAllProtocolVertical.processCopyRequest ");
+		log.info("Got into TransferAllProtocolVertical.processCopyRequest ");
 
 //		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
 //			if (updateReply.succeeded()) {
@@ -270,35 +270,23 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		URI srcUri = URI.create(transferTask.getSource());
 		URI destUri = URI.create(transferTask.getDest());
 
-//		log.info("Get up to the urlCopy");
-		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
+		log.info("Got up to the urlCopy");
+
 		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for
 		//   interrupts in this method upon updates from the transfer thread and interrupt it. Alternatively, we can
 		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
 
-		// note:  run the following as Blocking code.
-		getVertx().executeBlocking(future -> {
+
+			//log.info("Calling urlcopy");
+			URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 			TransferTask tt = transferTask;
 			try {
+				log.info("Calling urlCopy.copy");
 				tt = urlCopy.copy(transferTask, null);
-				future.complete();
-			} catch (TransferException e){
-				log.error(e.toString());
-				future.fail(e.getCause());
-			} catch (RemoteDataException e){
-				log.error(e.toString());
-				future.fail(e.getCause());
-			}catch (RemoteDataSyntaxException e){
-				log.error(e.toString());
-				future.fail(e.getCause());
-			} catch (IOException e){
-				log.error(e.toString());
-				future.fail(e.getCause());
+			} catch (Exception e) {
+				String msg = String.format("URLCopy error. %s", e.getMessage());
+				log.error(msg);
 			}
-		}, res -> {
-			log.info("Blocking code worked properly.");
-		});
-
 		return transferTask;
 	}
 

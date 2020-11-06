@@ -8,6 +8,7 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -25,6 +26,8 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -41,6 +44,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfer All tests")
 class TransferAllProtocolVerticalTest  extends BaseTestCase {
+	private static final Logger log = LoggerFactory.getLogger(TransferAllProtocolVerticalTest.class);
 
 	TransferAllProtocolVertical getMockAllProtocolVerticalInstance(Vertx vertx) {
 		TransferAllProtocolVertical listener = Mockito.mock(TransferAllProtocolVertical.class);
@@ -91,6 +95,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		// to check the parameter order in the method signature.
 		URLCopy urlCopyMock = mock(URLCopy.class);
 		when(urlCopyMock.copy(any(TransferTask.class), eq(null))).thenReturn(transferTask);
+		//doAnswer().when(.copy());
 
 		// pull in the mock for TransferAllProtocolVertical
 		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);
@@ -131,16 +136,22 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 		when(txfrAllVert.getDbService()).thenReturn(dbService);
 
 		// now actually call the mehtod under test
-		TransferTask result = txfrAllVert.processCopyRequest( srcRemoteDataClientMock, destRemoteDataClientMock,transferTask);
+		try {
+			TransferTask result = txfrAllVert.processCopyRequest(srcRemoteDataClientMock, destRemoteDataClientMock, transferTask);
+		} catch (Exception e){
+			String msg = String.format("Error %s", e.getMessage());
+			log.error(msg);
+		}
 		ctx.verify(() -> {
 			// this shouldn't be called because we're passing in the src rdc
 			verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, srcUri);
 			// this shouldn't be called because we're passing in the dest rdc
 			verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, destUri);
 			// this should be called as the method get
-			verify(txfrAllVert).getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock);
+			verify(txfrAllVert, times(1)).getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock);
+			verify(txfrAllVert, times(1)).processCopyRequest(srcRemoteDataClientMock,destRemoteDataClientMock, transferTask);
 			// verify the URLCopy#copy method was called
-			verify(urlCopyMock).copy(transferTask, null);
+			verify(urlCopyMock, times(1)).copy(transferTask, null);
 
 			//assertTrue(result, "processCopyRequest should return true when the transfertask returned form URLCopy has status COMPLETED");
 			ctx.completeNow();

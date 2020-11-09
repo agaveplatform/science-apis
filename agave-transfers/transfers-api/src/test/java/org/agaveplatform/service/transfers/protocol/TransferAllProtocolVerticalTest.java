@@ -8,7 +8,6 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -17,7 +16,6 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.agaveplatform.service.transfers.protocol.URLCopy;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
@@ -34,7 +32,8 @@ import java.net.URI;
 import java.time.Instant;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_ALL;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
@@ -43,6 +42,7 @@ import static org.mockito.Mockito.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
 @DisplayName("Transfer All tests")
+@Disabled
 class TransferAllProtocolVerticalTest  extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferAllProtocolVerticalTest.class);
 

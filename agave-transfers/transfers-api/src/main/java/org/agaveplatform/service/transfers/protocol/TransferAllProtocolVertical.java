@@ -19,8 +19,6 @@ import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.agaveplatform.service.transfers.protocol.URLCopy;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
@@ -257,16 +255,6 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
 		log.info("Got into TransferAllProtocolVertical.processCopyRequest ");
 
-//		getDbService().updateStatus(legacyTransferTask.getTenantId(), legacyTransferTask.getUuid(), org.agaveplatform.service.transfers.enumerations.TransferStatusType.TRANSFERRING.toString(), updateReply -> {
-//			if (updateReply.succeeded()) {
-//				Future.succeededFuture(Boolean.TRUE);
-//			} else {
-//				// update failed
-//				Future.succeededFuture(Boolean.FALSE);
-//			}
-//		});
-
-
 		URI srcUri = URI.create(transferTask.getSource());
 		URI destUri = URI.create(transferTask.getDest());
 
@@ -283,6 +271,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			try {
 				log.info("Calling urlCopy.copy");
 				tt = urlCopy.copy(transferTask, null);
+
 			} catch (Exception e) {
 				String msg = String.format("URLCopy error. %s", e.getMessage());
 				log.error(msg);
@@ -291,7 +280,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	}
 
 	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient){
-		return new URLCopy(srcClient,destClient);
+		return new URLCopy(srcClient, destClient, getVertx());
 	}
 
 	/**

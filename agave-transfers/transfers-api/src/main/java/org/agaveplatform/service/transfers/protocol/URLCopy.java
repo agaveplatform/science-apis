@@ -3,18 +3,16 @@
  */
 package org.agaveplatform.service.transfers.protocol;
 
+import io.vertx.core.Vertx;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
-import org.agaveplatform.service.transfers.listener.TransferTaskNotificationListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 import org.globus.ftp.GridFTPSession;
 import org.iplantc.service.transfer.*;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RangeValidationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
@@ -22,6 +20,7 @@ import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.gridftp.GridFTP;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.Range;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
@@ -42,17 +41,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  */
 public class URLCopy {
-    //private static Logger log = Logger.getLogger(URLCopy.class);
-    private static final org.slf4j.Logger log = LoggerFactory.getLogger(URLCopy.class);
+    private static final Logger log = LoggerFactory.getLogger(URLCopy.class);
 
     private RemoteDataClient sourceClient;
     private RemoteDataClient destClient;
     private AtomicBoolean killed = new AtomicBoolean(false);
     private TransferTaskDatabaseService dbService;
+    private final Vertx vertx;
 
-    public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient) {
+    public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient, Vertx vertx) {
         this.sourceClient = sourceClient;
         this.destClient = destClient;
+        this.vertx = vertx;
     }
 
     /**
@@ -145,8 +145,7 @@ public class URLCopy {
         String destPath = URI.create(transferTask.getDest()).getPath();
         try {
 
-            RemoteTransferListener listener;
-            listener = new RemoteTransferListener(convTransferTask(transferTask));
+            VertxTransferTaskProgressListener listener = new VertxTransferTaskProgressListener(transferTask, getVertx());
 
             // we're transferring a file
 
@@ -179,7 +178,6 @@ public class URLCopy {
             }
             // otherwise, we're doing the heavy lifting ourselves
             else {
-//                    listener = new RemoteTransferListener(transferTask);
 
                 try {
                     double srcFileLength = sourceClient.length(srcPath);
@@ -347,9 +345,9 @@ public class URLCopy {
         File tmpFile = null;
         File tempDir = null;
         TransferTask srcChildTransferTask = null;
-        RemoteTransferListener srcChildRemoteTransferListener = null;
+        VertxTransferTaskProgressListener srcChildRemoteTransferListener = null;
         TransferTask destChildTransferTask = null;
-        RemoteTransferListener destChildRemoteTransferListener = null;
+        VertxTransferTaskProgressListener destChildRemoteTransferListener = null;
 
         try {
             if (sourceClient instanceof Local) {
@@ -465,7 +463,7 @@ public class URLCopy {
 
                     TransferTaskDao.persist(convTransferTask(destChildTransferTask));
 
-                    destChildRemoteTransferListener = new RemoteTransferListener(convTransferTask(destChildTransferTask));
+                    destChildRemoteTransferListener = new VertxTransferTaskProgressListener(destChildTransferTask, getVertx());
 
                     destClient.put(tmpFile.getPath(), destPath,
                             destChildRemoteTransferListener);
@@ -1257,7 +1255,7 @@ public class URLCopy {
      * This performs third party transfer only if source and destination urls
      * have a matching protocol that support third party transfers.
      */
-    protected void dothirdPartyTransfer(String srcPath, String destPath, RemoteTransferListener listener) throws RemoteDataException, IOException {
+    protected void dothirdPartyTransfer(String srcPath, String destPath, VertxTransferTaskProgressListener listener) throws RemoteDataException, IOException {
         try {
             log.debug(String.format(
                     "Beginning third party transfer for task %s. %s to %s . Protocol: %s => %s",
@@ -1374,4 +1372,7 @@ public class URLCopy {
     }
 
 
+    public Vertx getVertx() {
+        return vertx;
+    }
 }

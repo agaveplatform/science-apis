@@ -15,12 +15,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.Date;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_UPDATED;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
-public class VertxTransferTaskProgressListener implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress {
-    private static final Logger log = LoggerFactory.getLogger(VertxTransferTaskProgressListener.class);
+public class VertxTransferTaskProgressListenerInterface implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress, InterfaceRemoteTransfer {
+    private static final Logger log = LoggerFactory.getLogger(VertxTransferTaskProgressListenerInterface.class);
     private final TransferTask transferTask;
 
     private RetryRequestManager retryRequestManager;
@@ -37,7 +38,7 @@ public class VertxTransferTaskProgressListener implements MarkerListener, Transf
      */
     private final Vertx vertx;
 
-    public VertxTransferTaskProgressListener(TransferTask transferTask, Vertx vertx) {
+    public VertxTransferTaskProgressListenerInterface(TransferTask transferTask, Vertx vertx) {
         this.transferTask = transferTask;
         this.vertx = vertx;
     }
@@ -79,6 +80,89 @@ public class VertxTransferTaskProgressListener implements MarkerListener, Transf
     public void _doPublishEvent(String eventName, JsonObject body) {
         log.debug("_doPublishEvent({}, {})", eventName, body);
         getRetryRequestManager().request(eventName, body, 2);
+    }
+
+    @Override
+    public TransferTask setTransferTask(org.iplantc.service.transfer.model.TransferTask transferTask) {
+        TransferTask tt = convToAgaveTransferTask(transferTask);
+        return tt;
+    }
+
+    TransferTask convToAgaveTransferTask(org.iplantc.service.transfer.model.TransferTask txfrTsk){
+        TransferTask newTransferTask = new TransferTask(txfrTsk.getSource(), txfrTsk.getDest());
+        newTransferTask.setOwner(txfrTsk.getOwner());
+        newTransferTask.setEventId(txfrTsk.getEventId());
+        newTransferTask.setAttempts(txfrTsk.getAttempts());
+        newTransferTask.setStatus(org.agaveplatform.service.transfers.enumerations.TransferStatusType.valueOf(txfrTsk.getStatus().toString()));
+        newTransferTask.setTotalSize(txfrTsk.getTotalSize());
+        newTransferTask.setTotalFiles(txfrTsk.getTotalFiles());
+        newTransferTask.setTotalSkippedFiles(txfrTsk.getTotalSkippedFiles());
+        newTransferTask.setBytesTransferred(txfrTsk.getBytesTransferred());
+        newTransferTask.setTransferRate(txfrTsk.getTransferRate());
+        newTransferTask.setTenantId(txfrTsk.getTenantId());
+        newTransferTask.setStartTime(txfrTsk.getStartTime().toInstant());
+        newTransferTask.setEndTime(txfrTsk.getEndTime().toInstant());
+        newTransferTask.setCreated(txfrTsk.getCreated().toInstant());
+        newTransferTask.setLastUpdated(txfrTsk.getLastUpdated().toInstant());
+        newTransferTask.setUuid(txfrTsk.getUuid());
+
+        newTransferTask.setParentTaskId(txfrTsk.getParentTask().getUuid());
+        newTransferTask.setRootTaskId(txfrTsk.getRootTask().getUuid());
+
+        return newTransferTask;
+    }
+
+    org.iplantc.service.transfer.model.TransferTask convTransferTask(TransferTask transferTask){
+
+        org.iplantc.service.transfer.model.TransferTask convTransferTask = new org.iplantc.service.transfer.model.TransferTask();
+        convTransferTask.setId(transferTask.getId());
+        convTransferTask.setSource(transferTask.getSource());
+        convTransferTask.setDest(transferTask.getDest());
+        convTransferTask.setOwner(transferTask.getOwner());
+        convTransferTask.setEventId(transferTask.getEventId());
+        convTransferTask.setAttempts(transferTask.getAttempts());
+        convTransferTask.setStatus( org.iplantc.service.transfer.model.enumerations.TransferStatusType.valueOf(transferTask.getStatus().toString()));
+        convTransferTask.setTotalSize(transferTask.getTotalSize());
+        convTransferTask.setTotalFiles(transferTask.getTotalFiles());
+        convTransferTask.setTotalSkippedFiles(transferTask.getTotalSkippedFiles());
+        convTransferTask.setBytesTransferred(transferTask.getBytesTransferred());
+        convTransferTask.setTransferRate(transferTask.getTransferRate());
+        convTransferTask.setTenantId(transferTask.getTenantId());
+
+        org.iplantc.service.transfer.model.TransferTask tParent = new org.iplantc.service.transfer.model.TransferTask( transferTask.getSource(), transferTask.getDest() );
+        org.iplantc.service.transfer.model.TransferTask tRoot = new org.iplantc.service.transfer.model.TransferTask( transferTask.getSource(), transferTask.getDest() );
+        convTransferTask.setParentTask(tParent);
+        convTransferTask.setRootTask(tRoot);
+
+        if (transferTask.getStartTime() == null){
+            log.error("transferTask.getStartTime is null");
+        }else {
+            convTransferTask.setStartTime(Date.from(transferTask.getStartTime()));
+        }
+
+        if (transferTask.getEndTime() == null){
+            log.error("transferTask.getEndTime is null");
+        }else {
+            convTransferTask.setEndTime(Date.from(transferTask.getEndTime()));
+        }
+
+        if (transferTask.getCreated() == null){
+            log.error("transferTask.getEndTime is null");
+        }else {
+            convTransferTask.setCreated(Date.from(transferTask.getCreated()));
+        }
+
+        if (transferTask.getLastUpdated() == null){
+            log.error("transferTask.getEndTime is null");
+        }else {
+            convTransferTask.setLastUpdated(Date.from(transferTask.getLastUpdated()));
+        }
+
+
+        convTransferTask.setUuid(transferTask.getUuid());
+        convTransferTask.setVersion(0);
+
+        return convTransferTask;
     }
 
     public TransferStatus getOverallStatusCallback() {
@@ -382,7 +466,7 @@ public class VertxTransferTaskProgressListener implements MarkerListener, Transf
         }
     };
 
-    private void restartMarkerArrived(GridFTPRestartMarker marker)
+    public void restartMarkerArrived(GridFTPRestartMarker marker)
     {
         list.merge(marker.toVector());
 
@@ -413,7 +497,7 @@ public class VertxTransferTaskProgressListener implements MarkerListener, Transf
         }
     }
 
-    private void perfMarkerArrived(PerfMarker marker)
+    public void perfMarkerArrived(PerfMarker marker)
     {
         long transferedBytes = 0;
         try {

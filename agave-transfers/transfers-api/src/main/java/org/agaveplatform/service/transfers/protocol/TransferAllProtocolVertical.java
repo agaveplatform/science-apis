@@ -55,7 +55,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	@Override
 	public void start() {
 		EventBus bus = vertx.eventBus();
-		log.info("Got into TransferAllProtocolVertical");
+		log.debug("Got into TransferAllProtocolVertical");
 
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
@@ -128,7 +128,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	 * @param handler the callback receiving the result of the event processing
 	 */
 	public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
-		log.info("Got into TransferAllProtocolVertical.processEvent");
+		log.debug("Got into TransferAllProtocolVertical.processEvent");
 
 		TransferTask tt = new TransferTask(body);
 		String source = tt.getSource();
@@ -165,30 +165,6 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 				if (makeRealCopy) destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
 
 				if (taskIsNotInterrupted(tt)) {
-//					legacyTransferTask =
-//							new org.iplantc.service.transfer.model.TransferTask(tt.getSource(), tt.getDest(), tt.getOwner(), null, null);
-//
-//					legacyTransferTask.setUuid(tt.getUuid());
-//					legacyTransferTask.setTenantId(tt.getTenantId());
-//					legacyTransferTask.setStatus(TransferStatusType.valueOf(tt.getStatus().name()));
-//					legacyTransferTask.setAttempts(tt.getAttempts());
-//					legacyTransferTask.setBytesTransferred(tt.getBytesTransferred());
-//					legacyTransferTask.setTotalSize(tt.getTotalSize());
-//					legacyTransferTask.setCreated(Date.from(tt.getCreated()));
-//					legacyTransferTask.setLastUpdated(Date.from(tt.getLastUpdated()));
-//					legacyTransferTask.setStartTime(Date.from(tt.getStartTime()));
-//					legacyTransferTask.setEndTime(Date.from(tt.getEndTime()));a
-//					if (tt.getParentTaskId() != null) {
-//						org.iplantc.service.transfer.model.TransferTask legacyParentTask = new org.iplantc.service.transfer.model.TransferTask();
-//						legacyParentTask.setUuid(tt.getParentTaskId());
-//						legacyTransferTask.setParentTask(legacyParentTask);
-//					}
-//					if (tt.getRootTaskId() != null) {
-//						org.iplantc.service.transfer.model.TransferTask legacyRootTask = new org.iplantc.service.transfer.model.TransferTask();
-//						legacyRootTask.setUuid(tt.getRootTaskId());
-//						legacyTransferTask.setRootTask(legacyRootTask);
-//					}
-
 						log.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 						//result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
 					TransferTask resultingTransferTask = new TransferTask();
@@ -253,12 +229,12 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 	protected TransferTask processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
-		log.info("Got into TransferAllProtocolVertical.processCopyRequest ");
+		log.debug("Got into TransferAllProtocolVertical.processCopyRequest ");
 
 		URI srcUri = URI.create(transferTask.getSource());
 		URI destUri = URI.create(transferTask.getDest());
 
-		log.info("Got up to the urlCopy");
+		log.debug("Got up to the urlCopy");
 
 		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for
 		//   interrupts in this method upon updates from the transfer thread and interrupt it. Alternatively, we can
@@ -269,8 +245,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 			TransferTask tt = transferTask;
 			try {
-				log.info("Calling urlCopy.copy");
+				log.debug("Calling urlCopy.copy");
 				tt = urlCopy.copy(transferTask, null);
+
 
 			} catch (Exception e) {
 				String msg = String.format("URLCopy error. %s", e.getMessage());
@@ -310,24 +287,5 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	public void setDbService(TransferTaskDatabaseService dbService) {
 		this.dbService = dbService;
 	}
-
-
-//	protected TransferTask copy(String src, String dest, TransferTask transferTask) {
-//		if (sourceClient.equals(destClient)) {
-//			RemoteTransferListener listener = null;
-//
-//			// we can potentially make a server-side copy here. attempt that first
-//			// before making an unnecessary round-trip
-//			sourceClient.copy(srcPath + "/", destPath, listener);
-//
-//			// everything was copied over server side, so delete whatever was in the
-//			// list of exclusions
-//			for (String excludedOutputFile : exclusions) {
-//				try {
-//					destClient.delete(destPath + "/" + excludedOutputFile);
-//				} catch (Exception ignored) {
-//				}
-//			}
-//	}
 
 }

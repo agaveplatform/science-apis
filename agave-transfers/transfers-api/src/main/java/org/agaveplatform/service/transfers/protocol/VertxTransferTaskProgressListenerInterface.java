@@ -61,7 +61,7 @@ public class VertxTransferTaskProgressListenerInterface implements MarkerListene
     }
 
     public RetryRequestManager getRetryRequestManager() {
-        log.trace("Got into the getRetryRequestManager call");
+        log.debug("Got into the getRetryRequestManager call");
         if (retryRequestManager == null) {
             log.trace("getRetryRequestManager check for null");
             retryRequestManager = new RetryRequestManager(getVertx());

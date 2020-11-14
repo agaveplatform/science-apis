@@ -130,7 +130,7 @@ public class URLCopy{
      */
     public TransferTask copy(TransferTask transferTask, List<String> exclusions)
             throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, ClosedByInterruptException {
-        log.info("UrlCopy.copy method.");
+        log.debug("UrlCopy.copy method.");
         if (transferTask == null) {
             throw new TransferException("TransferTask cannot be null. Please provide"
                     + "a valid transfer task to track this operation.");
@@ -180,7 +180,7 @@ public class URLCopy{
             }
             // otherwise, we're doing the heavy lifting ourselves
             else {
-//                    listener = new VertxTransferTaskProgressListener(transferTask);
+                    listener = new VertxTransferTaskProgressListenerInterface(transferTask, vertx);
 
                 try {
                     double srcFileLength = sourceClient.length(srcPath);
@@ -214,6 +214,7 @@ public class URLCopy{
                             transferTask.setStatus(TransferStatusType.CANCELLED);
                         } else {
                             transferTask.setStatus(TransferStatusType.COMPLETED);
+
                         }
 
                         transferTask.setEndTime(Instant.now());
@@ -221,6 +222,8 @@ public class URLCopy{
                         org.iplantc.service.transfer.model.TransferTask transferTask2 = convTransferTask(transferTask);
 
                         TransferTaskDao.persist(transferTask2);
+
+
                     }
                 } catch (ClosedByInterruptException e) {
                     try {
@@ -234,7 +237,7 @@ public class URLCopy{
                 } catch (TransferException e) {
                     throw new RemoteDataException("Failed to udpate transfer record.", e);
                 } catch (Exception e) {
-                    log.error("NPE {}", e.getCause());
+                    log.error("Exception {}", e.getCause());
                 }
             }
 

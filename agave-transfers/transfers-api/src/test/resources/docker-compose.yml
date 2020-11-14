@@ -56,6 +56,14 @@ services:
     restart: on-failure
     ports:
       - '10022:10022'
+    volumes:
+      - type: bind
+        source: ~/tmpsrc
+        target: /tmpsrc
+      - type: bind
+        source: ~/tmpdest
+        target: /tmpdest
+
 
   sftptunnel:
    image: agaveplatform/sshd:latest

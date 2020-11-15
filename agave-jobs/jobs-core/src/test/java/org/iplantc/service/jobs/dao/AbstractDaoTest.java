@@ -6,7 +6,6 @@ package org.iplantc.service.jobs.dao;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.gson.JsonParseException;
 import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -14,10 +13,8 @@ import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang.math.RandomUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.StringUtils;
-import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
@@ -39,10 +36,9 @@ import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.joda.time.DateTime;
 import org.json.JSONException;
@@ -97,7 +93,7 @@ public class AbstractDaoTest
 	
 	/**
 	 * Clears database of all {@link RemoteSystem}, {@link Software}, {@link Job}, 
-	 * {@link TransferTask}, and {@link Notification}. Creates new test instances 
+	 * {@link TransferTaskImpl}, and {@link Notification}. Creates new test instances
 	 * of each type as needed.
 	 * 
 	 * @throws Exception
@@ -117,7 +113,7 @@ public class AbstractDaoTest
 
     /**
      * Clears database of all {@link RemoteSystem}, {@link Software}, {@link Job},
-     * {@link TransferTask}, and {@link Notification}.
+     * {@link TransferTaskImpl}, and {@link Notification}.
      *
      * @throws Exception
      */
@@ -132,7 +128,7 @@ public class AbstractDaoTest
 
     /**
      * Clears database of all {@link RemoteSystem}, {@link Software}, {@link Job},
-     * {@link TransferTask}, and {@link Notification}.
+     * {@link TransferTaskImpl}, and {@link Notification}.
      *
      * @throws Exception
      */
@@ -320,7 +316,7 @@ public class AbstractDaoTest
     }
 
 	/**
-     * Delete all {@link JobEvent}, {@link TransferTask}, {@link JobPermission}, {@link Notification},
+     * Delete all {@link JobEvent}, {@link TransferTaskImpl}, {@link JobPermission}, {@link Notification},
      * and {@link Job}s from the database.
      * @throws Exception
      */
@@ -459,7 +455,7 @@ public class AbstractDaoTest
                     for (JsonNode jsonNode : input.getDefaultValueAsJsonArray()) {
                         String val = jsonNode.asText();
 
-                        TransferTask stagingTransferTask = new TransferTask(
+                        TransferTaskImpl stagingTransferTask = new TransferTaskImpl(
                                 val,
                                 "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()),
                                 job.getOwner(),
@@ -499,7 +495,7 @@ public class AbstractDaoTest
                     for (JsonNode jsonNode : input.getDefaultValueAsJsonArray()) {
                         String val = jsonNode.asText();
 
-                        TransferTask stagingTransferTask = new TransferTask(
+                        TransferTaskImpl stagingTransferTask = new TransferTaskImpl(
                                 val,
                                 "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()),
                                 job.getOwner(),
@@ -534,7 +530,7 @@ public class AbstractDaoTest
                 job.setStartTime(startTime.toDate());
                 job.setEndTime(endTime.toDate());
                 
-                TransferTask archivingTransferTask = new TransferTask(
+                TransferTaskImpl archivingTransferTask = new TransferTaskImpl(
                         "agave://" + job.getSystem() + "/" + job.getWorkPath(),
                         job.getArchiveCanonicalUrl(), 
                         job.getOwner(), 

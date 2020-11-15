@@ -1,496 +1,65 @@
 package org.iplantc.service.transfer;
 
-import java.util.Date;
-import java.util.Observable;
-
-import org.apache.log4j.Logger;
-import org.codehaus.plexus.util.StringUtils;
-import org.globus.ftp.ByteRange;
-import org.globus.ftp.ByteRangeList;
-import org.globus.ftp.GridFTPRestartMarker;
-import org.globus.ftp.Marker;
+import com.sshtools.sftp.FileTransferProgress;
 import org.globus.ftp.MarkerListener;
-import org.globus.ftp.PerfMarker;
-import org.globus.ftp.exception.PerfMarkerException;
-import org.hibernate.StaleObjectStateException;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
+import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.TransferTask;
-import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
-import org.irods.jargon.core.exception.JargonException;
 import org.irods.jargon.core.transfer.TransferStatus;
 import org.irods.jargon.core.transfer.TransferStatusCallbackListener;
 
-import com.sshtools.sftp.FileTransferProgress;
+public interface RemoteTransferListener extends MarkerListener, TransferStatusCallbackListener, FileTransferProgress {
 
-public class RemoteTransferListener extends Observable  
-implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
-{	
-	private static final Logger log = Logger.getLogger(RemoteTransferListener.class);
-	
-	public ByteRangeList list = new ByteRangeList();
-//    private ByteRange range;
-    private TransferTask transferTask;
-    private String firstRemoteFilepath;
-    private TransferStatus persistentTransferStatus;
-	private long aggregateStripedDateTransferred = 0;
-	private long lastUpdated = System.currentTimeMillis();
-	private long bytesLastCheck = 0;
-	
-	public RemoteTransferListener(TransferTask transferTask) 
-	{
-	    this.transferTask = transferTask;
-	}
-	
-	/**
-	 * @return the transferTask
-	 */
-	public synchronized TransferTask getTransferTask()
-	{
-	    return this.transferTask;
-	}
-
-	/**
-	 * @param transferTask the transferTask to set
-	 * @throws InterruptedException 
-	 */
-	private synchronized void setTransferTask(TransferTask transferTask)
-	{
-		try {
-//		    log.debug("Saving transfer task");
-			if (transferTask != null) {
-				TransferTaskDao.updateProgress(transferTask);
-			}
-			
-			this.transferTask = transferTask;
-				
-		} catch (StaleObjectStateException ex) {
-//		    notify();
-			// just ignore these. 
-		} catch (Throwable e) {
-			log.error("Failed to update transfer task " + transferTask.getUuid()  
-					+ " in callback listener.", e);
-//			try { this.transferTask = TransferTaskDao.findById(transferTask.getId()); } catch (Throwable t) {}
-		}
-	}
-
-	public TransferStatus getOverallStatusCallback() {
-		return persistentTransferStatus;
-	}
-	
-	public void skipped(long totalSize, String remoteFile)
-	{
-		if (StringUtils.isEmpty(firstRemoteFilepath)) {
-			firstRemoteFilepath = remoteFile;
-		}
-		
-		TransferTask task = getTransferTask();
-		if (task != null) 
-		{
-			task.setStatus(TransferStatusType.COMPLETED);
-			task.setStartTime(new Date());
-			task.setEndTime(new Date());
-			task.setTotalSize(totalSize);
-			task.setBytesTransferred(0);
-			task.setLastUpdated(new Date());
-			setTransferTask(task);
-		}
-	}
-	
-	/*************************************************************
-	 * 		IRODS - TransferStatusCallbackListener methods
-	 *************************************************************/
-	
-	@Override
-	public void overallStatusCallback(TransferStatus transferStatus)
-			throws JargonException
-	{
-		if (transferStatus.getTransferException() != null) {
-			persistentTransferStatus = transferStatus;
-		} else if (isCancelled()) {
-        	notifyObservers(TransferStatusType.CANCELLED);
-        }
-		
-		TransferTask task = getTransferTask();
-        if (task != null)
-		{
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task " + transferTask.getUuid() + ".\n" + transferStatus.toString());
-        	
-			if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_INITIATION)) {
-				task.setStatus(TransferStatusType.TRANSFERRING);
-				task.setStartTime(new Date());
-				task.setAttempts(task.getAttempts() + 1);
-				if (task.getTotalSize() == 0) {
-					task.setTotalSize(transferStatus.getTotalSize());
-				} else {
-					task.setTotalSize(task.getTotalSize() + transferStatus.getTotalSize());
-				}
-			} else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_COMPLETION)) {
-				task.setStatus(TransferStatusType.COMPLETED);
-				task.setEndTime(new Date());
-			}
-			
-			setTransferTask(task);
-		}
-        else {
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task unknown.\n" + transferStatus.toString());
-        }
-        
-        if (hasChanged()) {
-			throw new JargonException("Listener received a cancel request for transfer " 
-					+ transferTask.getUuid());
-		}
-	}
-
-	@Override
-	public FileStatusCallbackResponse statusCallback(TransferStatus transferStatus)
-			throws JargonException
-	{
-		if (transferStatus.getTransferException() != null) {
-			persistentTransferStatus = transferStatus;
-		} else if (isCancelled()) {
-        	notifyObservers(TransferStatusType.CANCELLED);
-        }
-		
-		TransferTask task = getTransferTask();
-        if (task != null)
-		{
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task " + transferTask.getUuid() + ".\n" + transferStatus.toString());
-        	
-			if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_INITIATION)) {
-				task.setStatus(TransferStatusType.TRANSFERRING);
-				task.setStartTime(new Date());
-				task.setTotalSize(task.getTotalSize() + transferStatus.getTotalSize());
-			} else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.IN_PROGRESS_START_FILE)) {
-				task.setStatus(TransferStatusType.TRANSFERRING);
-				task.setStartTime(new Date());
-				task.setTotalSize(task.getTotalSize() + transferStatus.getTotalSize());
-				task.setTotalFiles(task.getTotalFiles() + 1);
-			} else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.CANCELLED)) {
-				task.setStatus(TransferStatusType.CANCELLED);
-				task.setEndTime(new Date());
-			} else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.FAILURE) || 
-					transferStatus.getTransferException() != null) {
-				task.setStatus(TransferStatusType.FAILED);
-				task.setEndTime(new Date());
-				task.setBytesTransferred(task.getBytesTransferred() + transferStatus.getBytesTransfered());
-			} else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.PAUSED)) {
-				task.setStatus(TransferStatusType.PAUSED);
-			} else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_COMPLETION) || 
-					transferStatus.getTransferState().equals(TransferStatus.TransferState.SUCCESS)) {
-				task.setStatus(TransferStatusType.COMPLETED);
-				task.setEndTime(new Date());
-				task.setBytesTransferred(task.getBytesTransferred() + transferStatus.getBytesTransfered());
-			} else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.RESTARTING)) {
-				task.setAttempts(task.getAttempts() + 1);
-				task.setStatus(TransferStatusType.RETRYING);
-				task.setEndTime(null);
-				task.setStartTime(new Date());
-			} else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.IN_PROGRESS_COMPLETE_FILE)) {
-				task.setBytesTransferred(task.getBytesTransferred() + transferStatus.getBytesTransfered());
-			} else {
-				log.debug("Unrecognized transfer status during transfer for task " + task.getUuid());
-			}
-			
-			task.setLastUpdated(new Date());
-			
-			setTransferTask(task);
-		}
-        else {
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task unknown.\n" + transferStatus.toString());
-        }
-        return FileStatusCallbackResponse.CONTINUE;
-	}
-
-	@Override
-	public CallbackResponse transferAsksWhetherToForceOperation(
-			String irodsAbsolutePath, boolean isCollection)
-	{
-		return CallbackResponse.YES_FOR_ALL;
-	}
-
-	/*************************************************************
-	 * 		Sftp - FileTransferProgress listener methods
-	 *************************************************************/
-	
-	@Override
-	public void started(long bytesTotal, String remoteFile)
-	{
-		if (StringUtils.isEmpty(firstRemoteFilepath)) {
-			firstRemoteFilepath = remoteFile;
-		}
-		
-		TransferTask task = getTransferTask();
-        if (task != null)
-		{
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer started callback received for task " + task.getUuid() + ".\n" + remoteFile + " => " + bytesTotal);
-        	
-			task.setTotalFiles(task.getTotalFiles() + 1);
-			task.setStatus(TransferStatusType.TRANSFERRING);
-			task.setStartTime(new Date());
-			
-			if (remoteFile.equals(firstRemoteFilepath)) {
-				task.setTotalSize(bytesTotal);
-				task.setAttempts(task.getAttempts() + 1);
-			} else {
-				task.setTotalSize(task.getTotalSize() + bytesTotal);
-			}
-			
-			setTransferTask(task);
-		}
-        else {
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer started callback received for task unknown.\n" + remoteFile + " => " + bytesTotal);
-        }
-	}
-
-	@Override
-	public synchronized boolean isCancelled()
-	{
-		return hasChanged() || 
-				(getTransferTask() != null && getTransferTask().getStatus().isCancelled());
-	}
-
-	/* (non-Javadoc)
-	 * @see com.maverick.sftp.FileTransferProgress#progressed(long)
-	 */
-	@Override
-	public void progressed(long bytesSoFar)
-	{      
-	    TransferTask task = getTransferTask();
-        if (task != null)
-		{
-            task.setBytesTransferred(bytesSoFar);
-			long currentTime = System.currentTimeMillis();
-			if (( currentTime - lastUpdated) >= 15000) {
-			    double progress = bytesSoFar - bytesLastCheck;
-			    task.setTransferRate(((double)progress / ((double)(currentTime - lastUpdated) /  1000.0) ));
-                setTransferTask(task);
-                lastUpdated = currentTime;
-                bytesLastCheck = bytesSoFar;
-                
-                if (log.isDebugEnabled())
-                	log.debug("Transfer prograess callback received for task " + task.getUuid() + ".\n" + task.getSource() + " => " + bytesSoFar);
-		        
-			}
-		}
-        else {
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer progress callback received for task unknown.\nunknown => " + bytesSoFar);
-        }
-	}
-	
-	/**
-	 * Updates the current transfer task to cancelled. The actual
-	 * workers will pick up on this the next time they check the
-	 * callback status and send notifications to observers as
-	 * needed.
-	 */
-	public void cancel() {
-		TransferTask task = getTransferTask();
-        if (task != null)
-		{
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer progress callback received for task " + task.getUuid() + ".\n" + task.getSource());
-        	
-			task.setStatus(TransferStatusType.CANCELLED);
-			task.setEndTime(new Date());
-			task.updateTransferRate();
-			setTransferTask(task);
-		}
-        else {
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer progress callback received for task unknown.\nunknown");
-        }
-        
-        // set this listener to dirty
-        if (log.isDebugEnabled())
-        	log.debug("RemoteTransferListender for " + (task == null ? " anonymous transfer " : task.getUuid()) + 
-					  " was notified of an interrupt");
-		setChanged();
-	}
-
-	/* (non-Javadoc)
-	 * @see com.maverick.sftp.FileTransferProgress#completed()
-	 */
-	@Override
-	public void completed()
-	{
-		TransferTask task = getTransferTask();
-        if (task != null)
-		{
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer completed callback received for task " + task.getUuid() + ".\n" + task.getSource());
-        	
-			task.setStatus(TransferStatusType.COMPLETED);
-			task.setEndTime(new Date());
-			task.updateTransferRate();
-			setTransferTask(task);
-		}
-        else {
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer completed callback received for task unknown.\nunknown");
-        	
-        }
-	}
-	
-	public void failed()
-	{
-		TransferTask task = getTransferTask();
-        if (task != null)
-		{
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer failed callback received for task " + task.getUuid() + ".\n" + task.getSource());
-        	
-        	task.setStatus(TransferStatusType.FAILED);
-			task.setEndTime(new Date());
-			setTransferTask(task);
-		}
-        else {
-        	if (log.isDebugEnabled())
-        		log.debug("Transfer failed callback received for task unknown.\nunknown");
-        }
-	}
-	
-	/*************************************************************
-	 * 		JGlobus - MarkerListener methods
-	 *************************************************************/
-
-	/* (non-Javadoc)
-     * @see org.globus.ftp.MarkerListener#markerArrived(org.globus.ftp.Marker)
+    /**
+     * Returns the {@link TransferTask} associated with this transfer.
+     * @return
      */
-	@Override
-    public void markerArrived(Marker m) {
-        if (isCancelled()) {
-        	notifyObservers(TransferStatusType.CANCELLED);
-        }
-        
-        if (m instanceof GridFTPRestartMarker) {
-            restartMarkerArrived((GridFTPRestartMarker) m);
-        } else if (m instanceof PerfMarker) {
-            perfMarkerArrived((PerfMarker) m);
-        } else {
-            log.error("Received unsupported marker type");
-        }
-    };
+    TransferTask getTransferTask();
 
-    private void restartMarkerArrived(GridFTPRestartMarker marker) 
-    {
-        list.merge(marker.toVector());
-        
-        TransferTask task = getTransferTask();
-        if (task != null)
-		{
-        	ByteRange ef = (ByteRange)list.toVector().lastElement();
-        	
-        	try
-			{
-        		TransferStatus.TransferState status = null;
-        		if (ef.to == task.getTotalSize()) {
-        			status = TransferStatus.TransferState.SUCCESS;
-        		} else {
-        			status = TransferStatus.TransferState.RESTARTING;
-        		}
-        		
-				statusCallback(TransferStatus.instance(TransferStatus.TransferType.PUT, 
-						task.getSource(), task.getDest(), "marker", 
-						task.getTotalSize(), 0, 
-						(int)task.getTotalFiles(), (int)task.getTotalSkippedFiles(), 
-						(int)task.getTotalFiles(), status, 
-						"marker", "marker"));
-			}
-			catch (JargonException e) {
-				log.error("Failed to register restart marker on gridftp transfer " + task.getUuid(), e);
-			}	
-		}
-    }
+    /**
+     * @param transferTask the transferTask to set
+     * @throws InterruptedException
+     */
+    void setTransferTask(TransferTask transferTask);
 
-    private void perfMarkerArrived(PerfMarker marker) 
-    {   
-        long transferedBytes = 0;
-        
-        // stripe index
-//        long index = -1;
-//        if (marker.hasStripeIndex()) {
-//            try {
-//                index = marker.getStripeIndex();
-//            } catch (PerfMarkerException e) {
-//                log.error(e.toString());
-//            } 
-//        }
-        
-        try {
-            transferedBytes = marker.getStripeBytesTransferred();
-        } catch (PerfMarkerException e) {
-            log.error("Failed to handle perf marker.",e);
-        }
-        
-        this.aggregateStripedDateTransferred  += transferedBytes;
-        
-//        if (index == 0) {
-//            for(UrlCopyListener listener: listeners) {
-//                listener.transfer(aggregateStripedDateTransferred - this.range.from, this.range.to - this.range.from);
-//                this.aggregateStripedDateTransferred = 0;
-//                task.setStartTime(new Date());
-//            }
-//        }
-        
-        TransferTask task = getTransferTask();
-        if (task != null) 
-		{
-        	// if this is the first marker to arrive
-        	if (aggregateStripedDateTransferred == transferedBytes) {
-//	        	task.setTotalFiles(task.getTotalFiles() + 1);
-	        	task.setAttempts(1);
-	        	task.setStatus(TransferStatusType.TRANSFERRING);
-        	}
-        	task.setBytesTransferred(aggregateStripedDateTransferred);
-//	        task.setTotalSize(aggregateStripedDateTransferred);
-        	setTransferTask(task);
-		}
-        
-        // total stripe count
-        if (marker.hasTotalStripeCount()) {
-            try {
-                log.info("Total stripe count = " 
-                             + marker.getTotalStripeCount());
-            } catch (PerfMarkerException e) {
-                log.error(e.toString());
-            } 
-        }else {
-        	log.info("Total stripe count: not present");
-        }
-    }//PerfMarkerArrived   
+    /**
+     * For recursive copies, this returns the transfer task of the parent task.
+     * @return the parent {@link TransferTask} of a recursive copy
+     */
+    TransferStatus getOverallStatusCallback();
 
-//    
-//	/* 
-//	 * Handles the notification of state change for a given transfer. A transfer may
-//	 * be one or more tasks. Calling this method will mark this Observable as changed
-//	 * and throw exceptions on any subsequent callback. 
-//	 * (non-Javadoc)
-//	 * @see java.util.Observer#update(java.util.Observable, java.lang.Object)
-//	 */
-//	@Override
-//	public void update(Observable o, Object arg)
-//	{
-////		// avoid redundant loops and multiple logging
-////		if (!hasChanged()) 
-////		{
-//				TransferTask task = getTransferTask();
-//	if (o instanceof URLCopy) {
-//		log.debug("RemoteTransferListender for " + (task == null ? " anonymous transfer " : task.getUuid()) + 
-//				" was notified by URLCopy of an interrupt");
-//	} 
-//	else {
-//		log.debug("RemoteTransferListender for " + (task == null ? " anonymous transfer " : task.getUuid()) + 
-//				" was notified by " + o.getClass().getName() + " of an interrupt");
-//	}
-//			
-//				setChanged();
-////		}
-//	}
+    /**
+     * Called when a file item is being skipped due to previous copy or blacklisting
+     * @param totalSize size of the skipped fileitem
+     * @param remoteFile remote path of the skipped file item
+     */
+    void skipped(long totalSize, String remoteFile);
+
+    /**
+     * Marks a transfer as cancelled. This is called by the respective cancel methods of the
+     * underlying protocol callback listeners.
+     */
+    void cancel();
+
+    /**
+     * Marks a transfer as failed. This is called by the respective failure callback methods of the
+     * underlying protocol callback listeners.
+     */
+    void failed();
+
+    /**
+     * Creates a new child transfer task at the given source and destination paths with
+     * this listener's {@link #getTransferTask()} as the parent.
+     *
+     * @param sourcePath the source of the child {@link TransferTask}
+     * @param destPath the dest of the child {@link TransferTask}
+     * @return the persisted {@link TransferTask}
+     * @throws TransferException if the cild transfer task cannot be saved
+     */
+    public TransferTask createAndPersistChildTransferTask(String sourcePath, String destPath) throws TransferException;
+
+    /**
+     * Returns true if the transfer has been cancelled.
+     * @return true if cancelled
+     */
+    boolean isCancelled();
 }

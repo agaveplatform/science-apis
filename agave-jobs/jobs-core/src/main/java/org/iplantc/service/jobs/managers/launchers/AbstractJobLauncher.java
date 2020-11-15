@@ -1,20 +1,10 @@
 package org.iplantc.service.jobs.managers.launchers;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.channels.ClosedByInterruptException;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicBoolean;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.exceptions.SoftwareException;
@@ -35,7 +25,6 @@ import org.iplantc.service.jobs.exceptions.SchedulerException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.jobs.model.enumerations.WrapperTemplateAttributeVariableType;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariableType;
 import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.notification.util.EmailMessage;
@@ -46,16 +35,23 @@ import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.RemoteTransferListenerImpl;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.util.MD5Checksum;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.io.Files;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Interface to define how to launch applications on various resources
@@ -339,7 +335,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
         
         log.debug(step);
         
-        TransferTask transferTask;
+        TransferTaskImpl transferTask;
         RemoteDataClient remoteSoftwareDataClient = null;
 		try 
 		{
@@ -369,7 +365,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	        		
 	        		// what we really want is to just copy contents into tempAppDir, so we work around default behavior
 	        		// first copy the remote data here
-	        		transferTask = new TransferTask(
+	        		transferTask = new TransferTaskImpl(
 	    					"agave://" + getSoftware().getStorageSystem().getSystemId() + "/" + getSoftware().getDeploymentPath(), 
 	    					"https://workers.prod.agaveplatform.org/" + tempAppDir.getAbsolutePath(),
 	    					getJob().getOwner(), null, null);
@@ -385,7 +381,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 	    			
 	        		JobDao.persist(getJob());
 	        			        		
-	        		remoteSoftwareDataClient.get(getSoftware().getDeploymentPath(), tempAppDir.getAbsolutePath(), new RemoteTransferListener(transferTask));
+	        		remoteSoftwareDataClient.get(getSoftware().getDeploymentPath(), tempAppDir.getAbsolutePath(), new RemoteTransferListenerImpl(transferTask));
 	        		
 	    			checkStopped();
                     
@@ -514,7 +510,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
      */
     protected void stageSofwareApplication() throws JobException 
     {	
-    	TransferTask transferTask;
+    	TransferTaskImpl transferTask;
     	RemoteDataClient remoteExecutionDataClient = null;
 		try {
 			log.debug("Staging " + getJob().getSoftwareName() + " app dependencies for job " + getJob().getUuid() + " to agave://" + getJob().getSystem() + "/" + getJob().getWorkPath());
@@ -524,7 +520,7 @@ public abstract class AbstractJobLauncher implements JobLauncher
 			
 			checkStopped();
 			
-			transferTask = new TransferTask(
+			transferTask = new TransferTaskImpl(
 					"https://workers.prod.agaveplatform.org/" + tempAppDir.getAbsolutePath(),
 					"agave://" + getJob().getSystem() + "/" + getJob().getWorkPath(), 
 					getJob().getOwner(), null, null);
@@ -550,14 +546,14 @@ public abstract class AbstractJobLauncher implements JobLauncher
 			if (getJob().getRetries() <= 0) {
 				remoteExecutionDataClient.put(tempAppDir.getAbsolutePath(), 
 											new File(getJob().getWorkPath()).getParent(), 
-											new RemoteTransferListener(transferTask));
+											new RemoteTransferListenerImpl(transferTask));
 			} 
 			// after that we try to save some time on retries by only copying the assets 
 			// that are missing or changed since the last attempt.
 			else {
 				remoteExecutionDataClient.syncToRemote(tempAppDir.getAbsolutePath(), 
 											new File(getJob().getWorkPath()).getParent(), 
-											new RemoteTransferListener(transferTask));
+											new RemoteTransferListenerImpl(transferTask));
 			}
 		} 
 		catch (Exception e) { 

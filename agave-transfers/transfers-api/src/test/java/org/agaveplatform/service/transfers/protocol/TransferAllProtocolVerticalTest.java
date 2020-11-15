@@ -19,6 +19,7 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,7 +71,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 			PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
 
 		// set up the parameters
-		org.iplantc.service.transfer.model.TransferTask legacyTransferTask = _createTestTransferTaskIPC();
+		TransferTaskImpl legacyTransferTask = _createTestTransferTaskIPC();
 		legacyTransferTask.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
 		// set the totalSize value so the check for a positive file size will succeed
 		legacyTransferTask.setTotalSize(1024);
@@ -164,7 +165,7 @@ class TransferAllProtocolVerticalTest  extends BaseTestCase {
 	public void testProcessCopyRequestThrowsRemoteDataException(Vertx vertx, VertxTestContext ctx) throws SystemUnknownException, AgaveNamespaceException,
 			RemoteCredentialException, PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
 		// set up the parameters
-		org.iplantc.service.transfer.model.TransferTask legacyTransferTask = _createTestTransferTaskIPC();
+		TransferTaskImpl legacyTransferTask = _createTestTransferTaskIPC();
 		TransferTask transferTask = _createTestTransferTask();
 		legacyTransferTask.setUuid(new AgaveUUID(UUIDType.TRANSFER).toString());
 		// set the totalSize value so the check for a positive file size will succeed

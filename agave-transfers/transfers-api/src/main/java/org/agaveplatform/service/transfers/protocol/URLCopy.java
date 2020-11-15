@@ -4,8 +4,10 @@
 package org.agaveplatform.service.transfers.protocol;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -13,7 +15,6 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.globus.ftp.GridFTPSession;
 import org.iplantc.service.transfer.*;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RangeValidationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
@@ -28,9 +29,13 @@ import java.net.URI;
 import java.nio.channels.ClosedByInterruptException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
+import static org.agaveplatform.service.transfers.enumerations.TransferTaskEventType.COMPLETED;
+import static org.agaveplatform.service.transfers.enumerations.TransferTaskEventType.STREAM_COPY_STARTED;
+import static org.agaveplatform.service.transfers.enumerations.TransferTaskEventType.*;
 
 /**
  * Handles the copying of data between one {@link RemoteDataClient} and another. Situations where
@@ -43,17 +48,26 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class URLCopy{
     //private static Logger log = Logger.getLogger(URLCopy.class);
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(URLCopy.class);
-
+    private final RetryRequestManager retryRequestManager;
     private RemoteDataClient sourceClient;
     private RemoteDataClient destClient;
-    private Vertx vertx;
+
+    private final Vertx vertx;
     private AtomicBoolean killed = new AtomicBoolean(false);
     private TransferTaskDatabaseService dbService;
 
-    public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient, Vertx vertx ) {
+    public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient, Vertx vertx, RetryRequestManager retryRequestManager) {
         this.sourceClient = sourceClient;
         this.destClient = destClient;
         this.vertx = vertx;
+        this.retryRequestManager = retryRequestManager;
+    }
+
+    /**
+     * @return the vertx instance for this transfer
+     */
+    public Vertx getVertx() {
+        return vertx;
     }
 
     /**
@@ -87,7 +101,7 @@ public class URLCopy{
      * @param listener
      * @throws ClosedByInterruptException
      */
-    protected void checkCancelled(VertxTransferTaskProgressListenerInterface listener)
+    protected void checkCancelled(RemoteTransferListener listener)
             throws ClosedByInterruptException {
         if (isKilled() || listener.isCancelled()) {
             throw new ClosedByInterruptException();
@@ -99,7 +113,7 @@ public class URLCopy{
      * Directory copy is supported and authentication is handled automatically.The algorithm 
      * used to copy is chosen based on the 
      * protocol, file size, and locality of the data. Progress is written to the transfer task
-     * via a {@link VertxTransferTaskProgressListenerInterface}
+     * via a {@link RemoteTransferListenerImpl}
      *
      * @param
      * @param
@@ -119,7 +133,7 @@ public class URLCopy{
      * Directory copy is supported and authentication is handled automatically.The algorithm
      * used to copy is chosen based on the
      * protocol, file size, and locality of the data. Progress is written to the transfer task
-     * via a {@link VertxTransferTaskProgressListenerInterface}
+     * via a {@link RemoteTransferListenerImpl}
      *
      * @param transferTask the reference transfer task
      * @param exclusions blacklist of paths relative to {@code srcPath} not to copy
@@ -146,10 +160,8 @@ public class URLCopy{
         String destPath = URI.create(transferTask.getDest()).getPath();
         try {
 
-            VertxTransferTaskProgressListenerInterface listener;
-            listener = new VertxTransferTaskProgressListenerInterface(transferTask, vertx);
-
-            // we're transferring a file
+            RemoteTransferListenerImpl listener =
+                    new RemoteTransferListenerImpl(transferTask, getVertx(), getRetryRequestManager());
 
             // don't copy the redundant destPath or parent of destPath returned from unix style listings dir
             // to avoid infinite loops and full file system copies.
@@ -159,28 +171,18 @@ public class URLCopy{
 
             // source and dest are the same host, so do a server-side copy
             if (sourceClient.equals(destClient)) {
-
-                transferTask.setStartTime(Instant.now());
-
-                sourceClient.copy(srcPath, destPath);
-
-                File f = new File(srcPath);
-                long fileSize = f.length();
-
-                transferTask.setEndTime(Instant.now());
-                transferTask.setTotalSize(fileSize);
-                transferTask.setBytesTransferred(0L);
-                transferTask.setLastUpdated(transferTask.getEndTime());
+                // should be able to do a relay transfer here just as easily
+                sourceClient.copy(srcPath, destPath, listener);
+                transferTask = (TransferTask)listener.getTransferTask();
             }
             // delegate to third-party transfer if supported
             else if (sourceClient.isThirdPartyTransferSupported() &&
                     destClient.isThirdPartyTransferSupported() &&
                     sourceClient.getClass().equals(destClient.getClass())) {
-                dothirdPartyTransfer(srcPath, destPath, listener);
+                transferTask = dothirdPartyTransfer(srcPath, destPath, listener);
             }
             // otherwise, we're doing the heavy lifting ourselves
             else {
-                    listener = new VertxTransferTaskProgressListenerInterface(transferTask, vertx);
 
                 try {
                     double srcFileLength = sourceClient.length(srcPath);
@@ -195,49 +197,22 @@ public class URLCopy{
                             log.debug("Local disk has " + availableBytes + " unused bytes  prior to "
                                     + "relay transfer of " + srcFileLength + " bytes for transfer task "
                                     + transferTask.getUuid() + ". Relay transfer will be allowed.");
-
-                            relayTransfer(srcPath, destPath, transferTask);
+                            transferTask = relayTransfer(srcPath, destPath, transferTask);
                         } else {
                             log.debug("Local disk has insufficient space (" + availableBytes +
                                     " < " + srcFileLength + ") for relay transfer of transfer task "
                                     + transferTask.getUuid() + ". Switching to streaming transfer instead.");
-                            streamingTransfer(srcPath, destPath, listener);
+                            transferTask = streamingTransfer(srcPath, destPath, listener);
                         }
                     }
                     // only streaming transfers are supported at this point, so carry on with those.
                     else {
-                        streamingTransfer(srcPath, destPath, listener);
-                    }
-
-                    if (transferTask != null) {
-                        if (isKilled()) {
-                            transferTask.setStatus(TransferStatusType.CANCELLED);
-                        } else {
-                            transferTask.setStatus(TransferStatusType.COMPLETED);
-
-                        }
-
-                        transferTask.setEndTime(Instant.now());
-
-                        org.iplantc.service.transfer.model.TransferTask transferTask2 = convTransferTask(transferTask);
-
-                        TransferTaskDao.persist(transferTask2);
-
-
+                        transferTask = streamingTransfer(srcPath, destPath, listener);
                     }
                 } catch (ClosedByInterruptException e) {
-                    try {
-                        TransferTaskDao.cancelAllRelatedTransfers(transferTask.getId());
-                    } catch (TransferException e1) {
-                        throw new RemoteDataException("Failed to cancel related transfer tasks.", e1);
-                    } finally {
-                        Thread.currentThread().interrupt();
-                    }
                     throw e;
-                } catch (TransferException e) {
-                    throw new RemoteDataException("Failed to udpate transfer record.", e);
-                } catch (Exception e) {
-                    log.error("Exception {}", e.getCause());
+                } catch (Throwable e) {
+                    log.error("Exception {}", e.getMessage(), e.getCause());
                 }
             }
 
@@ -254,88 +229,88 @@ public class URLCopy{
         }
     }
 
-    org.iplantc.service.transfer.model.TransferTask convTransferTask(TransferTask transferTask){
-
-        org.iplantc.service.transfer.model.TransferTask convTransferTask = new org.iplantc.service.transfer.model.TransferTask();
-        convTransferTask.setId(transferTask.getId());
-        convTransferTask.setSource(transferTask.getSource());
-        convTransferTask.setDest(transferTask.getDest());
-        convTransferTask.setOwner(transferTask.getOwner());
-        convTransferTask.setEventId(transferTask.getEventId());
-        convTransferTask.setAttempts(transferTask.getAttempts());
-        convTransferTask.setStatus( org.iplantc.service.transfer.model.enumerations.TransferStatusType.valueOf(transferTask.getStatus().toString()));
-        convTransferTask.setTotalSize(transferTask.getTotalSize());
-        convTransferTask.setTotalFiles(transferTask.getTotalFiles());
-        convTransferTask.setTotalSkippedFiles(transferTask.getTotalSkippedFiles());
-        convTransferTask.setBytesTransferred(transferTask.getBytesTransferred());
-        convTransferTask.setTransferRate(transferTask.getTransferRate());
-        convTransferTask.setTenantId(transferTask.getTenantId());
-
-        org.iplantc.service.transfer.model.TransferTask tParent = new org.iplantc.service.transfer.model.TransferTask( transferTask.getSource(), transferTask.getDest() );
-        org.iplantc.service.transfer.model.TransferTask tRoot = new org.iplantc.service.transfer.model.TransferTask( transferTask.getSource(), transferTask.getDest() );
-        convTransferTask.setParentTask(tParent);
-        convTransferTask.setRootTask(tRoot);
-
-        if (transferTask.getStartTime() == null){
-            log.error("transferTask.getStartTime is null");
-        }else {
-            convTransferTask.setStartTime(Date.from(transferTask.getStartTime()));
-        }
-
-        if (transferTask.getEndTime() == null){
-            log.error("transferTask.getEndTime is null");
-        }else {
-            convTransferTask.setEndTime(Date.from(transferTask.getEndTime()));
-        }
-
-        if (transferTask.getCreated() == null){
-            log.error("transferTask.getEndTime is null");
-        }else {
-            convTransferTask.setCreated(Date.from(transferTask.getCreated()));
-        }
-
-        if (transferTask.getLastUpdated() == null){
-            log.error("transferTask.getEndTime is null");
-        }else {
-            convTransferTask.setLastUpdated(Date.from(transferTask.getLastUpdated()));
-        }
-
-
-        convTransferTask.setUuid(transferTask.getUuid());
-        convTransferTask.setVersion(0);
-
-        return convTransferTask;
-    }
-
-    TransferTask convToAgaveTransferTask(org.iplantc.service.transfer.model.TransferTask txfrTsk){
-        TransferTask newTransferTask = new TransferTask(txfrTsk.getSource(), txfrTsk.getDest());
-        newTransferTask.setOwner(txfrTsk.getOwner());
-        newTransferTask.setEventId(txfrTsk.getEventId());
-        newTransferTask.setAttempts(txfrTsk.getAttempts());
-        newTransferTask.setStatus(org.agaveplatform.service.transfers.enumerations.TransferStatusType.valueOf(txfrTsk.getStatus().toString()));
-        newTransferTask.setTotalSize(txfrTsk.getTotalSize());
-        newTransferTask.setTotalFiles(txfrTsk.getTotalFiles());
-        newTransferTask.setTotalSkippedFiles(txfrTsk.getTotalSkippedFiles());
-        newTransferTask.setBytesTransferred(txfrTsk.getBytesTransferred());
-        newTransferTask.setTransferRate(txfrTsk.getTransferRate());
-        newTransferTask.setTenantId(txfrTsk.getTenantId());
-        newTransferTask.setStartTime(txfrTsk.getStartTime().toInstant());
-        newTransferTask.setEndTime(txfrTsk.getEndTime().toInstant());
-        newTransferTask.setCreated(txfrTsk.getCreated().toInstant());
-        newTransferTask.setLastUpdated(txfrTsk.getLastUpdated().toInstant());
-        newTransferTask.setUuid(txfrTsk.getUuid());
-
-        newTransferTask.setParentTaskId(txfrTsk.getParentTask().getUuid());
-        newTransferTask.setRootTaskId(txfrTsk.getRootTask().getUuid());
-
-        return newTransferTask;
-    }
+//    TransferTaskImpl convTransferTask(TransferTask transferTask){
+//
+//        TransferTaskImpl convTransferTask = new TransferTaskImpl();
+//        convTransferTask.setId(transferTask.getId());
+//        convTransferTask.setSource(transferTask.getSource());
+//        convTransferTask.setDest(transferTask.getDest());
+//        convTransferTask.setOwner(transferTask.getOwner());
+//        convTransferTask.setEventId(transferTask.getEventId());
+//        convTransferTask.setAttempts(transferTask.getAttempts());
+//        convTransferTask.setStatus( org.iplantc.service.transfer.model.enumerations.TransferStatusType.valueOf(transferTask.getStatus().toString()));
+//        convTransferTask.setTotalSize(transferTask.getTotalSize());
+//        convTransferTask.setTotalFiles(transferTask.getTotalFiles());
+//        convTransferTask.setTotalSkippedFiles(transferTask.getTotalSkippedFiles());
+//        convTransferTask.setBytesTransferred(transferTask.getBytesTransferred());
+//        convTransferTask.setTransferRate(transferTask.getTransferRate());
+//        convTransferTask.setTenantId(transferTask.getTenantId());
+//
+//        TransferTaskImpl tParent = new TransferTaskImpl( transferTask.getSource(), transferTask.getDest() );
+//        TransferTaskImpl tRoot = new TransferTaskImpl( transferTask.getSource(), transferTask.getDest() );
+//        convTransferTask.setParentTask(tParent);
+//        convTransferTask.setRootTask(tRoot);
+//
+//        if (transferTask.getStartTime() == null){
+//            log.error("transferTask.getStartTime is null");
+//        }else {
+//            convTransferTask.setStartTime(Date.from(transferTask.getStartTime()));
+//        }
+//
+//        if (transferTask.getEndTime() == null){
+//            log.error("transferTask.getEndTime is null");
+//        }else {
+//            convTransferTask.setEndTime(Date.from(transferTask.getEndTime()));
+//        }
+//
+//        if (transferTask.getCreated() == null){
+//            log.error("transferTask.getEndTime is null");
+//        }else {
+//            convTransferTask.setCreated(Date.from(transferTask.getCreated()));
+//        }
+//
+//        if (transferTask.getLastUpdated() == null){
+//            log.error("transferTask.getEndTime is null");
+//        }else {
+//            convTransferTask.setLastUpdated(Date.from(transferTask.getLastUpdated()));
+//        }
+//
+//
+//        convTransferTask.setUuid(transferTask.getUuid());
+//        convTransferTask.setVersion(0);
+//
+//        return convTransferTask;
+//    }
+//
+//    TransferTask convToAgaveTransferTask(TransferTaskImpl txfrTsk){
+//        TransferTask newTransferTask = new TransferTask(txfrTsk.getSource(), txfrTsk.getDest());
+//        newTransferTask.setOwner(txfrTsk.getOwner());
+//        newTransferTask.setEventId(txfrTsk.getEventId());
+//        newTransferTask.setAttempts(txfrTsk.getAttempts());
+//        newTransferTask.setStatus(org.agaveplatform.service.transfers.enumerations.TransferStatusType.valueOf(txfrTsk.getStatus().toString()));
+//        newTransferTask.setTotalSize(txfrTsk.getTotalSize());
+//        newTransferTask.setTotalFiles(txfrTsk.getTotalFiles());
+//        newTransferTask.setTotalSkippedFiles(txfrTsk.getTotalSkippedFiles());
+//        newTransferTask.setBytesTransferred(txfrTsk.getBytesTransferred());
+//        newTransferTask.setTransferRate(txfrTsk.getTransferRate());
+//        newTransferTask.setTenantId(txfrTsk.getTenantId());
+//        newTransferTask.setStartTime(txfrTsk.getStartTime().toInstant());
+//        newTransferTask.setEndTime(txfrTsk.getEndTime().toInstant());
+//        newTransferTask.setCreated(txfrTsk.getCreated().toInstant());
+//        newTransferTask.setLastUpdated(txfrTsk.getLastUpdated().toInstant());
+//        newTransferTask.setUuid(txfrTsk.getUuid());
+//
+//        newTransferTask.setParentTaskId(txfrTsk.getParentTask().getUuid());
+//        newTransferTask.setRootTaskId(txfrTsk.getRootTask().getUuid());
+//
+//        return newTransferTask;
+//    }
 
     /**
      * Proxies a file/folder transfer from source to destination by using the underlying
-     * {@link RemoteDataClient#(String, String, VertxTransferTaskProgressListenerInterface )} and {@link RemoteDataClient#(String, String, VertxTransferTaskProgressListenerInterface )}
+     * {@link RemoteDataClient#(String, String, RemoteTransferListenerImpl )} and {@link RemoteDataClient#(String, String, RemoteTransferListenerImpl )}
      * methods to stage the data to the local host, then push to the destination system.
-     * This can be significantly faster than the standard {@link #streamingTransfer(String, String, VertxTransferTaskProgressListenerInterface)}
+     * This can be significantly faster than the standard {@link #streamingTransfer(String, String, RemoteTransferListenerImpl)}
      * method when the underlying protocols support parallelism and/or threading. Care must
      * be taken with this approach to properly check that there is available disk space to
      * perform the copy.
@@ -343,17 +318,18 @@ public class URLCopy{
      * @param srcPath path on the src system to move to the destPath
      * @param destPath path on the dest system where the data will be copied.
      * @param aggregateTransferTask the top level TransferTask tracking the aggregate data movement
-     * @throws RemoteDataException
-     * @throws ClosedByInterruptException
+     * @return the updated {@code aggregatedTransferTask} after processing
+     * @throws RemoteDataException if an error occurred attempting the transfer
+     * @throws ClosedByInterruptException if the transfer was interrupted
      */
-    protected void relayTransfer(String srcPath, String destPath, TransferTask aggregateTransferTask)
+    protected TransferTask relayTransfer(String srcPath, String destPath, TransferTask aggregateTransferTask)
             throws RemoteDataException, ClosedByInterruptException {
         File tmpFile = null;
         File tempDir = null;
         TransferTask srcChildTransferTask = null;
-        VertxTransferTaskProgressListenerInterface srcChildRemoteTransferListener = null;
+        RemoteTransferListener srcChildRemoteTransferListener = null;
         TransferTask destChildTransferTask = null;
-        VertxTransferTaskProgressListenerInterface destChildRemoteTransferListener = null;
+        RemoteTransferListener destChildRemoteTransferListener = null;
 
         try {
             if (sourceClient instanceof Local) {
@@ -388,27 +364,47 @@ public class URLCopy{
                         getProtocolForClass(sourceClient.getClass()),
                         "local"));
                 try {
-                    sourceClient.get(srcPath, tmpFile.getPath());
+                    // we create a subtask local to this method to track each end of the relay transfer.
+                    //
+                    srcChildTransferTask = new TransferTask(
+                            aggregateTransferTask.getSource(),
+                            "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
+                            aggregateTransferTask.getOwner(),
+                            aggregateTransferTask.getUuid(),
+                            aggregateTransferTask.getRootTaskId());
 
-                    //aggregateTransferTask.updateSummaryStats(srcChildTransferTask);
-                    if (isKilled()) {
-                        srcChildTransferTask.setStatus(TransferStatusType.CANCELLED);
-                    } else {
-                        srcChildTransferTask.setStatus(TransferStatusType.COMPLETED);
+                    srcChildTransferTask.setTenantId(aggregateTransferTask.getTenantId());
+                    srcChildTransferTask.setStatus(READ_STARTED);
+
+                    _doPublishEvent(RELAY_READ_STARTED.name(), aggregateTransferTask.toJson());
+
+                    srcChildRemoteTransferListener =
+                            new RemoteTransferListenerImpl(srcChildTransferTask, getVertx(), getRetryRequestManager());
+
+                    // perform the get
+                    sourceClient.get(srcPath, tmpFile.getPath(), srcChildRemoteTransferListener);
+
+                    srcChildTransferTask = (TransferTask)srcChildRemoteTransferListener.getTransferTask();
+                    aggregateTransferTask.setStartTime(srcChildTransferTask.getStartTime());
+                    aggregateTransferTask.setStatus(srcChildTransferTask.getStatus());
+
+                    // cancelled status will be handled in the calling function.
+                    if (!isKilled()) {
+//                        aggregateTransferTask.setStatus(TransferStatusType.CANCELLED);
+//                    } else {
+                        aggregateTransferTask.setStatus(READ_COMPLETED);
+                        _doPublishEvent(RELAY_READ_COMPLETED.name(), aggregateTransferTask.toJson());
+                        _doPublishEvent(UPDATED.name(), aggregateTransferTask.toJson());
                     }
 
-                    srcChildTransferTask.setEndTime(Instant.now());
 
                     // must be in here as the LOCAL files will not have a src transfer listener associated with them.
                     checkCancelled(srcChildRemoteTransferListener);
 
                 } catch (RemoteDataException e) {
                     try {
-                        if (srcChildTransferTask != null) {
-                            srcChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            srcChildTransferTask.setEndTime(Instant.now());
-                            TransferTaskDao.updateProgress(convTransferTask(srcChildTransferTask));
-                        }
+                        aggregateTransferTask.setStatus(TransferStatusType.FAILED);
+                        aggregateTransferTask.setEndTime(Instant.now());
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay source child task to failed.", t);
                     }
@@ -423,11 +419,8 @@ public class URLCopy{
                     throw e;
                 } catch (Throwable e) {
                     try {
-                        if (srcChildTransferTask != null) {
-                            srcChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            srcChildTransferTask.setEndTime(Instant.now());
-                            TransferTaskDao.updateProgress(convTransferTask(srcChildTransferTask));
-                        }
+                        aggregateTransferTask.setStatus(TransferStatusType.FAILED);
+                        aggregateTransferTask.setEndTime(Instant.now());
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay source child task to failed.", t);
                     }
@@ -460,34 +453,36 @@ public class URLCopy{
                             aggregateTransferTask.getOwner(),
                             aggregateTransferTask.getParentTaskId(),
                             aggregateTransferTask.getRootTaskId());
+                    destChildTransferTask.setTenantId(aggregateTransferTask.getTenantId());
+                    aggregateTransferTask.setStatus(WRITE_STARTED);
+                    _doPublishEvent(RELAY_WRITE_STARTED.name(), aggregateTransferTask.toJson());
 
-                    TransferTaskDao.persist(convTransferTask(destChildTransferTask));
+                    destChildRemoteTransferListener =
+                            new RemoteTransferListenerImpl(destChildTransferTask, getVertx(), getRetryRequestManager());
 
-                    destChildRemoteTransferListener = new VertxTransferTaskProgressListenerInterface(destChildTransferTask, vertx);
+                    destClient.put(tmpFile.getPath(), destPath, destChildRemoteTransferListener);
 
-                    destClient.put(tmpFile.getPath(), destPath);
+                    if (!isKilled()) {
+                        destChildTransferTask = (TransferTask)destChildRemoteTransferListener.getTransferTask();
+                        // now update the aggregate task with the info from the child task
+                        aggregateTransferTask.setBytesTransferred(destChildTransferTask.getBytesTransferred());
+                        aggregateTransferTask.setTotalFiles(destChildTransferTask.getTotalFiles());
+                        aggregateTransferTask.setTotalSkippedFiles(destChildTransferTask.getTotalSkippedFiles());
+                        aggregateTransferTask.setTotalSize(destChildTransferTask.getTotalSize());
+                        aggregateTransferTask.setAttempts(destChildTransferTask.getAttempts());
+                        aggregateTransferTask.setEndTime(destChildTransferTask.getEndTime());
+                        aggregateTransferTask.updateTransferRate();
 
-                    destChildTransferTask = destChildRemoteTransferListener.getTransferTask();
+                        aggregateTransferTask.setStatus(WRITE_COMPLETED);
+                        _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());
 
-                    //aggregateTransferTask.updateSummaryStats(destChildTransferTask);
-
-                    if (isKilled()) {
-                        destChildTransferTask.setStatus(TransferStatusType.CANCELLED);
-                    } else {
-                        destChildTransferTask.setStatus(TransferStatusType.COMPLETED);
+                        aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
+                        _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());
                     }
-
-                    destChildTransferTask.setEndTime(Instant.now());
-
-                    TransferTaskDao.updateProgress(convTransferTask(destChildTransferTask));
-
                 } catch (RemoteDataException e) {
                     try {
-                        if (destChildTransferTask != null) {
-                            destChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            destChildTransferTask.setEndTime(Instant.now());
-                            TransferTaskDao.updateProgress(convTransferTask(destChildTransferTask));
-                        }
+                        destChildTransferTask.setStatus(TransferStatusType.FAILED);
+                        destChildTransferTask.setEndTime(Instant.now());
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay dest child task to failed.", t);
                     }
@@ -503,11 +498,8 @@ public class URLCopy{
                 } catch (Throwable e) {
                     // fail the destination transfer task
                     try {
-                        if (destChildTransferTask != null) {
-                            destChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            destChildTransferTask.setEndTime(Instant.now());
-                            TransferTaskDao.updateProgress(convTransferTask(destChildTransferTask));
-                        }
+                        aggregateTransferTask.setStatus(TransferStatusType.FAILED);
+                        aggregateTransferTask.setEndTime(Instant.now());
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay dest child task to failed.", t);
                     }
@@ -537,29 +529,41 @@ public class URLCopy{
                         aggregateTransferTask.getOwner(),
                         aggregateTransferTask.getParentTaskId(),
                         aggregateTransferTask.getRootTaskId());
+                destChildTransferTask.setTenantId(aggregateTransferTask.getTenantId());
+                destChildTransferTask.setStartTime(aggregateTransferTask.getStartTime());
 
-                destChildTransferTask.setStartTime(destChildTransferTask.getCreated());
-                destChildTransferTask.setEndTime(destChildTransferTask.getCreated());
-                destChildTransferTask.setBytesTransferred(0);
-                destChildTransferTask.setAttempts(0);
-                destChildTransferTask.setLastUpdated(destChildTransferTask.getCreated());
-                if (srcChildTransferTask != null) {
-                    destChildTransferTask.setTotalFiles(srcChildTransferTask.getTotalFiles());
-                    destChildTransferTask.setTotalSize(srcChildTransferTask.getTotalSize());
-                    destChildTransferTask.setTotalSkippedFiles(srcChildTransferTask.getTotalSkippedFiles());
-                    destChildTransferTask.setTransferRate(srcChildTransferTask.getTransferRate());
-                } else {
-                    destChildTransferTask.setTotalFiles(1);
-                    destChildTransferTask.setTotalSize(tmpFile.length());
-                    destChildTransferTask.setTotalSkippedFiles(0);
-                    destChildTransferTask.setTransferRate(0);
-                }
+                aggregateTransferTask.setStatus(WRITE_STARTED);
+                _doPublishEvent(RELAY_WRITE_STARTED.name(), aggregateTransferTask.toJson());
 
-                TransferTaskDao.persist(convTransferTask(destChildTransferTask));
+                destChildRemoteTransferListener =
+                        new RemoteTransferListenerImpl(destChildTransferTask, getVertx(), getRetryRequestManager());
 
-                //aggregateTransferTask.updateSummaryStats(destChildTransferTask);
+
+                long tmpFileLength = tmpFile.length();
+
+                // trigger the lifecycle of the transfer as if it were a remote copy. This preserves the child event
+                // lifecycle
+                destChildRemoteTransferListener.started(tmpFileLength, tmpFile.getPath());
+                destChildRemoteTransferListener.progressed(tmpFileLength);
+                destChildRemoteTransferListener.completed();
+
+                // now update the aggregate task with the info from the child task
+                aggregateTransferTask.setBytesTransferred(destChildTransferTask.getBytesTransferred());
+                aggregateTransferTask.setTotalFiles(destChildTransferTask.getTotalFiles());
+                aggregateTransferTask.setTotalSkippedFiles(destChildTransferTask.getTotalSkippedFiles());
+                aggregateTransferTask.setTotalSize(destChildTransferTask.getTotalSize());
+                aggregateTransferTask.setAttempts(destChildTransferTask.getAttempts());
+                aggregateTransferTask.setEndTime(destChildTransferTask.getEndTime());
+                aggregateTransferTask.updateTransferRate();
+
+                aggregateTransferTask.setStatus(WRITE_COMPLETED);
+                _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());
+
+                aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
+                _doPublishEvent(COMPLETED.name(), aggregateTransferTask.toJson());
             }
-        } catch (ClosedByInterruptException e) {
+        }
+        catch (ClosedByInterruptException e) {
             log.debug(String.format(
                     "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
                     aggregateTransferTask.getUuid(),
@@ -569,43 +573,36 @@ public class URLCopy{
                     getProtocolForClass(destClient.getClass())), e);
             Thread.currentThread().interrupt();
             throw e;
-        } catch (RemoteDataException e) {
-            try {
+        }
+        catch (RemoteDataException e) {
+//            try {
                 aggregateTransferTask.setEndTime(Instant.now());
                 aggregateTransferTask.setStatus(TransferStatusType.FAILED);
-                TransferTaskDao.persist(convTransferTask(aggregateTransferTask));
-            } catch (TransferException e1) {
-                log.error("Failed to update parent transfer task "
-                        + aggregateTransferTask.getUuid() + " status to FAILED", e1);
-            }
+//            } catch (TransferException e1) {
+//                log.error("Failed to update parent transfer task "
+//                        + aggregateTransferTask.getUuid() + " status to FAILED", e1);
+//            }
 
 //			checkCancelled(remoteTransferListener);
 
             throw e;
-        } catch (Exception e) {
-            try {
-                aggregateTransferTask.setEndTime(Instant.now());
-                aggregateTransferTask.setStatus(TransferStatusType.FAILED);
-                TransferTaskDao.persist(convTransferTask(aggregateTransferTask));
-            } catch (TransferException e1) {
-                log.error("Failed to update parent transfer task "
-                        + aggregateTransferTask.getUuid() + " status to FAILED", e1);
-            }
-
-//			checkCancelled(remoteTransferListener);
+        }
+        catch (Exception e) {
+            aggregateTransferTask.setEndTime(Instant.now());
+            aggregateTransferTask.setStatus(TransferStatusType.FAILED);
 
             throw new RemoteDataException(
                     getDefaultErrorMessage(
-                            srcPath, new VertxTransferTaskProgressListenerInterface(aggregateTransferTask, vertx)), e);
+                            srcPath,
+                            aggregateTransferTask), e);
         } finally {
-            if (aggregateTransferTask != null) {
-                log.info(String.format(
-                        "Total of %s bytes transferred in task %s . Protocol %s => %s",
-                        aggregateTransferTask.getBytesTransferred(),
-                        aggregateTransferTask.getUuid(),
-                        getProtocolForClass(sourceClient.getClass()),
-                        getProtocolForClass(destClient.getClass())));
-            }
+            log.info(String.format(
+                    "Total of %s bytes transferred in task %s . Protocol %s => %s",
+                    aggregateTransferTask.getBytesTransferred(),
+                    aggregateTransferTask.getUuid(),
+                    getProtocolForClass(sourceClient.getClass()),
+                    getProtocolForClass(destClient.getClass())));
+
             if (sourceClient instanceof Local) {
                 log.info("Skipping deleting relay cache file " + tempDir.getPath() + " as source originated from this host.");
             } else {
@@ -614,6 +611,7 @@ public class URLCopy{
             }
         }
 
+        return aggregateTransferTask;
     }
 
     /**
@@ -661,13 +659,13 @@ public class URLCopy{
      * @param srcPath agave source path of the file on the remote system
      * @param destPath the destination agave path of the transfer on the remote system
      * @param listener the listener to track the transfer info
-     * @throws RemoteDataException
-     * @throws IOException
-     * @throws TransferException
-     * @throws ClosedByInterruptException
+     * @return the updated {@code aggregatedTransferTask} after processing
+     * @throws RemoteDataException if an error occurred attempting the transfer
+     * @throws IOException if unable to open a stream
+     * @throws ClosedByInterruptException if the transfer was interrupted
      */
-    protected void streamingTransfer(String srcPath, String destPath, VertxTransferTaskProgressListenerInterface listener)
-            throws RemoteDataException, IOException, TransferException, ClosedByInterruptException {
+    protected TransferTask streamingTransfer(String srcPath, String destPath, RemoteTransferListenerImpl listener)
+            throws RemoteDataException, IOException, ClosedByInterruptException {
         // The "b" in the variable names means "buffered".
         RemoteInputStream<?> in = null;
         InputStream bis = null;
@@ -685,6 +683,9 @@ public class URLCopy{
                     getProtocolForClass(destClient.getClass())));
 
             long totalSize = sourceClient.length(srcPath);
+
+            listener.getTransferTask().setStatus(STREAM_COPY_STARTED.name());
+            _doPublishEvent(STREAM_COPY_STARTED.name(), ((TransferTask)listener.getTransferTask()).toJson());
 
             // Buffer the input stream only if it's not already buffered.
             try {
@@ -745,6 +746,16 @@ public class URLCopy{
             listener.progressed(bytesSoFar);
             listener.completed();
 
+            // now update the aggregate task with the info from the child task
+            TransferTask streamingTransferTask = (TransferTask)listener.getTransferTask();
+
+            streamingTransferTask.setStatus(WRITE_COMPLETED);
+            _doPublishEvent(RELAY_WRITE_COMPLETED.name(), streamingTransferTask.toJson());
+
+            streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
+            _doPublishEvent(RELAY_WRITE_COMPLETED.name(), streamingTransferTask.toJson());
+
+
             log.debug(String.format(
                     "Completed streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -753,7 +764,10 @@ public class URLCopy{
                     getProtocolForClass(sourceClient.getClass()),
                     getProtocolForClass(destClient.getClass())));
 
-        } catch (ClosedByInterruptException e) {
+            return streamingTransferTask;
+
+        }
+        catch (ClosedByInterruptException e) {
             log.debug(String.format(
                     "Aborted streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -771,7 +785,8 @@ public class URLCopy{
             Thread.currentThread().interrupt();
 
             throw e;
-        } catch (RemoteDataException | IOException e) {
+        }
+        catch (RemoteDataException | IOException e) {
             log.debug(String.format(
                     "Failed streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -784,7 +799,8 @@ public class URLCopy{
             listener.failed();
 
             throw e;
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             log.debug(String.format(
                     "Failed streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -797,7 +813,8 @@ public class URLCopy{
             listener.failed();
 
             throw new RemoteDataException("Transfer task %s failed.", e);
-        } finally {
+        }
+        finally {
             if (listener != null && listener.getTransferTask() != null) {
                 log.info(String.format(
                         "Total of %s bytes transferred in task %s . Protocol %s => %s",
@@ -846,8 +863,10 @@ public class URLCopy{
             if (sourceClient.isDirectory(srcPath)) {
                 throw new TransferException("Range transfers are not supported on directories");
             } else {
-                VertxTransferTaskProgressListenerInterface listener = null;
-                listener = new VertxTransferTaskProgressListenerInterface(transferTask, vertx);
+
+                RemoteTransferListenerImpl listener =
+                        new RemoteTransferListenerImpl(transferTask, getVertx(), getRetryRequestManager());
+
                 if (StringUtils.equals(FilenameUtils.getName(srcPath), ".") ||
                         StringUtils.equals(FilenameUtils.getName(srcPath), "..")) {
                     // skip current directory and parent to avoid infinite loops and
@@ -867,25 +886,13 @@ public class URLCopy{
                         long absoluteSourceIndex = sourceRangeValidator.getAbsoluteIndex();
                         long absoluteDestIndex = destRangeValidator.getAbsoluteIndex();
 
-                        proxyRangeTransfer(srcPath, absoluteSourceIndex, srcRangeSize, destPath, absoluteDestIndex, listener);
-                    } catch (ClosedByInterruptException e) {
-                        try {
-                            TransferTaskDao.cancelAllRelatedTransfers(transferTask.getId());
-                        } catch (TransferException e1) {
-                            throw new RemoteDataException("Failed to cancel related transfer tasks.", e1);
-                        } finally {
-                            Thread.currentThread().interrupt();
-                        }
-
-                        throw e;
+                        transferTask = proxyRangeTransfer(srcPath, absoluteSourceIndex, srcRangeSize, destPath, absoluteDestIndex, listener);
                     } catch (RangeValidationException e) {
                         throw new RemoteDataException(e.getMessage(), e);
-                    } catch (TransferException e) {
-                        throw new RemoteDataException("Failed to udpate transfer record.", e);
                     }
                 }
 
-                return convToAgaveTransferTask(convTransferTask(listener.getTransferTask()));
+                return (TransferTask)listener.getTransferTask();
             }
         } finally {
             try {
@@ -909,14 +916,15 @@ public class URLCopy{
      * @param destPath the destination agave path of the transfer on the remote system
      * @param destRangeOffset offset to start writing to the dest file
      * @param listener the listener to track the transfer info
-     * @throws RemoteDataException
-     * @throws IOException
-     * @throws TransferException
-     * @throws ClosedByInterruptException
+     * @return the updated {@code aggregatedTransferTask} after processing
+     * @throws RemoteDataException if an error occurred attempting the transfer
+     * @throws IOException if unable to open a stream
+     * @throws ClosedByInterruptException if the transfer was interrupted
      */
-    protected void proxyRangeTransfer(String srcPath, long srcRangeOffset, long srcRangeSize,
-                                      String destPath, long destRangeOffset, VertxTransferTaskProgressListenerInterface listener)
-            throws RemoteDataException, IOException, TransferException, ClosedByInterruptException {
+    protected TransferTask proxyRangeTransfer(String srcPath, long srcRangeOffset, long srcRangeSize,
+                                      String destPath, long destRangeOffset, RemoteTransferListenerImpl listener)
+            throws RemoteDataException, IOException, ClosedByInterruptException {
+
         if (listener == null) {
             throw new RemoteDataException("Transfer listener cannot be null");
         }
@@ -940,6 +948,9 @@ public class URLCopy{
                     listener.getTransferTask().getDest(),
                     getProtocolForClass(sourceClient.getClass()),
                     getProtocolForClass(destClient.getClass())));
+
+            listener.getTransferTask().setStatus(STREAM_COPY_STARTED.name());
+            _doPublishEvent(STREAM_COPY_STARTED.name(), ((TransferTask)listener.getTransferTask()).toJson());
 
             if (sourceClient.isDirectory(srcPath)) {
                 throw new RemoteDataException("Cannot perform range query on directories");
@@ -1036,7 +1047,7 @@ public class URLCopy{
             boolean haveReachedTheEndOfOriginalDesinationFile = false;
 
             // now we are at the destination, so start writing the input stream to the temp file
-            while (remainingBytes < totalSize &&
+            while (remainingBytes > 0 &&
                     (length = bis.read(newBytes, 0, (int) Math.min(bufferSize, remainingOffset))) != -1) {
                 // write the new input from the source stream to the destination. 
                 // This is essentially an append operation until we run out of input.
@@ -1105,10 +1116,20 @@ public class URLCopy{
 
             // update with the final transferred blocks and wrap the transfer.
             listener.progressed(bytesSoFar);
-            listener.completed();
 
             // now replace the original with the patched temp file
             destClient.doRename(tmpFilename, destPath);
+
+            listener.completed();
+
+            // now update the aggregate task with the info from the child task
+            TransferTask streamingTransferTask = (TransferTask)listener.getTransferTask();
+
+            streamingTransferTask.setStatus(WRITE_COMPLETED);
+            _doPublishEvent(RELAY_WRITE_COMPLETED.name(), streamingTransferTask.toJson());
+
+            streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
+            _doPublishEvent(RELAY_WRITE_COMPLETED.name(), streamingTransferTask.toJson());
 
             // and we're spent
             log.debug(String.format(
@@ -1118,7 +1139,12 @@ public class URLCopy{
                     listener.getTransferTask().getDest(),
                     getProtocolForClass(sourceClient.getClass()),
                     getProtocolForClass(destClient.getClass())));
-        } catch (ClosedByInterruptException e) {
+
+
+
+            return (TransferTask)listener.getTransferTask();
+        }
+        catch (ClosedByInterruptException e) {
             log.debug(String.format(
                     "Aborted streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -1134,7 +1160,8 @@ public class URLCopy{
             listener.cancel();
             Thread.currentThread().interrupt();
             throw e;
-        } catch (RemoteDataException | IOException e) {
+        }
+        catch (RemoteDataException | IOException e) {
             log.debug(String.format(
                     "Failed streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -1147,7 +1174,8 @@ public class URLCopy{
             listener.failed();
 
             throw e;
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             log.debug(String.format(
                     "Failed streaming transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -1161,8 +1189,9 @@ public class URLCopy{
 
             throw new RemoteDataException("Transfer task " + listener.getTransferTask().getUuid()
                     + " failed.", e);
-        } finally {
-            if (listener != null && listener.getTransferTask() != null) {
+        }
+        finally {
+            if (listener.getTransferTask() != null) {
                 log.info(String.format(
                         "Total of %s bytes transferred in task %s . Protocol %s => %s",
                         listener.getTransferTask().getBytesTransferred(),
@@ -1196,12 +1225,10 @@ public class URLCopy{
      *
      * @return message
      */
-    private String getDefaultErrorMessage(String srcPath, VertxTransferTaskProgressListenerInterface listener) {
+    private String getDefaultErrorMessage(String srcPath, TransferTask transferTask) {
         return String.format(
                 "Transfer %s cancelled while copying from source.",
-                (listener.getTransferTask() == null ?
-                        "of " + srcPath :
-                        listener.getTransferTask().getUuid()));
+                (transferTask == null ? "of " + srcPath : transferTask.getUuid()));
     }
 
     /**
@@ -1253,8 +1280,16 @@ public class URLCopy{
     /**
      * This performs third party transfer only if source and destination urls
      * have a matching protocol that support third party transfers.
+     *
+     * @param srcPath agave source path of the file on the remote system
+     * @param destPath the destination agave path of the transfer on the remote system
+     * @param listener the listener to track the transfer info
+     * @return the updated {@code aggregatedTransferTask} after processing
+     * @throws RemoteDataException if an error occurred attempting the transfer
+     * @throws IOException if unable to open a stream
+     * @throws ClosedByInterruptException if the transfer was interrupted
      */
-    protected void dothirdPartyTransfer(String srcPath, String destPath, VertxTransferTaskProgressListenerInterface listener) throws RemoteDataException, IOException {
+    protected TransferTask dothirdPartyTransfer(String srcPath, String destPath, RemoteTransferListenerImpl listener) throws RemoteDataException, IOException {
         try {
             log.debug(String.format(
                     "Beginning third party transfer for task %s. %s to %s . Protocol: %s => %s",
@@ -1309,7 +1344,10 @@ public class URLCopy{
                     listener.getTransferTask().getDest(),
                     getProtocolForClass(sourceClient.getClass()),
                     getProtocolForClass(destClient.getClass())));
-        } catch (ClosedByInterruptException e) {
+
+            return (TransferTask)listener.getTransferTask();
+        }
+        catch (ClosedByInterruptException e) {
             log.debug(String.format(
                     "Aborted third party transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -1331,7 +1369,8 @@ public class URLCopy{
             }
             Thread.currentThread().interrupt();
             throw e;
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             log.debug(String.format(
                     "Failed third party transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -1344,7 +1383,8 @@ public class URLCopy{
             listener.failed();
 
             throw e;
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             log.debug(String.format(
                     "Failed third party transfer for task %s. %s to %s . Protocol: %s => %s",
                     listener.getTransferTask().getUuid(),
@@ -1358,7 +1398,8 @@ public class URLCopy{
 
             throw new RemoteDataException("Transfer task " + listener.getTransferTask().getUuid()
                     + " failed.", e);
-        } finally {
+        }
+        finally {
             if (listener != null && listener.getTransferTask() != null) {
                 log.info(String.format(
                         "Total of %s bytes transferred in task %s . Protocol %s => %s",
@@ -1370,5 +1411,24 @@ public class URLCopy{
         }
     }
 
+    /**
+     * Returns a {@link RetryRequestManager} to ensure messages are retried before failure.
+     * @return a retry request manager.
+     */
+    protected RetryRequestManager getRetryRequestManager() {
+        return retryRequestManager;
+    }
 
+    /**
+     * Handles event creation and delivery across the existing event bus. Retry is handled by the
+     * {@link RetryRequestManager} up to 3 times. The call will be made asynchronously, so this method
+     * will return immediately.
+     *
+     * @param eventName the name of the event. This doubles as the address in the request invocation.
+     * @param body the message of the body. Currently only {@link JsonObject} are supported.
+     */
+    public void _doPublishEvent(String eventName, JsonObject body) {
+        log.debug("_doPublishEvent({}, {})", eventName, body);
+        getRetryRequestManager().request(eventName, body, 2);
+    }
 }

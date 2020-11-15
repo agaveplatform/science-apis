@@ -1,8 +1,6 @@
 package org.iplantc.service.transfer.sftp;
 
-import com.google.protobuf.ByteString;
 import com.sshtools.logging.LoggerFactory;
-import com.sshtools.net.ForwardingClient;
 import com.sshtools.publickey.SshPrivateKeyFile;
 import com.sshtools.publickey.SshPrivateKeyFileFactory;
 import com.sshtools.sftp.*;
@@ -15,19 +13,16 @@ import com.sshtools.ssh2.KBIAuthentication;
 import com.sshtools.ssh2.Ssh2Client;
 import com.sshtools.ssh2.Ssh2Context;
 import com.sshtools.ssh2.Ssh2PublicKeyAuthentication;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.remote.ssh.MaverickSSHSubmissionClient;
-import org.iplantc.service.remote.ssh.shell.Shell;
 import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
+import org.iplantc.service.transfer.RemoteTransferListenerImpl;
 import org.iplantc.service.transfer.exceptions.*;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.TransferTask;
@@ -1250,12 +1245,7 @@ public final class MaverickSFTP implements RemoteDataClient {
                         String srcPath = parentTask.getSource() +
                                 (StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") +
                                 child.getName();
-                        childTask = new TransferTask(srcPath,
-                                resolvePath(childRemotePath),
-                                parentTask.getOwner(),
-                                parentTask.getRootTask(),
-                                parentTask);
-                        TransferTaskDao.persist(childTask);
+                        childTask = listener.createAndPersistChildTransferTask(srcPath, childRemotePath);
                     }
 
                     if (child.isDirectory()) {
@@ -1270,9 +1260,9 @@ public final class MaverickSFTP implements RemoteDataClient {
                         mkdir(childRemotePath);
 
                         // sync the folder now that we've cleaned up
-                        syncToRemote(child.getAbsolutePath(), adjustedRemoteDir, childTask == null ? null : new RemoteTransferListener(childTask));
+                        syncToRemote(child.getAbsolutePath(), adjustedRemoteDir, childTask == null ? null : new RemoteTransferListenerImpl(childTask));
                     } else {
-                        syncToRemote(child.getAbsolutePath(), childRemotePath, childTask == null ? null : new RemoteTransferListener(childTask));
+                        syncToRemote(child.getAbsolutePath(), childRemotePath, childTask == null ? null : new RemoteTransferListenerImpl(childTask));
                     }
                 }
             } else {

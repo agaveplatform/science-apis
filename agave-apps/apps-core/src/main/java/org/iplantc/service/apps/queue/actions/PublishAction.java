@@ -3,12 +3,7 @@
  */
 package org.iplantc.service.apps.queue.actions;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
-
+import com.google.common.io.Files;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -51,9 +46,12 @@ import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.local.Local;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 
-import com.google.common.io.Files;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 /**
  * @author dooley
@@ -333,7 +331,7 @@ public class PublishAction extends AbstractWorkerAction<Software> {
     private void copyPublicAppArchiveToDeploymentSystem(RemoteDataClient publishedSoftwareDataClient, File zippedFile)
     throws FileNotFoundException, IOException, RemoteDataException, TransferException 
     {
-        TransferTask transferTask = new TransferTask(
+        TransferTaskImpl transferTask = new TransferTaskImpl(
                 "agave://" + getEntity().getStorageSystem().getSystemId() + "/" + getEntity().getDeploymentPath(), 
                 "agave://" + publishedSoftware.getStorageSystem().getSystemId() + "/" + publishedSoftware.getDeploymentPath(), 
                 publishingUsername, 

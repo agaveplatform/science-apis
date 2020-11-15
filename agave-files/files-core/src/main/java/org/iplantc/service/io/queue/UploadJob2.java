@@ -1,8 +1,5 @@
 package org.iplantc.service.io.queue;
 
-import java.io.File;
-import java.nio.channels.ClosedByInterruptException;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -20,12 +17,11 @@ import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.local.Local;
-import org.iplantc.service.transfer.model.TransferTask;
-import org.quartz.InterruptableJob;
-import org.quartz.JobDataMap;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.UnableToInterruptJobException;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
+import org.quartz.*;
+
+import java.io.File;
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * Class to encapsulate staging of files directly uploaded to the api to the remote system.
@@ -108,7 +104,7 @@ public class UploadJob2 implements InterruptableJob
 
 				String agavePath = logicalFile.getAgaveRelativePathFromAbsolutePath();
 
-				TransferTask transferTask = new TransferTask(
+				TransferTaskImpl transferTask = new TransferTaskImpl(
 						uploadSource,
 						uploadDest,
 						createdBy,

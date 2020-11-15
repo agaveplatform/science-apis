@@ -1,12 +1,5 @@
 package org.iplantc.service.common.representation;
 
-import java.io.BufferedOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Writer;
-import java.util.Date;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
@@ -14,13 +7,16 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.restlet.data.Form;
 import org.restlet.data.MediaType;
 import org.restlet.data.Range;
 import org.restlet.data.Request;
 import org.restlet.resource.WriterRepresentation;
+
+import java.io.*;
+import java.util.Date;
 
 public class RemoteDataWriterRepresentation extends WriterRepresentation
 {
@@ -31,11 +27,11 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 	private RemoteDataClient remoteDataClient;
 	private String localPath;
 	private String remotePath;
-	private TransferTask transferTask = null;
+	private TransferTaskImpl transferTask = null;
 
 	public RemoteDataWriterRepresentation(RemoteSystem system,
 			String localPath, String remotePath, MediaType type,
-			Range range, TransferTask transferTask) {
+			Range range, TransferTaskImpl transferTask) {
 		super(type);
 		this.setSystem(system);
 		this.localPath = localPath;

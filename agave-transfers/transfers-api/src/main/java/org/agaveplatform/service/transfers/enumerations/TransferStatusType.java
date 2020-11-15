@@ -1,17 +1,28 @@
 package org.agaveplatform.service.transfers.enumerations;
 
-
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.transfer.model.enumerations.ITransferStatus;
 
 import java.util.List;
 
 /**
  * These represent the states comprising the state machine of a{@link TransferTask}.
  */
-public enum TransferStatusType
+public enum TransferStatusType implements ITransferStatus
 {
-	ASSIGNED, CANCELLED, COMPLETED, COMPLETED_WITH_ERRORS, FAILED, PAUSED, PAUSE_WAITING, QUEUED, RETRYING, TRANSFERRING, ERROR, CREATED, CANCELING_WAITING, CANCELLED_ERROR;
+	CREATED,
+	CANCELLED, CANCELING_WAITING, CANCELLED_ERROR,
+	PROCESSING_DIRECTORY,
+	ASSIGNED,
+	TRANSFERRING,
+	READ_STARTED, READ_IN_PROGRESS, READ_COMPLETED, WRITE_STARTED, WRITE_IN_PROGRESS, WRITE_COMPLETED,
+	STREAM_COPY_STARTED, STREAM_COPY_IN_PROGRESS, STREAM_COPY_COMPLETED,
+	RETRYING,
+	FAILED,
+	COMPLETED, COMPLETED_WITH_ERRORS,
+	PAUSED, PAUSE_WAITING, QUEUED,
+	ERROR;
 
 	/**
 	 * Turns {@link #values()} into a comma separated string
@@ -26,7 +37,21 @@ public enum TransferStatusType
 	 * @return immutable list of the active {@link TransferStatusType}
 	 */
 	public static List<TransferStatusType> getActive() {
-		return List.of(ASSIGNED, PAUSED, PAUSE_WAITING, QUEUED, RETRYING, TRANSFERRING, ERROR, CREATED, CANCELING_WAITING);
+//		return List.of(ASSIGNED, PAUSED, PAUSE_WAITING, QUEUED, RETRYING,
+//				TRANSFERRING, ERROR, CREATED, CANCELING_WAITING);
+
+		return List.of(CREATED,
+				CANCELLED, CANCELING_WAITING, CANCELLED_ERROR,
+				PROCESSING_DIRECTORY,
+				ASSIGNED,
+				TRANSFERRING,
+				READ_STARTED, READ_IN_PROGRESS, READ_COMPLETED, WRITE_STARTED, WRITE_IN_PROGRESS, WRITE_COMPLETED,
+				STREAM_COPY_STARTED, STREAM_COPY_IN_PROGRESS, STREAM_COPY_COMPLETED,
+				RETRYING,
+				FAILED,
+				COMPLETED, COMPLETED_WITH_ERRORS,
+				PAUSED, PAUSE_WAITING, QUEUED,
+				ERROR);
 	}
 
 	/**

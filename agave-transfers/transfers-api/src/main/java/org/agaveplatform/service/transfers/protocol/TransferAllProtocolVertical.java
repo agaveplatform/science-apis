@@ -22,6 +22,7 @@ import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +124,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	/**
 	 * Handles processing of the actual transfer operation using the {@link URLCopy} class to manage the transfer.
 	 * A promise is returned wiht the result of the operation. Note that this use of {@link URLCopy} will not create
-	 * and update legacy {@link org.iplantc.service.transfer.model.TransferTask} records as it goes.
+	 * and update legacy {@link TransferTaskImpl} records as it goes.
 	 * @param body the transfer all event body
 	 * @param handler the callback receiving the result of the event processing
 	 */

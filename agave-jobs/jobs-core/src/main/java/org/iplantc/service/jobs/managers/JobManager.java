@@ -3,15 +3,10 @@
  */
 package org.iplantc.service.jobs.managers;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -34,7 +29,6 @@ import org.iplantc.service.jobs.exceptions.JobTerminationException;
 import org.iplantc.service.jobs.managers.killers.JobKiller;
 import org.iplantc.service.jobs.managers.killers.JobKillerFactory;
 import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.jobs.model.JobDependency;
 import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobEventType;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
@@ -56,7 +50,7 @@ import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.TransferException;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.joda.time.DateTime;
 import org.quartz.JobExecutionContext;
@@ -64,10 +58,9 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.impl.StdSchedulerFactory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 
 /**
  * @author dooley
@@ -580,7 +573,7 @@ public class JobManager {
             // third party transfer we would like to do. If possible, URLCopy will
             // do a 3rd party transfer. When not possible, such as when we're going
             // cross-protocol, it will proxy the transfer.
-            TransferTask rootTask = new TransferTask(
+            TransferTaskImpl rootTask = new TransferTaskImpl(
                     "agave://" + job.getSystem() + "/" + job.getWorkPath(),
                     "agave://" + job.getArchiveSystem().getSystemId() + "/" + job.getArchivePath(),
                     job.getOwner(),
@@ -608,7 +601,7 @@ public class JobManager {
                 String archiveFileName = job.getArchivePath() + File.separator + outputFile.getName();
                 if (!jobFileList.contains(outputFile.getName())) {
                     final URLCopy urlCopy = new URLCopy(executionDataClient, archiveDataClient);
-                    TransferTask childTransferTask = new TransferTask(
+                    TransferTaskImpl childTransferTask = new TransferTaskImpl(
                             "agave://" + job.getSystem() + "/" + workFileName,
                             "agave://" + job.getArchiveSystem().getSystemId() + "/" + archiveFileName,
                             job.getOwner(),

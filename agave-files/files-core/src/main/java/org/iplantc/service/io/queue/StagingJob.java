@@ -1,10 +1,5 @@
 package org.iplantc.service.io.queue;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URI;
-import java.util.Date;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
@@ -35,10 +30,18 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
-import org.iplantc.service.transfer.exceptions.*;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.exceptions.AuthenticationException;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.exceptions.RemotePermissionException;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.quartz.JobExecutionException;
 import org.quartz.UnableToInterruptJobException;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Date;
 
 /**
  * Handles the staging of data into the user's StorageSystem. This differs
@@ -51,7 +54,7 @@ import org.quartz.UnableToInterruptJobException;
 public class StagingJob extends AbstractJobWatch<StagingTask> {
     private static final Logger log = Logger.getLogger(StagingJob.class);
 
-    private TransferTask rootTask = null;
+    private TransferTaskImpl rootTask = null;
     private URLCopy urlCopy;
     private LogicalFile file = null;
 
@@ -90,7 +93,7 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
 
             String destUri = "agave://" + file.getSystem().getSystemId() + "/" + file.getAgaveRelativePathFromAbsolutePath();
 
-			rootTask = new TransferTask(
+			rootTask = new TransferTaskImpl(
                     file.getSourceUri(),
                     destUri,
                     file.getOwner(),
@@ -550,14 +553,14 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
     /**
      * @return the rootTask
      */
-    public synchronized TransferTask getRootTask() {
+    public synchronized TransferTaskImpl getRootTask() {
         return rootTask;
     }
 
     /**
      * @param rootTask the rootTask to set
      */
-    public synchronized void setRootTask(TransferTask rootTask) {
+    public synchronized void setRootTask(TransferTaskImpl rootTask) {
         this.rootTask = rootTask;
     }
 

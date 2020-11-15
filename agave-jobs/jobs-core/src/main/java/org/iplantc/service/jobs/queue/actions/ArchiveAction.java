@@ -3,13 +3,7 @@
  */
 package org.iplantc.service.jobs.queue.actions;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
+import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -20,22 +14,24 @@ import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.TransferException;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.joda.time.DateTime;
 
-import com.google.common.io.Files;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author dooley
@@ -216,7 +212,7 @@ public class ArchiveAction extends AbstractWorkerAction {
             // third party transfer we would like to do. If possible, URLCopy will
             // do a 3rd party transfer. When not possible, such as when we're going
             // cross-protocol, it will proxy the transfer.
-            this.rootTask = new TransferTask(
+            this.rootTask = new TransferTaskImpl(
                     "agave://" + getJob().getSystem() + "/" + getJob().getWorkPath(), 
                     "agave://" + getJob().getArchiveSystem().getSystemId() + "/" +getJob().getArchivePath(), 
                     getJob().getOwner(), 

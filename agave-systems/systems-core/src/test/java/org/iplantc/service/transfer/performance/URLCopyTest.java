@@ -1,9 +1,5 @@
 package org.iplantc.service.transfer.performance;
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.codehaus.plexus.util.FileUtils;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
@@ -16,16 +12,15 @@ import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.TransferException;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 
 @Test(groups= {"transfer","performance"})
 public class URLCopyTest extends BaseTransferTestCase
@@ -123,7 +118,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			
 			URLCopy urlCopy = new URLCopy(srcClient, destClient);
 			
-			urlCopy.copy(SOURCE_DIRNAME, DEST_DIRNAME, new TransferTask(SOURCE_DIRNAME, DEST_DIRNAME));
+			urlCopy.copy(SOURCE_DIRNAME, DEST_DIRNAME, new TransferTaskImpl(SOURCE_DIRNAME, DEST_DIRNAME));
 			
 			Assert.fail("Unsaved transferTask should throw a TransferException");
 			
@@ -187,7 +182,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			destClient = getRemoteDataClientFromSystemJson(destClientType);
 			destClient.authenticate();
 			
-			TransferTask task = new TransferTask(
+			TransferTaskImpl task = new TransferTaskImpl(
 					httpUri.toString(), 
 					destClient.getUriForPath(DEST_FILENAME).toString(),
 					SYSTEM_USER, null, null);
@@ -203,7 +198,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			Assert.assertTrue(destClient.doesExist(DEST_FILENAME), 
 					"Failed to copy test file to dest system");
 			
-			TransferTask savedTask = TransferTaskDao.getById(task.getId());
+			TransferTaskImpl savedTask = TransferTaskDao.getById(task.getId());
 			
 			Assert.assertEquals(savedTask.getBytesTransferred(),
 					destClient.length(DEST_FILENAME), 
@@ -272,7 +267,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			Assert.assertTrue(srcClient.doesExist(SOURCE_FILENAME), 
 					"Failed to copy test file to source system");
 			
-			TransferTask task = new TransferTask(
+			TransferTaskImpl task = new TransferTaskImpl(
 					ftpUri.toString(), 
 					destClient.getUriForPath(DEST_FILENAME).toString(),
 					SYSTEM_USER, null, null);
@@ -287,7 +282,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			Assert.assertTrue(destClient.doesExist(DEST_FILENAME), 
 					"Failed to copy test file to dest system");
 			
-			TransferTask savedTask = TransferTaskDao.getById(task.getId());
+			TransferTaskImpl savedTask = TransferTaskDao.getById(task.getId());
 			
 			Assert.assertEquals(savedTask.getBytesTransferred(),
 					destClient.length(DEST_FILENAME), 
@@ -347,7 +342,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			Assert.assertTrue(srcClient.doesExist(LOCAL_DIR), 
 					"Failed to copy test file to source system");
 			
-			TransferTask task = new TransferTask(
+			TransferTaskImpl task = new TransferTaskImpl(
 					ftpUri.toString(), 
 					destClient.getUriForPath(DEST_DIRNAME).toString(),
 					SYSTEM_USER, null, null);
@@ -362,7 +357,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			Assert.assertTrue(destClient.doesExist(DEST_DIRNAME), 
 					"Failed to copy test file to dest system");
 			
-			TransferTask savedTask = TransferTaskDao.getById(task.getId());
+			TransferTaskImpl savedTask = TransferTaskDao.getById(task.getId());
 			
 			Assert.assertEquals(savedTask.getBytesTransferred(),
 					destClient.length(DEST_DIRNAME), 
@@ -427,7 +422,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			Assert.assertTrue(srcClient.doesExist(SOURCE_FILENAME), 
 					"Failed to copy test file to source system");
 			
-			TransferTask task = new TransferTask(
+			TransferTaskImpl task = new TransferTaskImpl(
 					srcClient.getUriForPath(SOURCE_FILENAME).toString(), 
 					destClient.getUriForPath(DEST_FILENAME).toString(),
 					SYSTEM_USER, null, null);
@@ -442,7 +437,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			Assert.assertTrue(destClient.doesExist(DEST_FILENAME), 
 					"Failed to copy test file to dest system");
 			
-			TransferTask savedTask = TransferTaskDao.getById(task.getId());
+			TransferTaskImpl savedTask = TransferTaskDao.getById(task.getId());
 			
 			Assert.assertEquals(savedTask.getBytesTransferred(),
 					destClient.length(DEST_FILENAME), 
@@ -489,7 +484,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			Assert.assertTrue(srcClient.doesExist(SOURCE_DIRNAME), 
 					"Failed to copy test file to source system");
 			
-			TransferTask task = new TransferTask(srcClient.getUriForPath(SOURCE_DIRNAME).toString(), 
+			TransferTaskImpl task = new TransferTaskImpl(srcClient.getUriForPath(SOURCE_DIRNAME).toString(),
 					destClient.getUriForPath(DEST_DIRNAME).toString(),
 					SYSTEM_USER, null, null);
 			TransferTaskDao.persist(task);
@@ -502,7 +497,7 @@ public class URLCopyTest extends BaseTransferTestCase
 			Assert.assertTrue(destClient.doesExist(DEST_DIRNAME), 
 					"Failed to copy test file to dest system");
 			
-			TransferTask savedTask = TransferTaskDao.getById(task.getId());
+			TransferTaskImpl savedTask = TransferTaskDao.getById(task.getId());
 			long localSize = FileUtils.sizeOfDirectory(LOCAL_DIR);
 			Assert.assertEquals(savedTask.getBytesTransferred(),
 					localSize,

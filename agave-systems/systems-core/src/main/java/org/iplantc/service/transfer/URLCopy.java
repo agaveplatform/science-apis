@@ -3,14 +3,6 @@
  */
 package org.iplantc.service.transfer;
 
-import java.io.*;
-import java.net.URI;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -24,7 +16,16 @@ import org.iplantc.service.transfer.gridftp.GridFTP;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.Range;
 import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
+
+import java.io.*;
+import java.net.URI;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Handles the copying of data between one {@link RemoteDataClient} and another. Situations where
@@ -36,7 +37,7 @@ import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
  */
 public class URLCopy {
     private static Logger log = Logger.getLogger(URLCopy.class);
-    private TransferTask task;
+    private TransferTaskImpl task;
     private RemoteDataClient sourceClient;
     private RemoteDataClient destClient;
     private AtomicBoolean killed = new AtomicBoolean(false);
@@ -89,7 +90,7 @@ public class URLCopy {
      * Directory copy is supported and authentication is handled automatically.The algorithm 
      * used to copy is chosen based on the 
      * protocol, file size, and locality of the data. Progress is written to the transfer task
-     * via a {@link RemoteTransferListener}
+     * via a {@link RemoteTransferListenerImpl}
      *
      * @param srcPath
      * @param destPath
@@ -99,7 +100,7 @@ public class URLCopy {
      * @throws TransferException
      * @throws ClosedByInterruptException
      */
-    public TransferTask copy(String srcPath, String destPath, TransferTask transferTask)
+    public TransferTaskImpl copy(String srcPath, String destPath, TransferTaskImpl transferTask)
             throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, ClosedByInterruptException {
         return copy(srcPath, destPath, transferTask, null);
     }
@@ -109,7 +110,7 @@ public class URLCopy {
      * Directory copy is supported and authentication is handled automatically.The algorithm
      * used to copy is chosen based on the
      * protocol, file size, and locality of the data. Progress is written to the transfer task
-     * via a {@link RemoteTransferListener}
+     * via a {@link RemoteTransferListenerImpl}
      *
      * @param srcPath
      * @param destPath
@@ -120,7 +121,7 @@ public class URLCopy {
      * @throws TransferException
      * @throws ClosedByInterruptException
      */
-    public TransferTask copy(String srcPath, String destPath, TransferTask transferTask, List<String> exclusions)
+    public TransferTaskImpl copy(String srcPath, String destPath, TransferTaskImpl transferTask, List<String> exclusions)
             throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, ClosedByInterruptException {
         if (transferTask == null) {
             throw new TransferException("TransferTask cannot be null. Please provide"
@@ -186,7 +187,7 @@ public class URLCopy {
                 // if this is an entirely server-side transfer
                 if (sourceClient.equals(destClient)) {
                     RemoteTransferListener listener = null;
-                    listener = new RemoteTransferListener(transferTask);
+                    listener = new RemoteTransferListenerImpl(transferTask);
 
                     // we can potentially make a server-side copy here. attempt that first
                     // before making an unnecessary round-trip
@@ -245,10 +246,10 @@ public class URLCopy {
                         String srcUri = "agave://" + getSystemId(transferTask.getSource()) + "/" + childSrcPath;
                         String destUri = "agave://" + getSystemId(transferTask.getDest()) + "/" + childDestPath;
 
-                        TransferTask childTransferTask = TransferTaskDao.getChildTransferTask(transferTask.getId(), srcUri, destUri, transferTask.getOwner());
+                        TransferTaskImpl childTransferTask = TransferTaskDao.getChildTransferTask(transferTask.getId(), srcUri, destUri, transferTask.getOwner());
 
                         if (childTransferTask == null) {
-                            childTransferTask = new TransferTask(
+                            childTransferTask = new TransferTaskImpl(
                                     srcUri,
                                     destUri,
                                     transferTask.getOwner(),
@@ -303,7 +304,7 @@ public class URLCopy {
                 }
             } else { // we're transferring a file
                 RemoteTransferListener listener = null;
-                listener = new RemoteTransferListener(transferTask);
+                listener = new RemoteTransferListenerImpl(transferTask);
 
                 // don't copy the redundant destPath or parent of destPath returned from unix style listings dir
                 // to avoid infinite loops and full file system copies.
@@ -421,13 +422,13 @@ public class URLCopy {
      * @throws RemoteDataException
      * @throws ClosedByInterruptException
      */
-    protected void relayTransfer(String srcPath, String destPath, TransferTask aggregateTransferTask)
+    protected void relayTransfer(String srcPath, String destPath, TransferTaskImpl aggregateTransferTask)
             throws RemoteDataException, ClosedByInterruptException {
         File tmpFile = null;
         File tempDir = null;
-        TransferTask srcChildTransferTask = null;
+        TransferTaskImpl srcChildTransferTask = null;
         RemoteTransferListener srcChildRemoteTransferListener = null;
-        TransferTask destChildTransferTask = null;
+        TransferTaskImpl destChildTransferTask = null;
         RemoteTransferListener destChildRemoteTransferListener = null;
 
         try {
@@ -463,7 +464,7 @@ public class URLCopy {
                         getProtocolForClass(sourceClient.getClass()),
                         "local"));
                 try {
-                    srcChildTransferTask = new TransferTask(
+                    srcChildTransferTask = new TransferTaskImpl(
                             aggregateTransferTask.getSource(),
                             "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
                             aggregateTransferTask.getOwner(),
@@ -471,7 +472,7 @@ public class URLCopy {
                             aggregateTransferTask);
 
                     TransferTaskDao.persist(srcChildTransferTask);
-                    srcChildRemoteTransferListener = new RemoteTransferListener(srcChildTransferTask);
+                    srcChildRemoteTransferListener = new RemoteTransferListenerImpl(srcChildTransferTask);
 
                     sourceClient.get(srcPath, tmpFile.getPath(),
                             srcChildRemoteTransferListener);
@@ -546,7 +547,7 @@ public class URLCopy {
                             "local",
                             getProtocolForClass(destClient.getClass())));
 
-                    destChildTransferTask = new TransferTask(
+                    destChildTransferTask = new TransferTaskImpl(
                             "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
                             aggregateTransferTask.getDest(),
                             aggregateTransferTask.getOwner(),
@@ -555,7 +556,7 @@ public class URLCopy {
 
                     TransferTaskDao.persist(destChildTransferTask);
 
-                    destChildRemoteTransferListener = new RemoteTransferListener(destChildTransferTask);
+                    destChildRemoteTransferListener = new RemoteTransferListenerImpl(destChildTransferTask);
 
                     destClient.put(tmpFile.getPath(), destPath,
                             destChildRemoteTransferListener);
@@ -624,7 +625,7 @@ public class URLCopy {
                         "local",
                         getProtocolForClass(destClient.getClass())));
 
-                destChildTransferTask = new TransferTask(
+                destChildTransferTask = new TransferTaskImpl(
                         "https://workers.prod.agaveplatform.org/" + tmpFile.getPath(),
                         aggregateTransferTask.getDest(),
                         aggregateTransferTask.getOwner(),
@@ -689,7 +690,7 @@ public class URLCopy {
 
             throw new RemoteDataException(
                     getDefaultErrorMessage(
-                            srcPath, new RemoteTransferListener(aggregateTransferTask)), e);
+                            srcPath, new RemoteTransferListenerImpl(aggregateTransferTask)), e);
         } finally {
             if (aggregateTransferTask != null) {
                 log.info(String.format(
@@ -923,8 +924,8 @@ public class URLCopy {
      * @throws TransferException
      * @throws ClosedByInterruptException
      */
-    public TransferTask copyRange(String srcPath, long srcRangeOffset, long srcRangeSize,
-                                  String destPath, long destRangeOffset, TransferTask transferTask)
+    public TransferTaskImpl copyRange(String srcPath, long srcRangeOffset, long srcRangeSize,
+                                      String destPath, long destRangeOffset, TransferTaskImpl transferTask)
             throws RemoteDataException, IOException, TransferException, ClosedByInterruptException {
         if (transferTask == null) {
             throw new TransferException("TransferTask cannot be null. Please provide"
@@ -940,7 +941,7 @@ public class URLCopy {
                 throw new TransferException("Range transfers are not supported on directories");
             } else {
                 RemoteTransferListener listener = null;
-                listener = new RemoteTransferListener(transferTask);
+                listener = new RemoteTransferListenerImpl(transferTask);
                 if (StringUtils.equals(FilenameUtils.getName(srcPath), ".") ||
                         StringUtils.equals(FilenameUtils.getName(srcPath), "..")) {
                     // skip current directory and parent to avoid infinite loops and
@@ -1285,7 +1286,7 @@ public class URLCopy {
 
     /**
      * Creates a default error message for use in exceptions saying
-     * this {@link TransferTask} failed and optionally including the uuid.
+     * this {@link TransferTaskImpl} failed and optionally including the uuid.
      *
      * @return message
      */

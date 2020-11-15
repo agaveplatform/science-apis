@@ -3,11 +3,9 @@ package org.agaveplatform.service.transfers.model;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.vertx.codegen.annotations.DataObject;
 import io.vertx.core.json.JsonObject;
-import org.iplantc.service.common.persistence.TenancyHelper;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-
-import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +29,7 @@ import static javax.persistence.GenerationType.IDENTITY;
  */
 @JsonSerialize(using = AgaveResourceSerializer.class)
 @DataObject
-public class TransferTask {
+public class TransferTask implements org.iplantc.service.transfer.model.TransferTask {
     
     private static final Logger log = LoggerFactory.getLogger(TransferTask.class);
 
@@ -373,6 +371,7 @@ public class TransferTask {
 	/**
 	 * @return the status
 	 */
+	@Enumerated(EnumType.STRING)
 	@Column(name = "status", length = 16)
 	public TransferStatusType getStatus()
 	{
@@ -385,6 +384,11 @@ public class TransferTask {
 	public void setStatus(TransferStatusType status)
 	{  
 		this.status = status;
+	}
+
+	@Override
+	public void setStatus(String status) {
+		this.setStatus(TransferStatusType.valueOf(status));
 	}
 
 	/**
@@ -619,16 +623,6 @@ public class TransferTask {
 	public String toString()
     {
     	return toJSON();
-//        String status = getStatus().name();
-//        if (!getStatus().isCancelled()) {
-//            if (getTotalSize() == 0) {
-//                status += " - ?%";
-//            } else {
-//                status += " - " + Math.floor(getBytesTransferred() / getTotalSize());
-//            }
-//        }
-//
-//        return String.format("[%s] %s -> %s - %s", status, getSource(), getDest(), getUuid());
     }
 
 	public Instant getLastAttempt() {
@@ -645,5 +639,24 @@ public class TransferTask {
 
 	public void setNextAttempt(Instant nextAttempt) {
 		this.nextAttempt = nextAttempt;
+	}
+
+	/**
+	 * Calculates the transfer rate by using the bytes transferred divided by the
+	 * elapsed time in seconds.
+	 *
+	 * @return transfer rate in bytes per second
+	 */
+	public double calculateTransferRate()
+	{
+		Instant start = getStartTime() == null ? getCreated() : getStartTime();
+
+		Instant end = (getEndTime() == null || getStatus() == TransferStatusType.TRANSFERRING) ? Instant.now() : getEndTime();
+		double milliseconds = end.toEpochMilli() - start.toEpochMilli();
+		if (milliseconds > 0) {
+			return getBytesTransferred() / (milliseconds/1000.0);
+		} else {
+			return (double)0.0;
+		}
 	}
 }

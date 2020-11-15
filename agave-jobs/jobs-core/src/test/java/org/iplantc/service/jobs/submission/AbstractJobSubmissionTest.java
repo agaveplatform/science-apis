@@ -1,12 +1,8 @@
 package org.iplantc.service.jobs.submission;
 
-import java.io.File;
-import java.net.URI;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
@@ -44,18 +40,19 @@ import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class AbstractJobSubmissionTest {
 
@@ -736,7 +733,7 @@ public class AbstractJobSubmissionTest {
                 for (JsonNode jsonNode : input.getDefaultValueAsJsonArray()) {
                     String val = jsonNode.asText();
 
-                    TransferTask stagingTransferTask = new TransferTask(
+                    TransferTaskImpl stagingTransferTask = new TransferTaskImpl(
                             val,
                             "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()),
                             job.getOwner(),
@@ -773,7 +770,7 @@ public class AbstractJobSubmissionTest {
                 for (JsonNode jsonNode : input.getDefaultValueAsJsonArray()) {
                     String val = jsonNode.asText();
 
-                    TransferTask stagingTransferTask = new TransferTask(
+                    TransferTaskImpl stagingTransferTask = new TransferTaskImpl(
                             val,
                             "agave://" + job.getSystem() + "/" + job.getWorkPath() + "/" + FilenameUtils.getName(URI.create(val).getPath()),
                             job.getOwner(),
@@ -808,7 +805,7 @@ public class AbstractJobSubmissionTest {
             job.setStartTime(startTime.toDate());
             job.setEndTime(endTime.toDate());
             
-            TransferTask archivingTransferTask = new TransferTask(
+            TransferTaskImpl archivingTransferTask = new TransferTaskImpl(
                     "agave://" + job.getSystem() + "/" + job.getWorkPath(),
                     job.getArchiveCanonicalUrl(), 
                     job.getOwner(), 

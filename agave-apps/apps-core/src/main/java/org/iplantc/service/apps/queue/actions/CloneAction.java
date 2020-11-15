@@ -3,11 +3,7 @@
  */
 package org.iplantc.service.apps.queue.actions;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
-
+import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
@@ -39,17 +35,20 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
-import org.iplantc.service.systems.util.ServiceUtils;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.RemoteTransferListenerImpl;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.TransferException;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.iplantc.service.transfer.util.MD5Checksum;
 
-import com.google.common.io.Files;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * Handles registration, validation, and data management of cloning {@link Software}.
@@ -560,7 +559,7 @@ public class CloneAction extends AbstractWorkerAction<Software> {
     private void copyLocalCachedDeploymentPathToClonedSoftwareDeploymentSystem(Software clonedSoftware, RemoteDataClient clonedSoftwareDataClient, File localCachedSoftwareDeploymentSystem)
     throws FileNotFoundException, IOException, RemoteDataException, TransferException 
     {
-        TransferTask transferTask = new TransferTask(
+        TransferTaskImpl transferTask = new TransferTaskImpl(
                 "agave://" + getEntity().getStorageSystem().getSystemId() + "/" + getEntity().getDeploymentPath(), 
                 "agave://" + clonedSoftware.getStorageSystem().getSystemId() + "/" + clonedSoftware.getDeploymentPath(), 
                 clonedSoftware.getOwner(), 
@@ -576,7 +575,7 @@ public class CloneAction extends AbstractWorkerAction<Software> {
             File namedLocalDeploymentPath = new File(tempDir, FilenameUtils.getName(clonedSoftware.getDeploymentPath()));
             localCachedSoftwareDeploymentSystem.renameTo(namedLocalDeploymentPath);
             
-            RemoteTransferListener listener = new RemoteTransferListener(transferTask);
+            RemoteTransferListener listener = new RemoteTransferListenerImpl(transferTask);
             
             // copy the properly named local cache folder to the parent directory of the deployment path
             // on the remote system so we guarantee the folder name preserves.

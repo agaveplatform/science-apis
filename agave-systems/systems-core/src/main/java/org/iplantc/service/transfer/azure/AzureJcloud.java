@@ -1,24 +1,10 @@
 package org.iplantc.service.transfer.azure;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.RemoteInputStream;
-import org.iplantc.service.transfer.RemoteOutputStream;
-import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.*;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
@@ -31,6 +17,16 @@ import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.blobstore.domain.PageSet;
 import org.jclouds.blobstore.domain.StorageMetadata;
 import org.jclouds.blobstore.options.ListContainerOptions;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 public class AzureJcloud implements RemoteDataClient 
 {
@@ -326,7 +322,7 @@ public class AzureJcloud implements RemoteDataClient
 			remoteFileInfo = getFileInfo(remotepath);
 		
 			if (listener == null) {
-				listener = new RemoteTransferListener(null);
+				listener = new RemoteTransferListenerImpl(null);
 			}
 			
 			File localDir = new File(localpath);

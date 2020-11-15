@@ -11,6 +11,13 @@ public enum TransferTaskEventType {
 	DELETED("This transfer task was deleted"),
 
 	STARTED("This transfer task started transferring data"),
+	RELAY_READ_STARTED("Read of remote source started"),
+	RELAY_READ_COMPLETED("Read of remote source completed"),
+	RELAY_WRITE_STARTED("Write to remote destination started"),
+	RELAY_WRITE_COMPLETED("Write to remote destination completed"),
+	STREAM_COPY_STARTED("Streaming copy started"),
+	STREAM_COPY_COMPLETED("Streaming copy completed"),
+
 	RESTARTED("This transfer task was restarted"),
 	CANCELLED("This transfer task was cancelled"),
 	COMPLETED("This transfer task completed successfully"),

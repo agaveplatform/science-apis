@@ -1,21 +1,5 @@
 package org.iplantc.service.transfer;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
@@ -28,16 +12,14 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.io.*;
+import java.util.*;
 
 @Test(singleThreaded=true, groups= {"transfer", "irods.filesystem.init"})
 public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase 
@@ -1673,14 +1655,14 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     		tmpFile = File.createTempFile("syncToRemoteFile", "txt");
     		org.apache.commons.io.FileUtils.writeStringToFile(tmpFile, "This should be overwritten.");
     		
-    		TransferTask task = new TransferTask(
+    		TransferTaskImpl task = new TransferTaskImpl(
     				tmpFile.toURI().toString(), 
 					getClient().getUriForPath(LOCAL_BINARY_FILE_NAME).toString(),
 					SYSTEM_USER, null, null);
 			
 			TransferTaskDao.persist(task);
 			
-    		getClient().syncToRemote(tmpFile.getAbsolutePath(), LOCAL_BINARY_FILE_NAME, new RemoteTransferListener(task));
+    		getClient().syncToRemote(tmpFile.getAbsolutePath(), LOCAL_BINARY_FILE_NAME, new RemoteTransferListenerImpl(task));
     		
     		Assert.assertTrue(getClient().doesExist(LOCAL_BINARY_FILE_NAME), 
     				"Remote file was not created during sync");
@@ -1688,14 +1670,14 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     		Assert.assertEquals(getClient().length(LOCAL_BINARY_FILE_NAME), tmpFile.length(),
     				"Remote file was not copied in whole created during sync");
     		
-    		TransferTask task2 = new TransferTask(
+    		TransferTaskImpl task2 = new TransferTaskImpl(
     				new File(LOCAL_BINARY_FILE).toURI().toString(), 
 					getClient().getUriForPath(LOCAL_BINARY_FILE_NAME).toString(),
 					SYSTEM_USER, null, null);
 			
 			TransferTaskDao.persist(task2);
 			
-    		getClient().syncToRemote(LOCAL_BINARY_FILE, LOCAL_BINARY_FILE_NAME, new RemoteTransferListener(task2));
+    		getClient().syncToRemote(LOCAL_BINARY_FILE, LOCAL_BINARY_FILE_NAME, new RemoteTransferListenerImpl(task2));
     		
             Assert.assertNotEquals(getClient().length(LOCAL_BINARY_FILE_NAME), tmpFile.length(),
             		"Remote file size should not match temp file after syncing.");
@@ -1720,14 +1702,14 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     		Assert.assertTrue(getClient().doesExist(localDir.getName()), 
     				"Remote directory was not created. Test will fail");
     		
-    		TransferTask task = new TransferTask(
+    		TransferTaskImpl task = new TransferTaskImpl(
 					localDir.toURI().toString(), 
 					getClient().getUriForPath(localDir.getName() + "/" + localDir.getName()).toString(),
 					SYSTEM_USER, null, null);
 			
 			TransferTaskDao.persist(task);
 			
-    		getClient().syncToRemote(LOCAL_DIR, "", new RemoteTransferListener(task));
+    		getClient().syncToRemote(LOCAL_DIR, "", new RemoteTransferListenerImpl(task));
     		
     		Assert.assertFalse(getClient().doesExist(localDir.getName() + "/" + localDir.getName()),
     				"Local directory was synced as a subfolder instead of overwriting");
@@ -1769,14 +1751,14 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     			lastUpdatedMap.put(fileInfo.getName(), fileInfo.getLastModified());
     		}
     		
-    		TransferTask task = new TransferTask(
+    		TransferTaskImpl task = new TransferTaskImpl(
     				localDir.toURI().toString(), 
 					getClient().getUriForPath(localDir.getName() + "/" + localDir.getName()).toString(),
 					SYSTEM_USER, null, null);
 			
 			TransferTaskDao.persist(task);
     		
-    		getClient().syncToRemote(LOCAL_DIR, "", new RemoteTransferListener(task));
+    		getClient().syncToRemote(LOCAL_DIR, "", new RemoteTransferListenerImpl(task));
     		
     		Assert.assertFalse(getClient().doesExist(localDir.getName() + "/" + localDir.getName()),
     				"Local directory was synced as a subfolder instead of overwriting");
@@ -1826,14 +1808,14 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     		Assert.assertEquals(getClient().length(remoteFileToOverwrightString), tmpFile.length(),
     				"Remote file was not copied in whole created during sync");
     		
-    		TransferTask task = new TransferTask(
+    		TransferTaskImpl task = new TransferTaskImpl(
     				localDir.toURI().toString(), 
 					getClient().getUriForPath(localDir.getName() + "/" + localDir.getName()).toString(),
 					SYSTEM_USER, null, null);
 			
 			TransferTaskDao.persist(task);
     		
-    		getClient().syncToRemote(LOCAL_DIR, "", new RemoteTransferListener(task));
+    		getClient().syncToRemote(LOCAL_DIR, "", new RemoteTransferListenerImpl(task));
     		
     		Assert.assertFalse(getClient().doesExist(localDir.getName() + "/" + localDir.getName()),
     				"Local directory was synced as a subfolder instead of overwriting");
@@ -1875,14 +1857,14 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     		Assert.assertTrue(getClient().doesExist(remoteFolderToOverwrightString), 
     				"Remote subdirectory was not created during sync");
     		
-    		TransferTask task = new TransferTask(
+    		TransferTaskImpl task = new TransferTaskImpl(
     				localDir.toURI().toString(), 
 					getClient().getUriForPath(localDir.getName() + "/" + localDir.getName()).toString(),
 					SYSTEM_USER, null, null);
 			
 			TransferTaskDao.persist(task);
     		
-    		getClient().syncToRemote(LOCAL_DIR, "", new RemoteTransferListener(task));
+    		getClient().syncToRemote(LOCAL_DIR, "", new RemoteTransferListenerImpl(task));
     		
     		List<RemoteFileInfo> remoteListing = getClient().ls(LOCAL_DIR_NAME);
     		
@@ -1935,14 +1917,14 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     		getClient().mkdirs(tempDir.getName() + "/foo/alpha/gamma");
     		getClient().mkdirs(tempDir.getName() + "/bar/beta");
     	    
-    		TransferTask task = new TransferTask(
+    		TransferTaskImpl task = new TransferTaskImpl(
     				tempDir.toURI().toString(), 
 					getClient().getUriForPath(tempDir.getName() + "/" + tempDir.getName()).toString(),
 					SYSTEM_USER, null, null);
 			
 			TransferTaskDao.persist(task);
     		
-    		getClient().syncToRemote(tempLocalDir, "", new RemoteTransferListener(task));
+    		getClient().syncToRemote(tempLocalDir, "", new RemoteTransferListenerImpl(task));
     		
     		Assert.assertFalse(getClient().doesExist(tempDir.getName() + "/" + tempDir.getName()), 
             		"Syncing put the local dir into the remote directory instead of overwriting");

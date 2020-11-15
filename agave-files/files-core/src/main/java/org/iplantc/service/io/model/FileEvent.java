@@ -3,33 +3,21 @@
  */
 package org.iplantc.service.io.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.SerializationException;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.io.model.enumerations.FileEventType;
-import org.iplantc.service.io.util.ServiceUtils;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Entity class for persisting job events. This creates a history log 
@@ -53,7 +41,7 @@ public class FileEvent {
 	private String createdBy;
 	private String uuid;
 	private Date created;
-	private TransferTask transferTask;
+	private TransferTaskImpl transferTask;
 	
 	public FileEvent() {
 		this.uuid = new AgaveUUID(UUIDType.FILE_EVENT).toString();
@@ -86,7 +74,7 @@ public class FileEvent {
 		this.logicalFile = logicalFile;
 	}
 	
-	public FileEvent(FileEventType status, String description, String createdBy, TransferTask transferTask)
+	public FileEvent(FileEventType status, String description, String createdBy, TransferTaskImpl transferTask)
 	{
 		this(status, description, createdBy);
 		this.transferTask = transferTask;
@@ -185,7 +173,7 @@ public class FileEvent {
 	 */
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "transfertask")
-	public TransferTask getTransferTask()
+	public TransferTaskImpl getTransferTask()
 	{
 		return transferTask;
 	}
@@ -193,7 +181,7 @@ public class FileEvent {
 	/**
 	 * @param transferTask the transferTask to set
 	 */
-	public void setTransferTask(TransferTask transferTask)
+	public void setTransferTask(TransferTaskImpl transferTask)
 	{
 		this.transferTask = transferTask;
 	}

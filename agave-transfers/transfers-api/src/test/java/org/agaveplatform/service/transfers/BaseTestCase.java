@@ -21,7 +21,7 @@ import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.agaveplatform.service.transfers.util.ServiceUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.common.Settings;
-import org.jclouds.googlecloudstorage.domain.Owner;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.slf4j.Logger;
@@ -89,22 +89,22 @@ public abstract class BaseTestCase {
     }
 
     /**
-     * Creates a legacy {@link org.iplantc.service.transfer.model.TransferTask} for use when mocking URLCopy operations
+     * Creates a legacy {@link TransferTaskImpl} for use when mocking URLCopy operations
      * @return a legacy transfertask object
      * @see #_createTestTransferTaskIPC(String, String)
      */
-    protected org.iplantc.service.transfer.model.TransferTask _createTestTransferTaskIPC() {
+    protected TransferTaskImpl _createTestTransferTaskIPC() {
         return _createTestTransferTaskIPC(TRANSFER_SRC, TRANSFER_DEST);
     }
 
     /**
-     * Creates a legacy {@link org.iplantc.service.transfer.model.TransferTask} for use when generating transfer tasks
+     * Creates a legacy {@link TransferTaskImpl} for use when generating transfer tasks
      * @param srcUri the uri of the transfer source data item
      * @param destUri the agave uri of the target folder of the transfer
      * @return a legacy transfertask object
      */
-    protected org.iplantc.service.transfer.model.TransferTask _createTestTransferTaskIPC(String srcUri, String destUri) {
-        return new org.iplantc.service.transfer.model.TransferTask(srcUri, destUri, TEST_USER, null, null);
+    protected TransferTaskImpl _createTestTransferTaskIPC(String srcUri, String destUri) {
+        return new TransferTaskImpl(srcUri, destUri, TEST_USER, null, null);
     }
 
     /**

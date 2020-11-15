@@ -3,20 +3,8 @@
  */
 package org.iplantc.service.jobs.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Filters;
@@ -28,11 +16,11 @@ import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.util.ServiceUtils;
-import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Entity class for persisting job events. This creates a history log 
@@ -57,7 +45,7 @@ public class JobEvent {
 	private String tenantId;
 	private String uuid;
 	
-	private TransferTask transferTask;
+	private TransferTaskImpl transferTask;
 	
 	private JobEvent() {
 		this.tenantId = TenancyHelper.getCurrentTenantId();
@@ -84,7 +72,7 @@ public class JobEvent {
 		setJob(job);
 	}
 	
-	public JobEvent(JobStatusType status, String description, TransferTask transferTask, String createdBy)
+	public JobEvent(JobStatusType status, String description, TransferTaskImpl transferTask, String createdBy)
 	{
 		this(status.name(), description, createdBy);
 		setTransferTask(transferTask);
@@ -217,7 +205,7 @@ public class JobEvent {
 	 */
 	@OneToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "transfertask")
-	public TransferTask getTransferTask()
+	public TransferTaskImpl getTransferTask()
 	{
 		return transferTask;
 	}
@@ -225,7 +213,7 @@ public class JobEvent {
 	/**
 	 * @param transferTask the transferTask to set
 	 */
-	public void setTransferTask(TransferTask transferTask)
+	public void setTransferTask(TransferTaskImpl transferTask)
 	{
 		this.transferTask = transferTask;
 	}

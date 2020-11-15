@@ -3,20 +3,10 @@
  */
 package org.iplantc.service.transfer.dao;
 
-import java.math.BigInteger;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.CacheMode;
-import org.hibernate.HibernateException;
-import org.hibernate.ObjectNotFoundException;
-import org.hibernate.Query;
-import org.hibernate.Session;
-import org.hibernate.StaleObjectStateException;
+import org.hibernate.*;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.transform.AliasToEntityMapResultTransformer;
 import org.hibernate.type.StandardBasicTypes;
@@ -27,9 +17,15 @@ import org.iplantc.service.transfer.Settings;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.TransferSummary;
 import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.iplantc.service.transfer.util.ServiceUtils;
+
+import java.math.BigInteger;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author dooley
@@ -54,14 +50,14 @@ public class TransferTaskDao
      * @return
      * @throws TransferException
      */
-    public static TransferTask getById(long transferTaskId) throws TransferException
+    public static TransferTaskImpl getById(long transferTaskId) throws TransferException
     {
         try
         {
             Session session = getSession();
             session.disableFilter("transferTaskTenantFilter");
             
-            TransferTask task = (TransferTask) session.get(TransferTask.class, transferTaskId);
+            TransferTaskImpl task = (TransferTaskImpl) session.get(TransferTaskImpl.class, transferTaskId);
             session.flush();
             return task;
         }
@@ -101,7 +97,7 @@ public class TransferTaskDao
             session.disableFilter("transferTaskTenantFilter");
             
             TransferTask system = (TransferTask)session
-                    .createCriteria(TransferTask.class)
+                    .createCriteria(TransferTaskImpl.class)
                     .add(Restrictions.eq("uuid", uuid))
                     .uniqueResult();
             
@@ -133,7 +129,7 @@ public class TransferTaskDao
             session.disableFilter("transferTaskTenantFilter");
             
             TransferTask system = (TransferTask)session
-                    .createCriteria(TransferTask.class)
+                    .createCriteria(TransferTaskImpl.class)
                     .add(Restrictions.eq("uuid", uuid))
                     .uniqueResult();
             
@@ -246,11 +242,11 @@ public class TransferTaskDao
 	}
 
 	/**
-	 * Saves a {@link TransferTask} or updates if already saved.
+	 * Saves a {@link TransferTaskImpl} or updates if already saved.
 	 * @param task
 	 * @throws TransferException
 	 */
-	public static void persist(TransferTask task) throws TransferException
+	public static void persist(TransferTaskImpl task) throws TransferException
 	{
 		if (task == null)
 			throw new TransferException("TransferTask cannot be null");
@@ -295,7 +291,7 @@ public class TransferTaskDao
 	 * @return
 	 * @throws TransferException
 	 */
-	public static TransferTask merge(TransferTask task) throws TransferException
+	public static TransferTaskImpl merge(TransferTaskImpl task) throws TransferException
 	{
 		if (task == null)
 			throw new TransferException("TransferTask cannot be null");
@@ -304,7 +300,7 @@ public class TransferTaskDao
 		{
 			Session session = getSession();
 			task.setLastUpdated(new Date());
-			TransferTask mergedTask = (TransferTask)session.merge(task);
+			TransferTaskImpl mergedTask = (TransferTaskImpl)session.merge(task);
 			session.flush();
 			return mergedTask;
 		}
@@ -374,7 +370,7 @@ public class TransferTaskDao
      * which honors all system quotas and capacity filtering parameters which enable restriction of job
      * selection by tenant, owner, system, and batch queue.
      * 
-     * @param status by which to filter the list of pending {@link TransferTask}s.
+     * @param status by which to filter the list of pending {@link TransferTaskImpl}s.
      * @param tenantId tenant to include or exclude from selection.
 	 * @param systemIds array of systems and queues to include or exclude from the selectino process.
 	 * @param owners array of owners to include or exclude from the selection process
@@ -575,7 +571,7 @@ public class TransferTaskDao
 	}
 
 	@SuppressWarnings("unchecked")
-	public static TransferSummary getTransferSummary(TransferTask task) throws TransferException
+	public static TransferSummary getTransferSummary(TransferTaskImpl task) throws TransferException
 	{
 		TransferSummary transferSummary = new TransferSummary();
 		
@@ -600,7 +596,7 @@ public class TransferTaskDao
 			long totalActiveTransfers = 0;
 			long transfers = 0;
 			if (tasks.size() > 1) {
-				for (TransferTask childTask: tasks) 
+				for (TransferTaskImpl childTask: tasks)
 				{
 					totalBytes += childTask.getTotalSize();
 					totalTransferredBytes += childTask.getBytesTransferred();
@@ -614,7 +610,7 @@ public class TransferTaskDao
 					}
 				}
 			} else {
-				TransferTask childTask = tasks.get(0);
+				TransferTaskImpl childTask = tasks.get(0);
 				totalBytes = childTask.getTotalSize();
 				totalTransferredBytes += childTask.getBytesTransferred();
 				if (!childTask.getStatus().equals(TransferStatusType.COMPLETED)) {
@@ -702,7 +698,7 @@ public class TransferTaskDao
 		}
 	}
 
-	public static TransferTask getChildTransferTask(Long rootTaskId, String srcUri, String destUri, String owner) 
+	public static TransferTaskImpl getChildTransferTask(Long rootTaskId, String srcUri, String destUri, String owner)
 	throws TransferException
 	{
 		try
@@ -715,7 +711,7 @@ public class TransferTaskDao
 					+ "t.dest = :desturi and "
 					+ "t.owner = :owner";
 
-			TransferTask task = (TransferTask)session.createQuery(hql)
+			TransferTaskImpl task = (TransferTaskImpl)session.createQuery(hql)
 					.setLong("parentid", rootTaskId)
 					.setString("srcuri", srcUri)
 					.setString("desturi", destUri)
@@ -793,7 +789,7 @@ public class TransferTaskDao
 	}
 
 	/**
-     * Searches for {@link TransferTask}s by the given user who matches the given set of 
+     * Searches for {@link TransferTaskImpl}s by the given user who matches the given set of
      * parameters. Permissions are honored in this query.
      *
      * @param username
@@ -902,7 +898,7 @@ public class TransferTaskDao
 	 * @param transferTask
 	 * @throws TransferException
 	 */
-	public static void updateProgress(TransferTask transferTask) 
+	public static void updateProgress(TransferTaskImpl transferTask)
 	throws TransferException
 	{
 		try

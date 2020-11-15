@@ -3,23 +3,6 @@
  */
 package org.iplantc.service.transfer.irods4;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataOutput;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.ConnectException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
@@ -27,11 +10,7 @@ import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.FileUtils;
 import org.ietf.jgss.GSSCredential;
 import org.iplantc.service.systems.exceptions.EncryptionException;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.Settings;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
+import org.iplantc.service.transfer.*;
 import org.iplantc.service.transfer.exceptions.InvalidTransferException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.irods.AgaveJargonProperties;
@@ -39,20 +18,9 @@ import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.iplantc.service.transfer.util.ServiceUtils;
-import org.irods.jargon.core.connection.AuthScheme;
-import org.irods.jargon.core.connection.GSIIRODSAccount;
-import org.irods.jargon.core.connection.IRODSAccount;
-import org.irods.jargon.core.connection.IRODSSession;
-import org.irods.jargon.core.connection.IRODSSimpleProtocolManager;
-import org.irods.jargon.core.exception.AuthenticationException;
-import org.irods.jargon.core.exception.CatNoAccessException;
-import org.irods.jargon.core.exception.DataNotFoundException;
-import org.irods.jargon.core.exception.DuplicateDataException;
+import org.irods.jargon.core.connection.*;
 import org.irods.jargon.core.exception.FileNotFoundException;
-import org.irods.jargon.core.exception.InvalidUserException;
-import org.irods.jargon.core.exception.JargonException;
-import org.irods.jargon.core.exception.JargonRuntimeException;
-import org.irods.jargon.core.exception.SpecificQueryException;
+import org.irods.jargon.core.exception.*;
 import org.irods.jargon.core.packinstr.TransferOptions;
 import org.irods.jargon.core.protovalues.FilePermissionEnum;
 import org.irods.jargon.core.protovalues.UserTypeEnum;
@@ -60,7 +28,6 @@ import org.irods.jargon.core.pub.*;
 import org.irods.jargon.core.pub.domain.ObjStat;
 import org.irods.jargon.core.pub.domain.User;
 import org.irods.jargon.core.pub.domain.UserFilePermission;
-import org.irods.jargon.core.pub.domain.UserGroup;
 import org.irods.jargon.core.pub.io.FileIOOperations.SeekWhenceType;
 import org.irods.jargon.core.pub.io.IRODSFile;
 import org.irods.jargon.core.pub.io.IRODSFileFactory;
@@ -70,6 +37,16 @@ import org.irods.jargon.core.query.CollectionAndDataObjectListingEntry.ObjectTyp
 import org.irods.jargon.core.transfer.DefaultTransferControlBlock;
 import org.irods.jargon.core.transfer.TransferControlBlock;
 import org.irods.jargon.core.transfer.TransferStatus;
+
+import java.io.*;
+import java.net.ConnectException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This is the adapter class for iRODS v4.x. Several changes
@@ -670,7 +647,7 @@ public class IRODS4 implements RemoteDataClient
 		    file = getFile(remotedir);
 
 			if (listener == null) {
-				listener = new RemoteTransferListener(null);
+				listener = new RemoteTransferListenerImpl(null);
 			}
 
 			if (file.exists())
@@ -939,7 +916,7 @@ public class IRODS4 implements RemoteDataClient
 		}
 
 		if ((listener == null)) {
-            listener = new RemoteTransferListener(null);
+            listener = new RemoteTransferListenerImpl(null);
         }
 
 		IRODSFile destFile = null;
@@ -981,20 +958,15 @@ public class IRODS4 implements RemoteDataClient
     			            String childRemotePath = remotedir + "/" + child.getName();
     	                    TransferTask childTask = null;
     	                    if (listener.getTransferTask() != null) {
-    	                        TransferTask parentTask = listener.getTransferTask();
-    	                        String srcPath = parentTask.getSource() +
-    	                                (StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") +
-    	                                child.getName();
-    	                        childTask = new TransferTask(srcPath,
-    	                                                    resolvePath(childRemotePath),
-    	                                                    parentTask.getOwner(),
-    	                                                    parentTask.getRootTask(),
-    	                                                    parentTask);
-    	                        TransferTaskDao.persist(childTask);
+								TransferTask parentTask = listener.getTransferTask();
+								String srcPath = parentTask.getSource() +
+										(StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") +
+										child.getName();
+								childTask = listener.createAndPersistChildTransferTask(srcPath, childRemotePath);
     	                    }
     	                    IRODSFile childFile = getFile(childRemotePath);
 
-    	                    RemoteTransferListener childListener = new RemoteTransferListener(childTask);
+    	                    RemoteTransferListener childListener = new RemoteTransferListenerImpl(childTask);
 
     	                    TransferControlBlock transferControlBlock = getTransferControlBlock();
     	                    getDataTransferOperations().putOperation(child, childFile, childListener, transferControlBlock);
@@ -1087,7 +1059,7 @@ public class IRODS4 implements RemoteDataClient
 	            // if destination file is not present and will not throw and exception if there is no source file.
 				if ((listener == null))
 				{
-					listener = new RemoteTransferListener(null);
+					listener = new RemoteTransferListenerImpl(null);
 				}
 
 				for (File child: sourceFile.listFiles())
@@ -1116,7 +1088,7 @@ public class IRODS4 implements RemoteDataClient
 			{
 			    if ((listener == null))
                 {
-                    listener = new RemoteTransferListener(null);
+                    listener = new RemoteTransferListenerImpl(null);
                 }
 
 				// sync if file is not there
@@ -1427,7 +1399,7 @@ public class IRODS4 implements RemoteDataClient
 		try
 		{
 			if (listener == null) {
-				listener = new RemoteTransferListener(null);
+				listener = new RemoteTransferListenerImpl(null);
 			}
 
 			if (StringUtils.equals(sourcePath, destPath)) {

@@ -1,20 +1,18 @@
 package org.iplantc.service.transfer.events;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.exceptions.EntityEventPersistenceException;
 import org.iplantc.service.common.exceptions.EntityEventProcessingException;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.dao.TransferTaskEventDao;
-import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.TransferTaskEvent;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.iplantc.service.transfer.model.TransferTaskImpl;
 
 /**
- * Handles sending and propagation of events on {@link TransferTask} objects.
+ * Handles sending and propagation of events on {@link TransferTaskImpl} objects.
  * 
  * TODO: Make this class the default mechanism for adding events
  * TODO: Refactor this as an async factory using vert.x
@@ -30,13 +28,13 @@ public class TransferTaskEventProcessor {
 	public TransferTaskEventProcessor(){}
 	
 	/**
-	 * Generates notification events for {@link TransferTask}.
+	 * Generates notification events for {@link TransferTaskImpl}.
 	 * 
-	 * @param transferTask the {@link TransferTask} on which the even is triggered
+	 * @param transferTask the {@link TransferTaskImpl} on which the even is triggered
 	 * @param createdBy the user who caused this event
-	 * @return the {@link TransferTaskEvent} with the association to the {@link TransferTask}
+	 * @return the {@link TransferTaskEvent} with the association to the {@link TransferTaskImpl}
 	 */
-	public void processTransferTaskEvent(TransferTask transferTask, TransferTaskEvent event) {
+	public void processTransferTaskEvent(TransferTaskImpl transferTask, TransferTaskEvent event) {
 
 		
 		try {

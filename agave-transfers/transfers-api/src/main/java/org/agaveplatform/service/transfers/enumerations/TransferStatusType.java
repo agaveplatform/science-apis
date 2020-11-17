@@ -37,21 +37,14 @@ public enum TransferStatusType implements ITransferStatus
 	 * @return immutable list of the active {@link TransferStatusType}
 	 */
 	public static List<TransferStatusType> getActive() {
-//		return List.of(ASSIGNED, PAUSED, PAUSE_WAITING, QUEUED, RETRYING,
-//				TRANSFERRING, ERROR, CREATED, CANCELING_WAITING);
-
 		return List.of(CREATED,
-				CANCELLED, CANCELING_WAITING, CANCELLED_ERROR,
 				PROCESSING_DIRECTORY,
 				ASSIGNED,
 				TRANSFERRING,
 				READ_STARTED, READ_IN_PROGRESS, READ_COMPLETED, WRITE_STARTED, WRITE_IN_PROGRESS, WRITE_COMPLETED,
 				STREAM_COPY_STARTED, STREAM_COPY_IN_PROGRESS, STREAM_COPY_COMPLETED,
 				RETRYING,
-				FAILED,
-				COMPLETED, COMPLETED_WITH_ERRORS,
-				PAUSED, PAUSE_WAITING, QUEUED,
-				ERROR);
+				PAUSED, PAUSE_WAITING, QUEUED);
 	}
 
 	/**
@@ -60,7 +53,8 @@ public enum TransferStatusType implements ITransferStatus
 	 * @return immutable list of the active {@link TransferStatusType}
 	 */
 	public static List<TransferStatusType> getStopped() {
-		return List.of(CANCELLED, FAILED);
+		return List.of(CANCELLED, CANCELING_WAITING, CANCELLED_ERROR,
+				COMPLETED, COMPLETED_WITH_ERRORS, FAILED, ERROR);
 	}
 
 	/**

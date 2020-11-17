@@ -292,7 +292,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		AsyncResult<JsonObject> expectedUpdateResult = getMockAsyncResult(expectedUpdate);
 		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
 			@SuppressWarnings("unchecked")
-			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(3, Handler.class);
 			handler.handle(expectedUpdateResult);
 			return null;
 		}).when(dbService).updateStatus(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(TransferStatusType.CANCELING_WAITING.name()), any(Handler.class));

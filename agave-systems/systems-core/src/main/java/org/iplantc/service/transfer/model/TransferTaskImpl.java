@@ -293,7 +293,6 @@ public class TransferTaskImpl implements TransferTask {
 	/**
 	 * @return the startTime
 	 */
-	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "start_time", length = 16)
 	public Instant getStartTime()
 	{
@@ -311,7 +310,6 @@ public class TransferTaskImpl implements TransferTask {
 	/**
 	 * @return the endTime
 	 */
-	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "end_time", length = 16)
 	public Instant getEndTime()
 	{
@@ -397,7 +395,6 @@ public class TransferTaskImpl implements TransferTask {
 	/**
 	 * @return the created
 	 */
-	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "created", nullable = false, length = 19)
 	public Instant getCreated()
 	{
@@ -415,7 +412,6 @@ public class TransferTaskImpl implements TransferTask {
 	/**
 	 * @return the lastUpdated
 	 */
-	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "last_updated", nullable = false, length = 19)
 	public Instant getLastUpdated()
 	{

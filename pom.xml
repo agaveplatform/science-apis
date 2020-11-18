@@ -568,7 +568,6 @@
         <module>agave-metadata</module>
         <module>agave-systems</module>
         <module>agave-monitors</module>
-
         <module>agave-files</module>
         <module>agave-apps</module>
         <module>agave-jobs</module>

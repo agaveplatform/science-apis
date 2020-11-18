@@ -86,8 +86,8 @@ node('master') {
         def dorun=new Boolean(env.run_build_jars)
         if (dorun) {
             try {
-                sh "mvn -s config/maven/settings-SAMPLE.xml versions:set -DgenerateBackupPoms=false -DnewVersion=${env.AGAVE_VERSION}-dev"
-                sh "mvn -s config/maven/settings-SAMPLE.xml -Pagave,plain -B install -DskipDocker=true"
+                sh "mvn -P agave,dev versions:set -DgenerateBackupPoms=false -DnewVersion=${env.AGAVE_VERSION}-dev"
+                sh "mvn -P agave,dev -B install -DskipDocker=true"
             }
             catch (err) {
                 slackSend color: "red", message: "Jenkins-3 Failed to compile the core services. Failed build is on display at <${env.BUILD_URL}|here>."

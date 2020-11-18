@@ -1,26 +1,43 @@
 ##############################################################
 #  OPTIONAL: Persistent beanstalkd instance
 #############################################################
+version: '3.7'
 
-beanstalkd:
-  image: agaveapi/beanstalkd:latest
-  command: /usr/bin/beanstalkd -b
-  mem_limit: 1024m
-  restart: always
-  volumes_from:
-    - 'beanstalkd-vol'
-  ports:
-    - '11300:11300'
-  tags:
-    - staging
-    - worker
+volumes:
+  mongo_data:
 
-beanstalkd-vol:
-  image: ubuntu
-  command: sleep 2147483647
-  mem_limit: 64m
-  volumes:
-    - /var/lib/beanstalkd:/var/lib/beanstalkd
-  tags:
-    - staging
-    - worker
+services:
+  beanstalkd:
+    image: agaveplatform/beanstalkd:latest
+    command: /usr/bin/beanstalkd -b /var/lib/beanstalkd/binlog
+    ports:
+      - '11300:11300'
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - services
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 128M
+
+  beanstalkd-console:
+    image: kusmierz/beanstalk-console:latest
+    ports:
+      - '9999:80'
+    labels:
+      - "traefik.enable=false"
+    networks:
+      - services
+    deploy:
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 128M

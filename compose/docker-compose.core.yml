@@ -1,0 +1,481 @@
+###############################################################
+# Core Science APIs
+# docker-compose.core.yml
+#
+# This is the orchestration file to start Agave's Core Science
+# APIs. The APIs are accessible behind a reverse proxy which
+# shields them from the outside world.
+# Containers performing data operations are assigned a partition
+# of the default GridFTP and FTP port ranges to enable proper
+# operation of the protocol from within each container.
+#
+###############################################################
+---
+
+version: '3.3'
+
+networks:
+  devnet:
+    driver: overlay
+    attachable: true
+
+services:
+
+  core-proxy:
+    image: traefik:v2.1
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.constraints=Label(`agave.core.api`,`True`)"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.grpc.address=:50051"
+    ports:
+      - 8080:80
+      - 8443:443
+      - 28080:8080
+    restart: always
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    labels:
+      - "traefik.enable=true"
+
+  jobs:
+    image: agaveplatform/jobs-api:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+      - configs/jobs-api.conf
+    volumes:
+      - ./logs/jobs:/opt/tomcat/logs
+      - ./scratch/jobs:/scratch
+    labels:
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.service: jobs
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.jobs.rule: Host(`jobs`) || PathPrefix(`/jobs`)
+      traefik.http.routers.jobs.entrypoints: web
+      traefik.http.routers.jobs_ssl.rule: Host(`jobs`) || PathPrefix(`/jobs`)
+      traefik.http.routers.jobs_ssl.entrypoints: websecure
+      traefik.http.routers.jobs_ssl.tls: true
+
+    #mem_limit: 8g
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+
+  files:
+    image: agaveplatform/files-api:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+      - configs/files-api.conf
+    volumes:
+      - ./logs/files:/opt/tomcat/logs
+      - ./scratch/files:/scratch
+    labels:
+      agave.core.service:  files
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.files.rule: Host(`files`) || PathPrefix(`/files`)
+      traefik.http.routers.files.entrypoints: web
+      traefik.http.routers.files_ssl.rule: Host(`files`) || PathPrefix(`/files`)
+      traefik.http.routers.files_ssl.entrypoints: websecure
+      traefik.http.routers.files_ssl.tls: true
+
+    #mem_limit: 8g
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+
+  sftp-relay:
+    image: agaveplatform/sftp-relay:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+      - configs/apps-api.conf
+    volumes:
+      - ./logs/apps:/opt/tomcat/logs
+      - ./scratch/apps:/scratch
+    labels:
+      agave.core.service: apps
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.sftprelay.rule: Host(`sftprelay`) || PathPrefix(`/sftprelay`)
+      traefik.http.routers.sftprelay.entrypoints: grpc
+      traefik.http.middlewares.stripsftprelay.stripprefix.prefixes: /sftprelay
+    #mem_limit: 2g
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          
+  apps:
+    image: agaveplatform/apps-api:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+      - configs/apps-api.conf
+    volumes:
+      - ./logs/apps:/opt/tomcat/logs
+      - ./scratch/apps:/scratch
+    labels:
+      agave.core.service: apps
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.apps.rule: Host(`apps`) || PathPrefix(`/apps`)
+      traefik.http.routers.apps.entrypoints: web
+      traefik.http.routers.apps.middlewares: stripapps
+      traefik.http.routers.apps_ssl.rule: Host(`apps`) || PathPrefix(`/apps`)
+      traefik.http.routers.apps_ssl.entrypoints: websecure
+      traefik.http.routers.apps_ssl.tls: true
+      traefik.http.routers.apps_ssl.middlewares: stripapps
+      traefik.http.middlewares.stripapps.stripprefix.prefixes: /apps
+      traefik.http.middlewares.stripapps.stripprefix.forceslash: true
+    #mem_limit: 2g
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  systems:
+    image: agaveplatform/systems-api:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+    volumes:
+      - ./logs/systems:/opt/tomcat/logs
+      - ./scratch/systems:/scratch
+    labels:
+      agave.core.service: systems
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.systems.rule: Host(`systems`) || PathPrefix(`/systems`)
+      traefik.http.routers.systems.entrypoints: web
+      traefik.http.routers.systems.middlewares: stripsystems
+      traefik.http.routers.systems_ssl.rule: Host(`systems`) || PathPrefix(`/systems`)
+      traefik.http.routers.systems_ssl.entrypoints: websecure
+      traefik.http.routers.systems_ssl.middlewares: stripsystems
+      traefik.http.routers.systems_ssl.tls: true
+      traefik.http.middlewares.stripsystems.stripprefix.prefixes: /systems
+      traefik.http.middlewares.stripsystems.stripprefix.forceslash: true
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  monitors:
+    image: agaveplatform/monitors-api:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+      - configs/monitors-api.conf
+    volumes:
+      - ./logs/monitors:/opt/tomcat/logs
+      - ./scratch/monitors:/scratch
+    labels:
+      agave.core.service: monitors
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.monitors.rule: Host(`monitors`) || PathPrefix(`/monitors`)
+      traefik.http.routers.monitors.entrypoints: web
+      traefik.http.routers.monitors.middlewares: stripmonitors
+      traefik.http.routers.monitors_ssl.rule: Host(`monitors`) || PathPrefix(`/monitors`)
+      traefik.http.routers.monitors_ssl.entrypoints: websecure
+      traefik.http.routers.monitors_ssl.middlewares: stripmonitors
+      traefik.http.routers.monitors_ssl.tls: true
+      traefik.http.middlewares.stripmonitors.stripprefix.prefixes: /monitors
+      traefik.http.middlewares.stripmonitors.stripprefix.forceslash: true
+    #mem_limit: 2g
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  metadata:
+    image: agaveplatform/metadata-api:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+      - configs/metadata-api.conf
+    volumes:
+      - ./logs/metadata:/opt/tomcat/logs
+      - ./scratch/metadata:/scratch
+    labels:
+      agave.core.service: metadata
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.metadata.rule: Host(`metadata`) || PathPrefix(`/meta`)
+      traefik.http.routers.metadata.entrypoints: web
+      traefik.http.routers.metadata.middlewares: stripmetadata
+      traefik.http.routers.metadata_ssl.rule: Host(`metadata`) || PathPrefix(`/meta`)
+      traefik.http.routers.metadata_ssl.entrypoints: websecure
+      traefik.http.routers.metadata_ssl.middlewares: stripmetadata
+      traefik.http.routers.metadata_ssl.tls: true
+      traefik.http.middlewares.stripmetadata.stripprefix.prefixes: /meta
+      traefik.http.middlewares.stripmetadata.stripprefix.forceslash: true
+    #mem_limit: 2g
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  notifications:
+    image: agaveplatform/notifications-api:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+      - configs/notifications-api.conf
+    volumes:
+      - ./logs/notifications:/opt/tomcat/logs
+      - ./scratch/notifications:/scratch
+    labels:
+      agave.core.service: notfications
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.notifications.rule: Host(`notifications`) || PathPrefix(`/notifications`)
+      traefik.http.routers.notifications.entrypoints: web
+      traefik.http.routers.notifications.middlewares: stripnotifications
+      traefik.http.routers.notifications_ssl.rule: Host(`notifications`) || PathPrefix(`/notifications`)
+      traefik.http.routers.notifications_ssl.entrypoints: websecure
+      traefik.http.routers.notifications_ssl.middlewares: stripnotifications
+      traefik.http.routers.notifications_ssl.tls: true
+      traefik.http.middlewares.stripnotifications.stripprefix.prefixes: /notifications
+      traefik.http.middlewares.stripnotifications.stripprefix.forceslash: true
+    #mem_limit: 2g
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  tags:
+    image: agaveplatform/tags-api:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+    volumes:
+      - ./logs/tags:/opt/tomcat/logs
+      - ./scratch/tags:/scratch
+    labels:
+      agave.core.service: tags
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.tags.rule: Host(`tags`) || PathPrefix(`/tags`)
+      traefik.http.routers.tags.entrypoints: web
+      traefik.http.routers.tags.middlewares: striptags
+      traefik.http.routers.tags_ssl.rule: Host(`tags`) || PathPrefix(`/tags`)
+      traefik.http.routers.tags_ssl.entrypoints: websecure
+      traefik.http.routers.tags_ssl.middlewares: striptags
+      traefik.http.routers.tags_ssl.tls: true
+      traefik.http.middlewares.striptags.stripprefix.prefixes: /tags
+      traefik.http.middlewares.striptags.stripprefix.forceslash: true
+    #mem_limit: 2g
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  uuids:
+    image: agaveplatform/uuids-api:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+    volumes:
+      - ./logs/uuids:/opt/tomcat/logs
+      - ./scratch/uuids:/scratch
+    labels:
+      agave.core.service: uuids
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.uuids.rule: Host(`uuids`) || PathPrefix(`/uuids`)
+      traefik.http.routers.uuids.entrypoints: web
+      traefik.http.routers.uuids.middlewares: stripuuids
+      traefik.http.routers.uuids_ssl.rule: Host(`uuids`) || PathPrefix(`/uuids`)
+      traefik.http.routers.uuids_ssl.entrypoints: websecure
+      traefik.http.routers.uuids_ssl.middlewares: stripuuids
+      traefik.http.routers.uuids_ssl.tls: true
+      traefik.http.middlewares.stripuuids.stripprefix.prefixes: /uuids
+      traefik.http.middlewares.stripuuids.stripprefix.forceslash: true
+    #mem_limit: 2g
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  postits:
+    image: agaveplatform/postits-api:${AGAVE_VERSION}
+    ports:
+      - 80
+      - 52911
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+      - configs/postits-api.conf
+    volumes:
+      - ./logs/postits:/var/log/apache2
+      - ./scratch/postits:/scratch
+    labels:
+      agave.core.service: postits
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.postits.rule: Host(`postits`) || PathPrefix(`/postits`)
+      traefik.http.routers.postits.entrypoints: web
+      traefik.http.routers.postits.middlewares: strippostits
+      traefik.http.routers.postits_ssl.rule: Host(`postits`) || PathPrefix(`/postits`)
+      traefik.http.routers.postits_ssl.entrypoints: websecure
+      traefik.http.routers.postits_ssl.middlewares: strippostits
+      traefik.http.routers.postits_ssl.tls: true
+      traefik.http.middlewares.strippostits.stripprefix.prefixes: /postits
+      traefik.http.middlewares.strippostits.stripprefix.forceslash: true
+    #mem_limit: 2g
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  tenants:
+    image: agaveplatform/tenants-api:${AGAVE_VERSION}
+    ports:
+      - 80
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+    volumes:
+      - ./logs/tenants:/var/log/apache2
+      - ./scratch/tenants:/scratch
+    labels:
+      agave.core.service: tenants
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.tenants.rule: Host(`tenants`) || PathPrefix(`/tenants`)
+      traefik.http.routers.tenants.entrypoints: web
+      traefik.http.routers.tenants.middlewares: striptenants
+      traefik.http.routers.tenants_ssl.rule: Host(`tenants`) || PathPrefix(`/tenants`)
+      traefik.http.routers.tenants_ssl.entrypoints: websecure
+      traefik.http.routers.tenants_ssl.middlewares: striptenants
+      traefik.http.routers.tenants_ssl.tls: true
+      traefik.http.middlewares.striptenants.stripprefix.prefixes: /tenants
+      traefik.http.middlewares.striptenants.stripprefix.forceslash: true
+
+    #mem_limit: 1g
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  logging:
+    image: agaveplatform/logging-api:${AGAVE_VERSION}
+    ports:
+      - 80
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+      - configs/logging-api.conf
+    volumes:
+      - ./logs/logging:/var/log/apache2
+      - ./scratch/logging:/scratch
+    labels:
+      agave.core.service: logging
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.logging.rule: Host(`logging`) || PathPrefix(`/logging`)
+      traefik.http.routers.logging.entrypoints: web
+      traefik.http.routers.logging.middlewares: striplogging
+      traefik.http.routers.logging_ssl.rule: Host(`logging`) || PathPrefix(`/logging`)
+      traefik.http.routers.logging_ssl.entrypoints: websecure
+      traefik.http.routers.logging_ssl.middlewares: striplogging
+      traefik.http.routers.logging_ssl.tls: true
+      traefik.http.middlewares.striplogging.stripprefix.prefixes: /logging
+      traefik.http.middlewares.striplogging.stripprefix.forceslash: true
+    #mem_limit: 1g
+    deploy:
+      resources:
+        limits:
+          memory: 1g

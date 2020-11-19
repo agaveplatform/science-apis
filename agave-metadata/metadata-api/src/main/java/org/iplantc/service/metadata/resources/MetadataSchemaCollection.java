@@ -1,18 +1,15 @@
 package org.iplantc.service.metadata.resources;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaCreate;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaList;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.SchemaSearch;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
-
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.regex.Pattern;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonschema.main.JsonSchemaFactory;
+import com.github.fge.jsonschema.processors.syntax.SyntaxValidator;
+import com.github.fge.jsonschema.report.ProcessingMessage;
+import com.github.fge.jsonschema.report.ProcessingReport;
+import com.mongodb.*;
+import com.mongodb.util.JSON;
+import com.mongodb.util.JSONParseException;
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -29,7 +26,6 @@ import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.MetadataApplication;
 import org.iplantc.service.metadata.Settings;
-import org.iplantc.service.metadata.dao.MetadataPermissionDao;
 import org.iplantc.service.metadata.dao.MetadataSchemaPermissionDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataSchemaValidationException;
@@ -38,31 +34,21 @@ import org.iplantc.service.metadata.util.ServiceUtils;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.joda.time.DateTime;
 import org.restlet.Context;
-import org.restlet.data.Form;
-import org.restlet.data.MediaType;
-import org.restlet.data.Request;
-import org.restlet.data.Response;
-import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.fge.jsonschema.main.JsonSchemaFactory;
-import com.github.fge.jsonschema.processors.syntax.SyntaxValidator;
-import com.github.fge.jsonschema.report.ProcessingMessage;
-import com.github.fge.jsonschema.report.ProcessingReport;
-import com.mongodb.BasicDBList;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.util.JSON;
-import com.mongodb.util.JSONParseException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.regex.Pattern;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.*;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
 
 
 /**
@@ -148,9 +134,9 @@ public class MetadataSchemaCollection extends AgaveResource
         } 
         catch (Throwable e) 
         {
-        	log.error("Unable to connect to metadata store", e);
+        	log.error("Exception 4: Unable to connect to metadata store", e);
             response.setStatus(Status.SERVER_ERROR_INTERNAL);
-            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store."));
+            response.setEntity(new IplantErrorRepresentation("Exception 4: Unable to connect to metadata store."));
         }
     }
 
@@ -221,7 +207,7 @@ public class MetadataSchemaCollection extends AgaveResource
                     // filter results if querying without implicity permissions
                     if (!includeRecordsWithImplicitPermissions) {
 	                    // permissions are separated from the metadata, so we need to look up available uuid for user.
-	                	List<String> accessibleUuids = MetadataPermissionDao.getUuidOfAllSharedMetataItemReadableByUser(this.username);
+	                	List<String> accessibleUuids = MetadataSchemaPermissionDao.getUuidOfAllSharedMetataSchemaItemReadableByUser(this.username, getOffset(), getLimit());
 	                	List<String> accessibleOwners = Arrays.asList(this.username, Settings.PUBLIC_USER_USERNAME, Settings.WORLD_USER_USERNAME);
 	                	BasicDBList or = new BasicDBList();
 	                	or.add(new BasicDBObject("uuid", new BasicDBObject("$in", accessibleUuids)));

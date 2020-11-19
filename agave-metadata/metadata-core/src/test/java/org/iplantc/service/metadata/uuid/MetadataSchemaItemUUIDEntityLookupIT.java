@@ -2,16 +2,12 @@ package org.iplantc.service.metadata.uuid;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AbstractUUIDTest;
 import org.iplantc.service.common.uuid.UUIDEntityLookup;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.dao.MetadataSchemaDao;
-import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataSchemaItem;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -19,7 +15,7 @@ import org.testng.annotations.Test;
 import java.io.IOException;
 
 @Test(groups={"integration"})
-public class MetadataSchemaItemUUIDEntityLookupTest implements AbstractUUIDTest<MetadataSchemaItem> {
+public class MetadataSchemaItemUUIDEntityLookupIT implements AbstractUUIDTest<MetadataSchemaItem> {
     private final String TEST_USER = "testuser";
     private final String TEST_SHARED_USER = "testshareuser";
 

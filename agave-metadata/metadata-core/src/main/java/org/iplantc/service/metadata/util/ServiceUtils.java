@@ -3,20 +3,10 @@
  */
 package org.iplantc.service.metadata.util;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Calendar;
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.TreeNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.TextNode;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -25,10 +15,15 @@ import org.iplantc.service.metadata.jackson.MongoDBSafeKey;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.TreeNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.TextNode;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 /**
@@ -161,38 +156,15 @@ public class ServiceUtils {
      * This style of implementation does not throw Exceptions to the caller.
      *
      * @param aFile is a file which already exists and can be read.
+	 * @deprecated
      */
     public static String getContents(File aFile) {
-       //...checks on aFile are elided
-       StringBuilder contents = new StringBuilder();
-       
        try {
-         //use buffering, reading one line at a time
-         //FileReader always assumes default encoding is OK!
-    	 BufferedReader input =  new BufferedReader(new FileReader(aFile));
-         try {
-           String line = null; //not declared within while loop
-           
-           /*
-           * readLine is a bit quirky :
-           * it returns the content of a line MINUS the newline.
-           * it returns null only for the END of the stream.
-           * it returns an empty String if two newlines appear in a row.
-           */
-           while (( line = input.readLine()) != null){
-             contents.append(line);
-             contents.append(System.getProperty("line.separator"));
-           }
-         }
-         finally {
-           input.close();
-         }
+       		return new String(Files.readAllBytes(aFile.toPath()), Charset.forName("UTF-8"));
        }
        catch (IOException ex){
-         ex.printStackTrace();
+			return "";
        }
-       
-       return contents.toString();
      }
 
 	public static String stripSurroundingBrackets(String str) 
@@ -242,19 +214,19 @@ public class ServiceUtils {
 	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
-		return node != null && (node instanceof TextNode) && ((TextNode)node).asText() != null;
+		return (node instanceof TextNode) && ((TextNode)node).asText() != null;
 	}
 	
 	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
 		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
-		return node != null && (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
+		return (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
 	}
 	
 	/**
 	 * Formats a 10 digit phone number into (###) ###-#### format
 	 * 
-	 * @param phone
+	 * @param phone the phone number to format
 	 * @return formatted phone number string
 	 */
 	public static String formatPhoneNumber(String phone) 
@@ -274,13 +246,10 @@ public class ServiceUtils {
 
 
 	public static boolean isAdmin(String username)
-	{	
+	{
 		if (TenancyHelper.isTenantAdmin()) return true;
-		
-		InputStream stream = null;
-		try
-		{
-			stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");
+
+		 try (InputStream stream = ServiceUtils.class.getClassLoader().getResourceAsStream("trusted_admins.txt");) {
 			String trustedUserList = IOUtils.toString(stream, "UTF-8");
 			if (StringUtils.isNotEmpty(trustedUserList)) {
 				for(String user: trustedUserList.split(",")) {
@@ -298,9 +267,6 @@ public class ServiceUtils {
 			log.warn("Failed to load trusted user file", e);
 			return false;
 		}
-        finally {
-        	if (stream != null) try {stream.close();} catch (Exception e){}
-        }
 	}
 	
 	public static String explode(String glue, List<?> list)

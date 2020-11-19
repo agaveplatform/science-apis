@@ -462,8 +462,8 @@ public class AbstractDaoTest
                                 null,
                                 null);
                         stagingTransferTask.setStatus(TransferStatusType.TRANSFERRING);
-                        stagingTransferTask.setCreated(stagingTime.toDate());
-                        stagingTransferTask.setLastUpdated(stagingTime.toDate());
+                        stagingTransferTask.setCreated(stagingTime.toDate().toInstant());
+                        stagingTransferTask.setLastUpdated(stagingTime.toDate().toInstant());
 
                         TransferTaskDao.persist(stagingTransferTask);
 
@@ -503,10 +503,10 @@ public class AbstractDaoTest
                                 null);
 
                         stagingTransferTask.setStatus(TransferStatusType.COMPLETED);
-                        stagingTransferTask.setCreated(stagingTime.toDate());
-                        stagingTransferTask.setStartTime(stagingTime.toDate());
-                        stagingTransferTask.setEndTime(stagingEnded.toDate());
-                        stagingTransferTask.setLastUpdated(stagingEnded.toDate());
+                        stagingTransferTask.setCreated(stagingTime.toDate().toInstant());
+                        stagingTransferTask.setStartTime(stagingTime.toDate().toInstant());
+                        stagingTransferTask.setEndTime(stagingEnded.toDate().toInstant());
+                        stagingTransferTask.setLastUpdated(stagingEnded.toDate().toInstant());
 
                         TransferTaskDao.persist(stagingTransferTask);
 
@@ -537,8 +537,8 @@ public class AbstractDaoTest
                         null, 
                         null);
                 
-                archivingTransferTask.setCreated(archiveTime.toDate());
-                archivingTransferTask.setStartTime(archiveTime.toDate());
+                archivingTransferTask.setCreated(archiveTime.toDate().toInstant());
+                archivingTransferTask.setStartTime(archiveTime.toDate().toInstant());
                 TransferTaskDao.persist(archivingTransferTask);
                 
                 JobEvent event = new JobEvent(

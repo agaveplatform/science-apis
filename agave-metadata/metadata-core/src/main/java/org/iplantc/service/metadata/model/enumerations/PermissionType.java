@@ -1,9 +1,11 @@
 package org.iplantc.service.metadata.model.enumerations;
 
+import com.google.common.base.Enums;
+
 public enum PermissionType
 {
 
-	NONE, READ, WRITE, EXECUTE, READ_WRITE, READ_EXECUTE, WRITE_EXECUTE, ALL, READ_PERMISSION, WRITE_PERMISSION, READ_WRITE_PERMISSION;
+	NONE, READ, WRITE, EXECUTE, READ_WRITE, READ_EXECUTE, WRITE_EXECUTE, ALL, READ_PERMISSION, WRITE_PERMISSION, READ_WRITE_PERMISSION, UNKNOWN;
 
 	public boolean canRead() {
 		return (this.equals(ALL) ||
@@ -128,6 +130,10 @@ public enum PermissionType
 	@Override
 	public String toString() {
 		return name();
+	}
+
+	public static PermissionType getIfPresent(String name){
+		return Enums.getIfPresent(PermissionType.class, name).or(PermissionType.UNKNOWN);
 	}
 		 
 }

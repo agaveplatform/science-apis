@@ -9,14 +9,13 @@ import org.iplantc.service.common.uuid.UUIDEntityLookup;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.model.MetadataItem;
-import org.json.JSONException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
 
 @Test(groups={"integration"})
-public class MetadataItemUUIDEntityLookupTest implements AbstractUUIDTest<MetadataItem> {
+public class MetadataItemUUIDEntityLookupIT implements AbstractUUIDTest<MetadataItem> {
     private final String TEST_USER = "testuser";
     private final String TEST_SHARED_USER = "testshareuser";
 
@@ -42,7 +41,7 @@ public class MetadataItemUUIDEntityLookupTest implements AbstractUUIDTest<Metada
         MetadataItem entity = null;
         try {
             entity = new MetadataItem();
-            entity.setName(MetadataItemUUIDEntityLookupTest.class.getName());
+            entity.setName(MetadataItemUUIDEntityLookupIT.class.getName());
             entity.setValue(mapper.createObjectNode().put("testKey", "testValue"));
             entity.setOwner(TEST_USER);
             MetadataDao.getInstance().insert(entity);

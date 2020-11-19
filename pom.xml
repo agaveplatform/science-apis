@@ -50,6 +50,30 @@
             <name>Agave Maven public mirror</name>
             <url>https://nexus.agaveplatform.org/repository/maven-public/</url>
         </repository>
+        <repository>
+            <id>sonatype-nexus-releases</id>
+            <url>https://oss.sonatype.org/content/repositories/releases</url>
+            <releases>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>sonatype-nexus-snapshots</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
     </repositories>
 
     <pluginRepositories>
@@ -158,8 +182,10 @@
         <log4j.version>1.2.17</log4j.version>
         <mail.version>1.4.6</mail.version>
         <maverick.version>1.6.3</maverick.version>
-        <mongo-java-driver.version>3.6.3</mongo-java-driver.version>
-        <mongojack.version>2.6.0</mongojack.version>
+        <mongo-java-driver.version>3.12.6</mongo-java-driver.version>
+<!--        <mongo-java-driver.version>3.6.3</mongo-java-driver.version>-->
+        <mongojack.version>4.0.2</mongojack.version>
+<!--        <mongojack.version>2.6.0</mongojack.version>-->
         <mysql-connector-java.version>8.0.13</mysql-connector-java.version>
         <mariadb-connector-java.version>2.4.0</mariadb-connector-java.version>
         <nimbus-jose-jwt.version>2.20</nimbus-jose-jwt.version>
@@ -200,6 +226,10 @@
         <skip.integration.tests>true</skip.integration.tests>
         <skip.unit.tests>true</skip.unit.tests>
         <skip.integration.s3.tests>true</skip.integration.s3.tests>
+        <skip.integration.irods3.tests>true</skip.integration.irods3.tests>
+        <skip.integration.irods4.tests>true</skip.integration.irods4.tests>
+        <skip.integration.sftp.tests>true</skip.integration.sftp.tests>
+        <skip.integration.http.tests>true</skip.integration.http.tests>
 
     </properties>
 
@@ -322,8 +352,8 @@
                     <configuration>
                         <argLine>--illegal-access=permit </argLine>
                         <skipTests>${skip.unit.tests}</skipTests>
-<!--                        <groups>unit</groups>-->
-<!--                        <excludedGroups>broken,notReady</excludedGroups>-->
+                        <groups>unit</groups>
+                        <excludedGroups>broken,notReady</excludedGroups>
                         <systemPropertyVariables>
                             <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
                             </log4j.configuration>
@@ -428,7 +458,7 @@
                     <version>${maven-failsafe-plugin.version}</version>
                     <configuration>
                         <argLine>
-                            --illegal-access=permit
+                            --illegal-access=permit --add-modules=java.xml.bind
                         </argLine>
                         <skipTests>${skip.integration.tests}</skipTests>
                         <groups>integration</groups>
@@ -545,14 +575,15 @@
     <!--                   Global Dependencies                        -->
     <!--                                                              -->
     <!-- Only add dependencies here that are used by EVERY submodule. -->
-<!--    <dependencies>-->
-<!--        <dependency>-->
-<!--            <groupId>org.testng</groupId>-->
-<!--            <artifactId>testng</artifactId>-->
-<!--            <version>${testng.version}</version>-->
-<!--            <scope>test</scope>-->
-<!--        </dependency>-->
-<!--    </dependencies>-->
+    <dependencies>
+        <dependency>
+            <!-- There are non-test compile dependencies on testng -->
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <modules>
         <module>agave-migrations</module>
@@ -610,7 +641,7 @@
                 <skip.integration.tests>false</skip.integration.tests>
 
                 <foundation.smtp.token></foundation.smtp.token>
-                <slack.webhook.url></slack.webhook.url>
+                <slack.webhook.url>https://hooks.slack.com/services/SLACK_INCOMING_WEBHOOK</slack.webhook.url>
             </properties>
         </profile>
         <profile>
@@ -656,6 +687,9 @@
         </profile>
         <profile>
             <id>agave</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <properties>
                 <downloadSources>false</downloadSources>
                 <downloadJavadocs>false</downloadJavadocs>

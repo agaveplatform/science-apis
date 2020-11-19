@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.metadata.dao;
 
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.CacheMode;
 import org.hibernate.HibernateException;
@@ -18,6 +16,9 @@ import org.iplantc.service.metadata.model.MetadataSchemaItem;
 import org.iplantc.service.metadata.model.MetadataSchemaPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.util.ServiceUtils;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * DAO class for metadata schemata
@@ -111,11 +112,12 @@ public class MetadataSchemaPermissionDao {
         {
             Session session = getSession();
             
-            String sql = "select distinct schema_id from metadata_schema_permissions "
-            		+ "where tenant_id = :tenantid "
-            		+ "		and (permission = :allpem or permission like '%READ%') "
-            		+ "		and username in (:owner, :world, :public) "
-            		+ "order by last_updated DESC";	
+            String sql = "SELECT distinct schema_id, last_updated "
+					+ "FROM metadata_schema_permissions "
+            		+ "WHERE tenant_id = :tenantid "
+            		+ "		AND (permission = :allpem OR permission LIKE '%READ%') "
+            		+ "		AND username in (:owner, :world, :public) "
+            		+ "ORDER BY last_updated DESC";
             Query query = session.createSQLQuery(sql)
                 .setString("tenantid", TenancyHelper.getCurrentTenantId())
                 .setString("owner", username)
@@ -131,14 +133,14 @@ public class MetadataSchemaPermissionDao {
             	query.setMaxResults(limit);
             }
             
-            List<String> metadataSchemaUUIDGrantedToUser = query
+            List<Object[]> metadataSchemaUUIDGrantedToUser = query
             		.setCacheMode(CacheMode.IGNORE)
 					.setCacheable(false)
 					.list();
             
             session.flush();
-            
-            return metadataSchemaUUIDGrantedToUser;
+
+            return metadataSchemaUUIDGrantedToUser.stream().map(row -> (String)row[0]).collect(Collectors.toList());
         }
         catch (HibernateException ex)
         {
@@ -218,7 +220,7 @@ public class MetadataSchemaPermissionDao {
 			throw new MetadataException("Failed to save metadata Schema permission.", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 

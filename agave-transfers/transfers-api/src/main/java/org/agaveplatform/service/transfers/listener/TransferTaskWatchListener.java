@@ -62,12 +62,12 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 	 * @return future with boolean result of the batch scheduling operation
 	 */
 	public void processEvent(Handler<AsyncResult<Boolean>> handler) {
-		log.info("Got into TransferTaskWatchListener.processEvent ");
+		log.debug("Got into TransferTaskWatchListener.processEvent ");
 		try {
 			log.debug("Looking up active transfer tasks...");
 			getDbService().getActiveRootTaskIds(reply -> {
 				if (reply.succeeded()) {
-					log.info("Found {} active transfer tasks", reply.result().size());
+					log.debug("Found {} active transfer tasks", reply.result().size());
 					reply.result().stream().forEach(jsonResult -> {
 						try {
 							log.debug("Scheduling health check on transfer task {}",

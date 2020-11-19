@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -695,5 +696,9 @@ public class TransferTaskImpl implements TransferTask {
 			this.lastUpdated = Instant.now();
 			this.updateTransferRate();
 		}
+	}
+
+	public void setLastUpdated(Date date) {
+		this.setLastUpdated(date.toInstant());
 	}
 }

@@ -57,7 +57,7 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 	}
 
 	public Future<Boolean> processEvent(JsonObject body) {
-		logger.info("Got into TransferTaskHealthcheckListener.processEvent");
+		logger.debug("Got into TransferTaskHealthcheckListener.processEvent");
 		Promise<Boolean> promise = Promise.promise();
 
 		String uuid = body.getString("uuid");
@@ -69,7 +69,7 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 				logger.info("reply from getDBSerivce.allChildrenCancelledOrCompleted " + reply.toString());
 				if (reply.result()) {
 					getDbService().updateStatus(tenantId, uuid, COMPLETED.name(), updateStatus -> {
-						logger.info("Got into getDBService.updateStatus(complete) ");
+						logger.debug("Got into getDBService.updateStatus(complete) ");
 						if (updateStatus.succeeded()) {
 							logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
 							//parentList.remove(uuid);
@@ -90,7 +90,7 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 					logger.info("allChildrenCancelledOrCompleted succeeded but the result is returns false.");
 					logger.info("[{}] Transfer task {} is still active", tenantId, uuid);
 					getDbService().updateStatus(tenantId, uuid, CANCELLED_ERROR.name(), updateStatus -> {
-						logger.info("Got into getDBService.updateStatus(ERROR)");
+						logger.debug("Got into getDBService.updateStatus(ERROR)");
 						if (updateStatus.succeeded()){
 							logger.info("[{}] Transfer task {} updated to CANCELLED_ERROR.", tenantId, uuid);
 							//_doPublishEvent(MessageType.TRANSFERTASK_ERROR, updateStatus.result());

@@ -203,7 +203,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
 
   @Override
   public TransferTaskDatabaseService allChildrenCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
-    LOGGER.info("Got into db.allChildrenCancelledOrCompleted");
+    LOGGER.debug("Got into db.allChildrenCancelledOrCompleted");
     JsonArray data = new JsonArray()
             .add(uuid)
             .add(tenantId);

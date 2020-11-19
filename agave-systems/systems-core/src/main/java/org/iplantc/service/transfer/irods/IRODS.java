@@ -11,6 +11,7 @@ import org.codehaus.plexus.util.FileUtils;
 import org.ietf.jgss.GSSCredential;
 import org.iplantc.service.systems.exceptions.EncryptionException;
 import org.iplantc.service.transfer.*;
+import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.InvalidTransferException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
@@ -913,7 +914,7 @@ public class IRODS implements RemoteDataClient
 			    if (sourceFile.isDirectory())
 			    {
 			        try {
-						listener.started(org.codehaus.plexus.util.FileUtils.sizeOfDirectory(sourceFile), sourceFile.getAbsolutePath());
+    			        listener.started(org.codehaus.plexus.util.FileUtils.sizeOfDirectory(sourceFile), sourceFile.getAbsolutePath());
 
     			        mkdir(remotedir);
 

@@ -3,56 +3,37 @@
  */
 package org.iplantc.service.transfer.ftp;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.io.StringReader;
+import com.google.common.io.Files;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.codehaus.plexus.util.FileUtils;
+import org.globus.ftp.*;
+import org.globus.ftp.exception.*;
+import org.globus.ftp.vanilla.Command;
+import org.globus.ftp.vanilla.FTPControlChannel;
+import org.globus.ftp.vanilla.FTPServerFacade;
+import org.globus.ftp.vanilla.Reply;
+import org.globus.net.ServerSocketFactory;
+import org.iplantc.service.transfer.RemoteFileInfo;
+import org.iplantc.service.transfer.RemoteInputStream;
+import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.RemoteTransferListenerImpl;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
+import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.model.RemoteFilePermission;
+import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.enumerations.PermissionType;
+
+import java.io.*;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.codehaus.plexus.util.FileUtils;
-import org.globus.ftp.Buffer;
-import org.globus.ftp.DataSink;
-import org.globus.ftp.DataSource;
-import org.globus.ftp.FTPClient;
-import org.globus.ftp.FeatureList;
-import org.globus.ftp.FileRandomIO;
-import org.globus.ftp.HostPort;
-import org.globus.ftp.HostPort6;
-import org.globus.ftp.MlsxEntry;
-import org.globus.ftp.Session;
-import org.globus.ftp.exception.ClientException;
-import org.globus.ftp.exception.FTPException;
-import org.globus.ftp.exception.FTPReplyParseException;
-import org.globus.ftp.exception.ServerException;
-import org.globus.ftp.exception.UnexpectedReplyCodeException;
-import org.globus.ftp.vanilla.Command;
-import org.globus.ftp.vanilla.FTPControlChannel;
-import org.globus.ftp.vanilla.FTPServerFacade;
-import org.globus.ftp.vanilla.Reply;
-import org.globus.net.ServerSocketFactory;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.RemoteInputStream;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.exceptions.InvalidTransferException;
-import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.model.RemoteFilePermission;
-import org.iplantc.service.transfer.model.enumerations.PermissionType;
-
-import com.google.common.io.Files;
 
 /**
  * Class playing with alternative settings and multiple flavors of 
@@ -1856,8 +1837,12 @@ public class FTP2 extends FTP
 		File localFile = new File(localdir);
 		if (!localFile.exists()) {
 			throw new FileNotFoundException("No such file or directory");
-		} 
-		
+		}
+
+		if ((listener == null)) {
+			listener = new RemoteTransferListenerImpl(null);
+		}
+
 		try
 		{
 			if (!doesExist(remotedir)) {
@@ -1882,27 +1867,34 @@ public class FTP2 extends FTP
 				for (File child: localFile.listFiles())
 				{
 					String childRemotePath = adjustedRemoteDir + "/" + child.getName();
-					if (child.isDirectory()) 
-					{
+					TransferTask childTask = null;
+					RemoteTransferListener childRemoteTransferListener = null;
+					if (listener.getTransferTask() != null) {
+						TransferTask parentTask = listener.getTransferTask();
+						String srcPath = parentTask.getSource() +
+								(StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") +
+								child.getName();
+						childTask = listener.createAndPersistChildTransferTask(srcPath, childRemotePath);
+					}
+
+					childRemoteTransferListener = listener.createChildRemoteTransferListener(childTask);
+
+					if (child.isDirectory()) {
 						// local is a directory, remote is a file. delete remote file. we will replace with local directory
 						try {
 							if (isFile(childRemotePath)) {
 								delete(childRemotePath);
 							}
-						} catch (FileNotFoundException e) {}
-						
+						} catch (FileNotFoundException ignored) {}
+
 						// now create the remote directory
 						mkdir(childRemotePath);
-						
+
 						// sync the folder now that we've cleaned up
-						syncToRemote(child.getAbsolutePath(), adjustedRemoteDir, listener);
-					} 
-					else
-					{
-						syncToRemote(child.getAbsolutePath(), childRemotePath, listener);
+						syncToRemote(child.getAbsolutePath(), adjustedRemoteDir, childRemoteTransferListener);
+					} else {
+						syncToRemote(child.getAbsolutePath(), childRemotePath, childRemoteTransferListener);
 					}
-					
-					
 				}
 			} 
 			else 

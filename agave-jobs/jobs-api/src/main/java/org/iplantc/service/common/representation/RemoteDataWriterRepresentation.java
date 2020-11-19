@@ -16,7 +16,7 @@ import org.restlet.data.Request;
 import org.restlet.resource.WriterRepresentation;
 
 import java.io.*;
-import java.util.Date;
+import java.time.Instant;
 
 public class RemoteDataWriterRepresentation extends WriterRepresentation
 {
@@ -96,7 +96,7 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 				transferTask.setBytesTransferred(0);
 				transferTask.setAttempts(1);
 				transferTask.setStatus(TransferStatusType.TRANSFERRING);
-				transferTask.setStartTime(new Date());
+				transferTask.setStartTime(Instant.now());
 				TransferTaskDao.persist(transferTask);
 
 				while ((len = in.read(b, 0, bufferSize)) > -1) {
@@ -131,7 +131,7 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 				transferTask.setBytesTransferred(0);
 				transferTask.setAttempts(1);
 				transferTask.setStatus(TransferStatusType.TRANSFERRING);
-				transferTask.setStartTime(new Date());
+				transferTask.setStartTime(Instant.now());
 				TransferTaskDao.persist(transferTask);
 
 				// write a buffered number of bytes until all of the requested range of data is sent
@@ -185,7 +185,7 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 			try { in.close(); } catch (Exception e) {}
 			try { out.close(); } catch (Exception e) {}
 			try {
-				transferTask.setEndTime(new Date());
+				transferTask.setEndTime(Instant.now());
 				transferTask.setBytesTransferred(bytesSoFar);
 				TransferTaskDao.persist(transferTask);
 			} catch (Exception e) {}
@@ -224,7 +224,7 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 				transferTask.setBytesTransferred(0);
 				transferTask.setAttempts(1);
 				transferTask.setStatus(TransferStatusType.TRANSFERRING);
-				transferTask.setStartTime(new Date());
+				transferTask.setStartTime(Instant.now());
 				TransferTaskDao.persist(transferTask);
 
 				while ((len = in.read(b, 0, bufferSize)) > -1) {
@@ -259,7 +259,7 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 				transferTask.setBytesTransferred(0);
 				transferTask.setAttempts(1);
 				transferTask.setStatus(TransferStatusType.TRANSFERRING);
-				transferTask.setStartTime(new Date());
+				transferTask.setStartTime(Instant.now());
 				TransferTaskDao.persist(transferTask);
 
 				// write a buffered number of bytes until all of the requested range of data is sent
@@ -311,7 +311,7 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 			try { in.close(); } catch (Exception e) {}
 			
 			try {
-				transferTask.setEndTime(new Date());
+				transferTask.setEndTime(Instant.now());
 				transferTask.setBytesTransferred(bytesSoFar);
 				TransferTaskDao.persist(transferTask);
 			} catch (Exception e) {}

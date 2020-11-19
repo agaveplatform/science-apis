@@ -11,11 +11,10 @@ import org.codehaus.plexus.util.FileUtils;
 import org.ietf.jgss.GSSCredential;
 import org.iplantc.service.systems.exceptions.EncryptionException;
 import org.iplantc.service.transfer.*;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.InvalidTransferException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
-import org.iplantc.service.transfer.model.TransferTaskImpl;
+import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.iplantc.service.transfer.util.ServiceUtils;
 import org.irods.jargon.core.connection.*;
@@ -914,34 +913,30 @@ public class IRODS implements RemoteDataClient
 			    if (sourceFile.isDirectory())
 			    {
 			        try {
-    			        listener.started(org.codehaus.plexus.util.FileUtils.sizeOfDirectory(sourceFile), sourceFile.getAbsolutePath());
+						listener.started(org.codehaus.plexus.util.FileUtils.sizeOfDirectory(sourceFile), sourceFile.getAbsolutePath());
 
     			        mkdir(remotedir);
 
     			        for (File child: sourceFile.listFiles())
     			        {
     			            String childRemotePath = remotedir + "/" + child.getName();
-    	                    TransferTaskImpl childTask = null;
-    	                    if (listener.getTransferTask() != null) {
-    	                        TransferTaskImpl parentTask = listener.getTransferTask();
-    	                        String srcPath = parentTask.getSource() +
-    	                                (StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") +
-    	                                child.getName();
-    	                        childTask = new TransferTaskImpl(srcPath,
-    	                                                    resolvePath(childRemotePath),
-    	                                                    parentTask.getOwner(),
-    	                                                    parentTask.getRootTask(),
-    	                                                    parentTask);
-    	                        TransferTaskDao.persist(childTask);
-    	                    }
+							TransferTask childTask = null;
+							RemoteTransferListener childRemoteTransferListener = null;
+							if (listener.getTransferTask() != null) {
+								TransferTask parentTask = listener.getTransferTask();
+								String srcPath = parentTask.getSource() +
+										(StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") +
+										child.getName();
+								childTask = listener.createAndPersistChildTransferTask(srcPath, resolvePath(childRemotePath));
+							}
     	                    IRODSFile childFile = getFile(childRemotePath);
 
-    	                    RemoteTransferListener childListener = new RemoteTransferListenerImpl(childTask);
+							childRemoteTransferListener = listener.createChildRemoteTransferListener(childTask);
 
     	                    TransferControlBlock transferControlBlock = getTransferControlBlock();
-    	                    getDataTransferOperations().putOperation(child, childFile, childListener, transferControlBlock);
+    	                    getDataTransferOperations().putOperation(child, childFile, childRemoteTransferListener, transferControlBlock);
 
-	                        TransferStatus statusCallback = childListener.getOverallStatusCallback();
+	                        TransferStatus statusCallback = childRemoteTransferListener.getOverallStatusCallback();
 	                        if (statusCallback != null && statusCallback.getTransferException() != null) {
                                 throw statusCallback.getTransferException();
                             }

@@ -1,79 +1,53 @@
 package org.iplantc.service.transfer.s3;
 
-import static org.jclouds.Constants.PROPERTY_RELAX_HOSTNAME;
-import static org.jclouds.Constants.PROPERTY_TRUST_ALL_CERTS;
-import static org.jclouds.blobstore.options.PutOptions.Builder.multipart;
-import static org.jclouds.io.Payloads.newByteArrayPayload;
-import static org.jclouds.s3.reference.S3Constants.PROPERTY_S3_SERVICE_PATH;
-import static org.jclouds.s3.reference.S3Constants.PROPERTY_S3_VIRTUAL_HOST_BUCKETS;
-
-import java.io.*;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.Charset;
-import java.nio.file.DirectoryIteratorException;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-
-import javax.activation.MimeType;
-import javax.activation.MimetypesFileTypeMap;
-import javax.ws.rs.core.EntityTag;
-
-import com.google.common.collect.ImmutableMap;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.RemoteInputStream;
-import org.iplantc.service.transfer.RemoteOutputStream;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.exceptions.InvalidTransferException;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.model.RemoteFilePermission;
-import org.iplantc.service.transfer.model.enumerations.PermissionType;
-import org.jclouds.ContextBuilder;
-//import org.jclouds.aws.s3.AWSS3AsyncClient;
-import org.jclouds.atmos.domain.UserMetadata;
-import org.jclouds.aws.s3.AWSS3Client;
-//import org.jclouds.aws.s3.blobstore.AWSS3BlobStore;
-import org.jclouds.azureblob.AzureBlobClient;
-import org.jclouds.blobstore.BlobStoreContext;
-import org.jclouds.blobstore.ContainerNotFoundException;
-import org.jclouds.blobstore.domain.Blob;
-import org.jclouds.blobstore.domain.BlobMetadata;
-import org.jclouds.blobstore.domain.ContainerAccess;
-import org.jclouds.blobstore.domain.PageSet;
-import org.jclouds.blobstore.domain.StorageMetadata;
-import org.jclouds.blobstore.domain.StorageType;
-import org.jclouds.blobstore.options.CopyOptions;
-import org.jclouds.blobstore.options.ListContainerOptions;
-import org.jclouds.http.HttpException;
-import org.jclouds.http.options.GetOptions;
-import org.jclouds.io.ContentMetadata;
-import org.jclouds.io.Payload;
-import org.jclouds.io.payloads.ByteSourcePayload;
-import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
-//import org.jclouds.rest.RestContext;
-//import org.jclouds.s3.S3AsyncClient;
-import org.jclouds.s3.S3ApiMetadata;
-import org.jclouds.s3.S3Client;
-import org.jclouds.s3.blobstore.S3BlobStore;
-
 import com.google.common.collect.ImmutableSet;
 import com.google.common.hash.HashCode;
 import com.google.common.io.ByteSource;
 import com.google.common.io.Files;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.inject.Module;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.iplantc.service.transfer.*;
+import org.iplantc.service.transfer.exceptions.InvalidTransferException;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.model.RemoteFilePermission;
+import org.iplantc.service.transfer.model.enumerations.PermissionType;
+import org.jclouds.ContextBuilder;
+import org.jclouds.blobstore.BlobStoreContext;
+import org.jclouds.blobstore.ContainerNotFoundException;
+import org.jclouds.blobstore.domain.Blob;
+import org.jclouds.blobstore.domain.BlobMetadata;
+import org.jclouds.blobstore.domain.PageSet;
+import org.jclouds.blobstore.domain.StorageMetadata;
+import org.jclouds.blobstore.options.CopyOptions;
+import org.jclouds.blobstore.options.ListContainerOptions;
+import org.jclouds.http.HttpException;
+import org.jclouds.io.Payload;
+import org.jclouds.io.payloads.ByteSourcePayload;
+import org.jclouds.logging.slf4j.config.SLF4JLoggingModule;
+import org.jclouds.s3.blobstore.S3BlobStore;
+
+import javax.activation.MimetypesFileTypeMap;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.jclouds.Constants.PROPERTY_RELAX_HOSTNAME;
+import static org.jclouds.Constants.PROPERTY_TRUST_ALL_CERTS;
+import static org.jclouds.blobstore.options.PutOptions.Builder.multipart;
+import static org.jclouds.s3.reference.S3Constants.PROPERTY_S3_SERVICE_PATH;
+import static org.jclouds.s3.reference.S3Constants.PROPERTY_S3_VIRTUAL_HOST_BUCKETS;
 
 public class S3Jcloud implements RemoteDataClient
 {
@@ -694,6 +668,7 @@ public class S3Jcloud implements RemoteDataClient
 						} 
 						else 
 						{
+							// should probably spawn new child listeners before doing this
 							if (listener != null) {
 								listener.started(blob.getMetadata().getContentMetadata().getContentLength(), remoteChild);
 							}
@@ -705,7 +680,6 @@ public class S3Jcloud implements RemoteDataClient
 							if (listener != null) {
 								listener.progressed(localFile.length());
 							}
-							
 						}
 					}
 					else
@@ -751,7 +725,6 @@ public class S3Jcloud implements RemoteDataClient
 						listener.progressed(localDir.length());
 						listener.completed();
 					}
-					
 				}
 			}
 		} 

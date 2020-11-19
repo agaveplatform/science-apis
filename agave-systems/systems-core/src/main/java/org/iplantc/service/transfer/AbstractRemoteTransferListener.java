@@ -53,7 +53,7 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
         TransferTask task = getTransferTask();
         if (task != null)
         {
-            task.setStatus(TransferStatusType.COMPLETED.name());
+            task.setStatusString(TransferStatusType.COMPLETED.name());
             task.setStartTime(Instant.now());
             task.setEndTime(Instant.now());
             task.setTotalSize(totalSize);
@@ -83,7 +83,7 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
                 log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task " + transferTask.getUuid() + ".\n" + transferStatus.toString());
 
             if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_INITIATION)) {
-                task.setStatus(TransferStatusType.TRANSFERRING.name());
+                task.setStatusString(TransferStatusType.TRANSFERRING.name());
                 task.setStartTime(Instant.now());
                 task.setAttempts(task.getAttempts() + 1);
                 if (task.getTotalSize() == 0) {
@@ -92,7 +92,7 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
                     task.setTotalSize(task.getTotalSize() + transferStatus.getTotalSize());
                 }
             } else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_COMPLETION)) {
-                task.setStatus(TransferStatusType.COMPLETED.name());
+                task.setStatusString(TransferStatusType.COMPLETED.name());
                 task.setEndTime(Instant.now());
             }
 
@@ -125,32 +125,32 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
                 log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task " + transferTask.getUuid() + ".\n" + transferStatus.toString());
 
             if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_INITIATION)) {
-                task.setStatus(TransferStatusType.TRANSFERRING.name());
+                task.setStatusString(TransferStatusType.TRANSFERRING.name());
                 task.setStartTime(Instant.now());
                 task.setTotalSize(task.getTotalSize() + transferStatus.getTotalSize());
             } else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.IN_PROGRESS_START_FILE)) {
-                task.setStatus(TransferStatusType.TRANSFERRING.name());
+                task.setStatusString(TransferStatusType.TRANSFERRING.name());
                 task.setStartTime(Instant.now());
                 task.setTotalSize(task.getTotalSize() + transferStatus.getTotalSize());
                 task.setTotalFiles(task.getTotalFiles() + 1);
             } else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.CANCELLED)) {
-                task.setStatus(TransferStatusType.CANCELLED.name());
+                task.setStatusString(TransferStatusType.CANCELLED.name());
                 task.setEndTime(Instant.now());
             } else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.FAILURE) ||
                     transferStatus.getTransferException() != null) {
-                task.setStatus(TransferStatusType.FAILED.name());
+                task.setStatusString(TransferStatusType.FAILED.name());
                 task.setEndTime(Instant.now());
                 task.setBytesTransferred(task.getBytesTransferred() + transferStatus.getBytesTransfered());
             } else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.PAUSED)) {
-                task.setStatus(TransferStatusType.PAUSED.name());
+                task.setStatusString(TransferStatusType.PAUSED.name());
             } else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_COMPLETION) ||
                     transferStatus.getTransferState().equals(TransferStatus.TransferState.SUCCESS)) {
-                task.setStatus(TransferStatusType.COMPLETED.name());
+                task.setStatusString(TransferStatusType.COMPLETED.name());
                 task.setEndTime(Instant.now());
                 task.setBytesTransferred(task.getBytesTransferred() + transferStatus.getBytesTransfered());
             } else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.RESTARTING)) {
                 task.setAttempts(task.getAttempts() + 1);
-                task.setStatus(TransferStatusType.RETRYING.name());
+                task.setStatusString(TransferStatusType.RETRYING.name());
                 task.setEndTime(null);
                 task.setStartTime(Instant.now());
             } else if (transferStatus.getTransferState().equals(TransferStatus.TransferState.IN_PROGRESS_COMPLETE_FILE)) {
@@ -195,7 +195,7 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
                 log.debug("Transfer started callback received for task " + task.getUuid() + ".\n" + remoteFile + " => " + bytesTotal);
 
             task.setTotalFiles(task.getTotalFiles() + 1);
-            task.setStatus(TransferStatusType.TRANSFERRING.name());
+            task.setStatusString(TransferStatusType.TRANSFERRING.name());
             task.setStartTime(Instant.now());
 
             if (remoteFile.equals(firstRemoteFilepath)) {
@@ -255,7 +255,7 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
             if (log.isDebugEnabled())
                 log.debug("Transfer progress callback received for task " + task.getUuid() + ".\n" + task.getSource());
 
-            task.setStatus(TransferStatusType.CANCELLED.name());
+            task.setStatusString(TransferStatusType.CANCELLED.name());
             task.setEndTime(Instant.now());
             task.updateTransferRate();
             setTransferTask(task);
@@ -284,7 +284,7 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
             if (log.isDebugEnabled())
                 log.debug("Transfer completed callback received for task " + task.getUuid() + ".\n" + task.getSource());
 
-            task.setStatus(TransferStatusType.COMPLETED.name());
+            task.setStatusString(TransferStatusType.COMPLETED.name());
             task.setEndTime(Instant.now());
             task.updateTransferRate();
             setTransferTask(task);
@@ -305,7 +305,7 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
             if (log.isDebugEnabled())
                 log.debug("Transfer failed callback received for task " + task.getUuid() + ".\n" + task.getSource());
 
-            task.setStatus(TransferStatusType.FAILED.name());
+            task.setStatusString(TransferStatusType.FAILED.name());
             task.setEndTime(Instant.now());
             setTransferTask(task);
         }
@@ -387,7 +387,7 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
             // if this is the first marker to arrive
             if (aggregateStripedDateTransferred == transferedBytes) {
                 task.setAttempts(1);
-                task.setStatus(TransferStatusType.TRANSFERRING.name());
+                task.setStatusString(TransferStatusType.TRANSFERRING.name());
             }
             task.setBytesTransferred(aggregateStripedDateTransferred);
             setTransferTask(task);

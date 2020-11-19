@@ -16,7 +16,7 @@ public interface TransferTask {
 
     void setOwner(String owner);
 
-    void setStatus(String status);
+    void setStatusString(String status);
 
     long getTotalFiles();
 

@@ -119,7 +119,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processError IOException and Status= QUEUED test")
-	@Disabled
+//	@Disabled
 	protected void processErrorIOE_test(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(3L);
@@ -164,7 +164,12 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 
 		txfrErrorListener.processError(body, resp -> ctx.verify(() -> {
-			verify(txfrErrorListener).taskIsNotInterrupted(eq(tt));
+//			JsonObject errorMessageBody = body.copy();
+//			errorMessageBody.remove("cause");
+//			errorMessageBody.remove("message");
+
+			// parentless child is not checked for interrupt before processing
+			verify(txfrErrorListener, times(0)).taskIsNotInterrupted(eq(tt));
 			assertTrue(resp.succeeded(), "Error handler should succeed when an IOException is received.");
 			assertTrue(resp.result(), "processError should succeed when the " +
 					"TransferErrorListener.processError is called for an IOException. It is already in the QUEUE");
@@ -177,7 +182,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processError IOException and Status= COMPLETED test")
-	@Disabled
+//	@Disabled
 	protected void processErrorCOMPLETED_test(Vertx vertx, VertxTestContext ctx) {
 
 		TransferTask tt = _createTestTransferTask();
@@ -187,7 +192,6 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		JsonObject body = tt.toJson();
 		body.put("cause", IOException.class.getName());
 		body.put("message", "Error Message");
-		//body.put("status", "COMPLETED");
 
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
 
@@ -234,7 +238,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processError InterruptedException and Status= FAILED test")
-	@Disabled
+//	@Disabled
 	protected void processErrorInterruptedException_FAILED_test(Vertx vertx, VertxTestContext ctx) {
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(2L);

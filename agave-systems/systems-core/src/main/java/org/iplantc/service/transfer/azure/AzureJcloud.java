@@ -391,16 +391,10 @@ public class AzureJcloud implements RemoteDataClient
 				}
 			}
 		} 
-		catch (FileNotFoundException e) {
+		catch (ContainerNotFoundException | FileNotFoundException e) {
 			throw new java.io.FileNotFoundException("No such file or directory");
 		}
-		catch (ContainerNotFoundException e) {
-			throw new java.io.FileNotFoundException("No such file or directory");
-		} 
-		catch (IOException e) {
-			throw e;
-		}
-		catch (RemoteDataException e) {
+		catch (RemoteDataException|IOException e) {
 			throw e;
 		}
 		catch (Exception e) {

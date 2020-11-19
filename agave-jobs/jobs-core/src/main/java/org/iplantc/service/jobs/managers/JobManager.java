@@ -60,6 +60,7 @@ import org.quartz.impl.StdSchedulerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.*;
 
 /**
@@ -631,7 +632,7 @@ public class JobManager {
                     rootTask.setStatus(TransferStatusType.FAILED);
                 }
 
-                rootTask.setEndTime(new DateTime().toDate());
+                rootTask.setEndTime(Instant.now());
 
                 TransferTaskDao.persist(rootTask);
             } catch (Exception ignored) {
@@ -653,9 +654,7 @@ public class JobManager {
             skipCleanup = true;
             log.error(e);
             throw e;
-        } catch (SystemUnavailableException e) {
-            throw e;
-        } catch (JobException | SystemUnknownException e) {
+        } catch (SystemUnavailableException | JobException | SystemUnknownException e) {
             throw e;
         } catch (Exception e) {
             throw new JobException("Failed to archive data due to internal failure.", e);
@@ -712,9 +711,7 @@ public class JobManager {
 
         JsonNode originalJobJson = new ObjectMapper().readTree(originalJob.toJSON());
 
-        Job newJob = processor.processJob(originalJobJson);
-
-        return newJob;
+        return processor.processJob(originalJobJson);
     }
 
     /**

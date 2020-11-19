@@ -285,7 +285,7 @@ public class TransferTaskImpl implements TransferTask {
 	/**
 	 * @param status the status to set
 	 */
-	public void setStatus(String status)
+	public void setStatusString(String status)
 	{
 		this.status = TransferStatusType.valueOf(status);
 	}

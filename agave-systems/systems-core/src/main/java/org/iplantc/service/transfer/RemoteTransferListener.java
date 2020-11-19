@@ -50,12 +50,32 @@ public interface RemoteTransferListener extends MarkerListener, TransferStatusCa
      * Creates a new child transfer task at the given source and destination paths with
      * this listener's {@link #getTransferTask()} as the parent.
      *
-     * @param sourcePath the source of the child {@link TransferTask}
-     * @param destPath the dest of the child {@link TransferTask}
+     * @param childSourcePath the source of the child {@link TransferTask}
+     * @param childDestPath the dest of the child {@link TransferTask}
      * @return the persisted {@link TransferTask}
-     * @throws TransferException if the cild transfer task cannot be saved
+     * @throws TransferException if the child transfer task cannot be saved
      */
-    public TransferTask createAndPersistChildTransferTask(String sourcePath, String destPath) throws TransferException;
+    public TransferTask createAndPersistChildTransferTask(String childSourcePath, String childDestPath) throws TransferException;
+
+
+    /**
+     * Creates a new concrete {@link RemoteTransferListener} using the context of current object and the
+     * paths of the child.
+     * * @param childSourcePath the source of the child {@link TransferTask}
+     * @param childDestPath the dest of the child {@link TransferTask}
+     * @return the persisted {@link RemoteTransferListener}
+     * @throws TransferException if the child remote transfer task listener cannot be saved
+     */
+    public RemoteTransferListener createChildRemoteTransferListener(String childSourcePath, String childDestPath) throws TransferException;
+
+    /**
+     * Creates a new concrete {@link RemoteTransferListener} using the context of current object and the
+     * child {@link TransferTask}.
+     *
+     * @param childTransferTask the the child {@link TransferTask}
+     * @return the persisted {@link RemoteTransferListener}
+     */
+    public RemoteTransferListener createChildRemoteTransferListener(TransferTask childTransferTask);
 
     /**
      * Returns true if the transfer has been cancelled.

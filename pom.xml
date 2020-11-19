@@ -352,8 +352,8 @@
                     <configuration>
                         <argLine>--illegal-access=permit </argLine>
                         <skipTests>${skip.unit.tests}</skipTests>
-                        <groups>unit</groups>
-                        <excludedGroups>broken,notReady</excludedGroups>
+<!--                        <groups>unit</groups>-->
+<!--                        <excludedGroups>broken,notReady</excludedGroups>-->
                         <systemPropertyVariables>
                             <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
                             </log4j.configuration>
@@ -575,15 +575,15 @@
     <!--                   Global Dependencies                        -->
     <!--                                                              -->
     <!-- Only add dependencies here that are used by EVERY submodule. -->
-    <dependencies>
-        <dependency>
-            <!-- There are non-test compile dependencies on testng -->
-            <groupId>org.testng</groupId>
-            <artifactId>testng</artifactId>
-            <version>${testng.version}</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+<!--    <dependencies>-->
+<!--        <dependency>-->
+<!--            &lt;!&ndash; There are non-test compile dependencies on testng &ndash;&gt;-->
+<!--            <groupId>org.testng</groupId>-->
+<!--            <artifactId>testng</artifactId>-->
+<!--            <version>${testng.version}</version>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
+<!--    </dependencies>-->
 
     <modules>
         <module>agave-migrations</module>
@@ -625,7 +625,7 @@
 
                 <skip.unit.tests>false</skip.unit.tests>
 
-                <slack.webhook.url></slack.webhook.url>
+                <slack.webhook.url>https://hooks.slack.com/services/SLACK_INCOMING_WEBHOOK</slack.webhook.url>
                 <foundation.smtp.token></foundation.smtp.token>
             </properties>
         </profile>

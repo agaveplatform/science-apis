@@ -684,7 +684,7 @@ public class URLCopy{
 
             long totalSize = sourceClient.length(srcPath);
 
-            listener.getTransferTask().setStatus(STREAM_COPY_STARTED.name());
+            listener.getTransferTask().setStatusString(STREAM_COPY_STARTED.name());
             _doPublishEvent(STREAM_COPY_STARTED.name(), ((TransferTask)listener.getTransferTask()).toJson());
 
             // Buffer the input stream only if it's not already buffered.
@@ -949,7 +949,7 @@ public class URLCopy{
                     getProtocolForClass(sourceClient.getClass()),
                     getProtocolForClass(destClient.getClass())));
 
-            listener.getTransferTask().setStatus(STREAM_COPY_STARTED.name());
+            listener.getTransferTask().setStatusString(STREAM_COPY_STARTED.name());
             _doPublishEvent(STREAM_COPY_STARTED.name(), ((TransferTask)listener.getTransferTask()).toJson());
 
             if (sourceClient.isDirectory(srcPath)) {

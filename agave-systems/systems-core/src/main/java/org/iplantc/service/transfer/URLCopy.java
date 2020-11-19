@@ -15,15 +15,14 @@ import org.iplantc.service.transfer.exceptions.*;
 import org.iplantc.service.transfer.gridftp.GridFTP;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.Range;
-import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 
 import java.io.*;
 import java.net.URI;
 import java.nio.channels.ClosedByInterruptException;
+import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -202,14 +201,14 @@ public class URLCopy {
                         }
                     }
 
-                    transferTask = listener.getTransferTask();
+                    transferTask = (TransferTaskImpl)listener.getTransferTask();
 
                     if (transferTask != null) {
                         transferTask = TransferTaskDao.getById(transferTask.getId());
-                        transferTask.setEndTime(new Date());
+                        transferTask.setEndTime(Instant.now());
                         transferTask.setTotalSize(sourceClient.length(srcPath));
                         transferTask.setBytesTransferred(transferTask.getTotalSize());
-                        transferTask.setLastUpdated(new Date());
+                        transferTask.setLastUpdated(Instant.now());
                         transferTask.setStatus(TransferStatusType.COMPLETED);
                         TransferTaskDao.persist(transferTask);
                     }
@@ -295,7 +294,7 @@ public class URLCopy {
                         transferTask.setStatus(TransferStatusType.COMPLETED);
                     }
 
-                    transferTask.setEndTime(new Date());
+                    transferTask.setEndTime(Instant.now());
 
                     TransferTaskDao.persist(transferTask);
 //    				}
@@ -309,7 +308,7 @@ public class URLCopy {
                 // don't copy the redundant destPath or parent of destPath returned from unix style listings dir
                 // to avoid infinite loops and full file system copies.
                 if (List.of(".", "..").contains(FilenameUtils.getName(srcPath))) {
-                    return listener.getTransferTask();
+                    return (TransferTaskImpl)listener.getTransferTask();
                 }
 
                 // source and dest are the same host, so do a server-side copy
@@ -317,16 +316,18 @@ public class URLCopy {
 
                     sourceClient.copy(srcPath, destPath, listener);
 
-                    transferTask = listener.getTransferTask();
+                    transferTask = (TransferTaskImpl)listener.getTransferTask();
 
                     if (transferTask != null) {
                         transferTask = TransferTaskDao.getById(transferTask.getId());
-                        transferTask.setEndTime(new Date());
-                        transferTask.setTotalSize(sourceClient.length(srcPath));
-                        transferTask.setBytesTransferred(transferTask.getTotalSize());
-                        transferTask.setLastUpdated(new Date());
-                        transferTask.setStatus(TransferStatusType.COMPLETED);
-                        TransferTaskDao.persist(transferTask);
+                        if (transferTask != null) {
+                            transferTask.setEndTime(Instant.now());
+                            transferTask.setTotalSize(sourceClient.length(srcPath));
+                            transferTask.setBytesTransferred(transferTask.getTotalSize());
+                            transferTask.setLastUpdated(Instant.now());
+                            transferTask.setStatus(TransferStatusType.COMPLETED);
+                            TransferTaskDao.persist(transferTask);
+                        }
                     }
                 }
                 // delegate to third-party transfer if supported
@@ -366,7 +367,7 @@ public class URLCopy {
                             streamingTransfer(srcPath, destPath, listener);
                         }
 
-                        transferTask = listener.getTransferTask();
+                        transferTask = (TransferTaskImpl)listener.getTransferTask();
 
                         if (transferTask != null) {
                             if (isKilled()) {
@@ -375,7 +376,7 @@ public class URLCopy {
                                 transferTask.setStatus(TransferStatusType.COMPLETED);
                             }
 
-                            transferTask.setEndTime(new Date());
+                            transferTask.setEndTime(Instant.now());
 
                             TransferTaskDao.persist(transferTask);
                         }
@@ -393,7 +394,7 @@ public class URLCopy {
                     }
                 }
 
-                return listener.getTransferTask();
+                return (TransferTaskImpl)listener.getTransferTask();
             }
         } finally {
             try {
@@ -477,7 +478,7 @@ public class URLCopy {
                     sourceClient.get(srcPath, tmpFile.getPath(),
                             srcChildRemoteTransferListener);
 
-                    srcChildTransferTask = srcChildRemoteTransferListener.getTransferTask();
+                    srcChildTransferTask = (TransferTaskImpl)srcChildRemoteTransferListener.getTransferTask();
 
                     aggregateTransferTask.updateSummaryStats(srcChildTransferTask);
 
@@ -487,7 +488,7 @@ public class URLCopy {
                         srcChildTransferTask.setStatus(TransferStatusType.COMPLETED);
                     }
 
-                    srcChildTransferTask.setEndTime(new Date());
+                    srcChildTransferTask.setEndTime(Instant.now());
 
                     TransferTaskDao.updateProgress(srcChildTransferTask);
 
@@ -497,11 +498,9 @@ public class URLCopy {
                 } catch (RemoteDataException e) {
 
                     try {
-                        if (srcChildTransferTask != null) {
-                            srcChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            srcChildTransferTask.setEndTime(new Date());
-                            TransferTaskDao.updateProgress(srcChildTransferTask);
-                        }
+                        srcChildTransferTask.setStatus(TransferStatusType.FAILED);
+                        srcChildTransferTask.setEndTime(Instant.now());
+                        TransferTaskDao.updateProgress(srcChildTransferTask);
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay source child task to failed.", t);
                     }
@@ -518,7 +517,7 @@ public class URLCopy {
                     try {
                         if (srcChildTransferTask != null) {
                             srcChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            srcChildTransferTask.setEndTime(new Date());
+                            srcChildTransferTask.setEndTime(Instant.now());
                             TransferTaskDao.updateProgress(srcChildTransferTask);
                         }
                     } catch (Throwable t) {
@@ -561,7 +560,7 @@ public class URLCopy {
                     destClient.put(tmpFile.getPath(), destPath,
                             destChildRemoteTransferListener);
 
-                    destChildTransferTask = destChildRemoteTransferListener.getTransferTask();
+                    destChildTransferTask = (TransferTaskImpl)destChildRemoteTransferListener.getTransferTask();
 
                     aggregateTransferTask.updateSummaryStats(destChildTransferTask);
 
@@ -571,17 +570,15 @@ public class URLCopy {
                         destChildTransferTask.setStatus(TransferStatusType.COMPLETED);
                     }
 
-                    destChildTransferTask.setEndTime(new Date());
+                    destChildTransferTask.setEndTime(Instant.now());
 
                     TransferTaskDao.updateProgress(destChildTransferTask);
 
                 } catch (RemoteDataException e) {
                     try {
-                        if (destChildTransferTask != null) {
-                            destChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            destChildTransferTask.setEndTime(new Date());
-                            TransferTaskDao.updateProgress(destChildTransferTask);
-                        }
+                        destChildTransferTask.setStatus(TransferStatusType.FAILED);
+                        destChildTransferTask.setEndTime(Instant.now());
+                        TransferTaskDao.updateProgress(destChildTransferTask);
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay dest child task to failed.", t);
                     }
@@ -599,7 +596,7 @@ public class URLCopy {
                     try {
                         if (destChildTransferTask != null) {
                             destChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            destChildTransferTask.setEndTime(new Date());
+                            destChildTransferTask.setEndTime(Instant.now());
                             TransferTaskDao.updateProgress(destChildTransferTask);
                         }
                     } catch (Throwable t) {
@@ -665,7 +662,7 @@ public class URLCopy {
             throw e;
         } catch (RemoteDataException e) {
             try {
-                aggregateTransferTask.setEndTime(new Date());
+                aggregateTransferTask.setEndTime(Instant.now());
                 aggregateTransferTask.setStatus(TransferStatusType.FAILED);
                 TransferTaskDao.persist(aggregateTransferTask);
             } catch (TransferException e1) {
@@ -678,7 +675,7 @@ public class URLCopy {
             throw e;
         } catch (Exception e) {
             try {
-                aggregateTransferTask.setEndTime(new Date());
+                aggregateTransferTask.setEndTime(Instant.now());
                 aggregateTransferTask.setStatus(TransferStatusType.FAILED);
                 TransferTaskDao.persist(aggregateTransferTask);
             } catch (TransferException e1) {
@@ -749,7 +746,7 @@ public class URLCopy {
      * If the destPath is a directory, then the srcPath will be copied to a file with
      * the exact same name within the destPath directory. This keeps the behavior
      * identical to that of the {@link RemoteDataClient#put(String, String)} method
-     * used in the {@link #relayTransfer(String, String, TransferTask)} method.
+     * used in the {@link #relayTransfer(String, String, TransferTaskImpl)} method.
      * </p>
      *
      * @param srcPath agave source path of the file on the remote system
@@ -979,7 +976,7 @@ public class URLCopy {
                     }
                 }
 
-                return listener.getTransferTask();
+                return (TransferTaskImpl)listener.getTransferTask();
             }
         } finally {
             try {
@@ -1380,7 +1377,7 @@ public class URLCopy {
 //	            task.setBytesTransferred(0);
 //	            task.setAttempts(task.getAttempts() + 1);
 //	            task.setStatus(TransferStatusType.TRANSFERRING);
-//	            task.setStartTime(new Date());
+//	            task.setStartTime(Instant.now());
 //	            TransferTaskDao.persist(task);
 //	        }
 

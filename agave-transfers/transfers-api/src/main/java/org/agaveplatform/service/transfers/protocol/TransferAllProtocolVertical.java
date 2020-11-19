@@ -258,7 +258,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	}
 
 	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient){
-		return new URLCopy(srcClient, destClient, getVertx());
+		return new URLCopy(srcClient, destClient, getVertx(), getRetryRequestManager());
 	}
 
 	/**

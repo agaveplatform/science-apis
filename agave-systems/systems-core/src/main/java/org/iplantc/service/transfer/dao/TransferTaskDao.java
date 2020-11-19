@@ -23,6 +23,7 @@ import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.iplantc.service.transfer.util.ServiceUtils;
 
 import java.math.BigInteger;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -254,7 +255,7 @@ public class TransferTaskDao
 		try
 		{
 			Session session = getSession();
-			task.setLastUpdated(new Date());
+			task.setLastUpdated(Instant.now());
 			session.saveOrUpdate(task);
 			session.flush();
 		}
@@ -299,7 +300,7 @@ public class TransferTaskDao
 		try
 		{
 			Session session = getSession();
-			task.setLastUpdated(new Date());
+			task.setLastUpdated(Instant.now());
 			TransferTaskImpl mergedTask = (TransferTaskImpl)session.merge(task);
 			session.flush();
 			return mergedTask;
@@ -582,7 +583,7 @@ public class TransferTaskDao
 			
 			String hql = "from TransferTask as task where task.id = :rootid or task.rootTask.id = :rootid";
 
-			List<TransferTask> tasks = (List<TransferTask>) session.createQuery(hql)
+			List<TransferTaskImpl> tasks = (List<TransferTaskImpl>) session.createQuery(hql)
 					.setLong("rootid", task.getId())
 					.setCacheMode(CacheMode.IGNORE)
 					.setCacheable(false)
@@ -676,7 +677,7 @@ public class TransferTaskDao
 					.setLong("taskid", transferTask)
 					.setParameter("status", TransferStatusType.CANCELLED)
 					.setParameterList("statuses", TransferStatusType.getActiveStatusValues())
-					.setDate("instant", new Date())
+					.setTimestamp("instant", new Date())
 					.executeUpdate();
 			
 			session.flush();
@@ -921,9 +922,9 @@ public class TransferTaskDao
 			session.createSQLQuery(sql)
 					.setInteger("attempts", transferTask.getAttempts())
 					.setLong("bytestransferred", transferTask.getBytesTransferred())
-					.setTimestamp("end", transferTask.getEndTime())
-					.setTimestamp("lastupdated", transferTask.getLastUpdated())
-					.setTimestamp("start", transferTask.getStartTime())
+					.setTimestamp("end", Date.from(transferTask.getEndTime()))
+					.setTimestamp("lastupdated", Date.from(transferTask.getLastUpdated()))
+					.setTimestamp("start", Date.from(transferTask.getStartTime()))
 					.setString("status", TransferStatusType.TRANSFERRING.name())
 					.setLong("total", transferTask.getTotalSize())
 					.setDouble("rate", transferTask.getTransferRate())

@@ -1219,12 +1219,15 @@ public final class MaverickSFTP implements RemoteDataClient {
             throw new FileNotFoundException("No such file or directory");
         }
 
+        if ((listener == null)) {
+            listener = new RemoteTransferListenerImpl(null);
+        }
+
         try {
             // invalidate this now so the existence check isn't stale
             fileInfoCache.remove(resolvePath(remotedir));
             if (!doesExist(remotedir)) {
                 put(localdir, remotedir, listener);
-                return;
             } else if (localFile.isDirectory()) {
                 String adjustedRemoteDir = remotedir;
 
@@ -1240,13 +1243,16 @@ public final class MaverickSFTP implements RemoteDataClient {
                 for (File child : localFile.listFiles()) {
                     String childRemotePath = adjustedRemoteDir + "/" + child.getName();
                     TransferTask childTask = null;
-                    if (listener != null && listener.getTransferTask() != null) {
+                    RemoteTransferListener childRemoteTransferListener = null;
+                    if (listener.getTransferTask() != null) {
                         TransferTask parentTask = listener.getTransferTask();
                         String srcPath = parentTask.getSource() +
                                 (StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") +
                                 child.getName();
                         childTask = listener.createAndPersistChildTransferTask(srcPath, childRemotePath);
                     }
+
+                    childRemoteTransferListener = listener.createChildRemoteTransferListener(childTask);
 
                     if (child.isDirectory()) {
                         // local is a directory, remote is a file. delete remote file. we will replace with local directory
@@ -1260,9 +1266,9 @@ public final class MaverickSFTP implements RemoteDataClient {
                         mkdir(childRemotePath);
 
                         // sync the folder now that we've cleaned up
-                        syncToRemote(child.getAbsolutePath(), adjustedRemoteDir, childTask == null ? null : new RemoteTransferListenerImpl(childTask));
+                        syncToRemote(child.getAbsolutePath(), adjustedRemoteDir, childRemoteTransferListener);
                     } else {
-                        syncToRemote(child.getAbsolutePath(), childRemotePath, childTask == null ? null : new RemoteTransferListenerImpl(childTask));
+                        syncToRemote(child.getAbsolutePath(), childRemotePath, childRemoteTransferListener);
                     }
                 }
             } else {
@@ -1326,9 +1332,7 @@ public final class MaverickSFTP implements RemoteDataClient {
                     } else {
                         // manually update the listener since there will be no callback from the underlying
                         // client when we skip this transfer.
-                        if (listener != null) {
-                            listener.skipped(fileInfo.getSize(), resolvePath(remotedir));
-                        }
+                        listener.skipped(fileInfo.getSize(), resolvePath(remotedir));
                         log.debug("Skipping transfer of " + localFile.getPath() + " to " +
                                 remotedir + " because file is present and of equal size.");
                     }

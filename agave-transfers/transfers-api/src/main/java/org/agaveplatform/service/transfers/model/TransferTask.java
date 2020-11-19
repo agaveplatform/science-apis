@@ -387,7 +387,7 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	}
 
 	@Override
-	public void setStatus(String status) {
+	public void setStatusString(String status) {
 		this.setStatus(TransferStatusType.valueOf(status));
 	}
 

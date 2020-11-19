@@ -30,10 +30,9 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.RemoteTransferListenerImpl;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.*;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
-import org.iplantc.service.transfer.model.TransferTaskImpl;
+import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
 import java.io.*;
@@ -1324,6 +1323,10 @@ public final class SftpRelay implements RemoteDataClient {
             throw new FileNotFoundException("No such file or directory");
         }
 
+        if ((listener == null)) {
+            listener = new RemoteTransferListenerImpl(null);
+        }
+
         try {
             // invalidate this now so the existence check isn't stale
             fileInfoCache.remove(resolvePath(remotedir));
@@ -1344,19 +1347,17 @@ public final class SftpRelay implements RemoteDataClient {
 
                 for (File child : localFile.listFiles()) {
                     String childRemotePath = adjustedRemoteDir + "/" + child.getName();
-                    TransferTaskImpl childTask = null;
-                    if (listener != null && listener.getTransferTask() != null) {
-                        TransferTaskImpl parentTask = listener.getTransferTask();
+                    TransferTask childTask = null;
+                    RemoteTransferListener childRemoteTransferListener = null;
+                    if (listener.getTransferTask() != null) {
+                        TransferTask parentTask = listener.getTransferTask();
                         String srcPath = parentTask.getSource() +
                                 (StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") +
                                 child.getName();
-                        childTask = new TransferTaskImpl(srcPath,
-                                resolvePath(childRemotePath),
-                                parentTask.getOwner(),
-                                parentTask.getRootTask(),
-                                parentTask);
-                        TransferTaskDao.persist(childTask);
+                        childTask = listener.createAndPersistChildTransferTask(srcPath, resolvePath(childRemotePath));
                     }
+
+                    childRemoteTransferListener = listener.createChildRemoteTransferListener(childTask);
 
                     if (child.isDirectory()) {
                         // local is a directory, remote is a file. delete remote file. we will replace with local directory
@@ -1370,9 +1371,9 @@ public final class SftpRelay implements RemoteDataClient {
                         mkdir(childRemotePath);
 
                         // sync the folder now that we've cleaned up
-                        syncToRemote(child.getPath(), adjustedRemoteDir, childTask == null ? null : new RemoteTransferListenerImpl(childTask));
+                        syncToRemote(child.getPath(), adjustedRemoteDir, childRemoteTransferListener);
                     } else {
-                        syncToRemote(child.getPath(), childRemotePath, childTask == null ? null : new RemoteTransferListenerImpl(childTask));
+                        syncToRemote(child.getPath(), childRemotePath, childRemoteTransferListener);
                     }
                 }
             } else {

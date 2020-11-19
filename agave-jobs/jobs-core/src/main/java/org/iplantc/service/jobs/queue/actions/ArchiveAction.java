@@ -25,11 +25,11 @@ import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
-import org.joda.time.DateTime;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.nio.channels.ClosedByInterruptException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -256,11 +256,11 @@ public class ArchiveAction extends AbstractWorkerAction {
                     rootTask.setStatus(TransferStatusType.FAILED);
                 }
                 
-                rootTask.setEndTime(new DateTime().toDate());
+                rootTask.setEndTime(Instant.now());
                 
                 TransferTaskDao.persist(rootTask);
             }
-            catch (Exception e) {
+            catch (Exception ignored) {
                 
             }
             
@@ -294,12 +294,12 @@ public class ArchiveAction extends AbstractWorkerAction {
             // clean up the local archive file
             FileUtils.deleteQuietly(tempDir);
             try {
-                if (archiveDataClient.isPermissionMirroringRequired() && StringUtils.isEmpty(getJob().getInternalUsername())) {
+                if (archiveDataClient != null && archiveDataClient.isPermissionMirroringRequired() && StringUtils.isEmpty(getJob().getInternalUsername())) {
                     archiveDataClient.setOwnerPermission(getJob().getOwner(), getJob().getArchivePath(), true);
                 }
-            } catch (Exception e) {}
-            try { archiveDataClient.disconnect(); } catch (Exception e) {}
-            try { executionDataClient.disconnect(); } catch (Exception e) {}
+            } catch (Exception ignored) {}
+            try { if (archiveDataClient != null) archiveDataClient.disconnect(); } catch (Exception ignored) {}
+            try { executionDataClient.disconnect(); } catch (Exception ignored) {}
         }
     }
 }

@@ -1,10 +1,5 @@
 package org.iplantc.service.transfer;
 
-import java.io.FileNotFoundException;
-import java.net.URI;
-import java.net.UnknownHostException;
-import java.util.Date;
-
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -14,7 +9,6 @@ import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uri.AgaveUriRegex;
 import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.AuthConfigException;
 import org.iplantc.service.systems.exceptions.EncryptionException;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
@@ -32,7 +26,13 @@ import org.iplantc.service.transfer.irods4.IRODS4;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.s3.S3Jcloud;
 import org.iplantc.service.transfer.sftp.MaverickSFTP;
+import org.iplantc.service.transfer.sftp.SftpRelay;
 import org.irods.jargon.core.connection.AuthScheme;
+
+import java.io.FileNotFoundException;
+import java.net.URI;
+import java.net.UnknownHostException;
+import java.util.Date;
 
 public class RemoteDataClientFactory {
     
@@ -99,11 +99,11 @@ public class RemoteDataClientFactory {
 						if (system.getStorageConfig().getProxyServer() == null) 
 						{
 							if (userAuthConfig.getType().equals(AuthConfigType.SSHKEYS)) {
-								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+								return new SftpRelay(host, port, username, password, rootDir, homeDir,
 										userAuthConfig.getClearTextPublicKey(salt),
 										userAuthConfig.getClearTextPrivateKey(salt));
 							} else {
-								return new MaverickSFTP(host, port, username, password, rootDir, homeDir);
+								return new SftpRelay(host, port, username, password, rootDir, homeDir);
 							}
 						} 
 						else 

@@ -956,22 +956,23 @@ public class IRODS4 implements RemoteDataClient
     			        for (File child: sourceFile.listFiles())
     			        {
     			            String childRemotePath = remotedir + "/" + child.getName();
-    	                    TransferTask childTask = null;
-    	                    if (listener.getTransferTask() != null) {
+							TransferTask childTask = null;
+							RemoteTransferListener childRemoteTransferListener = null;
+							if (listener.getTransferTask() != null) {
 								TransferTask parentTask = listener.getTransferTask();
 								String srcPath = parentTask.getSource() +
 										(StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") +
 										child.getName();
-								childTask = listener.createAndPersistChildTransferTask(srcPath, childRemotePath);
-    	                    }
+								childTask = listener.createAndPersistChildTransferTask(srcPath, resolvePath(childRemotePath));
+							}
     	                    IRODSFile childFile = getFile(childRemotePath);
 
-    	                    RemoteTransferListener childListener = new RemoteTransferListenerImpl(childTask);
+							childRemoteTransferListener = listener.createChildRemoteTransferListener(childTask);
 
     	                    TransferControlBlock transferControlBlock = getTransferControlBlock();
-    	                    getDataTransferOperations().putOperation(child, childFile, childListener, transferControlBlock);
+    	                    getDataTransferOperations().putOperation(child, childFile, childRemoteTransferListener, transferControlBlock);
 
-	                        TransferStatus statusCallback = childListener.getOverallStatusCallback();
+	                        TransferStatus statusCallback = childRemoteTransferListener.getOverallStatusCallback();
 	                        if (statusCallback != null && statusCallback.getTransferException() != null) {
                                 throw statusCallback.getTransferException();
                             }

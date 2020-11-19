@@ -6,6 +6,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.iplantc.service.transfer.AbstractRemoteTransferListener;
+import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.slf4j.Logger;
@@ -28,12 +29,6 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
      */
     private final Vertx vertx;
 
-//    public RemoteTransferListenerImpl(TransferTask transferTask, Vertx vertx) {
-//        super(transferTask);
-//        this.vertx = vertx;
-//        // retry request manager will be lazily initialized in this situation.
-//    }
-
     public RemoteTransferListenerImpl(TransferTask transferTask, RetryRequestManager retryRequestManager) {
         super(transferTask);
         this.retryRequestManager = retryRequestManager;
@@ -51,11 +46,6 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
      * @return a retry request manager.
      */
     protected RetryRequestManager getRetryRequestManager() {
-//        log.trace("Got into the getRetryRequestManager call");
-//        if (retryRequestManager == null) {
-//            log.trace("getRetryRequestManager check for null");
-//            retryRequestManager = new RetryRequestManager(getVertx());
-//        }
         return retryRequestManager;
     }
 
@@ -173,6 +163,33 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
             // otherwise, we can marshall the object back to a concrete implementation of the TransferTask and return
             return new org.agaveplatform.service.transfers.model.TransferTask(childTaskObject);
         }
+    }
+
+    /**
+     * Creates a new concrete {@link RemoteTransferListener} using the context of current object and the
+     * paths of the child.
+     *
+     * @param childSourcePath the source of the child {@link TransferTask}
+     * @param childDestPath   the dest of the child {@link TransferTask}
+     * @return the persisted {@link RemoteTransferListener}
+     * @throws TransferException if the child remote transfer task listener cannot be saved
+     */
+    @Override
+    public RemoteTransferListener createChildRemoteTransferListener(String childSourcePath, String childDestPath) throws TransferException {
+        TransferTask childTransferTask = createAndPersistChildTransferTask(childSourcePath, childDestPath);
+        return new RemoteTransferListenerImpl(childTransferTask, getVertx(), getRetryRequestManager());
+    }
+
+    /**
+     * Creates a new concrete {@link RemoteTransferListener} using the context of current object and the
+     * child {@link TransferTask}.
+     *
+     * @param childTransferTask the the child {@link TransferTask}
+     * @return the persisted {@link RemoteTransferListener}
+     */
+    @Override
+    public RemoteTransferListener createChildRemoteTransferListener(TransferTask childTransferTask) {
+        return new RemoteTransferListenerImpl(childTransferTask, getVertx(), getRetryRequestManager());
     }
 
     /**

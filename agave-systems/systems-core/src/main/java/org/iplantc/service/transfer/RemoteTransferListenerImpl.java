@@ -50,18 +50,18 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
 	 * @link RemoteDataClient} class and allows child {@link TransferTask}s to be created independent of the
 	 * concrete implementation. In this manner we get portability between legacy and new transfer packages.
 	 *
-	 * @param sourcePath the source of the child {@link TransferTask}
-	 * @param destPath the dest of the child {@link TransferTask}
+	 * @param childSourcePath the source of the child {@link TransferTask}
+	 * @param childDestPath the dest of the child {@link TransferTask}
 	 * @return the persisted {@link TransferTask}
 	 * @throws TransferException if the cild transfer task cannot be saved
 	 */
-	public TransferTask createAndPersistChildTransferTask(String sourcePath, String destPath) throws TransferException {
+	public TransferTask createAndPersistChildTransferTask(String childSourcePath, String childDestPath) throws TransferException {
 		String srcPath = getTransferTask().getSource() +
 				(StringUtils.endsWith(getTransferTask().getSource(), "/") ? "" : "/") +
-				sourcePath;
+				childSourcePath;
 		TransferTaskImpl parentTask = (TransferTaskImpl) getTransferTask();
 		TransferTaskImpl childTask = new TransferTaskImpl(srcPath,
-				destPath,
+				childDestPath,
 				parentTask.getOwner(),
 				parentTask.getRootTask(),
 				parentTask);
@@ -69,5 +69,32 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
 		TransferTaskDao.persist(childTask);
 
 		return childTask;
+	}
+
+	/**
+	 * Creates a new concrete {@link RemoteTransferListener} using the context of current object and the
+	 * paths of the child.
+	 *
+	 * @param childSourcePath the source of the child {@link TransferTask}
+	 * @param childDestPath   the dest of the child {@link TransferTask}
+	 * @return the persisted {@link RemoteTransferListener}
+	 * @throws TransferException if the child remote transfer task listener cannot be saved
+	 */
+	@Override
+	public RemoteTransferListener createChildRemoteTransferListener(String childSourcePath, String childDestPath) throws TransferException {
+		TransferTask childTransferTask = createAndPersistChildTransferTask(childSourcePath, childDestPath);
+		return new RemoteTransferListenerImpl(childTransferTask);
+	}
+
+	/**
+	 * Creates a new concrete {@link RemoteTransferListener} using the context of current object and the
+	 * child {@link TransferTask}.
+	 *
+	 * @param childTransferTask the the child {@link TransferTask}
+	 * @return the persisted {@link RemoteTransferListener}
+	 */
+	@Override
+	public RemoteTransferListener createChildRemoteTransferListener(TransferTask childTransferTask) {
+		return new RemoteTransferListenerImpl(childTransferTask);
 	}
 }

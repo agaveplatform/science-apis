@@ -12,10 +12,9 @@ import org.apache.log4j.lf5.util.StreamUtils;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.*;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
-import org.iplantc.service.transfer.model.TransferTaskImpl;
+import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.iplantc.service.transfer.util.MD5Checksum;
 
@@ -573,14 +572,17 @@ public class Local implements RemoteDataClient
 	    File localFile = new File(localdir);
         if (!localFile.exists()) {
             throw new FileNotFoundException("No such file or directory");
-        } 
-        
+        }
+
+        if ((listener == null)) {
+            listener = new RemoteTransferListenerImpl(null);
+        }
+
         try
         {
             // invalidate this now so the existence check isn't stale
             if (!doesExist(remotedir)) {
                 put(localdir, remotedir, listener);
-                return;
             }
             else if (localFile.isDirectory()) 
             {   
@@ -600,20 +602,18 @@ public class Local implements RemoteDataClient
                 for (File child: localFile.listFiles())
                 {
                     String childRemotePath = adjustedRemoteDir + "/" + child.getName();
-                    TransferTaskImpl childTask = null;
-                    if (listener != null && listener.getTransferTask() != null) {
-                        TransferTaskImpl parentTask = listener.getTransferTask();
-                        String srcPath = parentTask.getSource() + 
-                                (StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") + 
+                    TransferTask childTask = null;
+                    RemoteTransferListener childRemoteTransferListener = null;
+                    if (listener.getTransferTask() != null) {
+                        TransferTask parentTask = listener.getTransferTask();
+                        String srcPath = parentTask.getSource() +
+                                (StringUtils.endsWith(parentTask.getSource(), "/") ? "" : "/") +
                                 child.getName();
-                        childTask = new TransferTaskImpl(srcPath,
-                                                    resolvePath(childRemotePath), 
-                                                    parentTask.getOwner(), 
-                                                    parentTask.getRootTask(), 
-                                                    parentTask);
-                        TransferTaskDao.persist(childTask);
+                        childTask = listener.createAndPersistChildTransferTask(srcPath, resolvePath(childRemotePath));
                     }
-                    
+
+                    childRemoteTransferListener = listener.createChildRemoteTransferListener(childTask);
+
                     if (child.isDirectory()) 
                     {
                         // local is a directory, remote is a file. delete remote file. we will replace with local directory
@@ -621,17 +621,17 @@ public class Local implements RemoteDataClient
                             if (isFile(childRemotePath)) {
                                 delete(childRemotePath);
                             }
-                        } catch (FileNotFoundException e) {}
+                        } catch (FileNotFoundException ignored) {}
                         
                         // now create the remote directory
                         mkdir(childRemotePath);
                         
                         // sync the folder now that we've cleaned up
-                        syncToRemote(child.getAbsolutePath(), adjustedRemoteDir, new RemoteTransferListenerImpl(childTask));
+                        syncToRemote(child.getAbsolutePath(), adjustedRemoteDir, childRemoteTransferListener);
                     } 
                     else
                     {
-                        syncToRemote(child.getAbsolutePath(), childRemotePath, new RemoteTransferListenerImpl(childTask));
+                        syncToRemote(child.getAbsolutePath(), childRemotePath, childRemoteTransferListener);
                     }
                 }
             } 
@@ -674,17 +674,11 @@ public class Local implements RemoteDataClient
                 }
             }
         }
-        catch (RemoteDataException e) {
+        catch (IOException | RemoteDataException e) {
             throw e;
         }
-        catch (IOException e) {
-            throw e;
-        } 
         catch (Exception e) {
             throw new RemoteDataException("Failed to put data to " + remotedir, e);
-        }
-        finally {
-            //
         }
 	}
 

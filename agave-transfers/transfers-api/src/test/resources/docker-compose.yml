@@ -159,9 +159,7 @@ services:
       - '10080:80'
       - '10443:443'
     volumes:
-      - type: bind
-        source: ./transfer
-        target: /var/www/html/public
+      - ./transfer:/var/www/html/public
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.httpd.rule=Host(`httpd`)"

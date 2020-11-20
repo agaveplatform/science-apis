@@ -50,25 +50,32 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
 
     HashMap<SqlQuery, String> sqlQueries = loadSqlQueries();
 
-    JDBCClient dbClient = JDBCClient.createShared(getVertx(), new JsonObject()
-            .put("provider_class", "io.vertx.ext.jdbc.spi.impl.HikariCPDataSourceProvider")
-            .put("jdbcUrl", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:mysql://127.0.0.1:3306/agavecore")) //
-            .put("username", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_USERNAME))
-            .put("password", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_PASSWORD))
-            .put("useServerPrepStmts", true)
-            .put("useLocalSesessionState", true)
-            .put("useLocalTransactionState", true)
-            .put("rewriteBatchedStatements", true)
-            .put("cacheResultSetMetadata", true)
-            .put("cacheServerConfiguration", true)
-            .put("elideSetAutoComits", true)
-            .put("idleTimeout", 60000)
-            .put("connectionTimeout", 60000)
-            .put("maxLifetime", 60000)
-            .put("validationTimeout", 3000)
-            .put("leakDetectionThreshold", 5000)
-            .put("driverClassName", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "com.mysql.cj.jdbc.Driver"))
-            .put("maximumPoolSize", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)));
+    JDBCClient dbClient = null;
+    try {
+      dbClient = JDBCClient.createShared(getVertx(), new JsonObject()
+              .put("provider_class", "io.vertx.ext.jdbc.spi.impl.HikariCPDataSourceProvider")
+              .put("jdbcUrl", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_URL, "jdbc:mysql://127.0.0.1:3306/agavecore")) //
+              .put("username", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_USERNAME))
+              .put("password", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_PASSWORD))
+              .put("useServerPrepStmts", true)
+              .put("useLocalSesessionState", true)
+              .put("useLocalTransactionState", true)
+              .put("rewriteBatchedStatements", true)
+              .put("cacheResultSetMetadata", true)
+              .put("cacheServerConfiguration", true)
+              .put("elideSetAutoComits", true)
+              .put("idleTimeout", 60000)
+              .put("connectionTimeout", 60000)
+              .put("maxLifetime", 60000)
+              .put("validationTimeout", 3000)
+              .put("leakDetectionThreshold", 5000)
+              .put("driverClassName", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "com.mysql.cj.jdbc.Driver"))
+              .put("maximumPoolSize", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)));
+    }
+    catch (Throwable t) {
+      log.error("Failed to create shared database connection.", t);
+      throw t;
+    }
 
     TransferTaskDatabaseService.create(dbClient, sqlQueries, ready -> {
       if (ready.succeeded()) {

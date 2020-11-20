@@ -14,6 +14,7 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.assertj.core.api.SoftAssertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -95,7 +96,7 @@ public class TransferApiVerticalIT extends BaseTestCase {
     }
 
     @Test
-    //@Disabled
+    @Disabled
     @DisplayName("List web root says hello")
     void register(Vertx vertx, VertxTestContext ctx) {
         DeploymentOptions options = new DeploymentOptions().setConfig(config);

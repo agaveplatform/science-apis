@@ -39,6 +39,6 @@ services:
       MYSQL_USER: ${foundation.db.username}
       MYSQL_PASSWORD: ${foundation.db.password}
       MYSQL_DATABASE: ${foundation.db.database}
-    command: "./flyway migrate"
+    command: "/flyway/flyway migrate"
     networks:
       - ${project.artifactId}

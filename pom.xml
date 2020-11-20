@@ -461,8 +461,8 @@
                             --illegal-access=permit --add-modules=java.xml.bind
                         </argLine>
                         <skipTests>${skip.integration.tests}</skipTests>
-                        <groups>integration</groups>
-                        <excludedGroups>broken,notReady</excludedGroups>
+<!--                        <groups>integration</groups>-->
+<!--                        <excludedGroups>broken,notReady</excludedGroups>-->
                         <systemPropertyVariables>
                             <log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
                             </log4j.configuration>

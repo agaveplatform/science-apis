@@ -35,7 +35,7 @@ import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.C
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
 
 public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
-	private final Logger log = LoggerFactory.getLogger(TransferAllProtocolVertical.class);
+	private static final Logger log = LoggerFactory.getLogger(TransferAllProtocolVertical.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_ALL;
 	private TransferTaskDatabaseService dbService;
 
@@ -231,9 +231,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	protected TransferTask processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
 		log.debug("Got into TransferAllProtocolVertical.processCopyRequest ");
-
-		URI srcUri = URI.create(transferTask.getSource());
-		URI destUri = URI.create(transferTask.getDest());
+//
+//		URI srcUri = URI.create(transferTask.getSource());
+//		URI destUri = URI.create(transferTask.getDest());
 
 		log.debug("Got up to the urlCopy");
 
@@ -244,17 +244,18 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 			//log.info("Calling urlcopy");
 			URLCopy urlCopy = getUrlCopy(srcClient, destClient);
-			TransferTask tt = transferTask;
-			try {
-				log.debug("Calling urlCopy.copy");
-				tt = urlCopy.copy(transferTask, null);
 
+			log.debug("Calling urlCopy.copy");
+			return urlCopy.copy(transferTask, null);
 
-			} catch (Exception e) {
-				String msg = String.format("URLCopy error. %s", e.getMessage());
-				log.error(msg);
-			}
-		return transferTask;
+//			try {
+//
+//			} catch (Exception e) {
+//				String msg = String.format("URLCopy error. %s", e.getMessage());
+//				log.error(msg);
+//
+//			}
+//		return transferTask;
 	}
 
 	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient){

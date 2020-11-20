@@ -18,7 +18,7 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.agaveplatform.service.transfers.protocol.URLCopy;
+import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
@@ -38,7 +38,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_ALL;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -120,18 +119,18 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 			PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
 
 		RemoteSystem destSystem = getTestSystem(StorageProtocolType.SFTP);
-		RemoteSystem srcSystem = getTestSystem(StorageProtocolType.HTTP);
 		// save the system so it can be referenced in the transfer protocol vertical
 		SystemDao systemDao = new SystemDao();
 		systemDao.persist(destSystem);
 
 		RemoteDataClient destRemoteDataClient = destSystem.getRemoteDataClient();
-		RemoteDataClient srcRemoteDataClient = srcSystem.getRemoteDataClient();
-
 		// generate a uuid to use as the directory name to which the data will be copied.
 		String destAbsolutePath = destRemoteDataClient.resolvePath(UUID.randomUUID().toString());
-		URI srcUri = URI.create(String.format("http://%s/%s", srcSystem.getSystemId(), destAbsolutePath));
 		URI destUri = URI.create(String.format("agave://%s/%s", destSystem.getSystemId(), destAbsolutePath));
+
+		URI srcUri = URI.create(TRANSFER_SRC);
+		RemoteDataClient srcRemoteDataClient =
+				new RemoteDataClientFactory().getInstance(TEST_USERNAME, null, srcUri);
 
 		// pull in the mock for TransferAllProtocolVertical
 		TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);
@@ -139,23 +138,18 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 		when(txfrAllVert.getRemoteDataClient(anyString(), anyString(), any())).thenCallRealMethod();
 		when(txfrAllVert.getUrlCopy(any(), any())).thenCallRealMethod();
 
-
-		when(txfrAllVert.getUrlCopy(any(), any())).thenCallRealMethod();
-
 		// make the actual call to our method under test
 		when(txfrAllVert.processCopyRequest(any(), any(), any())).thenCallRealMethod();
-
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
 
-		TransferTask tt =  new TransferTask( TRANSFER_SRC,
+		TransferTask tt =  new TransferTask( srcUri.toString(),
 				destUri.toString(),
 				TEST_USER,
 				TENANT_ID,
 				null,
-				null
-		);
+				null);
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 //		JsonObject expectedUdpatedJsonObject =  tt.toJson()
@@ -173,10 +167,6 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(txfrAllVert.getDbService()).thenReturn(dbService);
-
-
-
-
 
 		// now actually call the mehtod under test
 		TransferTask ttResult = txfrAllVert.processCopyRequest(srcRemoteDataClient, destRemoteDataClient, tt);

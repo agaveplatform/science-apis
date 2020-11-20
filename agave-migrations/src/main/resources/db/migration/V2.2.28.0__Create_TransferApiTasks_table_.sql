@@ -20,7 +20,7 @@
 
 DROP TABLE IF EXISTS `TransferApiTasks`;
 
-CREATE or replace TABLE `TransferApiTasks` (
+CREATE TABLE `TransferApiTasks` (
     `id` bigint(20) NOT NULL AUTO_INCREMENT,
     `attempts` int(11) DEFAULT NULL,
     `bytes_transferred` bigint(20) NOT NULL DEFAULT 0,
@@ -49,5 +49,5 @@ CREATE or replace TABLE `TransferApiTasks` (
     UNIQUE KEY `uuid_tenant` (`uuid`,`tenant_id`),
     KEY `parent_task_tenant_id` (`parent_task`,`tenant_id`),
     KEY `root_task_tenant_id` (`root_task`,`tenant_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

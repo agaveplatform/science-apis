@@ -103,9 +103,6 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 					if (getByIdReply.result() != null) {
 						TransferTask errorTask = new TransferTask(getByIdReply.result());
 
-						// check to be sure if the root task and parent task are present
-						if (tt.getRootTaskId() != null && tt.getParentTaskId() != null) {
-
 							// check to see if the job was canceled so we don't retry an interrupted task
 							if (taskIsNotInterrupted(tt)) {
 								// see if the error in the event is recoverable or not
@@ -181,23 +178,6 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 									}
 								});
 							}
-						} else {
-							//if null, task is the parent/root
-							String msg = String.format("rootTaskId or parentTaskId are null %s   %s", tt.getParentTaskId(), tt.getRootTaskId());
-							log.error(msg);
-							//doHandleError(getByIdReply.cause(), msg, body, handler);
-							getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.name(), updateStatusResult -> {
-								if (updateStatusResult.succeeded()) {
-									_doPublishEvent(TRANSFER_RETRY, updateStatusResult.result());
-									handler.handle(Future.succeededFuture(true));
-								} else {
-									String updateErrorMsg = String.format("Error updating status of transfer task %s to ERROR. %s",
-											uuid, updateStatusResult.cause().getMessage());
-									// write to error queue. we can retry
-									doHandleError(updateStatusResult.cause(), updateErrorMsg, body, handler);
-								}
-							});
-						}
 					}else {
 						String msg = String.format("getByIdReply.result() was null %s ",
 								uuid);

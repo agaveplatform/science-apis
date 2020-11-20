@@ -49,14 +49,6 @@
 	</build>
 
 	<dependencies>
-
-		<!-- MongoDB -->
-		<dependency>
-			<groupId>org.mongodb</groupId>
-			<artifactId>mongo-java-driver</artifactId>
-			<version>${mongo-java-driver.version}</version>
-		</dependency>
-
 		<!-- JSON Schema Validator -->
 		<dependency>
 			<groupId>com.github.fge</groupId>

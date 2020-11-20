@@ -10,6 +10,7 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -63,9 +64,15 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
-		when(listener.getRetryRequestManager()).thenCallRealMethod();
+//		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
+
+		RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
+//		when(mockRetryRequestManager.getVertx()).thenReturn(vertx);
+		doNothing().when(mockRetryRequestManager).request(anyString(),any(JsonObject.class),anyInt());
+
+		when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
 
 		return listener;
 	}
@@ -175,7 +182,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns single file transfer task")
-	@Disabled
+	//@Disabled
 	public void processTransferTaskAssignsSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
@@ -242,15 +249,6 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				// listing should never be called when source is file
 				verify(srcRemoteDataClient, never()).ls(any());
 
-//				} else {
-//					// mkdir should only be called on directory items. this is a file.
-//					verify(destRemoteDataClient, times(1)).mkdirs(eq(destUri.getPath()));
-//					// listing should never be called when source is file
-//					verify(srcRemoteDataClient, times(1)).ls(any());
-//
-//					verify(dbService).createOrUpdateChildTransferTask(eq(rootTransferTask.getTenantId()), eq(rootTransferTask), any());
-//				}
-
 				// TRANSFER_ALL event should have been raised
 				verify(ta, times(1))._doPublishEvent(eq(TRANSFER_ALL), eq(updatedTransferTaskJson));
 				// no error event should have been raised
@@ -264,7 +262,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns empty directory transfer task")
-	@Disabled
+	//@Disabled
 	public void processTransferTaskAssignsEmptyDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
@@ -304,9 +302,6 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		// get mock remote data clients to mock the remote src system interactions
 		URI srcUri = URI.create(rootTransferTask.getSource());
 		RemoteDataClient srcRemoteDataClient = getMockRemoteDataClient(srcUri.getPath(), true, false);
-
-
-		doNothing().when(ta).getRetryRequestManager().request(any(), any(), any());
 
 		// get mock remote data clients to mock the remote dest system interactions
 		URI destUri = URI.create(rootTransferTask.getDest());
@@ -360,7 +355,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns populated directory transfer task")
-	@Disabled
+//	@Disabled
 	public void processTransferTaskAssignsPopulatedDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
@@ -562,8 +557,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 		ta.processTransferTask(rootTransferTaskJson, result -> {
 			ctx.verify(() -> {
-				assertTrue(result.succeeded(), "Task assignment should return true on successful processing.");
-				assertFalse(result.result(), "Callback result should be true after successful assignment.");
+				assertTrue(result.succeeded(), "Task assignment handler should have succeeded on interrupt during processing.");
+
+				assertFalse(result.result(), "Callback handler result should be true after successful assignment.");
 
 				// remote file info should be obtained once.
 				verify(srcRemoteDataClient, times(1)).getFileInfo(eq(srcUri.getPath()));

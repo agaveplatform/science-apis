@@ -133,7 +133,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         String source = body.getString("source");
 		String dest =  body.getString("dest");
         String username = body.getString("owner");
-        String tenantId = body.getString("tenant_id");
+        String tenantId = body.getString("tenantId");
         String protocol = null;
         TransferTask assignedTransferTask = new TransferTask(body);
 
@@ -189,26 +189,26 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                         if (srcFileInfo.isFile()) {
                             log.info("srcFileInfo is a file.");
                             // but first, we udpate the transfer task status to ASSIGNED
-                            _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson() );
+//                            _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson() );
 
-//                            getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
-//                                if (updateResult.succeeded()) {
-//                                    log.debug("Assigning single file transfer task {} directly to the transfer queue.", uuid);
-//                                    // write to the catchall transfer event channel. Nothing to update in the transfer task
-//                                    // as the status will be updated when the transfer begins.
-//                                    _doPublishEvent(TRANSFER_ALL, updateResult.result());
-//                                    log.info("Sending message to TRANSFER_ALL worked");
-//
-//                                    handler.handle(Future.succeededFuture(true));
-//                                }
-//                                // we couldn't update the transfer task value
-//                                else {
-//                                    String message = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
-//                                            uuid, updateResult.cause().getMessage());
-//
-//                                    doHandleFailure(updateResult.cause(), message, body, handler);
-//                                }
-//                            });
+                            getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
+                                if (updateResult.succeeded()) {
+                                    log.debug("Assigning single file transfer task {} directly to the transfer queue.", uuid);
+                                    // write to the catchall transfer event channel. Nothing to update in the transfer task
+                                    // as the status will be updated when the transfer begins.
+                                    _doPublishEvent(TRANSFER_ALL, updateResult.result());
+                                    log.info("Sending message to TRANSFER_ALL worked");
+
+                                    handler.handle(Future.succeededFuture(true));
+                                }
+                                // we couldn't update the transfer task value
+                                else {
+                                    String message = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
+                                            uuid, updateResult.cause().getMessage());
+
+                                    doHandleFailure(updateResult.cause(), message, body, handler);
+                                }
+                            });
                         }
                         // the path is a directory, so walk the first level of the directory, spawning new child transfer
                         // tasks for every file item found. folders will be put back on the created queue for further
@@ -382,7 +382,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             log.error(message);
             doHandleFailure(e, message, body, handler);
         }
-        catch (Exception e) {
+        catch (Throwable e) {
             String message = String.format("Caught a general exception. %s  %s", uuid, e.getMessage());
             log.error(message);
             doHandleError(e, e.getMessage(), body, handler);

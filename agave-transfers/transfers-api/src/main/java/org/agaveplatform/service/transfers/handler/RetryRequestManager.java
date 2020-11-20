@@ -1,13 +1,11 @@
 package org.agaveplatform.service.transfers.handler;
 
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +14,8 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANS
 public class RetryRequestManager {
     private static final Logger log = LoggerFactory.getLogger(RetryRequestManager.class);
     private Vertx vertx;
+
+    public RetryRequestManager() {}
 
     /**
      * Constructs a RetryRequest that will attempt to make a request to the event bus and, upon failure, retry the

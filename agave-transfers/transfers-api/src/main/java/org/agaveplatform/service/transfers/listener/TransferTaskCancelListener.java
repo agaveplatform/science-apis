@@ -158,11 +158,11 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
         String uuid = body.getString("uuid");
         String tenantId = body.getString("tenantId");
 
-        logger.info("getting into allChildren");
+        logger.trace("getting into allChildren");
         // if this task has children and all are cancelled or completed, then we can
         // mark this task as cancelled.
         getDbService().allChildrenCancelledOrCompleted(tenantId, uuid, allChildrenCancelledOrCompletedResp -> {
-            logger.info("check allChildren");
+            logger.trace("check allChildren");
             if (allChildrenCancelledOrCompletedResp.succeeded()) {
                 // update the status of the transfertask since the verticle handling it has
                 // reported back that it completed the cancel request since this tree is

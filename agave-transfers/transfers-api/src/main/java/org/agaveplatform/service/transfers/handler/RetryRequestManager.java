@@ -47,7 +47,7 @@ public class RetryRequestManager {
                  */
                 @Override
                 public void handle (AsyncResult < Message < JsonObject >> event) {
-                    log.debug("Got into the RetryReqestManager.handle method.");
+                    log.trace("Got into the RetryReqestManager.handle method.");
                 if (event.failed()) {
                     if (attempts < maxAttempts) {
                         log.error("Unable to send {} event for transfer task {} after {} attempts. No further attempts will be made.",

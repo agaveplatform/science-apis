@@ -277,7 +277,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     public abstract String getDefaultEventChannel();
 
     public RetryRequestManager getRetryRequestManager() {
-        logger.info("Got into the getRetryRequestManager call");
+        logger.trace("Got into the getRetryRequestManager call");
         if (retryRequestManager == null) {
             logger.info("getRetryRequestManager check for null");
             retryRequestManager = new RetryRequestManager(getVertx());

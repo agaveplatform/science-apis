@@ -49,7 +49,7 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 		getVertx().setPeriodic(10000, resp -> {
 			processEvent(batchResp -> {
 				if (batchResp.succeeded()) {
-					log.debug("Periodic transfer task watch starting");
+					log.trace("Periodic transfer task watch starting");
 				} else {
 					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
 				}
@@ -62,9 +62,9 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 	 * @return future with boolean result of the batch scheduling operation
 	 */
 	public void processEvent(Handler<AsyncResult<Boolean>> handler) {
-		log.debug("Got into TransferTaskWatchListener.processEvent ");
+		log.trace("Got into TransferTaskWatchListener.processEvent ");
 		try {
-			log.debug("Looking up active transfer tasks...");
+			log.trace("Looking up active transfer tasks...");
 			getDbService().getActiveRootTaskIds(reply -> {
 				if (reply.succeeded()) {
 					log.debug("Found {} active transfer tasks", reply.result().size());

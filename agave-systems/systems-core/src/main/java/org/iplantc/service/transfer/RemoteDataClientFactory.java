@@ -26,7 +26,6 @@ import org.iplantc.service.transfer.irods4.IRODS4;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.s3.S3Jcloud;
 import org.iplantc.service.transfer.sftp.MaverickSFTP;
-import org.iplantc.service.transfer.sftp.SftpRelay;
 import org.irods.jargon.core.connection.AuthScheme;
 
 import java.io.FileNotFoundException;
@@ -99,11 +98,11 @@ public class RemoteDataClientFactory {
 						if (system.getStorageConfig().getProxyServer() == null) 
 						{
 							if (userAuthConfig.getType().equals(AuthConfigType.SSHKEYS)) {
-								return new SftpRelay(host, port, username, password, rootDir, homeDir,
+								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
 										userAuthConfig.getClearTextPublicKey(salt),
 										userAuthConfig.getClearTextPrivateKey(salt));
 							} else {
-								return new SftpRelay(host, port, username, password, rootDir, homeDir);
+								return new MaverickSFTP(host, port, username, password, rootDir, homeDir);
 							}
 						} 
 						else 

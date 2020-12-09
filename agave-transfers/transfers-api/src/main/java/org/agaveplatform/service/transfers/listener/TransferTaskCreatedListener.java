@@ -196,7 +196,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
 
             // check to be sure that the root task or parent task are not null first
             //if (createdTransferTask.getRootTaskId() != null && createdTransferTask.getParentTaskId() != null) {
-                log.info("Got past the rootTaskID and parentTaskID");
+                log.trace("Got past the rootTaskID and parentTaskID");
                 // if there are values for root task and parent task then do the following
                 if (taskIsNotInterrupted(createdTransferTask)) {
                     // update dt DB status here

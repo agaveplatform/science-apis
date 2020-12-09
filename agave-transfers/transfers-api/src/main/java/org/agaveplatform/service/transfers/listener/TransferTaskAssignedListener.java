@@ -127,7 +127,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
     }
 
     protected void processTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
-        log.info("Got into TransferTaskAssignedListener.processTransferTask");
+        log.trace("Got into TransferTaskAssignedListener.processTransferTask");
         //Promise<Boolean> promise = Promise.promise();
         String uuid = body.getString("uuid");
         String source = body.getString("source");
@@ -160,9 +160,9 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
            // if (assignedTransferTask.getRootTaskId() != null && assignedTransferTask.getParentTaskId() != null) {
                 // check for task interruption
                 log.info("Check for task interruption TransferTaskAssignedListener.processTransferTask");
-                log.info("Root task {} Parent task {}", assignedTransferTask.getRootTaskId(), assignedTransferTask.getParentTaskId());
+                log.info("Root task {}, Parent task {}", assignedTransferTask.getRootTaskId(), assignedTransferTask.getParentTaskId());
                 if (taskIsNotInterrupted(assignedTransferTask)) {
-                    log.info("got past taskIsNotInterrupted");
+                    log.trace("got past taskIsNotInterrupted");
                     // basic sanity check on uri again
                     // basic sanity check on uri again
                     if (uriSchemeIsNotSupported(srcUri)) {
@@ -174,7 +174,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                 assignedTransferTask.getUuid(), assignedTransferTask.getDest());
                         throw new RemoteDataSyntaxException(msg);
                     } else {
-                        log.info("got into srcClient & destCleint");
+                        log.trace("got into srcClient & destCleint");
                         // get a remote data client for the source target
                         srcClient = getRemoteDataClient(tenantId, username, srcUri);
                         // get a remote data client for the dest target

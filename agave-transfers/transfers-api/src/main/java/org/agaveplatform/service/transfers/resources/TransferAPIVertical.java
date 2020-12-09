@@ -284,7 +284,11 @@ public class TransferAPIVertical extends AbstractVerticle {
                             user.isAdminRoleExists()) {
                         dbService.delete(tenantId, uuid, deleteReply -> {
                             if (deleteReply.succeeded()) {
-                                _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+
+                                //_doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                                //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELLED, deleteReply.result());
+
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
                                         .setStatusCode(203).end();
@@ -330,7 +334,10 @@ public class TransferAPIVertical extends AbstractVerticle {
                             user.isAdminRoleExists()) {
                         dbService.deleteAll(tenantId, deleteReply -> {
                             if (deleteReply.succeeded()) {
-                                _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                               // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                                //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELLED, deleteReply.result());
+
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
                                         .setStatusCode(203).end();

@@ -39,6 +39,9 @@ public interface MessageType {
     public static final String 	FILETRANSFER_SFTP = "filetransfer.sftp";
     public static final String 	TRANSFERTASK_DB_QUEUE = "transfertask.db.queue";
     public static final String 	TRANSFERTASK_DELETED = "transfertask.deleted";
+    public static final String 	TRANSFERTASK_DELETED_SYNC = "transfertask.deleted.sync";
+    public static final String 	TRANSFERTASK_DELETED_COMPLETED = "transfertask.deleted.completed";
+    public static final String 	TRANSFERTASK_DELETED_ACK = "transfertask.deleted.ack";
     public static final String 	TRANSFERTASK_UPDATED = "transfertask.updated";
     public static final String 	TRANSFERTASK_PROCESS_UNARY = "transfertask.process.unary";
     public static final String 	TRANSFER_STREAMING = "transfer.streaming";

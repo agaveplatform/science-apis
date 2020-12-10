@@ -56,7 +56,7 @@ public enum TransferStatusType implements ITransferStatus
 	public static List<TransferStatusType> getStopped() {
 		return List.of(CANCELLED, CANCELING_WAITING, CANCELLED_ERROR,
 				DELETED, DELETED_WAITING, DELETED_ERROR,
-				COMPLETED, COMPLETED_WITH_ERRORS, FAILED, ERROR);
+				COMPLETED_WITH_ERRORS, FAILED, ERROR);
 	}
 
 	/**

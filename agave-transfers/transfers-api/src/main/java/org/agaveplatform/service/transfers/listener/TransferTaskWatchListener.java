@@ -74,9 +74,9 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 									((JsonObject)jsonResult).getString("uuid"));
 							_doPublishEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult));
 						} catch (Throwable t) {
-							log.error("Failed to schedule health check for transfer task {}", jsonResult);
-						}
-					});
+								log.error("Failed to schedule health check for transfer task {}", jsonResult);
+							}
+						});
 					handler.handle(Future.succeededFuture(Boolean.TRUE));
 				} else {
 					log.error("Unable to retrieve list of active transfer tasks: {}", reply.cause().getMessage());

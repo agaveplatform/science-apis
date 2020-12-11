@@ -1,6 +1,7 @@
 {
   "transfertask.http.port": 8085,
   "transfertask.jwt.auth": true,
+  "TRANSFERTASK_JWT_VERIFY": false,
   "transfertask.jwt.private_key": "src/main/resources/private_key.pem",
   "transfertask.jwt.public_key": "src/main/resources/public_key.pem",
   "transfertask.jdbc.data_source": "org.mariadb.jdbc.MariaDbDataSource",

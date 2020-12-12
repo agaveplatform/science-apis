@@ -1,9 +1,12 @@
 package org.agaveplatform.service.transfers.protocol;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.enumerations.TransferTaskEventType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.io.FileUtils;
@@ -19,7 +22,7 @@ import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteDataClientFactory;
+import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.Settings;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.json.JSONException;
@@ -28,14 +31,10 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
-import org.testng.Assert;
-import org.testng.annotations.*;
-import org.testng.annotations.Test;
+import org.powermock.api.mockito.PowerMockito;
 
 import java.io.*;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
 
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -55,9 +54,14 @@ public class URLCopyUnaryTest extends BaseTestCase {
     protected StorageSystem destSystem;
     protected String credential;
     protected String salt;
+    protected String DEST_FILENAME = "test_upload.txt.copy";
+    protected boolean allowRelayTransfers;
 
-    @BeforeClass(alwaysRun = true)
+    @BeforeAll
     protected void beforeSubclass() {
+        allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
+        Settings.ALLOW_RELAY_TRANSFERS = true;
+
         JSONObject systemJson = getSystemJson(StorageProtocolType.SFTP);
         destSystem = StorageSystem.fromJSON(systemJson);
         destSystem.setOwner(SYSTEM_USER);
@@ -75,17 +79,16 @@ public class URLCopyUnaryTest extends BaseTestCase {
         }
     }
 
-    @BeforeMethod(alwaysRun = true)
-    protected void beforeMethod()  {
+    @BeforeEach
+    protected void beforeMethod() {
         FileUtils.deleteQuietly(new File(getLocalDownloadDir()));
         FileUtils.deleteQuietly(tmpFile);
     }
 
-    @AfterClass(alwaysRun = true)
+    @AfterAll
     protected void afterClass() throws Exception {
         try {
             FileUtils.deleteQuietly(new File(getLocalDownloadDir()));
-            FileUtils.deleteQuietly(tmpFile);
             FileUtils.deleteQuietly(tmpFile);
             clearSystems();
         } finally {
@@ -100,58 +103,86 @@ public class URLCopyUnaryTest extends BaseTestCase {
                 getClient().authenticate();
                 // remove test directory
                 getClient().delete("..");
-                Assert.assertFalse(getClient().doesExist(""), "Failed to clean up home directory after test.");
+                assertFalse(getClient().doesExist(""), "Failed to clean up home directory after test.");
             }
-            } catch (Exception e) {
-            Assert.fail("Failed to clean up test home directory " + getClient().resolvePath("") + " after test method.", e);
+        } catch (Exception e) {
+            fail("Failed to clean up test home directory " + getClient().resolvePath("") + " after test method.", e);
         } finally {
             try {
                 getClient().disconnect();
             } catch (Exception e) {
             }
         }
+
+        Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
     }
 
-    @DataProvider(name = "putFileProvider")
-    protected Object[][] putFileProvider() {
-        // expected result of copying LOCAL_BINARY_FILE to the remote system given the following dest
-        // paths
-        return new Object[][]{
-                // remote dest path,  expected result path,  exception?, message
-                {LOCAL_TXT_FILE_NAME, LOCAL_TXT_FILE_NAME, false, "put local file to remote destination with different name should result in file with new name on remote system."},
-                {"", LOCAL_BINARY_FILE_NAME, false, "put local file to empty(home) directory name should result in file with same name on remote system"},
-        };
-    }
-
-    @DataProvider(name = "httpImportProvider")
-    protected Object[][] httpImportProvider()
-    {
-        String DEST_FILENAME = "test_upload.bin.copy";
-
-        ArrayList<StorageProtocolType> testDestTypes = new ArrayList<>();
-        testDestTypes.add(StorageProtocolType.SFTP);
-
-        List<Object[]> testCases = new ArrayList<Object[]>();
-        for(StorageProtocolType destType: testDestTypes) {
-            testCases.add(new Object[] { URI.create("http://preview.agaveplatform.org/wp-content/themes/agave/images/favicon.ico"), destType, "Public URL copy to " + destType.name() + " should succeed", false });
-            testCases.add(new Object[] { URI.create("https://agaveplatform.org/wp-content/themes/agave/images/favicon.ico"), destType, "Public 301 redirected URL copy to " + destType.name() + " should succeed", false });
-            testCases.add(new Object[] { URI.create("https://avatars0.githubusercontent.com/u/785202"), destType, "Public HTTPS URL copy to " + destType.name() + " should succeed", false });
-            testCases.add(new Object[] { URI.create("http://docker.example.com:10080/public/" + DEST_FILENAME), destType, "Public URL copy to " + destType.name() + " on alternative port should succeed", false });
-            testCases.add(new Object[] { URI.create("https://docker.example.com:10443/public/" + DEST_FILENAME), destType, "Public HTTPS URL copy to " + destType.name() + " on alternative port should succeed", false });
-            testCases.add(new Object[] { URI.create("https://docker.example.com:10443/public/" + DEST_FILENAME + "?t=now"), destType, "Public URL copy to " + destType.name() + " should succeed", false });
-            testCases.add(new Object[] { URI.create("http://testuser:testuser@docker.example.com:10080/private/" + DEST_FILENAME), destType, "Public URL copy to " + destType.name() + " should succeed", false });
-
-            testCases.add(new Object[] { URI.create("http://docker.example.com:10080"), destType, "Public URL copy of no path to " + destType.name() + " should fail", true });
-            testCases.add(new Object[] { URI.create("http://docker.example.com:10080/"), destType, "Public URL copy of empty path to " + destType.name() + " should fail", true });
-            testCases.add(new Object[] { URI.create("http://docker.example.com:10080/" + MISSING_FILE), destType, "Missing file URL " + destType.name() + " should fail", true });
-            testCases.add(new Object[] { URI.create("http://testuser@docker.example.com:10080/private/test_upload.bin"), destType, "Protected URL missing password should fail auth and copy to " + destType.name() + " should fail", true });
-            testCases.add(new Object[] { URI.create("http://testuser:testotheruser@docker.example.com:10080/private/test_upload.bin"), destType, "Protected URL with bad credentials should fail auth and copy to " + destType.name() + " should fail", true });
-        }
-
-        return new Object[][] {
-
-        };
-    }
+//    @DataProvider(name = "putFileProvider")
+//    protected Object[][] putFileProvider() {
+//        // expected result of copying LOCAL_BINARY_FILE to the remote system given the following dest
+//        // paths
+//        return new Object[][]{
+//                // remote dest path,  expected result path,  exception?, message
+//                {TRANSFER_DEST, TRANSFER_DEST, false, "Put file to empty (tmp) directory should result in a file with the same name on remote system."},
+//                {"agave://sftp//", "agave://sftp//", false, "Put file to empty directory name should result in file with the same name on the home directory of the remote system."},
+//                {"agave://sftp/", "agave://sftp/", false, "Put file to empty directory name should result in file with the same name on the home directory of the remote system."},
+//                {LOCAL_TXT_FILE_NAME, LOCAL_TXT_FILE_NAME, false, "put local file to remote destination with different name should result in file with new name on remote system."},
+//                {"", LOCAL_BINARY_FILE_NAME, false, "put local file to empty(home) directory name should result in file with same name on remote system"},
+//        };
+//    }
+//
+//    @DataProvider(name = "httpImportProvider")
+//    protected Object[][] httpImportProvider() {
+////        ArrayList<StorageProtocolType> testDestTypes = new ArrayList<>();
+////        testDestTypes.add(StorageProtocolType.SFTP);
+////
+////        List<Object[]> testCases = new ArrayList<Object[]>();
+////        for (StorageProtocolType destType : testDestTypes) {
+////            testCases.add(new Object[]{URI.create("http://preview.agaveplatform.org/wp-content/themes/agave/images/favicon.ico"), destType, "Public URL copy to " + destType.name() + " should succeed", false});
+////            testCases.add(new Object[]{URI.create("https://agaveplatform.org/wp-content/themes/agave/images/favicon.ico"), destType, "Public 301 redirected URL copy to " + destType.name() + " should succeed", false});
+////            testCases.add(new Object[]{URI.create("https://avatars0.githubusercontent.com/u/785202"), destType, "Public HTTPS URL copy to " + destType.name() + " should succeed", false});
+////            testCases.add(new Object[]{URI.create("http://docker.example.com:10080/public/" + DEST_FILENAME), destType, "Public URL copy to " + destType.name() + " on alternative port should succeed", false});
+////            testCases.add(new Object[]{URI.create("https://docker.example.com:10443/public/" + DEST_FILENAME), destType, "Public HTTPS URL copy to " + destType.name() + " on alternative port should succeed", false});
+////            testCases.add(new Object[]{URI.create("https://docker.example.com:10443/public/" + DEST_FILENAME + "?t=now"), destType, "Public URL copy to " + destType.name() + " should succeed", false});
+////            testCases.add(new Object[]{URI.create("http://testuser:testuser@docker.example.com:10080/private/" + DEST_FILENAME), destType, "Public URL copy to " + destType.name() + " should succeed", false});
+////
+////            testCases.add(new Object[]{URI.create("http://docker.example.com:10080"), destType, "Public URL copy of no path to " + destType.name() + " should fail", true});
+////            testCases.add(new Object[]{URI.create("http://docker.example.com:10080/"), destType, "Public URL copy of empty path to " + destType.name() + " should fail", true});
+////            testCases.add(new Object[]{URI.create("http://docker.example.com:10080/" + MISSING_FILE), destType, "Missing file URL " + destType.name() + " should fail", true});
+////            testCases.add(new Object[]{URI.create("http://testuser@docker.example.com:10080/private/test_upload.bin"), destType, "Protected URL missing password should fail auth and copy to " + destType.name() + " should fail", true});
+////            testCases.add(new Object[]{URI.create("http://testuser:testotheruser@docker.example.com:10080/private/test_upload.bin"), destType, "Protected URL with bad credentials should fail auth and copy to " + destType.name() + " should fail", true});
+////        }
+//
+//        StorageProtocolType destType = StorageProtocolType.SFTP;
+//
+//        return new Object[][]{
+////                {URI.create("http://preview.agaveplatform.org/wp-content/themes/agave/images/favicon.ico"), destType, "Public URL copy to " + destType.name() + " should succeed", false},
+////                {URI.create("https://agaveplatform.org/wp-content/themes/agave/images/favicon.ico"), destType, "Public 301 redirected URL copy to " + destType.name() + " should succeed", false},
+//                {URI.create("https://avatars0.githubusercontent.com/u/785202"), destType, "Public HTTPS URL copy to " + destType.name() + " should succeed", false},
+//                {URI.create("http://docker.example.com:10080/public/" + DEST_FILENAME), destType, "Public URL copy to " + destType.name() + " on alternative port should succeed", false},
+//                {URI.create("https://docker.example.com:10443/public/" + DEST_FILENAME), destType, "Public HTTPS URL copy to " + destType.name() + " on alternative port should succeed", false},
+//                {URI.create("https://docker.example.com:10443/public/" + DEST_FILENAME + "?t=now"), destType, "Public URL copy to " + destType.name() + " should succeed", false},
+//                {URI.create("http://testuser:testuser@docker.example.com:10080/private/" + DEST_FILENAME), destType, "Public URL copy to " + destType.name() + " should succeed", false},
+//
+//                {URI.create("http://docker.example.com:10080"), destType, "Public URL copy of no path to " + destType.name() + " should fail", true},
+//                {URI.create("http://docker.example.com:10080/"), destType, "Public URL copy of empty path to " + destType.name() + " should fail", true},
+//                {URI.create("http://docker.example.com:10080/" + MISSING_FILE), destType, "Missing file URL " + destType.name() + " should fail", true},
+//                {URI.create("http://testuser@docker.example.com:10080/private/test_upload.bin"), destType, "Protected URL missing password should fail auth and copy to " + destType.name() + " should fail", true},
+//                {URI.create("http://testuser:testotheruser@docker.example.com:10080/private/test_upload.bin"), destType, "Protected URL with bad credentials should fail auth and copy to " + destType.name() + " should fail", true}
+//
+//        };
+//    }
+//
+//    @DataProvider(name = "putFolderProvider", parallel = false)
+//    protected Object[][] putFolderProvider() {
+//        return new Object[][]{
+//                // remote dest path,   expected result path,   exception?, message
+//                {LOCAL_DIR_NAME, LOCAL_DIR_NAME, false, "put local file to remote home directory explicitly setting the identical name should result in folder with same name on remote system."},
+//                {"somedir", "somedir", false, "put local file to remote home directory explicitly setting a new name should result in folder with new name on remote system."},
+//                {"", LOCAL_DIR_NAME, false, "put local directory to empty (home) remote directory without setting a new name should result in folder with same name on remote system."},
+//
+//        };
+//    }
 
     /**
      * Gets getClient() from current thread
@@ -168,7 +199,7 @@ public class URLCopyUnaryTest extends BaseTestCase {
                 client.updateSystemRoots(client.getRootDir(), destSystem.getStorageConfig().getHomeDir() + "/thread-" + Thread.currentThread().getId());
             }
         } catch (RemoteDataException | RemoteCredentialException e) {
-            Assert.fail("Failed to get client", e);
+            fail("Failed to get client", e);
         }
         return client;
     }
@@ -177,8 +208,14 @@ public class URLCopyUnaryTest extends BaseTestCase {
         return LOCAL_DOWNLOAD_DIR + Thread.currentThread().getId();
     }
 
-    RemoteDataClient getMockRemoteDataClientInstance() {
-        return Mockito.mock(RemoteDataClient.class);
+    RemoteDataClient getMockRemoteDataClientInstance(String path) throws IOException, RemoteDataException {
+        RemoteDataClient mockRemoteDataClient = Mockito.mock(RemoteDataClient.class);
+        when(mockRemoteDataClient.isThirdPartyTransferSupported()).thenReturn(false);
+        when(mockRemoteDataClient.length(path)).thenReturn(new File(path).length());
+        when(mockRemoteDataClient.resolvePath(path)).thenReturn(URI.create(path).getPath());
+        doNothing().when(mockRemoteDataClient).get(anyString(), anyString(), any(RemoteTransferListener.class));
+
+        return mockRemoteDataClient;
     }
 
     /**
@@ -189,7 +226,7 @@ public class URLCopyUnaryTest extends BaseTestCase {
      */
     private RemoteDataClient getRemoteDataClientFromSystemJson(StorageProtocolType type) throws Exception {
         JSONObject systemJson = getSystemJson(type);
-        StorageSystem system = (StorageSystem) StorageSystem.fromJSON(systemJson);
+        StorageSystem system = StorageSystem.fromJSON(systemJson);
         system.setOwner(SYSTEM_USER);
 
         RemoteDataClient client = system.getRemoteDataClient();
@@ -252,33 +289,93 @@ public class URLCopyUnaryTest extends BaseTestCase {
         }
     }
 
-    @Test(dataProvider = "putFileProvider")
-    public void putFileTest(String remoteDest, String expectedPath, Boolean shouldThrowException, String message) {
-        boolean allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
+    public RemoteTransferListenerImpl getMockRemoteTransferListener(TransferTask transferTask, RetryRequestManager retryRequestManager) {
+        RemoteTransferListenerImpl mockRemoteTransferListenerImpl = mock(RemoteTransferListenerImpl.class);
+        when(mockRemoteTransferListenerImpl.getRetryRequestManager()).thenReturn(retryRequestManager);
+        when(mockRemoteTransferListenerImpl.isCancelled()).thenReturn(false);
+        when(mockRemoteTransferListenerImpl.getTransferTask()).thenReturn(transferTask);
+        return mockRemoteTransferListenerImpl;
+    }
+
+    @Test
+    @DisplayName("Test URLCopy copy")
+    public void testCopy(Vertx vertx, VertxTestContext ctx) {
         try {
             Vertx mockVertx = mock(Vertx.class);
             RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
 
-            RemoteDataClient srcRemoteDataClient = new RemoteDataClientFactory().getInstance(SYSTEM_USER, null, URI.create(TRANSFER_SRC));
-            RemoteDataClient destRemoteDataClient = getRemoteDataClientFromSystemJson(StorageProtocolType.SFTP);
-
-            Settings.ALLOW_RELAY_TRANSFERS = true;
+            RemoteDataClient mockSrcRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_SRC);
+            RemoteDataClient mockDestRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_DEST);
 
             TransferTask tt = _createTestTransferTask();
             tt.setId(1L);
             tt.setSource(TRANSFER_SRC);
             tt.setDest(TRANSFER_DEST);
 
-            URLCopy copy = new URLCopy(srcRemoteDataClient, destRemoteDataClient,
-                    mockVertx, mockRetryRequestManager);
-            TransferTask copiedTransfer = copy.copy(tt);
+            URLCopy mockCopy = mock(URLCopy.class);
+            when(mockCopy.copy(any(TransferTask.class))).thenCallRealMethod();
 
-            assertEquals(copiedTransfer.getStatus(), TransferStatusType.COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");
+            //remote transfer listener
+            RemoteTransferListenerImpl mockRemoteTransferListenerImpl = getMockRemoteTransferListener(tt, mockRetryRequestManager);
+            doReturn(mockRemoteTransferListenerImpl).when(mockCopy).getRemoteTransferListenerForTransferTask(tt);
+
+            //first leg child transfer task
+            TransferTask srcChildTransferTask = new TransferTask(
+                    tt.getSource(),
+                    "https://workers.prod.agaveplatform.org/" + new File(TRANSFER_SRC).getPath(),
+                    tt.getOwner(),
+                    tt.getUuid(),
+                    tt.getRootTaskId());
+            srcChildTransferTask.setTenantId(tt.getTenantId());
+            srcChildTransferTask.setStatus(TransferStatusType.READ_STARTED);
+
+            doNothing().when(mockCopy)._doPublishEvent(anyString(), any(JsonObject.class));
+
+            //mock child remote transfer listener
+            RemoteTransferListenerImpl mockChildRemoteTransferListenerImpl = getMockRemoteTransferListener(srcChildTransferTask, mockRetryRequestManager);
+            when(mockCopy.getRemoteTransferListenerForTransferTask(srcChildTransferTask)).thenReturn(mockChildRemoteTransferListenerImpl);
+
+            //second leg child transfer task
+            TransferTask destChildTransferTask = new TransferTask(
+                    "https://workers.prod.agaveplatform.org/" + new File(LOCAL_TXT_FILE).getPath(),
+                    tt.getDest(),
+                    tt.getOwner(),
+                    tt.getParentTaskId(),
+                    tt.getRootTaskId()
+            );
+            destChildTransferTask.setTenantId(tt.getTenantId());
+            destChildTransferTask.setStatus(TransferStatusType.WRITE_STARTED);
+
+            RemoteTransferListenerImpl mockDestChildRemoteTransferListenerImpl = getMockRemoteTransferListener(destChildTransferTask, mockRetryRequestManager);
+            when(mockCopy.getRemoteTransferListenerForTransferTask(destChildTransferTask)).thenReturn(mockDestChildRemoteTransferListenerImpl);
+
+            //Injecting the mocked arguments to the mocked URLCopy
+            //Using InjectMocks annotation will not create a mock of URLCopy, which we need to pass in the mocked RemoteTransferListenerImpl
+            PowerMockito.whenNew(URLCopy.class).withArguments(any(RemoteDataClient.class), any(RemoteDataClient.class), any(Vertx.class), any(RetryRequestManager.class)).thenReturn(mockCopy);
+            TransferTask copiedTransfer = new URLCopy(mockSrcRemoteDataClient, mockDestRemoteDataClient, mockVertx, mockRetryRequestManager).copy(tt);
+
+            ctx.verify(() -> {
+                assertEquals(copiedTransfer.getStatus(), TransferStatusType.COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");
+
+                //check that events are published correctly using the RetryRequestManager
+                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.RELAY_READ_STARTED.name()),
+                        any(JsonObject.class), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.RELAY_READ_COMPLETED.name()),
+                        any(JsonObject.class), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.UPDATED.name()),
+                        any(JsonObject.class), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.RELAY_WRITE_STARTED.name()),
+                        any(JsonObject.class), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.RELAY_WRITE_COMPLETED.name()),
+                        any(JsonObject.class), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.COMPLETED.name()),
+                        any(JsonObject.class), eq(2));
+
+                ctx.completeNow();
+            });
 
         } catch (Exception e) {
-            Assert.fail("Copy from " + TRANSFER_SRC  + " to " + TRANSFER_DEST + " should not throw exception, " + e);
-        } finally {
-            Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
+            Assertions.fail("Copy from " + TRANSFER_SRC + " to " + TRANSFER_DEST + " should not throw exception, " + e);
         }
     }
 

@@ -161,7 +161,7 @@ public class URLCopy{
         try {
 
             RemoteTransferListenerImpl listener =
-                    new RemoteTransferListenerImpl(transferTask, getVertx(), getRetryRequestManager());
+                    getRemoteTransferListenerForTransferTask(transferTask);
 
             // don't copy the redundant destPath or parent of destPath returned from unix style listings dir
             // to avoid infinite loops and full file system copies.
@@ -213,10 +213,14 @@ public class URLCopy{
                     throw e;
                 } catch (Throwable e) {
                     log.error("Exception {}", e.getMessage(), e.getCause());
+//                    throw e;
                 }
             }
 
             return transferTask;
+//        } catch (Throwable e) {
+//            log.error("Exception {}", e.getMessage(), e.getCause());
+//            return null;
         } finally {
             try {
                 if (destClient.isPermissionMirroringRequired()) {
@@ -227,6 +231,10 @@ public class URLCopy{
                 log.error("Failed to set permissions on " + destClient.getHost() + " for user " + transferTask.getOwner(), e);
             }
         }
+    }
+
+    public RemoteTransferListenerImpl getRemoteTransferListenerForTransferTask(TransferTask transferTask) {
+        return new RemoteTransferListenerImpl(transferTask, getVertx(), getRetryRequestManager());
     }
 
 //    TransferTaskImpl convTransferTask(TransferTask transferTask){
@@ -379,7 +387,7 @@ public class URLCopy{
                     _doPublishEvent(RELAY_READ_STARTED.name(), aggregateTransferTask.toJson());
 
                     srcChildRemoteTransferListener =
-                            new RemoteTransferListenerImpl(srcChildTransferTask, getVertx(), getRetryRequestManager());
+                            getRemoteTransferListenerForTransferTask(srcChildTransferTask);
 
                     // perform the get
                     sourceClient.get(srcPath, tmpFile.getPath(), srcChildRemoteTransferListener);
@@ -458,7 +466,7 @@ public class URLCopy{
                     _doPublishEvent(RELAY_WRITE_STARTED.name(), aggregateTransferTask.toJson());
 
                     destChildRemoteTransferListener =
-                            new RemoteTransferListenerImpl(destChildTransferTask, getVertx(), getRetryRequestManager());
+                            getRemoteTransferListenerForTransferTask(destChildTransferTask);
 
                     destClient.put(tmpFile.getPath(), destPath, destChildRemoteTransferListener);
 
@@ -477,7 +485,7 @@ public class URLCopy{
                         _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());
 
                         aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
-                        _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());
+                        _doPublishEvent(COMPLETED.name(), aggregateTransferTask.toJson());
                     }
                 } catch (RemoteDataException e) {
                     try {
@@ -536,7 +544,7 @@ public class URLCopy{
                 _doPublishEvent(RELAY_WRITE_STARTED.name(), aggregateTransferTask.toJson());
 
                 destChildRemoteTransferListener =
-                        new RemoteTransferListenerImpl(destChildTransferTask, getVertx(), getRetryRequestManager());
+                        getRemoteTransferListenerForTransferTask(destChildTransferTask);
 
 
                 long tmpFileLength = tmpFile.length();
@@ -865,7 +873,7 @@ public class URLCopy{
             } else {
 
                 RemoteTransferListenerImpl listener =
-                        new RemoteTransferListenerImpl(transferTask, getVertx(), getRetryRequestManager());
+                        getRemoteTransferListenerForTransferTask(transferTask);
 
                 if (StringUtils.equals(FilenameUtils.getName(srcPath), ".") ||
                         StringUtils.equals(FilenameUtils.getName(srcPath), "..")) {

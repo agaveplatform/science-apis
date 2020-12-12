@@ -15,6 +15,9 @@ import io.vertx.ext.jwt.JWK;
 import io.vertx.ext.jwt.JWT;
 import io.vertx.ext.jwt.JWTOptions;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 
@@ -26,7 +29,8 @@ public class AgaveJWTAuthProviderImpl implements JWTAuth {
     private static final JsonArray EMPTY_ARRAY = new JsonArray();
 
     private final JWT jwt;
-
+    private static final Charset UTF8 = StandardCharsets.UTF_8;
+    private static final Base64.Decoder decoder = Base64.getUrlDecoder();
     private final String permissionsClaimKey;
     private final JWTOptions jwtOptions;
 
@@ -55,33 +59,38 @@ public class AgaveJWTAuthProviderImpl implements JWTAuth {
     @Override
     public void authenticate(JsonObject authInfo, Handler<AsyncResult<User>> resultHandler) {
         try {
-            final JsonObject payload = jwt.decode(authInfo.getString("jwt"));
+            JsonObject payload = null;
+            if (authInfo.getJsonObject("options").isEmpty()) {
+                payload = new JsonObject(new String(decoder.decode(authInfo.getString("jwt").split("\\.")[1]), UTF8));
+            } else {
+                payload = jwt.decode(authInfo.getString("jwt"));
 
-            try {
-                jwt.isExpired(payload, jwtOptions);
-            } catch(RuntimeException e) {
-                resultHandler.handle(Future.failedFuture("Expired JWT token."));
-                return;
-            }
-
-            if (jwtOptions.getAudience() != null) {
-                JsonArray target;
-                if (payload.getValue("aud") instanceof String) {
-                    target = new JsonArray().add(payload.getValue("aud", ""));
-                } else {
-                    target = payload.getJsonArray("aud", EMPTY_ARRAY);
-                }
-
-                if (Collections.disjoint(jwtOptions.getAudience(), target.getList())) {
-                    resultHandler.handle(Future.failedFuture("Invalid JWT audient. expected: " + JsonCodec.INSTANCE.toString(jwtOptions.getAudience())));
+                try {
+                    jwt.isExpired(payload, jwtOptions);
+                } catch (RuntimeException e) {
+                    resultHandler.handle(Future.failedFuture("Expired JWT token."));
                     return;
                 }
-            }
 
-            if (jwtOptions.getIssuer() != null) {
-                if (!jwtOptions.getIssuer().equals(payload.getString("iss"))) {
-                    resultHandler.handle(Future.failedFuture("Invalid JWT issuer"));
-                    return;
+                if (jwtOptions.getAudience() != null) {
+                    JsonArray target;
+                    if (payload.getValue("aud") instanceof String) {
+                        target = new JsonArray().add(payload.getValue("aud", ""));
+                    } else {
+                        target = payload.getJsonArray("aud", EMPTY_ARRAY);
+                    }
+
+                    if (Collections.disjoint(jwtOptions.getAudience(), target.getList())) {
+                        resultHandler.handle(Future.failedFuture("Invalid JWT audient. expected: " + JsonCodec.INSTANCE.toString(jwtOptions.getAudience())));
+                        return;
+                    }
+                }
+
+                if (jwtOptions.getIssuer() != null) {
+                    if (!jwtOptions.getIssuer().equals(payload.getString("iss"))) {
+                        resultHandler.handle(Future.failedFuture("Invalid JWT issuer"));
+                        return;
+                    }
                 }
             }
 

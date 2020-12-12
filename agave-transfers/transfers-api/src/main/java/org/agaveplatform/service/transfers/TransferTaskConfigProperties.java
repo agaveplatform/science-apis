@@ -6,6 +6,7 @@ package org.agaveplatform.service.transfers;
 public class TransferTaskConfigProperties {
     public static final String CONFIG_TRANSFERTASK_HTTP_PORT = "transfertask.http.port";
     public static final String CONFIG_TRANSFERTASK_JWT_AUTH = "transfertask.jwt.auth";
+    public static final String CONFIG_TRANSFERTASK_JWT_VERIFY = "transfertask.jwt.verify";
     public static final String CONFIG_TRANSFERTASK_JWT_PUBLIC_KEY = "transfertask.jwt.public_key";
     public static final String CONFIG_TRANSFERTASK_JWT_PRIVATE_KEY= "transfertask.jwt.private_key";
     public static final String CONFIG_TRANSFERTASK_DB_JDBC_URL = "transfertask.jdbc.url";

@@ -5,12 +5,10 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
-import io.vertx.ext.jwt.JWT;
 import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
@@ -477,19 +475,26 @@ public class TransferAPIVertical extends AbstractVerticle {
      *
      * @return {@link io.vertx.ext.auth.AuthProvider} for validating JWT.
      */
+    @SuppressWarnings("deprecation")
     public JWTAuth getAuthProvider() {
         if (authProvider == null) {
             try {
-                @SuppressWarnings("deprecation")
-                JWTAuthOptions jwtAuthOptions = new JWTAuthOptions()
-                        .setJWTOptions(new JWTOptions()
-                                .setLeeway(30)
-                                .setAlgorithm("RS256"))
-                        .setPermissionsClaimKey("http://wso2.org/claims/role")
-                        .addPubSecKey(new PubSecKeyOptions()
-                                .setAlgorithm("RS256")
-                                .setPublicKey(CryptoHelper.publicKey(config().getString("transfertask.jwt.public_key")))
-                                .setSecretKey(CryptoHelper.privateKey(config().getString("transfertask.jwt.private_key"))));
+                JWTAuthOptions jwtAuthOptions = null;
+                if (config().getBoolean(CONFIG_TRANSFERTASK_JWT_VERIFY)) {
+                    jwtAuthOptions = new JWTAuthOptions()
+                            .setJWTOptions(new JWTOptions()
+                                    .setLeeway(30)
+                                    .setAlgorithm("RS256"))
+                            .setPermissionsClaimKey("http://wso2.org/claims/role")
+                            .addPubSecKey(new PubSecKeyOptions()
+                                    .setAlgorithm("RS256")
+                                    .setPublicKey(CryptoHelper.publicKey(config().getString("transfertask.jwt.public_key")))
+                                    .setSecretKey(CryptoHelper.privateKey(config().getString("transfertask.jwt.private_key"))));
+
+                } else {
+                    jwtAuthOptions = new JWTAuthOptions()
+                            .setPermissionsClaimKey("http://wso2.org/claims/role");
+                }
 
                 authProvider = new AgaveJWTAuthProviderImpl(jwtAuthOptions);
                 System.out.println(authProvider.toString());

@@ -758,10 +758,10 @@ public class URLCopy{
             TransferTask streamingTransferTask = (TransferTask)listener.getTransferTask();
 
             streamingTransferTask.setStatus(WRITE_COMPLETED);
-            _doPublishEvent(RELAY_WRITE_COMPLETED.name(), streamingTransferTask.toJson());
+            _doPublishEvent(TransferStatusType.STREAM_COPY_COMPLETED.name(), streamingTransferTask.toJson());
 
             streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
-            _doPublishEvent(RELAY_WRITE_COMPLETED.name(), streamingTransferTask.toJson());
+            _doPublishEvent(COMPLETED.name(), streamingTransferTask.toJson());
 
 
             log.debug(String.format(

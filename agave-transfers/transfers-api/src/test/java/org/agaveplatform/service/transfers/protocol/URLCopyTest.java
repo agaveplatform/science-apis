@@ -21,10 +21,9 @@ import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.Settings;
+import org.iplantc.service.transfer.*;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.iplantc.service.transfer.http.HTTPInputStream;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.*;
@@ -44,8 +43,8 @@ import static org.mockito.Mockito.*;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(VertxExtension.class)
-@DisplayName("URLCopy Unary Tests")
-public class URLCopyUnaryTest extends BaseTestCase {
+@DisplayName("URLCopy Tests")
+public class URLCopyTest extends BaseTestCase {
     protected File tmpFile = null;
     protected File tmpDir = null;
 
@@ -59,8 +58,8 @@ public class URLCopyUnaryTest extends BaseTestCase {
 
     @BeforeAll
     protected void beforeSubclass() {
-        allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
-        Settings.ALLOW_RELAY_TRANSFERS = true;
+//        allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
+//        Settings.ALLOW_RELAY_TRANSFERS = true;
 
         JSONObject systemJson = getSystemJson(StorageProtocolType.SFTP);
         destSystem = StorageSystem.fromJSON(systemJson);
@@ -99,7 +98,7 @@ public class URLCopyUnaryTest extends BaseTestCase {
         }
 
         try {
-            if (destSystem!= null) {
+            if (destSystem != null) {
                 getClient().authenticate();
                 // remove test directory
                 getClient().delete("..");
@@ -189,12 +188,12 @@ public class URLCopyUnaryTest extends BaseTestCase {
      *
      * @return {@link RemoteDataClient} of current thread
      * @throws RemoteCredentialException if unable to retrieve the {@link RemoteDataClient} due to missing permissions
-     * @throws RemoteDataException if unable to retrieve the {@link RemoteDataClient}
+     * @throws RemoteDataException       if unable to retrieve the {@link RemoteDataClient}
      */
     protected RemoteDataClient getClient() {
         RemoteDataClient client = null;
         try {
-            if (destSystem!= null) {
+            if (destSystem != null) {
                 client = destSystem.getRemoteDataClient();
                 client.updateSystemRoots(client.getRootDir(), destSystem.getStorageConfig().getHomeDir() + "/thread-" + Thread.currentThread().getId());
             }
@@ -220,6 +219,7 @@ public class URLCopyUnaryTest extends BaseTestCase {
 
     /**
      * Get the RemoteDataClient with settings specified in the corresponding StorageProtocolType json file
+     *
      * @param type
      * @return
      * @throws Exception
@@ -298,9 +298,12 @@ public class URLCopyUnaryTest extends BaseTestCase {
     }
 
     @Test
-    @DisplayName("Test URLCopy copy")
-    public void testCopy(Vertx vertx, VertxTestContext ctx) {
+    @DisplayName("Test URLCopy relayTransfer")
+    public void testUnaryCopy(Vertx vertx, VertxTestContext ctx) {
         try {
+            allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
+            Settings.ALLOW_RELAY_TRANSFERS = true;
+
             Vertx mockVertx = mock(Vertx.class);
             RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
 
@@ -375,7 +378,70 @@ public class URLCopyUnaryTest extends BaseTestCase {
             });
 
         } catch (Exception e) {
-            Assertions.fail("Copy from " + TRANSFER_SRC + " to " + TRANSFER_DEST + " should not throw exception, " + e);
+            Assertions.fail("Unary copy from " + TRANSFER_SRC + " to " + TRANSFER_DEST + " should not throw exception, " + e);
+        } finally {
+            Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
+        }
+    }
+
+    @Test
+    @DisplayName("Test URLCopy streamingTransfer")
+    public void testStreamingCopy(Vertx vertx, VertxTestContext ctx) {
+        try {
+            allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
+            Settings.ALLOW_RELAY_TRANSFERS = false;
+
+            Vertx mockVertx = mock(Vertx.class);
+            RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
+
+            RemoteDataClient mockSrcRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_SRC);
+            RemoteDataClient mockDestRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_DEST);
+
+            RemoteInputStream mockRemoteInputStream = mock(RemoteInputStream.class);
+            when(mockRemoteInputStream.isBuffered()).thenReturn(true);
+            when(mockRemoteInputStream.read(any(), eq(0), anyInt())).thenReturn(-1);
+
+            when(mockSrcRemoteDataClient.getInputStream(anyString(), eq(true))).thenReturn(mockRemoteInputStream);
+
+            RemoteOutputStream mockRemoteOutputStream = mock(RemoteOutputStream.class);
+            when(mockRemoteOutputStream.isBuffered()).thenReturn(true);
+            when(mockDestRemoteDataClient.getOutputStream(anyString(), eq(true), eq(false))).thenReturn(mockRemoteOutputStream);
+
+            TransferTask tt = _createTestTransferTask();
+            tt.setId(1L);
+            tt.setSource(TRANSFER_SRC);
+            tt.setDest(TRANSFER_DEST);
+
+            URLCopy mockCopy = mock(URLCopy.class);
+            when(mockCopy.copy(any(TransferTask.class))).thenCallRealMethod();
+
+            //remote transfer listener
+            RemoteTransferListenerImpl mockRemoteTransferListenerImpl = getMockRemoteTransferListener(tt, mockRetryRequestManager);
+            doReturn(mockRemoteTransferListenerImpl).when(mockCopy).getRemoteTransferListenerForTransferTask(tt);
+
+            //Injecting the mocked arguments to the mocked URLCopy
+            //Using InjectMocks annotation will not create a mock of URLCopy, which we need to pass in the mocked RemoteTransferListenerImpl
+            PowerMockito.whenNew(URLCopy.class).withArguments(any(RemoteDataClient.class), any(RemoteDataClient.class), any(Vertx.class), any(RetryRequestManager.class)).thenReturn(mockCopy);
+            TransferTask copiedTransfer = new URLCopy(mockSrcRemoteDataClient, mockDestRemoteDataClient, mockVertx, mockRetryRequestManager).copy(tt);
+
+            ctx.verify(() -> {
+                assertEquals(copiedTransfer.getStatus(), TransferStatusType.COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");
+
+                //check that events are published correctly using the RetryRequestManager
+                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.STREAM_COPY_STARTED.name()),
+                        any(JsonObject.class), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.STREAM_COPY_COMPLETED.name()),
+                        any(JsonObject.class), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.COMPLETED.name()),
+                        any(JsonObject.class), eq(2));
+
+                ctx.completeNow();
+            });
+
+        } catch (Exception e) {
+            Assertions.fail("Streaming copy from " + TRANSFER_SRC + " to " + TRANSFER_DEST + " should not throw exception, " + e);
+        } finally {
+            Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
         }
     }
 

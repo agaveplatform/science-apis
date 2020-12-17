@@ -588,7 +588,6 @@
     <modules>
         <module>agave-migrations</module>
         <module>agave-protos</module>
-        <module>agave-transfers</module>
         <module>agave-common</module>
         <module>agave-postits</module>
         <module>agave-usage</module>
@@ -598,6 +597,7 @@
         <module>agave-profiles</module>
         <module>agave-metadata</module>
         <module>agave-systems</module>
+        <module>agave-transfers</module>
         <module>agave-monitors</module>
         <module>agave-files</module>
         <module>agave-apps</module>

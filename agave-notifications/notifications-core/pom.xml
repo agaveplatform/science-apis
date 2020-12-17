@@ -63,8 +63,8 @@
 			<groupId>${project.groupId}</groupId>
 			<artifactId>common-core</artifactId>
 			<version>${project.version}</version>
-			<scope>test</scope>
 			<type>test-jar</type>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>javax.mail</groupId>

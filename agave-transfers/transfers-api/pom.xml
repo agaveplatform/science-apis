@@ -116,7 +116,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <config>target/test-classes/config-test.json</config>
+                    <config>target/test-classes/config.json</config>
                     <launcher>org.agaveplatform.service.transfers.TransferApplication</launcher>
                     <redeploy>true</redeploy>
                 </configuration>

@@ -1,17 +1,11 @@
 package org.iplantc.service.metadata.uuid;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AbstractUUIDTest;
-import org.iplantc.service.common.uuid.UUIDEntityLookup;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.testng.Assert;
-
-import java.io.IOException;
 
 public class MetadataItemUUIDEntityUpdateIT implements AbstractUUIDTest<MetadataItem> {
     private final String TEST_USER = "testuser";

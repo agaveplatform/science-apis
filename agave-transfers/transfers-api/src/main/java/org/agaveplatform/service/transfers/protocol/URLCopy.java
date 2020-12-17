@@ -160,8 +160,7 @@ public class URLCopy{
         String destPath = URI.create(transferTask.getDest()).getPath();
         try {
 
-            RemoteTransferListenerImpl listener =
-                    getRemoteTransferListenerForTransferTask(transferTask);
+            RemoteTransferListenerImpl listener = getRemoteTransferListenerForTransferTask(transferTask);
 
             // don't copy the redundant destPath or parent of destPath returned from unix style listings dir
             // to avoid infinite loops and full file system copies.
@@ -872,8 +871,7 @@ public class URLCopy{
                 throw new TransferException("Range transfers are not supported on directories");
             } else {
 
-                RemoteTransferListenerImpl listener =
-                        getRemoteTransferListenerForTransferTask(transferTask);
+                RemoteTransferListenerImpl listener = getRemoteTransferListenerForTransferTask(transferTask);
 
                 if (StringUtils.equals(FilenameUtils.getName(srcPath), ".") ||
                         StringUtils.equals(FilenameUtils.getName(srcPath), "..")) {

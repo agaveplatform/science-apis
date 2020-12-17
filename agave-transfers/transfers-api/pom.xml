@@ -106,15 +106,15 @@
                 <groupId>io.reactiverse</groupId>
                 <artifactId>vertx-maven-plugin</artifactId>
                 <version>1.0.22</version>
-                <executions>
-                    <execution>
-                        <id>vmp</id>
-                        <goals>
-                            <goal>initialize</goal>
-                            <goal>package</goal>
-                        </goals>
-                    </execution>
-                </executions>
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>vmp</id>-->
+<!--                        <goals>-->
+<!--                            <goal>initialize</goal>-->
+<!--                            <goal>package</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
                 <configuration>
                     <config>target/test-classes/config.json</config>
                     <launcher>org.agaveplatform.service.transfers.TransferApplication</launcher>

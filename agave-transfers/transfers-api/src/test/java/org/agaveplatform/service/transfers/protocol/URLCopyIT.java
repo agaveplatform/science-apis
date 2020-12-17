@@ -101,7 +101,9 @@ public class URLCopyIT extends BaseTestCase {
             if (destSystem != null) {
                 getClient().authenticate();
                 // remove test directory
-                getClient().delete("..");
+                if (getClient().doesExist("")) {
+                    getClient().delete("..");
+                }
                 assertFalse(getClient().doesExist(""), "Failed to clean up home directory after test.");
             }
         } catch (Exception e) {
@@ -109,8 +111,7 @@ public class URLCopyIT extends BaseTestCase {
         } finally {
             try {
                 getClient().disconnect();
-            } catch (Exception e) {
-            }
+            } catch (Exception ignored) {}
         }
 
         Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;

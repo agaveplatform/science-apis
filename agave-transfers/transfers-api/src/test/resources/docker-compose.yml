@@ -35,20 +35,20 @@ services:
     labels:
       - "traefik.enable=true"
 
-  sftp-relay:
-    image: agaveplatform/sftp-relay:develop
-    ports:
-      - 50051:50051
-      - 9092
-    restart: on-failure
-    volumes:
-      - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
-      - "traefik.http.routers.sftp-relay.entrypoints=grpc"
-      - "traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c"
-      - "traefik.http.services.sftp-relay.loadbalancer.server.port=50051"
+#  sftp-relay:
+#    image: agaveplatform/sftp-relay:develop
+#    ports:
+#      - 50051:50051
+#      - 9092
+#    restart: on-failure
+#    volumes:
+#      - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
+#      - "traefik.http.routers.sftp-relay.entrypoints=grpc"
+#      - "traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c"
+#      - "traefik.http.services.sftp-relay.loadbalancer.server.port=50051"
 
   sftp:
     image: agaveplatform/sshd:latest
@@ -73,52 +73,52 @@ services:
     ports:
       - '10044:10044'
 
-  irods4:
-    image: agaveapi/irods:4.0.3
-    command: changeit
-    hostname: docker.example.com
-    restart: on-failure
-    environment:
-      - 'DOCKER_HOSTNAME=docker.example.com'
-      - 'IRODS_ZONE=iplant'
-    ports:
-      - '1257:1247'
-      - '5442:5432'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 2G
-
-  irods3:
-    image: agaveapi/irods:3.3.1
-    hostname: docker.example.com
-    restart: on-failure
-    ports:
-      - '10055:22'
-      - '1247:1247'
-      - '5432:5432'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 2G
-
-  irods3-pam:
-    image: agaveapi/irods-pam:latest
-    hostname: docker.example.com
-    restart: on-failure
-    ports:
-      - '10066:22'
-      - '1248:1247'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 2G
+#  irods4:
+#    image: agaveapi/irods:4.0.3
+#    command: changeit
+#    hostname: docker.example.com
+#    restart: on-failure
+#    environment:
+#      - 'DOCKER_HOSTNAME=docker.example.com'
+#      - 'IRODS_ZONE=iplant'
+#    ports:
+#      - '1257:1247'
+#      - '5442:5432'
+#    deploy:
+#      restart_policy:
+#        condition: on-failure
+#      resources:
+#        limits:
+#          memory: 2G
+#
+#  irods3:
+#    image: agaveapi/irods:3.3.1
+#    hostname: docker.example.com
+#    restart: on-failure
+#    ports:
+#      - '10055:22'
+#      - '1247:1247'
+#      - '5432:5432'
+#    deploy:
+#      restart_policy:
+#        condition: on-failure
+#      resources:
+#        limits:
+#          memory: 2G
+#
+#  irods3-pam:
+#    image: agaveapi/irods-pam:latest
+#    hostname: docker.example.com
+#    restart: on-failure
+#    ports:
+#      - '10066:22'
+#      - '1248:1247'
+#    deploy:
+#      restart_policy:
+#        condition: on-failure
+#      resources:
+#        limits:
+#          memory: 2G
 
   requestbin:
     image: agaveplatform/requestbin:2.0.0

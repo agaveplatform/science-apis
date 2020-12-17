@@ -32,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -135,10 +136,10 @@ public abstract class BaseTestCase {
                     Path privateKey = Files.write(Files.createTempFile("private", "pem"), cryptoHelper.getPrivateKey().getBytes());
                     Path publicKey = Files.write(Files.createTempFile("public", "pem"), cryptoHelper.getPublicKey().getBytes());
 
-                    config.put("transfertask.http.port", getPort())
-                            .put("transfertask.jwt.auth", true)
-                            .put("transfertask.jwt.public_key", publicKey.toAbsolutePath().toString())
-                            .put("transfertask.jwt.private_key", privateKey.toAbsolutePath().toString());
+                    config.put(CONFIG_TRANSFERTASK_HTTP_PORT, getPort())
+                            .put(CONFIG_TRANSFERTASK_JWT_AUTH, true)
+                            .put(CONFIG_TRANSFERTASK_JWT_PUBLIC_KEY, publicKey.toAbsolutePath().toString())
+                            .put(CONFIG_TRANSFERTASK_JWT_PRIVATE_KEY, privateKey.toAbsolutePath().toString());
 
                     handler.handle(Future.succeededFuture(config));
                 } catch (IOException e) {
@@ -168,8 +169,8 @@ public abstract class BaseTestCase {
                             .setPermissionsClaimKey("http://wso2.org/claims/role")
                             .addPubSecKey(new PubSecKeyOptions()
                                     .setAlgorithm("RS256")
-                                    .setPublicKey(CryptoHelper.publicKey(resp.result().getString("transfertask.jwt.public_key")))
-                                    .setSecretKey(CryptoHelper.privateKey(resp.result().getString("transfertask.jwt.private_key"))));
+                                    .setPublicKey(CryptoHelper.publicKey(resp.result().getString(CONFIG_TRANSFERTASK_JWT_PUBLIC_KEY)))
+                                    .setSecretKey(CryptoHelper.privateKey(resp.result().getString(CONFIG_TRANSFERTASK_JWT_PRIVATE_KEY))));
 
                     config = resp.result();
 

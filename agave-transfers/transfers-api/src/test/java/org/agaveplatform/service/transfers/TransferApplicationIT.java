@@ -56,8 +56,8 @@ public class TransferApplicationIT extends BaseTestCase {
 
         vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, ctx.succeeding(dbId -> {
             dbDeploymentCheckpoint.flag();
-            TransferAPIVertical apiVert = new TransferAPIVertical(vertx);
-            vertx.deployVerticle(apiVert, options, ctx.succeeding(apiId -> {
+//            TransferAPIVertical apiVert = new TransferAPIVertical(vertx);
+            vertx.deployVerticle(TransferAPIVertical.class.getName(), options, ctx.succeeding(apiId -> {
                 apiDeploymentCheckpoint.flag();
 
                 RequestSpecification requestSpecification = new RequestSpecBuilder()

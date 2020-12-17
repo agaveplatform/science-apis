@@ -150,6 +150,7 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 				TENANT_ID,
 				null,
 				null);
+		tt.setId(1L);
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 //		JsonObject expectedUdpatedJsonObject =  tt.toJson()
@@ -171,10 +172,12 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 		// now actually call the mehtod under test
 		TransferTask ttResult = txfrAllVert.processCopyRequest(srcRemoteDataClient, destRemoteDataClient, tt);
 		ctx.verify(() -> {
+
 			// this shouldn't be called because we're passing in the src rdc
 			verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, srcUri);
 			// this shouldn't be called because we're passing in the dest rdc
 			verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, destUri);
+
 			// this should be called as the method get
 			//verify(txfrAllVert).getUrlCopy(srcRemoteDataClientMock, destRemoteDataClientMock);
 			// verify the URLCopy#copy method was called

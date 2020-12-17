@@ -375,6 +375,19 @@ public class URLCopyIT extends BaseTestCase {
                 verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.COMPLETED.name()),
                         any(JsonObject.class), eq(2));
 
+//                assertEquals(copiedTransfer.getAttempts(), tt.getAttempts() + 1, "TransferTask attempts should be incremented upon copy.");
+//                assertEquals(copiedTransfer.getStatus(), TransferStatusType.COMPLETED, "TransferTask status should be set to COMPLETED upon successful transfer.");
+//                assertEquals(copiedTransfer.getTotalFiles(), 1, "TransferTask total files be 1 upon successful transfer of a single file.");
+//                assertEquals(copiedTransfer.getBytesTransferred(), 32768, "TransferTask total bytes transferred should be 32768, the size of the httpbin download name.");
+//                assertTrue(copiedTransfer.getLastUpdated().isAfter(tt.getLastUpdated()),"TransferTask last updated should be updated after URLCopy completes.");
+//                assertNotNull(copiedTransfer.getStartTime(), "TransferTask start time should be set by URLCopy.");
+//                assertNotNull(copiedTransfer.getEndTime(), "TransferTask end time should be set by URLCopy.");
+//                assertTrue(copiedTransfer.getStartTime().isAfter(tt.getCreated()),"TransferTask start time should be after created time.");
+//                assertTrue(copiedTransfer.getEndTime().isAfter(tt.getStartTime()),"TransferTask end time should be after start time.");
+//                assertEquals(copiedTransfer.getTotalSize(), copiedTransfer.getBytesTransferred(), "Total size should be same as bytes transferred upon successful completion of single file transfer.");
+//                assertEquals(copiedTransfer.getTotalSkippedFiles(), 0, "TransferTask skipped files should be zero upon successful completion of a single file.");
+
+
                 ctx.completeNow();
             });
 

@@ -64,6 +64,20 @@ public class URLCopy{
     }
 
     /**
+     * @return the source client for this transfer
+     */
+    public RemoteDataClient getSourceClient() {
+        return sourceClient;
+    }
+
+    /**
+     * @return the destination client for this transfer
+     */
+    public RemoteDataClient getDestClient() {
+        return destClient;
+    }
+
+    /**
      * @return the vertx instance for this transfer
      */
     public Vertx getVertx() {
@@ -158,6 +172,10 @@ public class URLCopy{
         }
         String srcPath = URI.create(transferTask.getSource()).getPath();
         String destPath = URI.create(transferTask.getDest()).getPath();
+
+        sourceClient = getSourceClient();
+        destClient = getDestClient();
+
         try {
 
             RemoteTransferListenerImpl listener = getRemoteTransferListenerForTransferTask(transferTask);
@@ -479,6 +497,7 @@ public class URLCopy{
                         aggregateTransferTask.setAttempts(destChildTransferTask.getAttempts());
                         aggregateTransferTask.setEndTime(destChildTransferTask.getEndTime());
                         aggregateTransferTask.updateTransferRate();
+                        aggregateTransferTask.setLastUpdated(Instant.now());
 
                         aggregateTransferTask.setStatus(WRITE_COMPLETED);
                         _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());
@@ -562,6 +581,7 @@ public class URLCopy{
                 aggregateTransferTask.setAttempts(destChildTransferTask.getAttempts());
                 aggregateTransferTask.setEndTime(destChildTransferTask.getEndTime());
                 aggregateTransferTask.updateTransferRate();
+                aggregateTransferTask.setLastUpdated(Instant.now());
 
                 aggregateTransferTask.setStatus(WRITE_COMPLETED);
                 _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());

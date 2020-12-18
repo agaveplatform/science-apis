@@ -223,10 +223,13 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
         if (task != null)
         {
             task.setBytesTransferred(bytesSoFar);
-            long currentTime = System.currentTimeMillis();
+            Instant instantCurrentTime = Instant.now();
+            long currentTime = instantCurrentTime.toEpochMilli();
+
             if (( currentTime - lastUpdated) >= 15000) {
                 double progress = bytesSoFar - bytesLastCheck;
                 task.setTransferRate(((double)progress / ((double)(currentTime - lastUpdated) /  1000.0) ));
+                task.setLastUpdated(instantCurrentTime);
                 setTransferTask(task);
                 lastUpdated = currentTime;
                 bytesLastCheck = bytesSoFar;

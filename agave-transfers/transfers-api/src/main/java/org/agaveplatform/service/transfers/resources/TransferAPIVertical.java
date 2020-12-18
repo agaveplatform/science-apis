@@ -227,11 +227,12 @@ public class TransferAPIVertical extends AbstractVerticle {
      * @param routingContext the current rounting context for the request
      */
     private void addOne(RoutingContext routingContext) {
+        log.debug("addOne method");
         Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
         JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
-
+        log.debug("username = {}", username);
         JsonObject body = routingContext.getBodyAsJson();
         // request body was validated prior to this method being called
 //        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);

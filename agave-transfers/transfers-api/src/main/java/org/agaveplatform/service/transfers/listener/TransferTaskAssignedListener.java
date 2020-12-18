@@ -392,6 +392,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             try { if (srcClient != null) srcClient.disconnect(); } catch (Exception ignored) {}
             try { if (destClient != null) destClient.disconnect(); } catch (Exception ignored) {}
         }
+        handler.handle(Future.succeededFuture(true));
     }
 
     public TransferTaskDatabaseService getDbService() {

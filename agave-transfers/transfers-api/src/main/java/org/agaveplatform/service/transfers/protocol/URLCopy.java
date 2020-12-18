@@ -497,6 +497,7 @@ public class URLCopy{
                         aggregateTransferTask.setAttempts(destChildTransferTask.getAttempts());
                         aggregateTransferTask.setEndTime(destChildTransferTask.getEndTime());
                         aggregateTransferTask.updateTransferRate();
+                        aggregateTransferTask.setLastUpdated(Instant.now());
 
                         aggregateTransferTask.setStatus(WRITE_COMPLETED);
                         _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());
@@ -580,6 +581,7 @@ public class URLCopy{
                 aggregateTransferTask.setAttempts(destChildTransferTask.getAttempts());
                 aggregateTransferTask.setEndTime(destChildTransferTask.getEndTime());
                 aggregateTransferTask.updateTransferRate();
+                aggregateTransferTask.setLastUpdated(Instant.now());
 
                 aggregateTransferTask.setStatus(WRITE_COMPLETED);
                 _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());

@@ -59,6 +59,20 @@ public class URLCopyIT extends BaseTestCase {
         when(mockRemoteDataClient.resolvePath(path)).thenReturn(URI.create(path).getPath());
         doNothing().when(mockRemoteDataClient).get(anyString(), anyString(), any(RemoteTransferListener.class));
 
+        doAnswer(invocation ->{
+            RemoteTransferListener arg3 = invocation.getArgumentAt(2, RemoteTransferListener.class);
+            arg3.started(FILE_SIZE, TRANSFER_SRC);
+            return null;
+        }).when(mockRemoteDataClient).get(anyString(), anyString(), any(RemoteTransferListener.class));
+
+        doAnswer(invocation ->{
+            RemoteTransferListener arg3 = invocation.getArgumentAt(2, RemoteTransferListener.class);
+            arg3.progressed(FILE_SIZE);
+            arg3.completed();
+            return null;
+        }).when(mockRemoteDataClient).put(anyString(), anyString(), any(RemoteTransferListener.class));
+
+
         return mockRemoteDataClient;
     }
 
@@ -76,7 +90,6 @@ public class URLCopyIT extends BaseTestCase {
 
     @Test
     @DisplayName("Test URLCopy relayTransfer")
-    @Disabled
     public void testUnaryCopy(Vertx vertx, VertxTestContext ctx) {
         try {
             allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
@@ -114,10 +127,6 @@ public class URLCopyIT extends BaseTestCase {
                     tt.getRootTaskId());
             srcChildTransferTask.setTenantId(tt.getTenantId());
             srcChildTransferTask.setStatus(TransferStatusType.READ_STARTED);
-            srcChildTransferTask.setAttempts(tt.getAttempts()+1);
-            srcChildTransferTask.setTotalSize(FILE_SIZE);
-
-//            doNothing().when(mockCopy)._doPublishEvent(anyString(), any(JsonObject.class));
 
             //mock child remote transfer listener
             RemoteTransferListenerImpl mockChildRemoteTransferListenerImpl = getMockRemoteTransferListener(srcChildTransferTask, mockRetryRequestManager);
@@ -133,12 +142,8 @@ public class URLCopyIT extends BaseTestCase {
             );
             destChildTransferTask.setTenantId(tt.getTenantId());
             destChildTransferTask.setStatus(TransferStatusType.WRITE_STARTED);
-            destChildTransferTask.setAttempts(srcChildTransferTask.getAttempts());
-            destChildTransferTask.setTotalSize(srcChildTransferTask.getTotalSize());
-//            destChildTransferTask.setLastUpdated(Instant.now());
 
             RemoteTransferListenerImpl mockDestChildRemoteTransferListenerImpl = getMockRemoteTransferListener(destChildTransferTask, mockRetryRequestManager);
-//            when(mockCopy.getRemoteTransferListenerForTransferTask(destChildTransferTask)).thenReturn(mockDestChildRemoteTransferListenerImpl);
 
             when(mockCopy.getRemoteTransferListenerForTransferTask(any(TransferTask.class))).thenReturn(mockChildRemoteTransferListenerImpl, mockDestChildRemoteTransferListenerImpl);
 

@@ -89,7 +89,7 @@ update-transfertask-status: |
 all-transfertask-children-cancelled-or-completed: |
   SELECT count(`id`) AS active_child_count
   FROM TransferApiTasks
-  WHERE `tenant_id` = ? AND `parent_task` = ? AND `status` NOT IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
+  WHERE `tenant_id` = ? AND `parent_task` = ? AND `status` IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
 all-active-root-transfertask-ids: |
   SELECT distinct `uuid`, `tenant_id`
   FROM TransferApiTasks
@@ -101,7 +101,7 @@ single-not-canceled-or-completed: |
 all-children-canceled-or-completed: |
   SELECT count(id)
   FROM TransferApiTasks
-  WHERE `tenant_id` = ? AND `parent_task` = ? AND status not in ('COMPLETED', 'CANCELLED','CANCELLED_ERROR','FAILED')
+  WHERE `tenant_id` = ? AND `parent_task` = ? AND status in ('COMPLETED', 'CANCELLED','CANCELLED_ERROR','FAILED')
 set-transfertask-cancelled-where-not-completed: |
   UPDATE TransferApiTasks
   SET status = CANCELLED, lastUpdated = NOW()

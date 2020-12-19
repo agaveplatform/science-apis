@@ -6,6 +6,7 @@ package org.agaveplatform.service.transfers.protocol;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -401,7 +402,7 @@ public class URLCopy{
                     srcChildTransferTask.setTenantId(aggregateTransferTask.getTenantId());
                     srcChildTransferTask.setStatus(READ_STARTED);
 
-                    _doPublishEvent(RELAY_READ_STARTED.name(), aggregateTransferTask.toJson());
+                    _doPublishEvent(MessageType.TRANSFER_UNARY, aggregateTransferTask.toJson());
 
                     srcChildRemoteTransferListener =
                             getRemoteTransferListenerForTransferTask(srcChildTransferTask);
@@ -418,8 +419,8 @@ public class URLCopy{
 //                        aggregateTransferTask.setStatus(TransferStatusType.CANCELLED);
 //                    } else {
                         aggregateTransferTask.setStatus(READ_COMPLETED);
-                        _doPublishEvent(RELAY_READ_COMPLETED.name(), aggregateTransferTask.toJson());
-                        _doPublishEvent(UPDATED.name(), aggregateTransferTask.toJson());
+                        _doPublishEvent(MessageType.TRANSFER_UNARY, aggregateTransferTask.toJson());
+                        _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
                     }
 
 
@@ -480,7 +481,7 @@ public class URLCopy{
                             aggregateTransferTask.getRootTaskId());
                     destChildTransferTask.setTenantId(aggregateTransferTask.getTenantId());
                     aggregateTransferTask.setStatus(WRITE_STARTED);
-                    _doPublishEvent(RELAY_WRITE_STARTED.name(), aggregateTransferTask.toJson());
+                    _doPublishEvent(MessageType.TRANSFER_UNARY, aggregateTransferTask.toJson());
 
                     destChildRemoteTransferListener =
                             getRemoteTransferListenerForTransferTask(destChildTransferTask);
@@ -500,10 +501,10 @@ public class URLCopy{
                         aggregateTransferTask.setLastUpdated(Instant.now());
 
                         aggregateTransferTask.setStatus(WRITE_COMPLETED);
-                        _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());
+                        _doPublishEvent(MessageType.TRANSFER_COMPLETED, aggregateTransferTask.toJson());
 
                         aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
-                        _doPublishEvent(COMPLETED.name(), aggregateTransferTask.toJson());
+                        _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, aggregateTransferTask.toJson());
                     }
                 } catch (RemoteDataException e) {
                     try {
@@ -559,7 +560,7 @@ public class URLCopy{
                 destChildTransferTask.setStartTime(aggregateTransferTask.getStartTime());
 
                 aggregateTransferTask.setStatus(WRITE_STARTED);
-                _doPublishEvent(RELAY_WRITE_STARTED.name(), aggregateTransferTask.toJson());
+                _doPublishEvent(MessageType.TRANSFER_UNARY, aggregateTransferTask.toJson());
 
                 destChildRemoteTransferListener =
                         getRemoteTransferListenerForTransferTask(destChildTransferTask);
@@ -584,10 +585,10 @@ public class URLCopy{
                 aggregateTransferTask.setLastUpdated(Instant.now());
 
                 aggregateTransferTask.setStatus(WRITE_COMPLETED);
-                _doPublishEvent(RELAY_WRITE_COMPLETED.name(), aggregateTransferTask.toJson());
+                _doPublishEvent(MessageType.TRANSFER_COMPLETED, aggregateTransferTask.toJson());
 
                 aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
-                _doPublishEvent(COMPLETED.name(), aggregateTransferTask.toJson());
+                _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, aggregateTransferTask.toJson());
             }
         }
         catch (ClosedByInterruptException e) {
@@ -712,7 +713,7 @@ public class URLCopy{
             long totalSize = sourceClient.length(srcPath);
 
             listener.getTransferTask().setStatusString(STREAM_COPY_STARTED.name());
-            _doPublishEvent(STREAM_COPY_STARTED.name(), ((TransferTask)listener.getTransferTask()).toJson());
+            _doPublishEvent(MessageType.TRANSFER_STREAMING, ((TransferTask)listener.getTransferTask()).toJson());
 
             // Buffer the input stream only if it's not already buffered.
             try {
@@ -777,10 +778,10 @@ public class URLCopy{
             TransferTask streamingTransferTask = (TransferTask)listener.getTransferTask();
 
             streamingTransferTask.setStatus(WRITE_COMPLETED);
-            _doPublishEvent(TransferStatusType.STREAM_COPY_COMPLETED.name(), streamingTransferTask.toJson());
+            _doPublishEvent(MessageType.TRANSFER_COMPLETED, streamingTransferTask.toJson());
 
             streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
-            _doPublishEvent(COMPLETED.name(), streamingTransferTask.toJson());
+            _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, streamingTransferTask.toJson());
 
 
             log.debug(String.format(
@@ -976,7 +977,7 @@ public class URLCopy{
                     getProtocolForClass(destClient.getClass())));
 
             listener.getTransferTask().setStatusString(STREAM_COPY_STARTED.name());
-            _doPublishEvent(STREAM_COPY_STARTED.name(), ((TransferTask)listener.getTransferTask()).toJson());
+            _doPublishEvent(MessageType.TRANSFER_STREAMING, ((TransferTask)listener.getTransferTask()).toJson());
 
             if (sourceClient.isDirectory(srcPath)) {
                 throw new RemoteDataException("Cannot perform range query on directories");
@@ -1152,10 +1153,10 @@ public class URLCopy{
             TransferTask streamingTransferTask = (TransferTask)listener.getTransferTask();
 
             streamingTransferTask.setStatus(WRITE_COMPLETED);
-            _doPublishEvent(RELAY_WRITE_COMPLETED.name(), streamingTransferTask.toJson());
+            _doPublishEvent(MessageType.TRANSFER_COMPLETED, streamingTransferTask.toJson());
 
             streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
-            _doPublishEvent(RELAY_WRITE_COMPLETED.name(), streamingTransferTask.toJson());
+            _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, streamingTransferTask.toJson());
 
             // and we're spent
             log.debug(String.format(

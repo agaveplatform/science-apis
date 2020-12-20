@@ -242,7 +242,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 //				if (isFile) {
 				// task status should be updated to assigned before creating the event
-				verify(dbService).updateStatus(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getUuid()), eq(TransferStatusType.ASSIGNED.name()), any());
+//				verify(dbService).updateStatus(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getUuid()), eq(TransferStatusType.ASSIGNED.name()), any());
 
 				// mkdir should only be called on directory items. this is a file.
 				verify(destRemoteDataClient, never()).mkdirs(eq(destUri.getPath()));

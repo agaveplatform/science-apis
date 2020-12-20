@@ -189,6 +189,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                         if (srcFileInfo.isFile()) {
                             log.info("srcFileInfo is a file.");
                             // but first, we udpate the transfer task status to ASSIGNED
+                            assignedTransferTask.setStatus(TransferStatusType.ASSIGNED);
                             _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson() );
 
 //                            getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {

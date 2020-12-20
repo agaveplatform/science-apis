@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.iplantc.service.transfer.model.enumerations.ITransferStatus;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferTaskEventType.COMPLETED;
 import static org.agaveplatform.service.transfers.enumerations.TransferTaskEventType.STREAM_COPY_STARTED;

@@ -5,6 +5,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.enumerations.TransferTaskEventType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
@@ -158,17 +159,13 @@ public class URLCopyIT extends BaseTestCase {
 
             ctx.verify(() -> {
                 //check that events are published correctly using the RetryRequestManager
-                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.RELAY_READ_STARTED.name()),
+                verify(mockRetryRequestManager, times(3)).request(eq(MessageType.TRANSFER_UNARY),
                         any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.RELAY_READ_COMPLETED.name()),
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
                         any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.UPDATED.name()),
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFER_COMPLETED),
                         any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.RELAY_WRITE_STARTED.name()),
-                        any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.RELAY_WRITE_COMPLETED.name()),
-                        any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.COMPLETED.name()),
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_COMPLETED),
                         any(JsonObject.class), eq(2));
 
                 assertEquals(attempts + 1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");
@@ -241,11 +238,11 @@ public class URLCopyIT extends BaseTestCase {
             ctx.verify(() -> {
 
                 //check that events are published correctly using the RetryRequestManager
-                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.STREAM_COPY_STARTED.name()),
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFER_STREAMING),
                         any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.STREAM_COPY_COMPLETED.name()),
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFER_COMPLETED),
                         any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(TransferTaskEventType.COMPLETED.name()),
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_COMPLETED),
                         any(JsonObject.class), eq(2));
 
                 assertEquals(attempts + 1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");

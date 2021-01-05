@@ -403,7 +403,7 @@ public class URLCopy{
                     srcChildTransferTask.setTenantId(aggregateTransferTask.getTenantId());
                     srcChildTransferTask.setStatus(READ_STARTED);
 
-                    _doPublishEvent(MessageType.TRANSFER_UNARY, aggregateTransferTask.toJson());
+                    _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
 
                     srcChildRemoteTransferListener =
                             getRemoteTransferListenerForTransferTask(srcChildTransferTask);
@@ -420,7 +420,7 @@ public class URLCopy{
 //                        aggregateTransferTask.setStatus(TransferStatusType.CANCELLED);
 //                    } else {
                         aggregateTransferTask.setStatus(READ_COMPLETED);
-                        _doPublishEvent(MessageType.TRANSFER_UNARY, aggregateTransferTask.toJson());
+//                        _doPublishEvent(MessageType.TRANSFER_UNARY, aggregateTransferTask.toJson());
                         _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
                     }
 
@@ -482,7 +482,7 @@ public class URLCopy{
                             aggregateTransferTask.getRootTaskId());
                     destChildTransferTask.setTenantId(aggregateTransferTask.getTenantId());
                     aggregateTransferTask.setStatus(WRITE_STARTED);
-                    _doPublishEvent(MessageType.TRANSFER_UNARY, aggregateTransferTask.toJson());
+                    _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
 
                     destChildRemoteTransferListener =
                             getRemoteTransferListenerForTransferTask(destChildTransferTask);
@@ -502,7 +502,7 @@ public class URLCopy{
                         aggregateTransferTask.setLastUpdated(Instant.now());
 
                         aggregateTransferTask.setStatus(WRITE_COMPLETED);
-                        _doPublishEvent(MessageType.TRANSFER_COMPLETED, aggregateTransferTask.toJson());
+                        _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
 
                         aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
                         _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, aggregateTransferTask.toJson());
@@ -561,7 +561,7 @@ public class URLCopy{
                 destChildTransferTask.setStartTime(aggregateTransferTask.getStartTime());
 
                 aggregateTransferTask.setStatus(WRITE_STARTED);
-                _doPublishEvent(MessageType.TRANSFER_UNARY, aggregateTransferTask.toJson());
+                _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
 
                 destChildRemoteTransferListener =
                         getRemoteTransferListenerForTransferTask(destChildTransferTask);
@@ -586,7 +586,7 @@ public class URLCopy{
                 aggregateTransferTask.setLastUpdated(Instant.now());
 
                 aggregateTransferTask.setStatus(WRITE_COMPLETED);
-                _doPublishEvent(MessageType.TRANSFER_COMPLETED, aggregateTransferTask.toJson());
+                _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
 
                 aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
                 _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, aggregateTransferTask.toJson());
@@ -714,7 +714,7 @@ public class URLCopy{
             long totalSize = sourceClient.length(srcPath);
 
             listener.getTransferTask().setStatusString(STREAM_COPY_STARTED.name());
-            _doPublishEvent(MessageType.TRANSFER_STREAMING, ((TransferTask)listener.getTransferTask()).toJson());
+            _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, ((TransferTask)listener.getTransferTask()).toJson());
 
             // Buffer the input stream only if it's not already buffered.
             try {
@@ -779,7 +779,7 @@ public class URLCopy{
             TransferTask streamingTransferTask = (TransferTask)listener.getTransferTask();
 
             streamingTransferTask.setStatus(WRITE_COMPLETED);
-            _doPublishEvent(MessageType.TRANSFER_COMPLETED, streamingTransferTask.toJson());
+            _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, streamingTransferTask.toJson());
 
             streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
             _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, streamingTransferTask.toJson());

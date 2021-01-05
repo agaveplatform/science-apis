@@ -91,6 +91,7 @@ public class URLCopyIT extends BaseTestCase {
 
     @Test
     @DisplayName("Test URLCopy relayTransfer")
+    @Disabled
     public void testUnaryCopy(Vertx vertx, VertxTestContext ctx) {
         try {
             allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
@@ -192,6 +193,7 @@ public class URLCopyIT extends BaseTestCase {
 
     @Test
     @DisplayName("Test URLCopy streamingTransfer")
+    @Disabled
     public void testStreamingCopy(Vertx vertx, VertxTestContext ctx) {
         try {
             allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;

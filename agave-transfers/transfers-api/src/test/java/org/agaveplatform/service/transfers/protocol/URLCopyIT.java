@@ -7,7 +7,6 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
-import org.agaveplatform.service.transfers.enumerations.TransferTaskEventType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.transfer.*;
@@ -91,7 +90,7 @@ public class URLCopyIT extends BaseTestCase {
 
     @Test
     @DisplayName("Test URLCopy relayTransfer")
-    @Disabled
+//    @Disabled
     public void testUnaryCopy(Vertx vertx, VertxTestContext ctx) {
         try {
             allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
@@ -160,11 +159,7 @@ public class URLCopyIT extends BaseTestCase {
 
             ctx.verify(() -> {
                 //check that events are published correctly using the RetryRequestManager
-                verify(mockRetryRequestManager, times(3)).request(eq(MessageType.TRANSFER_UNARY),
-                        any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFER_COMPLETED),
+                verify(mockRetryRequestManager, times(4)).request(eq(MessageType.TRANSFERTASK_UPDATED),
                         any(JsonObject.class), eq(2));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_COMPLETED),
                         any(JsonObject.class), eq(2));
@@ -193,7 +188,7 @@ public class URLCopyIT extends BaseTestCase {
 
     @Test
     @DisplayName("Test URLCopy streamingTransfer")
-    @Disabled
+//    @Disabled
     public void testStreamingCopy(Vertx vertx, VertxTestContext ctx) {
         try {
             allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
@@ -224,6 +219,8 @@ public class URLCopyIT extends BaseTestCase {
             tt.setDest(TRANSFER_DEST);
             int attempts = tt.getAttempts();
             Instant lastUpdated = tt.getLastUpdated();
+            JsonObject rootJson = tt.toJson();
+            rootJson.put("status", TransferStatusType.STREAM_COPY_STARTED.name());
 
             RemoteTransferListenerImpl mockRemoteTransferListenerImpl = getMockRemoteTransferListener(tt, mockRetryRequestManager);
 
@@ -237,13 +234,15 @@ public class URLCopyIT extends BaseTestCase {
 
             TransferTask copiedTransfer = mockCopy.copy(tt);
 
+            JsonObject updatedJson = tt.toJson().put("status", TransferStatusType.WRITE_COMPLETED);
+
             ctx.verify(() -> {
 
                 //check that events are published correctly using the RetryRequestManager
-                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFER_STREAMING),
-                        any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFER_COMPLETED),
-                        any(JsonObject.class), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        eq(rootJson), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        eq(updatedJson), eq(2));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_COMPLETED),
                         any(JsonObject.class), eq(2));
 

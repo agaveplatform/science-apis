@@ -73,7 +73,7 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 						if (updateStatus.succeeded()) {
 							logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
 							//parentList.remove(uuid);
-							_doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, updateStatus.result());
+							_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
 							promise.handle(Future.succeededFuture(Boolean.TRUE));
 						} else {
 							logger.error("[{}] Task {} completed, but unable to update status: {}",

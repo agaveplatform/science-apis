@@ -33,11 +33,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.iplantc.service.transfer.model.enumerations.ITransferStatus;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
-import static org.agaveplatform.service.transfers.enumerations.TransferTaskEventType.COMPLETED;
 import static org.agaveplatform.service.transfers.enumerations.TransferTaskEventType.STREAM_COPY_STARTED;
-import static org.agaveplatform.service.transfers.enumerations.TransferTaskEventType.*;
 
 /**
  * Handles the copying of data between one {@link RemoteDataClient} and another. Situations where
@@ -502,10 +499,11 @@ public class URLCopy{
                         aggregateTransferTask.setLastUpdated(Instant.now());
 
                         aggregateTransferTask.setStatus(WRITE_COMPLETED);
-                        _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
+                        //transfer updates are handled through the listener
+//                        _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
 
                         aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
-                        _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, aggregateTransferTask.toJson());
+                        _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, aggregateTransferTask.toJson());
                     }
                 } catch (RemoteDataException e) {
                     try {
@@ -586,10 +584,11 @@ public class URLCopy{
                 aggregateTransferTask.setLastUpdated(Instant.now());
 
                 aggregateTransferTask.setStatus(WRITE_COMPLETED);
-                _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
+                //transfer updates are handled through the listener
+//                _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
 
                 aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
-                _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, aggregateTransferTask.toJson());
+                _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, aggregateTransferTask.toJson());
             }
         }
         catch (ClosedByInterruptException e) {
@@ -779,10 +778,11 @@ public class URLCopy{
             TransferTask streamingTransferTask = (TransferTask)listener.getTransferTask();
 
             streamingTransferTask.setStatus(WRITE_COMPLETED);
-            _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, streamingTransferTask.toJson());
+            //transfer updates are handled through the listener
+//            _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, streamingTransferTask.toJson());
 
             streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
-            _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, streamingTransferTask.toJson());
+            _doPublishEvent(MessageType.TRANSFER_COMPLETED, streamingTransferTask.toJson());
 
 
             log.debug(String.format(
@@ -1157,7 +1157,7 @@ public class URLCopy{
             _doPublishEvent(MessageType.TRANSFER_COMPLETED, streamingTransferTask.toJson());
 
             streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
-            _doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, streamingTransferTask.toJson());
+            _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, streamingTransferTask.toJson());
 
             // and we're spent
             log.debug(String.format(

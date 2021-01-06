@@ -315,7 +315,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 												transferAllListenerCheckpoint.flag();
 											} else if (address.equals(TRANSFER_COMPLETED)) {
 												transferCompletedListenerCheckpoint.flag();
-											} else if (address.equals(TRANSFERTASK_COMPLETED)) {
+											} else if (address.equals(TRANSFERTASK_FINISHED)) {
 												transferTaskCompletedListenerCheckpoint.flag();
 												ctx.completeNow();
 											} else if (address.equals(TRANSFERTASK_ERROR)) {

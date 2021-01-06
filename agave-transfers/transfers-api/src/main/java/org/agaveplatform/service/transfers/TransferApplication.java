@@ -220,6 +220,16 @@ public class TransferApplication {
                                             log.error("TransferTaskUpdateListener Deployment failed !");
                                         }
                                     });
+
+                            // Deploy the TransferTaskFinishedListener vertical
+                            vertx.deployVerticle(TransferTaskFinishedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskFinishedListener",
+                                    localOptions, res15 -> {
+                                        if (res.succeeded()) {
+                                            log.info("TransferTaskFinishedListener Deployment id is " + res.result());
+                                        } else {
+                                            log.error("TransferTaskFinishedListener Deployment failed !");
+                                        }
+                                    });
                         } else {
                             log.error("TransferAPIVertical deployment failed !\n" + res.cause());
                             res.cause().printStackTrace();

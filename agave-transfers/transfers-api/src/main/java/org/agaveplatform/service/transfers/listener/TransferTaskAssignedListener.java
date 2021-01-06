@@ -67,7 +67,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
 
             processTransferTask(body, resp -> {
                 if (resp.succeeded()) {
-                    log.debug("Succeeded with the procdssTransferTask in the assigning of the event {}", uuid);
+                    log.debug("Succeeded with the processTransferTask in the assigning of the event {}", uuid);
                     // TODO: codify our notification behavior here. Do we rewrap? How do we ensure ordering? Do we just
                     //   throw it over the fence to Camel and forget about it? Boy, that would make things easier,
                     //   thought not likely faster.

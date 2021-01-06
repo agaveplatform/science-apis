@@ -16,7 +16,7 @@ public interface MessageType {
     public static final String 	TRANSFERTASK_PAUSED_COMPLETED = "transfertask.paused.completed";
     public static final String 	TRANSFERTASK_PAUSED_ACK = "transfertask.paused.ack";
     public static final String 	TRANSFER_COMPLETED = "transfer.completed";
-    public static final String 	TRANSFERTASK_COMPLETED = "transfertask.completed";
+    public static final String TRANSFERTASK_FINISHED = "transfertask.finished";
     public static final String 	TRANSFERTASK_ERROR = "transfertask.error";
     public static final String 	TRANSFERTASK_PARENT_ERROR = "transfertask.parent.error";
     public static final String 	TRANSFERTASK_FAILED = "transfertask.failed";

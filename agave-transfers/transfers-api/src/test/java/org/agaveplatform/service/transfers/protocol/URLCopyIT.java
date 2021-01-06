@@ -161,7 +161,7 @@ public class URLCopyIT extends BaseTestCase {
                 //check that events are published correctly using the RetryRequestManager
                 verify(mockRetryRequestManager, times(4)).request(eq(MessageType.TRANSFERTASK_UPDATED),
                         any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_COMPLETED),
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_FINISHED),
                         any(JsonObject.class), eq(2));
 
                 assertEquals(attempts + 1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");
@@ -243,7 +243,7 @@ public class URLCopyIT extends BaseTestCase {
                         eq(rootJson), eq(2));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
                         eq(updatedJson), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_COMPLETED),
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_FINISHED),
                         any(JsonObject.class), eq(2));
 
                 assertEquals(attempts + 1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");

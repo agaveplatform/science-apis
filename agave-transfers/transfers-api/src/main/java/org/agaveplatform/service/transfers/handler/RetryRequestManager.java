@@ -38,7 +38,6 @@ public class RetryRequestManager {
 
         getVertx().eventBus().request(address, body, new DeliveryOptions(), new Handler<AsyncResult<Message<JsonObject>>>() {
             private int attempts = 0;
-            private final Logger logger = LoggerFactory.getLogger(RetryRequestManager.class);
 
                 /**
                  * Something has happened, so handle it.
@@ -50,13 +49,23 @@ public class RetryRequestManager {
                     log.trace("Got into the RetryReqestManager.handle method.");
                 if (event.failed()) {
                     if (attempts < maxAttempts) {
-                        log.error("Unable to send {} event for transfer task {} after {} attempts. No further attempts will be made.",
-                                address, body.getString("uuid"), attempts);
+                        log.error("Unable to send {} event for transfer task {} after {} attempts. {} Max attempts...",
+                                address, body.getString("uuid"), attempts, maxAttempts);
+                        if (event.result() == null) {
+                            log.error("error cause: " + event.cause());
+                        } else {
+                            log.error("error body: " + event.result().body() + " + error: " + event.result().toString());
+                        }
                         attempts += 1;
                         getVertx().eventBus().request(address, body, new DeliveryOptions(), this);
                     } else {
                         log.error("Unable to send {} event for transfer task {} after {} attempts for message {}. \"{}.\" No further attempts will be made.",
                                 address, body.getString("uuid"), attempts, body.encode(), event.cause().getMessage());
+                        if (event.result() == null) {
+                            log.error("error cause: " + event.cause());
+                        }else {
+                            log.error("error body: " + event.result().body() + " + error: " + event.result().toString());
+                        }
                     }
                 } else {
                     log.debug("Successfully sent {} event for transfer task {}", event, body.getString("uuid"));

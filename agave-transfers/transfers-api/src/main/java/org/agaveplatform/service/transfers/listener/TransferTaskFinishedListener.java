@@ -17,22 +17,22 @@ import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 
-public class TransferTaskUpdateListener extends AbstractTransferTaskListener {
-    private final static Logger logger = LoggerFactory.getLogger(org.agaveplatform.service.transfers.listener.TransferTaskUpdateListener.class);
-    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_UPDATED;
+public class TransferTaskFinishedListener extends AbstractTransferTaskListener {
+    private final static Logger logger = LoggerFactory.getLogger(org.agaveplatform.service.transfers.listener.TransferTaskFinishedListener.class);
+    protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_FINISHED;
 
     private TransferTaskDatabaseService dbService;
     protected List<String> parentList = new ArrayList();
 
-    public TransferTaskUpdateListener() {
+    public TransferTaskFinishedListener() {
         super();
     }
 
-    public TransferTaskUpdateListener(Vertx vertx) {
+    public TransferTaskFinishedListener(Vertx vertx) {
         setVertx(vertx);
     }
 
-    public TransferTaskUpdateListener(Vertx vertx, String eventChannel) {
+    public TransferTaskFinishedListener(Vertx vertx, String eventChannel) {
         super(vertx, eventChannel);
     }
 
@@ -54,11 +54,11 @@ public class TransferTaskUpdateListener extends AbstractTransferTaskListener {
             String dest = body.getString("dest");
             TransferTask tt = new TransferTask(body);
 
-            logger.info("Transfer task {} updated: {} -> {}", uuid, source, dest);
+            logger.info("Transfer task {} finished.", uuid, source, dest);
 
             this.processEvent(body, result -> {
                 if (result.succeeded()) {
-                    logger.error("Succeeded with the processing transfer update event for transfer task {}", uuid);
+                    logger.trace("Succeeded with the processing the transfer finished event for transfer task {}", uuid);
                 } else {
                     logger.error("Error with return from update event {}", uuid);
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
@@ -68,28 +68,21 @@ public class TransferTaskUpdateListener extends AbstractTransferTaskListener {
     }
 
     public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
-        //TransferTask bodyTask = new TransferTask(body);
-//        body.put("status", TRANSFERRING);
         String tenantId = body.getString("tenantId");
         String uuid = body.getString("uuid");
         String status = body.getString("status");
         String parentTaskId = body.getString("parentTask");
-        logger.debug("Updating status of transfer task {} to {}", uuid, status);
+        String rootTaskId = body.getString("rootTask");
+        String eventId = body.getString("eventId");
+        body.put("type", status);
+        body.put("event", eventId);
+        logger.debug("Processing finished task, sending notification", uuid, status);
 
         try {
-            logger.trace("handling updating in-flight transfer progress...");
-            handler.handle(Future.succeededFuture(true));
+            logger.trace("Sending notification event");
+//          _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
 
-//            getDbService().updateStatus(tenantId, uuid, status, reply -> {
-//                if (reply.succeeded()) {
-//                    logger.debug("Transfer task {} status updated to {}", uuid, status);
-//                    handler.handle(Future.succeededFuture(true));
-//                } else {
-//                    String msg = String.format("Failed to set status of transfer task %s to %s. error: %s",
-//                            uuid, status, reply.cause().getMessage());
-//                    doHandleError(reply.cause(), msg, body, handler);
-//                }
-//            });
+
         } catch (Exception e) {
             doHandleError(e, e.getMessage(), body, handler);
         }

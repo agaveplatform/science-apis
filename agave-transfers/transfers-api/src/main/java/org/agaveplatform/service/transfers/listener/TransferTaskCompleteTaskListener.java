@@ -80,8 +80,8 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 //			dbService.updateStatus(tenantId, uuid, status, reply -> this.handleUpdateStatus(reply, tenantId, parentTaskId));
 			getDbService().updateStatus(tenantId, uuid, TransferStatusType.COMPLETED.name(), reply -> {
 				if (reply.succeeded()) {
-					logger.debug("Transfer task {} status updated to COMPLETED", uuid);
-					_doPublishEvent(MessageType.TRANSFERTASK_COMPLETED, body);
+					logger.debug(TransferTaskCompleteTaskListener.class.getName() + ":Transfer task {} status updated to COMPLETED", uuid);
+					_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, body);
 
 					if (parentTaskId != null ) {
 						logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);
@@ -102,9 +102,10 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 						});
 					}
 					else {
+						//Transfer task is the root/parent task
 						logger.debug("Transfer task {} has no parent task to process.", uuid);
-						reply.failed();
-						handler.handle(Future.succeededFuture(false));
+						handler.handle(Future.succeededFuture(true));
+						_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, body);
 					}
 				}
 				else {

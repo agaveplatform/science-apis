@@ -59,6 +59,7 @@ public class TransferTaskUpdateListener extends AbstractTransferTaskListener {
             this.processEvent(body, result -> {
                 if (result.succeeded()) {
                     logger.error("Succeeded with the processing transfer update event for transfer task {}", uuid);
+                    msg.reply(TransferTaskUpdateListener.class.getName() + " completed.");
                 } else {
                     logger.error("Error with return from update event {}", uuid);
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);

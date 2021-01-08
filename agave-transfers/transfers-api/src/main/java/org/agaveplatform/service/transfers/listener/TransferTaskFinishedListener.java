@@ -18,7 +18,7 @@ import java.util.List;
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 
 public class TransferTaskFinishedListener extends AbstractTransferTaskListener {
-    private final static Logger logger = LoggerFactory.getLogger(org.agaveplatform.service.transfers.listener.TransferTaskFinishedListener.class);
+    private final static Logger logger = LoggerFactory.getLogger(TransferTaskFinishedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_FINISHED;
 
     private TransferTaskDatabaseService dbService;
@@ -54,11 +54,12 @@ public class TransferTaskFinishedListener extends AbstractTransferTaskListener {
             String dest = body.getString("dest");
             TransferTask tt = new TransferTask(body);
 
-            logger.info("Transfer task {} finished.", uuid, source, dest);
+            logger.info("Transfer task {} finished.");
 
             this.processEvent(body, result -> {
                 if (result.succeeded()) {
                     logger.trace("Succeeded with the processing the transfer finished event for transfer task {}", uuid);
+                    msg.reply(TransferTaskFinishedListener.class.getName() + " completed.");
                 } else {
                     logger.error("Error with return from update event {}", uuid);
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
@@ -74,16 +75,16 @@ public class TransferTaskFinishedListener extends AbstractTransferTaskListener {
         String parentTaskId = body.getString("parentTask");
         String rootTaskId = body.getString("rootTask");
         String eventId = body.getString("eventId");
-        body.put("type", status);
-        body.put("event", eventId);
-        logger.debug("Processing finished task, sending notification", uuid, status);
+//        body.put("type", status);
+//        body.put("event", eventId);
+        logger.debug("Processing finished task, sending notification");
 
         try {
-            logger.trace("Sending notification event");
+            logger.debug("Sending notification event");
 //          _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
-
-
+            handler.handle(Future.succeededFuture(true));
         } catch (Exception e) {
+            logger.debug(TransferTaskFinishedListener.class.getName() + " - exception caught");
             doHandleError(e, e.getMessage(), body, handler);
         }
     }

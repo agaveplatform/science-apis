@@ -176,7 +176,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("TransferTaskUpdateListener - processTransferTask updates single file transfer task")
-    //@Disabled
+    @Disabled
     public void processTransferTaskUpdatesSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) {
         // mock out the test class
         TransferTaskUpdateListener ta = getMockTransferUpdateListenerInstance(vertx);

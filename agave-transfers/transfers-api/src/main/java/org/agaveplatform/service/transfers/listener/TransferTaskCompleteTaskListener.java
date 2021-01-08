@@ -59,6 +59,7 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 			this.processEvent(body, result -> {
 				if (result.succeeded()) {
 					logger.error("Succeeded with the processing transfer completed event for transfer task {}", uuid);
+					msg.reply(TransferTaskCompleteTaskListener.class.getName() + " completed.");
 				} else {
 					logger.error("Error with return from complete event {}", uuid);
 					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
@@ -100,12 +101,10 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 								handler.handle(Future.succeededFuture(false));
 							}
 						});
-					}
-					else {
+					} else {
 						//Transfer task is the root/parent task
 						logger.debug("Transfer task {} has no parent task to process.", uuid);
 						handler.handle(Future.succeededFuture(true));
-						_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, body);
 					}
 				}
 				else {

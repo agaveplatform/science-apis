@@ -53,6 +53,7 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 			logger.info("Performing healthcheck on transfer task {}", uuid);
 
 			this.processEvent(body);
+			msg.reply(TransferTaskHealthcheckListener.class.getName() + " completed.");
 		});
 	}
 

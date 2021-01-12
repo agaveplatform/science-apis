@@ -77,8 +77,9 @@ public class RetryRequestManager {
                         if (reply.succeeded()) {
                             log.debug("Successfully sent {} event for transfer task {}", TRANSFERTASK_NOTIFICATION, body.getString("uuid"));
                         } else {
-                            log.error("Unable to send {} event for transfer task {} after {} attempts for message {}. \"{}.\" No further attempts will be made.",
-                                    TRANSFERTASK_NOTIFICATION, body.getString("uuid"), attempts, event.result().body().encode(), event.cause().getMessage());
+                            log.error("Error with Notification");
+//                            log.error("Unable to send {} event for transfer task {} after {} attempts for message {}. \"{}.\" No further attempts will be made.",
+//                                    TRANSFERTASK_NOTIFICATION, body.getString("uuid"), attempts, event.result().body().encode(), event.cause().getMessage());
                         }
                     });
                 }

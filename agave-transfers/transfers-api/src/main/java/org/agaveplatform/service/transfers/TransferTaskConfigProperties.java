@@ -17,4 +17,5 @@ public class TransferTaskConfigProperties {
     public static final String CONFIG_TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE = "TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE";
     public static final String CONFIG_TRANSFERTASK_DB_QUEUE = "TRANSFERTASK_DB_QUEUE";
     public static final String TRANSFERTASK_MAX_ATTEMPTS = "TRANSFERTASK_MAX_ATTEMPTS";
+    public static final String MAX_TIME_FOR_TASK = "MAX_TIME_FOR_TASK";
 }

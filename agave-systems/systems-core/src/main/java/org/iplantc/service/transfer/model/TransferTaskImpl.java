@@ -699,6 +699,6 @@ public class TransferTaskImpl implements TransferTask {
 	}
 
 	public void setLastUpdated(Date date) {
-		this.setLastUpdated(date.toInstant());
+		this.setLastUpdated(Instant.now());
 	}
 }

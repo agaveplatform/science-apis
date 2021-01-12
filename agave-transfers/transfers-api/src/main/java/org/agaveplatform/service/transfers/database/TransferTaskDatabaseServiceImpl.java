@@ -202,8 +202,39 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
   @Override
+  public TransferTaskDatabaseService getAllParentsCanceledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler){
+    LOGGER.trace("Got into db.getAllParentsCanceledOrCompleted");
+    JsonArray data = new JsonArray()
+            .add(uuid)
+            .add(tenantId);
+
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_PARENTS_NOT_CANCELED_OR_COMPLETED), data, fetch -> {
+      LOGGER.info("dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_PARENTS_NOT_CANCELED_OR_COMPLETED)");
+      if (fetch.succeeded()) {
+        ResultSet resultSet = fetch.result();
+        LOGGER.info("db.allParentsNotCancelledOrCompleted, Number of rows ={}", resultSet.getNumRows());
+        Boolean response = Boolean.FALSE;
+        if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("id") > 0) {
+          response = Boolean.TRUE;
+        } else if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0){
+          // this should be marked as status of 'ERROR' since we don't know what caused the task to fail
+          LOGGER.info("This should be marked as status of 'ERROR' since we don't know what caused the task to fail uuid = {}", uuid);
+
+          response = Boolean.FALSE;
+        }
+        resultHandler.handle(Future.succeededFuture(fetch.result().getRows().get(0)));
+      } else {
+        LOGGER.error("Failed to query for existence of any child transfer tasks of {} not in a CANCELLED or COMPLETED state.", uuid, fetch.cause());
+        resultHandler.handle(Future.failedFuture(fetch.cause()));
+      }
+    });
+
+    return this;
+  }
+
+  @Override
   public TransferTaskDatabaseService allChildrenCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
-    LOGGER.debug("Got into db.allChildrenCancelledOrCompleted");
+    LOGGER.trace("Got into db.allChildrenCancelledOrCompleted");
     JsonArray data = new JsonArray()
             .add(uuid)
             .add(tenantId);
@@ -297,6 +328,52 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     });
     return this;
   }
+
+  @Override
+  public TransferTaskDatabaseService updateById(String id, Handler<AsyncResult<JsonObject>> resultHandler) {
+    JsonArray data = new JsonArray()
+            .add(id);
+    dbClient.getConnection(conn -> {
+      conn.result().setAutoCommit(false, res -> {
+        if (res.failed()) {
+          throw new RuntimeException(res.cause());
+        }
+
+        conn.result().updateWithParams(sqlQueries.get(SqlQuery.CANCEL_TRANSFERTASK_BY_ID), data, update -> {
+          if (update.succeeded()) {
+            conn.result().commit(commit -> {
+              if (commit.failed()) {
+                conn.result().rollback(rollback -> {
+                  if (res.failed()) {
+                    LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", id, rollback.cause());
+                    resultHandler.handle(Future.failedFuture(rollback.cause()));
+                  } else {
+                    LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", id, commit.cause());
+                    resultHandler.handle(Future.failedFuture(commit.cause()));
+                  }
+                });
+              } else {
+                JsonArray params = new JsonArray().add(id);
+                conn.result().queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK_BY_ID), params, ar -> {
+                  if (ar.succeeded()) {
+                    resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                  } else {
+                    LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", id, ar.cause());
+                    resultHandler.handle(Future.failedFuture(ar.cause()));
+                  }
+                });
+              }
+            });
+          } else {
+            LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
+            resultHandler.handle(Future.failedFuture(update.cause()));
+          }
+        });
+      });
+    });
+    return this;
+  }
+
 
   @Override
   public TransferTaskDatabaseService update(String tenantId, String uuid, TransferTask transferTask, Handler<AsyncResult<JsonObject>> resultHandler) {

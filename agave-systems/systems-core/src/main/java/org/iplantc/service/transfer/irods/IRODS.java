@@ -11,7 +11,6 @@ import org.codehaus.plexus.util.FileUtils;
 import org.ietf.jgss.GSSCredential;
 import org.iplantc.service.systems.exceptions.EncryptionException;
 import org.iplantc.service.transfer.*;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.InvalidTransferException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.RemoteFilePermission;

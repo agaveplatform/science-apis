@@ -35,8 +35,6 @@ public class TransferApplication {
                 .addStore(fileStore)
                 .addStore(envPropsStore);
 
-
-
         ConfigRetriever retriever = ConfigRetriever.create(vertx, options);
 
         retriever.getConfig(json -> {
@@ -181,15 +179,15 @@ public class TransferApplication {
                                         }
                                     });
 
-//                                    // Deploy the TransferErrorListener vertical
-//                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferErrorListener",
-//                                            localOptions, res11 -> {
-//                                                if (res.succeeded()){
-//                                                    System.out.println("TransferErrorListener Deployment id is " + res.result());
-//                                                }else{
-//                                                    System.out.println("TransferErrorListener Deployment failed !");
-//                                                }
-//                                            });
+                                    // Deploy the TransferErrorListener vertical
+                                    vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferErrorListener",
+                                            localOptions, res11 -> {
+                                                if (res.succeeded()){
+                                                    System.out.println("TransferErrorListener Deployment id is " + res.result());
+                                                }else{
+                                                    System.out.println("TransferErrorListener Deployment failed !");
+                                                }
+                                            });
 
                             // Deploy the TransferHealthcheckListener vertical
                             vertx.deployVerticle(TransferTaskHealthcheckListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",

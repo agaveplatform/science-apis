@@ -4,9 +4,11 @@ import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,12 +54,78 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 			String uuid = body.getString("uuid");
 			logger.info("Performing healthcheck on transfer task {}", uuid);
 
-			this.processEvent(body);
+			this.processAllChildrenCanceledEvent(body);
+
+			processChildrenActiveAndExceedTimeEvent(body, resp -> {
+				if (resp.succeeded()) {
+					logger.info("Succeeded with the processing transfer created event for transfer task {}", uuid);
+				} else {
+					logger.error("Error with return from creating the event {}", uuid);
+				}
+			});
+
 			msg.reply(TransferTaskHealthcheckListener.class.getName() + " completed.");
 		});
 	}
+/*
+	if active and
 
-	public Future<Boolean> processEvent(JsonObject body) {
+	check if childeren are complted
+
+	is this taking too long  What is aproprriate amount of time
+	timeout for msg being sent
+
+	build a vertical to
+
+*/
+	public void processChildrenActiveAndExceedTimeEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
+		String uuid = body.getString("uuid");
+		String source = body.getString("source");
+		String dest = body.getString("dest");
+		String username = body.getString("owner");
+		String tenantId = body.getString("tenantId");
+		Instant lastUpdated = body.getInstant("lastUpdated");
+
+		getDbService().getAllParentsCanceledOrCompleted(tenantId, uuid, reply -> {
+			logger.trace( "Got into getDbService().getAllParentsCanceledOrCompleted");
+			if (reply.succeeded()){
+				logger.info("reply from getDBSerivce.getAllParentsCanceledOrCompleted " + reply.toString());
+
+				reply.result();
+				List ttId = new ArrayList(reply.result().getInteger("id"));
+
+				getDbService().updateStatus(tenantId, uuid, COMPLETED.name(), updateStatus -> {
+					logger.trace("Got into getDBService.updateStatus(complete) ");
+					if (updateStatus.succeeded()) {
+						logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
+						//parentList.remove(uuid);
+						_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
+						//promise.handle(Future.succeededFuture(Boolean.TRUE));
+					} else {
+						logger.error("[{}] Task {} completed, but unable to update status: {}",
+								tenantId, uuid, reply.cause());
+						JsonObject json = new JsonObject()
+								.put("cause", updateStatus.cause().getClass().getName())
+								.put("message", updateStatus.cause().getMessage())
+								.mergeIn(body);
+						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+						//promise.handle(Future.failedFuture(updateStatus.cause()));
+					}
+				});
+
+			}
+		});
+
+//		vertx.eventBus().addInboundInterceptor((handle -> {
+//			System.out.println("Outbound data : "+handle.body().toString());
+//			handle.next();
+//		}));
+
+		handler.handle(Future.succeededFuture(true));
+	}
+
+
+	public Future<Boolean> processAllChildrenCanceledEvent(JsonObject body) {
 		logger.trace("Got into TransferTaskHealthcheckListener.processEvent");
 		Promise<Boolean> promise = Promise.promise();
 
@@ -65,7 +133,7 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 		String tenantId = body.getString("tenant_id");
 
 		getDbService().allChildrenCancelledOrCompleted(tenantId, uuid, reply -> {
-			logger.info("got into getDbService().allChildrenCancelledOrCompleted");
+			logger.trace("got into getDbService().allChildrenCancelledOrCompleted");
 			if (reply.succeeded()) {
 				logger.info("reply from getDBSerivce.allChildrenCancelledOrCompleted " + reply.toString());
 				if (reply.result()) {

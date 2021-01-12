@@ -39,7 +39,7 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 		TransferTaskHealthcheckListener listener = Mockito.mock(TransferTaskHealthcheckListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(listener.getVertx()).thenReturn(vertx);
-		when(listener.processEvent(any())).thenCallRealMethod();
+		when(listener.processAllChildrenCanceledEvent(any())).thenCallRealMethod();
 		when(listener.config()).thenReturn(config);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
@@ -87,7 +87,7 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 
 		when(thc.getDbService()).thenReturn(dbService);
 
-		Future<Boolean> result = thc.processEvent(json);
+		Future<Boolean> result = thc.processAllChildrenCanceledEvent(json);
 
 		// empty list response from db mock should result in no healthcheck events being raised
 		verify(thc, never())._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), any());

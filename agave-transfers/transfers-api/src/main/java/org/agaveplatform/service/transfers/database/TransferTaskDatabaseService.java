@@ -73,7 +73,7 @@ public interface TransferTaskDatabaseService {
   TransferTaskDatabaseService create(String tenantId, TransferTask transferTask, Handler<AsyncResult<JsonObject>> resultHandler);
 
   @Fluent
-  TransferTaskDatabaseService updateById(String id, Handler<AsyncResult<JsonObject>> resultHandler);
+  TransferTaskDatabaseService updateById(String id, String statusChangeTo, Handler<AsyncResult<JsonObject>> resultHandler);
 
   @Fluent
   TransferTaskDatabaseService update(String tenantId, String uuid, TransferTask transferTask, Handler<AsyncResult<JsonObject>> resultHandler);

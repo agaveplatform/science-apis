@@ -330,8 +330,9 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
   @Override
-  public TransferTaskDatabaseService updateById(String id, Handler<AsyncResult<JsonObject>> resultHandler) {
+  public TransferTaskDatabaseService updateById(String id, String statusChangeTo, Handler<AsyncResult<JsonObject>> resultHandler) {
     JsonArray data = new JsonArray()
+            .add(statusChangeTo)
             .add(id);
     dbClient.getConnection(conn -> {
       conn.result().setAutoCommit(false, res -> {

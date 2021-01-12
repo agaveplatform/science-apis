@@ -104,7 +104,7 @@ all-transfertask-parents-not-cancelled-or-completed: |
   )
 cancel_transfertask_by_id: |
   UPDATE TransferApiTasks
-  SET status = `CANCELLED_ERROR`, last_updated = NOW()
+  SET status = ?, last_updated = NOW()
   WHERE `id` = ?
 all-transfertask-children-cancelled-or-completed: |
   SELECT count(`id`) AS active_child_count

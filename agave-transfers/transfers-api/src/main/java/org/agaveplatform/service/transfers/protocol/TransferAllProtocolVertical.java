@@ -63,7 +63,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
-			JsonObject body = msg.body();
+            msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
+
+            JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 			String source = body.getString("source");
 			String dest = body.getString("dest");
@@ -72,7 +74,6 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			processEvent(body, resp -> {
 				if (resp.succeeded()) {
 					log.debug("Completed processing (ALL) {} event for transfer task (TA) {}", getEventChannel(), uuid);
-					msg.reply(TransferAllProtocolVertical.class.getName() + " completed");
 				} else {
 					log.error("Unable to process (ALL) {} event for transfer task (TA) message: {}", getEventChannel(), body.encode(), resp.cause());
 				}
@@ -81,7 +82,9 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 		// cancel tasks
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
-			JsonObject body = msg.body();
+            msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
+
+            JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} cancel detected", uuid);
@@ -90,9 +93,11 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			}
 		});
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-			JsonObject body = msg.body();
-			String uuid = body.getString("uuid");
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+            msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
+
+            JsonObject body = msg.body();
+            String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
 			if (uuid != null) {
@@ -100,10 +105,12 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			}
 		});
 
-		// paused tasks
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
-			JsonObject body = msg.body();
-			String uuid = body.getString("uuid");
+        // paused tasks
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+            msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
+
+            JsonObject body = msg.body();
+            String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} paused detected", uuid);
 			if (uuid != null) {
@@ -111,9 +118,11 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			}
 		});
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-			JsonObject body = msg.body();
-			String uuid = body.getString("uuid");
+        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+            msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
+
+            JsonObject body = msg.body();
+            String uuid = body.getString("uuid");
 
 			log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
 			if (uuid != null) {

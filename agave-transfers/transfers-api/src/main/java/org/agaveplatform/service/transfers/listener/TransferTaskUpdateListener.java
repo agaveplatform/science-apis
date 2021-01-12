@@ -48,6 +48,8 @@ public class TransferTaskUpdateListener extends AbstractTransferTaskListener {
 
         EventBus bus = vertx.eventBus();
         bus.<JsonObject>consumer(getEventChannel(), msg -> {
+            msg.reply(TransferTaskUpdateListener.class.getName() + " received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
             String source = body.getString("source");
@@ -59,7 +61,6 @@ public class TransferTaskUpdateListener extends AbstractTransferTaskListener {
             this.processEvent(body, result -> {
                 if (result.succeeded()) {
                     logger.error("Succeeded with the processing transfer update event for transfer task {}", uuid);
-                    msg.reply(TransferTaskUpdateListener.class.getName() + " completed.");
                 } else {
                     logger.error("Error with return from update event {}", uuid);
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);

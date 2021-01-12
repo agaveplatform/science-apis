@@ -38,6 +38,8 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 
 		// poc listener to show propagated notifications that woudl be sent to users
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
+			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 
 			NotificationMessageContext messageBodyContext = new NotificationMessageContext(
@@ -56,10 +58,9 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 			// we publish all notifications to the same channel for consumers to subscribe to. Let them
 			// get the event type from the body of the message rather than the channel to reduce the
 			// complexity of their client apps and the documentation of our notification semantics.
-			_doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+//			_doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
 			try {
 				notificationEventProcess(new JsonObject(messageBody.toJSON()));
-				msg.reply(TransferTaskNotificationListener.class.getName() + " completed.");
 			} catch (JsonProcessingException e) {
 				logger.error("Failed to serialize notification for transfer task {} to legacy message format. {}",
 						body.getString("uuid"), e.getMessage());
@@ -67,51 +68,58 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 			//JsonObject notificationMessage = new NotificationMessageBody();
 
 			logger.info("Transfer task {} completed.", body.getString("uuid"));
 
 			_doPublishEvent(MessageType.NOTIFICATION_CANCELLED, body);
-			msg.reply(TransferTaskNotificationListener.class.getName() + " completed.");
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_FINISHED, msg -> {
+			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
+			getVertx().eventBus().publish(MessageType.NOTIFICATION, body);
 
 			logger.info("Transfer task {} completed.", body.getString("uuid"));
 
 			getVertx().eventBus().publish(MessageType.NOTIFICATION_COMPLETED, body);
-			msg.reply(TransferTaskNotificationListener.class.getName() + " completed.");
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CREATED, msg -> {
+			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 
 			logger.info("Transfer task {} created.", body.getString("uuid"));
-			msg.reply(TransferTaskNotificationListener.class.getName() + " completed.");
 		});
 
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 
 			logger.info("Transfer task {} created.", body.getString("uuid"));
-			msg.reply(TransferTaskNotificationListener.class.getName() + " completed.");
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_ERROR, msg -> {
+			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 
 			logger.info("Transfer task {} created.", body.getString("uuid"));
-			msg.reply(TransferTaskNotificationListener.class.getName() + " completed.");
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
+			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 
 			logger.info("Transfer task {} created.", body.getString("uuid"));
-			msg.reply(TransferTaskNotificationListener.class.getName() + " completed.");
 		});
 	}
 

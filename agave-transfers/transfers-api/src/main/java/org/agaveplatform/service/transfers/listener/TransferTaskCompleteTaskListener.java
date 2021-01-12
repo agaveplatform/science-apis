@@ -48,7 +48,9 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 
 		EventBus bus = vertx.eventBus();
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
-			JsonObject body = msg.body();
+            msg.reply(TransferTaskCompleteTaskListener.class.getName() + " completed.");
+
+            JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 			String source = body.getString("source");
 			String dest = body.getString("dest");
@@ -59,7 +61,6 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 			this.processEvent(body, result -> {
 				if (result.succeeded()) {
 					logger.error("Succeeded with the processing transfer completed event for transfer task {}", uuid);
-					msg.reply(TransferTaskCompleteTaskListener.class.getName() + " completed.");
 				} else {
 					logger.error("Error with return from complete event {}", uuid);
 					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);

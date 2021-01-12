@@ -59,6 +59,8 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         EventBus bus = vertx.eventBus();
 
         bus.<JsonObject>consumer(getEventChannel(), msg -> {
+            msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
             String source = body.getString("source");
@@ -75,7 +77,6 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     //   only send the notification on success. We can add a failure and error notification to the
                     //   respective listeners in the same way.
 //                    _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
-                    msg.reply(TransferTaskAssignedListener.class.getName() + " completed.");
                 } else {
                     log.error("Error with return from creating the event {}", uuid);
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
@@ -85,6 +86,8 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
 
         // cancel tasks
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+            msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -93,10 +96,11 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                 addCancelledTask(uuid);
                 checkPausedTask(uuid);
             }
-            msg.reply(TransferTaskAssignedListener.class.getName() + " completed.");
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+            msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -104,11 +108,12 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             if (uuid != null) {
                 removeCancelledTask(uuid);
             }
-            msg.reply(TransferTaskAssignedListener.class.getName() + " completed.");
         });
 
         // paused tasks
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+            msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -116,10 +121,11 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             if (uuid != null) {
                 addPausedTask(uuid);
             }
-            msg.reply(TransferTaskAssignedListener.class.getName() + " completed.");
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+            msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -127,7 +133,6 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
             if (uuid != null) {
                 addPausedTask(uuid);
             }
-            msg.reply(TransferTaskAssignedListener.class.getName() + " completed.");
         });
     }
 

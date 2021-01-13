@@ -56,6 +56,8 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 
 		//final String err ;
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
+			msg.reply(TransferTaskErrorListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 			// init our db connection from the pool
 			String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
@@ -79,6 +81,8 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
+			msg.reply(TransferTaskErrorListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 
 			log.error("Transfer task {} failed to check it's parent task {} for copmletion: {}: {}",

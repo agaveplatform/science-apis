@@ -49,6 +49,8 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
 
         EventBus bus = vertx.eventBus();
         bus.<JsonObject>consumer(getEventChannel(), msg -> {
+            msg.reply(TransferTaskCancelListener.class.getName() + " received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
             logger.info("Transfer task {} cancel detected.", uuid);
@@ -58,6 +60,8 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_ACK, msg -> {
+            msg.reply(TransferTaskCancelListener.class.getName() + " received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 

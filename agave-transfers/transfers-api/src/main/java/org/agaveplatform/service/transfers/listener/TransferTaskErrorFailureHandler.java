@@ -53,6 +53,8 @@ public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListene
 
 		//final String err ;
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
+			msg.reply(TransferTaskErrorFailureHandler.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 
 			log.info("Transfer task {} failed: {}: {}",

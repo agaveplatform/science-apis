@@ -5,6 +5,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.iplantc.service.common.exceptions.UUIDException;
+import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
@@ -41,13 +43,25 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
 
 			JsonObject body = msg.body();
+			String uuid = body.getString("uuid");
 
 			NotificationMessageContext messageBodyContext = new NotificationMessageContext(
-					MessageType.TRANSFERTASK_CANCELED_COMPLETED, body.encode(), body.getString("uuid"));
+					MessageType.TRANSFERTASK_CANCELED_COMPLETED, body.encode(), uuid);
 
 			NotificationMessageBody messageBody = new NotificationMessageBody(
-					body.getString("uuid"), body.getString("owner"), body.getString("tenantId"),
+					uuid, body.getString("owner"), body.getString("tenantId"),
 					messageBodyContext);
+
+			if (body.getString("event") == null)
+				body.put("event", body.getString("status"));
+			if (body.getString("type") == null) {
+				try {
+					AgaveUUID agaveUuid = new AgaveUUID(uuid);
+					body.put("type", agaveUuid.getResourceType());
+				} catch (UUIDException e) {
+					logger.info("Invalid uuid {}. {}", uuid, e.getMessage());
+				}
+			}
 
 			logger.info("{} notification event raised for {} {}: {}",
 					body.getString("event"),

@@ -48,7 +48,7 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 
 		EventBus bus = vertx.eventBus();
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
-            msg.reply(TransferTaskCompleteTaskListener.class.getName() + " completed.");
+            msg.reply(TransferTaskCompleteTaskListener.class.getName() + " received.");
 
             JsonObject body = msg.body();
 			String uuid = body.getString("uuid");

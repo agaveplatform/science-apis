@@ -65,6 +65,8 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 
 		EventBus bus = vertx.eventBus();
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
+			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 			String source = body.getString("source");
@@ -91,6 +93,8 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 
 		// cancel tasks
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
@@ -101,6 +105,8 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
@@ -112,6 +118,8 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 
 		// paused tasks
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
@@ -122,6 +130,8 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+			msg.reply(TransferTaskRetryListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 

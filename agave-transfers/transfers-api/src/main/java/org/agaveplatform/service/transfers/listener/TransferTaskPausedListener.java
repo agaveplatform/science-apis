@@ -54,6 +54,8 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 
 		EventBus bus = vertx.eventBus();
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
+			msg.reply(TransferTaskPausedListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 
@@ -70,6 +72,8 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
+			msg.reply(TransferTaskPausedListener.class.getName() + " received.");
+
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
 			String parentTaskId = body.getString("parentTaskId");

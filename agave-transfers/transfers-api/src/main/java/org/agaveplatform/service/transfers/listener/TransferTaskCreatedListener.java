@@ -54,6 +54,8 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         bus.<JsonObject>consumer(getEventChannel(), msg -> {
+            msg.reply(TransferTaskCreatedListener.class.getName() + "received.");
+
             log.info("Recieved the TRANSFERTASK_CREATED message");
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
@@ -79,6 +81,8 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
 
         // cancel tasks
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+            msg.reply(TransferTaskCreatedListener.class.getName() + "received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -89,6 +93,8 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+            msg.reply(TransferTaskCreatedListener.class.getName() + "received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -100,6 +106,8 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
 
         // paused tasks
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+            msg.reply(TransferTaskCreatedListener.class.getName() + "received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 
@@ -110,6 +118,8 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
         });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+            msg.reply(TransferTaskCreatedListener.class.getName() + "received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
 

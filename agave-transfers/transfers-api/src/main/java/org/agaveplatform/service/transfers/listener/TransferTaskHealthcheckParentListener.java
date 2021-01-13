@@ -54,6 +54,8 @@ public class TransferTaskHealthcheckParentListener extends AbstractTransferTaskL
         // listen for healthcheck events to determine if a task is complete
         // before its transfertask_completed event was received.
         getVertx().eventBus().<JsonObject>consumer(TRANSFERTASK_HEALTHCHECK_PARENT, msg -> {
+            msg.reply(TransferTaskHealthcheckParentListener.class.getName() + " received.");
+
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
             logger.info("Performing healthcheck on transfer task {}", uuid);
@@ -66,7 +68,6 @@ public class TransferTaskHealthcheckParentListener extends AbstractTransferTaskL
                 }
             });
 
-            msg.reply(TransferTaskHealthcheckListener.class.getName() + " completed.");
         });
     }
 

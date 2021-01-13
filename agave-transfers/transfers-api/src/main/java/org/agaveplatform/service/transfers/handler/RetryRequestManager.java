@@ -68,7 +68,7 @@ public class RetryRequestManager {
                         }
                     }
                 } else {
-                    log.debug("Successfully sent {} event for transfer task {}", event, body.getString("uuid"));
+                    log.debug("Successfully sent {} event for transfer task {}", address, body.getString("uuid"));
                     log.debug("Sending notification event for transfer task {} with status {}",
                             body.getString("uuid"), body.getString("status"));
 

@@ -15,6 +15,7 @@ import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
 
 
 public class TransferTaskWatchListener extends AbstractTransferTaskListener {
@@ -55,6 +56,52 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 				}
 			});
 		});
+
+
+		getVertx().setPeriodic(600000, resp -> {
+			processParentEvent(batchResp -> {
+				if (batchResp.succeeded()) {
+					log.trace("Periodic transfer task watch starting");
+				} else {
+					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
+				}
+			});
+		});
+
+	}
+
+	public void processParentEvent(Handler<AsyncResult<Boolean>> handler) {
+		log.trace("Got into TransferTaskWatchListener.processParentEvent ");
+		try {
+			log.trace("Looking up inactive parent transfer tasks...");
+			getDbService().getAllParentsCanceledOrCompleted(reply -> {
+				if (reply.succeeded()) {
+					log.debug("Found {} active transfer tasks", reply.result().size());
+					reply.result().stream().forEach(jsonResult -> {
+						try {
+							log.debug("Scheduling health check on transfer task {}",
+									((JsonObject)jsonResult).getString("uuid"));
+							_doPublishEvent(TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonResult));
+						} catch (Throwable t) {
+							log.error("Failed to schedule health check for transfer task {}", jsonResult);
+						}
+					});
+					handler.handle(Future.succeededFuture(Boolean.TRUE));
+				} else {
+					log.error("Unable to retrieve list of active transfer tasks: {}", reply.cause().getMessage());
+					handler.handle(Future.failedFuture(reply.cause()));
+				}
+			});
+		} catch (Exception e) {
+			if (e.toString().contains("no null address accepted")){
+				log.info("Error with TransferTaskWatchListener processEvent  error ={} }", e.toString());
+				handler.handle(Future.succeededFuture(Boolean.TRUE));
+			}else
+			{
+				log.error("Error with TransferTaskWatchListener processEvent  error ={} }",  e.toString());
+				handler.handle(Future.failedFuture(e));
+			}
+		}
 	}
 
 	/**

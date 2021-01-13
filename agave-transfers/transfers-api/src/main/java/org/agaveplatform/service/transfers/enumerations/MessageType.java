@@ -47,6 +47,7 @@ public interface MessageType {
     public static final String 	TRANSFER_STREAMING = "transfer.streaming";
     public static final String 	TRANSFER_UNARY = "transfer.unary";
     public static final String  TRANSFERTASK_HEALTHCHECK = "transfertask.healthcheck";
+    public static final String  TRANSFERTASK_HEALTHCHECK_PARENT = "transfertask.healthcheck_parent";
     public static final String  TRANSFER_FAILED = "transfer.failed";
     public static final String  TRANSFER_RETRY = "transfer.retry";
     public static final String  TRANSFER_ALL = "transfer.all";

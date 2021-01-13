@@ -56,71 +56,11 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 
 			this.processAllChildrenCanceledEvent(body);
 
-			processChildrenActiveAndExceedTimeEvent(body, resp -> {
-				if (resp.succeeded()) {
-					logger.info("Succeeded with the processing transfer created event for transfer task {}", uuid);
-				} else {
-					logger.error("Error with return from creating the event {}", uuid);
-				}
-			});
-
 			msg.reply(TransferTaskHealthcheckListener.class.getName() + " completed.");
 		});
 	}
-/*
-	if active and
 
-	check if childeren are complted
 
-	is this taking too long  What is aproprriate amount of time
-	timeout for msg being sent
-
-	build a vertical to
-
-*/
-	public void processChildrenActiveAndExceedTimeEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
-		String uuid = body.getString("uuid");
-		String source = body.getString("source");
-		String dest = body.getString("dest");
-		String username = body.getString("owner");
-		String tenantId = body.getString("tenantId");
-		Instant lastUpdated = body.getInstant("lastUpdated");
-
-		getDbService().getAllParentsCanceledOrCompleted(tenantId, uuid, reply -> {
-			logger.trace( "Got into getDbService().getAllParentsCanceledOrCompleted");
-			if (reply.succeeded()){
-				logger.info("reply from getDBSerivce.getAllParentsCanceledOrCompleted " + reply.toString());
-
-				reply.result().stream().forEach(jsonResult -> {
-					getDbService().updateById(((JsonObject)jsonResult).getString("id"), CANCELLED_ERROR.name(), updateStatus -> {
-						logger.trace("Got into getDBService.updateStatus(complete) ");
-						if (updateStatus.succeeded()) {
-							logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
-							//parentList.remove(uuid);
-							_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
-							//promise.handle(Future.succeededFuture(Boolean.TRUE));
-						} else {
-							logger.error("[{}] Task {} completed, but unable to update status: {}",
-									tenantId, uuid, reply.cause());
-							JsonObject json = new JsonObject()
-									.put("cause", updateStatus.cause().getClass().getName())
-									.put("message", updateStatus.cause().getMessage())
-									.mergeIn(body);
-							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-							//promise.handle(Future.failedFuture(updateStatus.cause()));
-						}
-					});
-				});
-			}
-		});
-
-//		vertx.eventBus().addInboundInterceptor((handle -> {
-//			System.out.println("Outbound data : "+handle.body().toString());
-//			handle.next();
-//		}));
-
-		handler.handle(Future.succeededFuture(true));
-	}
 
 
 	public Future<Boolean> processAllChildrenCanceledEvent(JsonObject body) {

@@ -202,11 +202,9 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
   @Override
-  public TransferTaskDatabaseService getAllParentsCanceledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler){
+  public TransferTaskDatabaseService getAllParentsCanceledOrCompleted( Handler<AsyncResult<JsonObject>> resultHandler){
     LOGGER.trace("Got into db.getAllParentsCanceledOrCompleted");
-    JsonArray data = new JsonArray()
-            .add(uuid)
-            .add(tenantId);
+    JsonArray data = new JsonArray();
 
     dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_PARENTS_NOT_CANCELED_OR_COMPLETED), data, fetch -> {
       LOGGER.info("dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_PARENTS_NOT_CANCELED_OR_COMPLETED)");
@@ -218,13 +216,13 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
           response = Boolean.TRUE;
         } else if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0){
           // this should be marked as status of 'ERROR' since we don't know what caused the task to fail
-          LOGGER.info("This should be marked as status of 'ERROR' since we don't know what caused the task to fail uuid = {}", uuid);
+          LOGGER.info("This should be marked as status of 'ERROR' since we don't know what caused the task to fail");
 
           response = Boolean.FALSE;
         }
         resultHandler.handle(Future.succeededFuture(fetch.result().getRows().get(0)));
       } else {
-        LOGGER.error("Failed to query for existence of any child transfer tasks of {} not in a CANCELLED or COMPLETED state.", uuid, fetch.cause());
+        LOGGER.error("Failed to query for existence of any child transfer tasks not in a CANCELLED or COMPLETED state.", fetch.cause());
         resultHandler.handle(Future.failedFuture(fetch.cause()));
       }
     });

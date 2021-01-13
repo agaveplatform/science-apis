@@ -61,7 +61,7 @@ public interface TransferTaskDatabaseService {
   TransferTaskDatabaseService getActiveRootTaskIds(Handler<AsyncResult<JsonArray>> resultHandler);
 
   @Fluent
-  TransferTaskDatabaseService getAllParentsCanceledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler);
+  TransferTaskDatabaseService getAllParentsCanceledOrCompleted(Handler<AsyncResult<JsonObject>> resultHandler);
   
   @Fluent
   TransferTaskDatabaseService allChildrenCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler);

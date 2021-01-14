@@ -76,7 +76,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     // TODO: This seems like the correct pattern. Handler sent to the processing function, then
                     //   only send the notification on success. We can add a failure and error notification to the
                     //   respective listeners in the same way.
-//                    _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
+                    _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
                 } else {
                     log.error("Error with return from creating the event {}", uuid);
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);

@@ -63,11 +63,11 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 				}
 			}
 
-			logger.info("{} notification event raised for {} {}: {}",
-					body.getString("event"),
-					body.getString("type"),
-					body.getString("uuid"),
-					body.encodePrettily());
+//			logger.info("{} notification event raised for {} {}: {}",
+//					body.getString("event"),
+//					body.getString("type"),
+//					body.getString("uuid"),
+//					body.encodePrettily());
 
 			// we publish all notifications to the same channel for consumers to subscribe to. Let them
 			// get the event type from the body of the message rather than the channel to reduce the
@@ -143,7 +143,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 	 * @return true if a message was written
 	 */
 	protected boolean notificationEventProcess(JsonObject body) {
-		logger.info("Sending legacy notification message for transfer task {}: {}", body.getString("uuid"), body.encode());
+		logger.info("Sending legacy notification message for transfer task {}", body.getString("uuid"));
 		return NotificationManager.process(body.getString("uuid"), body.encode(), body.getString("owner")) > 0;
 	}
 

@@ -143,7 +143,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         String source = body.getString("source");
 		String dest =  body.getString("dest");
         String username = body.getString("owner");
-        String tenantId = body.getString("tenantId");
+        String tenantId = body.getString("tenant_id");
         String protocol = null;
         TransferTask assignedTransferTask = new TransferTask(body);
 
@@ -280,7 +280,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                                 if (taskIsNotInterrupted(assignedTransferTask)) {
 
                                                     TransferTask childTransferTask = new TransferTask(childSource, childDest, tenantId);
-                                                    childTransferTask.setTenantId(tenantId);
+                                                    childTransferTask.setTenantId(assignedTransferTask.getTenantId());
                                                     childTransferTask.setOwner(username);
                                                     childTransferTask.setParentTaskId(uuid);
                                                     childTransferTask.setRootTaskId(rootTaskId);

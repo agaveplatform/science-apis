@@ -60,7 +60,7 @@ public class TransferTaskUpdateListener extends AbstractTransferTaskListener {
 
             this.processEvent(body, result -> {
                 if (result.succeeded()) {
-                    logger.error("Succeeded with the processing transfer update event for transfer task {}", uuid);
+                    logger.info("Succeeded with the processing transfer update event for transfer task {}", uuid);
                 } else {
                     logger.error("Error with return from update event {}", uuid);
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
@@ -82,16 +82,16 @@ public class TransferTaskUpdateListener extends AbstractTransferTaskListener {
             logger.trace("handling updating in-flight transfer progress...");
             handler.handle(Future.succeededFuture(true));
 
-//            getDbService().updateStatus(tenantId, uuid, status, reply -> {
-//                if (reply.succeeded()) {
-//                    logger.debug("Transfer task {} status updated to {}", uuid, status);
-//                    handler.handle(Future.succeededFuture(true));
-//                } else {
-//                    String msg = String.format("Failed to set status of transfer task %s to %s. error: %s",
-//                            uuid, status, reply.cause().getMessage());
-//                    doHandleError(reply.cause(), msg, body, handler);
-//                }
-//            });
+            getDbService().updateStatus(tenantId, uuid, status, reply -> {
+                if (reply.succeeded()) {
+                    logger.debug("Transfer task {} status updated to {}", uuid, status);
+                    handler.handle(Future.succeededFuture(true));
+                } else {
+                    String msg = String.format("Failed to set status of transfer task %s to %s. error: %s",
+                            uuid, status, reply.cause().getMessage());
+                    doHandleError(reply.cause(), msg, body, handler);
+                }
+            });
         } catch (Exception e) {
             doHandleError(e, e.getMessage(), body, handler);
         }

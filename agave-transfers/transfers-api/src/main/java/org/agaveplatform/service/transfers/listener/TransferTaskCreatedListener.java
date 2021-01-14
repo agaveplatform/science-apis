@@ -221,7 +221,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                             // update failed
                             String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
                                     uuid, updateResult.cause().getMessage());
-                            log.info(msg);
+                            log.error(msg);
                             doHandleError(updateResult.cause(), msg, body, handler);
                         }
                     });

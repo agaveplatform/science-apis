@@ -67,7 +67,9 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
                 processEvent(body, resp -> {
                     if (resp.succeeded()) {
                         log.info("Succeeded with the processing transfer created event for transfer task {}", uuid);
-//                        _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
+                        body.put("event", this.getClass().getName());
+                        body.put("type", getEventChannel());
+                        _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
                     } else {
                         log.error("Error with return from creating the event {}", uuid);
                         _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);

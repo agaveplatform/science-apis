@@ -63,6 +63,9 @@ public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListene
 			processFailure(body, resp -> {
 				if (resp.succeeded()) {
 					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
+					body.put("event", this.getClass().getName());
+					body.put("type", getEventChannel());
+					_doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
 				} else {
 					log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
 				}
@@ -86,7 +89,7 @@ public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListene
 					log.info("Transfer task {} successfully marked as {}.", failedTask.getUuid(), savedTask.getStatus().name());
 					handler.handle(Future.succeededFuture(Boolean.TRUE));
 				} else {
-					String msg = String.format("Unable to update status of failed transfer task {}. {}",
+					String msg = String.format("Unable to update status of failed transfer task %s. %s",
 							failedTask.getUuid(), updateBody.cause().getMessage());
 					log.error(msg);
 					JsonObject json = new JsonObject()

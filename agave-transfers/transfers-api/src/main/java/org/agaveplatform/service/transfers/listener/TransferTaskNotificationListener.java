@@ -54,14 +54,6 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 
 			if (body.getString("event") == null)
 				body.put("event", body.getString("status"));
-			if (body.getString("type") == null) {
-				try {
-					AgaveUUID agaveUuid = new AgaveUUID(uuid);
-					body.put("type", agaveUuid.getResourceType());
-				} catch (UUIDException e) {
-					logger.info("Invalid uuid {}. {}", uuid, e.getMessage());
-				}
-			}
 
             logger.info("{} notification event raised for {} {}: {}",
                     body.getString("event"),
@@ -103,16 +95,16 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 			getVertx().eventBus().publish(MessageType.NOTIFICATION_COMPLETED, body);
 		});
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CREATED, msg -> {
-			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
-
-            JsonObject body = msg.body();
-            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_CREATED, body);
-            notificationEventProcess(notificationMessageBody);
-
-            logger.info("Transfer task {} created.", body.getString("uuid"));
-            _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
-        });
+//		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CREATED, msg -> {
+//			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+//
+//            JsonObject body = msg.body();
+//            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_CREATED, body);
+//            notificationEventProcess(notificationMessageBody);
+//
+//            logger.info("Transfer task {} created.", body.getString("uuid"));
+//            _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
+//        });
 
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -124,14 +116,14 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
             logger.info("Transfer task {} created.", body.getString("uuid"));
         });
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_ERROR, msg -> {
-			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
-
-            JsonObject body = msg.body();
-            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_ERROR, body);
-            notificationEventProcess(notificationMessageBody);
-            logger.info("Transfer task {} created.", body.getString("uuid"));
-        });
+//		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_ERROR, msg -> {
+//			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+//
+//            JsonObject body = msg.body();
+//            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_ERROR, body);
+//            notificationEventProcess(notificationMessageBody);
+//            logger.info("Transfer task {} created.", body.getString("uuid"));
+//        });
 
         bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
             msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
@@ -168,12 +160,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
                 if (body.getString("event") == null)
                     body.put("event", body.getString("status"));
                 if (body.getString("type") == null) {
-                    try {
-                        AgaveUUID agaveUuid = new AgaveUUID(uuid);
-                        body.put("type", agaveUuid.getResourceType());
-                    } catch (UUIDException e) {
-                        logger.info("Invalid uuid {}. {}", uuid, e.getMessage());
-                    }
+                    body.put("type", messageType);
                 }
 
                 logger.info("{} notification event raised for {} {}: {}",

@@ -79,7 +79,9 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 						log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
 						// TODO: retry won't be reflected in the message body, so what are we listening to here? At
 						//   this point
-//						_doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
+						body.put("event", this.getClass().getName());
+						body.put("type", getEventChannel());
+						_doPublishEvent(TRANSFERTASK_NOTIFICATION, body);
 					} else {
 						log.error("Unable to process {} event for transfer task (TTRL) message: {}", getEventChannel(), body.encode(), resp.cause());
 						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);

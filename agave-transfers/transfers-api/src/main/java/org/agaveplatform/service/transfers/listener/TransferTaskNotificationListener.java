@@ -56,8 +56,8 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 				body.put("event", body.getString("status"));
 
             logger.info("{} notification event raised for {} {}: {}",
-                    body.getString("event"),
-                    body.getString("type"),
+                    body.getString("event"), // event that is sending this body
+                    body.getString("type"),  // message type
                     body.getString("uuid"),
                     body.encodePrettily());
 
@@ -146,7 +146,9 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
     protected JsonObject processForNotificationMessageBody(String messageType, JsonObject body) {
         try {
             String uuid = body.getString("uuid");
+            String tenantId = body.getString("tenantId");
 
+            logger.debug("tenantId = {}", tenantId);
             if (uuid == null) {
                 logger.error("Transfer task uuid cannot be null.");
             } else {
@@ -186,6 +188,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
      */
     protected boolean notificationEventProcess(JsonObject body) {
         logger.info("Sending legacy notification message for transfer task {}", body.getString("uuid"));
+        logger.debug("tenantId = {}", body.getString("tenantId"));
         return NotificationManager.process(body.getString("uuid"), body.encode(), body.getString("owner")) > 0;
     }
 

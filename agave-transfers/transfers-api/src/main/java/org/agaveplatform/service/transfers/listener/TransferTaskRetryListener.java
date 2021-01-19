@@ -155,7 +155,7 @@ public class TransferTaskRetryListener extends AbstractTransferTaskListener {
 			String uuid = body.getString("uuid");
 			String tenantId = body.getString("tenantId");
 			Integer attempts = body.getInteger("attempts");
-
+	log.debug(body.encode());
 			// check to see if the uuid is Canceled or Completed
 			getDbService().getById(tenantId, uuid, reply -> {
 				if (reply.succeeded()) {

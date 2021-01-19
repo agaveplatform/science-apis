@@ -157,7 +157,7 @@ public class URLCopy{
      */
     public TransferTask copy(TransferTask transferTask, List<String> exclusions)
             throws RemoteDataException, RemoteDataSyntaxException, IOException, TransferException, ClosedByInterruptException {
-        log.debug("UrlCopy.copy method.");
+        log.debug("UrlCopy.copy method. {}", transferTask.getUuid());
         if (transferTask == null) {
             throw new TransferException("TransferTask cannot be null. Please provide"
                     + "a valid transfer task to track this operation.");

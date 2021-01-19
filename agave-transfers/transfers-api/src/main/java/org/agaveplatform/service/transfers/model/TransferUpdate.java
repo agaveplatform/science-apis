@@ -42,7 +42,7 @@ public class TransferUpdate {
 		this.setOwner(json.getString("owner"));
 		this.setStartTime(json.getInstant("start_time"));
 		this.setStatus(TransferStatusType.valueOf(json.getString("status")));
-		this.setTenantId(json.getString("tenant_id"));
+		this.setTenantId(json.getString("tenantId"));
 		this.setTotalSize(json.getLong("total_size", 0L));
 		this.setTransferTaskId(json.getString("transfer_task"));
 		this.setTotalFiles(json.getInteger("total_files", 0));

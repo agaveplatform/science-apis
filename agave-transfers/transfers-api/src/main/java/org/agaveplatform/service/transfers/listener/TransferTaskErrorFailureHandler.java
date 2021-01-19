@@ -79,7 +79,7 @@ public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListene
 			body.remove("cause");
 			body.remove("message");
 			body.remove("id");
-
+			log.debug(body.encode());
 			TransferTask failedTask = new TransferTask(body);
 			failedTask.setStatus(TransferStatusType.FAILED);
 

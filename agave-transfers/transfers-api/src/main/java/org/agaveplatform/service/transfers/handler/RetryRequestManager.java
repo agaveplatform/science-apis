@@ -47,28 +47,28 @@ public class RetryRequestManager {
                 @Override
                 public void handle (AsyncResult < Message < JsonObject >> event) {
                     log.trace("Got into the RetryReqestManager.handle method.");
-                if (event.failed()) {
-                    if (attempts < maxAttempts) {
-                        log.error("Unable to send {} event for transfer task {} after {} attempts. {} Max attempts...",
-                                address, body.getString("uuid"), attempts, maxAttempts);
-                        if (event.result() == null) {
-                            log.error("error cause: " + event.cause());
+                    if (event.failed()) {
+                        if (attempts < maxAttempts) {
+                            log.error("Unable to send {} event for transfer task {} after {} attempts. {} Max attempts...",
+                                    address, body.getString("uuid"), attempts, maxAttempts);
+                            if (event.result() == null) {
+                                log.error("error cause: " + event.cause());
+                            } else {
+                                log.error("error body: " + event.result().body() + " + error: " + event.result().toString());
+                            }
+                            attempts += 1;
+                            getVertx().eventBus().request(address, body, new DeliveryOptions(), this);
                         } else {
-                            log.error("error body: " + event.result().body() + " + error: " + event.result().toString());
+                            log.error("Unable to send {} event for transfer task {} after {} attempts for message {}. \"{}.\" No further attempts will be made.",
+                                    address, body.getString("uuid"), attempts, body.encode(), event.cause().getMessage());
+                            if (event.result() == null) {
+                                log.error("error cause: " + event.cause());
+                            }else {
+                                log.error("error body: " + event.result().body() + " + error: " + event.result().toString());
+                            }
                         }
-                        attempts += 1;
-                        getVertx().eventBus().request(address, body, new DeliveryOptions(), this);
                     } else {
-                        log.error("Unable to send {} event for transfer task {} after {} attempts for message {}. \"{}.\" No further attempts will be made.",
-                                address, body.getString("uuid"), attempts, body.encode(), event.cause().getMessage());
-                        if (event.result() == null) {
-                            log.error("error cause: " + event.cause());
-                        }else {
-                            log.error("error body: " + event.result().body() + " + error: " + event.result().toString());
-                        }
-                    }
-                } else {
-                    log.debug("Successfully sent {} event for transfer task {}", address, body.getString("uuid"));
+                        log.debug("Successfully sent {} event for transfer task {}", address, body.getString("uuid"));
 //                    log.debug("Sending notification event for transfer task {} with status {}",
 //                            body.getString("uuid"), body.getString("status"));
 

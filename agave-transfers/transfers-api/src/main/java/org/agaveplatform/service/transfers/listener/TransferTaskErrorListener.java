@@ -93,7 +93,7 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 	protected void processError(JsonObject body, Handler<AsyncResult<Boolean>> handler){
 		try {
 			TransferTask tt = new TransferTask(body);
-
+log.debug(body.encode());
 			String cause = body.getString("cause");
 			String message = body.getString("message", "");
 			int maxTries = config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, Settings.MAX_STAGING_RETRIES);

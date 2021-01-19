@@ -58,15 +58,15 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 		});
 
 
-//		getVertx().setPeriodic(600000, resp -> {
-//			processParentEvent(batchResp -> {
-//				if (batchResp.succeeded()) {
-//					log.trace("Periodic transfer task watch starting");
-//				} else {
-//					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
-//				}
-//			});
-//		});
+		getVertx().setPeriodic(600000, resp -> {
+			processParentEvent(batchResp -> {
+				if (batchResp.succeeded()) {
+					log.trace("Periodic transfer task watch starting");
+				} else {
+					log.error("Failed to execute the periodic transfer watch task. {}", batchResp.cause().getMessage(), batchResp.cause());
+				}
+			});
+		});
 
 	}
 

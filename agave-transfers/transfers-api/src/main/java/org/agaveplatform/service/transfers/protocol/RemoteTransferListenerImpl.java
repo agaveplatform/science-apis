@@ -20,14 +20,14 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANS
 public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
     private static final Logger log = LoggerFactory.getLogger(RemoteTransferListenerImpl.class);
 
-    private RetryRequestManager retryRequestManager;
+    protected RetryRequestManager retryRequestManager;
 
-    private TransferTaskDatabaseService dbService;
+    protected TransferTaskDatabaseService dbService;
 
     /**
      * Vertx reference of calling class used to locate the event bus to throw messages
      */
-    private final Vertx vertx;
+    protected final Vertx vertx;
 
     public RemoteTransferListenerImpl(TransferTask transferTask, RetryRequestManager retryRequestManager) {
         super(transferTask);

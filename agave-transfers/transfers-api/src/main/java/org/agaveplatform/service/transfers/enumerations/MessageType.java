@@ -1,9 +1,14 @@
 package org.agaveplatform.service.transfers.enumerations;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
-import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.transfer.AbstractRemoteTransferListener;
 
+
+/**
+ * These are the internal message types used by the concrete {@link AbstractRemoteTransferListener}
+ * classes to listen for transfer task events and process their assigned work. These do not
+ * correspond 1-1 with {@link TransferStatusType} or {@link TransferTaskEventType}, as they cover all
+ * possible internal messages that may need to be created for the internal workings of the service.
+ */
 public interface MessageType {
     public static final String 	TRANSFERTASK_CREATED = "transfertask.created";
     public static final String 	TRANSFERTASK_ASSIGNED = "transfertask.assigned";
@@ -16,7 +21,7 @@ public interface MessageType {
     public static final String 	TRANSFERTASK_PAUSED_COMPLETED = "transfertask.paused.completed";
     public static final String 	TRANSFERTASK_PAUSED_ACK = "transfertask.paused.ack";
     public static final String 	TRANSFER_COMPLETED = "transfer.completed";
-    public static final String TRANSFERTASK_FINISHED = "transfertask.finished";
+    public static final String  TRANSFERTASK_FINISHED = "transfertask.finished";
     public static final String 	TRANSFERTASK_ERROR = "transfertask.error";
     public static final String 	TRANSFERTASK_PARENT_ERROR = "transfertask.parent.error";
     public static final String 	TRANSFERTASK_FAILED = "transfertask.failed";

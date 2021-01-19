@@ -85,7 +85,7 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 
 			JsonObject body = msg.body();
 
-			log.error("Transfer task {} failed to check it's parent task {} for copmletion: {}: {}",
+			log.error("Transfer task {} failed to check it's parent task {} for completion: {}: {}",
 					body.getString("uuid"), body.getString("parentTaskId"), body.getString("cause"), body.getString("message"));
 		});
 	}

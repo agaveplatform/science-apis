@@ -408,4 +408,57 @@ public abstract class AbstractRemoteTransferListener extends Observable implemen
             log.info("Total stripe count: not present");
         }
     }//PerfMarkerArrived
+
+    public ByteRangeList getList() {
+        return list;
+    }
+
+    public void setList(ByteRangeList list) {
+        this.list = list;
+    }
+
+    @Override
+    public void setTransferTask(TransferTask transferTask) {
+        this.transferTask = transferTask;
+    }
+
+    public String getFirstRemoteFilepath() {
+        return firstRemoteFilepath;
+    }
+
+    public void setFirstRemoteFilepath(String firstRemoteFilepath) {
+        this.firstRemoteFilepath = firstRemoteFilepath;
+    }
+
+    public TransferStatus getPersistentTransferStatus() {
+        return persistentTransferStatus;
+    }
+
+    public void setPersistentTransferStatus(TransferStatus persistentTransferStatus) {
+        this.persistentTransferStatus = persistentTransferStatus;
+    }
+
+    public long getAggregateStripedDateTransferred() {
+        return aggregateStripedDateTransferred;
+    }
+
+    public void setAggregateStripedDateTransferred(long aggregateStripedDateTransferred) {
+        this.aggregateStripedDateTransferred = aggregateStripedDateTransferred;
+    }
+
+    public long getLastUpdated() {
+        return lastUpdated;
+    }
+
+    public void setLastUpdated(long lastUpdated) {
+        this.lastUpdated = lastUpdated;
+    }
+
+    public long getBytesLastCheck() {
+        return bytesLastCheck;
+    }
+
+    public void setBytesLastCheck(long bytesLastCheck) {
+        this.bytesLastCheck = bytesLastCheck;
+    }
 }

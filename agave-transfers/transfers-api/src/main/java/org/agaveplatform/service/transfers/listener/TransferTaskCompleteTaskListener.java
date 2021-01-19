@@ -83,7 +83,7 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 			getDbService().updateStatus(tenantId, uuid, TransferStatusType.COMPLETED.name(), reply -> {
 				if (reply.succeeded()) {
 					logger.debug(TransferTaskCompleteTaskListener.class.getName() + ":Transfer task {} status updated to COMPLETED", uuid);
-					_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, body);
+					_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, reply.result());
 
 					if (parentTaskId != null ) {
 						logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);

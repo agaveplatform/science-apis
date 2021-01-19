@@ -44,7 +44,7 @@ public class URLCopyIT extends BaseTestCase {
         URLCopy listener = mock(URLCopy.class);
         doCallRealMethod().when(listener).copy(any(TransferTask.class));
         doCallRealMethod().when(listener).copy(any(TransferTask.class), anyList());
-        doCallRealMethod().when(listener).streamingTransfer(anyString(), anyString(), any(RemoteTransferListenerImpl.class));
+        doCallRealMethod().when(listener).streamingTransfer(anyString(), anyString(), any(RemoteStreamingTransferListenerImpl.class));
         doCallRealMethod().when(listener).relayTransfer(anyString(), anyString(), any(TransferTask.class));
         doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
         when(listener.getVertx()).thenReturn(vertx);
@@ -81,6 +81,24 @@ public class URLCopyIT extends BaseTestCase {
         when(mockRemoteTransferListenerImpl.getRetryRequestManager()).thenReturn(retryRequestManager);
         when(mockRemoteTransferListenerImpl.isCancelled()).thenReturn(false);
         when(mockRemoteTransferListenerImpl.getTransferTask()).thenReturn(transferTask);
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).started(anyLong(), anyString());
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).progressed(anyLong());
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).completed();
+
+        return mockRemoteTransferListenerImpl;
+    }
+
+    public RemoteStreamingTransferListenerImpl getMockRemoteStreamingTransferListener(TransferTask transferTask, RetryRequestManager retryRequestManager) {
+        RemoteStreamingTransferListenerImpl mockRemoteTransferListenerImpl = mock(RemoteStreamingTransferListenerImpl.class);
+        when(mockRemoteTransferListenerImpl.getRetryRequestManager()).thenReturn(retryRequestManager);
+        when(mockRemoteTransferListenerImpl.isCancelled()).thenReturn(false);
+        when(mockRemoteTransferListenerImpl.getTransferTask()).thenReturn(transferTask);
+        when(mockRemoteTransferListenerImpl.getFirstRemoteFilepath()).thenCallRealMethod();
+        when(mockRemoteTransferListenerImpl.getLastUpdated()).thenCallRealMethod();
+        when(mockRemoteTransferListenerImpl.getBytesLastCheck()).thenCallRealMethod();
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).setFirstRemoteFilepath(anyString());
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).setLastUpdated(anyLong());
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).setBytesLastCheck(anyLong());
         doCallRealMethod().when(mockRemoteTransferListenerImpl).started(anyLong(), anyString());
         doCallRealMethod().when(mockRemoteTransferListenerImpl).progressed(anyLong());
         doCallRealMethod().when(mockRemoteTransferListenerImpl).completed();
@@ -222,19 +240,20 @@ public class URLCopyIT extends BaseTestCase {
             JsonObject rootJson = tt.toJson();
             rootJson.put("status", TransferStatusType.STREAM_COPY_STARTED.name());
 
-            RemoteTransferListenerImpl mockRemoteTransferListenerImpl = getMockRemoteTransferListener(tt, mockRetryRequestManager);
+            RemoteStreamingTransferListenerImpl mockRemoteStreamingTransferListenerImpl = getMockRemoteStreamingTransferListener(tt, mockRetryRequestManager);
 
             //Injecting the mocked arguments to the mocked URLCopy
             //Using InjectMocks annotation will not create a mock of URLCopy, which we need to pass in the mocked RemoteTransferListenerImpl
             URLCopy mockCopy = getMockURLCopyInstance(vertx, tt);
             when(mockCopy.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
-            when(mockCopy.getRemoteTransferListenerForTransferTask(any(TransferTask.class))).thenReturn(mockRemoteTransferListenerImpl);
+            when(mockCopy.getRemoteStreamingTransferListenerForTransferTask(any(TransferTask.class))).thenReturn(mockRemoteStreamingTransferListenerImpl);
             when(mockCopy.getSourceClient()).thenReturn(mockSrcRemoteDataClient);
             when(mockCopy.getDestClient()).thenReturn(mockDestRemoteDataClient);
 
             TransferTask copiedTransfer = mockCopy.copy(tt);
 
-            JsonObject updatedJson = tt.toJson().put("status", TransferStatusType.WRITE_COMPLETED);
+            JsonObject streamInProgressJson = tt.toJson().put("status", TransferStatusType.STREAM_COPY_IN_PROGRESS);
+            JsonObject streamCompletedJson = streamInProgressJson.copy().put("status", TransferStatusType.STREAM_COPY_COMPLETED);
 
             ctx.verify(() -> {
 
@@ -242,9 +261,11 @@ public class URLCopyIT extends BaseTestCase {
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
                         eq(rootJson), eq(2));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        eq(updatedJson), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_FINISHED),
-                        any(JsonObject.class), eq(2));
+                        eq(streamInProgressJson), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        eq(streamCompletedJson), eq(2));
+//                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_FINISHED),
+//                        any(JsonObject.class), eq(2));
 
                 assertEquals(attempts + 1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");
                 assertEquals(copiedTransfer.getStatus(), TransferStatusType.COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");

@@ -241,31 +241,20 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	protected TransferTask processCopyRequest(RemoteDataClient srcClient, RemoteDataClient destClient, TransferTask transferTask)
 			throws TransferException, RemoteDataSyntaxException, RemoteDataException, IOException {
 		log.debug("Got into TransferAllProtocolVertical.processCopyRequest ");
-//
-//		URI srcUri = URI.create(transferTask.getSource());
-//		URI destUri = URI.create(transferTask.getDest());
 
-		log.debug("Got up to the urlCopy");
+		log.trace("Got up to the urlCopy");
 
 		// TODO: pass in a {@link RemoteTransferListener} after porting this class over so the listener can check for
 		//   interrupts in this method upon updates from the transfer thread and interrupt it. Alternatively, we can
 		//   just run the transfer in an observable and interrupt it via a timer task started by vertx.
+		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 
+		log.debug("Calling urlCopy.copy");
+		TransferTask updatedTransferTask = urlCopy.copy(transferTask, null);
 
-			//log.info("Calling urlcopy");
-			URLCopy urlCopy = getUrlCopy(srcClient, destClient);
+		_doPublishEvent(MessageType.TRANSFER_COMPLETED, updatedTransferTask.toJson());
 
-			log.debug("Calling urlCopy.copy");
-			return urlCopy.copy(transferTask, null);
-
-//			try {
-//
-//			} catch (Exception e) {
-//				String msg = String.format("URLCopy error. %s", e.getMessage());
-//				log.error(msg);
-//
-//			}
-//		return transferTask;
+		return updatedTransferTask;
 	}
 
 	protected URLCopy getUrlCopy(RemoteDataClient srcClient, RemoteDataClient destClient){

@@ -1,21 +1,20 @@
 package org.iplantc.service.io.model;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.POJONode;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.POJONode;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Contains constants and test data for unit testing.
@@ -58,7 +57,7 @@ public class JSONTestDataUtil {
             in = JSONTestDataUtil.class.getClassLoader().getResourceAsStream(file);
 			String json = null;
 			if (in != null) {
-				json = IOUtils.toString(in, StandardCharsets.UTF_8);
+				json = IOUtils.toString(in, StandardCharsets.UTF_8.name());
 			}
 			else {
 				throw new FileNotFoundException("No file found for path, " + file + " in classloader.");

@@ -1,6 +1,13 @@
 package org.agaveplatform.service.transfers.enumerations;
 
 /**
+ * These are the user-facing notification events to which a user can subscribe for a transfer task. These do not
+ * line up 1-1 with the internal {@link MessageType} events used to process the state machine, but do honor the
+ * published event subscription contract in the platform for which the users are familiar. These also do not
+ * line up 1-1 with {@link TransferStatusType}, as multiple {@link TransferStatusType} may map to a single
+ * {@link TransferTaskEventType}, such as a {@link org.agaveplatform.service.transfers.model.TransferTask} failing
+ * for multiple reasons would result in the same {@link TransferTaskEventType#FAILED} notification being sent.
+ *
  * @author dooley
  *
  */

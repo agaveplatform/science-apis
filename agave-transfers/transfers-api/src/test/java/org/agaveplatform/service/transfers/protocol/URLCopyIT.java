@@ -34,6 +34,7 @@ public class URLCopyIT extends BaseTestCase {
 
     protected boolean allowRelayTransfers;
     protected Long FILE_SIZE = Long.valueOf(32768);
+    protected double TRANSFER_RATE = 1.00;
 
     @AfterAll
     protected void afterClass() {
@@ -96,6 +97,10 @@ public class URLCopyIT extends BaseTestCase {
         when(mockRemoteTransferListenerImpl.getFirstRemoteFilepath()).thenCallRealMethod();
         when(mockRemoteTransferListenerImpl.getLastUpdated()).thenCallRealMethod();
         when(mockRemoteTransferListenerImpl.getBytesLastCheck()).thenCallRealMethod();
+        when(mockRemoteTransferListenerImpl.getTransferRate()).thenReturn(TRANSFER_RATE);
+        doCallRealMethod().when(mockRemoteTransferListenerImpl)._doPublishEvent(anyString(), any(JsonObject.class));
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).setTransferRate(anyDouble());
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).setTransferTask(any(TransferTask.class));
         doCallRealMethod().when(mockRemoteTransferListenerImpl).setFirstRemoteFilepath(anyString());
         doCallRealMethod().when(mockRemoteTransferListenerImpl).setLastUpdated(anyLong());
         doCallRealMethod().when(mockRemoteTransferListenerImpl).setBytesLastCheck(anyLong());
@@ -220,7 +225,7 @@ public class URLCopyIT extends BaseTestCase {
 
             RemoteInputStream mockRemoteInputStream = mock(RemoteInputStream.class);
             when(mockRemoteInputStream.isBuffered()).thenReturn(true);
-            when(mockRemoteInputStream.read(any(), eq(0), anyInt())).thenReturn(32768, -1);
+            when(mockRemoteInputStream.read(any(), eq(0), anyInt())).thenReturn(FILE_SIZE.intValue(), -1);
 
             when(mockSrcRemoteDataClient.getInputStream(anyString(), eq(true))).thenReturn(mockRemoteInputStream);
             URI path = new URI(TRANSFER_SRC);
@@ -238,7 +243,6 @@ public class URLCopyIT extends BaseTestCase {
             int attempts = tt.getAttempts();
             Instant lastUpdated = tt.getLastUpdated();
             JsonObject rootJson = tt.toJson();
-            rootJson.put("status", TransferStatusType.STREAM_COPY_STARTED.name());
 
             RemoteStreamingTransferListenerImpl mockRemoteStreamingTransferListenerImpl = getMockRemoteStreamingTransferListener(tt, mockRetryRequestManager);
 
@@ -252,23 +256,34 @@ public class URLCopyIT extends BaseTestCase {
 
             TransferTask copiedTransfer = mockCopy.copy(tt);
 
-            JsonObject streamInProgressJson = tt.toJson().put("status", TransferStatusType.STREAM_COPY_IN_PROGRESS);
+            //mock JsonObjects used in the update event request
+            JsonObject streamCopyStartedJson = rootJson.copy().put("status", TransferStatusType.STREAM_COPY_STARTED);
+            streamCopyStartedJson.put("attempts", tt.getAttempts());
+            streamCopyStartedJson.put("startTime", tt.getStartTime());
+            streamCopyStartedJson.put("totalFiles", 1);
+            streamCopyStartedJson.put("totalSize", FILE_SIZE);
+
+            JsonObject streamInProgressJson = streamCopyStartedJson.copy().put("status", TransferStatusType.STREAM_COPY_IN_PROGRESS);
+            streamInProgressJson.put("transferRate", TRANSFER_RATE);
+            streamInProgressJson.put("bytesTransferred", tt.getBytesTransferred());
+            streamInProgressJson.put("lastUpdated", tt.getLastUpdated());
+
             JsonObject streamCompletedJson = streamInProgressJson.copy().put("status", TransferStatusType.STREAM_COPY_COMPLETED);
+            streamCompletedJson.put("transferRate", tt.getTransferRate());
+            streamCompletedJson.put("endTime", tt.getEndTime());
 
             ctx.verify(() -> {
 
                 //check that events are published correctly using the RetryRequestManager
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        eq(rootJson), eq(2));
+                        eq(streamCopyStartedJson), eq(2));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
                         eq(streamInProgressJson), eq(2));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
                         eq(streamCompletedJson), eq(2));
-//                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_FINISHED),
-//                        any(JsonObject.class), eq(2));
 
                 assertEquals(attempts + 1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");
-                assertEquals(copiedTransfer.getStatus(), TransferStatusType.COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");
+                assertEquals(copiedTransfer.getStatus(), TransferStatusType.STREAM_COPY_COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");
                 assertEquals(1, copiedTransfer.getTotalFiles(), "TransferTask total files be 1 upon successful transfer of a single file.");
                 assertEquals(32768, copiedTransfer.getBytesTransferred(), "TransferTask total bytes transferred should be 32768, the size of the httpbin download name.");
                 assertTrue(copiedTransfer.getLastUpdated().isAfter(lastUpdated), "TransferTask last updated should be updated after URLCopy completes.");

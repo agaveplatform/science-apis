@@ -15,6 +15,7 @@ import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatcher;
 import org.mockito.Mockito;
 
 import java.io.File;
@@ -35,6 +36,33 @@ public class URLCopyIT extends BaseTestCase {
     protected boolean allowRelayTransfers;
     protected Long FILE_SIZE = Long.valueOf(32768);
     protected double TRANSFER_RATE = 1.00;
+
+    class IsSameJsonTransferTask extends ArgumentMatcher<JsonObject> {
+        JsonObject expectedJsonTransferTask;
+
+        public IsSameJsonTransferTask(JsonObject expectedJsonTransferTask) {
+            this.expectedJsonTransferTask = expectedJsonTransferTask;
+        }
+
+        /**
+         * Returns whether this matcher accepts the given argument.
+         * <p>
+         * The method should <b>never</b> assert if the argument doesn't match. It
+         * should only return false.
+         *
+         * @param actualJsonTransferTask the argument
+         * @return whether this matcher accepts the given argument.
+         */
+        @Override
+        public boolean matches(Object actualJsonTransferTask) {
+            if (!(actualJsonTransferTask instanceof JsonObject)) return false;
+
+            this.expectedJsonTransferTask.remove("transferRate");
+            ((JsonObject) actualJsonTransferTask).remove("transferRate");
+
+            return actualJsonTransferTask.equals(this.expectedJsonTransferTask);
+        }
+    }
 
     @AfterAll
     protected void afterClass() {
@@ -97,9 +125,7 @@ public class URLCopyIT extends BaseTestCase {
         when(mockRemoteTransferListenerImpl.getFirstRemoteFilepath()).thenCallRealMethod();
         when(mockRemoteTransferListenerImpl.getLastUpdated()).thenCallRealMethod();
         when(mockRemoteTransferListenerImpl.getBytesLastCheck()).thenCallRealMethod();
-        when(mockRemoteTransferListenerImpl.getTransferRate()).thenReturn(TRANSFER_RATE);
         doCallRealMethod().when(mockRemoteTransferListenerImpl)._doPublishEvent(anyString(), any(JsonObject.class));
-        doCallRealMethod().when(mockRemoteTransferListenerImpl).setTransferRate(anyDouble());
         doCallRealMethod().when(mockRemoteTransferListenerImpl).setTransferTask(any(TransferTask.class));
         doCallRealMethod().when(mockRemoteTransferListenerImpl).setFirstRemoteFilepath(anyString());
         doCallRealMethod().when(mockRemoteTransferListenerImpl).setLastUpdated(anyLong());
@@ -278,9 +304,9 @@ public class URLCopyIT extends BaseTestCase {
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
                         eq(streamCopyStartedJson), eq(2));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        eq(streamInProgressJson), eq(2));
+                        argThat(new IsSameJsonTransferTask(streamInProgressJson)), eq(2));
                 verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        eq(streamCompletedJson), eq(2));
+                        argThat(new IsSameJsonTransferTask(streamCompletedJson)), eq(2));
 
                 assertEquals(attempts + 1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");
                 assertEquals(copiedTransfer.getStatus(), TransferStatusType.STREAM_COPY_COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");

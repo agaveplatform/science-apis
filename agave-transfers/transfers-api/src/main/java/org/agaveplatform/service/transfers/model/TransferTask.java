@@ -121,9 +121,10 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 
 		if (json.containsKey("tenant_id")) {
 			this.setTenantId(json.getString("tenant_id"));
-		} else {
-			this.setTenantId(json.getString("tenantId"));
 		}
+//		else {
+//			this.setTenantId(json.getString("tenantId"));
+//		}
 
 		if (json.containsKey("total_size")) {
 			this.setTotalSize(json.getLong("total_size", 0L));
@@ -573,7 +574,7 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 				.put("totalFiles", getTotalFiles())
 				.put("transferRate", getTransferRate())
 				.put("totalSize", getTotalSize())
-				.put("tenantId", getTenantId())
+				.put("tenant_id", getTenantId())
 				.put("totalSkippedFiles", getTotalSkippedFiles());
 //				.put("_links", new JsonObject()
 //						.put("self", new JsonObject()

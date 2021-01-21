@@ -92,16 +92,15 @@ all-transfertask-parents-not-cancelled-or-completed: |
   SELECT  `id` -- count(`id`) AS active_parent_over_time_count
   FROM TransferApiTasks trans1
   WHERE `tenant_id` = 'agave.dev'
-  AND `parent_task` = `uuid`
-  AND `root_task` is null
+  AND `root_task` is not null
   AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
   AND ( select count(`id`) as  active_child_count
   from TransferApiTasks
   where `tenant_id` = 'agave.dev'
   and  `parent_task` = trans1.parent_task
-  and `start_time` < (trans1.start_time + INTERVAL 500 second )
+  -- and `start_time` < (now() - INTERVAL 50 second )
   AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
-  )
+  );
 cancel_transfertask_by_id: |
   UPDATE TransferApiTasks
   SET status = ?, last_updated = NOW()

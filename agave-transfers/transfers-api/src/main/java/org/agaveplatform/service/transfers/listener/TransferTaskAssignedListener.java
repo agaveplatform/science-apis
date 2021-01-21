@@ -145,7 +145,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
         String source = body.getString("source");
 		String dest =  body.getString("dest");
         String username = body.getString("owner");
-        String tenantId = (body.getString("tenant_id") != null) ? body.getString("tenant_id") : body.getString("tenantId");
+        String tenantId = (body.getString("tenant_id"));
         String protocol = null;
         TransferTask assignedTransferTask = new TransferTask(body);
 
@@ -235,9 +235,9 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                             // mark as complete and wrap it up.
                             if (remoteFileInfoList.size() <= 1) {
                                 // but first, we udpate the transfer task status to ASSIGNED
-                                getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
+                                getDbService().updateStatus(tenantId, uuid, TransferStatusType.COMPLETED.name(), updateResult -> {
                                     if (updateResult.succeeded()) {
-                                        log.debug("Assigning single file transfer task {} to the TRANSFER_COMPLETED queue as the remote source directory path is empty.", uuid);
+                                        log.debug("Assigning single file transfer task {} to the TRANSFER_COMPLETED queue as the remote source directory path is empty. And tenant id is {}", uuid, tenantId);
                                         // write to the completed event channel.
                                         _doPublishEvent(TRANSFER_COMPLETED, updateResult.result());
                                         handler.handle(Future.succeededFuture(true));
@@ -356,7 +356,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                     // all file items were processed successfully
                                     if (ar.succeeded()) {
                                         // update the original task now that we've processed all of its children
-                                        getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
+                                        getDbService().updateStatus(tenantId, uuid, TransferStatusType.COMPLETED.name(), updateResult -> {
                                             if (updateResult.succeeded()) {
                                                 log.debug("Updated parent transfer task {} to ASSIGNED after processing all its children.", uuid);
                                                 // write to the completed event channel.

@@ -54,15 +54,16 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 			String uuid = body.getString("uuid");
 			String source = body.getString("source");
 			String dest = body.getString("dest");
+			String tenant = body.getString("tenant_id");
 			TransferTask tt = new TransferTask(body);
 
-			logger.info("Transfer task {} completed: {} -> {}", uuid, source, dest);
+			logger.info("Transfer task {} completed: {} -> {} and tenant id is {}", uuid, source, dest, tenant);
 
 			this.processEvent(body, result -> {
 				if (result.succeeded()) {
-					logger.error("Succeeded with the processing transfer completed event for transfer task {}", uuid);
+					logger.info("Succeeded with the processing transfer completed event for transfer task {}", uuid);
 				} else {
-					logger.error("Error with return from complete event {}", uuid);
+					logger.error("Error with return from complete event {} and body {}", uuid, body);
 					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
 				}
 			});
@@ -72,16 +73,17 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 	public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
 		//TransferTask bodyTask = new TransferTask(body);
 		body.put("status", TransferStatusType.COMPLETED);
-		String tenantId = body.getString("tenantId");
+		String tenantId = body.getString("tenant_id");
 		String uuid = body.getString("uuid");
 		String status = body.getString("status");
 		String parentTaskId = body.getString("parentTask");
-		logger.debug("Updating status of transfer task {} to COMPLETED", uuid);
+		logger.debug("Updating status of transfer task {} to COMPLETED.  Tenant ID is {}", uuid, tenantId);
 
 		try {
 //			dbService.updateStatus(tenantId, uuid, status, reply -> this.handleUpdateStatus(reply, tenantId, parentTaskId));
 			getDbService().updateStatus(tenantId, uuid, TransferStatusType.COMPLETED.name(), reply -> {
 				if (reply.succeeded()) {
+					logger.debug("Tenant ID is {}", tenantId);
 					logger.debug(TransferTaskCompleteTaskListener.class.getName() + ":Transfer task {} status updated to COMPLETED", uuid);
 					_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, reply.result());
 
@@ -97,7 +99,7 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 										.put("cause", tt.cause().getClass().getName())
 										.put("message", tt.cause().getMessage())
 										.mergeIn(body);
-
+								logger.debug("update failed. {}.  The message is {}", tt.cause().getClass().getName(), tt.cause().getMessage());
 								_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
 								handler.handle(Future.succeededFuture(false));
 							}
@@ -111,10 +113,12 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 				else {
 					String msg = String.format("Failed to set status of transfer task %s to completed. error: %s",
 							uuid, reply.cause().getMessage());
+					logger.debug(msg);
 					doHandleError(reply.cause(), msg, body, handler);
 				}
 			});
 		} catch (Exception e) {
+			logger.debug("Something failed. {}", e.getMessage());
 			doHandleError(e, e.getMessage(), body, handler);
 		}
 	}

@@ -49,7 +49,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 					MessageType.TRANSFERTASK_CANCELED_COMPLETED, body.encode(), uuid);
 
 			NotificationMessageBody messageBody = new NotificationMessageBody(
-					uuid, body.getString("owner"), body.getString("tenantId"),
+					uuid, body.getString("owner"), body.getString("tenant_id"),
 					messageBodyContext);
 
 			if (body.getString("event") == null)
@@ -146,7 +146,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
     protected JsonObject processForNotificationMessageBody(String messageType, JsonObject body) {
         try {
             String uuid = body.getString("uuid");
-            String tenantId = body.getString("tenantId");
+            String tenantId = body.getString("tenant_id");
 
             logger.debug("tenantId = {}", tenantId);
             if (uuid == null) {
@@ -156,7 +156,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
                         messageType, body.encode(), uuid);
 
                 NotificationMessageBody messageBody = new NotificationMessageBody(
-                        uuid, body.getString("owner"), body.getString("tenantId"),
+                        uuid, body.getString("owner"), body.getString("tenant_id"),
                         messageBodyContext);
 
                 if (body.getString("event") == null)
@@ -188,7 +188,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
      */
     protected boolean notificationEventProcess(JsonObject body) {
         logger.info("Sending legacy notification message for transfer task {}", body.getString("uuid"));
-        logger.debug("tenantId = {}", body.getString("tenantId"));
+        logger.debug("tenantId = {}", body.getString("tenant_id"));
         return NotificationManager.process(body.getString("uuid"), body.encode(), body.getString("owner")) > 0;
     }
 

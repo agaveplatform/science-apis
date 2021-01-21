@@ -205,7 +205,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   public TransferTaskDatabaseService getAllParentsCanceledOrCompleted( Handler<AsyncResult<JsonObject>> resultHandler){
     LOGGER.trace("Got into db.getAllParentsCanceledOrCompleted");
     JsonArray data = new JsonArray();
-
+    LOGGER.trace(SqlQuery.ALL_TRANSFERTASK_PARENTS_NOT_CANCELED_OR_COMPLETED.toString());
     dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_PARENTS_NOT_CANCELED_OR_COMPLETED), data, fetch -> {
       LOGGER.info("dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_PARENTS_NOT_CANCELED_OR_COMPLETED)");
       if (fetch.succeeded()) {
@@ -240,14 +240,15 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
       LOGGER.info("dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED)");
       if (fetch.succeeded()) {
         ResultSet resultSet = fetch.result();
-        LOGGER.info("db.allChildrenCancelledOrCompleted, Number of rows ={}", resultSet.getNumRows());
+        LOGGER.info("db.allChildrenCancelledOrCompleted, Number of rows = {}", resultSet.getNumRows());
+
         Boolean response = Boolean.FALSE;
         if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") > 0) {
           response = Boolean.TRUE;
         } else if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0){
           // this should be marked as status of 'ERROR' since we don't know what caused the task to fail
+          LOGGER.trace("active_child_count = {}", resultSet.getRows().get(0).getInteger("active_child_count"));
           LOGGER.info("This should be marked as status of 'ERROR' since we don't know what caused the task to fail uuid = {}", uuid);
-
           response = Boolean.FALSE;
         }
         resultHandler.handle(Future.succeededFuture(response));

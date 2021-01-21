@@ -69,7 +69,7 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 		Promise<Boolean> promise = Promise.promise();
 
 		String uuid = body.getString("uuid");
-		String tenantId = (body.getString("tenant_id") != null) ? body.getString("tenant_id") : body.getString("tenantId");
+		String tenantId = (body.getString("tenant_id"));
 
 		getDbService().allChildrenCancelledOrCompleted(tenantId, uuid, reply -> {
 			logger.trace("got into getDbService().allChildrenCancelledOrCompleted");

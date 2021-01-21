@@ -97,7 +97,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 	 */
 	protected void processPauseRequest(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
 
-		String tenantId = body.getString("tenantId");
+		String tenantId = body.getString("tenant_id");
 		String uuid = body.getString("uuid");
 		String status = body.getString("status");
 		String parentTaskId = body.getString("parentTask");

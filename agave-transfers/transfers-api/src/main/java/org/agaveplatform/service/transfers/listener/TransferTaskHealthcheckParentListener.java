@@ -77,7 +77,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractTransferTaskL
         String source = body.getString("source");
         String dest = body.getString("dest");
         String username = body.getString("owner");
-        String tenantId = body.getString("tenantId");
+        String tenantId = body.getString("tenant_id");
         Instant lastUpdated = body.getInstant("lastUpdated");
 
         getDbService().getAllParentsCanceledOrCompleted( reply -> {

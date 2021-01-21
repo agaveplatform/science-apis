@@ -143,7 +143,7 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
         String source = body.getString("source");
         String dest = body.getString("dest");
         String username = body.getString("owner");
-        String tenantId = (body.getString("tenantId")) != null ? body.getString("tenantId") : body.getString("tenant_id");
+        String tenantId = (body.getString("tenant_id"));
         String protocol = "";
         TransferTask createdTransferTask = new TransferTask(body);
 

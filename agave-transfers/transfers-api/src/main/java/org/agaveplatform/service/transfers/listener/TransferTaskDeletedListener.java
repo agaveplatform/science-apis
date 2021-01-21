@@ -72,8 +72,9 @@ public class TransferTaskDeletedListener extends AbstractTransferTaskListener {
 
 
     protected void processDeletedRequest(JsonObject body, Handler<AsyncResult<Boolean>> resultHandler) {
-        String tenantId = body.getString("tenantId");
+        String tenantId = body.getString("tenant_id");
         String uuid = body.getString("uuid");
+
         String status = body.getString("status");
         String parentTaskId = body.getString("parentTask");
 
@@ -164,7 +165,7 @@ public class TransferTaskDeletedListener extends AbstractTransferTaskListener {
     protected void processDeletedAck(JsonObject body, Handler<AsyncResult<Boolean>> resultHandler) {
         String parentTaskId = body.getString("parentTask");
         String uuid = body.getString("uuid");
-        String tenantId = body.getString("tenantId");
+        String tenantId = body.getString("tenant_id");
 
         logger.trace("getting into allChildren");
         // if this task has children and all are cancelled or completed, then we can

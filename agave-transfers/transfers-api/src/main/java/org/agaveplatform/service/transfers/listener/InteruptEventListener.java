@@ -32,7 +32,7 @@ public class InteruptEventListener extends AbstractTransferTaskListener {
 		bus.<JsonObject>consumer(getEventChannel(), msg -> {
 			JsonObject body = msg.body();
 			String uuid = body.getString("uuid");
-			String tenantId = body.getString("tenantId");
+			String tenantId = body.getString("tenant_id");
 			String source = body.getString("source");
 			logger.info("Transfer task paused {} created: {} -> {}",tenantId, uuid, source);
 		});

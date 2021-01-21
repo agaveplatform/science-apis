@@ -93,13 +93,15 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 	protected void processError(JsonObject body, Handler<AsyncResult<Boolean>> handler){
 		try {
 			TransferTask tt = new TransferTask(body);
-log.debug(body.encode());
+			log.debug(body.encode());
 			String cause = body.getString("cause");
 			String message = body.getString("message", "");
 			int maxTries = config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, Settings.MAX_STAGING_RETRIES);
 			//String status = body.getString("COMPLETED", null);
-			String tenantId = body.getString("tenantId");
+			String tenantId = body.getString("tenant_id");
 			String uuid = body.getString("uuid");
+
+			log.error("Tenant ID is {}", tenantId);
 
 			// update dt DB status here
 			getDbService().getById(tenantId, uuid, getByIdReply -> {

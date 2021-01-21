@@ -186,7 +186,7 @@ public class URLCopy{
 
             // source and dest are the same host, so do a server-side copy
             if (sourceClient.equals(destClient)) {
-                listener = getRemoteTransferListenerForTransferTask(transferTask);
+                listener = getRemoteUnaryTransferListenerForTransferTask(transferTask);
                 // should be able to do a relay transfer here just as easily
                 sourceClient.copy(srcPath, destPath, listener);
                 transferTask = (TransferTask)listener.getTransferTask();
@@ -259,6 +259,10 @@ public class URLCopy{
         return new RemoteStreamingTransferListenerImpl(transferTask, getVertx(), getRetryRequestManager());
     }
 
+    public RemoteUnaryTransferListenerImpl getRemoteUnaryTransferListenerForTransferTask(TransferTask transferTask) {
+        return new RemoteUnaryTransferListenerImpl(transferTask, getVertx(), getRetryRequestManager());
+    }
+
     /**
      * Proxies a file/folder transfer from source to destination by using the underlying
      * {@link RemoteDataClient#(String, String, RemoteTransferListenerImpl )} and {@link RemoteDataClient#(String, String, RemoteTransferListenerImpl )}
@@ -329,10 +333,8 @@ public class URLCopy{
                     srcChildTransferTask.setTenantId(aggregateTransferTask.getTenantId());
                     srcChildTransferTask.setStatus(READ_STARTED);
 
-                    _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
-
                     srcChildRemoteTransferListener =
-                            getRemoteTransferListenerForTransferTask(srcChildTransferTask);
+                            getRemoteUnaryTransferListenerForTransferTask(srcChildTransferTask);
 
                     // perform the get
                     sourceClient.get(srcPath, tmpFile.getPath(), srcChildRemoteTransferListener);
@@ -343,13 +345,8 @@ public class URLCopy{
 
                     // cancelled status will be handled in the calling function.
                     if (!isKilled()) {
-//                        aggregateTransferTask.setStatus(TransferStatusType.CANCELLED);
-//                    } else {
                         aggregateTransferTask.setStatus(READ_COMPLETED);
-//                        _doPublishEvent(MessageType.TRANSFER_UNARY, aggregateTransferTask.toJson());
-                        _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
                     }
-
 
                     // must be in here as the LOCAL files will not have a src transfer listener associated with them.
                     checkCancelled(srcChildRemoteTransferListener);
@@ -407,11 +404,10 @@ public class URLCopy{
                             aggregateTransferTask.getParentTaskId(),
                             aggregateTransferTask.getRootTaskId());
                     destChildTransferTask.setTenantId(aggregateTransferTask.getTenantId());
-                    aggregateTransferTask.setStatus(WRITE_STARTED);
-                    _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
+                    destChildTransferTask.setStatus(WRITE_STARTED);
 
                     destChildRemoteTransferListener =
-                            getRemoteTransferListenerForTransferTask(destChildTransferTask);
+                            getRemoteUnaryTransferListenerForTransferTask(destChildTransferTask);
 
                     destClient.put(tmpFile.getPath(), destPath, destChildRemoteTransferListener);
 
@@ -425,14 +421,10 @@ public class URLCopy{
                         aggregateTransferTask.setAttempts(destChildTransferTask.getAttempts());
                         aggregateTransferTask.setEndTime(destChildTransferTask.getEndTime());
                         aggregateTransferTask.updateTransferRate();
-                        aggregateTransferTask.setLastUpdated(Instant.now());
+                        aggregateTransferTask.setLastUpdated(destChildTransferTask.getLastUpdated());
+                        aggregateTransferTask.setStatus(destChildTransferTask.getStatus());
 
-                        aggregateTransferTask.setStatus(WRITE_COMPLETED);
                         //transfer updates are handled through the listener
-//                        _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
-
-                        aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
-                        _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, aggregateTransferTask.toJson());
                     }
                 } catch (RemoteDataException e) {
                     try {
@@ -486,9 +478,7 @@ public class URLCopy{
                         aggregateTransferTask.getRootTaskId());
                 destChildTransferTask.setTenantId(aggregateTransferTask.getTenantId());
                 destChildTransferTask.setStartTime(aggregateTransferTask.getStartTime());
-
-                aggregateTransferTask.setStatus(WRITE_STARTED);
-                _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
+                destChildTransferTask.setStatus(WRITE_STARTED);
 
                 destChildRemoteTransferListener =
                         getRemoteTransferListenerForTransferTask(destChildTransferTask);
@@ -511,13 +501,9 @@ public class URLCopy{
                 aggregateTransferTask.setEndTime(destChildTransferTask.getEndTime());
                 aggregateTransferTask.updateTransferRate();
                 aggregateTransferTask.setLastUpdated(Instant.now());
+                aggregateTransferTask.setStatus(destChildTransferTask.getStatus());
 
-                aggregateTransferTask.setStatus(WRITE_COMPLETED);
                 //transfer updates are handled through the listener
-//                _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, aggregateTransferTask.toJson());
-
-                aggregateTransferTask.setStatus(TransferStatusType.COMPLETED);
-                _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, aggregateTransferTask.toJson());
             }
         }
         catch (ClosedByInterruptException e) {

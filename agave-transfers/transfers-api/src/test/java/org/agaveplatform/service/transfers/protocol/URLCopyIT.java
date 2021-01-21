@@ -60,6 +60,9 @@ public class URLCopyIT extends BaseTestCase {
             this.expectedJsonTransferTask.remove("transferRate");
             ((JsonObject) actualJsonTransferTask).remove("transferRate");
 
+            this.expectedJsonTransferTask.remove("lastUpdated");
+            ((JsonObject) actualJsonTransferTask).remove("lastUpdated");
+
             return actualJsonTransferTask.equals(this.expectedJsonTransferTask);
         }
     }
@@ -86,16 +89,18 @@ public class URLCopyIT extends BaseTestCase {
         when(mockRemoteDataClient.isThirdPartyTransferSupported()).thenReturn(false);
         when(mockRemoteDataClient.length(path)).thenReturn(new File(path).length());
         when(mockRemoteDataClient.resolvePath(path)).thenReturn(URI.create(path).getPath());
-        doNothing().when(mockRemoteDataClient).get(anyString(), anyString(), any(RemoteTransferListener.class));
 
         doAnswer(invocation ->{
-            RemoteTransferListener arg3 = invocation.getArgumentAt(2, RemoteTransferListener.class);
+            RemoteTransferListenerImpl arg3 = invocation.getArgumentAt(2, RemoteTransferListenerImpl.class);
             arg3.started(FILE_SIZE, TRANSFER_SRC);
+            arg3.progressed(FILE_SIZE);
+            arg3.completed();
             return null;
         }).when(mockRemoteDataClient).get(anyString(), anyString(), any(RemoteTransferListener.class));
 
         doAnswer(invocation ->{
-            RemoteTransferListener arg3 = invocation.getArgumentAt(2, RemoteTransferListener.class);
+            RemoteTransferListenerImpl arg3 = invocation.getArgumentAt(2, RemoteTransferListenerImpl.class);
+            arg3.started(FILE_SIZE, TRANSFER_DEST);
             arg3.progressed(FILE_SIZE);
             arg3.completed();
             return null;
@@ -119,6 +124,26 @@ public class URLCopyIT extends BaseTestCase {
 
     public RemoteStreamingTransferListenerImpl getMockRemoteStreamingTransferListener(TransferTask transferTask, RetryRequestManager retryRequestManager) {
         RemoteStreamingTransferListenerImpl mockRemoteTransferListenerImpl = mock(RemoteStreamingTransferListenerImpl.class);
+        when(mockRemoteTransferListenerImpl.getRetryRequestManager()).thenReturn(retryRequestManager);
+        when(mockRemoteTransferListenerImpl.isCancelled()).thenReturn(false);
+        when(mockRemoteTransferListenerImpl.getTransferTask()).thenReturn(transferTask);
+        when(mockRemoteTransferListenerImpl.getFirstRemoteFilepath()).thenCallRealMethod();
+        when(mockRemoteTransferListenerImpl.getLastUpdated()).thenCallRealMethod();
+        when(mockRemoteTransferListenerImpl.getBytesLastCheck()).thenCallRealMethod();
+        doCallRealMethod().when(mockRemoteTransferListenerImpl)._doPublishEvent(anyString(), any(JsonObject.class));
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).setTransferTask(any(TransferTask.class));
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).setFirstRemoteFilepath(anyString());
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).setLastUpdated(anyLong());
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).setBytesLastCheck(anyLong());
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).started(anyLong(), anyString());
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).progressed(anyLong());
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).completed();
+
+        return mockRemoteTransferListenerImpl;
+    }
+
+    public RemoteUnaryTransferListenerImpl getMockRemoteUnaryTransferListener(TransferTask transferTask, RetryRequestManager retryRequestManager) {
+        RemoteUnaryTransferListenerImpl mockRemoteTransferListenerImpl = mock(RemoteUnaryTransferListenerImpl.class);
         when(mockRemoteTransferListenerImpl.getRetryRequestManager()).thenReturn(retryRequestManager);
         when(mockRemoteTransferListenerImpl.isCancelled()).thenReturn(false);
         when(mockRemoteTransferListenerImpl.getTransferTask()).thenReturn(transferTask);
@@ -165,8 +190,8 @@ public class URLCopyIT extends BaseTestCase {
             when(mockCopy.getDestClient()).thenReturn(mockDestRemoteDataClient);
 
             //remote transfer listener
-            RemoteTransferListenerImpl mockRemoteTransferListenerImpl = getMockRemoteTransferListener(tt, mockRetryRequestManager);
-            doReturn(mockRemoteTransferListenerImpl).when(mockCopy).getRemoteTransferListenerForTransferTask(tt);
+            RemoteTransferListenerImpl mockRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(tt, mockRetryRequestManager);
+            doReturn(mockRemoteTransferListenerImpl).when(mockCopy).getRemoteUnaryTransferListenerForTransferTask(tt);
 
             //first leg child transfer task
             TransferTask srcChildTransferTask = new TransferTask(
@@ -177,10 +202,10 @@ public class URLCopyIT extends BaseTestCase {
                     tt.getRootTaskId());
             srcChildTransferTask.setTenantId(tt.getTenantId());
             srcChildTransferTask.setStatus(TransferStatusType.READ_STARTED);
+            JsonObject rootSrcChildJson = srcChildTransferTask.toJson();
 
             //mock child remote transfer listener
-            RemoteTransferListenerImpl mockChildRemoteTransferListenerImpl = getMockRemoteTransferListener(srcChildTransferTask, mockRetryRequestManager);
-//            when(mockCopy.getRemoteTransferListenerForTransferTask(srcChildTransferTask)).thenReturn(mockChildRemoteTransferListenerImpl);
+            RemoteUnaryTransferListenerImpl mockChildRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(srcChildTransferTask, mockRetryRequestManager);
 
             //second leg child transfer task
             TransferTask destChildTransferTask = new TransferTask(
@@ -192,29 +217,59 @@ public class URLCopyIT extends BaseTestCase {
             );
             destChildTransferTask.setTenantId(tt.getTenantId());
             destChildTransferTask.setStatus(TransferStatusType.WRITE_STARTED);
+            JsonObject rootDestChildJson = destChildTransferTask.toJson();
 
-            RemoteTransferListenerImpl mockDestChildRemoteTransferListenerImpl = getMockRemoteTransferListener(destChildTransferTask, mockRetryRequestManager);
+            RemoteUnaryTransferListenerImpl mockDestChildRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(destChildTransferTask, mockRetryRequestManager);
 
-            when(mockCopy.getRemoteTransferListenerForTransferTask(any(TransferTask.class))).thenReturn(mockChildRemoteTransferListenerImpl, mockDestChildRemoteTransferListenerImpl);
-
-
-            //Injecting the mocked arguments to the mocked URLCopy
-            //Using InjectMocks annotation will not create a mock of URLCopy, which we need to pass in the mocked RemoteTransferListenerImpl
-//            PowerMockito.whenNew(URLCopy.class).withArguments(any(RemoteDataClient.class), any(RemoteDataClient.class), any(Vertx.class), any(RetryRequestManager.class)).thenReturn(mockCopy);
-//            TransferTask copiedTransfer = new URLCopy(mockSrcRemoteDataClient, mockDestRemoteDataClient, mockVertx, mockRetryRequestManager).copy(tt);
+            when(mockCopy.getRemoteUnaryTransferListenerForTransferTask(any(TransferTask.class))).thenReturn(mockChildRemoteTransferListenerImpl, mockDestChildRemoteTransferListenerImpl);
 
             TransferTask copiedTransfer = mockCopy.copy(tt);
 
+            JsonObject readStartedJson = rootSrcChildJson.copy().put("startTime", srcChildTransferTask.getStartTime());
+            readStartedJson.put("attempts", srcChildTransferTask.getAttempts());
+            readStartedJson.put("totalFiles", 1);
+            readStartedJson.put("totalSize", FILE_SIZE);
+
+            JsonObject readInProgressJson = readStartedJson.copy().put("status", TransferStatusType.READ_IN_PROGRESS);
+            readInProgressJson.put("transferRate", TRANSFER_RATE);
+            readInProgressJson.put("bytesTransferred", srcChildTransferTask.getBytesTransferred());
+            readInProgressJson.put("lastUpdated", srcChildTransferTask.getLastUpdated());
+
+            JsonObject readCompletedJson = readInProgressJson.copy().put("status", TransferStatusType.READ_COMPLETED);
+            readCompletedJson.put("transferRate", srcChildTransferTask.getTransferRate());
+            readCompletedJson.put("endTime", srcChildTransferTask.getEndTime());
+
+            JsonObject writeStartedJson = rootDestChildJson.copy().put("startTime", destChildTransferTask.getStartTime());
+            writeStartedJson.put("attempts", destChildTransferTask.getAttempts());
+            writeStartedJson.put("totalFiles", 1);
+            writeStartedJson.put("totalSize", FILE_SIZE);
+
+            JsonObject writeInProgressJson = writeStartedJson.copy().put("status", TransferStatusType.WRITE_IN_PROGRESS);
+            writeInProgressJson.put("transferRate", TRANSFER_RATE);
+            writeInProgressJson.put("bytesTransferred", destChildTransferTask.getBytesTransferred());
+            writeInProgressJson.put("lastUpdated", destChildTransferTask.getLastUpdated());
+
+            JsonObject writeCompletedJson = writeInProgressJson.copy().put("status", TransferStatusType.WRITE_COMPLETED);
+            writeCompletedJson.put("transferRate", destChildTransferTask.getTransferRate());
+            writeCompletedJson.put("endTime", destChildTransferTask.getEndTime());
 
             ctx.verify(() -> {
                 //check that events are published correctly using the RetryRequestManager
-                verify(mockRetryRequestManager, times(4)).request(eq(MessageType.TRANSFERTASK_UPDATED),
-                        any(JsonObject.class), eq(2));
-                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_FINISHED),
-                        any(JsonObject.class), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        eq(readStartedJson), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        argThat(new IsSameJsonTransferTask(readInProgressJson)), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        argThat(new IsSameJsonTransferTask(readCompletedJson)), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        argThat(new IsSameJsonTransferTask(writeStartedJson)), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        argThat(new IsSameJsonTransferTask(writeInProgressJson)), eq(2));
+                verify(mockRetryRequestManager, times(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                        argThat(new IsSameJsonTransferTask(writeCompletedJson)), eq(2));
 
                 assertEquals(attempts + 1, copiedTransfer.getAttempts(), "TransferTask attempts should be incremented upon copy.");
-                assertEquals(copiedTransfer.getStatus(), TransferStatusType.COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");
+                assertEquals(copiedTransfer.getStatus(), TransferStatusType.WRITE_COMPLETED, "Expected successful copy to return TransferTask with COMPLETED status.");
                 assertEquals(1, copiedTransfer.getTotalFiles(), "TransferTask total files be 1 upon successful transfer of a single file.");
                 assertEquals(32768, copiedTransfer.getBytesTransferred(), "TransferTask total bytes transferred should be 32768, the size of the httpbin download name.");
                 assertTrue(copiedTransfer.getLastUpdated().isAfter(lastUpdated), "TransferTask last updated should be updated after URLCopy completes.");

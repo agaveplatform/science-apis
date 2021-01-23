@@ -367,6 +367,20 @@ public class URLCopy{
                             getProtocolForClass(sourceClient.getClass()),
                             "local"), e);
                     throw e;
+                } catch (ClosedByInterruptException e){
+                    log.debug(String.format(
+                            "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
+                            aggregateTransferTask.getUuid(),
+                            aggregateTransferTask.getSource(),
+                            aggregateTransferTask.getDest(),
+                            getProtocolForClass(sourceClient.getClass()),
+                            getProtocolForClass(destClient.getClass())), e);
+
+                    srcChildRemoteTransferListener.cancel();
+                    srcChildTransferTask = (TransferTask)srcChildRemoteTransferListener.getTransferTask();
+                    aggregateTransferTask = updateAggregateTaskFromChildTask(aggregateTransferTask, srcChildTransferTask);
+                    setKilled(true);
+                    throw e;
                 } catch (Throwable e) {
                     try {
                         aggregateTransferTask.setStatus(TransferStatusType.FAILED);
@@ -414,18 +428,12 @@ public class URLCopy{
                     if (!isKilled()) {
                         destChildTransferTask = (TransferTask)destChildRemoteTransferListener.getTransferTask();
                         // now update the aggregate task with the info from the child task
-                        aggregateTransferTask.setBytesTransferred(destChildTransferTask.getBytesTransferred());
-                        aggregateTransferTask.setTotalFiles(destChildTransferTask.getTotalFiles());
-                        aggregateTransferTask.setTotalSkippedFiles(destChildTransferTask.getTotalSkippedFiles());
-                        aggregateTransferTask.setTotalSize(destChildTransferTask.getTotalSize());
-                        aggregateTransferTask.setAttempts(destChildTransferTask.getAttempts());
-                        aggregateTransferTask.setEndTime(destChildTransferTask.getEndTime());
-                        aggregateTransferTask.updateTransferRate();
-                        aggregateTransferTask.setLastUpdated(destChildTransferTask.getLastUpdated());
-                        aggregateTransferTask.setStatus(destChildTransferTask.getStatus());
+                        aggregateTransferTask = updateAggregateTaskFromChildTask(aggregateTransferTask, destChildTransferTask);
 
                         //transfer updates are handled through the listener
                     }
+
+                    checkCancelled(destChildRemoteTransferListener);
                 } catch (RemoteDataException e) {
                     try {
                         destChildTransferTask.setStatus(TransferStatusType.FAILED);
@@ -442,7 +450,21 @@ public class URLCopy{
                             "local",
                             getProtocolForClass(destClient.getClass())), e);
                     throw e;
-                } catch (Throwable e) {
+                } catch (ClosedByInterruptException e){
+                    log.debug(String.format(
+                            "Aborted relay transfer for task %s. %s to %s . Protocol: %s => %s",
+                            aggregateTransferTask.getUuid(),
+                            aggregateTransferTask.getSource(),
+                            aggregateTransferTask.getDest(),
+                            getProtocolForClass(sourceClient.getClass()),
+                            getProtocolForClass(destClient.getClass())), e);
+
+                    destChildRemoteTransferListener.cancel();
+                    destChildTransferTask = (TransferTask)destChildRemoteTransferListener.getTransferTask();
+                    aggregateTransferTask = updateAggregateTaskFromChildTask(aggregateTransferTask, destChildTransferTask);
+                    setKilled(true);
+                    throw e;
+            } catch (Throwable e) {
                     // fail the destination transfer task
                     try {
                         aggregateTransferTask.setStatus(TransferStatusType.FAILED);
@@ -493,15 +515,8 @@ public class URLCopy{
                 destChildRemoteTransferListener.completed();
 
                 // now update the aggregate task with the info from the child task
-                aggregateTransferTask.setBytesTransferred(destChildTransferTask.getBytesTransferred());
-                aggregateTransferTask.setTotalFiles(destChildTransferTask.getTotalFiles());
-                aggregateTransferTask.setTotalSkippedFiles(destChildTransferTask.getTotalSkippedFiles());
-                aggregateTransferTask.setTotalSize(destChildTransferTask.getTotalSize());
-                aggregateTransferTask.setAttempts(destChildTransferTask.getAttempts());
-                aggregateTransferTask.setEndTime(destChildTransferTask.getEndTime());
-                aggregateTransferTask.updateTransferRate();
-                aggregateTransferTask.setLastUpdated(Instant.now());
-                aggregateTransferTask.setStatus(destChildTransferTask.getStatus());
+                destChildTransferTask = (TransferTask) destChildRemoteTransferListener.getTransferTask();
+                aggregateTransferTask = updateAggregateTaskFromChildTask(aggregateTransferTask, destChildTransferTask);
 
                 //transfer updates are handled through the listener
             }
@@ -514,7 +529,7 @@ public class URLCopy{
                     aggregateTransferTask.getDest(),
                     getProtocolForClass(sourceClient.getClass()),
                     getProtocolForClass(destClient.getClass())), e);
-            Thread.currentThread().interrupt();
+            killCopyTask();
             throw e;
         }
         catch (RemoteDataException e) {
@@ -1360,5 +1375,32 @@ public class URLCopy{
     public void _doPublishEvent(String eventName, JsonObject body) {
         log.debug("_doPublishEvent({}, {})", eventName, body);
         getRetryRequestManager().request(eventName, body, 2);
+    }
+
+
+    /**
+     * Update aggregate task info from the child task
+     * @return updated {@link TransferTask}
+     */
+    public TransferTask updateAggregateTaskFromChildTask(TransferTask aggregateTransferTask, TransferTask childTransferTask){
+        aggregateTransferTask.setBytesTransferred(childTransferTask.getBytesTransferred());
+        aggregateTransferTask.setTotalFiles(childTransferTask.getTotalFiles());
+        aggregateTransferTask.setTotalSkippedFiles(childTransferTask.getTotalSkippedFiles());
+        aggregateTransferTask.setTotalSize(childTransferTask.getTotalSize());
+        aggregateTransferTask.setAttempts(childTransferTask.getAttempts());
+        aggregateTransferTask.setStartTime(childTransferTask.getStartTime());
+        aggregateTransferTask.setEndTime(childTransferTask.getEndTime());
+        aggregateTransferTask.updateTransferRate();
+        aggregateTransferTask.setLastUpdated(childTransferTask.getLastUpdated());
+        aggregateTransferTask.setStatus(childTransferTask.getStatus());
+        return aggregateTransferTask;
+    }
+
+    /**
+     * Kill the current thread for TransferTaskCancel event
+     */
+    public void killCopyTask(){
+        Thread.currentThread().interrupt();
+        setKilled(true);
     }
 }

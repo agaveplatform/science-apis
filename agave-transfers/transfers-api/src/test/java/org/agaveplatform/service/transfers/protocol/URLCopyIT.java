@@ -21,6 +21,7 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.channels.ClosedByInterruptException;
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -63,6 +64,9 @@ public class URLCopyIT extends BaseTestCase {
             this.expectedJsonTransferTask.remove("lastUpdated");
             ((JsonObject) actualJsonTransferTask).remove("lastUpdated");
 
+//            this.expectedJsonTransferTask.remove("endTime");
+//            ((JsonObject) actualJsonTransferTask).remove("endTime");
+
             return actualJsonTransferTask.equals(this.expectedJsonTransferTask);
         }
     }
@@ -80,6 +84,7 @@ public class URLCopyIT extends BaseTestCase {
         doCallRealMethod().when(listener).relayTransfer(anyString(), anyString(), any(TransferTask.class));
         doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
         when(listener.getVertx()).thenReturn(vertx);
+        doCallRealMethod().when(listener).updateAggregateTaskFromChildTask(any(TransferTask.class), any(TransferTask.class));
 
         return listener;
     }
@@ -90,7 +95,7 @@ public class URLCopyIT extends BaseTestCase {
         when(mockRemoteDataClient.length(path)).thenReturn(new File(path).length());
         when(mockRemoteDataClient.resolvePath(path)).thenReturn(URI.create(path).getPath());
 
-        doAnswer(invocation ->{
+        doAnswer(invocation -> {
             RemoteTransferListenerImpl arg3 = invocation.getArgumentAt(2, RemoteTransferListenerImpl.class);
             arg3.started(FILE_SIZE, TRANSFER_SRC);
             arg3.progressed(FILE_SIZE);
@@ -98,7 +103,7 @@ public class URLCopyIT extends BaseTestCase {
             return null;
         }).when(mockRemoteDataClient).get(anyString(), anyString(), any(RemoteTransferListener.class));
 
-        doAnswer(invocation ->{
+        doAnswer(invocation -> {
             RemoteTransferListenerImpl arg3 = invocation.getArgumentAt(2, RemoteTransferListenerImpl.class);
             arg3.started(FILE_SIZE, TRANSFER_DEST);
             arg3.progressed(FILE_SIZE);
@@ -158,6 +163,7 @@ public class URLCopyIT extends BaseTestCase {
         doCallRealMethod().when(mockRemoteTransferListenerImpl).started(anyLong(), anyString());
         doCallRealMethod().when(mockRemoteTransferListenerImpl).progressed(anyLong());
         doCallRealMethod().when(mockRemoteTransferListenerImpl).completed();
+        doCallRealMethod().when(mockRemoteTransferListenerImpl).cancel();
 
         return mockRemoteTransferListenerImpl;
     }
@@ -291,6 +297,173 @@ public class URLCopyIT extends BaseTestCase {
     }
 
     @Test
+    @DisplayName("Test URLCopy cancel during read in Unary/RelayTransfer")
+    public void testCancelReadUnaryCopy(Vertx vertx, VertxTestContext ctx) {
+        try {
+            allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
+            Settings.ALLOW_RELAY_TRANSFERS = true;
+
+            Vertx mockVertx = mock(Vertx.class);
+            RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
+            doNothing().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
+
+            RemoteDataClient mockSrcRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_SRC);
+            RemoteDataClient mockDestRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_DEST);
+
+            TransferTask tt = _createTestTransferTask();
+            tt.setId(1L);
+            tt.setSource(TRANSFER_SRC);
+            tt.setDest(TRANSFER_DEST);
+
+            URLCopy mockCopy = getMockURLCopyInstance(vertx, tt);
+            when(mockCopy.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
+            when(mockCopy.getSourceClient()).thenReturn(mockSrcRemoteDataClient);
+            when(mockCopy.getDestClient()).thenReturn(mockDestRemoteDataClient);
+
+            //remote transfer listener
+            RemoteTransferListenerImpl mockRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(tt, mockRetryRequestManager);
+            doReturn(mockRemoteTransferListenerImpl).when(mockCopy).getRemoteUnaryTransferListenerForTransferTask(tt);
+            when(mockRemoteTransferListenerImpl.isCancelled()).thenReturn(true);
+
+            //first leg child transfer task
+            TransferTask srcChildTransferTask = new TransferTask(
+                    tt.getSource(),
+                    "https://workers.prod.agaveplatform.org/" + new File(TRANSFER_SRC).getPath(),
+                    tt.getOwner(),
+                    tt.getUuid(),
+                    tt.getRootTaskId());
+            srcChildTransferTask.setTenantId(tt.getTenantId());
+            srcChildTransferTask.setStatus(TransferStatusType.READ_STARTED);
+
+            //mock child remote transfer listener
+            RemoteUnaryTransferListenerImpl mockChildRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(srcChildTransferTask, mockRetryRequestManager);
+            doReturn(mockChildRemoteTransferListenerImpl).when(mockCopy).getRemoteUnaryTransferListenerForTransferTask(tt);
+            when(mockChildRemoteTransferListenerImpl.isCancelled()).thenReturn(true);
+
+            //second leg child transfer task
+            TransferTask destChildTransferTask = new TransferTask(
+                    "https://workers.prod.agaveplatform.org/" + new File(LOCAL_TXT_FILE).getPath(),
+                    tt.getDest(),
+                    tt.getOwner(),
+                    tt.getParentTaskId(),
+                    tt.getRootTaskId()
+            );
+            destChildTransferTask.setTenantId(tt.getTenantId());
+            destChildTransferTask.setStatus(TransferStatusType.WRITE_STARTED);
+
+            RemoteUnaryTransferListenerImpl mockDestChildRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(destChildTransferTask, mockRetryRequestManager);
+            when(mockCopy.getRemoteUnaryTransferListenerForTransferTask(any(TransferTask.class))).thenReturn(mockChildRemoteTransferListenerImpl, mockDestChildRemoteTransferListenerImpl);
+            doNothing().when(mockCopy).killCopyTask();
+
+            try {
+                doCallRealMethod().when(mockCopy).checkCancelled(any(RemoteUnaryTransferListenerImpl.class));
+                TransferTask copiedTransfer = mockCopy.copy(tt);
+
+            } catch (ClosedByInterruptException e) {
+                JsonObject readCancelledJson = destChildTransferTask.toJson();
+                readCancelledJson.put("status", TransferStatusType.CANCELLED);
+
+                ctx.verify(() -> {
+                    assertEquals(TransferStatusType.CANCELLED, tt.getStatus(), "Expected transfer task status to be CANCELLED when copy is cancelled or killed.");
+                    assertEquals(TransferStatusType.CANCELLED, srcChildTransferTask.getStatus(), "Expected child transfer task status to be CANCELLED when copy is cancelled or killed.");
+                    verify(mockRetryRequestManager, atLeast(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                            argThat(new IsSameJsonTransferTask(readCancelledJson)), eq(2));
+
+                    ctx.completeNow();
+                });
+            }
+        } catch (Exception e) {
+            Assertions.fail("Expected cancel copy to throw ClosedByInterruptionException but threw " + e.getMessage());
+        } finally {
+            Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
+        }
+
+    }
+
+    @Test
+    @DisplayName("Test URLCopy cancel during write in Unary/RelayTransfer")
+    public void testCancelWriteUnaryCopy(Vertx vertx, VertxTestContext ctx) {
+        try {
+            allowRelayTransfers = Settings.ALLOW_RELAY_TRANSFERS;
+            Settings.ALLOW_RELAY_TRANSFERS = true;
+
+            RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
+            doNothing().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
+
+            RemoteDataClient mockSrcRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_SRC);
+            RemoteDataClient mockDestRemoteDataClient = getMockRemoteDataClientInstance(TRANSFER_DEST);
+
+            TransferTask tt = _createTestTransferTask();
+            tt.setId(1L);
+            tt.setSource(TRANSFER_SRC);
+            tt.setDest(TRANSFER_DEST);
+
+            URLCopy mockCopy = getMockURLCopyInstance(vertx, tt);
+            when(mockCopy.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
+            when(mockCopy.getSourceClient()).thenReturn(mockSrcRemoteDataClient);
+            when(mockCopy.getDestClient()).thenReturn(mockDestRemoteDataClient);
+
+            //remote transfer listener
+            RemoteTransferListenerImpl mockRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(tt, mockRetryRequestManager);
+            doReturn(mockRemoteTransferListenerImpl).when(mockCopy).getRemoteUnaryTransferListenerForTransferTask(tt);
+            when(mockRemoteTransferListenerImpl.isCancelled()).thenReturn(true);
+
+            //first leg child transfer task
+            TransferTask srcChildTransferTask = new TransferTask(
+                    tt.getSource(),
+                    "https://workers.prod.agaveplatform.org/" + new File(TRANSFER_SRC).getPath(),
+                    tt.getOwner(),
+                    tt.getUuid(),
+                    tt.getRootTaskId());
+            srcChildTransferTask.setTenantId(tt.getTenantId());
+            srcChildTransferTask.setStatus(TransferStatusType.READ_STARTED);
+
+            //mock child remote transfer listener
+            RemoteUnaryTransferListenerImpl mockChildRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(srcChildTransferTask, mockRetryRequestManager);
+            doReturn(mockChildRemoteTransferListenerImpl).when(mockCopy).getRemoteUnaryTransferListenerForTransferTask(tt);
+            when(mockChildRemoteTransferListenerImpl.isCancelled()).thenReturn(false);
+
+            //second leg child transfer task
+            TransferTask destChildTransferTask = new TransferTask(
+                    "https://workers.prod.agaveplatform.org/" + new File(LOCAL_TXT_FILE).getPath(),
+                    tt.getDest(),
+                    tt.getOwner(),
+                    tt.getParentTaskId(),
+                    tt.getRootTaskId()
+            );
+            destChildTransferTask.setTenantId(tt.getTenantId());
+            destChildTransferTask.setStatus(TransferStatusType.WRITE_STARTED);
+
+            RemoteUnaryTransferListenerImpl mockDestChildRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(destChildTransferTask, mockRetryRequestManager);
+            when(mockDestChildRemoteTransferListenerImpl.isCancelled()).thenReturn(true);
+            when(mockCopy.getRemoteUnaryTransferListenerForTransferTask(any(TransferTask.class))).thenReturn(mockChildRemoteTransferListenerImpl, mockDestChildRemoteTransferListenerImpl);
+
+            try {
+                doCallRealMethod().when(mockCopy).checkCancelled(any(RemoteUnaryTransferListenerImpl.class));
+                TransferTask copiedTransfer = mockCopy.copy(tt);
+
+            } catch (ClosedByInterruptException e) {
+                JsonObject writeCancelledJson = destChildTransferTask.toJson();
+                writeCancelledJson.put("status", TransferStatusType.CANCELLED);
+
+                ctx.verify(() -> {
+                    assertEquals(TransferStatusType.CANCELLED, tt.getStatus(), "Expected transfer task status to be CANCELLED when copy is cancelled or killed.");
+                    assertEquals(TransferStatusType.CANCELLED, destChildTransferTask.getStatus(), "Expected child transfer task status to be CANCELLED when copy is cancelled or killed.");
+                    verify(mockRetryRequestManager, atLeast(1)).request(eq(MessageType.TRANSFERTASK_UPDATED),
+                            argThat(new IsSameJsonTransferTask(writeCancelledJson)), eq(2));
+
+                    ctx.completeNow();
+                });
+            }
+        } catch (Exception e) {
+            Assertions.fail("Expected cancel copy to throw ClosedByInterruptionException but threw " + e.getMessage());
+        } finally {
+            Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
+        }
+
+    }
+
+    @Test
     @DisplayName("Test URLCopy streamingTransfer")
 //    @Disabled
     public void testStreamingCopy(Vertx vertx, VertxTestContext ctx) {
@@ -384,5 +557,6 @@ public class URLCopyIT extends BaseTestCase {
             Settings.ALLOW_RELAY_TRANSFERS = allowRelayTransfers;
         }
     }
+
 
 }

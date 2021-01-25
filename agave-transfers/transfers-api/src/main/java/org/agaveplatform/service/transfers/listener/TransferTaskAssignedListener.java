@@ -360,6 +360,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                             if (updateResult.succeeded()) {
                                                 log.debug("Updated parent transfer task {} to ASSIGNED after processing all its children.", uuid);
                                                 // write to the completed event channel.
+                                                _doPublishEvent(TRANSFER_COMPLETED, body);
                                                 handler.handle(Future.succeededFuture(true));
                                             }
                                             // we couldn't update the transfer task value

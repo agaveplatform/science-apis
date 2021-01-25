@@ -82,16 +82,18 @@ public class TransferTaskUpdateListener extends AbstractTransferTaskListener {
             logger.trace("handling updating in-flight transfer progress...");
             handler.handle(Future.succeededFuture(true));
 
-            getDbService().updateStatus(tenantId, uuid, status, reply -> {
-                if (reply.succeeded()) {
-                    logger.debug("Transfer task {} status updated to {}", uuid, status);
-                    handler.handle(Future.succeededFuture(true));
-                } else {
-                    String msg = String.format("Failed to set status of transfer task %s to %s. error: %s",
-                            uuid, status, reply.cause().getMessage());
-                    doHandleError(reply.cause(), msg, body, handler);
-                }
-            });
+            //TODO: cache transfer progress instead of directly updating the db for performance
+            // writing update to db may occur after transfer is completed because of slow speeds
+//            getDbService().updateStatus(tenantId, uuid, status, reply -> {
+//                if (reply.succeeded()) {
+//                    logger.debug("Transfer task {} status updated to {}", uuid, status);
+//                    handler.handle(Future.succeededFuture(true));
+//                } else {
+//                    String msg = String.format("Failed to set status of transfer task %s to %s. error: %s",
+//                            uuid, status, reply.cause().getMessage());
+//                    doHandleError(reply.cause(), msg, body, handler);
+//                }
+//            });
         } catch (Exception e) {
             doHandleError(e, e.getMessage(), body, handler);
         }

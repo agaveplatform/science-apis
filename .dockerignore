@@ -1,7 +1,7 @@
 # Git files
-.git
-.gitignore
-.gitmodules
+#.git
+#.gitignore
+#.gitmodules
 ./scriptBuildAll.sh
 ./scriptRunAll.sh
 ./tomcat_deploy.sh
@@ -49,3 +49,6 @@ fabfile.pyc
 
 # maven and eclipse malformed output test folders
 test-output
+
+docker/*/*.war
+!docker/*/Dockerfile

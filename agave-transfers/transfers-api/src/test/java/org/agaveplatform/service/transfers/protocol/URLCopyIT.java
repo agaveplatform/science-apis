@@ -360,7 +360,7 @@ public class URLCopyIT extends BaseTestCase {
                 TransferTask copiedTransfer = mockCopy.copy(tt);
 
             } catch (ClosedByInterruptException e) {
-                JsonObject readCancelledJson = destChildTransferTask.toJson();
+                JsonObject readCancelledJson = srcChildTransferTask.toJson();
                 readCancelledJson.put("status", TransferStatusType.CANCELLED);
 
                 ctx.verify(() -> {

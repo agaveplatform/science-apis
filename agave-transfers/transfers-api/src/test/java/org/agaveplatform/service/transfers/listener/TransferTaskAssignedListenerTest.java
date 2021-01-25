@@ -339,7 +339,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				// listing should be called with srch path
 				verify(srcRemoteDataClient, times(1)).ls(eq(srcUri.getPath()));
 
-				verify(dbService).updateStatus(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getUuid()), eq(TransferStatusType.ASSIGNED.name()), any());
+				verify(dbService).updateStatus(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getUuid()), eq(TransferStatusType.COMPLETED.name()), any());
 
 //				verify(dbService, times(1)).createOrUpdateChildTransferTask(eq(rootTransferTask.getTenantId()), eq(rootTransferTask), any());
 
@@ -428,7 +428,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				verify(srcRemoteDataClient, times(1)).ls(eq(srcUri.getPath()));
 
 				// should be called once after the children are processed
-				verify(dbService).updateStatus(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getUuid()), eq(TransferStatusType.ASSIGNED.name()), any());
+				verify(dbService).updateStatus(eq(rootTransferTask.getTenantId()), eq(rootTransferTask.getUuid()), eq(TransferStatusType.COMPLETED.name()), any());
 
 				// get the test list of remote child file items
 				List<RemoteFileInfo> remoteFileInfoList = srcRemoteDataClient.ls(srcUri.getPath());

@@ -1,26 +1,23 @@
 package org.iplantc.service.notification.model;
 
-import java.io.IOException;
-
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.notification.AbstractNotificationTest;
 import org.iplantc.service.notification.TestDataHelper;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.enumerations.NotificationStatusType;
 import org.iplantc.service.notification.model.enumerations.RetryStrategyType;
-import org.json.JSONException;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+import java.io.IOException;
 
 @Test(groups={"integration"})
 public class NotificationIT extends AbstractNotificationTest {
@@ -95,7 +92,7 @@ public class NotificationIT extends AbstractNotificationTest {
 	}
 	
 	@DataProvider(name="fromJSONProvider")
-	private Object[][] fromJSONProvider() throws JSONException, IOException
+	private Object[][] fromJSONProvider() throws IOException
 	{
 		ObjectMapper mapper = new ObjectMapper();
 		ObjectNode jsonEmailNoUrlNotification = dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION);
@@ -117,21 +114,21 @@ public class NotificationIT extends AbstractNotificationTest {
 			{ jsonEmailNoUrlNotification, "Missing url should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("url", ""), "Empty url should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).putObject("url"), "Object for url should throw exception", true },
-			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("url", mapper.createArrayNode().addObject()), "Array for url should throw exception", true },
+			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).set("url", mapper.createArrayNode().addObject()), "Array for url should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("url", 5), "Integer for url should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("url", 5.5), "Decimal for url should throw exception", true },
 
 			{ jsonEmailNoEventNotification, "Missing event should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("event", ""), "Empty event should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).putObject("event"), "Object for event should throw exception", true },
-			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("event", mapper.createArrayNode().addObject()), "Array for event should throw exception", true },
+			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).set("event", mapper.createArrayNode().addObject()), "Array for event should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("event", 5), "Integer for event should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("event", 5.5), "Decimal for event should throw exception", true },
 			
 			{ jsonEmailNoAssociatedIdNotification, "Missing associatedUuid should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("associatedUuid", ""), "Empty associatedUuid should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).putObject("associatedUuid"), "Object for associatedUuid should throw exception", true },
-			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("associatedUuid", mapper.createArrayNode().addObject()), "Array for associatedUuid should throw exception", true },
+			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).set("associatedUuid", mapper.createArrayNode().addObject()), "Array for associatedUuid should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("associatedUuid", 5), "Integer for associatedUuid should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_EMAIL_NOTIFICATION).put("associatedUuid", 5.5), "Decimal for associatedUuid should throw exception", true },
 			
@@ -139,21 +136,21 @@ public class NotificationIT extends AbstractNotificationTest {
 			{ jsonWebhookNoUrlNotification, "Missing url should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("url", ""), "Empty url should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).putObject("url"), "Object for url should throw exception", true },
-			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("url", mapper.createArrayNode().addObject()), "Array for url should throw exception", true },
+			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).set("url", mapper.createArrayNode().addObject()), "Array for url should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("url", 5), "Integer for url should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("url", 5.5), "Decimal for url should throw exception", true },
 
 			{ jsonWebhookNoEventNotification, "Missing event should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("event", ""), "Empty event should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).putObject("event"), "Object for event should throw exception", true },
-			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("event", mapper.createArrayNode().addObject()), "Array for event should throw exception", true },
+			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).set("event", mapper.createArrayNode().addObject()), "Array for event should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("event", 5), "Integer for event should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("event", 5.5), "Decimal for event should throw exception", true },
 			
 			{ jsonWebhookNoAssociatedIdNotification, "Missing associatedUuid should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("associatedUuid", ""), "Empty associatedUuid should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).putObject("associatedUuid"), "Object for associatedUuid should throw exception", true },
-			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("associatedUuid", mapper.createArrayNode().addObject()), "Array for associatedUuid should throw exception", true },
+			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).set("associatedUuid", mapper.createArrayNode().addObject()), "Array for associatedUuid should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("associatedUuid", 5), "Integer for associatedUuid should throw exception", true },
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_WEBHOOK_NOTIFICATION).put("associatedUuid", 5.5), "Decimal for associatedUuid should throw exception", true },
 			

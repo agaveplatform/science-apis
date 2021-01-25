@@ -3,7 +3,6 @@ package org.iplantc.service.common.messaging;
 import io.iron.ironmq.Client;
 import io.iron.ironmq.Cloud;
 import io.iron.ironmq.Queue;
-
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -13,7 +12,7 @@ import org.testng.annotations.Test;
 /**
  * @deprecated
  */
-@Test(groups={"notReady", "integration"})
+@Test(groups={"notReady", "integration"}, enabled = false)
 public class IronMQMessagingClientIT {
 
 	public static String TEST_EXCHANGE_TOPIC = "test.exchange.topic";

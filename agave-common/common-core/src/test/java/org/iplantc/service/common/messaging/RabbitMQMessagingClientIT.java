@@ -1,16 +1,15 @@
 package org.iplantc.service.common.messaging;
 
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.QueueingConsumer;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.QueueingConsumer;
-
-@Test(groups={"notReady", "integration"})
+@Test(groups={"notReady", "integration"}, enabled = false)
 public class RabbitMQMessagingClientIT {
 
 	public static String TEST_EXCHANGE_TOPIC = "test.exchange.topic";
@@ -88,8 +87,8 @@ public class RabbitMQMessagingClientIT {
 		}
 		finally {
 			//try {channel.exchangeDelete(TEST_EXCHANGE_TOPIC);} catch(Exception e) {}
-			try {channel.close();} catch(Exception e) {}
-		    try {connection.close();} catch(Exception e) {}
+			try {channel.close();} catch(Exception ignored) {}
+		    try {connection.close();} catch(Exception ignored) {}
 		}
 	}
 
@@ -142,8 +141,8 @@ public class RabbitMQMessagingClientIT {
 		}
 		finally {
 			//try {channel.exchangeDelete(TEST_EXCHANGE_TOPIC);} catch(Exception e) {}
-			try {channel.close();} catch(Exception e) {}
-		    try {connection.close();} catch(Exception e) {}
+			try {channel.close();} catch(Exception ignored) {}
+		    try {connection.close();} catch(Exception ignored) {}
 		}
 	}
 

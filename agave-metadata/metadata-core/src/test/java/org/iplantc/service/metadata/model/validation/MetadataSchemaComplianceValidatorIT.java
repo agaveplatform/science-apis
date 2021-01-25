@@ -156,12 +156,15 @@ public class MetadataSchemaComplianceValidatorIT {
                 "\"type\": \"Some species type\"" +
                 "}" +
                 "}, " +
-                "\"species\": \"required\"" +
+                "\"required\": [" +
+                "\"species\"" +
+                "]" +
                 "}";
 
         String strJson = "{" +
                 "\"name\": \"" + getClass().getName() + "\"," +
                 "\"value\": " + strValue + "," +
+                "\"species\": \"homo sapian\"," +
                 "\"schemaId\": " + "\"" + invalidSchemaId + "\"" +
                 "}";
 
@@ -186,10 +189,14 @@ public class MetadataSchemaComplianceValidatorIT {
         validator = validatorFactory.getValidator();
 
         Set<ConstraintViolation<MetadataItem>> constraintViolations = validator.validate(validItem);
-
-        Assert.assertEquals(constraintViolations.size(), 1);
-        Assert.assertEquals(constraintViolations.iterator().next().getMessage(), "The given uuid " +
-                invalidSchemaId + " does not match the expected type SCHEMA");
+        try {
+            Assert.assertTrue(constraintViolations.stream()
+                    .anyMatch(cv -> cv.getMessage().equals(
+                            "The given uuid " + invalidSchemaId + " does not match the expected type SCHEMA")));
+        } catch (Throwable t) {
+            System.out.println(constraintViolations.toString());
+            throw t;
+        }
     }
 
 

@@ -1,10 +1,10 @@
 package org.iplantc.service.common.uuid;
 
-import java.util.HashSet;
-
 import org.apache.log4j.Logger;
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.util.HashSet;
 
 @Test(groups={"unit"})
 public class AgaveUUIDTest {

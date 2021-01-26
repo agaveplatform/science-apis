@@ -1,14 +1,14 @@
 package org.iplantc.service.jobs.managers.monitors.parsers;
 
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorEmptyResponseException;
 import org.iplantc.service.jobs.exceptions.RemoteJobMonitorResponseParsingException;
 import org.iplantc.service.jobs.managers.JobStatusResponse;
 import org.iplantc.service.systems.model.enumerations.SchedulerType;
+
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Job status parser for CondorHT job log files. HTCondor does not have a descriptive queryable interface

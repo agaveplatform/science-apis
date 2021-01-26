@@ -3,20 +3,15 @@
  */
 package org.iplantc.service.common.uuid;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-
 import org.apache.commons.io.FilenameUtils;
 import org.iplantc.service.common.exceptions.TenantException;
 import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.uuid.UUIDEntityLookup;
-import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.io.uuid.AbstractUUIDEntityLookupTest;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
+import org.iplantc.service.io.uuid.AbstractUUIDEntityLookupTest;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
@@ -30,6 +25,9 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 /**
  * @author dooley

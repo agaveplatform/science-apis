@@ -84,10 +84,12 @@ public class FileHistoryResource extends AbstractFileResource {
         } 
 		catch (Throwable e) {
             log.error("Failed to connect to remote system", e);
-            
+            // is this needed?
+            try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
+
         }
 	      
-	    AgaveLogServiceClient.log(AgaveLogServiceClient.ServiceKeys.FILES02.name(), 
+	    AgaveLogServiceClient.log(AgaveLogServiceClient.ServiceKeys.FILES02.name(),
 				AgaveLogServiceClient.ActivityKeys.FilesGetHistory.name(), 
 				username, "", getRequest().getClientInfo().getUpstreamAddress());
 	}

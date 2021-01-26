@@ -55,7 +55,7 @@ public enum NotificationCallbackProviderType {
 			return SLACK;
 		
 		// otherwise we assume it's a standard webhook. check for context and known integrations
-		// check 3and forward accordingly.
+		// checand forward accordingly.
 		} else {
 			try {
 				URI callbackURI = URI.create(callbackUrl.replaceAll("\\$", "%24").replaceAll("\\{", "%7B").replaceAll("\\}", "%7D"));
@@ -66,7 +66,6 @@ public enum NotificationCallbackProviderType {
 						StringUtils.startsWith(callbackURI.getHost(), "255.") || 
 						StringUtils.startsWith(callbackURI.getHost(), "172.") || 
 						StringUtils.startsWith(callbackURI.getHost(), "192.") ||
-						StringUtils.startsWith(callbackURI.getHost(), "10.") ||
 						StringUtils.equals(callbackURI.getHost(), Settings.getLocalHostname()) ||
 						Settings.getIpAddressesFromNetInterface().contains(callbackURI.getHost())) {
 					throw new BadCallbackException("Invalid callback url.");

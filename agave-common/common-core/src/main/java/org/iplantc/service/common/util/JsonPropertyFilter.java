@@ -1,15 +1,14 @@
 package org.iplantc.service.common.util;
 
-import java.io.IOException;
-import java.util.Iterator;
-
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import java.io.IOException;
+import java.util.Iterator;
 
 /**
  * Just a helper class to simplify usage

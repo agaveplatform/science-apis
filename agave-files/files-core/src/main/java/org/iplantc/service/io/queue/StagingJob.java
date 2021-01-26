@@ -349,7 +349,6 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
             }
         }
         catch (PersistenceException | StaleObjectStateException | UnresolvableObjectException e) {
-            // What nonsense.
             log.warn("Just avoided a file staging race condition from worker");
         }
         catch (Throwable e) {

@@ -1,24 +1,10 @@
 package org.iplantc.service.common.persistence;
 
-import java.lang.annotation.Annotation;
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
-import javax.persistence.Entity;
-import javax.persistence.PersistenceException;
-import javax.validation.constraints.Null;
-
 import org.apache.log4j.Logger;
-import org.hibernate.HibernateException;
-import org.hibernate.Interceptor;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.Transaction;
+import org.hibernate.*;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.cfg.ImprovedNamingStrategy;
-import org.iplantc.service.common.persistence.time.CdtTimestampType;
 import org.reflections.Reflections;
 import org.reflections.scanners.ResourcesScanner;
 import org.reflections.scanners.SubTypesScanner;
@@ -26,6 +12,12 @@ import org.reflections.scanners.TypeAnnotationsScanner;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
+
+import javax.persistence.Entity;
+import javax.persistence.PersistenceException;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Basic Hibernate helper class, handles SessionFactory, Session and Transaction.

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 # If no config file was included in the environment, use the default
 if [ -z "$FLYWAY_CONFIG" ]; then

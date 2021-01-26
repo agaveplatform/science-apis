@@ -23,7 +23,6 @@ import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
-import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.json.JSONException;
@@ -221,7 +220,7 @@ public class ApplicationManager
 			
 			checkPath = newSoftware.getDeploymentPath() + "/" + newSoftware.getExecutablePath();
 			
-			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception ignored) {}
+			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception e) {}
 			
 			pm = new PermissionManager(newSoftware.getStorageSystem(), remoteDataClient, logicalFile, username);
 			
@@ -238,7 +237,7 @@ public class ApplicationManager
 			
 			checkPath = newSoftware.getDeploymentPath() + "/" + newSoftware.getTestPath();
 			
-			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception ignored) {}
+			try { logicalFile=LogicalFileDao.findBySystemAndPath(newSoftware.getStorageSystem(), checkPath); } catch(Exception e) {}
 			
 			pm = new PermissionManager(newSoftware.getStorageSystem(), remoteDataClient, logicalFile, username);
 			
@@ -256,7 +255,7 @@ public class ApplicationManager
 			return true;
 		}
 		finally {
-			try { if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored) {}
+			try { remoteDataClient.disconnect();} catch (Exception e) {}
 		}
 	}
 

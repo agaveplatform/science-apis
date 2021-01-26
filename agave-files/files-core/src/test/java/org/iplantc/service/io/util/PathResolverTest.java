@@ -1,10 +1,10 @@
 package org.iplantc.service.io.util;
 
-import java.io.IOException;
-
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.IOException;
 
 @Test(groups={"unit"})
 public class PathResolverTest {

@@ -18,18 +18,13 @@
 
 package org.iplantc.service.common.representation;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-
-import org.restlet.data.MediaType;
-import org.restlet.resource.OutputRepresentation;
-
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
+import org.restlet.data.MediaType;
+import org.restlet.resource.OutputRepresentation;
+
+import java.io.*;
 
 /**
  * FreeMarker template representation. Useful for dynamic string-based

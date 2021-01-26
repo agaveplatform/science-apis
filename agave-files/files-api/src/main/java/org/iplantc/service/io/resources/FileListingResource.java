@@ -3,13 +3,7 @@
  */
 package org.iplantc.service.io.resources;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.activation.MimetypesFileTypeMap;
-
+import com.google.gson.JsonArray;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -43,7 +37,11 @@ import org.restlet.representation.Representation;
 import org.restlet.resource.Get;
 import org.restlet.resource.ResourceException;
 
-import com.google.gson.JsonArray;
+import javax.activation.MimetypesFileTypeMap;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Class to handle get and post requests for jobs

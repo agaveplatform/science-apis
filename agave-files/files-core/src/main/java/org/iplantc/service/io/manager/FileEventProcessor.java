@@ -1,5 +1,7 @@
 package org.iplantc.service.io.manager;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.log4j.Logger;
 import org.iplantc.service.io.dao.FileEventDao;
 import org.iplantc.service.io.dao.LogicalFileDao;
@@ -11,9 +13,6 @@ import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Handles sending and propagation of events on {@link LogicalFile} objects.

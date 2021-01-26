@@ -1,20 +1,9 @@
 package org.iplantc.service.io.permissions;
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.io.Settings;
-import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.model.JSONTestDataUtil;
-import org.iplantc.service.io.model.LogicalFile;
-import org.iplantc.service.metadata.model.enumerations.PermissionType;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
@@ -26,6 +15,10 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 @Test(groups={"integration"})
 public class ImplicitFilePermissionsFromSystemRolesTest extends AbstractPermissionManagerTest 

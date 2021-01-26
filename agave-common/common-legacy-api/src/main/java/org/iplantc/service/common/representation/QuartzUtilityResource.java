@@ -1,10 +1,7 @@
 package org.iplantc.service.common.representation;
 
-import java.io.IOException;
-import java.util.HashMap;
-
-import javax.servlet.http.HttpSession;
-
+import freemarker.template.Configuration;
+import freemarker.template.Template;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.quartz.util.QuartzUtility;
@@ -21,8 +18,9 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-import freemarker.template.Configuration;
-import freemarker.template.Template;
+import javax.servlet.http.HttpSession;
+import java.io.IOException;
+import java.util.HashMap;
 
 /**
  * Simple API to manage quartz scheduler running in an 

@@ -1,9 +1,9 @@
 package org.iplantc.service.common.model;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import java.sql.Timestamp;
 import java.util.Date;
-
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 public interface AgaveEntityEvent {
 

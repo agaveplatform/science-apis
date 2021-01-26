@@ -1,9 +1,5 @@
 package org.iplantc.service.io.dao;
 
-import java.net.URI;
-import java.util.List;
-import java.util.UUID;
-
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
 import org.iplantc.service.io.BaseTestCase;
@@ -12,12 +8,11 @@ import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
 
 @Test(groups={"integration"})
 public class LogicalFileDaoCaseSensitivityTest extends BaseTestCase 

@@ -3,7 +3,9 @@
  */
 package org.iplantc.service.apps.exceptions;
 
-import org.iplantc.service.common.exceptions.CommonResourceException;;
+import org.iplantc.service.common.exceptions.CommonResourceException;
+
+;
 /**
  * @author dooley
  * 

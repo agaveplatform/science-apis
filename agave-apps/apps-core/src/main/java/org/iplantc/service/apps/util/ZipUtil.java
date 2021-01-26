@@ -3,23 +3,17 @@
  */
 package org.iplantc.service.apps.util;
 
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.RemoteOutputStream;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+
+import java.io.*;
 import java.net.URI;
 import java.util.Enumeration;
 import java.util.LinkedList;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
-
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteOutputStream;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
 
 /**
  * @author dooley

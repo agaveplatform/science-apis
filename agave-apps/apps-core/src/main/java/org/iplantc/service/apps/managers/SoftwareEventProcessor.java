@@ -3,9 +3,8 @@
  */
 package org.iplantc.service.apps.managers;
 
-import java.io.IOException;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -22,8 +21,8 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.json.JSONException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * Handles sending and propagation of events on {@link Software} objects.

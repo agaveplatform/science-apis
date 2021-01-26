@@ -1,32 +1,15 @@
 package org.iplantc.service.common.quartz.util;
 
-import static java.lang.String.format;
-import static org.apache.commons.lang.StringUtils.defaultIfEmpty;
-import static org.quartz.TriggerBuilder.newTrigger;
-import static org.quartz.impl.matchers.KeyMatcher.keyEquals;
-
-import java.io.IOException;
-import java.util.*;
-
-import javax.servlet.http.HttpSession;
-
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.quartz.util.ui.ActiveJobDescription;
 import org.iplantc.service.common.quartz.util.ui.JobDescription;
 import org.iplantc.service.common.quartz.util.ui.SimpleCronExpression;
-import org.quartz.CronScheduleBuilder;
-import org.quartz.CronTrigger;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobKey;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleTrigger;
-import org.quartz.Trigger;
-import org.quartz.TriggerKey;
-import org.quartz.UnableToInterruptJobException;
+import org.quartz.*;
 import org.quartz.impl.JobDetailImpl;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
@@ -34,10 +17,13 @@ import org.quartz.impl.matchers.KeyMatcher;
 import org.restlet.data.Form;
 import org.restlet.data.Request;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.joda.JodaModule;
+import java.io.IOException;
+import java.util.*;
+
+import static java.lang.String.format;
+import static org.apache.commons.lang.StringUtils.defaultIfEmpty;
+import static org.quartz.TriggerBuilder.newTrigger;
+import static org.quartz.impl.matchers.KeyMatcher.keyEquals;
 
 /**
  * Created by silviu

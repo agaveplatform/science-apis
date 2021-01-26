@@ -3,21 +3,13 @@
  */
 package org.iplantc.service.io.resources;
 
-import static org.quartz.impl.matchers.GroupMatcher.groupEquals;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.joda.time.DateTime;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobKey;
-import org.quartz.Scheduler;
-import org.quartz.Trigger;
-import org.quartz.TriggerKey;
+import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.restlet.Request;
@@ -26,9 +18,11 @@ import org.restlet.resource.Get;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.quartz.impl.matchers.GroupMatcher.groupEquals;
 
 /**
  * The QuartzResource serves as an endpoint to check the activity of worker

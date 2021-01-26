@@ -3,19 +3,16 @@
  */
 package org.iplantc.service.common.migration;
 
-import java.math.BigInteger;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.sql.Connection;
-
 import org.flywaydb.core.api.FlywayException;
-//import org.flywaydb.core.api.migration.MigrationChecksumProvider;
-//import org.flywaydb.core.api.migration.jdbc.JdbcMigration;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 import org.iplantc.service.common.migration.utils.BackfillUtil;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
+
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * Backfills valid {@link AgaveUUID} into each row of the jobevents and transfertasks tables

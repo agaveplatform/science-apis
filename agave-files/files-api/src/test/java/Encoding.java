@@ -1,9 +1,9 @@
+import org.apache.log4j.Logger;
+import org.joda.time.DateTime;
+
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.Date;
-
-import org.apache.log4j.Logger;
-import org.joda.time.DateTime;
 
 
 public class Encoding {

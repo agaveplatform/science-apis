@@ -1,24 +1,5 @@
 package org.iplantc.service.jobs.model.enumerations;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.hibernate.cfg.NotYetImplementedException;
-import org.iplantc.service.common.dao.TenantDao;
-import org.iplantc.service.common.exceptions.TenantException;
-import org.iplantc.service.common.model.Tenant;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.util.TimeUtils;
-import org.iplantc.service.jobs.Settings;
-import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
-import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.jobs.util.Slug;
-import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.SystemUnavailableException;
-import org.iplantc.service.systems.model.BatchQueue;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.util.ServiceUtils;
-import org.joda.time.DateTime;
-
 public enum WrapperTemplateAttributeVariableType implements WrapperTemplateVariableType
 {
 	// job value macros

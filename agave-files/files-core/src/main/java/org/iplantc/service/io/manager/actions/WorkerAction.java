@@ -3,14 +3,14 @@
  */
 package org.iplantc.service.io.manager.actions;
 
-import java.nio.channels.ClosedByInterruptException;
-
 import org.iplantc.service.common.exceptions.DependencyException;
 import org.iplantc.service.common.exceptions.DomainException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.transfer.RemoteDataClient;
+
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * @author dooley

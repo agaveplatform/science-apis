@@ -1,8 +1,5 @@
 package org.iplantc.service.io.model;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageConfig;
@@ -12,6 +9,9 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @Test(groups={"integration"})
 public class LogicalFileTest extends BaseTestCase {

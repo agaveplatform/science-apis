@@ -1,10 +1,10 @@
 package org.iplantc.service.io.dao;
 
 import org.iplantc.service.io.BaseTestCase;
+import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.manager.SystemManager;
-import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.testng.Assert;

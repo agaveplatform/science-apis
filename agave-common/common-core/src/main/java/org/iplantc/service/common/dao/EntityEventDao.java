@@ -1,9 +1,9 @@
 package org.iplantc.service.common.dao;
 
-import java.util.List;
-
 import org.iplantc.service.common.exceptions.EntityEventPersistenceException;
 import org.iplantc.service.common.model.AgaveEntityEvent;
+
+import java.util.List;
 
 public interface EntityEventDao<T extends AgaveEntityEvent, V extends Enum> {
 

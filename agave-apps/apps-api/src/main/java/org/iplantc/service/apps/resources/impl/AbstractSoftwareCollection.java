@@ -3,14 +3,14 @@
  */
 package org.iplantc.service.apps.resources.impl;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.iplantc.service.apps.search.SoftwareSearchFilter;
 import org.iplantc.service.common.search.SearchTerm;
 import org.restlet.Request;
 import org.restlet.data.Form;
 import org.restlet.data.Reference;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author dooley

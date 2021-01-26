@@ -182,11 +182,11 @@ public class LogicalFile {
 	}
 
 	/**
-	 * @param username
+	 * @param owner
 	 *            the owner to set
 	 */
-	public void setOwner(String username) {
-		this.owner = username;
+	public void setOwner(String owner) {
+		this.owner = owner;
 	}
 
 	/**
@@ -275,7 +275,7 @@ public class LogicalFile {
 	 * these by resolving them relative to the system.storageConfig.homeDir and 
 	 * system.storageConfig.rootDir. This method resolves the absolute path
 	 * back to a path suitable for URL presentation.
-	 * @return
+	 * @return the path relative to the {@link org.iplantc.service.systems.model.StorageSystem} root path.
 	 */
 	@Transient
 	public String getAgaveRelativePathFromAbsolutePath() 

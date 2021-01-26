@@ -1,7 +1,5 @@
 package org.iplantc.service.common.persistence;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.Settings;

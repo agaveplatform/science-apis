@@ -3,13 +3,13 @@
  */
 package org.iplantc.service.common.uri;
 
-import java.net.URI;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.persistence.TenancyHelper;
+
+import java.net.URI;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Holds regular expression stubs for Agave URI. These values should be

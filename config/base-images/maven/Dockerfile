@@ -29,23 +29,21 @@ ENV MAVEN_VERSION 3.6.3
 ENV PROTOBUF_VERSION 3.12.2
 
 RUN set -ex && apt-get update && \
-    apt-get install -y	bash \
+    apt-get install -y	--no-install-recommends \
+    					bash \
     				   	jq \
     				   	wget \
     				   	curl \
     				   	vim-tiny \
     				   	ca-certificates \
     				   	zip \
+    				   	unzip \
     				   	bzip2 \
-    				   	git && \
-
-	BUILD_DEPS="wget" \
-	# Fail on error
-	&& set -x \
-	# Install BUILD_DEPS
-	&& apt-get update && apt-get install -y $BUILD_DEPS --no-install-recommends \
+    				   	git \
+    				   	netcat \
+    				   	python3
 	# Download Protobuf
-	&& wget -O "/tmp/protoc-${PROTOBUF_VERSION}.zip" "https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip" \
+RUN wget -O "/tmp/protoc-${PROTOBUF_VERSION}.zip" "https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip" \
 	# Unpackage the zip
 	&& unzip "/tmp/protoc-${PROTOBUF_VERSION}.zip" -d "/opt/protoc-${PROTOBUF_VERSION}" \
 	# Symlink onto PATH
@@ -62,23 +60,11 @@ RUN set -ex && apt-get update && \
 	# Uninstall BUILD_DEPS
 	&& apt-get purge -y --auto-remove $BUILD_DEPS \
 	# Cleanup cache
-	&& rm -rf /var/lib/apt/lists/*
-
-
-#ADD all/entrypoint.sh /usr/local/bin
-#RUN chmod +x /usr/local/bin/entrypoint.sh
-
-#RUN apt-get install wget  && \
-#	cd /usr/share && \
-#	wget "https://downloads.apache.org/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.zip" && \
-#    unzip apache-maven-$MAVEN_VERSION-bin.zip && \
-#    ln -s /usr/share/apache-maven-$MAVEN_VERSION/bin/mvn /usr/bin/mvn && \
-#    rm apache-maven-$MAVEN_VERSION-bin.zip && \
-#    mkdir /sources
-
+	&& rm -rf /var/lib/apt/lists/* \
+	# Add docker-compose
+	&& curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose \
+	&& chmod +x /usr/local/bin/docker-compose
 
 WORKDIR /sources
-
-VOLUME /sources
 
 CMD ["mvn","clean","package"]

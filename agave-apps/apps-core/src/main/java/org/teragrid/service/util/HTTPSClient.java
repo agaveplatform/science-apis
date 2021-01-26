@@ -1,5 +1,8 @@
 package org.teragrid.service.util;
 
+import com.thoughtworks.xstream.core.util.Base64Encoder;
+
+import javax.net.ssl.*;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,14 +14,6 @@ import java.security.GeneralSecurityException;
 import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.Map;
-
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.X509TrustManager;
-
-import com.thoughtworks.xstream.core.util.Base64Encoder;
 
 public class HTTPSClient {
 	private String				url;

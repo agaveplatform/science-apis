@@ -3,14 +3,6 @@
  */
 package org.iplantc.service.jobs.queue.actions;
 
-import java.io.FileNotFoundException;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.Date;
-import java.util.Map;
-import java.util.regex.Matcher;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
@@ -48,6 +40,13 @@ import org.iplantc.service.transfer.exceptions.AuthenticationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.joda.time.DateTime;
+
+import java.io.FileNotFoundException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.Map;
+import java.util.regex.Matcher;
 
 /**
  * @author dooley

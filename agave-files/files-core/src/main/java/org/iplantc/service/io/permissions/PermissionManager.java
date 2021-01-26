@@ -193,10 +193,11 @@ public class PermissionManager {
 				}
 				
 				
-				// if we created a RemoteDataClient just for this check, disconnect here to clean up threads
-				if (this.remoteDataClient == null && remoteDataClient != null) {
-					try { remoteDataClient.disconnect(); } catch (Exception e) {}
-				}
+//				// if we created a RemoteDataClient just for this check, disconnect here to clean up threads
+//				// TODO: How can this ever be called? Why was it here?
+//				if (this.remoteDataClient == null && remoteDataClient != null) {
+//					try { remoteDataClient.disconnect(); } catch (Exception ignored) {}
+//				}
 	        }
 			else
 			{

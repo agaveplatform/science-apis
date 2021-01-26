@@ -16,7 +16,7 @@ networks:
 
 services:
   mysql:
-    image: agaveplatform/agave-mariadb:2.2.27
+    image: agave-mariadb:2.2.27
     ports:
       - '3306:3306'
     volumes:

@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.apps.resources.impl;
 
-import java.net.URLDecoder;
-
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;

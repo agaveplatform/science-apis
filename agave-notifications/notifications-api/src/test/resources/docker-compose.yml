@@ -85,5 +85,5 @@ services:
     image: agaveplatform/maildev:latest
     ports:
       - "25:25"
-    volumes:
-      - ./persistence-services/maildev/rules.json:/data/rules.json
+#    volumes:
+#      - ./persistence-services/maildev/rules.json:/data/rules.json

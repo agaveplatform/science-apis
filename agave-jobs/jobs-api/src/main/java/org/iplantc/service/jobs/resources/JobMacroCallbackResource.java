@@ -3,17 +3,15 @@
  */
 package org.iplantc.service.jobs.resources;
 
-import java.util.Date;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.common.representation.IplantErrorRepresentation;
+import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobMacroType;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.representation.IplantErrorRepresentation;
-import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.restlet.Context;
 import org.restlet.data.MediaType;
 import org.restlet.data.Request;
@@ -22,6 +20,8 @@ import org.restlet.data.Status;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
+
+import java.util.Date;
 
 /**
  * Processes user-requested callbacks on running jobs.

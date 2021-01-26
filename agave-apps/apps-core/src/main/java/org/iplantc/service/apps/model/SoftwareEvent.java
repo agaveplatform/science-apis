@@ -3,25 +3,9 @@
  */
 package org.iplantc.service.apps.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.OneToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.Filters;
-import org.hibernate.annotations.Index;
-import org.hibernate.annotations.ParamDef;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.hibernate.annotations.*;
 import org.iplantc.service.apps.Settings;
 import org.iplantc.service.apps.model.enumerations.SoftwareEventType;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -31,8 +15,10 @@ import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.Entity;
+import javax.persistence.Table;
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Entity class for persisting job events. This creates a history log 

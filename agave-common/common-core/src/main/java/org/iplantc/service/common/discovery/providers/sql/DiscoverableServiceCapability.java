@@ -1,15 +1,10 @@
 package org.iplantc.service.common.discovery.providers.sql;
 
-import java.util.Arrays;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-
 import org.codehaus.plexus.util.StringUtils;
 import org.iplantc.service.common.discovery.ServiceCapability;
+
+import javax.persistence.*;
+import java.util.Arrays;
 
 /**
  * When a container starts, it will contain zero or

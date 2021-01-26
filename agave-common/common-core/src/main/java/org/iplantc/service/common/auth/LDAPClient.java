@@ -1,20 +1,15 @@
 package org.iplantc.service.common.auth;
 
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.List;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.Settings;
 
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
-import javax.naming.directory.Attributes;
-import javax.naming.directory.DirContext;
-import javax.naming.directory.InitialDirContext;
-import javax.naming.directory.SearchControls;
-import javax.naming.directory.SearchResult;
-
-import org.apache.log4j.Logger;
-import org.iplantc.service.common.Settings;
+import javax.naming.directory.*;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.List;
 
 public class LDAPClient {
 	private static Logger log = Logger.getLogger(LDAPClient.class);

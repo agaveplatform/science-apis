@@ -30,19 +30,19 @@ public class PathResolver {
     public enum FilePathRegex {
         
         /**
-         * Represents a url to the Files API with the {@link RemoteSystem#systeId} 
+         * Represents a url to the Files API with the {@link RemoteSystem#systemId}
          * explicitly included in the path.
          */
         FILES_PUBLIC_URI("(?:files/)?(?:download)/([0-9a-zA-Z_\\-]{3,64})/system/([0-9a-zA-Z\\.\\-]{3,64})/(.*)"),
         
         /**
-         * Represents a url to the Files API with the {@link RemoteSystem#systeId} 
+         * Represents a url to the Files API with the {@link RemoteSystem#systemId}
          * explicitly included in the path.
          */
         FILES_URI_CUSTOM_SYSTEM("(?:files/)?(?:listings|media|pems|meta|history)/system/([0-9a-zA-Z\\.\\-]{3,64})/(.*)"),
         
         /**
-         * Represents a url to the Files API without the {@link RemoteSystem#systeId} 
+         * Represents a url to the Files API without the {@link RemoteSystem#systemId}
          * included in the path. These links imply use of the user's default {@link StorageSystem}.
          */
         FILES_URI_DEFAULT_SYSTEM("(?:files/)?(?:listings|media|pems|meta|history)/(.*)");

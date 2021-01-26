@@ -3,11 +3,11 @@
  */
 package org.iplantc.service.jobs.managers.launchers.parsers;
 
+import org.iplantc.service.jobs.exceptions.RemoteJobIDParsingException;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.StringTokenizer;
-
-import org.iplantc.service.jobs.exceptions.RemoteJobIDParsingException;
 
 /**
  * Parses the output from a condor_sumit command into a local job id 

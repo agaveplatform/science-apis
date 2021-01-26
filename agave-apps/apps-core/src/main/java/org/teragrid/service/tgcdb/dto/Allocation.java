@@ -3,11 +3,11 @@
  */
 package org.teragrid.service.tgcdb.dto;
 
-import java.math.BigDecimal;
-import java.util.Date;
-
 import org.json.JSONStringer;
 import org.teragrid.service.util.TGUtil;
+
+import java.math.BigDecimal;
+import java.util.Date;
 
 /**
  * @author dooley

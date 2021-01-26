@@ -1,8 +1,5 @@
 package org.iplantc.service.apps.managers;
 
-import java.io.IOException;
-import java.util.LinkedHashSet;
-
 import org.iplantc.service.apps.dao.AbstractDaoTest;
 import org.iplantc.service.apps.model.JSONTestDataUtil;
 import org.iplantc.service.apps.model.Software;
@@ -18,11 +15,10 @@ import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.io.IOException;
+import java.util.LinkedHashSet;
 
 @Test(groups={"integration"})
 public class ApplicationManagerPermissionIT extends AbstractDaoTest {

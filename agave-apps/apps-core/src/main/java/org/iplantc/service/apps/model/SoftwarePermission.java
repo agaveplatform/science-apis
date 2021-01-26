@@ -3,21 +3,7 @@
  */
 package org.iplantc.service.apps.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
+import com.fasterxml.jackson.annotation.JsonValue;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.Settings;
 import org.iplantc.service.apps.exceptions.SoftwareException;
@@ -27,7 +13,8 @@ import org.json.JSONException;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import com.fasterxml.jackson.annotation.JsonValue;
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Class to represent individual shared permissions for jobs

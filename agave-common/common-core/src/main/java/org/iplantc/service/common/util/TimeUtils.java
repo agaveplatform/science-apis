@@ -3,10 +3,10 @@
  */
 package org.iplantc.service.common.util;
 
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
+
+import java.util.regex.Pattern;
 
 /**
  * @author dooley

@@ -3,12 +3,12 @@
  */
 package org.iplantc.service.io.manager.actions;
 
-import java.net.URI;
-import java.sql.Timestamp;
-
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.io.model.enumerations.FileOperationType;
+
+import java.net.URI;
+import java.sql.Timestamp;
 
 /**
  * @author dooley

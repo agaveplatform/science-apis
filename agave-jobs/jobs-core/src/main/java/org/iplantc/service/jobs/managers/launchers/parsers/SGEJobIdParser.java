@@ -1,11 +1,11 @@
 package org.iplantc.service.jobs.managers.launchers.parsers;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.RemoteJobIDParsingException;
 import org.iplantc.service.jobs.exceptions.SchedulerException;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Parses the output from a qsub command into a local job id 

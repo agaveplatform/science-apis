@@ -1,8 +1,5 @@
 package org.iplantc.service.io.permissions;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.model.JSONTestDataUtil;
@@ -15,6 +12,9 @@ import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Test(groups={"integration"})
 public class StoragePermissionManagerReadTest extends AbstractPermissionManagerTest {

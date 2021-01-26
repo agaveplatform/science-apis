@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.common.auth;
 
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.restlet.Context;
@@ -13,6 +11,8 @@ import org.restlet.data.ChallengeScheme;
 import org.restlet.data.Form;
 import org.restlet.data.Method;
 import org.restlet.data.Request;
+
+import java.util.List;
 
 /**
  * @author rion1

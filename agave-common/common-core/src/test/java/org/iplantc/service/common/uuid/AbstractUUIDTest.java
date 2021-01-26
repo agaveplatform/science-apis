@@ -3,11 +3,7 @@
  */
 package org.iplantc.service.common.uuid;
 
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.testng.Assert;
 import org.testng.annotations.Test;
-
-import java.io.IOException;
 
 /**
  * Parent test for all UUID Tests. Handles abstract definitions of the

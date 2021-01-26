@@ -1,25 +1,19 @@
 package org.iplantc.service.common.queue;
 
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.util.Set;
-
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.discovery.ServiceCapability;
 import org.iplantc.service.common.discovery.ServiceCapabilityConfiguration;
 import org.iplantc.service.common.messaging.MessageQueueListener;
 import org.joda.time.DateTime;
-import org.quartz.InterruptableJob;
-import org.quartz.Job;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.Trigger;
+import org.quartz.*;
 import org.quartz.spi.SchedulerPlugin;
+
+import java.util.Set;
+
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * @author dooley

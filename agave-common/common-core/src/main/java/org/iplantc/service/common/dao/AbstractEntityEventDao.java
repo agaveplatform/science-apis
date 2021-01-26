@@ -1,7 +1,5 @@
 package org.iplantc.service.common.dao;
 
-import java.util.List;
-
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -10,6 +8,8 @@ import org.iplantc.service.common.exceptions.EntityEventPersistenceException;
 import org.iplantc.service.common.model.AgaveEntityEvent;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
+
+import java.util.List;
 
 /**
  * Model class for interacting with {@link AgaveEntityEvent}. {@link AgaveEntityEvent}s are

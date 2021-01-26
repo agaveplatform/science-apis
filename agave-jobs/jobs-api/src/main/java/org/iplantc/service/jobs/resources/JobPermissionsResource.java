@@ -3,9 +3,6 @@
  */
 package org.iplantc.service.jobs.resources;
 
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.util.ServiceUtils;
@@ -29,6 +26,9 @@ import org.restlet.data.Status;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * The JobResource object enables HTTP GET and POST actions on contrast jobs.

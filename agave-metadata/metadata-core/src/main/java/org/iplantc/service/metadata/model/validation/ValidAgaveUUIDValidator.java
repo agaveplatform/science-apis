@@ -22,7 +22,7 @@ public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUU
         
         boolean isValid = false;
         if (target == null) {
-            return false;
+            return true;
         }
         
         AgaveUUID uuid = null;
@@ -41,6 +41,7 @@ public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUU
         if (isValidUUIDType(uuid)) {
             try {
                 uuid.getObjectReference();
+                isValid = true;
             } catch (Exception e) {
                 constraintContext.disableDefaultConstraintViolation();
                 constraintContext.buildConstraintViolationWithTemplate( 

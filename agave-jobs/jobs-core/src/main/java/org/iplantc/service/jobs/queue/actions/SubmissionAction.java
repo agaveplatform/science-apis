@@ -3,9 +3,6 @@
  */
 package org.iplantc.service.jobs.queue.actions;
 
-import java.net.ConnectException;
-import java.nio.channels.ClosedByInterruptException;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.ObjectNotFoundException;
@@ -22,6 +19,9 @@ import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
+
+import java.net.ConnectException;
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * @author dooley

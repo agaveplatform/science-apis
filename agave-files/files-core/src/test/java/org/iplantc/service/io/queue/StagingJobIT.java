@@ -1,12 +1,5 @@
 package org.iplantc.service.io.queue;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.net.URI;
-import java.util.*;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -27,11 +20,14 @@ import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.json.JSONObject;
-import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.ITestContext;
 import org.testng.annotations.*;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.util.*;
 
 /**
  * Tests the behavior of the StagingJob. URL Copy should be tested independently

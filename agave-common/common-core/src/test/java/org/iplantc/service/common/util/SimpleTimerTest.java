@@ -1,10 +1,10 @@
 package org.iplantc.service.common.util;
 
-import java.util.ArrayList;
-import java.util.Hashtable;
-
 import org.testng.Assert;
 import org.testng.annotations.Test;
+
+import java.util.ArrayList;
+import java.util.Hashtable;
 
 @Test(groups={"unit"})
 public class SimpleTimerTest 

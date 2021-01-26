@@ -551,23 +551,17 @@ public class ServiceUtils {
 	 * @param sJson the string to marshal to a json array and extract the string value
 	 * @param enquoteValues true if the values should be wrapped in double quotes
 	 * @return String array of values from the JSON array. Any primary types will get converted here.
-	 * @throws JsonParseException if the parsed json string is not an array.
+	 * @throws JsonProcessingException if the parsed json string is not an array.
 	 * @throws IOException if the string cannot be parsed
 	 */
 	public static String[] getStringValuesFromJsonArray(final String sJson, final boolean enquoteValues)
-	throws JsonParseException, IOException
+	throws JsonProcessingException, IOException
 	{
-		try 
-		{
-			final JsonNode json = new ObjectMapper().readTree(sJson);
-			if (json.isArray()) {
-				return getStringValuesFromJsonArray((ArrayNode)json, enquoteValues);
-			} else {
-	    	  throw new JsonParseException("Value is not a valid JSON array of primary values.", new JsonLocation(sJson, sJson.length(), 1, 1));
-			}
-		} 
-		catch (JsonProcessingException e) {
-			throw e;
+		final JsonNode json = new ObjectMapper().readTree(sJson);
+		if (json.isArray()) {
+			return getStringValuesFromJsonArray((ArrayNode)json, enquoteValues);
+		} else {
+		  throw new JsonParseException("Value is not a valid JSON array of primary values.", new JsonLocation(sJson, sJson.length(), 1, 1));
 		}
 	}
 	

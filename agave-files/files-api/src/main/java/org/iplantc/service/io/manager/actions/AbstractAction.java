@@ -3,12 +3,12 @@
  */
 package org.iplantc.service.io.manager.actions;
 
-import java.io.IOException;
-
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
+
+import java.io.IOException;
 
 /**
  * Abstract class for all {@link LogicalFileAction} implementations.

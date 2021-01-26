@@ -1,9 +1,9 @@
 package org.iplantc.service.apps.model;
 
-import org.iplantc.service.apps.model.JSONTestDataUtil;
-import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.testng.Assert;
+
 import java.lang.reflect.Method;
 import java.util.Collection;
 

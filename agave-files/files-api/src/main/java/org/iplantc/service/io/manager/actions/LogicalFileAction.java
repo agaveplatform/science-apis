@@ -1,9 +1,9 @@
 package org.iplantc.service.io.manager.actions;
 
-import java.io.IOException;
-
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
+
+import java.io.IOException;
 
 /**
  * Represents a generic action to be performed on a {@link LogicalFile}.

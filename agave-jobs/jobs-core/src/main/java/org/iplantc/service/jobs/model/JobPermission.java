@@ -3,19 +3,6 @@
  */
 package org.iplantc.service.jobs.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.UniqueConstraint;
-
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
@@ -29,6 +16,9 @@ import org.joda.time.DateTime;
 import org.json.JSONException;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
+
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Class to represent individual shared permissions for jobs

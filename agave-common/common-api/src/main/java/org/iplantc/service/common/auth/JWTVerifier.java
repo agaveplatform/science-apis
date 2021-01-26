@@ -1,11 +1,5 @@
 package org.iplantc.service.common.auth;
 
-import static org.iplantc.service.common.auth.roles.AgaveRole.ROLE_NONE;
-
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.restlet.Request;
@@ -15,6 +9,12 @@ import org.restlet.data.Method;
 import org.restlet.security.Role;
 import org.restlet.security.Verifier;
 import org.restlet.util.Series;
+
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import static org.iplantc.service.common.auth.roles.AgaveRole.ROLE_NONE;
 
 public class JWTVerifier implements Verifier {
     private static final Logger log = Logger.getLogger(JWTVerifier.class);

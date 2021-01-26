@@ -3,22 +3,8 @@
  */
 package org.iplantc.service.io.notifications;
 
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.Settings;
@@ -41,25 +27,21 @@ import org.iplantc.service.notification.queue.NewNotificationQueueProcessor;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.JobListener;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleTrigger;
+import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.KeyMatcher;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.surftools.BeanstalkClientImpl.ClientImpl;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * @author dooley

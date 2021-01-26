@@ -1,11 +1,11 @@
 package org.iplantc.service.io.dao;
 
-import java.math.BigInteger;
-
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.io.util.ServiceUtils;
+
+import java.math.BigInteger;
 
 /**
  * Data access for internal stats counter

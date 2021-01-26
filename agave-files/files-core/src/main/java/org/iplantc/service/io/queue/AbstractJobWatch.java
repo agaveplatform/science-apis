@@ -34,8 +34,7 @@ public abstract class AbstractJobWatch<T extends QueueTask> implements WorkerWat
     /* (non-Javadoc)
      * @see org.quartz.Job#execute(org.quartz.JobExecutionContext)
      */
-    public void execute(JobExecutionContext context)
-            throws JobExecutionException {
+    public void execute(JobExecutionContext context) throws JobExecutionException {
         try {
             if (org.iplantc.service.common.Settings.isDrainingQueuesEnabled()) {
                 log.debug("Queue draining has been enabled. Skipping " + this.getClass().getSimpleName() + " task.");

@@ -1,9 +1,5 @@
 package org.iplantc.service.io.permissions;
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.io.Settings;
@@ -20,6 +16,10 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 
 @Test(groups={"integration"})
 public class PermissionManagerStaticUriReadTest extends AbstractPermissionManagerTest 

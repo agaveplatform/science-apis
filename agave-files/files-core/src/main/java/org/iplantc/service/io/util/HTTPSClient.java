@@ -1,5 +1,7 @@
 package org.iplantc.service.io.util;
 
+import com.thoughtworks.xstream.core.util.Base64Encoder;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -8,8 +10,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.thoughtworks.xstream.core.util.Base64Encoder;
 
 public class HTTPSClient {
 	private String				url;

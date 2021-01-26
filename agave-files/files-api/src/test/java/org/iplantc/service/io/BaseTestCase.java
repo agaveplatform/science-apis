@@ -25,10 +25,12 @@ import org.json.JSONObject;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.nio.charset.StandardCharsets;
 
 import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.AZURE;
 import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.SWIFT;

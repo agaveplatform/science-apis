@@ -3,11 +3,7 @@
  */
 package org.iplantc.service.apps.queue.actions;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
-
+import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
@@ -39,7 +35,6 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
-import org.iplantc.service.systems.util.ServiceUtils;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
@@ -49,7 +44,10 @@ import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.iplantc.service.transfer.util.MD5Checksum;
 
-import com.google.common.io.Files;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * Handles registration, validation, and data management of cloning {@link Software}.
@@ -72,19 +70,24 @@ public class CloneAction extends AbstractWorkerAction<Software> {
     protected SystemManager systemManager = new SystemManager();
     protected SoftwarePermissionManager softwarePermissionManager;
     private SoftwareEventProcessor eventProcessor;
-    
+
     /**
      * Basic constructor for publishing software under same name, version, etc.
-     * @param software
-     * @param destOwner
+     * @param software the software to clone
+     * @param clonedSoftwareOwner the owner of the cloned software
+     * @param clonedSoftwareName the name of the cloned software
+     * @param clonedSoftwareVersion the version of the cloned software
+     * @param clonedSoftwareExecutionSystemId the {@link ExecutionSystem#getSystemId()} of the of the cloned software
+     * @param clonedSoftwareStorageSystemId the {@link StorageSystem#getSystemId()} of the cloned software
+     * @param clonedSoftwareDeploymentPath the deployment path of the cloned software on {@link ExecutionSystem#getSystemId()}
      */
-    public CloneAction(Software software, 
-                       String clonedSoftwareOwner, 
-                       String clonedSoftwareName, 
-                       String clonedSoftwareVersion, 
+    public CloneAction(Software software,
+                       String clonedSoftwareOwner,
+                       String clonedSoftwareName,
+                       String clonedSoftwareVersion,
                        String clonedSoftwareExecutionSystemId,
                        String clonedSoftwareStorageSystemId,
-                       String clonedSoftwareDeploymentPath) 
+                       String clonedSoftwareDeploymentPath)
     {
         super(software);
         this.clonedSoftwareOwner = clonedSoftwareOwner;
@@ -104,11 +107,13 @@ public class CloneAction extends AbstractWorkerAction<Software> {
      * .agave.archive shadow file from the remote job directory and staging
      * everything not in there to the user-supplied Job.archivePath on the 
      * Job.archiveSystem
-     * 
-     * @param job
+     *
      * @throws SystemUnavailableException
      * @throws SystemUnknownException
-     * @throws JobException
+     * @throws DependencyException
+     * @throws DomainException
+     * @throws PermissionException
+     * @throws ClosedByInterruptException
      */
     @Override
     public void run() 
@@ -136,18 +141,7 @@ public class CloneAction extends AbstractWorkerAction<Software> {
 //                    clonedSoftwareOwner);
             throw new DomainException("Failed to publish app. " + e.getMessage(), e);
         }
-        catch (PermissionException | SystemUnknownException e) {
-        	getEventProcessor().processSoftwareContentEvent(getEntity(), 
-                    SoftwareEventType.CLONING_FAILED, 
-                    "A cloning action failed for this app. " + e.getMessage(),
-                    clonedSoftwareOwner);
-//        	ApplicationManager.addEvent(getEntity(), 
-//                    SoftwareEventType.CLONING_FAILED, 
-//                    "A cloning action failed for this app. " + e.getMessage(),
-//                    clonedSoftwareOwner);
-            throw e;
-        }
-        catch (SystemUnavailableException e) {
+        catch (PermissionException | SystemUnknownException | SystemUnavailableException e) {
         	getEventProcessor().processSoftwareContentEvent(getEntity(), 
                     SoftwareEventType.CLONING_FAILED, 
                     "A cloning action failed for this app. " + e.getMessage(),
@@ -547,7 +541,7 @@ public class CloneAction extends AbstractWorkerAction<Software> {
     }
     
     /**
-     * Reliably transfers the zipped {@link Software} archive to the remote {@link StoragSystem} and
+     * Reliably transfers the zipped {@link Software} archive to the remote {@link StorageSystem} and
      * sets the checksum of the file for future reference.
      * 
      * @param clonedSoftwareDataClient
@@ -611,8 +605,8 @@ public class CloneAction extends AbstractWorkerAction<Software> {
     /**
      * Calculates the {@link Software#getDeploymentPath()} to which the cloned app assets will be copied.
      * 
-     * @param clonedSoftware
-     * @param publishedSoftwareDataClient
+     * @param clonedSoftware the cloned {@link Software} object
+     * @param publishedSoftwareDataClient the {@link RemoteDataClient} for the {@link Software#getStorageSystem()}
      * @return  {@link Software#getDeploymentPath()} for the cloned app
      * 
      * @throws IOException
@@ -633,7 +627,7 @@ public class CloneAction extends AbstractWorkerAction<Software> {
         try {
             logicalFile=LogicalFileDao.findBySystemAndPath(clonedSoftware.getStorageSystem(), 
                                                             publishedSoftwareDataClient.resolvePath(remoteDeploymentPath));
-        } catch(Exception e) {}
+        } catch(Exception ignored) {}
         
         PermissionManager pm = new PermissionManager(clonedSoftware.getStorageSystem(), 
                 publishedSoftwareDataClient,
@@ -669,7 +663,7 @@ public class CloneAction extends AbstractWorkerAction<Software> {
      * for unpacking and relaying to the cloned {@link Software#getDeploymentPath()}.
      * 
      * @return {@link File} reference to the location of the cached deployment path on the local system.
-     * @throws IOException 
+     * @throws IOException if unable to create temp dir or write data
      */
     protected File fetchPublicAppArchiveFromDeploymentSystem(RemoteDataClient sourceSoftwareDataClient) 
     throws IOException 
@@ -828,7 +822,7 @@ public class CloneAction extends AbstractWorkerAction<Software> {
     }
 
     /**
-     * @return
+     * @return the cloned software object
      */
     public Software getClonedSoftware() {
         return this.clonedSoftware;

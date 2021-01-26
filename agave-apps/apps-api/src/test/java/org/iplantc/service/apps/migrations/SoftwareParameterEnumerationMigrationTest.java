@@ -1,10 +1,10 @@
 package org.iplantc.service.apps.migrations;
 
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.hibernate.Session;
 import org.iplantc.service.apps.Settings;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -16,11 +16,10 @@ import org.iplantc.service.common.persistence.HibernateUtil;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import org.apache.log4j.Logger;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * This is a helper test that serves as a migration tool and validator 

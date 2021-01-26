@@ -1,8 +1,5 @@
 package org.iplantc.service.io.permissions;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -12,7 +9,6 @@ import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.model.ExecutionSystem;
@@ -23,13 +19,12 @@ import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
+import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Test(singleThreaded = true, groups={"integration"})
 public class PermissionManagerSetPermissionsIT extends BaseTestCase

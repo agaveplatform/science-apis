@@ -3,16 +3,9 @@
  */
 package org.iplantc.service.io.dao;
 
-import java.math.BigInteger;
-import java.util.Date;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.CacheMode;
-import org.hibernate.HibernateException;
-import org.hibernate.Query;
-import org.hibernate.Session;
-import org.hibernate.StaleObjectStateException;
+import org.hibernate.*;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.exceptions.TaskException;
@@ -21,8 +14,10 @@ import org.iplantc.service.io.model.QueueTask;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.transfer.exceptions.TransferException;
-import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.SchedulerException;
+
+import java.math.BigInteger;
+import java.util.Date;
 
 /**
  * @author dooley

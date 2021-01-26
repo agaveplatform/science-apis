@@ -8,14 +8,10 @@ import org.iplantc.service.common.auth.JWTClient;
 import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.exceptions.TenantException;
 import org.iplantc.service.common.model.Tenant;
-import org.mockito.Mockito;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
 import java.util.Random;
-import java.util.UUID;
 
 @Test(groups={"integration"})
 public class TenancyHelperIT {

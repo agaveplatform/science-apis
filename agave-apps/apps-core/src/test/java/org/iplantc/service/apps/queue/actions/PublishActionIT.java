@@ -1,13 +1,9 @@
 package org.iplantc.service.apps.queue.actions;
 
-import static org.iplantc.service.apps.model.JSONTestDataUtil.*;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.RemoteDataClient;

@@ -3,8 +3,6 @@
  */
 package org.iplantc.service.common.dao;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.CacheMode;
 import org.hibernate.HibernateException;
@@ -12,6 +10,8 @@ import org.hibernate.Session;
 import org.iplantc.service.common.exceptions.TenantException;
 import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.HibernateUtil;
+
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author dooley

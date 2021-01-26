@@ -209,8 +209,8 @@ public class Settings
 
         Properties props = loadRuntimeProperties();
 
-        DateTimeZone.setDefault(DateTimeZone.forID("UTC"));
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
 
         try {
             DEBUG = Boolean.valueOf(props.getProperty("iplant.debug.mode", "false"));

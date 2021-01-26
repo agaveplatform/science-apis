@@ -5,7 +5,7 @@ import org.testng.TestNG;
 /**
  * Run all unit tests for TGFM middlewae service.
  *
- * @author Rion Dooley <dooley [at] cct [dot] lsu [dot] edu>
+ * @author Rion Dooley <deardooley@gmail.com>
  */
 public class AllTests {
 	

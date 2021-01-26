@@ -1,11 +1,5 @@
 package org.iplantc.service.io.dao;
 
-import java.math.BigInteger;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -20,6 +14,12 @@ import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.io.util.ServiceUtils;
 import org.iplantc.service.systems.model.RemoteSystem;
+
+import java.math.BigInteger;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 public class LogicalFileDao {
 	private static final Logger log = Logger.getLogger(LogicalFileDao.class);

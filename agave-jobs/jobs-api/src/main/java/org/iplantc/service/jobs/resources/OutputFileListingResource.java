@@ -1,7 +1,5 @@
 package org.iplantc.service.jobs.resources;
 
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
@@ -19,6 +17,8 @@ import org.restlet.data.Status;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
+
+import java.util.List;
 
 /**
  * Class to handle get and post requests for

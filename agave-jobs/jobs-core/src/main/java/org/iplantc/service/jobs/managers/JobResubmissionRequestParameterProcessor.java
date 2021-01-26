@@ -3,11 +3,8 @@
  */
 package org.iplantc.service.jobs.managers;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.iplantc.service.apps.exceptions.SoftwareException;
@@ -17,8 +14,10 @@ import org.iplantc.service.apps.model.enumerations.SoftwareParameterType;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.jobs.exceptions.JobProcessingException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author dooley

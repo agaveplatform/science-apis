@@ -1,10 +1,6 @@
 package org.iplantc.service.jobs.managers.launchers;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.channels.ClosedByInterruptException;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
@@ -18,7 +14,10 @@ import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.transfer.URLCopy;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * This interface defines the methods required of all job launching

@@ -3,9 +3,6 @@
  */
 package org.iplantc.service.io.resources;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -41,6 +38,9 @@ import org.restlet.representation.Representation;
 import org.restlet.resource.Get;
 import org.restlet.resource.Post;
 import org.restlet.resource.ResourceException;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Class to handle async indexing of files for bulk discovery and assignment of

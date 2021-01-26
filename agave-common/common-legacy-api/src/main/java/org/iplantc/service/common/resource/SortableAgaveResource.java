@@ -3,11 +3,6 @@
  */
 package org.iplantc.service.common.resource;
 
-import static org.iplantc.service.common.search.AgaveResourceResultOrdering.*;
-
-import java.util.HashMap;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.search.AgaveResourceResultOrdering;
 import org.iplantc.service.common.search.AgaveResourceSearchFilter;
@@ -18,6 +13,8 @@ import org.restlet.data.Request;
 import org.restlet.data.Response;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
+
+import static org.iplantc.service.common.search.AgaveResourceResultOrdering.ASCENDING;
 
 /**
  * @author dooley

@@ -4,10 +4,6 @@
 package org.iplantc.service.jobs.resources;
 
 
-import java.util.List;
-
-import javax.activation.MimetypesFileTypeMap;
-
 import org.apache.commons.io.FilenameUtils;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
@@ -36,14 +32,13 @@ import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.restlet.Context;
-import org.restlet.data.MediaType;
-import org.restlet.data.Range;
-import org.restlet.data.Request;
-import org.restlet.data.Response;
-import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
+
+import javax.activation.MimetypesFileTypeMap;
+import java.util.List;
 
 
 /**

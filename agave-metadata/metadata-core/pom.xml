@@ -49,14 +49,6 @@
 	</build>
 
 	<dependencies>
-
-		<!-- MongoDB -->
-		<dependency>
-			<groupId>org.mongodb</groupId>
-			<artifactId>mongo-java-driver</artifactId>
-			<version>${mongo-java-driver.version}</version>
-		</dependency>
-
 		<!-- JSON Schema Validator -->
 		<dependency>
 			<groupId>com.github.fge</groupId>
@@ -78,7 +70,6 @@
 			<artifactId>notifications-core</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<!-- Testing -->
 		<dependency>
 			<groupId>junit</groupId>
@@ -86,11 +77,6 @@
 			<version>${junit.version}</version>
 			<scope>test</scope>
 		</dependency>
-		<!-- <dependency> <groupId>org.mongojack</groupId> <artifactId>mongojack</artifactId> 
-			<version>${mongojack.version}</version> <exclusions> <exclusion> <artifactId>persistence-api</artifactId> 
-			<groupId>javax.persistence</groupId> </exclusion> </exclusions> </dependency> -->
-		<!-- <dependency> <groupId>com.google.inject</groupId> <artifactId>guice</artifactId> 
-			<version>${guice.version}</version> <scope>test</scope> </dependency> -->
 		<dependency>
 			<groupId>cz.jirutka.validator</groupId>
 			<artifactId>validator-collection</artifactId>
@@ -102,5 +88,18 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-	</dependencies>
+        <dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpcore</artifactId>
+			<version>4.4.12</version>
+		</dependency>
+        <dependency>
+            <groupId>org.agaveplatform</groupId>
+            <artifactId>common-core</artifactId>
+            <version>2.2.27</version>
+			<classifier>tests</classifier>
+			<type>test-jar</type>
+			<scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>

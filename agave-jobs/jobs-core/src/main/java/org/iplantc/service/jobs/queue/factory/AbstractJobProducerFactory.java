@@ -1,24 +1,20 @@
 package org.iplantc.service.jobs.queue.factory;
 
 
-import static org.quartz.TriggerBuilder.newTrigger;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
+import org.iplantc.service.common.persistence.HibernateUtil;
+import org.iplantc.service.jobs.queue.WorkerWatch;
+import org.quartz.*;
+import org.quartz.spi.JobFactory;
+import org.quartz.spi.TriggerFiredBundle;
 
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
-import org.iplantc.service.common.persistence.HibernateUtil;
-import org.iplantc.service.jobs.queue.WorkerWatch;
-import org.quartz.Job;
-import org.quartz.JobDetail;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SimpleTrigger;
-import org.quartz.spi.JobFactory;
-import org.quartz.spi.TriggerFiredBundle;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * Provides an implementation of the {@link JobFactory} interface

@@ -38,8 +38,6 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-//import org.iplantc.service.apps.managers.ApplicationManager;
-
 /**
  * A SoftwareResources is any software available to the user.
  *
@@ -67,7 +65,7 @@ public class Software {
 	private String					ontology;					// comma separated list of ontological terms
 	private Long					defaultNodes;				// default nodes for this app if none specified
 	private Double					defaultMemoryPerNode;				// default memory per nodefor this app if none specified
-	private Long					defaultProcessorsPerNode = new Long(1);		// default processors per node for this app if none provided.
+	private Long					defaultProcessorsPerNode = 1L;		// default processors per node for this app if none provided.
 	private String					defaultQueue;				// default queue to use when running app.
 	private String					defaultMaxRunTime = "01:00:00";	// default time to run this app
 	//private String					executionHost;		    // system on which to run this software
@@ -1198,7 +1196,6 @@ public class Software {
 	{
 		return getUniqueName();
 	}
-
 
 	/**
 	 * Null and type safe comparison of this class to another.

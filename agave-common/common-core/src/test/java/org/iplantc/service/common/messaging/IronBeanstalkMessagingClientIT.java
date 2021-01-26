@@ -1,23 +1,16 @@
 package org.iplantc.service.common.messaging;
 
-import io.iron.ironmq.Cloud;
-
-import org.iplantc.service.common.Settings;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
-
 import com.surftools.BeanstalkClient.Job;
 import com.surftools.BeanstalkClientImpl.ClientImpl;
+import io.iron.ironmq.Cloud;
+import org.iplantc.service.common.Settings;
+import org.testng.Assert;
+import org.testng.annotations.*;
 
 /**
  * @deprecated
  */
-@Test(groups={"notReady", "integration"})
+@Test(groups={"notReady", "integration"}, enabled = false)
 public class IronBeanstalkMessagingClientIT {
 
 	public static String TEST_EXCHANGE_TOPIC = "test.exchange.topic";

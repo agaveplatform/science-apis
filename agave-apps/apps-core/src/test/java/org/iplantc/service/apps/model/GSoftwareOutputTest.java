@@ -2,7 +2,6 @@ package org.iplantc.service.apps.model;
 
 
 import org.apache.commons.collections.CollectionUtils;
-import org.iplantc.service.apps.model.SoftwareOutput;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.testng.Assert;

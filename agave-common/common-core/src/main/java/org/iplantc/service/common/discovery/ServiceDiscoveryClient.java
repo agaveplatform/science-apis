@@ -1,8 +1,8 @@
 package org.iplantc.service.common.discovery;
 
-import java.util.List;
-
 import org.iplantc.service.common.exceptions.ServiceDiscoveryException;
+
+import java.util.List;
 
 public interface ServiceDiscoveryClient<A extends PlatformService<?>, W extends PlatformService<?>>
 {

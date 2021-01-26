@@ -1,7 +1,5 @@
 package org.iplantc.service.jobs.queue;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.persistence.TenancyHelper;
@@ -16,6 +14,8 @@ import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.UnableToInterruptJobException;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class AbstractJobWatch implements WorkerWatch {
 

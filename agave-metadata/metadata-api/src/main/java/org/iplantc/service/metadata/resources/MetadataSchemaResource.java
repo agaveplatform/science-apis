@@ -100,9 +100,9 @@ public class MetadataSchemaResource extends AgaveResource
         } 
         catch (Throwable e) 
         {
-        	log.error("Unable to connect to metadata store", e);
+        	log.error("Exception 5: Unable to connect to metadata store", e);
             response.setStatus(Status.SERVER_ERROR_INTERNAL);
-            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store."));
+            response.setEntity(new IplantErrorRepresentation("Exception 5: Unable to connect to metadata store."));
 //            try { mongoClient.close(); } catch (Exception e1) {}
         }
 
@@ -160,7 +160,7 @@ public class MetadataSchemaResource extends AgaveResource
 	        	    return new IplantSuccessRepresentation(ServiceUtils.unescapeSchemaRefFieldNames(formattedResult.toString()));
                 }
                 else {
-                	throw new ResourceException(Status.CLIENT_ERROR_UNAUTHORIZED,
+                	throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
             			"User does not have permission to read metadata for uuid");
                 }
             }
@@ -293,7 +293,7 @@ public class MetadataSchemaResource extends AgaveResource
                     NotificationManager.process(uuid, "UPDATED", username, sdoc);
                 } 
                 else {
-                	throw new ResourceException(Status.CLIENT_ERROR_UNAUTHORIZED,
+                	throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
                     	"User does not have permission to update metadata schema");
                 }
             } 
@@ -373,7 +373,7 @@ public class MetadataSchemaResource extends AgaveResource
 	                }
 	                else 
 	                {
-	                	throw new ResourceException(Status.CLIENT_ERROR_UNAUTHORIZED,
+	                	throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
 	                			"User does not have permission to update metadata schema");
 	                }
 	            }

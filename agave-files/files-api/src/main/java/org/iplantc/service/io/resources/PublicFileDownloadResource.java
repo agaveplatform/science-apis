@@ -3,17 +3,6 @@
  */
 package org.iplantc.service.io.resources;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Writer;
-import java.util.List;
-
-import javax.activation.MimetypesFileTypeMap;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
@@ -32,7 +21,6 @@ import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.io.permissions.PermissionManager;
 import org.iplantc.service.io.util.PathResolver;
-import org.iplantc.service.io.util.ServiceUtils;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
@@ -43,17 +31,16 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.restlet.Request;
-import org.restlet.data.Disposition;
-import org.restlet.data.Header;
-import org.restlet.data.MediaType;
-import org.restlet.data.Range;
-import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.representation.EmptyRepresentation;
 import org.restlet.representation.Representation;
 import org.restlet.representation.WriterRepresentation;
 import org.restlet.resource.Get;
 import org.restlet.resource.ResourceException;
 import org.restlet.util.Series;
+
+import java.io.*;
+import java.util.List;
 
 /**
  * Class to handle get and post requests for jobs

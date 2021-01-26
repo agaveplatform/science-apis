@@ -1,7 +1,8 @@
 package org.iplantc.service.apps.model;
 
-import java.util.List;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.collections.CollectionUtils;
 import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.model.enumerations.ParallelismType;
@@ -22,9 +23,7 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 
 @Test(groups={"integration"})
 public class GSoftwareIT extends GModelTestCommon {

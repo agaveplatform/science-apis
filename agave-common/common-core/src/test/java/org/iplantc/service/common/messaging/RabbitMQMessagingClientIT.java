@@ -1,16 +1,15 @@
 package org.iplantc.service.common.messaging;
 
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.QueueingConsumer;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.QueueingConsumer;
-
-@Test(groups={"notReady", "integration"})
+@Test(groups={"notReady", "integration"}, enabled = false)
 public class RabbitMQMessagingClientIT {
 
 	public static String TEST_EXCHANGE_TOPIC = "test.exchange.topic";

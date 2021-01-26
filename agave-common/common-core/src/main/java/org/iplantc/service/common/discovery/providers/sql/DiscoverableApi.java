@@ -5,8 +5,6 @@ import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 import javax.persistence.Table;
 
-import org.iplantc.service.common.discovery.PlatformApi;
-
 /**
  * POJO for an API {@link DiscoveryService}. These represent the 
  * core APIs and do not technically need to be discovered.

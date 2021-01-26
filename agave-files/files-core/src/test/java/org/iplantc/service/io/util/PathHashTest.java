@@ -1,14 +1,13 @@
 package org.iplantc.service.io.util;
 
+import org.testng.Assert;
+import org.testng.annotations.Test;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
-
-import org.testng.Assert;
-import org.testng.annotations.Test;
 
 /*
  * This test verifies that the hashes for the path generated using sql in databse match with the one generated from java

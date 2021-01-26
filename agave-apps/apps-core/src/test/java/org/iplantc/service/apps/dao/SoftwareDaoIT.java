@@ -1,17 +1,15 @@
 package org.iplantc.service.apps.dao;
 
-import java.io.IOException;
-import java.util.List;
-
 import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.model.Software;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.IOException;
+import java.util.List;
 
 @Test(groups={"integration","notReady"})
 public class SoftwareDaoIT extends AbstractDaoTest {

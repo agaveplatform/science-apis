@@ -54,12 +54,22 @@ public class MetadataAssociationList {
      */
     public void add(String uuid) throws MetadataAssociationException, PermissionException {
             
-        if (StringUtils.isEmpty(uuid) && !associatedIds.containsKey(uuid)) {
+        if (StringUtils.isEmpty(uuid) || !associatedIds.containsKey(uuid)) {
             AssociatedReference ref = checkForValidAssociationUuid(uuid);
             this.associatedIds.put(uuid, ref);
         }
     }
-    
+
+    /**
+     * Adds a single {@code ref} to this {@link MetadataAssociationList}.
+     * @param ref a valid {@link AssociatedReference}
+     */
+    public void add(AssociatedReference ref){
+        if (ref != null || !associatedIds.containsKey(ref.getUuid())) {
+            this.associatedIds.put(ref.getUuid().toString(), ref);
+        }
+    }
+
     /**
      * Adds all the {@code uuids} to this {@link MetadataAssociationList}.
      * @param uuids list of valid serialized {@link AgaveUUID} strings.
@@ -152,10 +162,9 @@ public class MetadataAssociationList {
             } catch (Exception e) {
                 throw new MetadataAssociationException("Unable to resolve associated resource uuid " + uuid, e);
             }
-            
         }
     }
-    
+
     /**
      * Returns map with url as keys and resolved referces as values
      * @return
@@ -211,5 +220,13 @@ public class MetadataAssociationList {
      */
     public int size() {
         return associatedIds.size();
+    }
+
+    public LinkedHashMap<String, AssociatedReference> getAssociatedIds() {
+        return associatedIds;
+    }
+
+    public void setAssociatedIds(LinkedHashMap<String, AssociatedReference> associatedIds) {
+        this.associatedIds = associatedIds;
     }
 }

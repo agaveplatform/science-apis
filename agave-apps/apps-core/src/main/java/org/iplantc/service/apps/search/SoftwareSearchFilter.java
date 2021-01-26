@@ -1,13 +1,5 @@
 package org.iplantc.service.apps.search;
 
-import java.time.DateTimeException;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.Temporal;
-import java.util.Date;
-import java.util.Map;
-
 import org.apache.commons.lang.BooleanUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -17,6 +9,11 @@ import org.iplantc.service.common.search.AgaveResourceSearchFilter;
 import org.iplantc.service.common.util.StringToTime;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.joda.time.DateTime;
+
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.util.Date;
+import java.util.Map;
 
 /**
  * This class is the basis for search support across the API.

@@ -3,23 +3,13 @@
  */
 package org.iplantc.service.io.manager.actions;
 
-import java.io.File;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.Date;
-
-import javax.ws.rs.core.Response.Status;
-
-import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.exceptions.DependencyException;
 import org.iplantc.service.common.exceptions.DomainException;
 import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.io.dao.LogicalFileDao;
-import org.iplantc.service.io.model.FileEvent;
-import org.iplantc.service.io.model.LogicalFile;
-import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
+
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * @author dooley

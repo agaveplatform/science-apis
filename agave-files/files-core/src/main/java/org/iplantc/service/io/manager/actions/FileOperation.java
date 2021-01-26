@@ -1,10 +1,10 @@
 package org.iplantc.service.io.manager.actions;
 
-import java.nio.channels.ClosedByInterruptException;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.model.TransferTask;
+
+import java.nio.channels.ClosedByInterruptException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class FileOperation<T> implements WorkerAction<T> {
 

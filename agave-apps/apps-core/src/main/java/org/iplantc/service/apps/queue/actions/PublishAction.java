@@ -3,12 +3,7 @@
  */
 package org.iplantc.service.apps.queue.actions;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
-
+import com.google.common.io.Files;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -53,7 +48,10 @@ import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.TransferTask;
 
-import com.google.common.io.Files;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 
 /**
  * @author dooley

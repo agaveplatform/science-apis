@@ -1,18 +1,3 @@
-/*
-Copyright © 2019 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package cmd
 
 import (
@@ -55,10 +40,10 @@ to quickly create a Cobra application.`,
 
 		req := &agaveproto.SrvGetRequest{
 			SystemConfig: helper.ParseSftpConfig(cmd.Flags()),
-			RemotePath: remotePath,
-			LocalPath: localPath,
-			Force: force,
-			Range: byteRange,
+			RemotePath:   remotePath,
+			LocalPath:    localPath,
+			Force:        force,
+			Range:        byteRange,
 		}
 		//log.Tracef("Connecting to grpc service at: %s:%d", host, port)
 
@@ -73,7 +58,7 @@ to quickly create a Cobra application.`,
 			if res.Error != "" {
 				fmt.Println(res.Error)
 			} else {
-				fmt.Printf("Transfer complete: %s (%d bytes)", res.RemoteFileInfo.Path, res.BytesTransferred)
+				fmt.Printf("Transfer complete: %s (%d bytes)\n", res.RemoteFileInfo.Path, res.BytesTransferred)
 			}
 		}
 		//log.Debugf("%v", res)
@@ -88,7 +73,6 @@ func init() {
 	getCmd.Flags().StringVarP(&localPath, "localPath", "s", DefaultLocalPath, "Path of the local file item.")
 	getCmd.Flags().BoolVarP(&force, "force", "f", DefaultForce, "Force true = overwrite the existing remote file.")
 	getCmd.Flags().StringVarP(&byteRange, "byteRange", "b", DefaultByteRange, "Byte range to fetch.  Defaults to the entire file")
-
 
 	viper.BindPFlag("localPath", getCmd.Flags().Lookup("localPath"))
 	viper.BindPFlag("force", getCmd.Flags().Lookup("force"))

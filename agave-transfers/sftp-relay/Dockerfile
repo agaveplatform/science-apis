@@ -2,7 +2,7 @@ FROM agaveplatform/grpc-go:1.13
 
 LABEL maintainer="Agave Platform<help@agaveplatform.org>"
 LABEL protoc_version="${PROTOC_VERSION}"
-LABEL language="golang:1.11"
+LABEL language="golang:1.13"
 LABEL agave_platform=2.0
 LABEL tooling=transfer,sftp,worker,put
 
@@ -12,8 +12,6 @@ COPY ./scripts/docker-entrypoint.sh /docker-entrypoint.sh
 
 WORKDIR $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
 
-RUN make genproto && make deps
-
 RUN make default && make install
 
 # Commenting out to avoid insanely long buid times every time
@@ -22,7 +20,7 @@ RUN make default && make install
 #
 #LABEL maintainer="Agave Platform<help@agaveplatform.org>"
 #LABEL protoc_version="${PROTOC_VERSION}"
-#LABEL language="golang:1.11"
+#LABEL language="golang:1.13"
 #LABEL agave_platform=2.0
 #LABEL tooling=transfer,sftp,worker,put
 #

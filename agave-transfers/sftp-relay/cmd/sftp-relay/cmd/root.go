@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"entrogo.com/sshpool/pkg/clientpool"
 	"fmt"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftprelay"
@@ -21,14 +22,17 @@ import (
 	"os"
 	"time"
 )
-var (
-	cfgFile string
-	listen string
-	verbose bool
-	metricsPort int
 
-	metricsRegistry = prometheus.NewRegistry() // prometheus metrics registry
-	grpcMetrics = grpc_prometheus.NewServerMetrics() // grpc metrics server
+var (
+	cfgFile     string
+	listen      string
+	verbose     bool
+	metricsPort int
+	poolSize    int
+	idleTimeout int
+
+	metricsRegistry = prometheus.NewRegistry()           // prometheus metrics registry
+	grpcMetrics     = grpc_prometheus.NewServerMetrics() // grpc metrics server
 
 )
 
@@ -64,10 +68,14 @@ pooling and a convenient protobuf wrapper for interacting with one or more remot
 				Timeout:           (time.Duration(10) * time.Second),
 			}))
 
+		cp := clientpool.New(clientpool.WithPoolSize(poolSize), clientpool.WithExpireAfter(time.Duration(idleTimeout)*time.Second))
+		defer cp.Close()
+
 		// Init a new api server to register with the grpc server
 		server := sftprelay.Server{
-			Registry: *metricsRegistry,
+			Registry:    *metricsRegistry,
 			GrpcMetrics: *grpcMetrics,
+			Pool:        cp,
 		}
 		// set up prometheus metrics
 		server.InitMetrics()
@@ -78,7 +86,7 @@ pooling and a convenient protobuf wrapper for interacting with one or more remot
 		// Create a HTTP server for prometheus.
 		httpServer := &http.Server{
 			Handler: promhttp.HandlerFor(metricsRegistry, promhttp.HandlerOpts{}),
-			Addr: fmt.Sprintf("0.0.0.0:%d", metricsPort),
+			Addr:    fmt.Sprintf("0.0.0.0:%d", metricsPort),
 		}
 
 		// start the http server in a goroutine
@@ -96,7 +104,6 @@ pooling and a convenient protobuf wrapper for interacting with one or more remot
 			log.Fatalf("Ca c'est le temps: %v", err)
 		}
 
-
 		//// grpcServer is a *grpc.Server
 		//service.RegisterChannelzServiceToServer(grpcServer)
 	},
@@ -108,7 +115,6 @@ func Main() {
 		os.Exit(1)
 	}
 }
-
 
 // Execute adds all child commands to the root command and sets flags.
 func Execute() {
@@ -137,10 +143,14 @@ func init() {
 	pflags.StringVar(&listen, "listen", ":50051", "Address on which to listen for gRPC requests.")
 	pflags.BoolVarP(&verbose, "verbose", "V", false, "Verbose logging.")
 	pflags.IntVar(&metricsPort, "metrics_port", 9092, "Port for Prometheus metrics service")
+	pflags.IntVarP(&poolSize, "pool_size", "s", 10, "Maximum pool size")
+	pflags.IntVarP(&idleTimeout, "idle_timeout", "i", 300, "Amount of time, in seconds, that an idle connection will be kept around before reaping.")
 
 	viper.BindPFlag("listen", pflags.Lookup("listen"))
 	viper.BindPFlag("verbose", pflags.Lookup("verbose"))
 	viper.BindPFlag("metricsPort", pflags.Lookup("metricsPort"))
+	viper.BindPFlag("poolSize", pflags.Lookup("poolSize"))
+	viper.BindPFlag("idleTimeout", pflags.Lookup("idleTimeout"))
 }
 
 // initConfig reads in config file and ENV variables if set.

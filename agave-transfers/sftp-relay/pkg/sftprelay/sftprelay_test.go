@@ -2,6 +2,7 @@ package sftprelay
 
 import (
 	"context"
+	"entrogo.com/sshpool/pkg/clientpool"
 	"fmt"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -53,10 +55,13 @@ func init() {
 	//set up for the servers
 	lis = bufconn.Listen(bufSize)
 	s := grpc.NewServer()
+	cp := clientpool.New()
+	defer cp.Close()
 	// Init a new api server to register with the grpc server
 	relaysvr := Server{
-		Registry: *prometheus.NewRegistry(),
+		Registry:    *prometheus.NewRegistry(),
 		GrpcMetrics: *grpc_prometheus.NewServerMetrics(),
+		Pool:        cp,
 	}
 	// set up prometheus metrics
 	relaysvr.InitMetrics()
@@ -138,16 +143,23 @@ func afterTest(t *testing.T) {
 
 		consolelog.Debugf("Removing test directory for test %s, %s", t.Name(), sharedRandomTestDirPath)
 
-		err := os.RemoveAll(sharedRandomTestDirPath)
-		if err != nil {
-			consolelog.Errorf("Failed to remove directory for test %s, %s", t.Name(), sharedRandomTestDirPath)
-		}
+		//err := os.RemoveAll(sharedRandomTestDirPath)
+		//if err != nil {
+		//	consolelog.Errorf("Failed to remove directory for test %s, %s", t.Name(), sharedRandomTestDirPath)
+		//}
 	}
 }
 
 // creates a temp directory in the CurrentBaseTestDirPath
 func _createTempDirectory(prefix string) (string, error) {
 	return _createTempDirectoryInDirectory(CurrentBaseTestDirPath, prefix)
+}
+
+// grants user 1000 recursive permissions on the local share test dir. This is
+// the same uid of the testuser in the sftp container used in these tests.
+func _updateLocalSharedTestDirOwnership() (error){
+	cmd := exec.Command("chown", "-R", "1000:1000", LocalSharedTestDir)
+	return cmd.Run()
 }
 
 // creates a temp directory within the parentPath. This will be resolved relative to the
@@ -158,6 +170,11 @@ func _createTempDirectoryInDirectory(parentPath string, prefix string) (string, 
 
 	// create the directory
 	err := os.MkdirAll(_resolveTestPath(tempDir, LocalSharedTestDir), os.ModePerm)
+	if err == nil {
+		return tempDir, err
+	}
+
+	err = _updateLocalSharedTestDirOwnership()
 
 	return tempDir, err
 }
@@ -180,6 +197,7 @@ func _createTempFileInDirectory(parentPath string, prefix string, suffix string)
 	}
 	defer tempFile.Close()
 	os.Chmod(resolvedTempFilePath, os.ModePerm)
+	os.Chown(resolvedTempFilePath, 1000, 1000)
 
 	bigBuff := make([]byte, 32768)
 	_, err = tempFile.Write(bigBuff)
@@ -240,7 +258,6 @@ func bufDialer(string, time.Duration) (net.Conn, error) {
 	return lis.Dial()
 }
 
-
 func TestAuthenticateWithPasswordSucceeds(t *testing.T) {
 	beforeTest(t)
 
@@ -262,7 +279,6 @@ func TestAuthenticateWithPasswordSucceeds(t *testing.T) {
 
 	afterTest(t)
 }
-
 
 func TestAuthenticateWithInvalidPasswordReturnsError(t *testing.T) {
 	beforeTest(t)
@@ -336,7 +352,6 @@ func TestAuthenticateWithRSAKeySucceeds(t *testing.T) {
 	afterTest(t)
 }
 
-
 func TestStatReturnsFileInfo(t *testing.T) {
 	beforeTest(t)
 
@@ -354,7 +369,7 @@ func TestStatReturnsFileInfo(t *testing.T) {
 	if err != nil {
 		assert.FailNowf(t, err.Error(), "Unable to open temp test file: %s", err.Error())
 	}
-
+	tmpTestFileInfo.Mode().String()
 	remoteTestFilePath := _resolveTestPath(tmpTestFilePath, SFTP_SHARED_TEST_DIR)
 
 	req := &agaveproto.SrvStatRequest{
@@ -457,6 +472,11 @@ func TestMkdir(t *testing.T) {
 
 	// create a random directory name in our test dir
 	testDirectoryPath := fmt.Sprintf("%s/%s", CurrentBaseTestDirPath, uuid.New().String())
+
+	err := _updateLocalSharedTestDirOwnership()
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to change permission on temp test dir: %s", err.Error())
+	}
 
 	// resolve it to the absolute path within our shared test directory on the remote system
 	remoteTestDirectoryPath := _resolveTestPath(testDirectoryPath, SFTP_SHARED_TEST_DIR)
@@ -626,7 +646,6 @@ func TestMkdirReturnsErrorWhenParentPathDoesNotExist(t *testing.T) {
 	afterTest(t)
 }
 
-
 func TestMkdirs(t *testing.T) {
 
 	beforeTest(t)
@@ -638,6 +657,11 @@ func TestMkdirs(t *testing.T) {
 
 	// create a random directory name in our test dir
 	testDirectoryPath := fmt.Sprintf("%s/%s", CurrentBaseTestDirPath, uuid.New().String())
+
+	err := _updateLocalSharedTestDirOwnership()
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to change permission on temp test dir: %s", err.Error())
+	}
 
 	// resolve it to the absolute path within our shared test directory on the remote system
 	remoteTestDirectoryPath := _resolveTestPath(testDirectoryPath, SFTP_SHARED_TEST_DIR)
@@ -798,6 +822,11 @@ func TestRemoveFile(t *testing.T) {
 		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %s", err.Error())
 	}
 
+	err = _updateLocalSharedTestDirOwnership()
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to change permission on temp test dir: %s", err.Error())
+	}
+
 	remoteTestFilePath := _resolveTestPath(tmpTestFilePath, SFTP_SHARED_TEST_DIR)
 
 	req := &agaveproto.SrvRemoveRequest{
@@ -831,6 +860,11 @@ func TestRemoveDirectory(t *testing.T) {
 		assert.FailNowf(t, err.Error(), "Unable to create temp test file: %s", err.Error())
 	}
 
+	err = _updateLocalSharedTestDirOwnership()
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to change permission on temp test dir: %s", err.Error())
+	}
+
 	remoteTestDirPath := _resolveTestPath(tmpTestDirPath, SFTP_SHARED_TEST_DIR)
 
 	req := &agaveproto.SrvRemoveRequest{
@@ -842,8 +876,9 @@ func TestRemoveDirectory(t *testing.T) {
 		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
 	} else {
 		// get the test directory stat in the local shared directory
-		_, err := os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
-		assert.True(t, os.IsNotExist(err), "Directory should not be present after calling Remove")
+		absoluteTmpTestDirPath := _resolveTestPath(tmpTestDirPath, LocalSharedTestDir)
+		_, err := os.Stat(absoluteTmpTestDirPath)
+		assert.True(t, os.IsNotExist(err), "Directory " + absoluteTmpTestDirPath + " should not be present after calling Remove")
 		assert.Equal(t, "", grpcResponse.Error, "Error message in response should be empty after successfully request")
 	}
 
@@ -870,6 +905,11 @@ func TestRemoveDirectoryAndContents(t *testing.T) {
 	tmpNestedTestDirPath, err := _createTempDirectoryInDirectory(tmpTestDirPath, "")
 	_, err = _createTempFileInDirectory(tmpNestedTestDirPath, "", ".bin")
 	_, err = _createTempFileInDirectory(tmpNestedTestDirPath, "", ".bin")
+
+	err = _updateLocalSharedTestDirOwnership()
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to change permission on temp test dir: %s", err.Error())
+	}
 
 	remoteTestDirPath := _resolveTestPath(tmpTestDirPath, SFTP_SHARED_TEST_DIR)
 
@@ -908,6 +948,11 @@ func TestPut(t *testing.T) {
 	tmpTestFileInfo, err := os.Stat(resolvedLocalTestFilePath)
 	if err != nil {
 		assert.FailNowf(t, err.Error(), "Unable to open temp test file: %s", err.Error())
+	}
+
+	err = _updateLocalSharedTestDirOwnership()
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to change permission on temp test dir: %s", err.Error())
 	}
 
 	resolvedRemoteTestFilePath := _resolveTestPath(tmpTestFilePath+".copy", SFTP_SHARED_TEST_DIR)
@@ -1486,6 +1531,11 @@ func TestRenameFile(t *testing.T) {
 		assert.FailNowf(t, err.Error(), "Unable to open temp test file: %s", err.Error())
 	}
 
+	err = _updateLocalSharedTestDirOwnership()
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to change permission on temp test dir: %s", err.Error())
+	}
+
 	tmpRenamedFilePath := tmpTestFilePath + "-renamed"
 	renamedRemoteFilePath := _resolveTestPath(tmpRenamedFilePath, SFTP_SHARED_TEST_DIR)
 
@@ -1536,6 +1586,11 @@ func TestRenameEmptyDirectory(t *testing.T) {
 	tmpTestDirInfo, err := os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
 	if err != nil {
 		assert.FailNowf(t, err.Error(), "Unable to open temp test file: %s", err.Error())
+	}
+
+	err = _updateLocalSharedTestDirOwnership()
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to change permission on temp test dir: %s", err.Error())
 	}
 
 	tmpRenamedDirPath := tmpTestDirPath + "-renamed"
@@ -1599,6 +1654,11 @@ func TestRenameDirectoryTree(t *testing.T) {
 	tmpTestDirInfo, err := os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
 	if err != nil {
 		assert.FailNowf(t, err.Error(), "Unable to open temp test file: %s", err.Error())
+	}
+
+	err = _updateLocalSharedTestDirOwnership()
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to change permission on temp test dir: %s", err.Error())
 	}
 
 	tmpRenamedDirPath := tmpTestDirPath + "-renamed"
@@ -1669,7 +1729,6 @@ func TestRenameDirToExistingPthReturnsError(t *testing.T) {
 		assert.FailNowf(t, err.Error(), "Unable to create temp test dir: %v", err)
 	}
 	_doTestRenamePathReturnsErr(t, client, tmpTestDirPath, _resolveTestPath(dirExistsInOriginalParentDir, SFTP_SHARED_TEST_DIR), "file or dir exists")
-
 
 	afterTest(t)
 }

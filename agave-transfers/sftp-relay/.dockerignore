@@ -1,7 +1,7 @@
 # Git files
-.git
-.gitignore
-.gitmodules
+#.git
+#.gitignore
+#.gitmodules
 repository
 /.pathhash2.txt
 
@@ -47,3 +47,4 @@ test-output
 # Golang build assets
 /vendor/
 /release/
+/pkg/sftpproto/*.go

@@ -10,6 +10,7 @@ import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
 import io.vertx.ext.jwt.JWTOptions;
+import io.vertx.ext.web.Route;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.api.validation.HTTPRequestValidationHandler;
@@ -123,16 +124,17 @@ public class TransferAPIVertical extends AbstractVerticle {
                 .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
                 // Mount primary handler
                 .handler(this::addOne);
+
         router.put("/api/transfers/:uuid")
                 // Mount validation handler to ensure the posted json is valid prior to adding
                 .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferUpdate.class)))
                 // Mount primary handler
                 .handler(this::updateOne);
 
-        // Accept post of a cancel TransferTask, validates the request, and inserts into the db.
-        router.post("/api/cancelone")
+        // Accept post of a cancel TransferTask, validates the request, and updates the db.
+        router.put("/api/cancelOne")
                 // Mount validation handler to ensure the posted json is valid prior to adding
-                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
+                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferUpdate.class)))
                 // Mount primary handler
                 .handler(this::cancelOne);
 
@@ -142,6 +144,19 @@ public class TransferAPIVertical extends AbstractVerticle {
                 .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
                 // Mount primary handler
                 .handler(this::cancelAll);
+
+        Route cancelRoute = router.put("/api/cancelone");
+        cancelRoute.failureHandler(failureRoutingContext -> {
+            log.debug("error occurred {}, {}", failureRoutingContext.response().getStatusCode(), failureRoutingContext.response().getStatusMessage());
+
+            log.debug("failure url path params{}", failureRoutingContext.pathParams());
+            log.debug("failure url query params{}", failureRoutingContext.queryParams());
+            log.debug("failure body {}", failureRoutingContext.getBodyAsString());
+
+            int statusCode = failureRoutingContext.statusCode();
+            HttpServerResponse response = failureRoutingContext.response();
+            response.setStatusCode(statusCode).end("Sorry! Not today");
+        });
 
         router.errorHandler(500, ctx -> ctx.response()
             .putHeader("content-type", "application/json")

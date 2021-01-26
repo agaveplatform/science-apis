@@ -81,7 +81,7 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
             notificationEventProcess(notificationMessageBody);
             logger.info("Transfer task {} completed.", body.getString("uuid"));
 
-			_doPublishEvent(MessageType.NOTIFICATION_CANCELLED, body);
+			_doPublishEvent(MessageType.NOTIFICATION_CANCELED, body);
 		});
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_FINISHED, msg -> {

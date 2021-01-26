@@ -262,7 +262,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns empty directory transfer task")
-	//@Disabled
+	@Disabled
 	public void processTransferTaskAssignsEmptyDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
@@ -355,7 +355,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns populated directory transfer task")
-//	@Disabled
+	@Disabled
 	public void processTransferTaskAssignsPopulatedDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);

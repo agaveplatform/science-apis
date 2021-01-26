@@ -16,8 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_SYNC;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELLED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.FAILED;
 
@@ -328,7 +327,7 @@ public class TransferTaskDeletedListener extends AbstractTransferTaskListener {
                                 //logger.debug("All child tasks for parent transfer task {} are paused, cancelled or completed. " +
                                 //		"A transfer.paused event will be created for this task.", parentTaskId);
                                 // call to our publishing helper for easier testing.
-                                _doPublishEvent(TRANSFERTASK_CANCELLED, getTaskById.result());
+                                _doPublishEvent(TRANSFERTASK_DELETED, getTaskById.result());
                             } else {
                                 //logger.debug("Parent transfer task {} has active children. " +
                                 //		"Skipping further processing ", parentTaskId);

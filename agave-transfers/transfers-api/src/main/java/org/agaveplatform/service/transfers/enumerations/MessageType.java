@@ -15,7 +15,7 @@ public interface MessageType {
     public static final String  TRANSFERTASK_CANCELED_SYNC = "transfertask.canceled.sync";
     public static final String  TRANSFERTASK_CANCELED_COMPLETED = "transfertask.canceled.completed";
     public static final String  TRANSFERTASK_CANCELED_ACK = "transfertask.canceled.ack";
-    public static final String 	TRANSFERTASK_CANCELLED = "transfertask.canceled";
+    public static final String 	TRANSFERTASK_CANCELED = "transfertask.canceled";
     public static final String 	TRANSFERTASK_PAUSED = "transfertask.paused";
     public static final String 	TRANSFERTASK_PAUSED_SYNC = "transfertask.paused.sync";
     public static final String 	TRANSFERTASK_PAUSED_COMPLETED = "transfertask.paused.completed";
@@ -28,7 +28,7 @@ public interface MessageType {
     public static final String  TRANSFERTASK_INTERUPTED = "transfertask.interupted";
     public static final String 	NOTIFICATION = "notification";
     public static final String 	NOTIFICATION_TRANSFERTASK = "notification.transfertask";
-    public static final String 	NOTIFICATION_CANCELLED = "notification.cancelled";
+    public static final String 	NOTIFICATION_CANCELED = "notification.cancelled";
     public static final String 	NOTIFICATION_COMPLETED = "notification.completed";
     public static final String 	TRANSFER_SFTP = "transfer.sftp";
     public static final String 	TRANSFER_HTTP = "transfer.http";

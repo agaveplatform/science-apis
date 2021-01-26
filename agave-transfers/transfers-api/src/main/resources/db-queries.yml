@@ -84,23 +84,26 @@ delete-transfertask: |
   DELETE FROM TransferApiTasks WHERE uuid = ? AND `tenant_id` = ?
 delete-all-transfertasks: |
   DELETE FROM TransferApiTasks WHERE `tenant_id` = ?
+cancel-all-transfertasks: |
+  UPDATE TransferApiTasks
+  SET statis = 'CANCELING_WAITING'
+  WHERE `tenant_id` = ?
 update-transfertask-status: |
   UPDATE TransferApiTasks
   SET status = ?, last_updated = NOW()
   WHERE `uuid` = ? AND `tenant_id` = ?
-all-transfertask-parents-not-cancelled-or-completed: |
-  SELECT  `id` -- count(`id`) AS active_parent_over_time_count
+parents-not-canceled-or-completed: |
+  SELECT  `id`
   FROM TransferApiTasks trans1
   WHERE `tenant_id` = 'agave.dev'
   AND `root_task` is not null
   AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
   AND ( select count(`id`) as  active_child_count
-  from TransferApiTasks
-  where `tenant_id` = 'agave.dev'
-  and  `parent_task` = trans1.parent_task
-  -- and `start_time` < (now() - INTERVAL 50 second )
-  AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
-  );
+          from TransferApiTasks
+          where `tenant_id` = 'agave.dev'
+            and  `parent_task` = trans1.parent_task
+            AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
+  )
 cancel_transfertask_by_id: |
   UPDATE TransferApiTasks
   SET status = ?, last_updated = NOW()

@@ -347,7 +347,7 @@ class TransferApplicationTest extends BaseTestCase {
 				.extract()
 				.asString();
 
-		vertx.eventBus().send(TRANSFERTASK_CANCELLED, tt.toJson());
+		vertx.eventBus().send(TRANSFERTASK_CANCELED, tt.toJson());
 
 		vertx.eventBus().consumer(TRANSFERTASK_CANCELED_COMPLETED, m -> {
 			JsonObject json = (JsonObject) m.body();

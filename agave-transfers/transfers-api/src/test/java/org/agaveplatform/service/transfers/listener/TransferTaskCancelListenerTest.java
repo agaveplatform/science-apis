@@ -35,7 +35,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	TransferTaskCancelListener getMockListenerInstance(Vertx vertx) {
 		TransferTaskCancelListener listener = Mockito.mock(TransferTaskCancelListener.class);
-		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELLED);
+		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELED);
 		when(listener.getVertx()).thenReturn(vertx);
 		doNothing().when(listener)._doPublishEvent(any(), any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();

@@ -58,16 +58,15 @@ public class TransferTaskHealthcheckParentListener extends AbstractTransferTaskL
 
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
-            logger.info("Performing healthcheck on transfer task {}", uuid);
+            logger.info("Performing healthcheck parent on transfer tasks ");
 
             processChildrenActiveAndExceedTimeEvent(body, resp -> {
                 if (resp.succeeded()) {
-                    logger.info("Succeeded with the processing transfer created event for transfer task {}", uuid);
+                    logger.info("Succeeded with the processing parent transfer created event for transfer task {}", uuid);
                 } else {
-                    logger.error("Error with return from creating the event {}", uuid);
+                    logger.error("Error with return from processing parent transfer tasks. ");
                 }
             });
-
         });
     }
 

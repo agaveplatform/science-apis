@@ -202,31 +202,30 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
   @Override
-  public TransferTaskDatabaseService getAllParentsCanceledOrCompleted( Handler<AsyncResult<JsonObject>> resultHandler){
+  public TransferTaskDatabaseService getAllParentsCanceledOrCompleted( Handler<AsyncResult<JsonArray>> resultHandler){
     LOGGER.trace("Got into db.getAllParentsCanceledOrCompleted");
-    JsonArray data = new JsonArray();
-    LOGGER.trace(SqlQuery.ALL_TRANSFERTASK_PARENTS_NOT_CANCELED_OR_COMPLETED.toString());
-    dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_PARENTS_NOT_CANCELED_OR_COMPLETED), data, fetch -> {
-      LOGGER.info("dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_PARENTS_NOT_CANCELED_OR_COMPLETED)");
-      if (fetch.succeeded()) {
-        ResultSet resultSet = fetch.result();
-        LOGGER.info("db.allParentsNotCancelledOrCompleted, Number of rows ={}", resultSet.getNumRows());
-        Boolean response = Boolean.FALSE;
-        if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("id") > 0) {
-          response = Boolean.TRUE;
-        } else if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0){
-          // this should be marked as status of 'ERROR' since we don't know what caused the task to fail
-          LOGGER.info("This should be marked as status of 'ERROR' since we don't know what caused the task to fail");
 
-          response = Boolean.FALSE;
+    try{
+      dbClient.query(sqlQueries.get(SqlQuery.PARENTS_NOT_CANCELED_OR_COMPLETED), fetch -> {
+
+      if (fetch.succeeded()) {
+        //ResultSet resultSet = fetch.result();
+        JsonArray response = new JsonArray(fetch.result().getRows());
+        if (response.isEmpty()) {
+          LOGGER.debug("PARENTS_NOT_CANCELED_OR_COMPLETED is empty ");
+          resultHandler.handle(Future.succeededFuture(response));
+        } else {
+          LOGGER.info("Parents not canceled or completed is not empty");
+          resultHandler.handle(Future.succeededFuture(response));
         }
-        resultHandler.handle(Future.succeededFuture(fetch.result().getRows().get(0)));
       } else {
-        LOGGER.error("Failed to query for existence of any child transfer tasks not in a CANCELLED or COMPLETED state.", fetch.cause());
+        LOGGER.error("Failed to query for existence of any child transfer tasks not in a CANCELED or COMPLETED state.", fetch.cause());
         resultHandler.handle(Future.failedFuture(fetch.cause()));
       }
     });
-
+    }catch(Exception e) {
+      LOGGER.error(e.toString());
+    }
     return this;
   }
 
@@ -245,7 +244,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         Boolean response = Boolean.FALSE;
         if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") > 0) {
           response = Boolean.TRUE;
-        } else if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0){
+        } else if (resultSet.getNumRows() < 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0){
           // this should be marked as status of 'ERROR' since we don't know what caused the task to fail
           LOGGER.trace("active_child_count = {}", resultSet.getRows().get(0).getInteger("active_child_count"));
           LOGGER.info("This should be marked as status of 'ERROR' since we don't know what caused the task to fail uuid = {}", uuid);
@@ -540,5 +539,23 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     });
     return this;
   }
+
+
+  @Override
+  public TransferTaskDatabaseService cancelAll(String tenantId, Handler<AsyncResult<Void>> resultHandler) {
+    JsonArray data = new JsonArray()
+            .add(tenantId);
+    dbClient.updateWithParams(sqlQueries.get(SqlQuery.CANCEL_ALL_TRANSFERTASKS), data, res -> {
+      if (res.succeeded()) {
+        resultHandler.handle(Future.succeededFuture());
+      } else {
+        LOGGER.error("Failed to delete all transfer tasks for tenant {}.", tenantId, res.cause());
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      }
+    });
+    return this;
+  }
 }
+
+
 // end::implementation[]

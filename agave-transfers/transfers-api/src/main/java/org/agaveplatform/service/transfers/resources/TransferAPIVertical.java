@@ -115,7 +115,6 @@ public class TransferAPIVertical extends AbstractVerticle {
         router.get("/api/transfers/:uuid").handler(this::getOne);
 
         router.delete("/api/transfers/deleteAll").handler(this::deleteAll);
-
         router.delete("/api/transfers/:uuid").handler(this::deleteOne);
 
         // Accept post of a TransferTask, validates the request, and inserts into the db.
@@ -129,6 +128,20 @@ public class TransferAPIVertical extends AbstractVerticle {
                 .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferUpdate.class)))
                 // Mount primary handler
                 .handler(this::updateOne);
+
+        // Accept post of a cancel TransferTask, validates the request, and inserts into the db.
+        router.post("/api/cancelone")
+                // Mount validation handler to ensure the posted json is valid prior to adding
+                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
+                // Mount primary handler
+                .handler(this::cancelOne);
+
+        // Accept post of a cancel TransferTask, validates the request, and inserts into the db.
+        router.post("/api/cancel/")
+                // Mount validation handler to ensure the posted json is valid prior to adding
+                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
+                // Mount primary handler
+                .handler(this::cancelAll);
 
         router.errorHandler(500, ctx -> ctx.response()
             .putHeader("content-type", "application/json")
@@ -260,6 +273,144 @@ public class TransferAPIVertical extends AbstractVerticle {
     }
 
     /**
+     * Updates the transfertask to deleted {@link TransferTask} into the db. Validation happens in a previous handler,
+     * so this method only needs to worry about running the deletion.
+     *
+     * @param routingContext the current rounting context for the request
+     */
+    private void cancelOne(RoutingContext routingContext) {
+        log.debug("cancelOne method");
+        Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
+        JsonObject principal = user.principal();
+        String tenantId = principal.getString("tenantId");
+        String username = principal.getString("username");
+        String uuid = principal.getString("uuid");
+
+        log.debug("username = {}", username);
+        JsonObject body = routingContext.getBodyAsJson();
+        // request body was validated prior to this method being called
+//        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
+        TransferTask transferTask = new TransferTask();
+        transferTask.setTenantId(tenantId);
+        transferTask.setOwner(username);
+        transferTask.setSource(body.getString("source"));
+        transferTask.setDest(body.getString("dest"));
+        transferTask.setUuid(body.getString("uuid"));
+
+        // lookup task to get the id
+        dbService.getById(tenantId, uuid, getByIdReply -> {
+            if (getByIdReply.succeeded()) {
+                if (getByIdReply.result() == null) {
+                    // not found
+                    routingContext.fail(404);
+                } else {
+                    // if the current user is the owner or has admin privileges, allow the action
+                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
+                            user.isAdminRoleExists()) {
+                        dbService.update(tenantId, uuid, transferTask, deleteReply -> {
+                            if (deleteReply.succeeded()) {
+
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+
+                                routingContext.response()
+                                        .putHeader("content-type", "application/json")
+                                        .setStatusCode(203).end();
+                            } else {
+                                // delete failed
+                                routingContext.fail(deleteReply.cause());
+                            }
+                        });
+                    } else {
+                        // permission denied if they don't have access
+                        routingContext.fail(403);
+                    }
+                }
+            } else {
+                // task lookup failed
+                routingContext.fail(getByIdReply.cause());
+            }
+        });
+
+    }
+
+    /**
+     * Inserts a new {@link TransferTask} into the db. Validation happens in a previous handler,
+     * so this method only needs to worry about running the insertion.
+     *
+     * @param routingContext the current rounting context for the request
+     */
+    private void cancelAll(RoutingContext routingContext) {
+        log.debug("cancelAll method");
+        Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
+        JsonObject principal = user.principal();
+        String tenantId = principal.getString("tenantId");
+        String username = principal.getString("username");
+        log.debug("username = {}", username);
+        JsonObject body = routingContext.getBodyAsJson();
+        // request body was validated prior to this method being called
+//        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
+        TransferTask transferTask = new TransferTask();
+        transferTask.setTenantId(tenantId);
+        transferTask.setOwner(username);
+        transferTask.setSource(body.getString("source"));
+        transferTask.setDest(body.getString("dest"));
+
+        // lookup task to get the id
+        dbService.getById(tenantId, transferTask.getUuid(), getByIdReply -> {
+            if (getByIdReply.succeeded()) {
+                if (getByIdReply.result() == null) {
+                    // not found
+                    routingContext.fail(404);
+                } else {
+                    // if the current user is the owner or has admin privileges, allow the action
+                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
+                            user.isAdminRoleExists()) {
+                        dbService.cancelAll(tenantId, deleteReply -> {
+                            if (deleteReply.succeeded()) {
+                                // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                                //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+
+                                routingContext.response()
+                                        .putHeader("content-type", "application/json")
+                                        .setStatusCode(203).end();
+                            } else {
+                                // delete failed
+                                routingContext.fail(deleteReply.cause());
+                            }
+                        });
+                    } else {
+                        // permission denied if they don't have access
+                        routingContext.fail(403);
+                    }
+                }
+            } else {
+                // task lookup failed
+                routingContext.fail(getByIdReply.cause());
+            }
+        });
+
+
+        dbService.getById(tenantId, transferTask.getUuid(), reply -> {
+            if (reply.succeeded()) {
+                TransferTask tt = new TransferTask(reply.result());
+                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
+                routingContext.response()
+                        .putHeader("content-type", "application/json")
+                        .setStatusCode(201)
+                        .end(AgaveResponseBuilder.getInstance(routingContext)
+                                .setResult(tt.toJson())
+                                .build()
+                                .toString());
+            } else {
+                routingContext.fail(reply.cause());
+            }
+        });
+    }
+
+
+
+    /**
      * Delete a {@link TransferTask} from the db.
      *
      * @param routingContext the current routing context for the request
@@ -284,9 +435,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                         dbService.delete(tenantId, uuid, deleteReply -> {
                             if (deleteReply.succeeded()) {
 
-                                //_doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
-                                //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELLED, deleteReply.result());
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -335,7 +484,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                             if (deleteReply.succeeded()) {
                                // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
                                 //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELLED, deleteReply.result());
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")

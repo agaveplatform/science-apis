@@ -61,7 +61,7 @@ public interface TransferTaskDatabaseService {
   TransferTaskDatabaseService getActiveRootTaskIds(Handler<AsyncResult<JsonArray>> resultHandler);
 
   @Fluent
-  TransferTaskDatabaseService getAllParentsCanceledOrCompleted(Handler<AsyncResult<JsonObject>> resultHandler);
+  TransferTaskDatabaseService getAllParentsCanceledOrCompleted(Handler<AsyncResult<JsonArray>> resultHandler);
   
   @Fluent
   TransferTaskDatabaseService allChildrenCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler);
@@ -92,6 +92,9 @@ public interface TransferTaskDatabaseService {
 
   @Fluent
   TransferTaskDatabaseService deleteAll(String tenantId, Handler<AsyncResult<Void>> resultHandler);
+
+  @Fluent
+  TransferTaskDatabaseService cancelAll(String tenantId, Handler<AsyncResult<Void>> resultHandler);
 
   @GenIgnore
   static TransferTaskDatabaseService create(JDBCClient dbClient, HashMap<SqlQuery, String> sqlQueries, Handler<AsyncResult<TransferTaskDatabaseService>> readyHandler) {

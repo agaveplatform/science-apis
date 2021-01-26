@@ -78,7 +78,7 @@ image:
 	@# Copying protobuf file locally to avoid import of entire project repo and speed up build
 	@ mkdir -p tmp
 	@ cp -rf $(PROJECT_PROTO_SRC_DIR) tmp
-	-docker build --rm -t $(PROJECT_NAME):$(GIT_BRANCH) .
+	-docker build --rm -t $(PROJECT_NAME):develop .
 	@- rm -rf tmp
 
 # Build protobuf

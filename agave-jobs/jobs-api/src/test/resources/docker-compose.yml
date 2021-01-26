@@ -14,7 +14,7 @@ networks:
 services:
 
   sftp-relay:
-    image: sftp-relay:${project.version}
+    image: sftp-relay:develop
     ports:
       - 50051:50051
     restart: always

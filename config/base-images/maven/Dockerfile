@@ -41,7 +41,8 @@ RUN set -ex && apt-get update && \
     				   	bzip2 \
     				   	git \
     				   	netcat \
-    				   	python3
+    				   	python3 \
+    				   	make
 	# Download Protobuf
 RUN wget -O "/tmp/protoc-${PROTOBUF_VERSION}.zip" "https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip" \
 	# Unpackage the zip

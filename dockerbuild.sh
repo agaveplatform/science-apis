@@ -130,7 +130,7 @@ build()
    echo "Building image for ${gomodule}"
    pushd agave-transfers/${gomodule} >> /dev/null
    make image
-   docker tag ${gomodule}:$2 ${image}
+   docker tag ${gomodule}:develop ${image}
    popd >> /dev/null
   else
    echo "${image} already exists. Skipping rebuild."

@@ -15,7 +15,7 @@ services:
 
   # test container for the
   test:
-    image: sftp-relay:${AGAVE_VERSION}
+    image: sftp-relay:develop
     entrypoint: "bash"
     command: "-c 'chown -R 1000:1000 scratch && make test'"
     volumes:

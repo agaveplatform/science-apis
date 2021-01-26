@@ -376,7 +376,7 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
         } else {
             log.error("Received unsupported marker type");
         }
-    };
+    }
 
     private void restartMarkerArrived(GridFTPRestartMarker marker) 
     {

@@ -12,6 +12,7 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Disabled;
@@ -44,7 +45,8 @@ public class TransferApiVerticalIT extends BaseTestCase {
     /**
      * Async creates {@code count} transfer tasks by calling {@link #addTransferTask()} using a {@link CompositeFuture}.
      * The saved tasks are returned as a {@link JsonArray} to the callback once complete
-     * @param count number of tasks to create
+     *
+     * @param count   number of tasks to create
      * @param handler the callback with the saved tasks
      */
     protected void addTransferTasks(int count, Handler<AsyncResult<JsonArray>> handler) {
@@ -476,6 +478,83 @@ public class TransferApiVerticalIT extends BaseTestCase {
 //
 //                            // same transfer tasks ids should be in the response
 //                            softly.assertThat(responseUuids).as("Owner listing response contents").containsAll(testTransferTaskUuids);
+                                requestCheckpoint.flag();
+
+                            });
+                        }));
+                    }
+                });
+            }));
+        }));
+    }
+
+    @Test
+    @DisplayName("Cancel transfer task by admin")
+    void cancelTaskForAdmin(Vertx vertx, VertxTestContext ctx) {
+
+        DeploymentOptions options = new DeploymentOptions().setConfig(config);
+        Checkpoint dbDeploymentCheckpoint = ctx.checkpoint();
+        Checkpoint apiDeploymentCheckpoint = ctx.checkpoint();
+        Checkpoint testDataCheckpoint = ctx.checkpoint();
+        Checkpoint requestCheckpoint = ctx.checkpoint();
+
+        vertx.deployVerticle(TransferTaskDatabaseVerticle.class.getName(), options, ctx.succeeding(dbId -> {
+            dbDeploymentCheckpoint.flag();
+
+            dbService = TransferTaskDatabaseService.createProxy(vertx, config.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
+
+            dbService.deleteAll(TENANT_ID, ctx.succeeding(deleteAllTransferTask -> {
+                // fetch saved transfer tasks to request from the service in our test
+                addTransferTasks(10, taskReply -> {
+                    testDataCheckpoint.flag();
+                    if (taskReply.failed()) {
+                        ctx.failNow(taskReply.cause());
+                    } else {
+
+                        // result should have our tasks
+                        JsonArray testTransferTasks = taskReply.result();
+
+                        vertx.deployVerticle(TransferAPIVertical.class, options, ctx.succeeding(apiId -> {
+                            apiDeploymentCheckpoint.flag();
+
+                            RequestSpecification requestSpecification = new RequestSpecBuilder()
+                                    //.addFilters(asList(new ResponseLoggingFilter(), new RequestLoggingFilter()))
+                                    .setBaseUri("http://localhost:" + port + "/")
+                                    .build();
+
+                            String adminTestUuid = testTransferTasks.getJsonObject(0).getString("uuid");
+                            String adminUserToken = this.makeTestJwt(TEST_ADMIN_USERNAME, "Internal/" + TENANT_ID.replace(".", "_") + "-services-admin");
+                            SoftAssertions softly = new SoftAssertions();
+
+                            ctx.verify(() -> {
+                                String response = given()
+                                        .spec(requestSpecification)
+                                        .header("X-JWT-ASSERTION-AGAVE_DEV", adminUserToken)
+                                        .contentType(ContentType.JSON)
+                                        .when()
+                                        .post("api/transfers/" + adminTestUuid + "/cancel")
+                                        .then()
+                                        .assertThat()
+                                        .statusCode(203)
+                                        .extract()
+                                        .asString();
+
+                                String afterCancelResponse = given()
+                                        .spec(requestSpecification)
+                                        .header("X-JWT-ASSERTION-AGAVE_DEV", adminUserToken)
+                                        .contentType(ContentType.JSON)
+                                        .when()
+                                        .get("api/transfers/" + adminTestUuid)
+                                        .then()
+                                        .assertThat()
+                                        .statusCode(200)
+                                        .extract()
+                                        .asString();
+                                JsonObject responseJson = new JsonObject(afterCancelResponse);
+                                softly.assertThat(responseJson.getJsonObject("result").getString("uuid")).as("Admin cancel task").isEqualTo(adminTestUuid);
+                                softly.assertThat(responseJson.getJsonObject("result").getString("status")).as("Admin cancel task status is updated to CANCELLED").isEqualTo(TransferStatusType.CANCELLED.name());
+                                softly.assertAll();
+
                                 requestCheckpoint.flag();
 
                             });

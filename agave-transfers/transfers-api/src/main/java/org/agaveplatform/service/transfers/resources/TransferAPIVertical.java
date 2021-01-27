@@ -20,6 +20,7 @@ import io.vertx.ext.web.handler.impl.AgaveJWTAuthProviderImpl;
 import io.vertx.ext.web.handler.impl.Wso2JwtUser;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.model.TransferTaskRequest;
 import org.agaveplatform.service.transfers.model.TransferUpdate;
@@ -132,9 +133,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                 .handler(this::updateOne);
 
         // Accept post of a cancel TransferTask, validates the request, and updates the db.
-        router.put("/api/cancelOne")
-                // Mount validation handler to ensure the posted json is valid prior to adding
-                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferUpdate.class)))
+        router.post("/api/transfers/:uuid/cancel")
                 // Mount primary handler
                 .handler(this::cancelOne);
 
@@ -145,18 +144,18 @@ public class TransferAPIVertical extends AbstractVerticle {
                 // Mount primary handler
                 .handler(this::cancelAll);
 
-        Route cancelRoute = router.put("/api/cancelone");
-        cancelRoute.failureHandler(failureRoutingContext -> {
-            log.debug("error occurred {}, {}", failureRoutingContext.response().getStatusCode(), failureRoutingContext.response().getStatusMessage());
-
-            log.debug("failure url path params{}", failureRoutingContext.pathParams());
-            log.debug("failure url query params{}", failureRoutingContext.queryParams());
-            log.debug("failure body {}", failureRoutingContext.getBodyAsString());
-
-            int statusCode = failureRoutingContext.statusCode();
-            HttpServerResponse response = failureRoutingContext.response();
-            response.setStatusCode(statusCode).end("Sorry! Not today");
-        });
+//        Route cancelRoute = router.put("/api/cancelone");
+//        cancelRoute.failureHandler(failureRoutingContext -> {
+//            log.debug("error occurred {}, {}", failureRoutingContext.response().getStatusCode(), failureRoutingContext.response().getStatusMessage());
+//
+//            log.debug("failure url path params{}", failureRoutingContext.pathParams());
+//            log.debug("failure url query params{}", failureRoutingContext.queryParams());
+//            log.debug("failure body {}", failureRoutingContext.getBodyAsString());
+//
+//            int statusCode = failureRoutingContext.statusCode();
+//            HttpServerResponse response = failureRoutingContext.response();
+//            response.setStatusCode(statusCode).end("Sorry! Not today");
+//        });
 
         router.errorHandler(500, ctx -> ctx.response()
             .putHeader("content-type", "application/json")
@@ -299,18 +298,9 @@ public class TransferAPIVertical extends AbstractVerticle {
         JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
-        String uuid = principal.getString("uuid");
+        String uuid = routingContext.pathParam("uuid");
 
         log.debug("username = {}", username);
-        JsonObject body = routingContext.getBodyAsJson();
-        // request body was validated prior to this method being called
-//        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
-        TransferTask transferTask = new TransferTask();
-        transferTask.setTenantId(tenantId);
-        transferTask.setOwner(username);
-        transferTask.setSource(body.getString("source"));
-        transferTask.setDest(body.getString("dest"));
-        transferTask.setUuid(body.getString("uuid"));
 
         // lookup task to get the id
         dbService.getById(tenantId, uuid, getByIdReply -> {
@@ -322,7 +312,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                     // if the current user is the owner or has admin privileges, allow the action
                     if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
                             user.isAdminRoleExists()) {
-                        dbService.update(tenantId, uuid, transferTask, deleteReply -> {
+                        dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
                             if (deleteReply.succeeded()) {
 
                                 _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());

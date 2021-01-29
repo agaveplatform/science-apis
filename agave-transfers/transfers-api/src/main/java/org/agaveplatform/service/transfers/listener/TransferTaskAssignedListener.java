@@ -261,8 +261,8 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
 
                                 // if the created transfertask does not have a rootTask, it is the rootTask of all
                                 // the child tasks we create processing the directory listing
-                                final String rootTaskId = StringUtils.isEmpty(body.getString("rootTask")) ?
-                                        body.getString("uuid") : body.getString("rootTaskId");
+                                final String rootTaskId = assignedTransferTask.getRootTaskId() == null ?
+                                    assignedTransferTask.getUuid() : assignedTransferTask.getRootTaskId();
 
                                 // create a new executor pool so we don't block the event thread with the potentially large number of network operations
                                 MutableBoolean ongoing = new MutableBoolean(true);
@@ -356,11 +356,11 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                     // all file items were processed successfully
                                     if (ar.succeeded()) {
                                         // update the original task now that we've processed all of its children
-                                        getDbService().updateStatus(tenantId, uuid, TransferStatusType.COMPLETED.name(), updateResult -> {
+                                        getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
                                             if (updateResult.succeeded()) {
                                                 log.debug("Updated parent transfer task {} to ASSIGNED after processing all its children.", uuid);
                                                 // write to the completed event channel.
-                                                _doPublishEvent(TRANSFER_COMPLETED, body);
+//                                                _doPublishEvent(TRANSFER_COMPLETED, body);
                                                 handler.handle(Future.succeededFuture(true));
                                             }
                                             // we couldn't update the transfer task value

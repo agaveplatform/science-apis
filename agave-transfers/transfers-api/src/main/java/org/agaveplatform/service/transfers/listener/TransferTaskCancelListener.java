@@ -16,8 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_SYNC;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskCancelListener extends AbstractTransferTaskListener {
@@ -64,8 +63,6 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
 
             JsonObject body = msg.body();
             String uuid = body.getString("uuid");
-
-            msg.reply("ok");
 
             logger.info("Transfer task {} ackowledged cancellation", uuid);
             this.processCancelAck(body, result -> {});

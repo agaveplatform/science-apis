@@ -310,9 +310,11 @@ public class TransferAPIVertical extends AbstractVerticle {
                     routingContext.fail(404);
                 } else {
                     // if the current user is the owner or has admin privileges, allow the action
+                    TransferTask transferTask = new TransferTask(getByIdReply.result());
                     if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
                             user.isAdminRoleExists()) {
-                        dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
+                        //let the TransferTaskCancelledListener handle updating the status of the transfer task
+                        dbService.updateStatus(tenantId, uuid, transferTask.getStatus().name(),deleteReply -> {
                             if (deleteReply.succeeded()) {
 
                                 _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());

@@ -76,7 +76,7 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 		String tenantId = body.getString("tenant_id");
 		String uuid = body.getString("uuid");
 		String status = body.getString("status");
-		String parentTaskId = body.getString("parentTask");
+		String parentTaskId = body.getString("parentTask") == null ? body.getString("parent_task") : body.getString("parentTask");
 		logger.debug("Updating status of transfer task {} to COMPLETED.  Tenant ID is {}", uuid, tenantId);
 
 		try {

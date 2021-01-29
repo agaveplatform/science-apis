@@ -105,9 +105,9 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(tenantId)
             .add(uuid);
 
-    dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_CHILDREN_CANCELED_OR_COMPLETED), data, res -> {
+    dbClient.updateWithParams(sqlQueries.get(SqlQuery.SET_TRANSFERTASK_CANCELLED_WHERE_NOT_COMPLETED), data, res -> {
       if (res.succeeded()) {
-        JsonArray response = new JsonArray(res.result().getRows());
+//        JsonArray response = new JsonArray(res.result().getRows());
         resultHandler.handle(Future.succeededFuture(Boolean.TRUE));
       } else {
         LOGGER.error("Failed to cancel all active child transfer tasks of {}.", uuid, res.cause());
@@ -233,18 +233,18 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   public TransferTaskDatabaseService allChildrenCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
     LOGGER.trace("Got into db.allChildrenCancelledOrCompleted");
     JsonArray data = new JsonArray()
-            .add(uuid)
-            .add(tenantId);
-    dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED), data, fetch -> {
+            .add(tenantId)
+            .add(uuid);
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_CHILDREN_ACTIVE), data, fetch -> {
       LOGGER.info("dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED)");
       if (fetch.succeeded()) {
         ResultSet resultSet = fetch.result();
         LOGGER.info("db.allChildrenCancelledOrCompleted, Number of rows = {}", resultSet.getNumRows());
 
         Boolean response = Boolean.FALSE;
-        if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") > 0) {
+        if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0) {
           response = Boolean.TRUE;
-        } else if (resultSet.getNumRows() < 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0){
+        } else if (resultSet.getNumRows() < 1 && resultSet.getRows().get(0).getInteger("active_child_count") < 0){
           // this should be marked as status of 'ERROR' since we don't know what caused the task to fail
           LOGGER.trace("active_child_count = {}", resultSet.getRows().get(0).getInteger("active_child_count"));
           LOGGER.info("This should be marked as status of 'ERROR' since we don't know what caused the task to fail uuid = {}", uuid);

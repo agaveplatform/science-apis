@@ -252,7 +252,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		TransferTask updatedTransferTask = null;
 //		urlCopy.copy(transferTask, null);
 
-		getVertx().executeBlocking(promise -> {
+		WorkerExecutor executor = getVertx().createSharedWorkerExecutor("child-all-task-worker-pool");
+		executor.executeBlocking(promise -> {
 			TransferTask finishedTask = null;
 			try {
 				finishedTask = urlCopy.copy(transferTask);

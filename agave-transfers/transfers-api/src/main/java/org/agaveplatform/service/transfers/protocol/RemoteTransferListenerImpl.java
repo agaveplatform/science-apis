@@ -14,6 +14,7 @@ import org.iplantc.service.transfer.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
@@ -50,8 +51,10 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
 
             log.info("Transfer task {} cancel detected", uuid);
             log.info("Child task {} cancel detected", transferTask.getUuid());
-            if (uuid != null) {
-                cancel();
+            org.agaveplatform.service.transfers.model.TransferTask transfer = (org.agaveplatform.service.transfers.model.TransferTask)transferTask;
+            final List<String> uuids = List.of(transfer.getParentTaskId(), transfer.getRootTaskId());
+            if (uuid != null && uuids.contains(uuid)) {
+                    cancel();
             }
         });
     }

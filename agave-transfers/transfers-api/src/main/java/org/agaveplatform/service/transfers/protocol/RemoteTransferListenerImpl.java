@@ -4,7 +4,9 @@ import io.vertx.core.Context;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
+import org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener;
 import org.iplantc.service.transfer.AbstractRemoteTransferListener;
 import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.exceptions.TransferException;
@@ -39,6 +41,19 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
         super(transferTask);
         this.vertx = vertx;
         this.retryRequestManager = retryRequestManager;
+
+        getVertx().eventBus().<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+            msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+
+            JsonObject body = msg.body();
+            String uuid = body.getString("uuid");
+
+            log.info("Transfer task {} cancel detected", uuid);
+            log.info("Child task {} cancel detected", transferTask.getUuid());
+            if (uuid != null) {
+                cancel();
+            }
+        });
     }
 
     /**

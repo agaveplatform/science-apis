@@ -154,6 +154,7 @@ public class RemoteUnaryTransferListenerImpl extends RemoteTransferListenerImpl 
             log.debug("RemoteTransferListener for " + (task == null ? " anonymous transfer " : task.getUuid()) +
                     " was notified of an interrupt");
         setChanged();
+        Thread.currentThread().interrupt();
     }
 
     /* (non-Javadoc)

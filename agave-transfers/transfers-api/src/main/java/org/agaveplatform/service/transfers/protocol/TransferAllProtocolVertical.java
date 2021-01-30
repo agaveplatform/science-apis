@@ -1,9 +1,6 @@
 package org.agaveplatform.service.transfers.protocol;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -182,17 +179,19 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 					resultingTransferTask = processCopyRequest(srcClient, destClient, tt);
 
 					handler.handle(Future.succeededFuture(result));
-					log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), resultingTransferTask);
+//					log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), resultingTransferTask);
 				} else {
 					log.info("Transfer task {} was interrupted", tt.getUuid());
-					getDbService().updateStatus(tt.getTenantId(), tt.getUuid(),TransferStatusType.CANCELLED.name(), updateReply -> {
-						if (updateReply.succeeded()) {
-							_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
-							handler.handle(Future.succeededFuture(false));
-						} else {
-							handler.handle(Future.failedFuture(updateReply.cause()));
-						}
-					});
+					_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
+					handler.handle(Future.succeededFuture(false));
+//					getDbService().updateStatus(tt.getTenantId(), tt.getUuid(),TransferStatusType.CANCELLED.name(), updateReply -> {
+//						if (updateReply.succeeded()) {
+//							_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
+//							handler.handle(Future.succeededFuture(false));
+//						} else {
+//							handler.handle(Future.failedFuture(updateReply.cause()));
+//						}
+//					});
 
 				}
 			} else {
@@ -250,9 +249,23 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 		URLCopy urlCopy = getUrlCopy(srcClient, destClient);
 
 		log.debug("Calling urlCopy.copy");
-		TransferTask updatedTransferTask = urlCopy.copy(transferTask, null);
+		TransferTask updatedTransferTask = null;
+//		urlCopy.copy(transferTask, null);
 
-		_doPublishEvent(MessageType.TRANSFER_COMPLETED, updatedTransferTask.toJson());
+		getVertx().executeBlocking(promise -> {
+			TransferTask finishedTask = null;
+			try {
+				finishedTask = urlCopy.copy(transferTask);
+				_doPublishEvent(MessageType.TRANSFER_COMPLETED, finishedTask.toJson());
+				promise.complete();
+				log.info("Completed copy of {} to {} for transfer task {} with status {}", finishedTask.getSource(),
+						finishedTask.getDest(), finishedTask.getUuid(), finishedTask);
+			} catch (Exception e) {
+				log.error("Failed to copy Transfer Task {}, {}", transferTask.getUuid(), transferTask.toJSON() );
+				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, transferTask.toJson());
+			}
+		}, res -> {
+		});
 
 		return updatedTransferTask;
 	}

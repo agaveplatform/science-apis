@@ -240,7 +240,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
                     logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
                     JsonObject json = new JsonObject()
                             .put("message", msg);
-                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, json);
                     return false;
                 }
             }

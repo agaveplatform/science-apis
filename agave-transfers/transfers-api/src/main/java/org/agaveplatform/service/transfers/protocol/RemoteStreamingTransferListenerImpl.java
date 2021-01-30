@@ -146,6 +146,7 @@ public class RemoteStreamingTransferListenerImpl extends RemoteTransferListenerI
             log.debug("RemoteTransferListender for " + (task == null ? " anonymous transfer " : task.getUuid()) +
                     " was notified of an interrupt");
         setChanged();
+        Thread.currentThread().interrupt();
     }
 
     /* (non-Javadoc)

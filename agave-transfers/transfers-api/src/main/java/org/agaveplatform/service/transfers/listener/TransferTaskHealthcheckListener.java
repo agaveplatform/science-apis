@@ -97,14 +97,14 @@ public class TransferTaskHealthcheckListener extends AbstractTransferTaskListene
 				} else {
 					logger.info("allChildrenCancelledOrCompleted succeeded but the result is returns false.");
 					logger.info("[{}] Transfer task {} is still active", tenantId, uuid);
-					getDbService().updateStatus(tenantId, uuid, CANCELLED_ERROR.name(), updateStatus -> {
+					getDbService().updateStatus(tenantId, uuid, CANCELED_ERROR.name(), updateStatus -> {
 						logger.trace("Got into getDBService.updateStatus(ERROR)");
 						if (updateStatus.succeeded()){
-							logger.info("[{}] Transfer task {} updated to CANCELLED_ERROR.", tenantId, uuid);
+							logger.info("[{}] Transfer task {} updated to CANCELED_ERROR.", tenantId, uuid);
 							//_doPublishEvent(MessageType.TRANSFERTASK_ERROR, updateStatus.result());
 							//promise.handle(Future.succeededFuture(Boolean.TRUE));
 						}else{
-							logger.error("[{}] Task {} completed, but unable to update status to CANCELLED_ERROR: {}",
+							logger.error("[{}] Task {} completed, but unable to update status to CANCELED_ERROR: {}",
 									tenantId, uuid, reply.cause());
 							JsonObject json = new JsonObject()
 									.put("cause", updateStatus.cause().getClass().getName())

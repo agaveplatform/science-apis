@@ -231,14 +231,10 @@ public class URLCopy{
                     throw e;
                 } catch (Throwable e) {
                     log.error("Exception {}", e.getMessage(), e.getCause());
-//                    throw e;
                 }
             }
 
             return transferTask;
-//        } catch (Throwable e) {
-//            log.error("Exception {}", e.getMessage(), e.getCause());
-//            return null;
         } finally {
             try {
                 if (destClient.isPermissionMirroringRequired()) {

@@ -159,7 +159,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			// different packages, this won't work for real, but it will allow us to
 			// smoke test this method with real object. We'll port the url copy class
 			// over in the coming week to handle current transfertask objects so we
-			// don' tneed this shim
+			// don't need this shim
 			org.iplantc.service.transfer.model.TransferTask legacyTransferTask;
 			boolean makeRealCopy = true;
 			if (makeRealCopy) {

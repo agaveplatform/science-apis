@@ -138,7 +138,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                 .handler(this::cancelOne);
 
         // Accept post of a cancel TransferTask, validates the request, and inserts into the db.
-        router.post("/api/cancel/")
+        router.post("/api/transfers/cancel")
                 // Mount validation handler to ensure the posted json is valid prior to adding
                 .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
                 // Mount primary handler
@@ -310,11 +310,9 @@ public class TransferAPIVertical extends AbstractVerticle {
                     routingContext.fail(404);
                 } else {
                     // if the current user is the owner or has admin privileges, allow the action
-                    TransferTask transferTask = new TransferTask(getByIdReply.result());
                     if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
                             user.isAdminRoleExists()) {
-                        //let the TransferTaskCancelledListener handle updating the status of the transfer task
-                        dbService.updateStatus(tenantId, uuid, transferTask.getStatus().name(),deleteReply -> {
+                        dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
                             if (deleteReply.succeeded()) {
 
                                 _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
@@ -761,6 +759,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                 .setExpiresInMinutes(10_080) // 7 days
                 .setIssuer("transfers-api-integration-tests")
                 .setSubject(username);
+        log.debug("JWT string: {}, {}, {}, {}",jwtOptions.getAlgorithm(), jwtOptions.getExpiresInSeconds(), jwtOptions.getIssuer(), jwtOptions.getSubject());
         String jwtString = jwtAuth.generateToken(claims, jwtOptions);
         return jwtString;
     }

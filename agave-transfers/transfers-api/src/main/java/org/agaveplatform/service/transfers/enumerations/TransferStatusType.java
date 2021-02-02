@@ -12,7 +12,7 @@ import java.util.List;
 public enum TransferStatusType implements ITransferStatus
 {
 	CREATED,
-	CANCELLED, CANCELING_WAITING, CANCELLED_ERROR,
+	CANCELLED, CANCELING_WAITING, CANCELED_ERROR,
 	DELETED, DELETED_WAITING, DELETED_ERROR,
 	PROCESSING_DIRECTORY,
 	ASSIGNED,
@@ -54,7 +54,7 @@ public enum TransferStatusType implements ITransferStatus
 	 * @return immutable list of the active {@link TransferStatusType}
 	 */
 	public static List<TransferStatusType> getStopped() {
-		return List.of(CANCELLED, CANCELING_WAITING, CANCELLED_ERROR,
+		return List.of(CANCELLED, CANCELING_WAITING, CANCELED_ERROR,
 				DELETED, DELETED_WAITING, DELETED_ERROR,
 				COMPLETED_WITH_ERRORS, FAILED, ERROR);
 	}

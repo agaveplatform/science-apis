@@ -16,7 +16,7 @@ import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
-import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.CANCELLED_ERROR;
+import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.CANCELED_ERROR;
 
 public class TransferTaskHealthcheckParentListener extends AbstractTransferTaskListener {
     private final static Logger logger = LoggerFactory.getLogger(TransferTaskHealthcheckParentListener.class);
@@ -85,7 +85,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractTransferTaskL
                 logger.info("reply from getDBSerivce.getAllParentsCanceledOrCompleted " + reply.toString());
 
                 reply.result().stream().forEach(jsonResult -> {
-                    getDbService().updateById(((JsonObject)jsonResult).getString("id"), CANCELLED_ERROR.name(), updateStatus -> {
+                    getDbService().updateById(((JsonObject)jsonResult).getString("id"), CANCELED_ERROR.name(), updateStatus -> {
                         logger.trace("Got into getDBService.updateStatus(complete) ");
                         if (updateStatus.succeeded()) {
                             logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);

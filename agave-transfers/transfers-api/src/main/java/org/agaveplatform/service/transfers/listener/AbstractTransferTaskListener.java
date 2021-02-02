@@ -236,6 +236,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
             if (transferTask.getParentTaskId() != null && transferTask.getRootTaskId() != null) {
                 final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
                 if (cancelledTasks.stream().anyMatch(uuids::contains) || pausedTasks.stream().anyMatch(uuids::contains)) {
+
                     String msg = "Transfer was Canceled or Paused";
                     logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());
                     JsonObject json = new JsonObject()

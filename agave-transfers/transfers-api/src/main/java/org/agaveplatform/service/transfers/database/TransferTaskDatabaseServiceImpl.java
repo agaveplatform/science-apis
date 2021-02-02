@@ -244,6 +244,9 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         Boolean response = Boolean.FALSE;
         if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0) {
           response = Boolean.TRUE;
+        }
+        else if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") > 0) {
+            response = Boolean.FALSE;
         } else if (resultSet.getNumRows() < 1 && resultSet.getRows().get(0).getInteger("active_child_count") < 0){
           // this should be marked as status of 'ERROR' since we don't know what caused the task to fail
           LOGGER.trace("active_child_count = {}", resultSet.getRows().get(0).getInteger("active_child_count"));

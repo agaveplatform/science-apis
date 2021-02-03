@@ -47,7 +47,7 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-		getVertx().setPeriodic(10000, resp -> {
+		getVertx().setPeriodic(600000, resp -> {
 			processEvent(batchResp -> {
 				if (batchResp.succeeded()) {
 					log.trace("Periodic transfer task watch starting");
@@ -58,7 +58,7 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 		});
 
 
-		getVertx().setPeriodic(10000, resp -> {
+		getVertx().setPeriodic(600000, resp -> {
 			processParentEvent(batchResp -> {
 				if (batchResp.succeeded()) {
 					log.trace("Periodic transfer task watch starting");

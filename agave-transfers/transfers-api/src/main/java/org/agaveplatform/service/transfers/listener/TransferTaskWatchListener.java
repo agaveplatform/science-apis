@@ -13,7 +13,10 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.MAX_TIME_FOR_HEALTHCHECK;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.MAX_TIME_FOR_HEALTHCHECK_PARENT;
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
 
@@ -47,7 +50,10 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-		getVertx().setPeriodic(600000, resp -> {
+		int healthTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK, 600000);
+		int healthParentTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK_PARENT, 600000);
+
+		getVertx().setPeriodic( healthTimer, resp -> {
 			processEvent(batchResp -> {
 				if (batchResp.succeeded()) {
 					log.trace("Periodic transfer task watch starting");
@@ -58,7 +64,7 @@ public class TransferTaskWatchListener extends AbstractTransferTaskListener {
 		});
 
 
-		getVertx().setPeriodic(600000, resp -> {
+		getVertx().setPeriodic(healthParentTimer, resp -> {
 			processParentEvent(batchResp -> {
 				if (batchResp.succeeded()) {
 					log.trace("Periodic transfer task watch starting");

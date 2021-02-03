@@ -2,8 +2,8 @@
   "TRANSFERTASK_HTTP_PORT": 8085,
   "TRANSFERTASK_JWT_AUTH": true,
   "TRANSFERTASK_JWT_VERIFY": false,
-  "TRANSFERTASK_JWT_PRIVATE_KEY": "src/main/resources/private_key.pem",
-  "TRANSFERTASK_JWT_PUBLIC_KEY": "src/main/resources/public_key.pem",
+  "TRANSFERTASK_JWT_PRIVATE_KEY": "/Users/loaner/IdeaProjects/agaveplatform/science-apis/agave-transfers/transfers-api/src/main/resources/private_key.pem",
+  "TRANSFERTASK_JWT_PUBLIC_KEY": "/Users/loaner/IdeaProjects/agaveplatform/science-apis/agave-transfers/transfers-api/src/main/resources/public_key.pem",
   "TRANSFERTASK_JDBC_DATA_SOURCE": "org.mariadb.jdbc.MariaDbDataSource",
   "TRANSFERTASK_DB_JDBC_DRIVER_CLASS": "${foundation.db.test.driver}",
   "TRANSFERTASK_DB_JDBC_USERNAME": "${foundation.db.test.username}",
@@ -13,5 +13,7 @@
   "TRANSFERTASK_DB_QUEUE": "transfertaskdb.queue",
   "TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE": "src/main/resources/db-queries.yml",
   "TRANSFERTASK_MAX_ATTEMPTS": 3,
-  "MAX_TIME_FOR_TASK": 600
+  "MAX_TIME_FOR_TASK": 600,
+  "MAX_TIME_FOR_HEALTHCHECK": 600000,
+  "MAX_TIME_FOR_HEALTHCHECKPARENT": 600000
 }

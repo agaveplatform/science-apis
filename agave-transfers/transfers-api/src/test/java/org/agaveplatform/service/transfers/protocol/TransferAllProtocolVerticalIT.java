@@ -8,6 +8,7 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -34,10 +35,13 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_ALL;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
@@ -183,9 +187,83 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 			// verify the URLCopy#copy method was called
 			//verify(getMockUrlCopyInstance).copy(srcUri.getPath(), destUri.getPath(), legacyTransferTask);
 
-			//assertTrue(result, "processCopyRequest should return true when the transfertask returned form URLCopy has status COMPLETED");
-			ctx.completeNow();
-		});
-	}
+            //assertTrue(result, "processCopyRequest should return true when the transfertask returned form URLCopy has status COMPLETED");
+            ctx.completeNow();
+        });
+        systemDao.remove(destSystem);
+    }
+
+    @Test
+    @DisplayName("Test cancel request during processing...")
+    public void testProcessCancelSync(Vertx vertx, VertxTestContext ctx) throws RemoteDataException, RemoteCredentialException, IOException, SystemUnknownException, AgaveNamespaceException, PermissionException, TransferException, RemoteDataSyntaxException {
+        RemoteSystem destSystem = getTestSystem(StorageProtocolType.SFTP);
+        // save the system so it can be referenced in the transfer protocol vertical
+        SystemDao systemDao = new SystemDao();
+        systemDao.persist(destSystem);
+
+        RemoteDataClient destRemoteDataClient = destSystem.getRemoteDataClient();
+        // generate a uuid to use as the directory name to which the data will be copied.
+        String destAbsolutePath = destRemoteDataClient.resolvePath(UUID.randomUUID().toString());
+        URI destUri = URI.create(String.format("agave://%s/%s", destSystem.getSystemId(), destAbsolutePath));
+
+        URI srcUri = URI.create(TRANSFER_SRC);
+        RemoteDataClient srcRemoteDataClient =
+                new RemoteDataClientFactory().getInstance(TEST_USERNAME, null, srcUri);
+
+        // pull in the mock for TransferAllProtocolVertical
+        TransferAllProtocolVertical txfrAllVert = getMockAllProtocolVerticalInstance(vertx);
+        when(txfrAllVert.getRemoteDataClient(anyString(), anyString(), any())).thenReturn(srcRemoteDataClient, destRemoteDataClient);
+        when(txfrAllVert.getUrlCopy(any(), any())).thenCallRealMethod();
+
+        // make the actual call to our method under test
+        doCallRealMethod().when(txfrAllVert).processEvent(any(), any());
+
+        // mock out the db service so we can can isolate method logic rather than db
+        TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+
+        TransferTask tt = new TransferTask(srcUri.toString(),
+                destUri.toString(),
+                TEST_USER,
+                TENANT_ID,
+                null,
+                null);
+        tt.setId(1L);
+
+        // mock a cancelled json transfer task result from getById for root task
+		JsonObject expectedUpdatedJsonObject =  tt.toJson()
+				.put("status", TransferStatusType.CANCELLED.name())
+				.put("endTime", Instant.now());
+
+		AsyncResult<JsonObject> expectedUpdateStatusHandler = getMockAsyncResult(expectedUpdatedJsonObject);
+
+        doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+            @SuppressWarnings("unchecked")
+            Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+            handler.handle(expectedUpdateStatusHandler);
+            return null;
+        }).when(dbService).getById(eq(tt.getTenantId()), eq(tt.getParentTaskId()), anyObject());
+
+        // mock the dbService getter in our mocked vertical so we don't need to use powermock
+        when(txfrAllVert.getDbService()).thenReturn(dbService);
+
+        when(txfrAllVert.processCopyRequest(any(), any(), any())).thenReturn(tt);
+
+        // now actually call the method under test
+        txfrAllVert.processEvent(tt.toJson(), process->{
+            assertTrue(process.succeeded(), "Process event should return success on cancel process.");
+        });
+
+        ctx.verify(() -> {
+            // this shouldn't be called because we're passing in the src rdc
+            verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, srcUri);
+            // this shouldn't be called because we're passing in the dest rdc
+            verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, destUri);
+
+            verify(txfrAllVert, times(1))._doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
+
+            ctx.completeNow();
+        });
+        systemDao.remove(destSystem);
+    }
 
 }

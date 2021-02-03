@@ -20,7 +20,6 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
-import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -172,28 +171,44 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 				// pull the dest system out of the url. system id is the hostname in an agave uri
 				if (makeRealCopy) destClient = getRemoteDataClient(tt.getTenantId(), tt.getOwner(), destUri);
 
-				if (taskIsNotInterrupted(tt)) {
-						log.info("Initiating transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
-						//result = processCopyRequest(source, srcClient, dest, destClient, legacyTransferTask);
-					TransferTask resultingTransferTask = new TransferTask();
-					resultingTransferTask = processCopyRequest(srcClient, destClient, tt);
+                WorkerExecutor executor = getVertx().createSharedWorkerExecutor("check-cancel-child-all-task-worker-pool");
+                RemoteDataClient finalSrcClient = srcClient;
+                RemoteDataClient finalDestClient = destClient;
 
-					handler.handle(Future.succeededFuture(result));
-//					log.info("Completed copy of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), resultingTransferTask);
-				} else {
-					log.info("Transfer task {} was interrupted", tt.getUuid());
-					_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
-					handler.handle(Future.succeededFuture(false));
-//					getDbService().updateStatus(tt.getTenantId(), tt.getUuid(),TransferStatusType.CANCELLED.name(), updateReply -> {
-//						if (updateReply.succeeded()) {
-//							_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
-//							handler.handle(Future.succeededFuture(false));
-//						} else {
-//							handler.handle(Future.failedFuture(updateReply.cause()));
-//						}
-//					});
+                executor.executeBlocking(promise -> {
+                        getDbService().getById(tt.getTenantId(), tt.getRootTaskId(), checkCancelled -> {
+                            if (checkCancelled.succeeded()){
+                                TransferTask targetTransferTask = new TransferTask(checkCancelled.result());
+                                if (targetTransferTask.getStatus().isActive()){
+                                    TransferTask resultingTransferTask = new TransferTask();
+                                    try {
+                                        log.info("Initiating worker transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 
-				}
+                                        resultingTransferTask = processCopyRequest(finalSrcClient, finalDestClient, tt);
+                                        handler.handle(Future.succeededFuture(result));
+                                        promise.complete();
+                                    } catch (Exception e) {
+										log.error("Failed to copy Transfer Task {}", tt.toJSON() );
+										_doPublishEvent(MessageType.TRANSFERTASK_ERROR, tt.toJson());
+										handler.handle(Future.failedFuture(e.getMessage()));
+										promise.fail(e.getMessage());
+									}
+                                } else {
+                                    log.info("Worker Transfer task {} was interrupted", tt.getUuid());
+                                    _doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
+                                    handler.handle(Future.succeededFuture(false));
+                                    promise.complete();
+                                }
+                            } else {
+								log.error("Failed to get status of parent Transfer Task {}, {}", tt.getParentTaskId(), tt.toJSON());
+								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, tt.toJson());
+                                handler.handle(Future.failedFuture(checkCancelled.cause()));
+                                promise.fail("Failed to retrieve status....");
+                            }
+                        });
+                    }, res -> {
+					});
+
 			} else {
 				log.debug("Initiating fake transfer of {} to {} for transfer task {}", source, dest, tt.getUuid());
 				log.debug("Completed fake transfer of {} to {} for transfer task {} with status {}", source, dest, tt.getUuid(), result);
@@ -250,7 +265,6 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 		log.debug("Calling urlCopy.copy");
 		TransferTask updatedTransferTask = null;
-//		urlCopy.copy(transferTask, null);
 
 		WorkerExecutor executor = getVertx().createSharedWorkerExecutor("child-all-task-worker-pool");
 		executor.executeBlocking(promise -> {
@@ -264,6 +278,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 			} catch (Exception e) {
 				log.error("Failed to copy Transfer Task {}, {}", transferTask.getUuid(), transferTask.toJSON() );
 				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, transferTask.toJson());
+				promise.fail(e.getMessage());
 			}
 		}, res -> {
 		});

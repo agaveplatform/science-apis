@@ -251,9 +251,9 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
      *                      checked for any reason.
      */
     protected void processParentAck(String tenantId, String parentTaskId, Handler<AsyncResult<Boolean>> resultHandler) {
-        getTransferTask(tenantId, parentTaskId, ttResult ->{
+        getDbService().getById(tenantId, parentTaskId, ttResult -> {
             if (ttResult.succeeded()) {
-                TransferTask parentTask = ttResult.result();
+                TransferTask parentTask = new TransferTask(ttResult.result());
                 // if the parent is still active
                 if (TransferStatusType.getActive().contains(parentTask.getStatus())) {
                     // check to see if it has active children
@@ -261,7 +261,7 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
                         if (parentChildCancelledOrCompleteResult.succeeded()) {
                             // if it does have active children, then we skip the ack. The parent will be checked again as each
                             // child completes
-                            if (parentChildCancelledOrCompleteResult.result()) {
+                            if (!parentChildCancelledOrCompleteResult.result()) {
                                 resultHandler.handle(Future.succeededFuture(false));
                             } else {
                                 // parent has children, but all are now cancelled or completed, so send the parent ack

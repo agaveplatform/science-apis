@@ -1025,4 +1025,125 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 
 	}
+
+	@Test
+	@DisplayName("TransferTaskCancelListenerTest - process parent ack with active children")
+	public void processParentAckWithActiveChildren(Vertx vertx, VertxTestContext ctx){
+		// Set up our transfertask for testing
+		TransferTask parentTask = _createTestTransferTask();
+		parentTask.setStatus(TransferStatusType.TRANSFERRING);
+		parentTask.setStartTime(Instant.now());
+		parentTask.setEndTime(Instant.now());
+		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
+
+		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
+
+		// mock out the db service so we can can isolate method logic rather than db
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+
+		// mock the dbService getter in our mocked vertical so we don't need to use powermock
+		when(listener.getDbService()).thenReturn(dbService);
+
+		doCallRealMethod().when(listener).processParentAck( any(), any() ,any());
+		doNothing().when(listener)._doPublishEvent(any(), any());
+
+		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
+		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
+		JsonObject expectedgetByIdAck = parentTask.toJson();
+		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
+			return null;
+		}).when(dbService).getById(any(), any(), anyObject());
+
+		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
+		// with active children
+		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.FALSE);
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
+			return null;
+		}).when(dbService).allChildrenCancelledOrCompleted( any(), any(), any());
+
+		// now we run the actual test using our test transfer task data
+		listener.processParentAck(parentTask.getTenantId(), parentTask.getUuid(), results -> {
+			ctx.verify(() -> {
+				assertTrue(results.succeeded(), "The call should succeed.");
+				assertFalse(results.result(), "The async should return true");
+
+				//TransferTask Canceled Ack for parent should not be sent when children are active
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
+
+				// make sure no error event is ever thrown
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+
+				ctx.completeNow();
+			});
+		});
+	}
+
+	@Test
+	@DisplayName("TransferTaskCancelListenerTest - process parent ack with completed or cancelled children")
+	public void processParentAckWithInactiveChildren(Vertx vertx, VertxTestContext ctx){
+		// Set up our transfertask for testing
+		TransferTask parentTask = _createTestTransferTask();
+		parentTask.setStatus(TransferStatusType.TRANSFERRING);
+		parentTask.setStartTime(Instant.now());
+		parentTask.setEndTime(Instant.now());
+		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
+
+		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
+
+		// mock out the db service so we can can isolate method logic rather than db
+		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+
+		// mock the dbService getter in our mocked vertical so we don't need to use powermock
+		when(listener.getDbService()).thenReturn(dbService);
+
+		doCallRealMethod().when(listener).processParentAck( any(), any() ,any());
+		doNothing().when(listener)._doPublishEvent(any(), any());
+
+		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
+		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
+		JsonObject expectedgetByIdAck = parentTask.toJson();
+		AsyncResult<JsonObject> updateGetById = getMockAsyncResult(expectedgetByIdAck);
+		doAnswer((Answer<AsyncResult<JsonObject>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(updateGetById);
+			return null;
+		}).when(dbService).getById(any(), any(), anyObject());
+
+		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
+		// with all children cancelled or completed
+		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
+		doAnswer((Answer<AsyncResult<Boolean>>) arguments -> {
+			@SuppressWarnings("unchecked")
+			Handler<AsyncResult<Boolean>> handler = arguments.getArgumentAt(2, Handler.class);
+			handler.handle(allChildrenCancelledOrCompletedHandler);
+			return null;
+		}).when(dbService).allChildrenCancelledOrCompleted( any(), any(), any());
+
+		// now we run the actual test using our test transfer task data
+		listener.processParentAck(parentTask.getTenantId(), parentTask.getUuid(), results -> {
+			ctx.verify(() -> {
+				assertTrue(results.succeeded(), "The call should succeed.");
+				assertTrue(results.result(), "The async should return true");
+
+				//TransferTask Canceled Ack for parent should be sent when all children are cancelled/completed
+				verify(listener, times(1))._doPublishEvent(eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
+
+				// make sure no error event is ever thrown
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+
+				ctx.completeNow();
+			});
+		});
+	}
+
 }

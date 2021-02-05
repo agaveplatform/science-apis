@@ -57,9 +57,6 @@ services:
     restart: on-failure
     ports:
       - '10022:10022'
-    volumes:
-      - "/Users/loaner/IdeaProjects/agaveplatform/science-apis/agave-transfers/transfers-api/files/src:/tmp/src"
-      - "/Users/loaner/IdeaProjects/agaveplatform/science-apis/agave-transfers/transfers-api/files/dest:/tmp/dest"
 
   sftptunnel:
    image: agaveplatform/sshd:latest

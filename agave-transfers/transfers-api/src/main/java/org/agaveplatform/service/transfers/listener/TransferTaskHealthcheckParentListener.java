@@ -7,6 +7,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.model.TransferTask;
+import org.globus.ftp.app.Transfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +87,8 @@ public class TransferTaskHealthcheckParentListener extends AbstractTransferTaskL
                 logger.info("reply from getDBSerivce.getAllParentsCanceledOrCompleted " + reply.toString());
 
                 reply.result().stream().forEach(jsonResult -> {
-                    getDbService().updateById(((JsonObject)jsonResult).getString("id"), CANCELED_ERROR.name(), updateStatus -> {
+                    TransferTask transferTask = new TransferTask((JsonObject) jsonResult);
+                    getDbService().updateStatus(transferTask.getTenantId(),transferTask.getUuid(), CANCELED_ERROR.name(), updateStatus -> {
                         logger.trace("Got into getDBService.updateStatus(complete) ");
                         if (updateStatus.succeeded()) {
                             logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);

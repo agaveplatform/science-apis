@@ -154,7 +154,7 @@ public class RemoteUnaryTransferListenerImpl extends RemoteTransferListenerImpl 
             log.debug("RemoteTransferListener for " + (task == null ? " anonymous transfer " : task.getUuid()) +
                     " was notified of an interrupt");
         setChanged();
-        Thread.currentThread().interrupt();
+        killCopyTask();
     }
 
     /* (non-Javadoc)
@@ -186,5 +186,12 @@ public class RemoteUnaryTransferListenerImpl extends RemoteTransferListenerImpl 
                 log.debug("Transfer completed callback received for task unknown.\nunknown");
 
         }
+    }
+
+    /**
+     * Kill the current thread for TransferTaskCancel event
+     */
+    public void killCopyTask(){
+        Thread.currentThread().interrupt();
     }
 }

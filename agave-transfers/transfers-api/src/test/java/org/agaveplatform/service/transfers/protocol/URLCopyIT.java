@@ -337,6 +337,7 @@ public class URLCopyIT extends BaseTestCase {
 
             //mock child remote transfer listener
             RemoteUnaryTransferListenerImpl mockChildRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(srcChildTransferTask, mockRetryRequestManager);
+            doNothing().when(mockChildRemoteTransferListenerImpl).killCopyTask();
             doReturn(mockChildRemoteTransferListenerImpl).when(mockCopy).getRemoteUnaryTransferListenerForTransferTask(tt);
             when(mockChildRemoteTransferListenerImpl.isCancelled()).thenReturn(true);
 
@@ -352,6 +353,7 @@ public class URLCopyIT extends BaseTestCase {
             destChildTransferTask.setStatus(TransferStatusType.WRITE_STARTED);
 
             RemoteUnaryTransferListenerImpl mockDestChildRemoteTransferListenerImpl = getMockRemoteUnaryTransferListener(destChildTransferTask, mockRetryRequestManager);
+            doNothing().when(mockDestChildRemoteTransferListenerImpl).killCopyTask();
             when(mockCopy.getRemoteUnaryTransferListenerForTransferTask(any(TransferTask.class))).thenReturn(mockChildRemoteTransferListenerImpl, mockDestChildRemoteTransferListenerImpl);
             doNothing().when(mockCopy).killCopyTask();
 

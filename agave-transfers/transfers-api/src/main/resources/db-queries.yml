@@ -13,7 +13,7 @@ create-transfertasks-table: |
       `owner` varchar(32) NOT NULL,
       `source` varchar(2048) NOT NULL DEFAULT '',
       `start_time` TIMESTAMP DEFAULT NULL,
-      `status` varchar(20) DEFAULT NULL,
+      `status` varchar(30) DEFAULT NULL,
       `tenant_id` varchar(128) NOT NULL,
       `total_size` bigint(20) DEFAULT NULL,
       `transfer_rate` double DEFAULT NULL,
@@ -86,7 +86,7 @@ delete-all-transfertasks: |
   DELETE FROM TransferApiTasks WHERE `tenant_id` = ?
 cancel-all-transfertasks: |
   UPDATE TransferApiTasks
-  SET statis = 'CANCELING_WAITING'
+  SET status = 'CANCELING_WAITING'
   WHERE `tenant_id` = ?
 update-transfertask-status: |
   UPDATE TransferApiTasks
@@ -97,12 +97,12 @@ parents-not-canceled-or-completed: |
   FROM TransferApiTasks trans1
   WHERE `tenant_id` = 'agave.dev'
   AND `root_task` is not null
-  AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
+  AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELED_ERROR','FAILED')
   AND ( select count(`id`) as  active_child_count
           from TransferApiTasks
           where `tenant_id` = 'agave.dev'
             and  `parent_task` = trans1.parent_task
-            AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
+            AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELED_ERROR','FAILED')
   )
 cancel_transfertask_by_id: |
   UPDATE TransferApiTasks
@@ -111,32 +111,32 @@ cancel_transfertask_by_id: |
 all-transfertask-children-cancelled-or-completed: |
   SELECT count(`id`) AS active_child_count
   FROM TransferApiTasks
-  WHERE `tenant_id` = ? AND `parent_task` = ? AND `status` IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
+  WHERE `tenant_id` = ? AND `parent_task` = ? AND `status` IN ('COMPLETED','CANCELLED', 'CANCELED_ERROR','FAILED')
 all-transfertask-children-active: |
     SELECT count(`id`) AS active_child_count
     FROM TransferApiTasks
-    WHERE `tenant_id` = ? AND `parent_task` = ? AND `status` NOT IN ('COMPLETED','CANCELLED', 'CANCELLED_ERROR','FAILED')
+    WHERE `tenant_id` = ? AND `parent_task` = ? AND `status` NOT IN ('COMPLETED','CANCELLED', 'CANCELED_ERROR','FAILED')
 all-active-root-transfertask-ids: |
   SELECT distinct `uuid`, `tenant_id`
   FROM TransferApiTasks
-  WHERE `root_task` is NULL AND `parent_task` is NULL AND `status` NOT IN ('COMPLETED','CANCELLED','CANCELLED_ERROR','FAILED')
+  WHERE `root_task` is NULL AND `parent_task` is NULL AND `status` NOT IN ('COMPLETED','CANCELLED','CANCELED_ERROR','FAILED')
 single-not-canceled-or-completed: |
   SELECT count(`id`) AS active_uuid
   FROM TransferApiTasks
-  WHERE `tenant_id` = ? AND `uuid` = ? AND `status` NOT IN ('COMPLETED','CANCELLED','CANCELLED_ERROR','FAILED')
+  WHERE `tenant_id` = ? AND `uuid` = ? AND `status` NOT IN ('COMPLETED','CANCELLED','CANCELED_ERROR','FAILED')
 all-children-canceled-or-completed: |
   SELECT count(id)
   FROM TransferApiTasks
-  WHERE `tenant_id` = ? AND `parent_task` = ? AND status in ('COMPLETED', 'CANCELLED','CANCELLED_ERROR','FAILED')
+  WHERE `tenant_id` = ? AND `parent_task` = ? AND status in ('COMPLETED', 'CANCELLED','CANCELED_ERROR','FAILED')
 set-transfertask-cancelled-where-not-completed: |
   UPDATE TransferApiTasks
   SET status = 'CANCELLED', last_updated = NOW()
-  WHERE `tenant_id` = ? AND `uuid` = ? AND status not in ('COMPLETED', 'CANCELLED','CANCELLED_ERROR','FAILED')
+  WHERE `tenant_id` = ? AND `uuid` = ? AND status not in ('COMPLETED', 'CANCELLED','CANCELED_ERROR','FAILED')
 get_transfertask_tree: |
   SELECT *
   FROM TransferApiTasks
   WHERE parent_task = (SELECT parent_task from TransferApiTasks where `uuid` = ? )
-    AND status NOT IN ('COMPLETED', 'CANCELLED','CANCELLED_ERROR','FAILED')
+    AND status NOT IN ('COMPLETED', 'CANCELLED','CANCELED_ERROR','FAILED')
     AND `tenant_id` = ?
   UNION
   SELECT *

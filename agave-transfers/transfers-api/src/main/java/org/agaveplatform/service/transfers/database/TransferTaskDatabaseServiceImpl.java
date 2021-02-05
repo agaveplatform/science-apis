@@ -25,6 +25,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLConnection;
+import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.Settings;
@@ -61,6 +62,13 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
 //  getTransferTaskTree
+  /**
+   * Retrieve tree of parent and children {@link TransferTask}
+   *
+   * @param tenantId the tenant of root {@link TransferTask}
+   * @param uuid the id of root {@link TransferTask}
+   * @param resultHandler the handler to resolve with {@link JsonArray} of parent and children {@link TransferTask}
+   **/
   @Override
   public TransferTaskDatabaseService getTransferTaskTree(String tenantId, String uuid, Handler<AsyncResult<JsonArray>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -81,6 +89,13 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Retrieve all children of parent with id {@code uuid} that are cancelled or completed
+   *
+   * @param tenantId the tenant of parent {@link TransferTask}
+   * @param uuid the id of parent {@link TransferTask}
+   * @param resultHandler the handler to resolve with {@link JsonArray} of all cancelled or completed children {@link TransferTask}
+   */
   @Override
   public TransferTaskDatabaseService getAllChildrenCanceledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<JsonArray>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -99,6 +114,13 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Set {@link TransferTask} with status of {@link TransferStatusType#CANCELLED} if not completed or failed
+   *
+   * @param tenantId the tenant of {@link TransferTask}
+   * @param uuid the id of {@link TransferTask}
+   * @param resultHandler the handler to resolve with {@link Boolean#TRUE} on successful update
+   */
   @Override
   public TransferTaskDatabaseService setTransferTaskCanceledWhereNotCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -117,7 +139,14 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
-
+  /**
+   * Retrieve all {@link TransferTask}
+   *
+   * @param tenantId the tenant of {@link TransferTask}
+   * @param limit number of {@link TransferTask} to return
+   * @param offset number of {@link TransferTask} to offset in search
+   * @param resultHandler the handler to resolve with {@link JsonArray} of the matching {@link TransferTask}
+   */
   @Override
   public TransferTaskDatabaseService getAll(String tenantId, int limit, int offset, Handler<AsyncResult<JsonArray>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -136,6 +165,15 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Retrieve all {@link TransferTask} matching with owner {@code username}
+   *
+   * @param tenantId the tenant of {@link TransferTask}
+   * @param username the id of {@link TransferTask}
+   * @param limit number of {@link TransferTask} to return
+   * @param offset number of {@link TransferTask} to offset in search
+   * @param resultHandler the handler to resolve with {@link JsonArray} of the matching {@link TransferTask}
+   */
   @Override
   public TransferTaskDatabaseService getAllForUser(String tenantId, String username, int limit, int offset, Handler<AsyncResult<JsonArray>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -155,6 +193,13 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Retrieve {@link TransferTask} matching {@code uuid} and {@code tenantId}
+   *
+   * @param tenantId the tenant of {@link TransferTask}
+   * @param uuid the id of {@link TransferTask}
+   * @param resultHandler the handler to resolve with {@link JsonObject} of the matching {@link TransferTask}
+   */
   @Override
   public TransferTaskDatabaseService getById(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -177,6 +222,11 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Retrieve the uuid and tenant_id of all current {@link TransferStatusType#isActive()} {@link TransferTask}
+   *
+   * @param resultHandler the handler to resolve with {@link JsonArray} of the uuid and tenant_id of all active root tasks
+   */
   public TransferTaskDatabaseService getActiveRootTaskIds(Handler<AsyncResult<JsonArray>> resultHandler) {
     try {
       dbClient.query(sqlQueries.get(SqlQuery.ALL_ACTIVE_ROOT_TRANSFERTASK_IDS), fetch -> {
@@ -201,6 +251,11 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Retrieve all parent {@link TransferTask} ids that are cancelled or completed
+   *
+   * @param resultHandler the handler to resolve with {@link JsonArray} of parent {@link TransferTask}
+   */
   @Override
   public TransferTaskDatabaseService getAllParentsCanceledOrCompleted( Handler<AsyncResult<JsonArray>> resultHandler){
     LOGGER.trace("Got into db.getAllParentsCanceledOrCompleted");
@@ -229,12 +284,26 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+
+  /**
+   * Checks the status of all child tasks for the parent and returns true if all child tasks have a status that is not
+   * {@link TransferStatusType#isActive()}
+   *
+   * @param tenantId the tenant of the parent {@link TransferTask}
+   * @param uuid the id of the parent {@link TransferTask}
+   * @param resultHandler the handler to resolve with {@link Boolean#TRUE} if all children of with parent_id of
+   * {@code uuid} is cancelled or completed
+   *
+   * @return
+   */
   @Override
   public TransferTaskDatabaseService allChildrenCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
     LOGGER.trace("Got into db.allChildrenCancelledOrCompleted");
     JsonArray data = new JsonArray()
             .add(tenantId)
             .add(uuid);
+
+    //first query if any children are active
     dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_CHILDREN_ACTIVE), data, fetch -> {
       LOGGER.info("dbClient.queryWithParams(sqlQueries.get(SqlQuery.ALL_TRANSFERTASK_CHILDREN_CANCELLED_OR_COMPLETED)");
       if (fetch.succeeded()) {
@@ -243,10 +312,14 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
 
         Boolean response = Boolean.FALSE;
         if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") == 0) {
+          //no active children
+          LOGGER.info("db.allChildrenCancelledOrCompleted {}, no active children", uuid);
           response = Boolean.TRUE;
         }
         else if (resultSet.getNumRows() == 1 && resultSet.getRows().get(0).getInteger("active_child_count") > 0) {
-            response = Boolean.FALSE;
+          //active children
+          LOGGER.info("db.allChildrenCancelledOrCompleted {}, active children", uuid);
+          response = Boolean.FALSE;
         } else if (resultSet.getNumRows() < 1 && resultSet.getRows().get(0).getInteger("active_child_count") < 0){
           // this should be marked as status of 'ERROR' since we don't know what caused the task to fail
           LOGGER.trace("active_child_count = {}", resultSet.getRows().get(0).getInteger("active_child_count"));
@@ -262,6 +335,17 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Checks the status of {@link TransferTask} with {@code uuid} and returns true if the task status is
+   * {@link TransferStatusType#isActive()}
+   *
+   * @param tenantId the tenant of the {@link TransferTask}
+   * @param uuid the id of the {@link TransferTask}
+   * @param resultHandler the handler to resolve with {@link Boolean#TRUE} if there is at least one task that is not
+   *                      cancelled or completed (active)
+   *
+   * @return
+   */
   @Override
   public TransferTaskDatabaseService singleNotCancelledOrCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -283,6 +367,13 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Create {@link TransferTask}
+   *
+   * @param tenantId the tenant of the {@link TransferTask} to add
+   * @param transferTask the {@link TransferTask} to add
+   * @param resultHandler the handler to resolve with {@link JsonObject} of added {@link TransferTask}
+   */
   @Override
   public TransferTaskDatabaseService create(String tenantId, TransferTask transferTask, Handler<AsyncResult<JsonObject>> resultHandler) {
     final JsonArray data = new JsonArray()
@@ -330,6 +421,16 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * @deprecated
+   * @see TransferTaskDatabaseService#updateStatus(String, String, String, Handler)
+   *
+   * Update {@link TransferTask} status matching {@code id}
+   *
+   * @param id of the {@link TransferTask}
+   * @param statusChangeTo the {@link TransferStatusType} to be updated
+   * @param resultHandler the handler to resolve with {@link JsonObject} of updated {@link TransferTask}
+   */
   @Override
   public TransferTaskDatabaseService updateById(String id, String statusChangeTo, Handler<AsyncResult<JsonObject>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -377,6 +478,14 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
 
+  /**
+   * Update entire {@link TransferTask} with {@code transferTask}
+   *
+   * @param tenantId of the {@link TransferTask}
+   * @param uuid id of the {@link TransferTask}
+   * @param transferTask the {@link TransferTask} to update with
+   * @param resultHandler the handler to resolve with {@link JsonObject} of updated {@link TransferTask}
+   */
   @Override
   public TransferTaskDatabaseService update(String tenantId, String uuid, TransferTask transferTask, Handler<AsyncResult<JsonObject>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -434,6 +543,16 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Find child {@link TransferTask} with a root task matching {@code rootTaskId}, source {@code src}, and destination {@code dest}
+   *
+   * @param tenantId of the root{@link TransferTask}
+   * @param rootTaskId id of the root{@link TransferTask}
+   * @param src source path of {@link TransferTask}
+   * @param dest destination path of {@link TransferTask}
+   * @param resultHandler the handler to resolve with {@link JsonObject} of the matching {@link TransferTask},
+   *                      or null if no matching {@link TransferTask} found
+   */
   @Override
   public TransferTaskDatabaseService findChildTransferTask(String tenantId, String rootTaskId, String src, String dest, Handler<AsyncResult<JsonObject>> resultHandler) {
     final JsonArray data = new JsonArray()
@@ -459,6 +578,13 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Create a child {@link TransferTask} if it doesn't exist, otherwise update the existing task
+   *
+   * @param tenantId of the child{@link TransferTask}
+   * @param childTransferTask {@link TransferTask} to be created or updated
+   * @param resultHandler the handler to resolve with {@link JsonObject} of the added/updated {@link TransferTask}
+   */
   @Override
   public TransferTaskDatabaseService createOrUpdateChildTransferTask(String tenantId, TransferTask childTransferTask, Handler<AsyncResult<JsonObject>> resultHandler) {
     findChildTransferTask(tenantId, childTransferTask.getRootTaskId(), childTransferTask.getSource(), childTransferTask.getDest(), fetch -> {
@@ -480,6 +606,14 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Update {@link TransferTask} status matching {@code id}
+   *
+   * @param tenantId of the {@link TransferTask}
+   * @param uuid id of the {@link TransferTask}
+   * @param status the {@link TransferStatusType} to be updated
+   * @param resultHandler the handler to resolve with {@link JsonObject} of updated {@link TransferTask}
+   */
   @Override
   public TransferTaskDatabaseService updateStatus(String tenantId, String uuid, String status, Handler<AsyncResult<JsonObject>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -512,6 +646,13 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Delete {@link TransferTask} matching {@code uuid}
+   *
+   * @param tenantId of the {@link TransferTask}
+   * @param uuid id of the {@link TransferTask}
+   * @param resultHandler the handler to resolve with empty result on successful delete
+   */
   @Override
   public TransferTaskDatabaseService delete(String tenantId, String uuid, Handler<AsyncResult<Void>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -528,6 +669,12 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
+  /**
+   * Delete all {@link TransferTask} from table
+   *
+   * @param tenantId of the {@link TransferTask}
+   * @param resultHandler the handler to resolve with empty result on successful delete
+   */
   @Override
   public TransferTaskDatabaseService deleteAll(String tenantId, Handler<AsyncResult<Void>> resultHandler) {
     JsonArray data = new JsonArray()
@@ -544,6 +691,12 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
 
+  /**
+   * Set status of all {@link TransferTask} to {@link TransferStatusType#CANCELING_WAITING}
+   *
+   * @param tenantId of the {@link TransferTask}
+   * @param resultHandler the handler to resolve with empty result on successful cancel
+   */
   @Override
   public TransferTaskDatabaseService cancelAll(String tenantId, Handler<AsyncResult<Void>> resultHandler) {
     JsonArray data = new JsonArray()

@@ -10,17 +10,17 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import org.iplantc.service.common.Settings;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,6 +32,8 @@ import static org.junit.jupiter.api.Assertions.*;
 public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
 
     private TransferTaskDatabaseService service;
+    private int LIMIT = Settings.MAX_PAGE_SIZE;
+    private int OFFSET = 0;
 
     @BeforeAll
     @Override
@@ -80,16 +82,16 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
                 assertNotNull(createdJsonTransferTask.getLong("id"), "Object returned from create should have not null id");
                 assertNotNull(createdJsonTransferTask.getInstant("created"), "Object returned from create should have not null created");
                 assertNotNull(createdJsonTransferTask.getInstant("last_updated"), "Object returned from create should have not null last_updated");
-                assertEquals(TENANT_ID, createdJsonTransferTask.getString("tenant_id"),"Object returned from create should have same tenant_id as sent");
-                assertEquals(testTransferTask.getUuid(), createdJsonTransferTask.getString("uuid"),"Object returned from create should have same uuid as sent");
-                assertEquals(testTransferTask.getSource(), createdJsonTransferTask.getString("source"),"Object returned from create should have same source value as sent");
-                assertEquals(testTransferTask.getDest(), createdJsonTransferTask.getString("dest"),"Object returned from create should have same dest value as sent");
+                assertEquals(TENANT_ID, createdJsonTransferTask.getString("tenant_id"), "Object returned from create should have same tenant_id as sent");
+                assertEquals(testTransferTask.getUuid(), createdJsonTransferTask.getString("uuid"), "Object returned from create should have same uuid as sent");
+                assertEquals(testTransferTask.getSource(), createdJsonTransferTask.getString("source"), "Object returned from create should have same source value as sent");
+                assertEquals(testTransferTask.getDest(), createdJsonTransferTask.getString("dest"), "Object returned from create should have same dest value as sent");
 
                 service.getById(TENANT_ID, testTransferTask.getUuid(), context.succeeding(getByIdJsonTransferTask -> {
-                    assertEquals(TENANT_ID, getByIdJsonTransferTask.getString("tenant_id"),"Object returned from create should have same tenant_id as original");
-                    assertEquals(testTransferTask.getUuid(), getByIdJsonTransferTask.getString("uuid"),"Object returned from create should have same uuid as original");
-                    assertEquals(testTransferTask.getSource(), getByIdJsonTransferTask.getString("source"),"Object returned from create should have same source value as original");
-                    assertEquals(testTransferTask.getDest(), getByIdJsonTransferTask.getString("dest"),"Object returned from create should have same dest value as original");
+                    assertEquals(TENANT_ID, getByIdJsonTransferTask.getString("tenant_id"), "Object returned from create should have same tenant_id as original");
+                    assertEquals(testTransferTask.getUuid(), getByIdJsonTransferTask.getString("uuid"), "Object returned from create should have same uuid as original");
+                    assertEquals(testTransferTask.getSource(), getByIdJsonTransferTask.getString("source"), "Object returned from create should have same source value as original");
+                    assertEquals(testTransferTask.getDest(), getByIdJsonTransferTask.getString("dest"), "Object returned from create should have same dest value as original");
 
                     service.updateStatus(TENANT_ID, testTransferTask.getUuid(), TransferStatusType.TRANSFERRING.name(), context.succeeding(updateStatusJsonTransferTask -> {
                         assertEquals(TransferStatusType.TRANSFERRING.name(), updateStatusJsonTransferTask.getString("status"),
@@ -106,22 +108,22 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
 
                             JsonObject updatedJsonObject = new JsonObject()
                                     .put("attempts", 1) // attempts
-                                    .put("bytesTransferred", (long)Math.pow(2, 19)) // getBytesTransferred())
-    //                                .add("created should not update") // getCreated())
-    //                                .add("dest should not update") // getDest())
+                                    .put("bytesTransferred", (long) Math.pow(2, 19)) // getBytesTransferred())
+                                    //                                .add("created should not update") // getCreated())
+                                    //                                .add("dest should not update") // getDest())
                                     .put("endTime", Instant.now()) // getEndTime())
-    //                                .addNull() // getEventId())
-    //                                .add(Instant.now()) // getLastUpdated())
-    //                                .add("owner should not update") // getOwner())
-    //                                .add("source should not update") // getSource())
+                                    //                                .addNull() // getEventId())
+                                    //                                .add(Instant.now()) // getLastUpdated())
+                                    //                                .add("owner should not update") // getOwner())
+                                    //                                .add("source should not update") // getSource())
                                     .put("startTime", Instant.now()) // getStartTime())
                                     .put("status", TransferStatusType.PAUSED.name()) // getStatus())
-    //                                .add("tenant_id should not update")
-                                    .put("totalSize", (long)Math.pow(2, 20)) // getTotalSize())
+                                    //                                .add("tenant_id should not update")
+                                    .put("totalSize", (long) Math.pow(2, 20)) // getTotalSize())
                                     .put("transferRate", 9999.0) // getTransferRate())
-    //                                .addNull() // getParentTaskId())
-    //                                .addNull() // getRootTaskId())
-    //                                .add("this should not change") // getUuid())
+                                    //                                .addNull() // getParentTaskId())
+                                    //                                .addNull() // getRootTaskId())
+                                    //                                .add("this should not change") // getUuid())
                                     .put("totalFiles", 10L) // getTotalFiles())
                                     .put("totalSkippedFiles", 9L); // getTotalSkippedFiles());
 
@@ -139,35 +141,35 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
 
                                     service.getById(TENANT_ID, testTransferTask.getUuid(), context.succeeding(getByIdJsonTransferTask2 -> {
 
-                                        assertEquals(TENANT_ID, getByIdJsonTransferTask2.getString("tenant_id"),"Object returned from create should have same tenant_id as original");
-                                        assertEquals(createdJsonTransferTask.getLong("id"), getByIdJsonTransferTask2.getLong("id"),"Object returned from create should have same id as original");
-                                        assertEquals(testTransferTask.getUuid(), getByIdJsonTransferTask2.getString("uuid"),"Object returned from create should have same uuid as original");
-                                        assertEquals(testTransferTask.getSource(), getByIdJsonTransferTask2.getString("source"),"Object returned from create should have same source value as original");
-                                        assertEquals(testTransferTask.getDest(), getByIdJsonTransferTask2.getString("dest"),"Object returned from create should have same dest value as original");
+                                        assertEquals(TENANT_ID, getByIdJsonTransferTask2.getString("tenant_id"), "Object returned from create should have same tenant_id as original");
+                                        assertEquals(createdJsonTransferTask.getLong("id"), getByIdJsonTransferTask2.getLong("id"), "Object returned from create should have same id as original");
+                                        assertEquals(testTransferTask.getUuid(), getByIdJsonTransferTask2.getString("uuid"), "Object returned from create should have same uuid as original");
+                                        assertEquals(testTransferTask.getSource(), getByIdJsonTransferTask2.getString("source"), "Object returned from create should have same source value as original");
+                                        assertEquals(testTransferTask.getDest(), getByIdJsonTransferTask2.getString("dest"), "Object returned from create should have same dest value as original");
                                         //Assertions.assertTrue(updateStatusJsonTransferTask.getInstant("last_updated").isBefore(getByIdJsonTransferTask2.getInstant("last_updated")),"Object returned from udpate have last_updated value more recent than original");
                                         // verify the updated values are present in the response
                                         updatedJsonObject
                                                 .stream()
                                                 .forEach(entry -> {
                                                     if (entry.getKey().equalsIgnoreCase("startTime") || entry.getKey().equalsIgnoreCase("endTime")) {
-    //                                                    assertEquals(Instant.parse(((String)entry.getValue())).getEpochSecond(), getByIdJsonTransferTask2.getInstant(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, entry.getKey())).getEpochSecond(),
-    //                                                            entry.getKey() + " should be updated in the response from the service");
+                                                        //                                                    assertEquals(Instant.parse(((String)entry.getValue())).getEpochSecond(), getByIdJsonTransferTask2.getInstant(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, entry.getKey())).getEpochSecond(),
+                                                        //                                                            entry.getKey() + " should be updated in the response from the service");
                                                     } else {
                                                         assertEquals(entry.getValue(), getByIdJsonTransferTask2.getValue(CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, entry.getKey())),
-                                                                entry.getKey() + " should be updated in the response from the service" );
+                                                                entry.getKey() + " should be updated in the response from the service");
                                                     }
                                                 });
 
-    //                                    Assertions.assertEquals(TENANT_ID, getByIdJsonTransferTask2.getString("tenant_id"),"Object returned from create should have same tenant_id as original");
-    //                                    Assertions.assertEquals(createdJsonTransferTask.getLong("id"), getByIdJsonTransferTask2.getLong("id"),"Object returned from create should have same id as original");
-    //                                    Assertions.assertEquals(testTransferTask.getUuid(), getByIdJsonTransferTask2.getString("uuid"),"Object returned from create should have same uuid as original");
-    //                                    Assertions.assertEquals(testTransferTask.getSource(), getByIdJsonTransferTask2.getString("source"),"Object returned from create should have same source value as original");
-    //                                    Assertions.assertEquals(testTransferTask.getDest(), getByIdJsonTransferTask2.getString("dest"),"Object returned from create should have same dest value as original");
+                                        //                                    Assertions.assertEquals(TENANT_ID, getByIdJsonTransferTask2.getString("tenant_id"),"Object returned from create should have same tenant_id as original");
+                                        //                                    Assertions.assertEquals(createdJsonTransferTask.getLong("id"), getByIdJsonTransferTask2.getLong("id"),"Object returned from create should have same id as original");
+                                        //                                    Assertions.assertEquals(testTransferTask.getUuid(), getByIdJsonTransferTask2.getString("uuid"),"Object returned from create should have same uuid as original");
+                                        //                                    Assertions.assertEquals(testTransferTask.getSource(), getByIdJsonTransferTask2.getString("source"),"Object returned from create should have same source value as original");
+                                        //                                    Assertions.assertEquals(testTransferTask.getDest(), getByIdJsonTransferTask2.getString("dest"),"Object returned from create should have same dest value as original");
 
 
                                         service.delete(TENANT_ID, testTransferTask.getUuid(), context.succeeding(v3 -> {
 
-                                            service.getAll(TENANT_ID, 100, 0, context.succeeding( getAllJsonTransferTaskArray3 -> {
+                                            service.getAll(TENANT_ID, 100, 0, context.succeeding(getAllJsonTransferTaskArray3 -> {
                                                 assertTrue(getAllJsonTransferTaskArray3.isEmpty(), "No records should be returned from getAll after deleting the test object");
                                                 context.completeNow();
                                             }));
@@ -210,7 +212,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
                                 for (int i = 0; i < composite.size(); i++) {
 
                                     assertNotNull(composite.resultAt(i), "Child task " + i + " should not be null");
-                                    assertEquals(testTasks.get(i).getUuid(), ((JsonObject)composite.resultAt(i)).getString("uuid"),
+                                    assertEquals(testTasks.get(i).getUuid(), ((JsonObject) composite.resultAt(i)).getString("uuid"),
                                             "Child returned from the db should match the test child transfer task.");
                                 }
                                 context.completeNow();
@@ -241,8 +243,8 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
                     String[] prefixes = new String[]{" ", "  "};//, "prefix-",};
                     String[] suffixes = new String[]{"-suffix"};
 
-                    for (String prefix: prefixes) {
-                        for (String suffix: suffixes) {
+                    for (String prefix : prefixes) {
+                        for (String suffix : suffixes) {
                             testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), prefix + child1Task.getSource(), child1Task.getDest()));
                             testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource() + suffix, child1Task.getDest()));
                             testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), prefix + child1Task.getSource() + suffix, child1Task.getDest()));
@@ -265,7 +267,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
                     testFutures.add(futureFindTransferTask(child1Task.getTenantId(), null, null, null));
                     testFutures.add(futureFindTransferTask(null, null, null, null));
 
-                    testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource().substring(0, child1Task.getSource().length()-4), child1Task.getDest()));
+                    testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource().substring(0, child1Task.getSource().length() - 4), child1Task.getDest()));
                     testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), UUID.randomUUID().toString(), child1Task.getDest()));
                     testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), child1Task.getSource(), UUID.randomUUID().toString()));
                     testFutures.add(futureFindTransferTask(child1Task.getTenantId(), child1Task.getRootTaskId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()));
@@ -307,12 +309,12 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
 
                 service.createOrUpdateChildTransferTask(rootTask.getTenantId(), childTask, reply -> {
                     context.verify(() -> {
-                      assertTrue(reply.succeeded(), "create or update should have succeeded for valid file");
-                      assertNotNull(reply.result(), "create or update should return JsonObject representing new/udpated record.");
-                      assertNotNull(reply.result().getValue("id"), "returned record should have a valid id.");
-                      assertEquals(childTask.getUuid(), reply.result().getString("uuid"), "create or update should return JsonObject with same UUID as the provided task when not present in the db");
-                      assertEquals(rootTask.getUuid(), reply.result().getString("root_task"), "create or update should return JsonObject with same root task id as the provided task");
-                      context.completeNow();
+                        assertTrue(reply.succeeded(), "create or update should have succeeded for valid file");
+                        assertNotNull(reply.result(), "create or update should return JsonObject representing new/udpated record.");
+                        assertNotNull(reply.result().getValue("id"), "returned record should have a valid id.");
+                        assertEquals(childTask.getUuid(), reply.result().getString("uuid"), "create or update should return JsonObject with same UUID as the provided task when not present in the db");
+                        assertEquals(rootTask.getUuid(), reply.result().getString("root_task"), "create or update should return JsonObject with same root task id as the provided task");
+                        context.completeNow();
                     });
                 });
             } else {
@@ -356,10 +358,447 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
         }));
     }
 
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - getTransferTaskTree should return tree of parent and children tasks")
+    @Disabled
+    public void getTransferTaskTreeTest(Vertx vertx, VertxTestContext context) {
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            initTestTransferTaskTree(testTreeReply -> {
+                if (testTreeReply.succeeded()) {
+                    TransferTask rootTask = testTreeReply.result().get(0);
+
+                    service.getTransferTaskTree(rootTask.getTenantId(), rootTask.getUuid(), reply -> {
+                        context.verify(() -> {
+                            assertTrue(reply.succeeded(), "getTransferTaskTree should have succeeded for valid file");
+                            assertNotNull(reply.result(), "getTransferTaskTree should return Array JsonObject " +
+                                    "representing transfer task tree record.");
+                            assertEquals(testTreeReply.result().size(), reply.result().size(), "JsonObject Array size " +
+                                    "should equal the transfer tasks added");
+
+                            testTreeReply.result().forEach(testTreeTask -> {
+                                AtomicBoolean match = new AtomicBoolean(false);
+                                reply.result().forEach(item -> {
+                                    if (!match.get()) {
+                                        TransferTask task = new TransferTask((JsonObject) item);
+                                        if (task.getUuid().equals(testTreeTask.getUuid())) {
+                                            assertEquals(task, testTreeTask, "Task retrieved should match the test " +
+                                                    "transfer task added");
+                                            match.set(true);
+                                        }
+                                    }
+                                });
+                                if (!match.get()) {
+                                    fail("All added test transfer tasks should be returned by getTransferTaskTree");
+                                }
+                            });
+                            context.completeNow();
+                        });
+                    });
+                } else {
+                    context.failNow(testTreeReply.cause());
+                }
+            });
+        }));
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - setTransferTaskCanceledWhereNotCompleted - transfers not completed," +
+            "cancelled, or failed should be set to cancelled.")
+    public void setTransferTaskWhereNotCompletedTest(Vertx vertx, VertxTestContext context) {
+        List<TransferStatusType> completedStatus = Arrays.asList(TransferStatusType.COMPLETED,
+                TransferStatusType.CANCELLED, TransferStatusType.CANCELED_ERROR, TransferStatusType.FAILED,
+                TransferStatusType.CANCELING_WAITING);
+
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            for (TransferStatusType status : TransferStatusType.values()) {
+                final TransferTask rootTransferTask = _createTestTransferTask();
+                rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
+                rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+                rootTransferTask.setStatus(status);
+
+                //insert test transfer task
+                service.create(rootTransferTask.getTenantId(), rootTransferTask, rootReply -> {
+                    if (rootReply.failed()) {
+                        //Test transfer task was not created
+                        context.failNow(rootReply.cause());
+                    }
+                });
+
+                service.setTransferTaskCanceledWhereNotCompleted(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), parentReply -> {
+                    if (parentReply.failed()) {
+                        context.failNow(parentReply.cause());
+                    } else {
+                        //verify that task is updated
+                        service.getById(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), afterSetReply -> {
+                            if (afterSetReply.failed()) {
+                                context.failNow(afterSetReply.cause());
+                            } else {
+                                context.verify(() -> {
+                                    assertTrue(afterSetReply.succeeded(),
+                                            "setTransferTaskCanceledWhereNotCompleted should have succeeded " +
+                                                    "for valid transfer task");
+
+                                    TransferTask updatedTask = new TransferTask(afterSetReply.result());
+                                    if (!completedStatus.contains(status)) {
+                                        assertTrue(updatedTask.getStatus().equals(TransferStatusType.CANCELLED),
+                                                "Transfer task with active status should be set to CANCELLED");
+
+                                        assertTrue(updatedTask.getLastUpdated().isAfter(rootTransferTask.getLastUpdated()),
+                                                "TransferTask last updated time should be updated after " +
+                                                        "setTransferTaskCanceledWhereNotCompleted completes");
+                                    } else {
+                                        assertEquals(status, updatedTask.getStatus(), "Transfer task with " +
+                                                "inactive status should not be changed");
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+            context.completeNow();
+        }));
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - getAll should return all transfer tasks")
+    public void getAllReturnsAllTasksTest(Vertx vertx, VertxTestContext context) {
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            initTestTransferTaskTree(testTreeReply -> {
+                if (testTreeReply.succeeded()) {
+                    TransferTask rootTask = testTreeReply.result().get(0);
+
+                    service.getAll(rootTask.getTenantId(), LIMIT, OFFSET, reply -> {
+                        context.verify(() -> {
+                            assertTrue(reply.succeeded(), "getAll should have succeeded for valid tenant");
+                            assertNotNull(reply.result(), "getAll should return Array JsonObject " +
+                                    "representing all the transfer tasks");
+                            assertEquals(testTreeReply.result().size(), reply.result().size(),
+                                    "JsonObject Array size should equal the transfer tasks added");
+
+                            testTreeReply.result().forEach(testTreeTask -> {
+                                AtomicBoolean match = new AtomicBoolean(false);
+                                reply.result().forEach(item -> {
+                                    if (!match.get()) {
+                                        TransferTask task = new TransferTask((JsonObject) item);
+                                        if (task.getUuid().equals(testTreeTask.getUuid())) {
+                                            assertEquals(task, testTreeTask,
+                                                    "Task retrieved should match the test transfer task added");
+                                            match.set(true);
+                                        }
+                                    }
+                                });
+                                if (!match.get()) {
+                                    fail("All added test transfer tasks should be returned by getTransferTaskTree");
+                                    context.failNow(testTreeReply.cause());
+                                }
+                            });
+                            context.completeNow();
+                        });
+                    });
+                } else {
+                    context.failNow(testTreeReply.cause());
+                }
+            });
+        }));
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - getAllForUser should return tasks with user as the owner")
+    public void getAlLForUserReturnsTasksWithUserAsOwnerTest(Vertx vertx, VertxTestContext context) {
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            for (TransferStatusType status : TransferStatusType.values()) {
+                final TransferTask testUserTransferTask = _createTestTransferTask();
+                testUserTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
+                testUserTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+                testUserTransferTask.setStatus(status);
+                testUserTransferTask.setOwner(TEST_USERNAME);
+
+                final TransferTask testOtherUserTransferTask = _createTestTransferTask();
+                testOtherUserTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
+                testOtherUserTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+                testOtherUserTransferTask.setStatus(status);
+                testOtherUserTransferTask.setOwner(TEST_OTHER_USERNAME);
+
+                //insert test transfer task
+                service.create(testOtherUserTransferTask.getTenantId(), testOtherUserTransferTask, testUserReply -> {
+                    if (testUserReply.failed()) {
+                        //Test transfer task was not created
+                        context.failNow(testUserReply.cause());
+                    }
+                });
+
+                service.create(testUserTransferTask.getTenantId(), testUserTransferTask, testUserReply -> {
+                    if (testUserReply.failed()) {
+                        //Test transfer task was not created
+                        context.failNow(testUserReply.cause());
+                    } else {
+                        TransferTask addedTestUserTask = new TransferTask(testUserReply.result());
+                        //insert test transfer task
+                        service.getAllForUser(testUserTransferTask.getTenantId(), testUserTransferTask.getOwner(), LIMIT, OFFSET, getReply -> {
+                            if (getReply.failed()) {
+                                context.failNow(getReply.cause());
+                            } else {
+                                context.verify(() -> {
+                                    assertTrue(getReply.succeeded(),
+                                            "getAllForUser should have succeeded for valid user");
+
+                                    getReply.result().forEach(task -> {
+                                        TransferTask getTask = new TransferTask((JsonObject) task);
+
+                                        assertEquals(TEST_USERNAME, getTask.getOwner(),
+                                                "Owner should match user specified in getAllForUser");
+                                        assertNotEquals(TEST_OTHER_USERNAME, getTask.getOwner(),
+                                                "Owner should not match user not specified in getAllForUser");
+                                    });
+                                });
+                                context.completeNow();
+                            }
+                        });
+                    }
+                });
+
+            }
+        }));
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - getById should return task with matching id")
+    public void getByIdReturnsMatchingTaskTest(Vertx vertx, VertxTestContext context) {
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            final TransferTask rootTransferTask = _createTestTransferTask();
+            rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
+            rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+            rootTransferTask.setStatus(TransferStatusType.QUEUED);
+
+            //insert test transfer task
+            service.create(rootTransferTask.getTenantId(), rootTransferTask, rootReply -> {
+                if (rootReply.failed()) {
+                    //Test transfer task was not created
+                    context.failNow(rootReply.cause());
+                } else {
+                    TransferTask addedRootTask = new TransferTask(rootReply.result());
+                    service.getById(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), getByIdReply -> {
+                        if (getByIdReply.failed()) {
+                            context.failNow(getByIdReply.cause());
+                        } else {
+                            context.verify(() -> {
+                                assertTrue(getByIdReply.succeeded(),
+                                        "setTransferTaskCanceledWhereNotCompleted should have succeeded " +
+                                                "for valid transfer task");
+
+                                TransferTask getTask = new TransferTask(getByIdReply.result());
+                                assertEquals(addedRootTask, getTask,
+                                        "getById should return transfer task with matching uuid");
+                                context.completeNow();
+                            });
+                        }
+                    });
+                }
+            });
+        }));
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - getById should return null if no task has matching id")
+    public void getByIdShouldReturnNullIfNotExistTest(Vertx vertx, VertxTestContext context) {
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            final TransferTask rootTransferTask = _createTestTransferTask();
+            rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
+            rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+            rootTransferTask.setStatus(TransferStatusType.QUEUED);
+
+            service.getById(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), getByIdReply -> {
+                if (getByIdReply.failed()) {
+                    context.failNow(getByIdReply.cause());
+                } else {
+                    context.verify(() -> {
+                        assertTrue(getByIdReply.succeeded(),
+                                "setTransferTaskCanceledWhereNotCompleted should have succeeded " +
+                                        "for valid transfer task");
+
+                        assertNull(getByIdReply.result(),
+                                "getById should return null if no transfer task found with uuid");
+                        context.completeNow();
+                    });
+                }
+            });
+        }));
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - getActiveRootTaskIds should return array of uuid and tenant_id with active status")
+    public void getActiveRootTaskIdsReturnsActiveTasksTest(Vertx vertx, VertxTestContext context) {
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            for (TransferStatusType status : TransferStatusType.values()) {
+                final TransferTask rootTransferTask = _createTestTransferTask();
+                rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
+                rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+                rootTransferTask.setStatus(status);
+
+                //insert test transfer task
+                service.create(rootTransferTask.getTenantId(), rootTransferTask, rootReply -> {
+                    if (rootReply.failed()) {
+                        //Test transfer task was not created
+                        context.failNow(rootReply.cause());
+                    }
+                });
+
+                service.getActiveRootTaskIds(getActiveTaskReply -> {
+                    if (getActiveTaskReply.failed()) {
+                        context.failNow(getActiveTaskReply.cause());
+                    } else {
+                        //verify that task retrieved is active
+                        context.verify(() -> {
+                            assertTrue(getActiveTaskReply.succeeded(),
+                                    "setTransferTaskCanceledWhereNotCompleted should have succeeded " +
+                                            "for valid transfer task");
+
+                            getActiveTaskReply.result().forEach(task -> {
+                                if (status.isActive()) {
+                                    JsonObject jsonTask = (JsonObject) task;
+                                    assertEquals(rootTransferTask.getUuid(), jsonTask.getString("uuid"),
+                                            "getActiveTaskReply uuid should match the active transfer task added");
+                                    assertEquals(rootTransferTask.getTenantId(), jsonTask.getString("tenant_id"),
+                                            "getActiveTaskReply tenant_id should match the active transfer task added");
+                                } else {
+                                    assertEquals(0, getActiveTaskReply.result().size(),
+                                            "getActiveTaskReply should respond with empty array if no active " +
+                                                    "transfer tasks");
+                                }
+                            });
+                        });
+                        context.completeNow();
+                    }
+                });
+            }
+        }));
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - getAllParentsCancelledOrCompleted should return array of " +
+            "parent transfer tasks with status of cancelled or completed")
+    public void getAllParentsCancelledOrCompleted(Vertx vertx, VertxTestContext context) {
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            initTestTransferTaskTree(testTreeReply -> {
+                //initial tree setup
+                if (testTreeReply.succeeded()) {
+                    TransferTask rootTask = testTreeReply.result().get(0);
+                    TransferTask parentTask = testTreeReply.result().get(1);
+                    TransferTask child1Task = testTreeReply.result().get(2);
+                    TransferTask child2Task = testTreeReply.result().get(3);
+
+                    //update child tasks to cancelled and completed
+                    service.updateStatus(child1Task.getTenantId(), child1Task.getUuid(), TransferStatusType.CANCELLED.name(), child1Reply -> {
+                        if (child1Reply.failed()) {
+                            context.failNow(child1Reply.cause());
+                        } else {
+                            service.updateStatus(child2Task.getTenantId(), child2Task.getUuid(), TransferStatusType.COMPLETED.name(), child2Reply -> {
+                                if (child2Reply.failed()) {
+                                    context.failNow(child2Reply.cause());
+                                } else {
+                                    service.allChildrenCancelledOrCompleted(parentTask.getTenantId(), parentTask.getUuid(), reply -> {
+                                        if (reply.succeeded()) {
+                                            context.verify(() -> {
+                                                assertTrue(reply.result(), "allChildrenCancelledOrCompleted should have succeeded for valid parent");
+                                                context.completeNow();
+                                            });
+                                        } else {
+                                            context.failNow(reply.cause());
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    context.failNow(testTreeReply.cause());
+                }
+            });
+        }));
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - allChildrenNotCancelledOrCompleted should return array of " +
+            "child transfer tasks with status of cancelled or completed")
+    public void allChildrenNotCancelledOrCompleted(Vertx vertx, VertxTestContext context) {
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            initTestTransferTaskTree(testTreeReply -> {
+                //initial tree setup
+                if (testTreeReply.succeeded()) {
+                    TransferTask rootTask = testTreeReply.result().get(0);
+                    TransferTask parentTask = testTreeReply.result().get(1);
+                    TransferTask child1Task = testTreeReply.result().get(2);
+                    TransferTask child2Task = testTreeReply.result().get(3);
+
+
+                    //update child tasks to cancelled and completed
+                    service.updateStatus(child1Task.getTenantId(), child1Task.getUuid(), TransferStatusType.CANCELLED.name(), child1Reply -> {
+                        if (child1Reply.failed()) {
+                            context.failNow(child1Reply.cause());
+                        } else {
+                            service.updateStatus(child2Task.getTenantId(), child2Task.getUuid(), TransferStatusType.COMPLETED.name(), child2Reply -> {
+                                if (child1Reply.failed()) {
+                                    context.failNow(child1Reply.cause());
+                                } else {
+                                    service.allChildrenCancelledOrCompleted(rootTask.getTenantId(), parentTask.getUuid(), reply -> {
+                                        if (reply.succeeded()) {
+                                            context.verify(() -> {
+                                                assertTrue(reply.result(), "allChildrenNotCancelledOrCompleted should have succeeded for valid parent");
+                                                context.completeNow();
+                                            });
+                                        } else {
+                                            context.failNow(reply.cause());
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    context.failNow(testTreeReply.cause());
+                }
+            });
+        }));
+    }
+
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - cancelAll should update all task status to CANCELING_WAITING")
+    public void cancelAllUpdatesStatusToCancelledTest(Vertx vertx, VertxTestContext context) {
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            initTestTransferTaskTree(testTreeReply -> {
+                if (testTreeReply.succeeded()) {
+                    TransferTask rootTask = testTreeReply.result().get(0);
+
+                    service.cancelAll(rootTask.getTenantId(), reply -> {
+                        if (reply.succeeded()) {
+                            service.getAll(rootTask.getTenantId(), LIMIT, OFFSET, getReply -> {
+                                context.verify(() -> {
+                                    assertTrue(reply.succeeded(), "cancelAll should have succeeded for valid tenant");
+                                    getReply.result().forEach(task -> {
+                                        TransferTask transferTask = new TransferTask((JsonObject) task);
+                                        assertEquals(TransferStatusType.CANCELING_WAITING, transferTask.getStatus(),
+                                                "All transfers should have status of " + TransferStatusType.CANCELING_WAITING);
+                                    });
+                                    context.completeNow();
+                                });
+                            });
+                        } else {
+                            context.failNow(reply.cause());
+                        }
+                    });
+                } else {
+                    context.failNow(testTreeReply.cause());
+                }
+            });
+        }));
+    }
+
 
     /**
      * Generates a tree of {@link TransferTask} with root, parent, and 2 child tasks. The resolved value will be a list
      * of the persisted transfer tasks to use in tests.
+     *
      * @param handler the callback to pass the list of persisted {@link TransferTask}
      */
     public void initTestTransferTaskTree(Handler<AsyncResult<List<TransferTask>>> handler) {
@@ -412,6 +851,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
      * Generates a TransferTask configured with the {@code parentTransferTask} as the parent. The parent's root task id is
      * set as the child's root unless it is null, in which case, the parent is set as the child's root. Random
      * source and dest subpaths are generated for the client based on the source and dest of the parent.
+     *
      * @param parentTransferTask the parent {@code TransferTask} of the child
      * @return a new {@link TransferTask} instance initialized wiht the given parent.
      */
@@ -436,6 +876,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
      * Generates a TransferTask configured with the {@code parentTransferTask} as the parent. The parent's root task id is
      * set as the child's root unless it is null, in which case, the parent is set as the child's root. Random
      * source and dest subpaths are generated for the client based on the source and dest of the parent.
+     *
      * @param parentTransferTask the parent {@code TransferTask} serialized as {@link JsonObject} of the child
      * @return a new {@link TransferTask} instance initialized wiht the given parent.
      */
@@ -446,7 +887,8 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
     /**
      * Async creates {@code count} transfer tasks by calling {@link #addTransferTask(TransferTask)} using a {@link CompositeFuture}.
      * The saved tasks are returned as a {@link JsonArray} to the callback once complete
-     * @param count number of tasks to create
+     *
+     * @param count   number of tasks to create
      * @param handler the callback with the saved tasks
      */
     protected void addTransferTasks(int count, TransferTask parentTask, Handler<AsyncResult<JsonArray>> handler) {
@@ -454,7 +896,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
 
         // generate a future for each task to save
         List<Future> futureTasks = new ArrayList<>();
-        for (int i=0; i<count; i++) {
+        for (int i = 0; i < count; i++) {
             futureTasks.add(addTransferTask(parentTask));
         }
         // collect them all into a composite future so we wait until they are all complete.
@@ -478,6 +920,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
 
     /**
      * Creates a promise that resolves when a new {@link TransferTask} is inserted into the db.
+     *
      * @return a future that resolves the saved task.
      */
     protected Future<JsonObject> addTransferTask(TransferTask parentTransferTask) {
@@ -499,10 +942,11 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
     /**
      * Creates a promise that resolves when a new {@link TransferTask} is fetched from calling
      * {@link TransferTaskDatabaseService#findChildTransferTask)}
-     * @param tenantId the tenant
+     *
+     * @param tenantId   the tenant
      * @param rootTaskId the uuid of the root task of the child to search for
-     * @param src the source path of the child to search for
-     * @param dest the dest path of the child to search for
+     * @param src        the source path of the child to search for
+     * @param dest       the dest path of the child to search for
      * @return a future that resolves the search results.
      */
     protected Future<JsonObject> futureFindTransferTask(String tenantId, String rootTaskId, String src, String dest) {

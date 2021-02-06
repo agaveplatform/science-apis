@@ -421,34 +421,34 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
                     if (rootReply.failed()) {
                         //Test transfer task was not created
                         context.failNow(rootReply.cause());
-                    }
-                });
-
-                service.setTransferTaskCanceledWhereNotCompleted(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), parentReply -> {
-                    if (parentReply.failed()) {
-                        context.failNow(parentReply.cause());
                     } else {
-                        //verify that task is updated
-                        service.getById(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), afterSetReply -> {
-                            if (afterSetReply.failed()) {
-                                context.failNow(afterSetReply.cause());
+                        service.setTransferTaskCanceledWhereNotCompleted(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), parentReply -> {
+                            if (parentReply.failed()) {
+                                context.failNow(parentReply.cause());
                             } else {
-                                context.verify(() -> {
-                                    assertTrue(afterSetReply.succeeded(),
-                                            "setTransferTaskCanceledWhereNotCompleted should have succeeded " +
-                                                    "for valid transfer task");
-
-                                    TransferTask updatedTask = new TransferTask(afterSetReply.result());
-                                    if (!completedStatus.contains(status)) {
-                                        assertTrue(updatedTask.getStatus().equals(TransferStatusType.CANCELLED),
-                                                "Transfer task with active status should be set to CANCELLED");
-
-                                        assertTrue(updatedTask.getLastUpdated().isAfter(rootTransferTask.getLastUpdated()),
-                                                "TransferTask last updated time should be updated after " +
-                                                        "setTransferTaskCanceledWhereNotCompleted completes");
+                                //verify that task is updated
+                                service.getById(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), afterSetReply -> {
+                                    if (afterSetReply.failed()) {
+                                        context.failNow(afterSetReply.cause());
                                     } else {
-                                        assertEquals(status, updatedTask.getStatus(), "Transfer task with " +
-                                                "inactive status should not be changed");
+                                        context.verify(() -> {
+                                            assertTrue(afterSetReply.succeeded(),
+                                                    "setTransferTaskCanceledWhereNotCompleted should have succeeded " +
+                                                            "for valid transfer task");
+
+                                            TransferTask updatedTask = new TransferTask(afterSetReply.result());
+                                            if (!completedStatus.contains(status)) {
+                                                assertTrue(updatedTask.getStatus().equals(TransferStatusType.CANCELLED),
+                                                        "Transfer task with active status should be set to CANCELLED");
+
+                                                assertTrue(updatedTask.getLastUpdated().isAfter(rootTransferTask.getLastUpdated()),
+                                                        "TransferTask last updated time should be updated after " +
+                                                                "setTransferTaskCanceledWhereNotCompleted completes");
+                                            } else {
+                                                assertEquals(status, updatedTask.getStatus(), "Transfer task with " +
+                                                        "inactive status should not be changed");
+                                            }
+                                        });
                                     }
                                 });
                             }
@@ -629,49 +629,56 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
     @Test
     @DisplayName("TransferTaskDatabaseVerticle - getActiveRootTaskIds should return array of uuid and tenant_id with active status")
     public void getActiveRootTaskIdsReturnsActiveTasksTest(Vertx vertx, VertxTestContext context) {
+        List<TransferStatusType> COMPLETED_STATUS = Arrays.asList(TransferStatusType.COMPLETED,
+                TransferStatusType.CANCELLED, TransferStatusType.CANCELED_ERROR, TransferStatusType.FAILED);
+
         service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            //add Transfer Task for each of the different TransferStatusType
+            ArrayList<TransferTask> tasks = new ArrayList<>();
             for (TransferStatusType status : TransferStatusType.values()) {
                 final TransferTask rootTransferTask = _createTestTransferTask();
                 rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
                 rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
                 rootTransferTask.setStatus(status);
-
-                //insert test transfer task
-                service.create(rootTransferTask.getTenantId(), rootTransferTask, rootReply -> {
-                    if (rootReply.failed()) {
-                        //Test transfer task was not created
-                        context.failNow(rootReply.cause());
-                    }
-                });
-
-                service.getActiveRootTaskIds(getActiveTaskReply -> {
-                    if (getActiveTaskReply.failed()) {
-                        context.failNow(getActiveTaskReply.cause());
-                    } else {
-                        //verify that task retrieved is active
-                        context.verify(() -> {
-                            assertTrue(getActiveTaskReply.succeeded(),
-                                    "setTransferTaskCanceledWhereNotCompleted should have succeeded " +
-                                            "for valid transfer task");
-
-                            getActiveTaskReply.result().forEach(task -> {
-                                if (status.isActive()) {
-                                    JsonObject jsonTask = (JsonObject) task;
-                                    assertEquals(rootTransferTask.getUuid(), jsonTask.getString("uuid"),
-                                            "getActiveTaskReply uuid should match the active transfer task added");
-                                    assertEquals(rootTransferTask.getTenantId(), jsonTask.getString("tenant_id"),
-                                            "getActiveTaskReply tenant_id should match the active transfer task added");
-                                } else {
-                                    assertEquals(0, getActiveTaskReply.result().size(),
-                                            "getActiveTaskReply should respond with empty array if no active " +
-                                                    "transfer tasks");
-                                }
-                            });
-                        });
-                        context.completeNow();
-                    }
-                });
+                tasks.add(rootTransferTask);
             }
+
+            addListOfTransferTasks(tasks, addResult -> {
+                if (addResult.succeeded()){
+                    service.getActiveRootTaskIds(getActiveTaskReply -> {
+                        if (getActiveTaskReply.failed()) {
+                            context.failNow(getActiveTaskReply.cause());
+                        } else {
+                            //verify that task retrieved is active
+                            context.verify(() -> {
+                                assertTrue(getActiveTaskReply.succeeded(),
+                                        "setTransferTaskCanceledWhereNotCompleted should have succeeded " +
+                                                "for valid transfer task");
+                                tasks.forEach(rootTask ->{
+                                    AtomicBoolean found = new AtomicBoolean(false);
+                                    getActiveTaskReply.result().forEach(taskReply -> {
+                                        JsonObject jsonTask = (JsonObject) taskReply;
+                                        if (jsonTask.getString("uuid").equals(rootTask.getUuid())){
+                                            assertEquals(rootTask.getTenantId(), jsonTask.getString("tenant_id"),
+                                                    "getActiveTaskReply tenant_id should match the active transfer task added");
+                                            assertFalse(COMPLETED_STATUS.contains(rootTask.getStatus()), "getActiveRootTaskIds should only return tasks with active status");
+                                            found.set(true);
+                                        }
+                                    });
+
+                                    if (!found.get()){
+                                        //task is inactive status
+                                        assertTrue(COMPLETED_STATUS.contains(rootTask.getStatus()), "getActiveRootTaskIds should not return tasks with inactive status");
+                                    }
+                                });
+                                context.completeNow();
+                            });
+                        }
+                    });
+                } else {
+                    context.failNow(addResult.cause());
+                }
+            });
         }));
     }
 
@@ -919,17 +926,50 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
     }
 
     /**
+     * Async creates {@code count} transfer tasks by calling {@link #addTransferTask(TransferTask)} using a {@link CompositeFuture}.
+     * The saved tasks are returned as a {@link JsonArray} to the callback once complete
+     *
+     * @param tasks list of Transfer Tasks to add
+     * @param handler the callback with the saved tasks
+     */
+    protected void addListOfTransferTasks(ArrayList<TransferTask> tasks, Handler<AsyncResult<JsonArray>> handler) {
+        JsonArray savedTasks = new JsonArray();
+
+        // generate a future for each task to save
+        List<Future> futureTasks = new ArrayList<>();
+        for (int i = 0; i < tasks.size(); i++) {
+            futureTasks.add(addTransferTask(tasks.get(i)));
+        }
+        // collect them all into a composite future so we wait until they are all complete.
+        CompositeFuture.all(futureTasks).setHandler(rh -> {
+            if (rh.succeeded()) {
+                CompositeFuture composite = rh.result();
+                // iterate over the completed futures adding the result from the db call into our saved tasks array
+                for (int index = 0; index < composite.size(); index++) {
+                    if (composite.succeeded(index) && composite.resultAt(index) != null) {
+                        savedTasks.add(composite.<JsonObject>resultAt(index));
+                    }
+                }
+                // resolve the callback handler with the saved tasks
+                handler.handle(Future.succeededFuture(savedTasks));
+            } else {
+                // fail now. this didn't work
+                handler.handle(Future.failedFuture(rh.cause()));
+            }
+        });
+    }
+
+    /**
      * Creates a promise that resolves when a new {@link TransferTask} is inserted into the db.
      *
+     * @param parentTransferTask task to add
      * @return a future that resolves the saved task.
      */
     protected Future<JsonObject> addTransferTask(TransferTask parentTransferTask) {
 
         Promise<JsonObject> promise = Promise.promise();
 
-        TransferTask tt = _createChildTestTransferTask(parentTransferTask);
-
-        service.create(tt.getTenantId(), tt, resp -> {
+        service.create(parentTransferTask.getTenantId(), parentTransferTask, resp -> {
             if (resp.failed()) {
                 promise.fail(resp.cause());
             } else {

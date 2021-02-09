@@ -5,7 +5,7 @@
 ##############################################################
 # MySQL
 ##############################################################
-version: '3.7'
+version: '3.3'
 
 networks:
   ${project.artifactId}:
@@ -20,14 +20,6 @@ services:
       MARIADB_PASSWORD: ${foundation.db.password}
     labels:
       - "traefik.enable=false"
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
     networks:
       - ${project.artifactId}
 

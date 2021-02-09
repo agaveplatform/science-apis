@@ -126,7 +126,8 @@ public class SystemRoleManager {
 			getSystem().removeRole(role);
 		}
 
-		setSystem(dao.merge(getSystem()));
+		dao.persist(getSystem());
+//		setSystem(dao.merge(getSystem()));
 
 		if (!getSystem().isPubliclyAvailable())
 		{

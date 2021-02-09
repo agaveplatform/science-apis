@@ -11,7 +11,7 @@ ENV FLYWAY_EDITION community
 COPY conf/flyway.conf 			$FLYWAY_HOME/conf/flyway.conf
 COPY sql 						$FLYWAY_HOME/sql
 COPY docker-entrypoint.sh 		/docker-entrypoint.sh
-COPY lib/** 					$FLYWAY_HOME/lib/
+COPY lib/** 					$FLYWAY_HOME/jars/
 
 USER root
 

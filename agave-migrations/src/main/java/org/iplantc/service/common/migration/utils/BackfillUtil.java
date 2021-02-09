@@ -3,7 +3,6 @@
  */
 package org.iplantc.service.common.migration.utils;
 
-import org.apache.log4j.Logger;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 
@@ -19,9 +18,7 @@ import java.sql.*;
  */
 public class BackfillUtil {
     
-	private static final Logger log = Logger.getLogger(BackfillUtil.class);
-	
-    /**
+	/**
      * Fills the {@code uuid} field of the given table with a valid, unique
      * {@link AgaveUUID} if not already present.
      * 

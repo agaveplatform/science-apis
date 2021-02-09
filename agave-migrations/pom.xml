@@ -111,7 +111,7 @@
                                     <include>${project.artifactId}-${project.version}.jar</include>
                                 </resource>
                                 <resource>
-                                    <targetPath>/lib</targetPath>
+                                    <targetPath>/jar</targetPath>
                                     <directory>${basedir}/target/dependency</directory>
                                     <include>**</include>
 <!--                                    <exclude>mysql*.jar</exclude>-->
@@ -278,11 +278,11 @@
         </dependency>
 
         <!-- logging depedencies -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-log4j12</artifactId>
-            <version>${slf4j-log4j12.version}</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.slf4j</groupId>-->
+<!--            <artifactId>slf4j-log4j12</artifactId>-->
+<!--            <version>${slf4j-log4j12.version}</version>-->
+<!--        </dependency>-->
 
     </dependencies>
 </project>

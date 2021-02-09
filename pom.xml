@@ -213,6 +213,8 @@
         <hibernate-validator.PROFILES.version>5.0.1.Final</hibernate-validator.PROFILES.version>
 
         <!-- OTHER properties (in alphabetical order) -->
+        <await-maven-plugin.initialWait>5000</await-maven-plugin.initialWait>
+        <docker-compose-plugin.awaitDuration>10</docker-compose-plugin.awaitDuration>
         <docker.image.commit.hash>${buildNumber}</docker.image.commit.hash>
         <force.check.update>true</force.check.update>
         <force.check.version>true</force.check.version>
@@ -230,6 +232,7 @@
         <skip.integration.irods4.tests>true</skip.integration.irods4.tests>
         <skip.integration.sftp.tests>true</skip.integration.sftp.tests>
         <skip.integration.http.tests>true</skip.integration.http.tests>
+        <skip.post-integration.pause>true</skip.post-integration.pause>
 
     </properties>
 
@@ -412,6 +415,28 @@
                                 <skip>${skip.integration.tests}</skip>
                             </configuration>
                         </execution>
+                        <execution>
+                            <id>${project.artifactId}sleep</id>
+                            <phase>post-integration-test</phase>
+                            <goals>
+                                <goal>up</goal>
+                            </goals>
+                            <configuration>
+                                <projectName>post-integration-pause</projectName>
+                                <detachedMode>false</detachedMode>
+                                <skip>${skip.post-integration.pause}</skip>
+                                <composeFiles>
+                                    <composeFile>${main.basedir}/compose/third-party/docker-compose-utils.yml</composeFile>
+                                </composeFiles>
+                                <envVars>
+                                    <sleepSeconds>${docker-compose-plugin.awaitDuration}</sleepSeconds>
+                                    <sleepMessage>Pausing for ${docker-compose-plugin.awaitDuration} seconds to allow previous stack to completely tear down...</sleepMessage>
+                                </envVars>
+                                <services>
+                                    <service>pause</service>
+                                </services>
+                            </configuration>
+                        </execution>
                     </executions>
                 </plugin>
 
@@ -431,7 +456,7 @@
                             </goals>
                             <configuration>
                                 <skip>${skip.integration.tests}</skip>
-                                <initialWait>5000</initialWait>
+                                <initialWait>${await-maven-plugin.initialWait}</initialWait>
                                 <poll>
                                     <attempts>15</attempts>
                                     <sleep>2000</sleep>

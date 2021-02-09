@@ -62,7 +62,7 @@ public class NotificationAttemptUUIDEntityLookupIT implements AbstractUUIDTest<N
             new NotificationDao().persist(notification);
             notificationAttempt = new NotificationAttempt(notification.getUuid(), notification.getCallbackUrl(),
                     notification.getOwner(), notification.getAssociatedUuid(),
-                    notification.getEvent(), "This is a test", Timestamp.from(Instant.now()));
+                    notification.getEvent(), "This is a test", Instant.now());
             notificationAttempt.setAssociatedUuid(notification.getAssociatedUuid());
             FailedNotificationAttemptQueue.getInstance().push(notificationAttempt);
         } catch (Exception e) {

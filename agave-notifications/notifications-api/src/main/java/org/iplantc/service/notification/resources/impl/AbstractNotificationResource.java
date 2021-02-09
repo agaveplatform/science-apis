@@ -24,7 +24,7 @@ public class AbstractNotificationResource extends AbstractAgaveResource {
     /**
      * Fetches the {@link Notification} object for the uuid in the URL or throws 
      * an exception that can be re-thrown from the route method.
-     * @param softwareId
+     * @param uuid
      * @return Software object referenced in the path
      * @throws ResourceException
      */

@@ -2,6 +2,7 @@ package org.iplantc.service.notification.providers.realtime.clients;
 
 import java.io.IOException;
 import java.sql.Timestamp;
+import java.time.Instant;
 
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.notification.AbstractNotificationTest;
@@ -51,7 +52,7 @@ public class PushpinRealtimeClientTest extends AbstractNotificationTest {
 		NotificationAttempt attempt = new NotificationAttempt(notification.getUuid(), 
 				notification.getCallbackUrl(),
 				notification.getOwner(), notification.getAssociatedUuid(), 
-				"RUNNING", json.toString(), new Timestamp(System.currentTimeMillis()));
+				"RUNNING", json.toString(), Instant.now());
 
 		RealtimeClient client = new PushpinRealtimeClient(attempt);
 		NotificationAttemptResponse response = client.publish();

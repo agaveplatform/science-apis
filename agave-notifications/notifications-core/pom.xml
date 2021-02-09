@@ -103,11 +103,5 @@
 			<version>${sendgrid-java.version}</version>
 		</dependency>
 
-		<!-- MongoDB -->
-		<dependency>
-			<groupId>org.mongodb</groupId>
-			<artifactId>mongo-java-driver</artifactId>
-			<version>${mongo-java-driver.version}</version>
-		</dependency>
 	</dependencies>
 </project>

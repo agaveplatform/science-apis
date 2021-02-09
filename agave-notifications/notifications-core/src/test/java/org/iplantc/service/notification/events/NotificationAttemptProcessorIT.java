@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Date;
 
 import org.iplantc.service.common.exceptions.UUIDException;
@@ -105,8 +106,8 @@ public class NotificationAttemptProcessorIT extends AbstractNotificationTest {
     
     verify(provider).publish();
     verify(processor).isNotificationStillActive();
-    verify(attempt).setStartTime(any(Date.class));
-    verify(attempt).setEndTime(any(Date.class));
+    verify(attempt).setStartTime(any(Instant.class));
+    verify(attempt).setEndTime(any(Instant.class));
     verify(processor).handleSuccess();
     verify(attempt).setAttemptNumber(1);
     
@@ -150,8 +151,8 @@ public class NotificationAttemptProcessorIT extends AbstractNotificationTest {
 	    
 	    verify(processor, times(2)).fire();
 	    verify(processor, times(2)).isNotificationStillActive();
-	    verify(attempt, times(2)).setStartTime(any(Date.class));
-	    verify(attempt, times(2)).setEndTime(any(Date.class));
+	    verify(attempt, times(2)).setStartTime(any(Instant.class));
+	    verify(attempt, times(2)).setEndTime(any(Instant.class));
 	    verify(processor).handleFailure(attempt);
 	    verify(processor).pushNotificationAttemptToRetryQueue(attempt, 5);
 	    verify(attempt).setAttemptNumber(1);

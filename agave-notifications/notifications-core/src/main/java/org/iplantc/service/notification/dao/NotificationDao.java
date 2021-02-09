@@ -853,7 +853,9 @@ public class NotificationDao extends AbstractDao
 			session.disableFilter("notificationTenantFilter");
 			
 			String sql = "UPDATE notifications n "
-					+ "SET n.status = :status, n.is_visible = :visible, n.last_updated = CURRENT_TIMESTAMP "
+					+ "SET n.status = :status, "
+					+ "n.is_visible = :visible, "
+					+ "n.last_updated = CURRENT_TIMESTAMP "
 					+ "WHERE n.uuid = :uuid ";
 			
 			int rowsAffected = session.createSQLQuery(sql)

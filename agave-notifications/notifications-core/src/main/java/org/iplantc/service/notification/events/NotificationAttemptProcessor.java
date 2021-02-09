@@ -3,6 +3,7 @@
  */
 package org.iplantc.service.notification.events;
 
+import java.time.Instant;
 import java.util.Date;
 
 import org.apache.commons.lang.NotImplementedException;
@@ -96,9 +97,9 @@ public class NotificationAttemptProcessor {
 			}
 			
 			// process the attempt and save the timestamps
-			getAttempt().setStartTime(new Date());
+			getAttempt().setStartTime(Instant.now());
 			NotificationAttemptResponse response = getNotificationAttemptProvider().publish();
-			getAttempt().setEndTime(new Date());
+			getAttempt().setEndTime(Instant.now());
 			
 			// save the response for the decision making step
 			getAttempt().setResponse(response);
@@ -212,10 +213,9 @@ public class NotificationAttemptProcessor {
 			attempt.setAttemptNumber(attempt.getAttemptNumber() + 1);
 			
 			// set the next scheduled attempt time.
-			DateTime nextScheduledAttempt = new DateTime();
-			nextScheduledAttempt.plusSeconds(secondsUntilNextScheduledAttempt);
+			Instant nextScheduledAttempt = Instant.now().plusSeconds(secondsUntilNextScheduledAttempt);
 			
-			attempt.setScheduledTime(nextScheduledAttempt.toDate());
+			attempt.setScheduledTime(nextScheduledAttempt);
 			setAttempt(attempt);
 			
 			pushNotificationAttemptToRetryQueue(getAttempt(), secondsUntilNextScheduledAttempt);

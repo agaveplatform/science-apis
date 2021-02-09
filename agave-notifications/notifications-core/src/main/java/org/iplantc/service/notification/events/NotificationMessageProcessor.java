@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
 import java.sql.Timestamp;
+import java.time.Instant;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
@@ -122,7 +123,7 @@ public class NotificationMessageProcessor
 		NotificationAttempt attempt = new NotificationAttempt(event.getNotification().getUuid(), 
 				event.resolveMacros(event.getNotification().getCallbackUrl(), true), 
 				event.getOwner(), event.getAssociatedUuid().toString(), 
-				event.getEvent(), "", new Timestamp(System.currentTimeMillis()));
+				event.getEvent(), "", Instant.now());
 		
 		
 		try {

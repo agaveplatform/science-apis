@@ -1,6 +1,7 @@
 package org.iplantc.service.notification.resources.impl;
 
 import java.io.IOException;
+import java.util.Locale;
 
 import javax.ws.rs.WebApplicationException;
 //import javax.ws.rs.core.MediaType;
@@ -17,6 +18,9 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.notification.*;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.model.Notification;
+import org.iplantc.service.notification.model.NotificationPolicy;
+import org.iplantc.service.notification.model.enumerations.NotificationStatusType;
+import org.iplantc.service.notification.model.enumerations.RetryStrategyType;
 import org.json.JSONException;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -323,6 +327,128 @@ public class NotificationResourceImplIT extends AbstractNotificationTest {
 		}
 	}
 
+	@Test(singleThreaded = true, priority = 3)
+	public void updateFailedNotification()
+	{
+		JsonNode json = null;
+		Representation response = null;
+		ClientResource resource = null;
+		Notification notification = null;
+		try
+		{
+			NotificationPolicy policy = new NotificationPolicy();
+			policy.setRetryStrategyType(RetryStrategyType.NONE);
+			policy.setSaveOnFailure(false);
+
+			notification = createWebhookNotification();
+			notification.setAssociatedUuid(referenceNotification.getUuid());
+			notification.setPersistent(true);
+			notification.setOwner(TEST_USER);
+			notification.setStatus(NotificationStatusType.FAILED);
+			notification.setPolicy(policy);
+			dao.persist(notification);
+
+			ObjectMapper mapper = new ObjectMapper();
+
+			ObjectNode updateNotification = (ObjectNode)mapper.readTree(notification.toJSON());
+			updateNotification.remove("_links");
+			updateNotification.remove("owner");
+			updateNotification.remove("responseCode");
+			updateNotification.remove("attempts");
+			updateNotification.remove("success");
+			updateNotification.remove("lastSent");
+			((ObjectNode)updateNotification.get("policy")).put("saveOnFailure", true);
+
+			resource = new ClientResource("http://localhost:8182/"+ notification.getUuid());
+			resource.setReferrerRef("http://test.example.com");
+			resource.getRequest().getHeaders().add("X-JWT-ASSERTION-AGAVE_DEV", JWTClient.createJwtForTenantUser(TEST_USER, "agave.dev", false));
+
+			response = resource.post(new JsonRepresentation(updateNotification.toString()));
+
+			Assert.assertNotNull(response, "Expected json notification object, instead received null");
+			Assert.assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON,
+					"Expected json media type returned, instead received " + response.getMediaType());
+
+			json = verifyResponse(response, true);
+
+			Assert.assertTrue(((ObjectNode)json.get("policy")).get("saveOnFailure").asBoolean(), "Notification policy save_on_failure field should be updated to true in response from service");
+		}
+		catch (Exception e) {
+			Assert.fail("Unexpected exception thrown during notification update", e);
+		}
+		finally {
+			try {
+				if (json != null) {
+					if (json.has("id")) {
+						Notification n = dao.findByUuid(json.get("id").asText());
+						dao.delete(n);
+					}
+				}
+			} catch (Exception ignored) {}
+		}
+	}
+
+	@Test(singleThreaded = true, priority = 3 )
+	public void updateFailedTransientNotification()
+	{
+		JsonNode json = null;
+		Representation response = null;
+		ClientResource resource = null;
+		Notification notification = null;
+		try
+		{
+			NotificationPolicy policy = new NotificationPolicy();
+			policy.setRetryStrategyType(RetryStrategyType.NONE);
+			policy.setSaveOnFailure(false);
+
+			notification = createWebhookNotification();
+			notification.setAssociatedUuid(referenceNotification.getUuid());
+			notification.setPersistent(false);
+			notification.setOwner(TEST_USER);
+			notification.setStatus(NotificationStatusType.FAILED);
+			notification.setPolicy(policy);
+			dao.persist(notification);
+
+			ObjectMapper mapper = new ObjectMapper();
+
+			ObjectNode updateNotification = (ObjectNode)mapper.readTree(notification.toJSON());
+			updateNotification.remove("_links");
+			updateNotification.remove("owner");
+			updateNotification.remove("responseCode");
+			updateNotification.remove("attempts");
+			updateNotification.remove("success");
+			updateNotification.remove("lastSent");
+			((ObjectNode)updateNotification.get("policy")).put("saveOnFailure", true);
+
+			resource = new ClientResource("http://localhost:8182/"+ notification.getUuid());
+			resource.setReferrerRef("http://test.example.com");
+			resource.getRequest().getHeaders().add("X-JWT-ASSERTION-AGAVE_DEV", JWTClient.createJwtForTenantUser(TEST_USER, "agave.dev", false));
+
+			response = resource.post(new JsonRepresentation(updateNotification.toString()));
+
+			Assert.fail("Notification should fail to update a non-persistent failed notification.");
+		}
+		catch (ResourceException e) {
+			Assert.assertTrue(e.getMessage().toLowerCase().contains("precondition failed"),
+					"Updated a failed transient notification should result in a precondition exception " +
+							"being thrown here.");
+		}
+		catch (Exception e) {
+			Assert.fail("Updated a failed transient notification should result in a precondition exception " +
+					"being thrown here.", e);
+		}
+		finally {
+			try {
+				if (json != null) {
+					if (json.has("id")) {
+						Notification n = dao.findByUuid(json.get("id").asText());
+						dao.delete(n);
+					}
+				}
+			} catch (Exception ignored) {}
+		}
+	}
+
 	@DataProvider(name="deleteNotificationProvider", parallel = false)
 	public Object[][] deleteNotificationProvider() throws Exception
 	{
@@ -344,7 +470,7 @@ public class NotificationResourceImplIT extends AbstractNotificationTest {
 		};
 	}
 	
-	@Test(dataProvider="deleteNotificationProvider", dependsOnMethods={"addNotificationFromForm"}, priority = 3)
+	@Test(dataProvider="deleteNotificationProvider")//, dependsOnMethods={"addNotificationFromForm"}, priority = 3)
 	public void deleteNotification(String uuid, String errorMessage, boolean shouldThrowException)
 	{
 		JsonNode json = null;
@@ -363,6 +489,10 @@ public class NotificationResourceImplIT extends AbstractNotificationTest {
 			json = verifyResponse(response, true);
 			
 			Assert.assertNull(json, "Message results attribute was not null");
+
+			Notification existingNotification = new NotificationDao().findByUuid(uuid);
+			Assert.assertEquals(existingNotification.getStatus(), NotificationStatusType.INACTIVE, "Status should be inactive after delete");
+			Assert.assertFalse(existingNotification.isVisible(), "Visibility should be false after delete");
 		}
 		catch (ResourceException e) {
 			if (!shouldThrowException) {

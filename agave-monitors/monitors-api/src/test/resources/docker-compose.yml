@@ -1,0 +1,26 @@
+version: '3.7'
+
+volumes:
+  scratch:
+
+services:
+
+  sftp-relay:
+    image: sftp-relay:develop
+    ports:
+      - 50051:50051
+    restart: always
+    volumes:
+      - scratch:/scratch
+
+  sftp:
+    image: agaveplatform/sshd:latest
+    command: "-p 10022"
+    ports:
+      - '10022:10022'
+
+  requestbin:
+    image: agaveplatform/requestbin:2.0.0
+    hostname: requestbin
+    ports:
+      - '5101:5000'

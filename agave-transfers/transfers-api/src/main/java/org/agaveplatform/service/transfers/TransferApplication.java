@@ -12,6 +12,7 @@ import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.TimeUnit;
 public class TransferApplication {
 
     private static final Logger log = LoggerFactory.getLogger(TransferApplication.class);
@@ -21,8 +22,8 @@ public class TransferApplication {
 
         Vertx vertx = Vertx.vertx();
 
-        int poolSize = 1;
-        int instanceSize = 1;
+        int poolSize = 10;
+        int instanceSize = 10;
 
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
                 .setType("file")
@@ -60,7 +61,8 @@ public class TransferApplication {
 //                                    .setInstances(instanceSize)
                                     .setConfig(config)
                                     .setWorker(false)
-                                    .setMaxWorkerExecuteTime(3600);
+                                    .setMaxWorkerExecuteTimeUnit(TimeUnit.SECONDS)
+                                    .setMaxWorkerExecuteTime(30);
 
 
 //                            deployTTC(vertx, localOptions, resp -> {
@@ -106,7 +108,8 @@ public class TransferApplication {
                                     .setInstances(instanceSize)
                                     .setConfig(config)
                                     .setWorker(true)
-                                    .setMaxWorkerExecuteTime(36000);
+                                    .setMaxWorkerExecuteTimeUnit(TimeUnit.HOURS)
+                                    .setMaxWorkerExecuteTime(12);
 
                             // Deploy the TransferAllProtocolVertical vertical
                             vertx.deployVerticle(TransferAllProtocolVertical.class.getName(), //"org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical",

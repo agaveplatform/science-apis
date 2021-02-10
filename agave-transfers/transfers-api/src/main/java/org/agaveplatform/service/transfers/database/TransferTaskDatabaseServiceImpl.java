@@ -194,6 +194,27 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
   /**
+   * Retrieve {@link TransferTask} matching the {@code id} for partial {@link TransferTask}
+   * @param id datebase id of the {@link TransferTask}
+   * @param resultHandler the handler to resolve with {@link JsonObject} of the matching {@link TransferTask}
+   * @return
+   */
+  @Override
+  public TransferTaskDatabaseService getById(String id, Handler<AsyncResult<JsonObject>> resultHandler){
+    JsonArray data = new JsonArray()
+            .add(id);
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK_BY_ID), data, ar -> {
+      if (ar.succeeded()) {
+        resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+      } else {
+        LOGGER.error("Failed to fetch transfer task record with id {} after insert. Database query error", id, ar.cause());
+        resultHandler.handle(Future.failedFuture(ar.cause()));
+      }
+    });
+    return this;
+  }
+
+  /**
    * Retrieve {@link TransferTask} matching {@code uuid} and {@code tenantId}
    *
    * @param tenantId the tenant of {@link TransferTask}
@@ -201,7 +222,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
    * @param resultHandler the handler to resolve with {@link JsonObject} of the matching {@link TransferTask}
    */
   @Override
-  public TransferTaskDatabaseService getById(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler) {
+  public TransferTaskDatabaseService getByUuid(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler) {
     JsonArray data = new JsonArray()
             .add(uuid)
             .add(tenantId);
@@ -252,7 +273,8 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   }
 
   /**
-   * Retrieve all parent {@link TransferTask} ids that are cancelled or completed
+   * Retrieve all parent {@link TransferTask} ids that are not cancelled/completed
+   * but all children are cancelled/completed
    *
    * @param resultHandler the handler to resolve with {@link JsonArray} of parent {@link TransferTask}
    */
@@ -267,10 +289,10 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         //ResultSet resultSet = fetch.result();
         JsonArray response = new JsonArray(fetch.result().getRows());
         if (response.isEmpty()) {
-          LOGGER.debug("PARENTS_NOT_CANCELED_OR_COMPLETED is empty ");
+          LOGGER.debug("PARENTS_NOT_CANCELED_OR_COMPLETED is empty - all parents inactive");
           resultHandler.handle(Future.succeededFuture(response));
         } else {
-          LOGGER.info("Parents not canceled or completed is not empty");
+          LOGGER.info("Parents not canceled or completed is not empty - some parents active");
           resultHandler.handle(Future.succeededFuture(response));
         }
       } else {

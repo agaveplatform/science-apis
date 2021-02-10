@@ -55,7 +55,7 @@ public interface TransferTaskDatabaseService {
   TransferTaskDatabaseService setTransferTaskCanceledWhereNotCompleted(String tenantId, String uuid, Handler<AsyncResult<Boolean>> resultHandler);
 
   @Fluent
-  TransferTaskDatabaseService getById(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler);
+  TransferTaskDatabaseService getByUuid(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler);
 
   @Fluent
   TransferTaskDatabaseService getActiveRootTaskIds(Handler<AsyncResult<JsonArray>> resultHandler);
@@ -95,6 +95,9 @@ public interface TransferTaskDatabaseService {
 
   @Fluent
   TransferTaskDatabaseService cancelAll(String tenantId, Handler<AsyncResult<Void>> resultHandler);
+
+  @Fluent
+  TransferTaskDatabaseService getById(String id, Handler<AsyncResult<JsonObject>> resultHandler);
 
   @GenIgnore
   static TransferTaskDatabaseService create(JDBCClient dbClient, HashMap<SqlQuery, String> sqlQueries, Handler<AsyncResult<TransferTaskDatabaseService>> readyHandler) {

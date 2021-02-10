@@ -10,7 +10,6 @@ import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
 import io.vertx.ext.jwt.JWTOptions;
-import io.vertx.ext.web.Route;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.api.validation.HTTPRequestValidationHandler;
@@ -34,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
@@ -266,8 +266,10 @@ public class TransferAPIVertical extends AbstractVerticle {
         TransferTask transferTask = new TransferTask();
         transferTask.setTenantId(tenantId);
         transferTask.setOwner(username);
-        transferTask.setSource(body.getString("source"));
-        transferTask.setDest(body.getString("dest"));
+
+        //URLEncode paths
+        transferTask.setSource(URI.create(body.getString("source")).toString());
+        transferTask.setDest(URI.create(body.getString("dest")).toString());
 
         dbService.create(tenantId, transferTask, reply -> {
             if (reply.succeeded()) {
@@ -303,7 +305,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         log.debug("username = {}", username);
 
         // lookup task to get the id
-        dbService.getById(tenantId, uuid, getByIdReply -> {
+        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
             if (getByIdReply.succeeded()) {
                 if (getByIdReply.result() == null) {
                     // not found
@@ -361,7 +363,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         transferTask.setDest(body.getString("dest"));
 
         // lookup task to get the id
-        dbService.getById(tenantId, transferTask.getUuid(), getByIdReply -> {
+        dbService.getByUuid(tenantId, transferTask.getUuid(), getByIdReply -> {
             if (getByIdReply.succeeded()) {
                 if (getByIdReply.result() == null) {
                     // not found
@@ -396,7 +398,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         });
 
 
-        dbService.getById(tenantId, transferTask.getUuid(), reply -> {
+        dbService.getByUuid(tenantId, transferTask.getUuid(), reply -> {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());
                 _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
@@ -428,7 +430,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         String uuid = routingContext.pathParam("uuid");
 
         // lookup task to get the id
-        dbService.getById(tenantId, uuid, getByIdReply -> {
+        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
             if (getByIdReply.succeeded()) {
                 if (getByIdReply.result() == null) {
                     // not found
@@ -476,7 +478,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         String uuid = routingContext.pathParam("uuid");
 
         // lookup task to get the id
-        dbService.getById(tenantId, uuid, getByIdReply -> {
+        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
             if (getByIdReply.succeeded()) {
                 if (getByIdReply.result() == null) {
                     // not found
@@ -526,7 +528,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         AgaveResponseBuilder responseBuilder = AgaveResponseBuilder.getInstance(routingContext);
 
         // lookup the transfer task regardless
-        dbService.getById(tenantId, uuid, getByIdReply -> {
+        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
             if (getByIdReply.succeeded()) {
                 if (getByIdReply.result() == null) {
                     // not found
@@ -571,7 +573,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         String uuid = routingContext.request().getParam("uuid");
         TransferUpdate transferUpdate = routingContext.getBodyAsJson().mapTo(TransferUpdate.class);
 
-        dbService.getById(tenantId, uuid, getByIdReply -> {
+        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
             if (getByIdReply.succeeded()) {
                 if (getByIdReply.result() == null) {
                     /// not found

@@ -83,7 +83,7 @@ public class TransferTaskDeletedListener extends AbstractTransferTaskListener {
         // we can't just update the cancelled status here because we would force toggle the status from a terminal state
         // to a pending state that could never get resolved if the task were already cancelled. We have to lookup the
         // status first, then we can make the update
-        getDbService().getById(tenantId, uuid, getByIdReply -> {
+        getDbService().getByUuid(tenantId, uuid, getByIdReply -> {
             if (getByIdReply.succeeded()) {
                 logger.trace("Retrieved transfer task {}: {}", uuid, getByIdReply.result());
                 TransferTask targetTransferTask = new TransferTask(getByIdReply.result());
@@ -310,7 +310,7 @@ public class TransferTaskDeletedListener extends AbstractTransferTaskListener {
         Promise<Boolean> promise = Promise.promise();
         // lookup parent transfertask
         logger.info("Got to the processParentEvent.");
-        getDbService().getById(tenantId, parentTaskId, getTaskById -> {
+        getDbService().getByUuid(tenantId, parentTaskId, getTaskById -> {
             if (getTaskById.succeeded()) {
                 //JsonObject tta = getTaskById.result();
                 // check whether it's active or not by its status
@@ -369,7 +369,7 @@ public class TransferTaskDeletedListener extends AbstractTransferTaskListener {
      * @param resultHandler callback to pass the returned transfertask
      */
     protected void getTransferTask(String tenantId, String uuid, Handler<AsyncResult<TransferTask>> resultHandler) {
-        getDbService().getById(tenantId, uuid, getTaskById -> {
+        getDbService().getByUuid(tenantId, uuid, getTaskById -> {
             if (getTaskById.succeeded()) {
                 TransferTask tt = new TransferTask(getTaskById.result());
                 resultHandler.handle(Future.succeededFuture(tt));

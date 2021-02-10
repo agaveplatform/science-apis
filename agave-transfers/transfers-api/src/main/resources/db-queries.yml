@@ -33,7 +33,7 @@ create-transfertasks-table: |
   ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
   
 get-transfertask: |
-  SELECT * FROM TransferApiTasks WHERE `uuid` = ? and `tenant_id` = ?
+  SELECT * FROM TransferApiTasks USE INDEX (uuid_tenant) WHERE `uuid` = ? and `tenant_id` = ?
 get-transfertask-by-id: |
   SELECT * FROM TransferApiTasks WHERE `id` = ?
 create-transfertask: |
@@ -102,8 +102,8 @@ parents-not-canceled-or-completed: |
           from TransferApiTasks
           where `tenant_id` = 'agave.dev'
             and  `parent_task` = trans1.parent_task
-            AND `status` not IN ('COMPLETED','CANCELLED', 'CANCELED_ERROR','FAILED')
-  )
+            AND `status` NOT IN ('COMPLETED','CANCELLED', 'CANCELED_ERROR','FAILED')
+  ) = 0
 cancel_transfertask_by_id: |
   UPDATE TransferApiTasks
   SET status = ?, last_updated = NOW()

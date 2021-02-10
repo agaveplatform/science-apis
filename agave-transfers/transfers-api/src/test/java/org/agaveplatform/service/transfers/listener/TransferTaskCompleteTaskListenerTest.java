@@ -429,7 +429,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(getByAnyHandler);
                 return null;
-            }).when(dbService).getById(any(), any(), any());
+            }).when(dbService).getByUuid(any(), any(), any());
 
             // mock a successful response from allChildrenCancelledOrCompleted call to db
             AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
@@ -456,7 +456,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 // verify the db service was called to update the task status
                 // dont' mix and match raw values with mockito matchers. Hence wrapping the
                 // values in the eq() method.
-                verify(dbService).getById(eq(transferTask.getTenantId()),
+                verify(dbService).getByUuid(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
@@ -517,7 +517,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(getByAnyHandler);
             return null;
-        }).when(dbService).getById(any(), any(), any());
+        }).when(dbService).getByUuid(any(), any(), any());
 
         // mock a successful response from allChildrenCancelledOrCompleted call to db
         AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
@@ -544,7 +544,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 // verify the db service was called to update the task status
                 // dont' mix and match raw values with mockito matchers. Hence wrapping the
                 // values in the eq() method.
-                verify(dbService).getById(eq(transferTask.getTenantId()),
+                verify(dbService).getByUuid(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
@@ -605,7 +605,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(getByAnyHandler);
             return null;
-        }).when(dbService).getById(any(), any(), any());
+        }).when(dbService).getByUuid(any(), any(), any());
 
         // mock a successful response from allChildrenCancelledOrCompleted call to db
         AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
@@ -632,7 +632,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 // verify the db service was called to update the task status
                 // dont' mix and match raw values with mockito matchers. Hence wrapping the
                 // values in the eq() method.
-                verify(dbService).getById(eq(transferTask.getTenantId()),
+                verify(dbService).getByUuid(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
@@ -694,7 +694,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(getByAnyHandler);
             return null;
-        }).when(dbService).getById(any(), any(), any());
+        }).when(dbService).getByUuid(any(), any(), any());
 
         // mock a successful response from allChildrenCancelledOrCompleted call to db
         AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
@@ -721,7 +721,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 // verify the db service was called to update the task status
                 // dont' mix and match raw values with mockito matchers. Hence wrapping the
                 // values in the eq() method.
-                verify(dbService).getById(eq(transferTask.getTenantId()),
+                verify(dbService).getByUuid(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
                 verify(dbService).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),

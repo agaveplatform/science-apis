@@ -176,7 +176,7 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
                 RemoteDataClient finalDestClient = destClient;
 
                 executor.executeBlocking(promise -> {
-                        getDbService().getById(tt.getTenantId(), tt.getRootTaskId(), checkCancelled -> {
+                        getDbService().getByUuid(tt.getTenantId(), tt.getRootTaskId(), checkCancelled -> {
                             if (checkCancelled.succeeded()){
                                 TransferTask targetTransferTask = new TransferTask(checkCancelled.result());
                                 if (targetTransferTask.getStatus().isActive()){

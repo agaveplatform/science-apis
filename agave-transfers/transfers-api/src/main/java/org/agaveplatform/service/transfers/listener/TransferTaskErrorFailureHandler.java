@@ -78,35 +78,41 @@ public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListene
 		try {
 			body.remove("cause");
 			body.remove("message");
-			body.remove("id");
-			log.debug(body.encode());
-			TransferTask failedTask = new TransferTask(body);
-			failedTask.setStatus(TransferStatusType.FAILED);
 
-			getDbService().update(failedTask.getTenantId(), failedTask.getUuid(), failedTask, updateBody -> {
-				if (updateBody.succeeded()) {
-					TransferTask savedTask = new TransferTask(updateBody.result());
-					log.info("Transfer task {} successfully marked as {}.", failedTask.getUuid(), savedTask.getStatus().name());
-					handler.handle(Future.succeededFuture(Boolean.TRUE));
-				} else {
-					String msg = String.format("Unable to update status of failed transfer task %s. %s",
-							failedTask.getUuid(), updateBody.cause().getMessage());
-					log.error(msg);
-					JsonObject json = new JsonObject()
-							.put("cause", updateBody.cause().getClass().getName())
-							.put("message", msg)
-							.mergeIn(body);
-					handler.handle(Future.failedFuture(updateBody.cause()));
+			this.processBody(body, processBodyResult ->{
+                log.debug(body.encode());
+                TransferTask failedTask = new TransferTask(body);
+                failedTask.setStatus(TransferStatusType.FAILED);
 
-					// infinite loop if we publish an error event here
-					// TODO: we need a wrapper object around our event bodies so we can record things like the number
-					// 	of attempts to process a given event, last event time, and whether to keep trying indefinitely
-					//  or not.
+                if (processBodyResult.succeeded()){
+                    getDbService().update(failedTask.getTenantId(), failedTask.getUuid(), failedTask, updateBody -> {
+                        if (updateBody.succeeded()) {
+                            TransferTask savedTask = new TransferTask(updateBody.result());
+                            log.info("Transfer task {} successfully marked as {}.", failedTask.getUuid(), savedTask.getStatus().name());
+                            handler.handle(Future.succeededFuture(Boolean.TRUE));
+                        } else {
+                            String msg = String.format("Unable to update status of failed transfer task %s. %s",
+                                    failedTask.getUuid(), updateBody.cause().getMessage());
+                            log.error(msg);
+                            JsonObject json = new JsonObject()
+                                    .put("cause", updateBody.cause().getClass().getName())
+                                    .put("message", msg)
+                                    .mergeIn(body);
+                            handler.handle(Future.failedFuture(updateBody.cause()));
 
-					//TODO check the parent for completeness and if not then check option and ether fail everything or fail this task or complete
-				}
-			});
-		} catch (NullPointerException e) {
+                            // infinite loop if we publish an error event here
+                            // TODO: we need a wrapper object around our event bodies so we can record things like the number
+                            // 	of attempts to process a given event, last event time, and whether to keep trying indefinitely
+                            //  or not.
+
+                            //TODO check the parent for completeness and if not then check option and ether fail everything or fail this task or complete
+                        }
+                    });
+                } else {
+                    handler.handle(Future.failedFuture(processBodyResult.cause()));
+                }
+        });
+    } catch (NullPointerException e) {
 			log.error("Null Pointer Exception {}: {}", e.toString(), body.getValue("id"));
 			handler.handle(Future.failedFuture(e));
 		}
@@ -116,6 +122,27 @@ public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListene
 			handler.handle(Future.failedFuture(t));
 		}
 	}
+
+	/**
+	 * Process {@code body} to handle both partial and complete {@link TransferTask} objects
+	 *
+	 * @param body {@link JsonObject} containing either an ID or {@link TransferTask} object
+	 * @param handler  the handler to resolve with {@link JsonObject} of a {@link TransferTask}
+	 */
+	public void processBody(JsonObject body, Handler<AsyncResult<JsonObject>> handler) {
+        try {
+            TransferTask transfer = new TransferTask(body);
+            handler.handle(Future.succeededFuture(transfer.toJson()));
+        } catch (Exception e) {
+            getDbService().getById(body.getString("id"), result -> {
+                if (result.succeeded()) {
+                    handler.handle(Future.succeededFuture(result.result()));
+                } else {
+                    handler.handle((Future.failedFuture(result.cause())));
+                }
+            });
+        }
+    }
 
 	public TransferTaskDatabaseService getDbService() {
 		return dbService;

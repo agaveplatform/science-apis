@@ -59,12 +59,12 @@ public class TransferTaskHealthcheckParentListener extends AbstractTransferTaskL
             msg.reply(TransferTaskHealthcheckParentListener.class.getName() + " received.");
 
             JsonObject body = msg.body();
-            String uuid = body.getString("uuid");
+            String id = body.getString("id");
             logger.info("Performing healthcheck parent on transfer tasks ");
 
             processChildrenActiveAndExceedTimeEvent(body, resp -> {
                 if (resp.succeeded()) {
-                    logger.info("Succeeded with the processing parent transfer created event for transfer task {}", uuid);
+                    logger.info("Succeeded with the processing parent transfer created event for transfer task {}", id);
                 } else {
                     logger.error("Error with return from processing parent transfer tasks. ");
                 }
@@ -73,40 +73,37 @@ public class TransferTaskHealthcheckParentListener extends AbstractTransferTaskL
     }
 
 
+    /**
+     * Set all active tasks that have exceeded the time event to {@link org.agaveplatform.service.transfers.enumerations.TransferStatusType#CANCELED_ERROR}
+     * Use the ID value that was retrieved from the TransferTaskWatchListener
+     *
+     * @param body {@link JsonObject} containing the id of a parent task with active children
+     * @param handler
+     */
     public void processChildrenActiveAndExceedTimeEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
-        String uuid = body.getString("uuid");
-        String source = body.getString("source");
-        String dest = body.getString("dest");
-        String username = body.getString("owner");
-        String tenantId = body.getString("tenant_id");
-        Instant lastUpdated = body.getInstant("lastUpdated");
+        String id = body.getLong("id").toString();
 
-        getDbService().getAllParentsCanceledOrCompleted( reply -> {
-            logger.trace( "Got into getDbService().getAllParentsCanceledOrCompleted");
-            if (reply.succeeded()){
-                logger.info("reply from getDBSerivce.getAllParentsCanceledOrCompleted " + reply.toString());
+        logger.info("getDbService.getAllParentsCanceledOrCompleted result: {} , id:{}", body, id);
 
-                reply.result().stream().forEach(jsonResult -> {
-                    TransferTask transferTask = new TransferTask((JsonObject) jsonResult);
-                    getDbService().updateStatus(transferTask.getTenantId(),transferTask.getUuid(), CANCELED_ERROR.name(), updateStatus -> {
-                        logger.trace("Got into getDBService.updateStatus(complete) ");
-                        if (updateStatus.succeeded()) {
-                            logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
-                            //parentList.remove(uuid);
-                            _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
-                            //promise.handle(Future.succeededFuture(Boolean.TRUE));
-                        } else {
-                            logger.error("[{}] Task {} completed, but unable to update status: {}",
-                                    tenantId, uuid, reply.cause());
-                            JsonObject json = new JsonObject()
-                                    .put("cause", updateStatus.cause().getClass().getName())
-                                    .put("message", updateStatus.cause().getMessage())
-                                    .mergeIn(body);
-                            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                            //promise.handle(Future.failedFuture(updateStatus.cause()));
-                        }
-                    });
-                });
+        getDbService().updateById(id, CANCELED_ERROR.name(), updateStatus -> {
+            logger.trace("Got into getDBService.updateStatus(complete) ");
+            if (updateStatus.succeeded()) {
+                TransferTask transferTask = new TransferTask(updateStatus.result());
+                logger.info("[{}] Transfer task {} updated to completed.", transferTask.getTenantId(), transferTask.getUuid());
+                //parentList.remove(uuid);
+                _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
+                //promise.handle(Future.succeededFuture(Boolean.TRUE));
+            } else {
+                logger.error("[{}] Task completed, but unable to update status: {}",
+                        id, updateStatus.cause());
+//                            logger.error("[{}] Task {} completed, but unable to update status: {}",
+//                                    tenantId, uuid, reply.cause());
+                JsonObject json = new JsonObject()
+                        .put("cause", updateStatus.cause().getClass().getName())
+                        .put("message", updateStatus.cause().getMessage())
+                        .mergeIn(body);
+                _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+                //promise.handle(Future.failedFuture(updateStatus.cause()));
             }
         });
 

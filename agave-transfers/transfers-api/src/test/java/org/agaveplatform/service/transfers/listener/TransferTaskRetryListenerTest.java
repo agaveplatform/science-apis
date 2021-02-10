@@ -151,9 +151,9 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 	}
 
 	/**
-	 * Generates a mock of the {@link TransferTaskDatabaseService} with the {@link TransferTaskDatabaseService#getById(String, String, Handler)}
+	 * Generates a mock of the {@link TransferTaskDatabaseService} with the {@link TransferTaskDatabaseService#getByUuid(String, String, Handler)}
 	 * method mocked out to return the given {@code transferTask};
-	 * @param transferTaskToReturn {@link JsonObject} to return from the {@link TransferTaskDatabaseService#getById(String, String, Handler)} handler
+	 * @param transferTaskToReturn {@link JsonObject} to return from the {@link TransferTaskDatabaseService#getByUuid(String, String, Handler)} handler
 	 * @return a mock of the db service with the getById mocked out to return the {@code transferTaskToReturn} as an async result.
 	 */
 	private TransferTaskDatabaseService getMockTranserTaskDatabaseService(JsonObject transferTaskToReturn) {
@@ -169,7 +169,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(getByAnyHandler);
 			return null;
-		}).when(dbService).getById(any(), any(), any());
+		}).when(dbService).getByUuid(any(), any(), any());
 
 		return dbService;
 	}
@@ -194,7 +194,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 		TransferTaskRetryListener ta = getMockTransferRetryListenerInstance(vertx);
 
 		when(ta.getDbService().update (eq(TENANT_ID), eq(TEST_USERNAME), eq(tt), any() )).thenCallRealMethod();
-		when(ta.getDbService().getById(eq(TENANT_ID), eq(TEST_USERNAME), any() )).thenCallRealMethod();
+		when(ta.getDbService().getByUuid(eq(TENANT_ID), eq(TEST_USERNAME), any() )).thenCallRealMethod();
 
 
 		//ta.processRetryTransferTask(body);

@@ -8,7 +8,6 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.exception.TransferException;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang3.StringUtils;
@@ -103,7 +102,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 		String parentTaskId = body.getString("parentTask");
 		logger.debug("Updating status of transfer task {} to PAUSED", uuid);
 
-		getDbService().getById(tenantId, uuid, reply -> {
+		getDbService().getByUuid(tenantId, uuid, reply -> {
 			if (reply.succeeded()) {
 
 				TransferTask targetTransferTask = new TransferTask(reply.result());
@@ -233,7 +232,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 								if (siblingReply.succeeded()) {
 									if (siblingReply.result()) {
 										logger.debug("All children of parent transfer task {} are inactive. ", parentTaskId);
-										getDbService().getById(tenantId, parentTaskId, parentReply -> {
+										getDbService().getByUuid(tenantId, parentTaskId, parentReply -> {
 											if (parentReply.succeeded()) {
 												logger.info("Sending pause ack event for parent transfer task {}", parentTaskId);
 												getVertx().eventBus().publish(MessageType.TRANSFERTASK_PAUSED_ACK, parentReply.result());
@@ -299,7 +298,7 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 	void processParentEvent(String tenantId, String parentTaskId, Handler<AsyncResult<Boolean>> resultHandler) {
 //		Promise<Boolean> promise = Promise.promise();
 		// lookup parent transfertask
-		getDbService().getById(tenantId, parentTaskId, getTaskById -> {
+		getDbService().getByUuid(tenantId, parentTaskId, getTaskById -> {
 			if (getTaskById.succeeded()) {
 
 				TransferTask parentTask = new TransferTask(getTaskById.result());

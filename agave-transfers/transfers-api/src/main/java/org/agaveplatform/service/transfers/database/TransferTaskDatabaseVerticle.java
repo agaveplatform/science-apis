@@ -132,6 +132,7 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
       sqlQueries.put(SqlQuery.FIND_TRANSFERTASK_BY_ROOT_TASK_ID_SRC_DEST, node.get("find_transfertask_by_root_task_id_src_dest").textValue());
       sqlQueries.put(SqlQuery.PARENTS_NOT_CANCELED_OR_COMPLETED, node.get("parents-not-canceled-or-completed").textValue());
       sqlQueries.put(SqlQuery.CANCEL_ALL_TRANSFERTASKS, node.get("cancel-all-transfertasks").textValue());
+      sqlQueries.put(SqlQuery.GET_TRANSFERTASK_BY_ID, node.get("get-transfertask-by-id").textValue());
       return sqlQueries;
     }
   }

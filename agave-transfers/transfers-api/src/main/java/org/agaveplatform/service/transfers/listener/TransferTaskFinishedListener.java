@@ -6,6 +6,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import io.vertx.reactivex.ext.unit.Async;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -51,22 +52,27 @@ public class TransferTaskFinishedListener extends AbstractTransferTaskListener {
             msg.reply(TransferTaskFinishedListener.class.getName() + " received.");
 
             JsonObject body = msg.body();
-            String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
-            TransferTask tt = new TransferTask(body);
+            this.processBody(body, processBodyResult -> {
+                if (processBodyResult.succeeded()) {
+                    String uuid = body.getString("uuid");
 
-            logger.info("Transfer task {} finished.");
+                    logger.info("Transfer task {} finished.");
 
-            this.processEvent(body, result -> {
-                if (result.succeeded()) {
-                    logger.trace("Succeeded with the processing the transfer finished event for transfer task {}", uuid);
-                    msg.reply(TransferTaskFinishedListener.class.getName() + " completed.");
+                    this.processEvent(body, result -> {
+                        if (result.succeeded()) {
+                            logger.trace("Succeeded with the processing the transfer finished event for transfer task {}", uuid);
+                            msg.reply(TransferTaskFinishedListener.class.getName() + " completed.");
+                        } else {
+                            logger.error("Error with return from update event {}", uuid);
+                            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                        }
+                    });
                 } else {
-                    logger.error("Error with return from update event {}", uuid);
+                    logger.error("Error with retrieving Transfer Task {}", body.getString("id"));
                     _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
                 }
             });
+
         });
     }
 
@@ -88,6 +94,29 @@ public class TransferTaskFinishedListener extends AbstractTransferTaskListener {
         } catch (Exception e) {
             logger.debug(TransferTaskFinishedListener.class.getName() + " - exception caught");
             doHandleError(e, e.getMessage(), body, handler);
+        }
+    }
+
+
+    /**
+     * Process {@code body} to handle both partial and complete {@link TransferTask} objects
+     *
+     * @param body {@link JsonObject} containing either an ID or {@link TransferTask} object
+     * @param handler  the handler to resolve with {@link JsonObject} of a {@link TransferTask}
+     */
+    public void processBody(JsonObject body, Handler<AsyncResult<JsonObject>> handler) {
+        TransferTask transfer = null;
+        try {
+            transfer = new TransferTask(body);
+            handler.handle(Future.succeededFuture(transfer.toJson()));
+        } catch (Exception e) {
+            getDbService().getById(body.getString("id"), result -> {
+                if (result.succeeded()) {
+                    handler.handle(Future.succeededFuture(result.result()));
+                } else {
+                    handler.handle((Future.failedFuture(result.cause())));
+                }
+            });
         }
     }
 

@@ -73,7 +73,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(failedUpdateGetById);
 			return null;
-		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
+		}).when(dbService).getByUuid(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject() );
 
 		// mock the dbService getter in our mocked vertical so we don't need to use powermock
 		when(listener.getDbService()).thenReturn(dbService);
@@ -90,7 +90,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 						"DB exception should roll up to the calling method.");
 
 				// verify the db service was called to fetch the current task
-				verify(dbService).getById(eq(transferTask.getTenantId()),
+				verify(dbService).getByUuid(eq(transferTask.getTenantId()),
 						eq(transferTask.getUuid()), any());
 
 				// update should never happen
@@ -139,7 +139,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject());
+		}).when(dbService).getByUuid(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject());
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = transferTask.toJson()
@@ -170,7 +170,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				assertFalse(results.result(), "The result of the handler should be false indicating the task was not processed.");
 
 				// verify the db service was called to fetch the current task
-				verify(dbService).getById(eq(transferTask.getTenantId()),
+				verify(dbService).getByUuid(eq(transferTask.getTenantId()),
 						eq(transferTask.getUuid()), any());
 
 				// update should never happen
@@ -212,7 +212,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), any(Handler.class));
+		}).when(dbService).getByUuid(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), any(Handler.class));
 
 		JsonObject expectedUpdate = transferTask.toJson().put("status", TransferStatusType.CANCELING_WAITING);
 		AsyncResult<JsonObject> expectedUpdateResult = getMockAsyncResult(expectedUpdate);
@@ -242,7 +242,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				assertTrue(results.result(), "The processing should return a true result indicating the task was updated and the processing succeeded.");
 
 				// verify the db service was called to fetch the current task
-				verify(dbService).getById(eq(transferTask.getTenantId()),
+				verify(dbService).getByUuid(eq(transferTask.getTenantId()),
 						eq(transferTask.getUuid()), any());
 
 				// verify the db service was called to update the task status
@@ -286,7 +286,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject());
+		}).when(dbService).getByUuid(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), anyObject());
 
 		JsonObject expectedUpdate = transferTask.toJson().put("status", TransferStatusType.CANCELING_WAITING);
 		AsyncResult<JsonObject> expectedUpdateResult = getMockAsyncResult(expectedUpdate);
@@ -315,7 +315,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				assertFalse(results.result(), "The processing should return a false result indicating the task was not updated, but the processing succeeded.");
 
 				// verify the db service was called to fetch the current task
-				verify(dbService).getById(eq(transferTask.getTenantId()),
+				verify(dbService).getByUuid(eq(transferTask.getTenantId()),
 						eq(transferTask.getUuid()), any());
 
 				// verify the db service was called to update the task status
@@ -404,7 +404,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetByIdAck);
 			return null;
-		}).when(dbService).getById(any(), any(), any());
+		}).when(dbService).getByUuid(any(), any(), any());
 
 		// mock the processParenetEvent process
 		AsyncResult<Boolean> setTransferTaskCanceledProcessParentAckHandler = getMockAsyncResult(Boolean.TRUE);
@@ -482,7 +482,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(any(), any(), anyObject());
+		}).when(dbService).getByUuid(any(), any(), anyObject());
 
 		// mock a successful outcome with updated json transfer task result from updateStatus
 		JsonObject expectedUdpatedJsonObject = parentTask.toJson()
@@ -954,7 +954,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(any(), any(), anyObject());
+		}).when(dbService).getByUuid(any(), any(), anyObject());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		AsyncResult<Boolean> allChildrenCancelledOrCompletedHandler = getMockAsyncResult(Boolean.TRUE);
@@ -1056,7 +1056,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(any(), any(), anyObject());
+		}).when(dbService).getByUuid(any(), any(), anyObject());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		// with active children
@@ -1116,7 +1116,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 			Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
 			handler.handle(updateGetById);
 			return null;
-		}).when(dbService).getById(any(), any(), anyObject());
+		}).when(dbService).getByUuid(any(), any(), anyObject());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		// with all children cancelled or completed

@@ -87,7 +87,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
                 assertEquals(testTransferTask.getSource(), createdJsonTransferTask.getString("source"), "Object returned from create should have same source value as sent");
                 assertEquals(testTransferTask.getDest(), createdJsonTransferTask.getString("dest"), "Object returned from create should have same dest value as sent");
 
-                service.getById(TENANT_ID, testTransferTask.getUuid(), context.succeeding(getByIdJsonTransferTask -> {
+                service.getByUuid(TENANT_ID, testTransferTask.getUuid(), context.succeeding(getByIdJsonTransferTask -> {
                     assertEquals(TENANT_ID, getByIdJsonTransferTask.getString("tenant_id"), "Object returned from create should have same tenant_id as original");
                     assertEquals(testTransferTask.getUuid(), getByIdJsonTransferTask.getString("uuid"), "Object returned from create should have same uuid as original");
                     assertEquals(testTransferTask.getSource(), getByIdJsonTransferTask.getString("source"), "Object returned from create should have same source value as original");
@@ -139,7 +139,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
                                             "Object returned by getAll should have the same uuid as the updated object.");
 
 
-                                    service.getById(TENANT_ID, testTransferTask.getUuid(), context.succeeding(getByIdJsonTransferTask2 -> {
+                                    service.getByUuid(TENANT_ID, testTransferTask.getUuid(), context.succeeding(getByIdJsonTransferTask2 -> {
 
                                         assertEquals(TENANT_ID, getByIdJsonTransferTask2.getString("tenant_id"), "Object returned from create should have same tenant_id as original");
                                         assertEquals(createdJsonTransferTask.getLong("id"), getByIdJsonTransferTask2.getLong("id"), "Object returned from create should have same id as original");
@@ -427,7 +427,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
                                 context.failNow(parentReply.cause());
                             } else {
                                 //verify that task is updated
-                                service.getById(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), afterSetReply -> {
+                                service.getByUuid(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), afterSetReply -> {
                                     if (afterSetReply.failed()) {
                                         context.failNow(afterSetReply.cause());
                                     } else {
@@ -563,8 +563,8 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
     }
 
     @Test
-    @DisplayName("TransferTaskDatabaseVerticle - getById should return task with matching id")
-    public void getByIdReturnsMatchingTaskTest(Vertx vertx, VertxTestContext context) {
+    @DisplayName("TransferTaskDatabaseVerticle - getByUuid should return task with matching id")
+    public void getByUuidReturnsMatchingTaskTest(Vertx vertx, VertxTestContext context) {
         service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
             final TransferTask rootTransferTask = _createTestTransferTask();
             rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
@@ -578,7 +578,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
                     context.failNow(rootReply.cause());
                 } else {
                     TransferTask addedRootTask = new TransferTask(rootReply.result());
-                    service.getById(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), getByIdReply -> {
+                    service.getByUuid(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), getByIdReply -> {
                         if (getByIdReply.failed()) {
                             context.failNow(getByIdReply.cause());
                         } else {
@@ -600,15 +600,15 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
     }
 
     @Test
-    @DisplayName("TransferTaskDatabaseVerticle - getById should return null if no task has matching id")
-    public void getByIdShouldReturnNullIfNotExistTest(Vertx vertx, VertxTestContext context) {
+    @DisplayName("TransferTaskDatabaseVerticle - getByUuid should return null if no task has matching id")
+    public void getByUuidShouldReturnNullIfNotExistTest(Vertx vertx, VertxTestContext context) {
         service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
             final TransferTask rootTransferTask = _createTestTransferTask();
             rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
             rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
             rootTransferTask.setStatus(TransferStatusType.QUEUED);
 
-            service.getById(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), getByIdReply -> {
+            service.getByUuid(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), getByIdReply -> {
                 if (getByIdReply.failed()) {
                     context.failNow(getByIdReply.cause());
                 } else {

@@ -63,22 +63,28 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 			String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 			dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-			log.info("Transfer task {} error: {}: {}",
-					body.getString("uuid"), body.getString("cause"), body.getString("message"));
+            try {
+                processBody(body, processBodyResult -> {
+                    log.info("Transfer task {} error: {}: {}",
+                            body.getString("uuid"), body.getString("cause"), body.getString("message"));
 
-			try {
-				processError(body, resp -> {
-					if (resp.succeeded()) {
-						log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
-					} else {
-						log.error("Unable to process {} event for transfer task (TTEL) message: {}", getEventChannel(), body.encode(), resp.cause());
-						_doPublishEvent(TRANSFER_FAILED, body);
-					}
-				});
-			}catch (Exception e){
-				log.error(e.getMessage());
-			}
-		});
+                    if (processBodyResult.succeeded()) {
+                        processError(body, resp -> {
+                            if (resp.succeeded()) {
+                                log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
+                            } else {
+                                log.error("Unable to process {} event for transfer task (TTEL) message: {}", getEventChannel(), body.encode(), resp.cause());
+                                _doPublishEvent(TRANSFER_FAILED, body);
+                            }
+                        });
+                    } else {
+                        log.error("Error with retrieving Transfer Task {}", body.getString("id"));
+                    }
+                });
+            } catch (Exception e) {
+                log.error(e.getMessage());
+            }
+        });
 
 		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
 			msg.reply(TransferTaskErrorListener.class.getName() + " received.");
@@ -103,11 +109,11 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 
 			log.error("Tenant ID is {}", tenantId);
 
-			// update dt DB status here
-			getDbService().getById(tenantId, uuid, getByIdReply -> {
-				if (getByIdReply.succeeded()) {
-					if (getByIdReply.result() != null) {
-						TransferTask errorTask = new TransferTask(getByIdReply.result());
+            // update dt DB status here
+            getDbService().getByUuid(tenantId, uuid, getByIdReply -> {
+                if (getByIdReply.succeeded()) {
+                    if (getByIdReply.result() != null) {
+                        TransferTask errorTask = new TransferTask(getByIdReply.result());
 
 							// check to see if the job was canceled so we don't retry an interrupted task
 							if (taskIsNotInterrupted(tt)) {
@@ -205,14 +211,37 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
 		}
 	}
 
-	/**
-	 * Returns the class names of all the exceptions that could cause a transient failure and justify a retry of
-	 * the failed {@link TransferTask}.
-	 * @return a list of class names
-	 */
-	protected List<String> getRecoverableExceptionsClassNames() {
-		return RECOVERABLE_EXCEPTION_CLASS_NAMES;
-	}
+    /**
+     * Process {@code body} to handle both partial and complete {@link TransferTask} objects
+     *
+     * @param body {@link JsonObject} containing either an ID or {@link TransferTask} object
+     * @param handler  the handler to resolve with {@link JsonObject} of a {@link TransferTask}
+     */
+    protected void processBody(JsonObject body, Handler<AsyncResult<JsonObject>> handler) {
+        try {
+            TransferTask transfer = new TransferTask(body);
+            handler.handle(Future.succeededFuture(transfer.toJson()));
+        } catch (Exception e) {
+            getDbService().getById(body.getString("id"), result -> {
+                if (result.succeeded()) {
+                    handler.handle(Future.succeededFuture(result.result()));
+                } else {
+                    log.error("{} - unable to get by id body: {}", this.getClass().getName(), body);
+                    handler.handle((Future.failedFuture(result.cause())));
+                }
+            });
+        }
+    }
+
+    /**
+     * Returns the class names of all the exceptions that could cause a transient failure and justify a retry of
+     * the failed {@link TransferTask}.
+     *
+     * @return a list of class names
+     */
+    protected List<String> getRecoverableExceptionsClassNames() {
+        return RECOVERABLE_EXCEPTION_CLASS_NAMES;
+    }
 
 	public TransferTaskDatabaseService getDbService() {
 		return dbService;

@@ -136,7 +136,7 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 	 */
 	protected void processParentEvent(String tenantId, String parentTaskId, Handler<AsyncResult<Boolean>> resultHandler) {
 		// lookup parent transfertask
-		getDbService().getById(tenantId, parentTaskId, getTaskById -> {
+		getDbService().getByUuid(tenantId, parentTaskId, getTaskById -> {
 			if (getTaskById.succeeded()) {
 				// check whether it's active or not by its status2spy
 

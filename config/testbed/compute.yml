@@ -3,7 +3,7 @@
 # 
 # These are the compute containers needed for basic unit testing.
 ###############################################################
-version: '3.7'
+version: '3.3'
 
 volumes: {}
 

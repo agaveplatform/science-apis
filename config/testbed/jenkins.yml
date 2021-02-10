@@ -2,7 +2,7 @@
 #  Development Stack of Dependent Services
 #############################################################
 
-version: '3.7'
+version: '3.3'
 
 volumes:
   mysql_data:

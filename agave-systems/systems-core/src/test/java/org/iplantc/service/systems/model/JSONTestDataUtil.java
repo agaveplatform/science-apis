@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -72,12 +73,16 @@ public class JSONTestDataUtil {
     	{
             File pfile = new File(file);
     		in = new FileInputStream(pfile.getAbsoluteFile());
-    		String json = IOUtils.toString(in, "UTF-8");
+    		String json = IOUtils.toString(in, StandardCharsets.UTF_8);
     		
 	    	return new JSONObject(json);
     	} 
     	finally {
-    		try { in.close(); } catch (Exception e) {}
+    		try {
+				if (in != null) {
+					in.close();
+				}
+			} catch (Exception ignore) {}
     	}
     }
 
@@ -90,17 +95,11 @@ public class JSONTestDataUtil {
      */
     public JSONObject getTestDataObject(File pfile) throws JSONException, IOException
     {
-        InputStream in = null;
-        try
-        {
-            in = new FileInputStream(pfile.getAbsoluteFile());
-            String json = IOUtils.toString(in, "UTF-8");
+		try (InputStream in = new FileInputStream(pfile.getAbsoluteFile())) {
+			String json = IOUtils.toString(in, StandardCharsets.UTF_8);
 
-            return new JSONObject(json);
-        }
-        finally {
-            try { in.close(); } catch (Exception e) {}
-        }
+			return new JSONObject(json);
+		}
     }
 
     /**
@@ -320,10 +319,10 @@ public class JSONTestDataUtil {
             {"validator","","set input.value.validator to empty string",false},
             {"validator",new Object(),"set input.value.validator to empty object",false},
             {"validator",Arrays.asList(new Object(),new Object(),new Object()),"set input.value.validator to array of empty objects",true},
-            {"validator",new String("/(foo"),"set validator to bad regex string",false},
-            {"validator",Arrays.asList(new String("/(foo"),new String("/(foo2"),new String("/(foou")),"set input.value.validator to array of bad regex strings",false},
+            {"validator", "/(foo","set validator to bad regex string",false},
+            {"validator",Arrays.asList("/(foo", "/(foo2", "/(foou"),"set input.value.validator to array of bad regex strings",false},
             {"validator","\\d+","set validator to valid regex string",false},
-            {"validator",Arrays.asList(new String("^(\\/)?(\\/[a-z_\\-\\s0-9\\.]+)+"), new String(".pdf"), new String("[A-Z][a-z]{1,}")),"set input.value.validator to array of valid regex strings",false},
+            {"validator",Arrays.asList("^(\\/)?(\\/[a-z_\\-\\s0-9\\.]+)+", ".pdf", "[A-Z][a-z]{1,}"),"set input.value.validator to array of valid regex strings",false},
             {"validator",null,"set input.value.validator to null",false},
             {"required","","set input.value.required to empty string",true},
             {"required",Boolean.TRUE,"set input.value.required to true",false},
@@ -450,10 +449,10 @@ public class JSONTestDataUtil {
 			{"validator","","set parameter.value.validator to empty string",false},
             {"validator",new Object(),"set parameter.value.validator to empty object",false},
             {"validator",Arrays.asList(new Object(),new Object(),new Object()),"set parameter.value.validator to array of empty objects",true},
-            {"validator",new String("/(foo"),"set validator to bad regex string",false},
-            {"validator",Arrays.asList(new String("/(foo"),new String("/(foo2"),new String("/(foou")),"set parameter.value.validator to array of bad regex strings",false},
+            {"validator", "/(foo","set validator to bad regex string",false},
+            {"validator",Arrays.asList("/(foo", "/(foo2", "/(foou"),"set parameter.value.validator to array of bad regex strings",false},
             {"validator","\\d+","set validator to valid regex string",false},
-            {"validator",Arrays.asList(new String("\\d+"), new String(".pdf"), new String("[A-Z][a-z]{1,}")),"set parameter.value.validator to array of valid regex strings",false},
+            {"validator",Arrays.asList("\\d+", ".pdf", "[A-Z][a-z]{1,}"),"set parameter.value.validator to array of valid regex strings",false},
             {"validator",null,"set parameter.value.validator to null",false},
             {"required","","set parameter.value.required to empty string",true},
             {"required",Boolean.TRUE,"set parameter.value.required to true",false},
@@ -591,7 +590,8 @@ public class JSONTestDataUtil {
     
     private void init() {}
     
-    public static <T> T[] concatAll(T[] first, T[]... rest) {
+    @SafeVarargs
+	public static <T> T[] concatAll(T[] first, T[]... rest) {
     	int totalLength = first.length;
     	for (T[] array : rest) {
     		totalLength += array.length;
@@ -611,7 +611,7 @@ public class JSONTestDataUtil {
  */
     public Object[][] genJsonTestMessages() {
         // String name, String changeValue, String message, String expected
-        List<Object[]> holder = new ArrayList<Object[]>();
+        List<Object[]> holder = new ArrayList<>();
 
         Collections.addAll(holder, dataTestSoftwareFieldsValid);
         Collections.addAll(holder, dataTestSoftwareFieldsInvalid);
@@ -620,8 +620,7 @@ public class JSONTestDataUtil {
         Collections.addAll(holder, dataTestSoftwareFieldsNull);
         Collections.addAll(holder, dataTestSoftwareFieldsArray);
 
-        Object[][] result = holder.toArray(new Object[holder.size()][]);
-        return result;
+        return holder.toArray(new Object[holder.size()][]);
     }
 
 
@@ -720,9 +719,9 @@ this.dataTest1.each { valueSet ->
 //    };
 //
 
-/************************************************************************
- * 				Software Output Test Data
- ************************************************************************/
+// ************************************************************************
+// * 				Software Output Test Data
+// ************************************************************************/
 
 
 //    protected Object[][] dataTestOutput = {

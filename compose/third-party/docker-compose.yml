@@ -30,8 +30,8 @@ services:
     networks:
       - core_persistence
     restart: on-failure
-    mem_limit: 512M
-    mem_reservation: 256M
+#    mem_limit: 512M
+#    mem_reservation: 256M
 
 
   ##############################################################
@@ -55,8 +55,8 @@ services:
     networks:
       - core_persistence
     restart: on-failure
-    mem_limit: 512M
-    mem_reservation: 256M
+#    mem_limit: 512M
+#    mem_reservation: 256M
 
   ##############################################################
   # Beanstalkd
@@ -72,8 +72,8 @@ services:
     networks:
       - core_persistence
     restart: on-failure
-    mem_limit: 512M
-    mem_reservation: 128M
+#    mem_limit: 512M
+#    mem_reservation: 128M
 
 #  beanstalkd-console:
 #      image: kusmierz/beanstalk-console:latest

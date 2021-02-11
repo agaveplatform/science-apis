@@ -138,58 +138,381 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
 		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
-	
-	@DataProvider(name="deleteProvider")
-	public Object[][] deleteProvider() throws Exception
-	{
-		return new Object[][] {
-			{ createExecutionSystem(), "System will delete", false }
-		};
-	}
-	
-	@Test (dataProvider="deleteProvider", dependsOnMethods = {"persist"})
-	public void delete(RemoteSystem system, String message, Boolean shouldThrowException) throws Exception {
-		SystemDao dao = new SystemDao();
-		boolean actuallyThrewException = false;
-		String exceptionMsg = "";
-		try 
-		{
-			dao.persist(system);
 
-			Assert.assertNotNull(system.getId(), "System got an id after persisting.");
-			
-			Long id = system.getId();
-			
-			RemoteSystem savedSystem = dao.findById(id);
-			
-			Assert.assertNotNull(savedSystem, "System was not found in db.");
-			
-			dao.remove(savedSystem);
-			
-			RemoteSystem deletedSystem = dao.findById(id);
-			
-			Assert.assertNull(deletedSystem, "System was found in db.");
-		} 
-		catch(Exception e) 
+	@Test(dependsOnMethods = {"update"})
+	public void isSystemIdUnique() throws Exception {
+
+		ExecutionSystem privateSystem = null;
+		try
 		{
-			actuallyThrewException = true;
-            exceptionMsg = "Error persisting system " + system.getName() + ": " + message;
-            if (actuallyThrewException != shouldThrowException) e.printStackTrace();
+			privateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			privateSystem.setOwner(SYSTEM_USER);
+			privateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
+			dao.persist(privateSystem);
+
+			Assert.assertNotNull(privateSystem.getId(), "Private system was not saved.");
+
+			Assert.assertFalse(dao.isSystemIdUnique(privateSystem.getSystemId()),
+					"Setting user default system did not result in it being returned as the user default system.");
+
 		}
-		
-//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
-		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			throw e;
+		}
 	}
-	
+
+	@Test(dependsOnMethods = {"isSystemIdUnique"})
+	public void getUserSystems() throws Exception {
+
+		ExecutionSystem privateExecutionSystem = null;
+		ExecutionSystem publicExecutionSystem = null;
+		StorageSystem privateStorageSystem = null;
+		try
+		{
+			clearSystems();
+			privateExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			privateExecutionSystem.setOwner(SYSTEM_USER);
+			privateExecutionSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
+			dao.persist(privateExecutionSystem);
+			Assert.assertNotNull(privateExecutionSystem.getId(), "Private execution system was not saved.");
+
+			privateStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
+			privateStorageSystem.setOwner(SYSTEM_USER);
+			privateStorageSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
+			dao.persist(privateStorageSystem);
+			Assert.assertNotNull(privateStorageSystem.getId(), "Private storage system was not saved.");
+
+			publicExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			publicExecutionSystem.setOwner(SYSTEM_USER);
+			publicExecutionSystem.setSystemId(publicExecutionSystem.getSystemId() + "-public");
+			publicExecutionSystem.setPubliclyAvailable(true);
+			publicExecutionSystem.setGlobalDefault(true);
+			dao.persist(publicExecutionSystem);
+			Assert.assertNotNull(privateExecutionSystem.getId(), "Public execution system was not saved.");
+
+			List<RemoteSystem> systems = dao.getUserSystems(SYSTEM_USER, true);
+			Assert.assertEquals(systems.size(), 3, "Not all public and private systems were returned.");
+
+			systems = dao.getUserSystems(SYSTEM_USER, false);
+			Assert.assertEquals(systems.size(), 2, "Exclusively private systems were not returned.");
+			Assert.assertTrue(systems.contains(privateExecutionSystem), "Private execution system was not returned.");
+			Assert.assertTrue(systems.contains(privateStorageSystem), "Private storage system was not returned.");
+
+			systems = dao.getUserSystems(SYSTEM_USER, true, RemoteSystemType.EXECUTION);
+			Assert.assertEquals(systems.size(), 2, "Incorrect number of results was returned.");
+			Assert.assertEquals(RemoteSystemType.EXECUTION, systems.get(0).getType(), "Results were not only execution systems.");
+			Assert.assertEquals(RemoteSystemType.EXECUTION, systems.get(1).getType(), "Results were not only execution systems.");
+
+			systems = dao.getUserSystems(SYSTEM_USER, false, RemoteSystemType.EXECUTION);
+			Assert.assertEquals(systems.size(), 1, "Incorrect number of results was returned.");
+			Assert.assertEquals(RemoteSystemType.EXECUTION, systems.get(0).getType(), "Not only the private execution system was returned.");
+
+			systems = dao.getUserSystems(SYSTEM_USER, true, RemoteSystemType.STORAGE);
+			Assert.assertEquals(systems.size(), 1, "Incorrect number of results was returned.");
+			Assert.assertEquals(RemoteSystemType.STORAGE, systems.get(0).getType(), "Result was not a storage system");
+
+			systems = dao.getUserSystems(SYSTEM_USER, false, RemoteSystemType.STORAGE);
+			Assert.assertEquals(systems.size(), 1, "Incorrect number of results was returned.");
+			Assert.assertEquals(RemoteSystemType.STORAGE, systems.get(0).getType(), "Result was not a storage system");
+		}
+		catch (HibernateException e) {
+			e.printStackTrace();
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			throw e;
+		}
+	}
+
+	@Test(dependsOnMethods = {"getUserSystems"})
+	public void findUserDefaultSystem() throws Exception {
+
+		ExecutionSystem privateSystem = null;
+		ExecutionSystem publicSystem = null;
+		try
+		{
+			privateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			privateSystem.setOwner(SYSTEM_USER);
+			privateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
+			dao.persist(privateSystem);
+			Assert.assertNotNull(privateSystem.getId(), "Private system was not saved.");
+
+			publicSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			publicSystem.setOwner(SYSTEM_USER);
+			publicSystem.setSystemId(publicSystem.getSystemId() + "-public");
+			publicSystem.setPubliclyAvailable(true);
+			publicSystem.setGlobalDefault(true);
+			dao.persist(publicSystem);
+			Assert.assertNotNull(privateSystem.getId(), "Public system was not saved.");
+
+			Assert.assertEquals(dao.findUserDefaultSystem(SYSTEM_USER, RemoteSystemType.EXECUTION), privateSystem,
+					"Setting user default system did not result in it being returned as the user default system.");
+
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			throw e;
+		}
+	}
+
+	@Test(dependsOnMethods = {"findUserDefaultSystem"})
+	public void findUserDefaultSystemHonorsTenant() throws Exception {
+
+		ExecutionSystem t1PrivateSystem = null;
+		ExecutionSystem t1PublicSystem = null;
+		ExecutionSystem t2PrivateSystem = null;
+		ExecutionSystem t2PublicSystem = null;
+		try
+		{
+			TenancyHelper.setCurrentTenantId("tenant1");
+			t1PrivateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			t1PrivateSystem.setOwner(SYSTEM_USER);
+			t1PrivateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
+			dao.persist(t1PrivateSystem);
+			Assert.assertNotNull(t1PrivateSystem.getId(), "Private system in tenant1 was not saved.");
+
+			t1PublicSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			t1PublicSystem.setOwner(SYSTEM_USER);
+			t1PublicSystem.setSystemId(t1PublicSystem.getSystemId() + "-public");
+			t1PublicSystem.setPubliclyAvailable(true);
+			t1PublicSystem.setGlobalDefault(true);
+			dao.persist(t1PublicSystem);
+			Assert.assertNotNull(t1PublicSystem.getId(), "Public system in tenant1 was not saved.");
+
+			TenancyHelper.setCurrentTenantId("tenant2");
+			t2PrivateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			t2PrivateSystem.setOwner(SYSTEM_USER);
+			t2PrivateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
+			dao.persist(t2PrivateSystem);
+			Assert.assertNotNull(t2PrivateSystem.getId(), "Private system in tenant2 was not saved.");
+
+			t2PublicSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			t2PublicSystem.setOwner(SYSTEM_USER);
+			t2PublicSystem.setSystemId(t2PublicSystem.getSystemId() + "-public");
+			t2PublicSystem.setPubliclyAvailable(true);
+			t2PublicSystem.setGlobalDefault(true);
+			dao.persist(t2PublicSystem);
+			Assert.assertNotNull(t2PublicSystem.getId(), "Public system in tenant2 was not saved.");
+
+			Assert.assertEquals(dao.findUserDefaultSystem(SYSTEM_USER, RemoteSystemType.EXECUTION), t2PrivateSystem,
+					"Setting user default system in tenant2 did not result in it being returned as the user default system.");
+
+			TenancyHelper.setCurrentTenantId("tenant1");
+			Assert.assertEquals(dao.findUserDefaultSystem(SYSTEM_USER, RemoteSystemType.EXECUTION), t1PrivateSystem,
+					"Setting user default system in tenant1 did not result in it being returned as the user default system.");
+
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			throw e;
+		}
+	}
+
+	@Test(dependsOnMethods = {"findUserDefaultSystemHonorsTenant"})
+	public void getGlobalDefaultSystemHonorsTenant() throws Exception {
+
+		ExecutionSystem t1PrivateSystem = null;
+		ExecutionSystem t1PublicSystem = null;
+		ExecutionSystem t2PrivateSystem = null;
+		ExecutionSystem t2PublicSystem = null;
+		try
+		{
+			TenancyHelper.setCurrentTenantId("tenant1");
+			t1PrivateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			t1PrivateSystem.setOwner(SYSTEM_USER);
+			t1PrivateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
+			dao.persist(t1PrivateSystem);
+			Assert.assertNotNull(t1PrivateSystem.getId(), "Private system in tenant1 was not saved.");
+
+			t1PublicSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			t1PublicSystem.setOwner(SYSTEM_USER);
+			t1PublicSystem.setSystemId(t1PublicSystem.getSystemId() + "-public");
+			t1PublicSystem.setPubliclyAvailable(true);
+			t1PublicSystem.setGlobalDefault(true);
+			dao.persist(t1PublicSystem);
+			Assert.assertNotNull(t1PublicSystem.getId(), "Public system in tenant1 was not saved.");
+
+			TenancyHelper.setCurrentTenantId("tenant2");
+			t2PrivateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			t2PrivateSystem.setOwner(SYSTEM_USER);
+			t2PrivateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
+			dao.persist(t2PrivateSystem);
+			Assert.assertNotNull(t2PrivateSystem.getId(), "Private system in tenant2 was not saved.");
+
+			t2PublicSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			t2PublicSystem.setOwner(SYSTEM_USER);
+			t2PublicSystem.setSystemId(t2PublicSystem.getSystemId() + "-public");
+			t2PublicSystem.setPubliclyAvailable(true);
+			t2PublicSystem.setGlobalDefault(true);
+			dao.persist(t2PublicSystem);
+			Assert.assertNotNull(t2PublicSystem.getId(), "Public system in tenant2 was not saved.");
+
+			Assert.assertEquals(dao.getGlobalDefaultSystemForTenant(RemoteSystemType.EXECUTION, "tenant2"), t2PublicSystem,
+					"Global default system for tenant2 was not returned while in tenant2.");
+			Assert.assertEquals(dao.getGlobalDefaultSystemForTenant(RemoteSystemType.EXECUTION, "tenant1"), t1PublicSystem,
+					"Global default system for tenant1 was not returned while in tenant 2.");
+
+			TenancyHelper.setCurrentTenantId("tenant1");
+			Assert.assertEquals(dao.getGlobalDefaultSystemForTenant(RemoteSystemType.EXECUTION, "tenant2"), t2PublicSystem,
+					"Global default system for tenant2 was not returned while in tenant1.");
+			Assert.assertEquals(dao.getGlobalDefaultSystemForTenant(RemoteSystemType.EXECUTION, "tenant1"), t1PublicSystem,
+					"Global default system for tenant1 was not returned while in tenant1.");
+
+
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			throw e;
+		}
+	}
+
+	@Test(dependsOnMethods = {"getGlobalDefaultSystemHonorsTenant"})
+	public void findUserSystemBySystemId() throws Exception {
+
+		ExecutionSystem privateExecutionSystem = null;
+		ExecutionSystem publicExecutionSystem = null;
+		StorageSystem privateStorageSystem = null;
+		StorageSystem publicStorageSystem = null;
+		try
+		{
+			privateExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			privateExecutionSystem.setOwner(SYSTEM_USER);
+			privateExecutionSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
+			dao.persist(privateExecutionSystem);
+			Assert.assertNotNull(privateExecutionSystem.getId(), "Private execution system was not saved.");
+
+			publicExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			publicExecutionSystem.setOwner(SYSTEM_USER + "-public");
+			publicExecutionSystem.setSystemId(publicExecutionSystem.getSystemId() + "-public");
+			publicExecutionSystem.setPubliclyAvailable(true);
+			publicExecutionSystem.setGlobalDefault(true);
+			dao.persist(publicExecutionSystem);
+			Assert.assertNotNull(privateExecutionSystem.getId(), "Public execution system was not saved.");
+
+			privateStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
+			privateStorageSystem.setOwner(SYSTEM_USER);
+			privateStorageSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
+			dao.persist(privateStorageSystem);
+			Assert.assertNotNull(privateStorageSystem.getId(), "Private storage system was not saved.");
+
+			publicStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
+			publicStorageSystem.setOwner(SYSTEM_USER + "-public");
+			publicStorageSystem.setSystemId(publicStorageSystem.getSystemId() + "-public");
+			publicStorageSystem.setPubliclyAvailable(true);
+			publicStorageSystem.setGlobalDefault(true);
+			dao.persist(publicStorageSystem);
+			Assert.assertNotNull(publicStorageSystem.getId(), "Public storage system was not saved.");
+
+			RemoteSystem userSystem = dao.findUserSystemBySystemId(SYSTEM_USER, privateExecutionSystem.getSystemId());
+			Assert.assertNotNull(userSystem, "findUserSystemBySystemId Failed to retrieve private user execution system");
+			Assert.assertEquals(userSystem.getSystemId(), privateExecutionSystem.getSystemId(), "findUserSystemBySystemId returned the wrong private execution system");
+
+			userSystem = dao.findUserSystemBySystemId(SYSTEM_USER, publicExecutionSystem.getSystemId());
+			Assert.assertNotNull(userSystem, "findUserSystemBySystemId Failed to retrieve public user execution system");
+			Assert.assertEquals(userSystem.getSystemId(), publicExecutionSystem.getSystemId(), "findUserSystemBySystemId returned the wrong public execution system");
+
+			userSystem = dao.findUserSystemBySystemId(SYSTEM_USER, privateStorageSystem.getSystemId());
+			Assert.assertNotNull(userSystem, "findUserSystemBySystemId Failed to retrieve private user storage system");
+			Assert.assertEquals(userSystem.getSystemId(), privateStorageSystem.getSystemId(), "findUserSystemBySystemId returned the wrong private storage system");
+
+			userSystem = dao.findUserSystemBySystemId(SYSTEM_USER, publicStorageSystem.getSystemId());
+			Assert.assertNotNull(userSystem, "findUserSystemBySystemId Failed to retrieve public user storage system");
+			Assert.assertEquals(userSystem.getSystemId(), publicStorageSystem.getSystemId(), "findUserSystemBySystemId returned the wrong public storage system");
+
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			throw e;
+		}
+	}
+
+	@Test(dependsOnMethods = {"findUserSystemBySystemId"})
+	public void getSharedUserSystems() throws Exception {
+
+		ExecutionSystem privateExecutionSystem = null;
+		ExecutionSystem publicExecutionSystem = null;
+		StorageSystem privateStorageSystem = null;
+		try
+		{
+			for(RemoteSystem system: dao.getAll()) {
+				dao.remove(system);
+			}
+			publicExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			publicExecutionSystem.setOwner(SYSTEM_USER);
+			publicExecutionSystem.setSystemId(publicExecutionSystem.getSystemId() + "-public");
+			publicExecutionSystem.setPubliclyAvailable(true);
+			publicExecutionSystem.setGlobalDefault(true);
+			dao.persist(publicExecutionSystem);
+			Assert.assertNotNull(publicExecutionSystem.getId(), "Public execution system was not saved.");
+
+			List<RemoteSystem> publicSystems = dao.getUserSystems(SYSTEM_SHARE_USER, true);
+			Assert.assertEquals(publicSystems.size(), 1, "Too many systems returned for shared user");
+			Assert.assertEquals(publicExecutionSystem.getSystemId(), publicSystems.get(0).getSystemId(), "Public system not returned for shared user.");
+
+			privateExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
+			privateExecutionSystem.setOwner(SYSTEM_USER);
+			privateExecutionSystem.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.USER));
+			dao.persist(privateExecutionSystem);
+			Assert.assertNotNull(privateExecutionSystem.getId(), "Private execution system was not saved.");
+
+			List<RemoteSystem> sharedSystems = dao.getUserSystems(SYSTEM_SHARE_USER, true);
+			Assert.assertEquals(sharedSystems.size(), 2, "Too many systems returned for shared user");
+
+			boolean found = false;
+			for(RemoteSystem system: sharedSystems) {
+				if (system.getSystemId().equals(privateExecutionSystem.getSystemId())) {
+					found = true;
+					Assert.assertEquals(system.getUserRole(SYSTEM_SHARE_USER).getRole(), RoleType.USER,
+							"Shared user returned with incorrect permissions on execution system.");
+				}
+			}
+			Assert.assertTrue(found, "Shared execution system not returned for shared user.");
+
+			privateStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
+			privateStorageSystem.setOwner(SYSTEM_USER);
+			privateStorageSystem.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.USER));
+			dao.persist(privateStorageSystem);
+			Assert.assertNotNull(privateStorageSystem.getId(), "Private storage system was not saved.");
+
+			List<RemoteSystem> sharedSystems2 = dao.getUserSystems(SYSTEM_SHARE_USER, true);
+			Assert.assertEquals(sharedSystems2.size(), 3, "Too many systems returned for shared user");
+
+			found = false;
+			for(RemoteSystem system: sharedSystems2) {
+				if (system.getSystemId().equals(privateStorageSystem.getSystemId())) {
+					found = true;
+					Assert.assertEquals(system.getUserRole(SYSTEM_SHARE_USER).getRole(), RoleType.USER,
+							"Shared user returned with incorrect permissions on shared system.");
+				}
+			}
+			Assert.assertTrue(found,
+					"Shared storage system not returned for shared user.");
+		}
+		catch (HibernateException e) {
+			e.printStackTrace();
+		}
+		catch (Exception e)
+		{
+			e.printStackTrace();
+			throw e;
+		}
+	}
+
 	@DataProvider(name="findByExampleSystemProvider")
-	public Object[][] findByExampleSystemProvider() throws Exception
-	{
+	public Object[][] findByExampleSystemProvider() throws Exception {
 		return new Object[][] {
 			{ createExecutionSystem(), "System was found by example", false }
 		};
 	}
 	
-	@Test (dataProvider="findByExampleSystemProvider", dependsOnMethods = {"getUserSystems"})
+	@Test (dataProvider="findByExampleSystemProvider", dependsOnMethods = {"getSharedUserSystems"})
 	public void findByExampleSystemProviderTest(RemoteSystem system, String message, Boolean shouldThrowException) throws Exception {
 		SystemDao dao = new SystemDao();
 		boolean actuallyThrewException = false;
@@ -218,7 +541,8 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
 		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
-	
+
+	@Test(dependsOnMethods = {"findByExampleSystemProviderTest"})
 	public void updateBatchQueue() throws Exception
 	{
 		SystemDao dao = new SystemDao();
@@ -226,7 +550,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			ExecutionSystem system = createExecutionSystem();
 			dao.persist(system);
 			Assert.assertNotNull(system.getId(), "System got an id after persisting.");
-			
+
 			system.getBatchQueues().clear();
 			dao.persist(system);
 			Assert.assertTrue(system.getBatchQueues().isEmpty(), "Batch queues were not deleted");
@@ -235,22 +559,74 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			Assert.assertTrue(savedSystem.getBatchQueues().isEmpty(), "Batch queues were not deleted");
 
 			BatchQueue queue = new BatchQueue("test", (long)10, 10.0);
-			system.addBatchQueue(queue);
-			dao.persist(system);
-			savedSystem = (ExecutionSystem) dao.findBySystemId(system.getSystemId());
+			savedSystem.addBatchQueue(queue);
+			dao.persist(savedSystem);
+
+			savedSystem = (ExecutionSystem) dao.findBySystemId(savedSystem.getSystemId());
 			Assert.assertEquals(savedSystem.getBatchQueues().size(), 1,  "Incorrect number of queues found");
 
-			BatchQueue savedQueue = system.getBatchQueues().iterator().next();
-			system.removeBatchQueue(savedQueue);
-			dao.persist(system);
+			BatchQueue savedQueue = savedSystem.getBatchQueues().iterator().next();
+			savedSystem.removeBatchQueue(savedQueue);
+			dao.persist(savedSystem);
 
-			savedSystem = (ExecutionSystem) dao.findBySystemId(system.getSystemId());
+			savedSystem = (ExecutionSystem) dao.findBySystemId(savedSystem.getSystemId());
 			Assert.assertTrue(savedSystem.getBatchQueues().isEmpty(), "Batch queue was not deleted");
 		}
 		catch (Throwable t) {
 			Assert.fail("Failed to update batch queues", t);
 		}
 		
+	}
+
+	@Test(dependsOnMethods = {"updateBatchQueue"})
+	public void executionUpdateSystemLoginPasswordEncryptionTest()
+	{
+		try
+		{
+			JSONObject systemJson = jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE);
+
+			// get password from json
+			JSONObject authJson = systemJson.getJSONObject("login").getJSONObject("auth");
+			Assert.assertNotNull(authJson, "No auth config associated with this login config.");
+
+			String originalPassword  = authJson.getString("password");
+			Assert.assertNotNull(authJson, "No password associated with this auth config.");
+
+			// get password from deserialized auth config
+			ExecutionSystem originalSystem = createExecutionSystem();
+			dao.persist(originalSystem);
+
+			ExecutionSystem originalSavedSystem = (ExecutionSystem)dao.findBySystemId(originalSystem.getSystemId());
+			// verify original encryption after persisting
+			AuthConfig originalSavedauthConfig = originalSavedSystem.getLoginConfig().getDefaultAuthConfig();
+			Assert.assertNotNull(originalSavedauthConfig, "No login config associated with original system.");
+
+			Assert.assertNotEquals(originalSavedSystem, originalSavedauthConfig.getPassword(), "Login password was not encrypted during original deserialization");
+
+			String originalSavedSalt = originalSystem.getEncryptionKeyForAuthConfig(originalSavedauthConfig);
+			String originalSavedclearTextPassword = originalSavedauthConfig.getClearTextPassword(originalSavedSalt);
+
+			Assert.assertEquals(originalPassword, originalSavedclearTextPassword, "Decrypted original login password does not match original.");
+
+			// update the execution system and verify original encryption after persisting
+			ExecutionSystem updatedSystem = ExecutionSystem.fromJSON(systemJson, originalSavedSystem);
+			dao.merge(updatedSystem);
+			ExecutionSystem updatedSavedSystem = (ExecutionSystem)dao.findBySystemId(updatedSystem.getSystemId());
+			AuthConfig updatedSavedAuthConfig = updatedSavedSystem.getLoginConfig().getDefaultAuthConfig();
+			Assert.assertNotNull(updatedSavedAuthConfig, "No login config associated with updated system.");
+
+			Assert.assertNotEquals(originalPassword, updatedSavedAuthConfig.getPassword(), "Login password was not encrypted during updated deserialization");
+
+			String updatedSavedSalt = updatedSavedSystem.getEncryptionKeyForAuthConfig(updatedSavedAuthConfig);
+			String updatedSavedClearTextPassword = updatedSavedAuthConfig.getClearTextPassword(updatedSavedSalt);
+
+			Assert.assertEquals(originalPassword, updatedSavedClearTextPassword, "Decrypted updated login password does not match original.");
+
+
+		}
+		catch (Exception e) {
+			Assert.fail("Encryption test failed to match login passwords after update.", e);
+		}
 	}
 	
 	@DataProvider(name="persistenceSystemUserDefaultSystemProvider")
@@ -260,8 +636,8 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 			{ SYSTEM_USER, "System will persist", false }
 		};
 	}
-	
-	@Test (dataProvider="persistenceSystemUserDefaultSystemProvider", dependsOnMethods = {"getUserSystems"})
+
+	@Test (dataProvider="persistenceSystemUserDefaultSystemProvider", dependsOnMethods = {"executionUpdateSystemLoginPasswordEncryptionTest"})
 	public void persistSystemUserDefaultSystem(String username, String message, Boolean shouldThrowException)
 	throws Exception 
 	{
@@ -296,7 +672,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
 		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
-	
+
 	@Test(dependsOnMethods = {"persistSystemUserDefaultSystem"})
 	public void deleteSystemUserDefaultSystemTest()
 	throws Exception 
@@ -349,7 +725,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		};
 	}
 	
-	@Test (dataProvider="persistenceSystemRoleProvider", dependsOnMethods = {"persistSystemUserDefaultSystem", "deleteSystemUserDefaultSystemTest"})
+	@Test (dataProvider="persistenceSystemRoleProvider", dependsOnMethods = {"deleteSystemUserDefaultSystemTest"})
 	public void persistSystemRole(RoleType role, String message, Boolean shouldThrowException)
 	throws Exception 
 	{
@@ -435,7 +811,7 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 	
-	@Test (dataProvider="updateSystemRoleProvider", dependsOnMethods = {"persistSystemRole", "updateSystemRole"})
+	@Test (dataProvider="updateSystemRoleProvider", dependsOnMethods = {"updateSystemRole"})
 	public void deleteSystemRole(RoleType originalType, RoleType updateType, String message, Boolean shouldThrowException)
 	throws Exception 
 	{
@@ -476,9 +852,9 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
 
-	@Test (dataProvider="updateSystemRoleProvider", dependsOnMethods = {"persistSystemRole", "deleteSystemRole"})
+	@Test (dataProvider="updateSystemRoleProvider", dependsOnMethods = {"deleteSystemRole"})
 	public void clearSystemRoleTest(RoleType originalType, RoleType updateType, String message, Boolean shouldThrowException)
-			throws Exception
+	throws Exception
 	{
 		RemoteSystem system = createExecutionSystem();
 		SystemDao dao = new SystemDao();
@@ -515,422 +891,47 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 //        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
 		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
-	
-	@Test(dependsOnMethods = {"getUserSystems"})
-	public void findUserDefaultSystem() throws Exception {
-		
-		ExecutionSystem privateSystem = null;
-		ExecutionSystem publicSystem = null;
+
+	@DataProvider(name="deleteProvider")
+	public Object[][] deleteProvider() throws Exception
+	{
+		return new Object[][] {
+				{ createExecutionSystem(), "System will delete", false }
+		};
+	}
+
+	@Test (dataProvider="deleteProvider", dependsOnMethods = {"clearSystemRoleTest"})
+	public void delete(RemoteSystem system, String message, Boolean shouldThrowException) throws Exception {
+		SystemDao dao = new SystemDao();
+		boolean actuallyThrewException = false;
+		String exceptionMsg = "";
 		try
 		{
-			privateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-			privateSystem.setOwner(SYSTEM_USER);
-			privateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
-			dao.persist(privateSystem);
-			Assert.assertNotNull(privateSystem.getId(), "Private system was not saved.");
-			
-			publicSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-			publicSystem.setOwner(SYSTEM_USER);
-			publicSystem.setSystemId(publicSystem.getSystemId() + "-public");
-			publicSystem.setPubliclyAvailable(true);
-			publicSystem.setGlobalDefault(true);
-			dao.persist(publicSystem);
-			Assert.assertNotNull(privateSystem.getId(), "Public system was not saved.");
-			
-			Assert.assertEquals(dao.findUserDefaultSystem(SYSTEM_USER, RemoteSystemType.EXECUTION), privateSystem, 
-					"Setting user default system did not result in it being returned as the user default system.");
-			
+			dao.persist(system);
+
+			Assert.assertNotNull(system.getId(), "System got an id after persisting.");
+
+			Long id = system.getId();
+
+			RemoteSystem savedSystem = dao.findById(id);
+
+			Assert.assertNotNull(savedSystem, "System was not found in db.");
+
+			dao.remove(savedSystem);
+
+			RemoteSystem deletedSystem = dao.findById(id);
+
+			Assert.assertNull(deletedSystem, "System was found in db.");
 		}
-		catch (Exception e)
+		catch(Exception e)
 		{
-			e.printStackTrace();
-			throw e;
+			actuallyThrewException = true;
+			exceptionMsg = "Error persisting system " + system.getName() + ": " + message;
+			if (actuallyThrewException != shouldThrowException) e.printStackTrace();
 		}
+
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+		Assert.assertEquals((boolean) shouldThrowException, actuallyThrewException, exceptionMsg);
 	}
-	
-	@Test(dependsOnMethods = {"findUserDefaultSystem"})
-    public void findUserDefaultSystemHonorsTenant() throws Exception {
-        
-        ExecutionSystem t1PrivateSystem = null;
-        ExecutionSystem t1PublicSystem = null;
-        ExecutionSystem t2PrivateSystem = null;
-        ExecutionSystem t2PublicSystem = null;
-        try
-        {
-            TenancyHelper.setCurrentTenantId("tenant1");
-            t1PrivateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-            t1PrivateSystem.setOwner(SYSTEM_USER);
-            t1PrivateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
-            dao.persist(t1PrivateSystem);
-            Assert.assertNotNull(t1PrivateSystem.getId(), "Private system in tenant1 was not saved.");
-            
-            t1PublicSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-            t1PublicSystem.setOwner(SYSTEM_USER);
-            t1PublicSystem.setSystemId(t1PublicSystem.getSystemId() + "-public");
-            t1PublicSystem.setPubliclyAvailable(true);
-            t1PublicSystem.setGlobalDefault(true);
-            dao.persist(t1PublicSystem);
-            Assert.assertNotNull(t1PublicSystem.getId(), "Public system in tenant1 was not saved.");
-            
-            TenancyHelper.setCurrentTenantId("tenant2");
-            t2PrivateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-            t2PrivateSystem.setOwner(SYSTEM_USER);
-            t2PrivateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
-            dao.persist(t2PrivateSystem);
-            Assert.assertNotNull(t2PrivateSystem.getId(), "Private system in tenant2 was not saved.");
-            
-            t2PublicSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-            t2PublicSystem.setOwner(SYSTEM_USER);
-            t2PublicSystem.setSystemId(t2PublicSystem.getSystemId() + "-public");
-            t2PublicSystem.setPubliclyAvailable(true);
-            t2PublicSystem.setGlobalDefault(true);
-            dao.persist(t2PublicSystem);
-            Assert.assertNotNull(t2PublicSystem.getId(), "Public system in tenant2 was not saved.");
-            
-            Assert.assertEquals(dao.findUserDefaultSystem(SYSTEM_USER, RemoteSystemType.EXECUTION), t2PrivateSystem, 
-                    "Setting user default system in tenant2 did not result in it being returned as the user default system.");
-            
-            TenancyHelper.setCurrentTenantId("tenant1");
-            Assert.assertEquals(dao.findUserDefaultSystem(SYSTEM_USER, RemoteSystemType.EXECUTION), t1PrivateSystem, 
-                    "Setting user default system in tenant1 did not result in it being returned as the user default system.");
-            
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-            throw e;
-        }
-    }
-	
-	@Test(dependsOnMethods = {"persist", "delete", "isSystemIdUnique"})
-	public void getUserSystems() throws Exception {
-		
-		ExecutionSystem privateExecutionSystem = null;
-		ExecutionSystem publicExecutionSystem = null;
-		StorageSystem privateStorageSystem = null;
-		try
-		{
-			clearSystems();
-			privateExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-			privateExecutionSystem.setOwner(SYSTEM_USER);
-			privateExecutionSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
-			dao.persist(privateExecutionSystem);
-			Assert.assertNotNull(privateExecutionSystem.getId(), "Private execution system was not saved.");
-			
-			privateStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
-			privateStorageSystem.setOwner(SYSTEM_USER);
-			privateStorageSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
-			dao.persist(privateStorageSystem);
-			Assert.assertNotNull(privateStorageSystem.getId(), "Private storage system was not saved.");
-			
-			publicExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-			publicExecutionSystem.setOwner(SYSTEM_USER);
-			publicExecutionSystem.setSystemId(publicExecutionSystem.getSystemId() + "-public");
-			publicExecutionSystem.setPubliclyAvailable(true);
-			publicExecutionSystem.setGlobalDefault(true);
-			dao.persist(publicExecutionSystem);
-			Assert.assertNotNull(privateExecutionSystem.getId(), "Public execution system was not saved.");
-			
-			List<RemoteSystem> systems = dao.getUserSystems(SYSTEM_USER, true);
-			Assert.assertEquals(systems.size(), 3, "Not all public and private systems were returned.");
-			
-			systems = dao.getUserSystems(SYSTEM_USER, false);
-			Assert.assertEquals(systems.size(), 2, "Exclusively private systems were not returned.");
-			Assert.assertTrue(systems.contains(privateExecutionSystem), "Private execution system was not returned.");
-			Assert.assertTrue(systems.contains(privateStorageSystem), "Private storage system was not returned.");
-			
-			systems = dao.getUserSystems(SYSTEM_USER, true, RemoteSystemType.EXECUTION);
-			Assert.assertEquals(systems.size(), 2, "Incorrect number of results was returned.");
-			Assert.assertEquals(RemoteSystemType.EXECUTION, systems.get(0).getType(), "Results were not only execution systems.");
-			Assert.assertEquals(RemoteSystemType.EXECUTION, systems.get(1).getType(), "Results were not only execution systems.");
-			
-			systems = dao.getUserSystems(SYSTEM_USER, false, RemoteSystemType.EXECUTION);
-			Assert.assertEquals(systems.size(), 1, "Incorrect number of results was returned.");
-			Assert.assertEquals(RemoteSystemType.EXECUTION, systems.get(0).getType(), "Not only the private execution system was returned.");
-			
-			systems = dao.getUserSystems(SYSTEM_USER, true, RemoteSystemType.STORAGE);
-			Assert.assertEquals(systems.size(), 1, "Incorrect number of results was returned.");
-			Assert.assertEquals(RemoteSystemType.STORAGE, systems.get(0).getType(), "Result was not a storage system");
-			
-			systems = dao.getUserSystems(SYSTEM_USER, false, RemoteSystemType.STORAGE);
-			Assert.assertEquals(systems.size(), 1, "Incorrect number of results was returned.");
-			Assert.assertEquals(RemoteSystemType.STORAGE, systems.get(0).getType(), "Result was not a storage system");
-		}
-		catch (HibernateException e) {
-			e.printStackTrace();
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-			throw e;
-		}
-	}
-	
-	@Test(dependsOnMethods = {"getUserSystems"})
-	public void getSharedUserSystems() throws Exception {
-		
-		ExecutionSystem privateExecutionSystem = null;
-		ExecutionSystem publicExecutionSystem = null;
-		StorageSystem privateStorageSystem = null;
-		try
-		{
-			for(RemoteSystem system: dao.getAll()) {
-				dao.remove(system);
-			}
-			publicExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-			publicExecutionSystem.setOwner(SYSTEM_USER);
-			publicExecutionSystem.setSystemId(publicExecutionSystem.getSystemId() + "-public");
-			publicExecutionSystem.setPubliclyAvailable(true);
-			publicExecutionSystem.setGlobalDefault(true);
-			dao.persist(publicExecutionSystem);
-			Assert.assertNotNull(publicExecutionSystem.getId(), "Public execution system was not saved.");
-			
-			List<RemoteSystem> publicSystems = dao.getUserSystems(SYSTEM_SHARE_USER, true);
-			Assert.assertEquals(publicSystems.size(), 1, "Too many systems returned for shared user");
-			Assert.assertEquals(publicExecutionSystem.getSystemId(), publicSystems.get(0).getSystemId(), "Public system not returned for shared user.");
-			
-			privateExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-			privateExecutionSystem.setOwner(SYSTEM_USER);
-			privateExecutionSystem.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.USER));
-			dao.persist(privateExecutionSystem);
-			Assert.assertNotNull(privateExecutionSystem.getId(), "Private execution system was not saved.");
-			
-			List<RemoteSystem> sharedSystems = dao.getUserSystems(SYSTEM_SHARE_USER, true);
-			Assert.assertEquals(sharedSystems.size(), 2, "Too many systems returned for shared user");
-			
-			boolean found = false;
-			for(RemoteSystem system: sharedSystems) {
-				if (system.getSystemId().equals(privateExecutionSystem.getSystemId())) {
-					found = true;
-					Assert.assertEquals(system.getUserRole(SYSTEM_SHARE_USER).getRole(), RoleType.USER, 
-							"Shared user returned with incorrect permissions on execution system.");
-				}
-			}
-			Assert.assertTrue(found, "Shared execution system not returned for shared user.");
-			
-			privateStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
-			privateStorageSystem.setOwner(SYSTEM_USER);
-			privateStorageSystem.addRole(new SystemRole(SYSTEM_SHARE_USER, RoleType.USER));
-			dao.persist(privateStorageSystem);
-			Assert.assertNotNull(privateStorageSystem.getId(), "Private storage system was not saved.");
-			
-			List<RemoteSystem> sharedSystems2 = dao.getUserSystems(SYSTEM_SHARE_USER, true);
-			Assert.assertEquals(sharedSystems2.size(), 3, "Too many systems returned for shared user");
-			
-			found = false;
-			for(RemoteSystem system: sharedSystems2) {
-				if (system.getSystemId().equals(privateStorageSystem.getSystemId())) {
-					found = true;
-					Assert.assertEquals(system.getUserRole(SYSTEM_SHARE_USER).getRole(), RoleType.USER, 
-							"Shared user returned with incorrect permissions on shared system.");
-				}
-			}
-			Assert.assertTrue(found, 
-					"Shared storage system not returned for shared user.");
-		}
-		catch (HibernateException e) {
-			e.printStackTrace();
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-			throw e;
-		}
-	}
-	
-	@Test(dependsOnMethods = {"persist", "delete"})
-	public void isSystemIdUnique() throws Exception {
-		
-		ExecutionSystem privateSystem = null;
-		try
-		{
-			privateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-			privateSystem.setOwner(SYSTEM_USER);
-			privateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
-			dao.persist(privateSystem);
-			
-			Assert.assertNotNull(privateSystem.getId(), "Private system was not saved.");
-			
-			Assert.assertFalse(dao.isSystemIdUnique(privateSystem.getSystemId()),
-					"Setting user default system did not result in it being returned as the user default system.");
-			
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-			throw e;
-		}
-	}
-	
-	@Test(dependsOnMethods = {"findUserDefaultSystem"})
-    public void getGlobalDefaultSystemHonorsTenant() throws Exception {
-        
-        ExecutionSystem t1PrivateSystem = null;
-        ExecutionSystem t1PublicSystem = null;
-        ExecutionSystem t2PrivateSystem = null;
-        ExecutionSystem t2PublicSystem = null;
-        try
-        {
-            TenancyHelper.setCurrentTenantId("tenant1");
-            t1PrivateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-            t1PrivateSystem.setOwner(SYSTEM_USER);
-            t1PrivateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
-            dao.persist(t1PrivateSystem);
-            Assert.assertNotNull(t1PrivateSystem.getId(), "Private system in tenant1 was not saved.");
-            
-            t1PublicSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-            t1PublicSystem.setOwner(SYSTEM_USER);
-            t1PublicSystem.setSystemId(t1PublicSystem.getSystemId() + "-public");
-            t1PublicSystem.setPubliclyAvailable(true);
-            t1PublicSystem.setGlobalDefault(true);
-            dao.persist(t1PublicSystem);
-            Assert.assertNotNull(t1PublicSystem.getId(), "Public system in tenant1 was not saved.");
-            
-            TenancyHelper.setCurrentTenantId("tenant2");
-            t2PrivateSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-            t2PrivateSystem.setOwner(SYSTEM_USER);
-            t2PrivateSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
-            dao.persist(t2PrivateSystem);
-            Assert.assertNotNull(t2PrivateSystem.getId(), "Private system in tenant2 was not saved.");
-            
-            t2PublicSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-            t2PublicSystem.setOwner(SYSTEM_USER);
-            t2PublicSystem.setSystemId(t2PublicSystem.getSystemId() + "-public");
-            t2PublicSystem.setPubliclyAvailable(true);
-            t2PublicSystem.setGlobalDefault(true);
-            dao.persist(t2PublicSystem);
-            Assert.assertNotNull(t2PublicSystem.getId(), "Public system in tenant2 was not saved.");
-            
-            Assert.assertEquals(dao.getGlobalDefaultSystemForTenant(RemoteSystemType.EXECUTION, "tenant2"), t2PublicSystem, 
-                    "Global default system for tenant2 was not returned while in tenant2.");
-            Assert.assertEquals(dao.getGlobalDefaultSystemForTenant(RemoteSystemType.EXECUTION, "tenant1"), t1PublicSystem, 
-                    "Global default system for tenant1 was not returned while in tenant 2.");
-            
-            TenancyHelper.setCurrentTenantId("tenant1");
-            Assert.assertEquals(dao.getGlobalDefaultSystemForTenant(RemoteSystemType.EXECUTION, "tenant2"), t2PublicSystem, 
-                    "Global default system for tenant2 was not returned while in tenant1.");
-            Assert.assertEquals(dao.getGlobalDefaultSystemForTenant(RemoteSystemType.EXECUTION, "tenant1"), t1PublicSystem, 
-                    "Global default system for tenant1 was not returned while in tenant1.");
-            
-            
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-            throw e;
-        }
-    }
-    
-	
-	@Test(dependsOnMethods = {"getUserSystems"})
-	public void findUserSystemBySystemId() throws Exception {
-		
-		ExecutionSystem privateExecutionSystem = null;
-		ExecutionSystem publicExecutionSystem = null;
-		StorageSystem privateStorageSystem = null;
-		StorageSystem publicStorageSystem = null;
-		try
-		{
-			privateExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-			privateExecutionSystem.setOwner(SYSTEM_USER);
-			privateExecutionSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
-			dao.persist(privateExecutionSystem);
-			Assert.assertNotNull(privateExecutionSystem.getId(), "Private execution system was not saved.");
-			
-			publicExecutionSystem = ExecutionSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE));
-			publicExecutionSystem.setOwner(SYSTEM_USER + "-public");
-			publicExecutionSystem.setSystemId(publicExecutionSystem.getSystemId() + "-public");
-			publicExecutionSystem.setPubliclyAvailable(true);
-			publicExecutionSystem.setGlobalDefault(true);
-			dao.persist(publicExecutionSystem);
-			Assert.assertNotNull(privateExecutionSystem.getId(), "Public execution system was not saved.");
-			
-			privateStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
-			privateStorageSystem.setOwner(SYSTEM_USER);
-			privateStorageSystem.getUsersUsingAsDefault().add(SYSTEM_USER);
-			dao.persist(privateStorageSystem);
-			Assert.assertNotNull(privateStorageSystem.getId(), "Private storage system was not saved.");
-			
-			publicStorageSystem = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
-			publicStorageSystem.setOwner(SYSTEM_USER + "-public");
-			publicStorageSystem.setSystemId(publicStorageSystem.getSystemId() + "-public");
-			publicStorageSystem.setPubliclyAvailable(true);
-			publicStorageSystem.setGlobalDefault(true);
-			dao.persist(publicStorageSystem);
-			Assert.assertNotNull(publicStorageSystem.getId(), "Public storage system was not saved.");
-			
-			RemoteSystem userSystem = dao.findUserSystemBySystemId(SYSTEM_USER, privateExecutionSystem.getSystemId());
-			Assert.assertNotNull(userSystem, "findUserSystemBySystemId Failed to retrieve private user execution system");
-			Assert.assertEquals(userSystem.getSystemId(), privateExecutionSystem.getSystemId(), "findUserSystemBySystemId returned the wrong private execution system");
-			
-			userSystem = dao.findUserSystemBySystemId(SYSTEM_USER, publicExecutionSystem.getSystemId());
-			Assert.assertNotNull(userSystem, "findUserSystemBySystemId Failed to retrieve public user execution system");
-			Assert.assertEquals(userSystem.getSystemId(), publicExecutionSystem.getSystemId(), "findUserSystemBySystemId returned the wrong public execution system");
-			
-			userSystem = dao.findUserSystemBySystemId(SYSTEM_USER, privateStorageSystem.getSystemId());
-			Assert.assertNotNull(userSystem, "findUserSystemBySystemId Failed to retrieve private user storage system");
-			Assert.assertEquals(userSystem.getSystemId(), privateStorageSystem.getSystemId(), "findUserSystemBySystemId returned the wrong private storage system");
-			
-			userSystem = dao.findUserSystemBySystemId(SYSTEM_USER, publicStorageSystem.getSystemId());
-			Assert.assertNotNull(userSystem, "findUserSystemBySystemId Failed to retrieve public user storage system");
-			Assert.assertEquals(userSystem.getSystemId(), publicStorageSystem.getSystemId(), "findUserSystemBySystemId returned the wrong public storage system");
-			
-		}
-		catch (Exception e)
-		{
-			e.printStackTrace();
-			throw e;
-		}
-	}
-	
-	@Test
-    public void executionUpdateSystemLoginPasswordEncryptionTest()
-    {
-    	try 
-		{
-    		JSONObject systemJson = jtd.getTestDataObject(JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE);
-    		
-    		// get password from json
-    		JSONObject authJson = systemJson.getJSONObject("login").getJSONObject("auth");
-	    	Assert.assertNotNull(authJson, "No auth config associated with this login config.");
-	    	
-	    	String originalPassword  = authJson.getString("password");
-	    	Assert.assertNotNull(authJson, "No password associated with this auth config.");
-	    	
-	    	// get password from deserialized auth config
-	    	ExecutionSystem originalSystem = createExecutionSystem();
-	    	dao.persist(originalSystem);
-	    	
-	    	ExecutionSystem originalSavedSystem = (ExecutionSystem)dao.findBySystemId(originalSystem.getSystemId());
-	    	// verify original encryption after persisting
-	    	AuthConfig originalSavedauthConfig = originalSavedSystem.getLoginConfig().getDefaultAuthConfig();
-	    	Assert.assertNotNull(originalSavedauthConfig, "No login config associated with original system.");
-	    	
-	    	Assert.assertNotEquals(originalSavedSystem, originalSavedauthConfig.getPassword(), "Login password was not encrypted during original deserialization");
-	    	
-	    	String originalSavedSalt = originalSystem.getEncryptionKeyForAuthConfig(originalSavedauthConfig);
-	    	String originalSavedclearTextPassword = originalSavedauthConfig.getClearTextPassword(originalSavedSalt);
-	    
-	    	Assert.assertEquals(originalPassword, originalSavedclearTextPassword, "Decrypted original login password does not match original.");
-	    	
-	    	// update the execution system and verify original encryption after persisting
-	    	ExecutionSystem updatedSystem = ExecutionSystem.fromJSON(systemJson, originalSavedSystem);
-	    	dao.merge(updatedSystem);
-	    	ExecutionSystem updatedSavedSystem = (ExecutionSystem)dao.findBySystemId(updatedSystem.getSystemId());
-	    	AuthConfig updatedSavedAuthConfig = updatedSavedSystem.getLoginConfig().getDefaultAuthConfig();
-	    	Assert.assertNotNull(updatedSavedAuthConfig, "No login config associated with updated system.");
-	    	
-	    	Assert.assertNotEquals(originalPassword, updatedSavedAuthConfig.getPassword(), "Login password was not encrypted during updated deserialization");
-	    	
-	    	String updatedSavedSalt = updatedSavedSystem.getEncryptionKeyForAuthConfig(updatedSavedAuthConfig);
-	    	String updatedSavedClearTextPassword = updatedSavedAuthConfig.getClearTextPassword(updatedSavedSalt);
-	    
-	    	Assert.assertEquals(originalPassword, updatedSavedClearTextPassword, "Decrypted updated login password does not match original.");
-	    	
-	    	
-		} 
-    	catch (Exception e) {
-			Assert.fail("Encryption test failed to match login passwords after update.", e);
-		}
-    }
+
 }

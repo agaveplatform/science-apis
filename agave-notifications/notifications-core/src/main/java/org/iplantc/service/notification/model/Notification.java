@@ -218,6 +218,7 @@ public class Notification
 		this(eventName, callbackUrl);
 		setAssociatedUuid(associatedUuid);
 		setOwner(owner);
+		setPersistent(persistent);
 	}
 
 	/**

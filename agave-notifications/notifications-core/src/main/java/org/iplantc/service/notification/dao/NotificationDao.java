@@ -457,9 +457,9 @@ public class NotificationDao extends AbstractDao
 	}
 
 	/**
-	 * Saves or updates the InternalUser
-	 * @param notification
-	 * @throws NotificationException
+	 * Saves or updates the {@link Notification}
+	 * @param notification the notification to persist
+	 * @throws NotificationException when an exception occurs
 	 */
 	public void persist(Notification notification) throws NotificationException
 	{

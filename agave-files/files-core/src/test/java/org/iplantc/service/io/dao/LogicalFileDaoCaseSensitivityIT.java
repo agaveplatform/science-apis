@@ -15,17 +15,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Test(groups={"integration"})
-public class LogicalFileDaoCaseSensitivityTest extends BaseTestCase 
+public class LogicalFileDaoCaseSensitivityIT extends BaseTestCase
 {
 	private LogicalFile file;
-	private LogicalFile sibling;
-	private LogicalFile cousin;
-	private LogicalFile parent;
-	private LogicalFile uncle;
-	private LogicalFile parentParent;
-	private LogicalFile parentParentParent;
-	private LogicalFile rootParent;
-	private SystemDao systemDao = new SystemDao();
+	private final SystemDao systemDao = new SystemDao();
 	private StorageSystem system;
 	private String basePath;
 	private String otherPath;

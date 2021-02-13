@@ -26,7 +26,7 @@ import org.testng.annotations.*;
 import java.util.ArrayList;
 import java.util.List;
 
-@Test(singleThreaded = true, groups={"integration"})
+@Test(singleThreaded = true, groups={"integration", "notReady"})
 public class PermissionManagerSetPermissionsIT extends BaseTestCase
 {
 	private SystemDao dao = new SystemDao();

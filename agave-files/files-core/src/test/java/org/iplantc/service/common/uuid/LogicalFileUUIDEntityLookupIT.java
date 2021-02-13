@@ -34,7 +34,7 @@ import java.io.IOException;
  *
  */
 @Test(groups={"integration"})
-public class LogicalFileUUIDEntityLookupTest extends AbstractUUIDEntityLookupTest<LogicalFile> {
+public class LogicalFileUUIDEntityLookupIT extends AbstractUUIDEntityLookupTest<LogicalFile> {
 	
 	@BeforeClass
 	@Override
@@ -98,49 +98,23 @@ public class LogicalFileUUIDEntityLookupTest extends AbstractUUIDEntityLookupTes
 	public String getEntityUuid(LogicalFile testEntity) {
 		return testEntity.getUuid();
 	}
-	
-	@Test(dependsOnMethods="getResourceUrl")
-	public void getAgaveRelativePathFromAbsolutePath() {
-		
-		LogicalFile lf = createEntity();
-		
-		Assert.assertEquals(UUIDEntityLookup.getAgaveRelativePathFromAbsolutePath(
-						lf.getPath(), 
-						lf.getSystem().getStorageConfig().getRootDir(), 
-						lf.getSystem().getStorageConfig().getHomeDir()),
-						lf.getAgaveRelativePathFromAbsolutePath(),
-				"Relative path calculated by UUIDEntityLookup should match that calculated by LogicalFile");
-		
-	}
 
-//	/**
-//	 * Generates a test case using the abstract methods implemented for this
-//	 * class.
-//	 * @return
-//	 * @throws IOException
-//	 */
-//	@DataProvider
-//	protected Object[][] resolveLogicalFileURLFromUUIDProvider() throws IOException {
-//		LogicalFile testEntity = createEntity();
-//		return new Object[][] { 
-//				{ getEntityUuid(testEntity), getUrlFromEntityJson(serializeEntityToJSON(testEntity)) } };
-//	}
-
-	@Test(dependsOnMethods="getAgaveRelativePathFromAbsolutePath")
+	@Test
 	public void resolveLogicalFileURLFromUUID() {
 		LogicalFile testEntity = createEntity();
 		try {
-			String resolvedUrl = UUIDEntityLookup.resolveLogicalFileURLFromUUID(testEntity.getUuid());
-			Assert.assertEquals(
-					TenancyHelper.resolveURLToCurrentTenant(resolvedUrl, testEntity.getTenantId()),
-					testEntity.getPublicLink(),
+			String logicalFileUrl = UUIDEntityLookup.resolveLogicalFileURLFromUUID(testEntity.getUuid());
+			String resolvelogicalFileTenantUrl = TenancyHelper.resolveURLToCurrentTenant(logicalFileUrl, testEntity.getTenantId());
+			String logicalFileSelfReportedUrl = testEntity.getPublicLink();
+
+			Assert.assertEquals(resolvelogicalFileTenantUrl, logicalFileSelfReportedUrl,
 					"Relative path calculated by UUIDEntityLookup should match that calculated by LogicalFile");
 		} catch (UUIDException e) {
 			Assert.fail("Resolving logical file url from uuid should never throw exception", e);
 		}
 	}
 	
-	@Test(dependsOnMethods="getAgaveRelativePathFromAbsolutePath")
+	@Test(dependsOnMethods="resolveLogicalFileURLFromUUID")
 	public void resolveLogicalFileURLFromUUIDSystemHomeNull() {
 		
 		StorageSystem nullHomeSystem = null; 

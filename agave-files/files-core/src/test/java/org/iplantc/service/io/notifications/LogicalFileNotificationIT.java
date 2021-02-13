@@ -18,10 +18,14 @@ import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.notification.dao.FailedNotificationAttemptQueue;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
+import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.notification.model.Notification;
+import org.iplantc.service.notification.model.NotificationAttempt;
 import org.iplantc.service.notification.model.enumerations.NotificationStatusType;
+import org.iplantc.service.notification.model.enumerations.RetryStrategyType;
 import org.iplantc.service.notification.providers.email.enumeration.EmailProviderType;
 import org.iplantc.service.notification.queue.NewNotificationQueueProcessor;
 import org.iplantc.service.systems.manager.SystemManager;
@@ -47,10 +51,10 @@ import static org.quartz.TriggerBuilder.newTrigger;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"integration","notifications","files"})
-public class LogicalFileNotificationTest extends BaseTestCase
+@Test(singleThreaded=true, groups= {"integration"})
+public class LogicalFileNotificationIT extends BaseTestCase
 {
-	private static final Logger log = Logger.getLogger(LogicalFileNotificationTest.class);
+	private static final Logger log = Logger.getLogger(LogicalFileNotificationIT.class);
 	
 	private static String TEST_NOTIFICATION_EMAIL = "foo@example.com";
 	private String TEST_NOTIFICATION_URL;
@@ -200,8 +204,8 @@ public class LogicalFileNotificationTest extends BaseTestCase
 			e.printStackTrace();
 		}
 		finally {
-			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable e) {}
-			try { client.close(); } catch (Throwable e) {}
+			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable ignored) {}
+			try { client.close(); } catch (Throwable ignored) {}
 			client = null;
 		}
 	}
@@ -212,7 +216,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
 	 * @param queueName
 	 * @return int totoal message count
 	 */
-	public int getMessageCount(String queueName) throws MessagingException
+	protected int getMessageCount(String queueName) throws MessagingException
 	{
 		ClientImpl client = null;
 		
@@ -235,8 +239,8 @@ public class LogicalFileNotificationTest extends BaseTestCase
 			throw new MessagingException("Failed to read logicalFiles from queue " + queueName, e);
 		}
 		finally {
-			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable e) {}
-			try { client.close(); } catch (Throwable e) {}
+			try { client.ignore(Settings.NOTIFICATION_QUEUE); } catch (Throwable ignored) {}
+			try { client.close(); } catch (Throwable ignored) {}
 			client = null;
 		}
 	}
@@ -262,7 +266,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
 //	        task.setRetryCount(Settings.MAX_STAGING_RETRIES);
 //	        QueueTaskDao.persist(task);
 //	        
-            LogicalFileDao.persist(file);    
+//            LogicalFileDao.persist(file);
 		} 
 		catch (Exception e) {
 			Assert.fail("Failed to create LogicalFile object", e);
@@ -357,9 +361,13 @@ public class LogicalFileNotificationTest extends BaseTestCase
 	throws Exception
     {
         LogicalFile logicalFile = createLogicalFile();
-		
-        createSingleNotification(logicalFile, eventType, notificationUri, persistent);
-		
+
+		NotificationDao dao = new NotificationDao();
+		Notification notification = new Notification(logicalFile.getUuid(), logicalFile.getOwner(), eventType.name(), notificationUri, persistent);
+		notification.getPolicy().setRetryStrategyType(RetryStrategyType.NONE);
+		notification.getPolicy().setSaveOnFailure(true);
+		dao.persist(notification);
+
 		processNotification(logicalFile, eventType);
     }
 	
@@ -376,8 +384,8 @@ public class LogicalFileNotificationTest extends BaseTestCase
     throws Exception
     {
         LogicalFile logicalFile = createLogicalFile();
-        
-        createIndividualNotifications(logicalFile, notificationUri, persistent);
+
+		createIndividualNotifications(logicalFile, notificationUri, persistent);
         
         processNotification(logicalFile, testStatus);
     }
@@ -401,7 +409,7 @@ public class LogicalFileNotificationTest extends BaseTestCase
 		logicalFile.addContentEvent(new FileEvent(
 				eventType, 
                 "Logical file " + logicalFile.getPublicLink() + " recieved " + eventType.name() + " event.", 
-                null));
+                logicalFile.getOwner()));
 		LogicalFileDao.persist(logicalFile);
         
 		// force the queue listener to fire. This should pull the logicalFile message off the queue and notifiy us
@@ -413,16 +421,19 @@ public class LogicalFileNotificationTest extends BaseTestCase
 		}
 		
 		List<Notification> notifications = notificationDao.getActiveForAssociatedUuidAndEvent(logicalFile.getUuid(), eventType.name());
-		
+
 		Assert.assertFalse(notifications.isEmpty(), "No notifications found for status " + eventType.name());
 		
 		Assert.assertEquals(notifications.size(), 1, "Wrong number of notifications returned for status " + eventType.name() + " ");
 		
 		Notification n = notifications.get(0);
-		System.out.println(n.getLastUpdated());
-//		Assert.assertNotNull(n.getLastSent(), "Message for status " + testStatus + " was attempted.");
+
+		NotificationAttempt lastAttempt = FailedNotificationAttemptQueue.getInstance().next(logicalFile.getUuid());
+
+		Assert.assertNull(lastAttempt, "Failed notification attempt should not be present for successfully processed notification.");
 		
-		Assert.assertTrue(n.getStatus() == NotificationStatusType.COMPLETE, "Message for status " + eventType.name() + " was successfully sent.");
+//		Assert.assertEquals(n.getStatus(), NotificationStatusType.ACTIVE,
+//				"Message for status " + eventType.name() + " was successfully sent.");
 	}
 
 }

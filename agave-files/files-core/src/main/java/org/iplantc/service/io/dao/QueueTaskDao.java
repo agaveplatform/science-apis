@@ -215,10 +215,9 @@ public class QueueTaskDao
     {
         // ---------------------- Input validation ----------------------
         // This shouldn't happen (see Settings.getQueueTaskTenantIds()).
-        if (tenantIds == null) {
+		if (tenantIds == null) {
             String msg = "Unable to query next " + taskType.name().toLowerCase() + 
                          " task because of null tenant id input.";
-            log.error(msg);
             throw new TaskException(msg);
         }
         
@@ -230,7 +229,6 @@ public class QueueTaskDao
         {
             String msg = "Unable to query next " + taskType.name().toLowerCase() + 
                          " task because of invalid tenant id input.";
-            log.error(msg);
             throw new TaskException(msg);
         }
         

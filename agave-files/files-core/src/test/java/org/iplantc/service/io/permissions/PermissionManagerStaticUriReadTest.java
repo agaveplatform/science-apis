@@ -21,7 +21,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
-@Test(groups={"integration"})
+@Test(groups={"integration", "broken"}, enabled=false)
 public class PermissionManagerStaticUriReadTest extends AbstractPermissionManagerTest 
 {
 	@BeforeClass

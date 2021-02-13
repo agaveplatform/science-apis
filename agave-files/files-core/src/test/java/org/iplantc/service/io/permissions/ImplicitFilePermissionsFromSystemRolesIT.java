@@ -20,8 +20,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-@Test(groups={"integration"})
-public class ImplicitFilePermissionsFromSystemRolesTest extends AbstractPermissionManagerTest 
+@Test(groups={"integration", "notReady"})
+public class ImplicitFilePermissionsFromSystemRolesIT extends AbstractPermissionManagerTest
 {
 	class PermissionPredicate implements Predicate {
 		private RemoteSystem system;

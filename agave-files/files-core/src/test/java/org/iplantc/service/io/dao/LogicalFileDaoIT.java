@@ -17,8 +17,8 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
-@Test(groups={"broken", "integration"})
-public class LogicalFileDaoTest extends BaseTestCase 
+@Test(groups={"integration"})
+public class LogicalFileDaoIT extends BaseTestCase
 {
 	private LogicalFile file;
 	private LogicalFile sibling;
@@ -57,12 +57,12 @@ public class LogicalFileDaoTest extends BaseTestCase
 	@BeforeMethod
 	protected void setUp() throws Exception
 	{
-		file = new LogicalFile(SYSTEM_OWNER, system, httpUri, destPath);
+		file = new LogicalFile(SYSTEM_OWNER, system, httpUri, basePath);
 		file.setStatus(StagingTaskStatus.STAGING_QUEUED);
 		file.setUuid(file.getPath());
 
 
-		parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(destPath));
+		parent = new LogicalFile(SYSTEM_OWNER, system, httpUri, FilenameUtils.getFullPathNoEndSeparator(basePath));
 		parent.setStatus(StagingTaskStatus.STAGING_COMPLETED);
 		parent.setNativeFormat(LogicalFile.DIRECTORY);
 		parent.setUuid(parent.getPath());

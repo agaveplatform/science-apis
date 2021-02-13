@@ -195,11 +195,15 @@ public class PathResolver {
 	{
 		// this will drop the webapp name which probably won't match the IO service route
 		String path = originalPath;
+
+		// adjust for calling service natively without loadbalancer in front
+		if (!path.startsWith("/files")) path = "/files" + path;
+
 		String[] endpoints = { "listings", "media", "pems", "meta", "history", "index" };
 		
 		String[] segments = path.substring(1).split("/", -1);//FileUtils.getPathStack(path);
-		
-		if (segments.length > 3 && segments[0].equals("files") && 
+
+		if (segments.length > 3 && segments[0].equals("files") &&
 				ArrayUtils.contains(endpoints, segments[1]) &&
 				segments[2].equals("system")) 
 		{	

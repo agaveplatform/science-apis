@@ -16,7 +16,7 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-@Test(groups={"integration"})
+@Test(groups={"integration", "broken"}, enabled=false)
 public class StoragePermissionManagerReadTest extends AbstractPermissionManagerTest {
 
 	protected RemoteSystem getTestSystemDescription(RemoteSystemType type) throws Exception 

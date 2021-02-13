@@ -31,7 +31,7 @@ import java.io.IOException;
  *
  */
 public abstract class AbstractUUIDEntityLookupTest<T> implements AbstractUUIDTest<T> {
-	protected String destPath;
+	protected final String destPath = "testparentparentparent/testparentparent/testparent/test.dat";
 	protected StorageSystem system;
 	
 	@BeforeClass
@@ -43,8 +43,6 @@ public abstract class AbstractUUIDEntityLookupTest<T> implements AbstractUUIDTes
 		
 		setUpSystems();
 		setUpTenants();
-		
-		this.destPath = "testparentparentparent/testparentparent/testparent/test.dat";
 	}
 	
 	@AfterMethod

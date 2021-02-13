@@ -6,6 +6,7 @@ import org.iplantc.service.common.restlet.resource.AbstractAgaveServerResource;
 import org.iplantc.service.common.uri.UrlPathEscaper;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.StorageConfig;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;

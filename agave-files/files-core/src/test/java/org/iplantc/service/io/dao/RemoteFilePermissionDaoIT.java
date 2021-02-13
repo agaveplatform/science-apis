@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Test(groups={"integration"})
-public class RemoteFilePermissionDaoTest extends BaseTestCase {
+public class RemoteFilePermissionDaoIT extends BaseTestCase {
 
 	private LogicalFile file;
 	private SystemDao systemDao = new SystemDao();

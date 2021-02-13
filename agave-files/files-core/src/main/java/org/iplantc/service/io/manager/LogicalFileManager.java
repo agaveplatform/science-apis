@@ -340,16 +340,16 @@ public class LogicalFileManager
 	 * @return
 	 * @throws NotificationException
 	 */
-	public static Notification addUploadNotification(LogicalFile logicalFile, String createdBy, ObjectNode json) 
-	throws NotificationException
-	{	
+	public static Notification addUploadNotification(LogicalFile logicalFile,
+													 String createdBy,
+													 ObjectNode json)
+	throws NotificationException {
 		NotificationDao dao = new NotificationDao();
 		json.put("associatedUuid", logicalFile.getUuid());
 		Notification notification = Notification.fromJSON(json);
 		notification.setOwner(createdBy);
 		dao.persist(notification);
 		return notification;
-		
 	}
 
 	/**
@@ -357,7 +357,7 @@ public class LogicalFileManager
 	 * notification has been persisted.
 	 * 
 	 * @param logicalFile
-	 * @param eventName
+	 * @param eventType
 	 * @param callbackUrl
 	 * @param persistent
 	 * @param createdBy
@@ -365,8 +365,11 @@ public class LogicalFileManager
 	 * @throws NotificationException 
 	 */
 	public static Notification addNotification(LogicalFile logicalFile,
-			FileEventType eventType, String callbackUrl, boolean persistent,
-			String createdBy) throws NotificationException {
+											   FileEventType eventType,
+											   String callbackUrl,
+											   boolean persistent,
+											   String createdBy)
+	throws NotificationException {
 		NotificationDao dao = new NotificationDao();
 		Notification notification = new Notification(logicalFile.getUuid(), createdBy, eventType.name(), callbackUrl, persistent);
 		dao.persist(notification);

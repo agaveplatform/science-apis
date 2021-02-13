@@ -35,9 +35,13 @@ public class FilesApplication extends Application
 {   
 	
 	private static final Logger log = Logger.getLogger(FilesApplication.class);
-	
+
 	public FilesApplication() {
-		super();
+		this(null);
+	}
+
+	public FilesApplication(Context context) {
+		super(context);
 		setName("agaveFilesApi");
 		
 		try {
@@ -189,17 +193,17 @@ public class FilesApplication extends Application
 		router.attach(path, apiGuard);
 	}
 	
-	public static void main(String[] args) throws Exception 
-	{	
-		JndiSetup.init();
-		
-		// Create a new Component.
-        Component component = new Component();
-        component.getServers().add(Protocol.HTTP, 8080);
-        component.getDefaultHost().attach("/files", new FilesApplication());
-        component.start();
-        
-//       launchServer(component);
-    }
+//	public static void main(String[] args) throws Exception
+//	{
+//		JndiSetup.init();
+//
+//		// Create a new Component.
+//        Component component = new Component();
+//        component.getServers().add(Protocol.HTTP, 8080);
+//        component.getDefaultHost().attach("/files", new FilesApplication());
+//        component.start();
+//
+////       launchServer(component);
+//    }
 	
 }

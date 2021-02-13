@@ -16,9 +16,7 @@ import java.net.URI;
 import java.util.UUID;
 
 @Test(groups={"integration"})
-public class QueueTaskDaoTest extends BaseTestCase {
-	
-	
+public class QueueTaskDaoIT extends BaseTestCase {
 	private StorageSystem system;
 	private QueueTask task;
 	private LogicalFile file;
@@ -130,7 +128,7 @@ public class QueueTaskDaoTest extends BaseTestCase {
 			task = new StagingTask(file, file.getOwner());
 			QueueTaskDao.persist(task);
 			
-			Long nextTask = QueueTaskDao.getNextStagingTask(null);
+			Long nextTask = QueueTaskDao.getNextStagingTask(new String[]{file.getTenantId()});
 			AssertJUnit.assertNotNull("Next staging task should not be null", nextTask);
 			
 		} catch (Exception e) {

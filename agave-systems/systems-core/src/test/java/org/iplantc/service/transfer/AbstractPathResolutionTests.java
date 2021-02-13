@@ -92,13 +92,13 @@ public abstract class AbstractPathResolutionTests extends BaseTransferTestCase
     	RemoteDataClient absoluteRootAbsoluteHome = createRemoteDataClient("/root",  "/home");
 
     	return new Object[][] {
-    			{ noRootNoHome, "dooley", "/dooley", false, "no root no home defaults to /, so /dooley" },
-        		{ noRootNoHome, "/dooley", "/dooley", false, "no root no home all paths return unchanged" },
+    			{ noRootNoHome, "testuser", "/testuser", false, "no root no home defaults to /, so /testuser" },
+        		{ noRootNoHome, "/testuser", "/testuser", false, "no root no home all paths return unchanged" },
         		{ noRootNoHome, "../", "../", true, "noRootNoHome relative paths outside of rootDir should throw exception" },
         		{ noRootNoHome, "../root", "../root", true, "noRootNoHome relative path outside of rootDir should throw exception" },
         		
-        		{ absoluteRootNoHome, "dooley", "/root/dooley", false, "absoluteRootNoHome all paths return unchanged" },
-        		{ absoluteRootNoHome, "/dooley", "/root/dooley", false, "absoluteRootNoHome all paths return unchanged" },
+        		{ absoluteRootNoHome, "testuser", "/root/testuser", false, "absoluteRootNoHome all paths return unchanged" },
+        		{ absoluteRootNoHome, "/testuser", "/root/testuser", false, "absoluteRootNoHome all paths return unchanged" },
         		{ absoluteRootNoHome, "..", "", true, "absoluteRootNoHome relative path outside of rootDir should throw exception" },
         		{ absoluteRootNoHome, "../", "", true, "absoluteRootNoHome relative path outside of rootDir should throw exception" },
         		{ absoluteRootNoHome, "/..", "", true, "absoluteRootNoHome absolute path outside of rootDir should throw exception" },
@@ -108,8 +108,8 @@ public abstract class AbstractPathResolutionTests extends BaseTransferTestCase
         		{ absoluteRootNoHome, "/../root/../", "", true,"absoluteRootNoHome absolute path outside of rootDir should throw exception" },
         		{ absoluteRootNoHome, "../root/../", "", true,"absoluteRootNoHome relative path outside of rootDir should throw exception" },
         		
-        		{ relateveRootNoHome, "dooley", "root/dooley", false, "relative root no home all paths return unchanged" },
-        		{ relateveRootNoHome, "/dooley", "root/dooley", false, "relative root no home all paths return unchanged" },
+        		{ relateveRootNoHome, "testuser", "root/testuser", false, "relative root no home all paths return unchanged" },
+        		{ relateveRootNoHome, "/testuser", "root/testuser", false, "relative root no home all paths return unchanged" },
         		{ relateveRootNoHome, "..", "", true, "relateveRootNoHome relative path outside of rootDir should throw exception" },
         		{ relateveRootNoHome, "../", "", true, "relateveRootNoHome relative path outside of rootDir should throw exception" },
         		{ relateveRootNoHome, "/..", "", true, "relateveRootNoHome absolute path outside of rootDir should throw exception" },
@@ -119,8 +119,8 @@ public abstract class AbstractPathResolutionTests extends BaseTransferTestCase
         		{ relateveRootNoHome, "/../root/../", "", true,"relateveRootNoHome absolute path outside of rootDir should throw exception" },
         		{ relateveRootNoHome, "../root/../", "", true,"relateveRootNoHome relative path outside of rootDir should throw exception" },
         		
-        		{ noRootAbsoluteHome, "dooley", "/home/dooley", false, "no root absolute home all paths return unchanged" },
-        		{ noRootAbsoluteHome, "/dooley", "/dooley", false, "no root absolute home all paths return unchanged" },
+        		{ noRootAbsoluteHome, "testuser", "/home/testuser", false, "no root absolute home all paths return unchanged" },
+        		{ noRootAbsoluteHome, "/testuser", "/testuser", false, "no root absolute home all paths return unchanged" },
         		{ noRootAbsoluteHome, "..", "/", false, "noRootAbsoluteHome relative path outside of rootDir should resolve" },
         		{ noRootAbsoluteHome, "../", "/", false, "noRootAbsoluteHome relative path outside of rootDir should resolve" },
         		{ noRootAbsoluteHome, "/..", "/", true, "noRootAbsoluteHome absolute path outside of rootDir should throw exception" },
@@ -131,8 +131,8 @@ public abstract class AbstractPathResolutionTests extends BaseTransferTestCase
         		{ noRootAbsoluteHome, "/../root/../", "/", true,"noRootAbsoluteHome absolute path outside of rootDir should throw exception" },
         		{ noRootAbsoluteHome, "../root/../", "/", false,"noRootAbsoluteHome relative path outside of rootDir should resolve" },
         		
-        		{ noRootRelativeHome, "dooley", "/home/dooley", false, "no root relative home all paths return unchanged" },
-        		{ noRootRelativeHome, "/dooley", "/dooley", false, "no root relative home all paths return unchanged" },
+        		{ noRootRelativeHome, "testuser", "/home/testuser", false, "no root relative home all paths return unchanged" },
+        		{ noRootRelativeHome, "/testuser", "/testuser", false, "no root relative home all paths return unchanged" },
                 // relative path should resolve to "" with a relative Home of "home/"
         		{ noRootRelativeHome, "..", "/", false, "noRootRelativeHome relative path outside of rootDir should return unchanged" },
                     // relative path should resolve to "" with a relative Home of "home/"
@@ -147,8 +147,8 @@ public abstract class AbstractPathResolutionTests extends BaseTransferTestCase
                 // // "home/../root/.." should resolve to ""
         		{ noRootRelativeHome, "../root/../", "/", false,"noRootRelativeHome relative path outside of rootDir should resolve" },
         		
-        		{ absoluteRootRelativeHome, "dooley", "/root/home/dooley", false, "absolute root relative home all paths return unchanged" },
-        		{ absoluteRootRelativeHome, "/dooley", "/root/dooley", false, "absolute root relative home all paths return unchanged" },
+        		{ absoluteRootRelativeHome, "testuser", "/root/home/testuser", false, "absolute root relative home all paths return unchanged" },
+        		{ absoluteRootRelativeHome, "/testuser", "/root/testuser", false, "absolute root relative home all paths return unchanged" },
         		{ absoluteRootRelativeHome, "..", "/root/", false, "absoluteRootRelativeHome relative path outside to rootDir should return unchanged" },
         		{ absoluteRootRelativeHome, "../", "/root/", false, "absoluteRootRelativeHome relative path outside to rootDir should return unchanged" },
         		{ absoluteRootRelativeHome, "/..", "/", true, "absoluteRootRelativeHome absolute path outside of rootDir throw exception" },
@@ -158,8 +158,8 @@ public abstract class AbstractPathResolutionTests extends BaseTransferTestCase
         		{ absoluteRootRelativeHome, "/../root/../", "/", true,"absoluteRootRelativeHome absolute path outside of rootDir should throw exception" },
         		{ absoluteRootRelativeHome, "../root/../", "/root/", false,"absoluteRootRelativeHome relative path inside of rootDir should resolve" },
         		
-        		{ relativeRootAbsoluteHome, "dooley", "root/home/dooley", false, "relative root absolute home all paths return unchanged" },
-        		{ relativeRootAbsoluteHome, "/dooley", "root/dooley", false, "relative root absolute home all paths return unchanged" },
+        		{ relativeRootAbsoluteHome, "testuser", "root/home/testuser", false, "relative root absolute home all paths return unchanged" },
+        		{ relativeRootAbsoluteHome, "/testuser", "root/testuser", false, "relative root absolute home all paths return unchanged" },
         		{ relativeRootAbsoluteHome, "..", "root/", false, "relativeRootAbsoluteHome relative path outside to rootDir should return unchanged" },
         		{ relativeRootAbsoluteHome, "../", "root/", false, "relativeRootAbsoluteHome relative path outside to rootDir should return unchanged" },
         		{ relativeRootAbsoluteHome, "/..", "", true, "relativeRootAbsoluteHome absolute path outside of rootDir throw exception" },
@@ -169,8 +169,8 @@ public abstract class AbstractPathResolutionTests extends BaseTransferTestCase
         		{ relativeRootAbsoluteHome, "/../root/../", "", true,"relativeRootAbsoluteHome absolute path outside of rootDir should throw exception" },
         		{ relativeRootAbsoluteHome, "../root/../", "root/", false,"relativeRootAbsoluteHome relative path inside of rootDir should resolve" },
         		
-        		{ absoluteRootAbsoluteHome, "dooley", "/root/home/dooley", false, "absolute root absolute home all paths return unchanged" },
-        		{ absoluteRootAbsoluteHome, "/dooley", "/root/dooley", false, "absolute root absolute home all paths return unchanged" },
+        		{ absoluteRootAbsoluteHome, "testuser", "/root/home/testuser", false, "absolute root absolute home all paths return unchanged" },
+        		{ absoluteRootAbsoluteHome, "/testuser", "/root/testuser", false, "absolute root absolute home all paths return unchanged" },
         		{ absoluteRootAbsoluteHome, "..", "/root/", false, "absoluteRootAbsoluteHome relative path outside to rootDir should return unchanged" },
         		{ absoluteRootAbsoluteHome, "../", "/root/", false, "absoluteRootAbsoluteHome relative path outside to rootDir should return unchanged" },
         		{ absoluteRootAbsoluteHome, "/..", "/", true, "absoluteRootAbsoluteHome absolute path outside of rootDir throw exception" },

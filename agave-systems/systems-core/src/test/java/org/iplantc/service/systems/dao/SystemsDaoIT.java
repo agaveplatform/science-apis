@@ -575,7 +575,6 @@ public class SystemsDaoIT extends PersistedSystemsModelTestCommon {
 		catch (Throwable t) {
 			Assert.fail("Failed to update batch queues", t);
 		}
-		
 	}
 
 	@Test(dependsOnMethods = {"updateBatchQueue"})

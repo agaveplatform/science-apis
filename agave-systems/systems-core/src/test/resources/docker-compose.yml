@@ -1,16 +1,5 @@
 version: '3.3'
 
-volumes: {}
-#  scratch:
-#  etcceph:
-#  varlibceph:
-
-#networks:
-#  ceph_net:
-#    ipam:
-#      driver: default
-#      config:
-#        - subnet: 172.41.0.0/16
 services:
 
   traefik:
@@ -30,6 +19,7 @@ services:
       - 50052:50052
       - 28443:8080
     restart: on-failure
+    cpu_shares: 128
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     labels:
@@ -41,6 +31,8 @@ services:
       - 50051:50051
       - 9092
     restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
     volumes:
       - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
     labels:
@@ -54,76 +46,74 @@ services:
     image: agaveplatform/sshd:latest
     command: "-p 10022"
     restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
     ports:
       - '10022:10022'
 
   sftptunnel:
-   image: agaveplatform/sshd:latest
-   command: "-p 10033"
-   restart: on-failure
-   links:
-     - sftphidden
-   ports:
-     - '10033:10033'
+    image: agaveplatform/sshd:latest
+    command: "-p 10033"
+    restart: on-failure
+    cpu_shares: 128
+    links:
+      - sftphidden
+    ports:
+      - '10033:10033'
 
   sftphidden:
     image: agaveplatform/sshd:latest
     command: "-p 10044"
     restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
     ports:
       - '10044:10044'
 
   irods4:
-    image: agaveplatform/irods:4.0.3
+    image: agaveapi/irods:4.0.3
     command: changeit
     hostname: docker.example.com
     restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
     environment:
       - 'DOCKER_HOSTNAME=docker.example.com'
       - 'IRODS_ZONE=iplant'
     ports:
       - '1257:1247'
       - '5442:5432'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 4G
 
   irods3:
-    image: agaveplatform/irods:3.3.1
+    image: agaveapi/irods:3.3.1
     hostname: docker.example.com
     restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
     ports:
       - '10055:22'
       - '1247:1247'
       - '5432:5432'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 2G
 
   irods3-pam:
-    image: agaveplatform/irods-pam:latest
+    image: agaveapi/irods-pam:latest
     hostname: docker.example.com
     restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
     ports:
       - '10066:22'
       - '1248:1247'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 4G
 
   requestbin:
     image: agaveplatform/requestbin:2.0.0
     hostname: requestbin
     restart: on-failure
+    mem_reservation: 256M
+    cpu_shares: 128
     ports:
       - '5101:5000'
     labels:
@@ -137,24 +127,28 @@ services:
 
 
   httpbin:
-      image: agaveplatform/httpbin:latest
-      hostname: httpbin
-      restart: on-failure
-      ports:
-        - '8200:8000'
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.httpbin.rule=Host(`httpbin`)"
-        - "traefik.http.routers.httpbin.entrypoints=web"
-        - "traefik.http.routers.httpbin.tls=false"
-        - "traefik.http.routers.httpbin-secure.rule=Host(`httpbin`)"
-        - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
-        - "traefik.http.routers.httpbin-secure.tls=true"
+    image: agaveplatform/httpbin:latest
+    hostname: httpbin
+    restart: on-failure
+    mem_reservation: 256M
+    cpu_shares: 256
+    ports:
+      - '8200:8000'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpbin.rule=Host(`httpbin`)"
+      - "traefik.http.routers.httpbin.entrypoints=web"
+      - "traefik.http.routers.httpbin.tls=false"
+      - "traefik.http.routers.httpbin-secure.rule=Host(`httpbin`)"
+      - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
+      - "traefik.http.routers.httpbin-secure.tls=true"
 
   httpd:
     image: agaveplatform/apache-dev:latest
     hostname: docker.example.com
     restart: on-failure
+    mem_reservation: 256M
+    cpu_shares: 256
     ports:
       - '10080:80'
       - '10443:443'

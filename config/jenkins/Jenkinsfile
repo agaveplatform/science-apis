@@ -1,0 +1,483 @@
+def LABEL = 'master'
+
+node (LABEL) {
+
+    env.JAVA_HOME="${tool 'openjdk-9'}"
+    env.MVN_HOME="${tool 'maven-3.6.3'}"
+    env.PATH="${env.JAVA_HOME}/bin:${env.MVN_HOME}/bin:${env.PATH}"
+
+	clearCurrentContainers()
+
+    // pull request or feature branch
+    if (env.BRANCH_NAME != 'master') {
+
+        checkoutSource()
+        // build()
+        // unitTest()
+        integrationTest()
+
+        // test whether this is a regular branch build or a merged PR build
+        if (!isPRMergeBuild()) {
+            buildImages()
+            // helmDeploy()
+        } else {
+            // PR-build
+            coverage()
+        }
+    } // master branch / production
+//    else {
+//        checkout()
+//        build()
+//        unitTest()
+//        thirdPartyIntegrationTests()
+//        buildImages()
+//        publishImages()
+//        helmDeploy()
+//        manualPromotion()
+//        production()
+//    }
+//  }
+}
+
+def isPRMergeBuild() {
+    return (env.BRANCH_NAME ==~ /^PR-\d+$/)
+}
+
+def checkoutSource () {
+    stage('Checkout code') {
+		context="continuous-integration/jenkins/"
+		context += isPRMergeBuild()?"pr-merge/checkout":"branch/checkout"
+		checkout([$class: 'GitSCM', branches: [[name: '*/2.2.27']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'deardooley-github-access-token', url: 'https://deardooley@github.com/agaveplatform/science-apis.git']]])
+		//    setBuildStatus ("${context}", 'Checking out completed', 'SUCCESS')
+	}
+}
+
+def build () {
+    stage('Build Source') {
+		def MAVEN_CMD = "/usr/bin/docker run -i --rm -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn -Dstyle.color=never  "
+        //def MAVEN_CMD = "mvn -Dstyle.color=never "
+		try {
+		    echo "${MAVEN_CMD} clean compile"
+			sh "${MAVEN_CMD} clean compile"
+		}
+		catch (err) {
+			slackSend color: "red", message: "Failed to run the core services unit tests. Failed build is on display at <${env.BUILD_URL}|here>."
+			throw err
+		}
+	}
+}
+
+def unitTest() {
+    stage ('Unit Tests') {
+        def MAVEN_CMD = "/usr/bin/docker run -i --rm -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn -Dstyle.color=never "
+
+	    //def MAVEN_CMD = "mvn -Dstyle.color=never "
+		try {
+		    echo "${MAVEN_CMD} test"
+			sh "${MAVEN_CMD} test"
+			step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
+		}
+		catch (err) {
+			slackSend color: "red", message: "Failed to compile the core services. Failed build is on display at <${env.BUILD_URL}|here>."
+			throw err
+		}
+
+		//mvn 'test -B -Dmaven.javadoc.skip=true -Dcheckstyle.skip=true'
+
+		//if (currentBuild.result == "UNSTABLE") {
+		//    sh "exit 1"
+		//}
+	}
+}
+
+def integrationTest() {
+    stage ('Integration Tests') {
+		withCredentials([usernamePassword(credentialsId: 'docker-hub-login', passwordVariable: 'DOCKER_REGISTRY_PASS', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
+			//def MAVEN_CMD = "/usr/bin/docker run -i --rm -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn "
+            def MAVEN_CMD = "mvn -Dstyle.color=never "
+            def DOCKER_REGISTRY_URL = ''
+            def DOCKER_REGISTRY_ORG = 'agaveplatform'
+
+			try {
+				// login to the docker registry
+    			sh "docker login -u ${DOCKER_REGISTRY_USER} -p ${DOCKER_REGISTRY_PASS} ${DOCKER_REGISTRY_URL}"
+
+    			clearCurrentContainers()
+
+    			sh "${MAVEN_CMD} -P agave,integration-test verify"
+
+    			step([$class: 'JUnitResultArchiver', testResults: '**/target/failsafe-reports/TEST-*.xml'])
+			}
+			catch (err) {
+
+				clearCurrentContainers()
+
+				slackSend color: "red", message: "Failed running core services integration tests. Failed build is on display at <${env.BUILD_URL}|here>."
+
+				throw err
+			}
+
+		}
+	}
+}
+
+// Remove existing containers to avoid conflicts from failed builds
+def clearCurrentContainers() {
+
+    echo "Stopping existing docker containers"
+
+	sh "docker ps -a --format '{{.Names}}' | grep -v traefik_traefik_  | xargs --no-run-if-empty docker stop"
+
+	echo "Removing existing containers"
+
+	sh "docker ps -a --format '{{.Names}}' | grep -v traefik_traefik_  | xargs --no-run-if-empty docker rm -f"
+}
+
+//def thirtPartyIntegrationTest() {
+//    stage 'Run Third-Party Integration Tests'
+//    withCredentials([file(credentialsId: 'maven-third-party-settings-file', variable: 'MAVEN_THIRD_PARTY_SETTINGS_FILE')]) {
+//        def MAVEN_CMD = "docker run -i --rm -v ${env.MAVEN_THIRD_PARTY_SETTINGS_FILE}:/root/settings.xml -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn --settings=/root/settings.xml"
+//        try {
+//            sh "${MAVEN_CMD} -P agave,integration-test,third-party-integration-test verify"
+//        }
+//        catch (err) {
+//            slackSend color: "red", message: "Failed running third-party integration tests. Failed build is on display at <${env.BUILD_URL}|here>."
+//        }
+//    }
+//}
+
+
+def coverage() {
+    stage ('Code Coverage Analysis') {
+		withCredentials([file(credentialsId: 'maven-third-party-settings-file', variable: 'MAVEN_THIRD_PARTY_SETTINGS_FILE'),
+						 usernamePassword(credentialsId: 'docker-hub-login', passwordVariable: 'DOCKER_REGISTRY_PASS', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
+
+            def DOCKER_REGISTRY_URL = ''
+            def DOCKER_REGISTRY_ORG = 'agaveplatform'
+
+			//def MAVEN_CMD = "docker run -i --rm -v ${env.MAVEN_THIRD_PARTY_SETTINGS_FILE}:/root/settings.xml -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn --settings=/root/settings.xml"
+            def MAVEN_CMD = "mvn -Dstyle.color=never --settings=${env.MAVEN_THIRD_PARTY_SETTINGS_FILE} "
+			try {
+			    // login to the docker registry
+			    sh "docker login -u ${DOCKER_REGISTRY_USER} -p ${DOCKER_REGISTRY_PASS} ${DOCKER_REGISTRY_URL}"
+
+
+				sh "${MAVEN_CMD} -P agave,integration-test,coverage verify"
+				step( [$class: 'JacocoPublisher', exclusionPattern: '**/*Exception*,**/*Configuration*,**/ApiApplication*,**/*Test*'])
+			}
+			catch (err) {
+				slackSend color: "red", message: "Failed running third-party integration tests. Failed build is on display at <${env.BUILD_URL}|here>."
+				throw err
+			}
+		}
+	}
+}
+
+def thirdPartyIntegrationTests() {
+    stage ('Thirt-Party Integration Tests') {
+    	withCredentials([file(credentialsId: 'maven-third-party-settings-file', variable: 'MAVEN_THIRD_PARTY_SETTINGS_FILE'),
+                     usernamePassword(credentialsId: 'docker-hub-login', passwordVariable: 'DOCKER_REGISTRY_PASS', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
+
+			//def MAVEN_CMD = "docker run -i --rm -v ${env.MAVEN_THIRD_PARTY_SETTINGS_FILE}:/root/settings.xml -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn --settings=/root/settings.xml"
+            def MAVEN_CMD = "mvn -Dstyle.color=never --settings=${env.MAVEN_THIRD_PARTY_SETTINGS_FILE} "
+			try {
+			    // login to the docker registry
+    			sh "docker login -u ${DOCKER_REGISTRY_USER} -p ${DOCKER_REGISTRY_PASS} ${DOCKER_REGISTRY_URL}"
+
+				sh "${MAVEN_CMD} -P agave,integration-test,third-party-integration-test verify"
+				step([$class: 'JUnitResultArchiver', testResults: '**/target/failsafe-reports/TEST-*.xml'])
+			}
+			catch (err) {
+				slackSend color: "red", message: "Failed running third-party integration tests. Failed build is on display at <${env.BUILD_URL}|here>."
+				throw err
+			}
+
+
+
+	//        if (currentBuild.result == "UNSTABLE") {
+	//            // input "Unit tests are failing, proceed?"
+	//            sh "exit 1"
+	//        }
+		}
+	}
+}
+
+// handles clean build and push of docker images for the current branch and revision
+def buildImages() {
+    clearExistingBuildImages()
+    buildCurrentReleaseImages()
+    // publishImages()
+}
+
+// clears out existing revision and branch images
+def clearExistingBuildImages() {
+    stage ("Clean Docker Images") {
+		def revision = getRepoSlug()
+		def branch = getBranch()
+
+		// remove existing revision images
+		sh "./dockerbuild.sh -c -t ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG} -v ${revision}"
+		// remove existing branch images
+		sh "./dockerbuild.sh -c -t ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG} -v ${branch}"
+	}
+}
+
+// builds new images tagged with the short revision commit hash and the branch name
+def buildCurrentReleaseImages() {
+    stage ("Build Docker Images") {
+
+		// load docker credentials so we don't get bitten by the docker registry rate limiting policy
+		withCredentials([usernamePassword(credentialsId: 'docker-hub-login', passwordVariable: 'DOCKER_REGISTRY_PASS', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
+			def revision = getRepoSlug()
+			def branch = getBranch()
+
+	//        // remove existing revision images
+	//        sh "./dockerbuild.sh -c -t ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG} -v ${revision}"
+	//        // remove existing branch images
+	//        sh "./dockerbuild.sh -c -t ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG} -v ${branch}"
+
+			// login to the docker registry
+			sh "docker login -u ${DOCKER_REGISTRY_USER} -p ${DOCKER_REGISTRY_PASS} ${DOCKER_REGISTRY_URL}"
+
+			// build images from current revision
+			sh "./dockerbuild.sh -b -t ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG} -v ${revision}"
+
+			// tag revision images with branch name
+			sh "./dockerbuild.sh -r -s ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG} -w ${revision} -t ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG} -v ${branch}"
+		}
+	}
+}
+
+// push images to the configured docker registry
+def publishImages() {
+	stage('Push Images') {
+		withCredentials([usernamePassword(credentialsId: 'docker-hub-login', passwordVariable: 'DOCKER_REGISTRY_PASS', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
+			def revision = getRepoSlug()
+			def branch = getBranch()
+			stage "Push Docker Images"
+			// login to the docker registry
+			sh "docker login -u ${DOCKER_REGISTRY_USER} -p ${DOCKER_REGISTRY_PASS} ${DOCKER_REGISTRY_URL}"
+			// push revision images to repo
+			sh "./dockerbuild.sh -p -t ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG} -v ${revision}"
+			// push branch images to repo
+			sh "./dockerbuild.sh -p -t ${DOCKER_REGISTRY_URL}/${DOCKER_REGISTRY_ORG} -v ${branch}"
+		}
+	}
+}
+
+def preview() {
+    buildImages()
+    deployToStage(branch)
+}
+
+// def preProduction() {
+//     switchSnapshotBuildToRelease()
+//     herokuApp = "${env.HEROKU_PREPRODUCTION}"
+//     deployToStage("preproduction", herokuApp)
+//     buildAndPublishToArtifactory()
+// }
+//
+// def manualPromotion() {
+//   stage 'Manual Promotion'
+//     // we need a first milestone step so that all jobs entering this stage are tracked an can be aborted if needed
+//     milestone 1
+//     // time out manual approval after ten minutes
+//     timeout(time: 10, unit: 'MINUTES') {
+//         input message: "Does Pre-Production look good?"
+//     }
+//     // this will kill any job which is still in the input step
+//     milestone 2
+// }
+
+// def production() {
+//     herokuApp = "${env.HEROKU_PRODUCTION}"
+//     step([$class: 'ArtifactArchiver', artifacts: '**/target/*.jar', fingerprint: true])
+//     deployToStage("production", herokuApp)
+//     def version = getCurrentHerokuReleaseVersion("${env.HEROKU_PRODUCTION}")
+//     def createdAt = getCurrentHerokuReleaseDate("${env.HEROKU_PRODUCTION}", version)
+//     echo "Release version: ${version}"
+//     createRelease(version, createdAt)
+//
+//     stage ("Promote in Artifactory") {
+//         promoteBuildInArtifactory()
+//         // distributeBuildToBinTray()
+//     }
+// }
+
+// void createRelease(tagName, createdAt) {
+//     withCredentials([[$class: 'StringBinding', credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN']]) {
+//         def body = "**Created at:** ${createdAt}\n**Deployment job:** [${env.BUILD_NUMBER}](${env.BUILD_URL})\n**Environment:** [${env.HEROKU_PRODUCTION}](https://dashboard.heroku.com/apps/${env.HEROKU_PRODUCTION})"
+//         def payload = groovy.json.JsonOutput.toJson(["tag_name": "v${tagName}", "name": "${env.HEROKU_PRODUCTION} - v${tagName}", "body": "${body}"])
+//         def apiUrl = "https://octodemo.com/api/v3/repos/${getRepoSlug()}/releases"
+//         def response = sh(returnStdout: true, script: "curl -s -H \"Authorization: Token ${env.GITHUB_TOKEN}\" -H \"Accept: application/json\" -H \"Content-type: application/json\" -X POST -d '${payload}' ${apiUrl}").trim()
+//     }
+// }
+//
+// def deployToStage(stageName, herokuApp) {
+//     stage name: "Deploy to ${stageName}", concurrency: 1
+//     id = createDeployment(getBranch(), "${stageName}", "Deploying branch to ${stageName}")
+//     echo "Deployment ID for ${stageName}: ${id}"
+//     if (id != null) {
+//         setDeploymentStatus(id, "pending", "https://${herokuApp}.herokuapp.com/", "Pending deployment to ${stageName}");
+//         herokuDeploy "${herokuApp}"
+//         setDeploymentStatus(id, "success", "https://${herokuApp}.herokuapp.com/", "Successfully deployed to ${stageName}");
+//     }
+// }
+
+// Deploys core services to the current branch namespace using the given `agaveVersion` tag.
+def helmDeploy (agaveVersion) {
+    stage('Deploy core-services') {
+        def helmRelease = getCurrentHelmRelease()
+        withCredentials([file(credentialsId: 'agave-kubectl-config', variable: 'KUBECONFIG_FILE_PATH')]) {
+
+            if (helmRelease == null) {
+                sh "helm3 --kubeconfig \"${env.KUBECONFIG_FILE_PATH}\" install --namespace ${env.BRANCH} --set agave.version=${agaveVersion} core-services agave/core-service'"
+            } else {
+                sh "helm3 --kubeconfig \"${env.KUBECONFIG_FILE_PATH}\" upgrade --namespace ${env.BRANCH} --set agave.version=${agaveVersion} core-services agave/core-service'"
+            }
+        }
+    }
+}
+
+//
+//def switchSnapshotBuildToRelease() {
+//    def descriptor = Artifactory.mavenDescriptor()
+//    descriptor.version = '1.0.0'
+//    descriptor.pomFile = 'pom.xml'
+//    descriptor.transform()
+//}
+//
+//def buildAndPublishToArtifactory() {
+//        def rtMaven = Artifactory.newMavenBuild()
+//        rtMaven.tool = null
+//        withEnv(["MAVEN_HOME=/usr/share/maven"]) {
+//           rtMaven.deployer releaseRepo:'libs-release-local', snapshotRepo:'libs-snapshot-local', server: server
+//           rtMaven.resolver releaseRepo:'libs-release', snapshotRepo:'libs-snapshot', server: server
+//           rtMaven.run pom: 'pom.xml', goals: 'install', buildInfo: buildInfo
+//           server.publishBuildInfo buildInfo
+//        }
+//}
+//
+//def promoteBuildInArtifactory() {
+//        def promotionConfig = [
+//            // Mandatory parameters
+//            'buildName'          : buildInfo.name,
+//            'buildNumber'        : buildInfo.number,
+//            'targetRepo'         : 'libs-prod-local',
+//
+//            // Optional parameters
+//            'comment'            : 'deploying to production',
+//            'sourceRepo'         : 'libs-release-local',
+//            'status'             : 'Released',
+//            'includeDependencies': false,
+//            'copy'               : true,
+//            // 'failFast' is true by default.
+//            // Set it to false, if you don't want the promotion to abort upon receiving the first error.
+//            'failFast'           : true
+//        ]
+//
+//        // Promote build
+//        server.promote promotionConfig
+//}
+//
+//def distributeBuildToBinTray() {
+//        def distributionConfig = [
+//            // Mandatory parameters
+//            'buildName'             : buildInfo.name,
+//            'buildNumber'           : buildInfo.number,
+//            'targetRepo'            : 'reading-time-dist',
+//            // Optional parameters
+//            //'publish'               : true, // Default: true. If true, artifacts are published when deployed to Bintray.
+//            'overrideExistingFiles' : true, // Default: false. If true, Artifactory overwrites builds already existing in the target path in Bintray.
+//            //'gpgPassphrase'         : 'passphrase', // If specified, Artifactory will GPG sign the build deployed to Bintray and apply the specified passphrase.
+//            //'async'                 : false, // Default: false. If true, the build will be distributed asynchronously. Errors and warnings may be viewed in the Artifactory log.
+//            //"sourceRepos"           : ["yum-local"], // An array of local repositories from which build artifacts should be collected.
+//            //'dryRun'                : false, // Default: false. If true, distribution is only simulated. No files are actually moved.
+//        ]
+//        server.distribute distributionConfig
+//}
+
+//def mvn(args) {
+//    withMaven(
+//        // mavenSettingsConfig: '0e94d6c3-b431-434f-a201-7d7cda7180cb'
+//
+//        //mavenLocalRepo: '/tmp/m2'
+//        ) {
+//
+//      // Run the maven build
+//      sh "mvn $args -Dmaven.test.failure.ignore -Dmaven.repo.local=/cache"
+//     }
+//}
+
+def getRepoSlug() {
+    tokens = "${env.JOB_NAME}".tokenize('/')
+    org = tokens[tokens.size()-3]
+    repo = tokens[tokens.size()-2]
+    return "${org}/${repo}"
+}
+
+def getBranch() {
+    tokens = "${env.JOB_NAME}".tokenize('/')
+    branch = tokens[tokens.size()-1]
+    return "${branch}"
+}
+
+// update helm chart with latest release
+def updateHelmChart(ref, environment, description) {
+    stage('Update Helm Chart') {
+    	withCredentials([
+    			[$class: 'StringBinding', credentialsId: 'HELM_REPO_USERNAME', variable: 'HELM_REPO_USERNAME'],
+    			[$class: 'StringBinding', credentialsId: 'HELM_REPO_PASSWORD', variable: 'HELM_REPO_PASSWORD']]) {
+    		step: "Package chart"
+    			def packagedChartPath = sh(returnStdout: true, script: 'helm3 package charts/core-services | sed -E "s/.*\\:(.*)/\\1/"').trim()
+    		step: "Push chart to chartmuseum"
+    			sh "curl -u '${env.HELM_REPO_USERNAME}:${env.HELM_REPO_PASSWORD}' -XPOST https://helm.agaveplatform.org/api/charts --data-binary @${packagedChartPath}"
+    	}
+    }
+}
+
+// Deploy updated chart
+def createDeployment(ref, environment, description) {
+    withCredentials([[$class: 'StringBinding', credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN']]) {
+            def payload = groovy.json.JsonOutput.toJson(["ref": "${ref}", "description": "${description}", "environment": "${environment}", "required_contexts": []])
+        def apiUrl = "https://octodemo.com/api/v3/repos/${getRepoSlug()}/deployments"
+        def response = sh(returnStdout: true, script: "curl -s -H \"Authorization: Token ${env.GITHUB_TOKEN}\" -H \"Accept: application/json\" -H \"Content-type: application/json\" -X POST -d '${payload}' ${apiUrl}").trim()
+        def jsonSlurper = new groovy.json.JsonSlurper()
+        def data = jsonSlurper.parseText("${response}")
+        return data.id
+    }
+}
+
+// // Update github deployment status
+// void setDeploymentStatus(deploymentId, state, targetUrl, description) {
+//     withCredentials([[$class: 'StringBinding', credentialsId: 'GITHUB_TOKEN', variable: 'GITHUB_TOKEN']]) {
+//         def payload = groovy.json.JsonOutput.toJson(["state": "${state}", "target_url": "${targetUrl}", "description": "${description}"])
+//         def apiUrl = "https://octodemo.com/api/v3/repos/${getRepoSlug()}/deployments/${deploymentId}/statuses"
+//         def response = sh(returnStdout: true, script: "curl -s -H \"Authorization: Token ${env.GITHUB_TOKEN}\" -H \"Accept: application/json\" -H \"Content-type: application/json\" -X POST -d '${payload}' ${apiUrl}").trim()
+//     }
+// }
+
+// Update github build status
+void setGithubBuildStatus(context, message, state) {
+  step([
+      $class: "GitHubCommitStatusSetter",
+      contextSource: [$class: "ManuallyEnteredCommitContextSource", context: context],
+      errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
+      reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/agaveplatform/science-apis"],
+      statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
+  ]);
+}
+
+// Fetches the current helm chart release version from the kubernetes server
+def getCurrentHelmRelease(app) {
+	withCredentials([file(credentialsId: 'agave-kubectl-config', variable: 'KUBECONFIG_FILE_PATH')]) {
+        def response = sh(returnStdout: true, script: "helm3 --kubeconfig \"${env.KUBECONFIG_FILE_PATH}\" list --namespace ${environment} --filter 'agave-core' -o json").trim()
+        if (response != null || response != '[]') {
+            def jsonSlurper = new groovy.json.JsonSlurper()
+            def data = jsonSlurper.parseText("${response}")
+            return data[0]
+        } else {
+            return null
+        }
+    }
+}

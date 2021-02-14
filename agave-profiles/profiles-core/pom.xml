@@ -58,7 +58,7 @@
 
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>notifications-core</artifactId>
+            <artifactId>common-core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

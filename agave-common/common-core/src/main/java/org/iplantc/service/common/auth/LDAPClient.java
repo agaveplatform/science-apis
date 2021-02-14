@@ -22,10 +22,10 @@ public class LDAPClient {
 	}
 
 	private DirContext getDirContext() {
-		System.setProperty("javax.net.ssl.keyStore", Settings.KEYSTORE_PATH);
-		System.setProperty("javax.net.ssl.keyStorePassword", "changeit");
-		System.setProperty("javax.net.ssl.trustStore", Settings.TRUSTSTORE_PATH);
-		System.setProperty("javax.net.ssl.trustStorePassword", "changeit");
+//		System.setProperty("javax.net.ssl.keyStore", Settings.KEYSTORE_PATH);
+//		System.setProperty("javax.net.ssl.keyStorePassword", "changeit");
+//		System.setProperty("javax.net.ssl.trustStore", Settings.TRUSTSTORE_PATH);
+//		System.setProperty("javax.net.ssl.trustStorePassword", "changeit");
 
 		Hashtable<String, String> env = new Hashtable<String, String>();
 		env.put(Context.INITIAL_CONTEXT_FACTORY,

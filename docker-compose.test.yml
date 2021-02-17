@@ -1,5 +1,5 @@
 build:
-  image: agaveplatform/maven:3.6
+  image: agaveplatform/maven:3.6-proto
   command: mvn -s config/maven/settings.xml -T 1.0C -P agave,plain clean package
   privileged: true
   environment:

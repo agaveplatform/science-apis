@@ -9,7 +9,7 @@ services:
     image: agaveplatform/sshd:latest
     command: "-p 10022"
     ports:
-      - 10022:10022
+      - 10022
     volumes:
       - scratch:/scratch
 

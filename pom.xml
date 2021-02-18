@@ -114,7 +114,7 @@
         <!--                    PLEASE KEEP THESE LISTS ALPHABETIZED                       -->
 
         <!-- PLUGIN Versions (in alphabetical order) -->
-        <await-maven-plugin.version>1.3</await-maven-plugin.version>
+        <await-maven-plugin.version>1.4</await-maven-plugin.version>
         <buildnumber-maven-plugin.version>1.3</buildnumber-maven-plugin.version>
         <directory-maven-plugin.version>0.1</directory-maven-plugin.version>
         <docker-compose-maven-plugin.version>2.5.1</docker-compose-maven-plugin.version>
@@ -461,11 +461,18 @@
                                     <attempts>15</attempts>
                                     <sleep>2000</sleep>
                                 </poll>
-                                <tcpConnections>
-                                    <tcpConnection>
+                                <mysqlConnections>
+                                    <mysqlConnection>
                                         <host>${foundation.db.test.host}</host>
                                         <port>${foundation.db.test.port}</port>
-                                    </tcpConnection>
+                                        <database>${foundation.db.test.database}</database>
+                                        <username>${foundation.db.test.username}</username>
+                                        <password>${foundation.db.test.password}</password>
+                                        <port>${foundation.db.test.port}</port>
+                                        <query>select * from tenants</query>
+                                    </mysqlConnection>
+                                </mysqlConnections>
+                                <tcpConnections>
                                     <tcpConnection>
                                         <host>${foundation.service.meta.db.host}</host>
                                         <port>${foundation.service.meta.db.port}</port>
@@ -642,6 +649,119 @@
     <!-- Build profiles -->
     <profiles>
         <profile>
+            <id>jenkins</id>
+            <properties>
+                <!-- Container Host and Port for Integration Tests
+                     When running in Jenkins, we use a reverse tcp proxy to access each test container,
+                     thus allowing us to avoid publishing ports on the host, and instead access every
+                     container via the reverse proxy service address. This allows us to run multiple
+                     parallel builds all entirely isolated inside their own private network on the
+                     same host. -->
+<!--                <gridftp.host>traefik</gridftp.host>-->
+<!--                <gridftp.port>2811</gridftp.port>-->
+<!--                -->
+<!--                <myproxy.host>traefik</myproxy.host>-->
+<!--                <myproxy.port>7515</myproxy.port>-->
+
+<!--                <sftp.host>traefik</sftp.host>-->
+<!--                <sftp.port>10022</sftp.port>-->
+
+<!--                <sftptunnel.host>traefik</sftptunnel.host>-->
+<!--                <sftptunnel.port>10033</sftptunnel.port>-->
+
+<!--                <sftphidden.host>sftphidden</sftphidden.host>-->
+<!--                <sftphidden.port>10022</sftphidden.port>-->
+
+<!--                <irods3.host>traefik</irods3.host>-->
+                <irods3.port>1247</irods3.port>
+
+<!--                <irods3pam.host>traefik</irods3pam.host>-->
+                <irods3pam.port>1247</irods3pam.port>
+
+<!--                <irods4.host>traefik</irods4.host>-->
+                <irods4.port>1247</irods4.port>
+
+<!--                <ftp.host>traefik</ftp.host>-->
+                <ftp.port>10021</ftp.port>
+
+                <condor.host>traefik</condor.host>
+                <condor.port>10155</condor.port>
+
+                <gsissh.host>traefik</gsissh.host>
+                <gsissh.port>2222</gsissh.port>
+
+                <ssh.host>traefik</ssh.host>
+                <ssh.port>10111</ssh.port>
+
+                <loadleveler.host>traefik</loadleveler.host>
+                <loadleveler.port>10177</loadleveler.port>
+
+                <lsf.host>traefik</lsf.host>
+                <lsf.port>10177</lsf.port>
+
+                <moab.host>traefik</moab.host>
+                <moab.port>10144</moab.port>
+
+                <pbs.host>traefik</pbs.host>
+                <pbs.port>10188</pbs.port>
+
+                <gridengine.host>traefik</gridengine.host>
+                <gridengine.port>10166</gridengine.port>
+
+                <slurm.host>slurm</slurm.host>
+                <slurm.port>10133</slurm.port>
+
+                <torque.host>torque</torque.host>
+                <torque.port>10144</torque.port>
+
+            </properties>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>com.dkanejs.maven.plugins</groupId>
+                            <artifactId>docker-compose-maven-plugin</artifactId>
+                            <version>${docker-compose-maven-plugin.version}</version>
+                            <configuration>
+                                <skip>${skip.integration.tests}</skip>
+                                <detachedMode>true</detachedMode>
+                                <removeVolumes>true</removeVolumes>
+                                <projectName>${project.artifactId}</projectName>
+                                <composeFiles>
+                                    <composeFile>${project.basedir}/target/test-classes/docker-compose-jenkins.yml</composeFile>
+                                    <composeFile>${main.basedir}/compose/third-party/docker-compose-jenkins.yml</composeFile>
+                                </composeFiles>
+                                <ignorePullFailures>true</ignorePullFailures>
+                            </configuration>
+                            <executions>
+                                <execution>
+                                    <id>${project.artifactId}up</id>
+                                    <phase>pre-integration-test</phase>
+                                    <goals>
+                                        <goal>up</goal>
+                                    </goals>
+                                    <configuration>
+                                        <skip>${skip.integration.tests}</skip>
+                                    </configuration>
+                                </execution>
+                                <execution>
+                                    <id>${project.artifactId}down</id>
+                                    <phase>post-integration-test</phase>
+                                    <goals>
+                                        <goal>down</goal>
+                                    </goals>
+                                    <configuration>
+                                        <removeVolumes>true</removeVolumes>
+                                        <skip>${skip.integration.tests}</skip>
+                                    </configuration>
+                                </execution>
+                            </executions>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
+        <profile>
             <!-- *********************************************************************
                 **	turns off tests and build of docker containers                  **
                 **********************************************************************-->
@@ -815,6 +935,61 @@
                 <s3.port>9000</s3.port>
                 <s3.access.key>agaveuser</s3.access.key>
                 <s3.secret.key>password</s3.secret.key>
+
+                <!-- **************** Default Container Host and Port for Integration Tests ********** -->
+                <gridftp.host>gridftp</gridftp.host>
+                <gridftp.port>2811</gridftp.port>
+                <myproxy.host>myproxy</myproxy.host>
+                <myproxy.port>7515</myproxy.port>
+
+                <sftp.host>sftp</sftp.host>
+                <sftp.port>10022</sftp.port>
+                <sftptunnel.host>sftptunnel</sftptunnel.host>
+                <sftptunnel.port>10033</sftptunnel.port>
+                <sftphidden.host>sftphidden</sftphidden.host>
+                <sftphidden.port>10022</sftphidden.port>
+
+                <irods3.host>irods3</irods3.host>
+                <irods3.port>1247</irods3.port>
+
+                <irods3pam.host>irods3-pam</irods3pam.host>
+                <irods3pam.port>1248</irods3pam.port>
+
+                <irods4.host>irods4</irods4.host>
+                <irods4.port>1257</irods4.port>
+
+                <ftp.host>ftpd</ftp.host>
+                <ftp.port>10021</ftp.port>
+
+                <condor.host>condor</condor.host>
+                <condor.port>10155</condor.port>
+
+                <gsissh.host>gridftp</gsissh.host>
+                <gsissh.port>2222</gsissh.port>
+
+                <ssh.host>ssh</ssh.host>
+                <ssh.port>10111</ssh.port>
+
+                <loadleveler.host>openlava</loadleveler.host>
+                <loadleveler.port>10177</loadleveler.port>
+
+                <lsf.host>openlava</lsf.host>
+                <lsf.port>10177</lsf.port>
+
+                <moab.host>torque</moab.host>
+                <moab.port>10144</moab.port>
+
+                <pbs.host>pbs</pbs.host>
+                <pbs.port>10188</pbs.port>
+
+                <gridengine.host>gridengine</gridengine.host>
+                <gridengine.port>10166</gridengine.port>
+
+                <slurm.host>slurm</slurm.host>
+                <slurm.port>10133</slurm.port>
+
+                <torque.host>torque</torque.host>
+                <torque.port>10144</torque.port>
 
                 <!-- *********************************************************************
                 **************************************************************************

@@ -344,19 +344,19 @@ public class LogicalFileNotificationIT extends BaseTestCase
 	    genericLogicalFileSpecificNotificationTest(testStatus, TEST_NOTIFICATION_EMAIL, true);
 	}
 	
-	@Test(dataProvider="logicalFileNotificationStatusProvider", dependsOnMethods={"testLogicalFileIndividualEmailNotificationProcessed"}, retryAnalyzer = StagingJobITRetryAnalyzer.class)
+	@Test(dataProvider="logicalFileNotificationStatusProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)
     public void testLogicalFileWildcardEmailNotificationProcessed(FileEventType testStatus) throws Exception
     {
 	    genericLogicalFileSpecificNotificationTest(testStatus, TEST_NOTIFICATION_EMAIL, true);
     }
 	
-	@Test(dataProvider="logicalFileNotificationStatusProvider", dependsOnMethods={"testLogicalFileWildcardEmailNotificationProcessed"}, retryAnalyzer = StagingJobITRetryAnalyzer.class)
+	@Test(dataProvider="logicalFileNotificationStatusProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)
     public void testLogicalFileIndividualWebhookNotificationProcessed(FileEventType testStatus) throws Exception
     {
         genericLogicalFileWildcardNotificationTest(testStatus, TEST_NOTIFICATION_EMAIL, true);
     }
     
-    @Test(dataProvider="logicalFileNotificationStatusProvider", dependsOnMethods={"testLogicalFileIndividualWebhookNotificationProcessed"}, retryAnalyzer = StagingJobITRetryAnalyzer.class)
+    @Test(dataProvider="logicalFileNotificationStatusProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)
     public void testLogicalFileWildcardWebhookNotificationProcessed(FileEventType testStatus) throws Exception
     {
         genericLogicalFileWildcardNotificationTest(testStatus, TEST_NOTIFICATION_EMAIL, true);

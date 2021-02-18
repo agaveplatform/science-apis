@@ -78,7 +78,13 @@ services:
       - "traefik.http.routers.httpd-secure.tls=true"
       - "traefik.http.services.httpd.loadbalancer.server.port=80"
 
+  redis:
+    image: redis:alpine
+    restart: on-failure
+
   maildev:
     image: agaveplatform/maildev:latest
     ports:
       - "25:25"
+#    volumes:
+#      - ./persistence-services/maildev/rules.json:/data/rules.json

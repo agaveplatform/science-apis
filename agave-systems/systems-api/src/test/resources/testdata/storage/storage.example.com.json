@@ -6,8 +6,8 @@
 	"description": "My example storage system used for testing",
 	"site": "my.site",
 	"storage": {
-		"host": "iplant-storage.tacc.utexas.edu",
-		"port": 22,
+		"host": "${sftp.host}",
+		"port": ${sftp.port},
 		"protocol": "SFTP",
 		"rootDir": "/home/iplant/",
 		"auth": {

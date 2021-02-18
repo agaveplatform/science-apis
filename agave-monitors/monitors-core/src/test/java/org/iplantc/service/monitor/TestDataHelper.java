@@ -20,16 +20,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class TestDataHelper {
 	
 	public static final String SYSTEM_OWNER = "testuser";
-	public static final String SYSTEM_SHARE_USER = "bob";
+	public static final String SYSTEM_SHARE_USER = "testshareuser";
 	public static final String SYSTEM_PUBLIC_USER = "public";
-	public static final String SYSTEM_UNSHARED_USER = "dan";
+	public static final String SYSTEM_UNSHARED_USER = "testotheruser";
 	public static final String SYSTEM_INTERNAL_USERNAME = "test_user";
 	
-	public static final String TEST_STORAGE_SYSTEM_FILE = "src/test/resources/systems/storage/sftp.example.com.json";
-	public static final String TEST_EXECUTION_SYSTEM_FILE = "src/test/resources/systems/execution/ssh.example.com.json";
-	public static final String TEST_STORAGE_MONITOR = "src/test/resources/monitors/storage_system_monitor.json";
-	public static final String TEST_EXECUTION_MONITOR = "src/test/resources/monitors/execution_system_monitor.json";
-	public static final String TEST_URL_MONITOR = "src/test/resources/monitors/url_monitor.json";
+	public static final String TEST_STORAGE_SYSTEM_FILE = "target/test-classes/systems/storage/sftp.example.com.json";
+	public static final String TEST_EXECUTION_SYSTEM_FILE = "target/test-classes/systems/execution/ssh.example.com.json";
+	public static final String TEST_STORAGE_MONITOR = "target/test-classes/monitors/storage_system_monitor.json";
+	public static final String TEST_EXECUTION_MONITOR = "target/test-classes/monitors/execution_system_monitor.json";
+	public static final String TEST_URL_MONITOR = "target/test-classes/monitors/url_monitor.json";
 	
 	public static TestDataHelper testDataHelper;
 	

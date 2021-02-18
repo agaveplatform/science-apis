@@ -6,8 +6,8 @@
   "description": "My example storage system using IRODSv4 to store data for testing",
   "site": "example.com",
   "storage": {
-    "host": "irods4",
-    "port": 1257,
+    "host": "${irods4.host}",
+    "port": ${irods4.port},
     "protocol": "IRODS4",
     "homeDir": "/testuser",
     "rootDir": "/iplant/home",

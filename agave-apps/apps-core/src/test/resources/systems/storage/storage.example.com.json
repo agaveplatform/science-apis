@@ -6,8 +6,8 @@
    "description":"My example storage system using SFTP to store data for testing",
    "site":"example.com",
    "storage":{
-      "host":"sftp",
-      "port":10022,
+      "host": "${sftp.host}",
+      "port": ${sftp.port},
       "protocol":"SFTP",
       "rootDir":"/",
       "homeDir":"/home/testuser",

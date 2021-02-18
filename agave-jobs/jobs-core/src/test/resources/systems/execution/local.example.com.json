@@ -9,7 +9,7 @@
 	"default": false,
 	"queues": [],
 	"login": {
-		"host": "login1.ls4.tacc.utexas.edu",
+		"host": "localhost",
 		"port": 22,
 		"protocol": "LOCAL",
 		"auth": {

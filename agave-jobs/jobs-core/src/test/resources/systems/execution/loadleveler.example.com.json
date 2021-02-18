@@ -17,8 +17,8 @@
     }
   ],
   "login": {
-    "host": "openlava",
-    "port": 10177,
+    "host": "${loadleveler.host}",
+    "port": ${loadleveler.port},
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -27,8 +27,8 @@
     }
   },
   "storage": {
-    "host": "openlava",
-    "port": 10177,
+    "host": "${loadleveler.host}",
+    "port": ${loadleveler.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

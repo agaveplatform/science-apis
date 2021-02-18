@@ -17,8 +17,8 @@
     }
   ],
   "login": {
-    "host": "slurm",
-    "port": 10133,
+    "host": "${slurm.host}",
+    "port": ${slurm.port},
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -27,8 +27,8 @@
     }
   },
   "storage": {
-    "host": "slurm",
-    "port": 10133,
+    "host": "${slurm.host}",
+    "port": ${slurm.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

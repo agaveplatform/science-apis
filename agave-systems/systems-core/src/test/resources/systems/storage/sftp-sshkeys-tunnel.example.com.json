@@ -6,8 +6,8 @@
   "description": "Example storage sytem accessible via sftp.",
   "site": "example.com",
   "storage": {
-    "host": "sftphidden",
-    "port": 10044,
+    "host": "${sftphidden.host}",
+    "port": ${sftphidden.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",
@@ -19,8 +19,8 @@
     },
     "proxy": {
       "name": "Example proxy to sftp storage server",
-      "host": "sftptunnel",
-      "port": 10033
+      "host": "${sftptunnel.host}",
+      "port": ${sftptunnel.port}
     }
   },
   "default": false

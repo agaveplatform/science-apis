@@ -9,11 +9,8 @@ services:
   ##############################################################
   mysql:
     image: agave-mariadb:2.2.27
-    container_name: mysql
     ports:
       - '3306:3306'
-    volumes:
-      - mysql_data:/var/lib/mysql
     environment:
       MARIADB_ROOT_PASSWORD: changeit
       MARIADB_DATABASE: agavecore
@@ -31,21 +28,16 @@ services:
   ##############################################################
   mongodb:
     image: agaveplatform/mongodb:4.2.8
-    container_name: mongodb
     environment:
       - MONGODB_ADMIN_PASS=changeit
       - MONGODB_PASSWORD=password
       - MONGODB_USERNAME=agaveuser
       - MONGODB_DATABASE=api
       - JOURNALING=no
-    volumes:
-      - mongo_data:/data
     ports:
       - '27017:27017'
     labels:
       - "traefik.enable=false"
-    networks:
-      - core_persistence
     restart: on-failure
     mem_limit: 512M
     mem_reservation: 256M
@@ -55,14 +47,11 @@ services:
   ##############################################################
   beanstalkd:
     image: agaveplatform/beanstalkd:latest
-    container_name: beanstalkd
     command: /usr/bin/beanstalkd -b /var/lib/beanstalkd/binlog
     ports:
       - '11300:11300'
     labels:
       - "traefik.enable=false"
-    networks:
-      - core_persistence
     restart: on-failure
     mem_limit: 512M
     mem_reservation: 128M

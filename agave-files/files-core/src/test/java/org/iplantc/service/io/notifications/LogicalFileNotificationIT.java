@@ -258,6 +258,7 @@ public class LogicalFileNotificationIT extends BaseTestCase
 	 */
 	protected StorageSystem createStorageSystems() throws Exception {
 		StorageSystem storageSystem = (StorageSystem) getNewInstanceOfRemoteSystem(RemoteSystemType.STORAGE, "storage");
+		storageSystem.setSystemId(UUID.randomUUID().toString());
 		storageSystem.setOwner(SYSTEM_OWNER);
 		storageSystem.setPubliclyAvailable(true);
 		storageSystem.setGlobalDefault(true);

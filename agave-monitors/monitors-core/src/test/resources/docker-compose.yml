@@ -19,6 +19,12 @@ services:
     ports:
       - '10022:10022'
 
+  ssh:
+    image: agaveplatform/sshd:latest
+    command: "-p 10111"
+    ports:
+      - '10111:10111'
+
   requestbin:
     image: agaveplatform/requestbin:2.0.0
     hostname: requestbin

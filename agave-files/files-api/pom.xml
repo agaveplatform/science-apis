@@ -39,13 +39,6 @@
 				<artifactId>docker-compose-maven-plugin</artifactId>
 			</plugin>
 
-			<!-- iRODS containers take a while to startup, so we use a custom await config here
-			     to wait for them to start up completely. -->
-			<plugin>
-				<groupId>org.agaveplatform.ops</groupId>
-				<artifactId>await-maven-plugin</artifactId>
-			</plugin>
-
 			<!-- ************************************ -->
 			<!-- *** WAR BUILDER ** -->
 			<!-- ************************************ -->
@@ -80,7 +73,7 @@
 							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
 						</manifest>
 						<manifestEntries>
-							<Implementation-Build>$\{buildNumber}</Implementation-Build>
+							<Implementation-Build>${buildNumber}</Implementation-Build>
 						</manifestEntries>
 					</archive>
 					<webResources>

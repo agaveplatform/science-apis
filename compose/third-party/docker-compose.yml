@@ -3,19 +3,13 @@
 #############################################################
 version: '2'
 
-volumes:
-  mysql_data:
-  mongo_data:
-
-networks:
-  core_persistence:
-
 services:
   ##############################################################
   # MySQL 5.7 / MariaDB 10.3
   ##############################################################
   mysql:
     image: agave-mariadb:2.2.27
+    container_name: mysql
     ports:
       - '3306:3306'
     volumes:
@@ -27,11 +21,9 @@ services:
       MARIADB_PASSWORD: password
     labels:
       - "traefik.enable=false"
-    networks:
-      - core_persistence
     restart: on-failure
-#    mem_limit: 512M
-#    mem_reservation: 256M
+    mem_limit: 512M
+    mem_reservation: 256M
 
 
   ##############################################################
@@ -39,7 +31,7 @@ services:
   ##############################################################
   mongodb:
     image: agaveplatform/mongodb:4.2.8
-    hostname: mongodb
+    container_name: mongodb
     environment:
       - MONGODB_ADMIN_PASS=changeit
       - MONGODB_PASSWORD=password
@@ -55,16 +47,16 @@ services:
     networks:
       - core_persistence
     restart: on-failure
-#    mem_limit: 512M
-#    mem_reservation: 256M
+    mem_limit: 512M
+    mem_reservation: 256M
 
   ##############################################################
   # Beanstalkd
   ##############################################################
   beanstalkd:
     image: agaveplatform/beanstalkd:latest
+    container_name: beanstalkd
     command: /usr/bin/beanstalkd -b /var/lib/beanstalkd/binlog
-    hostname: beanstalkd
     ports:
       - '11300:11300'
     labels:
@@ -72,8 +64,8 @@ services:
     networks:
       - core_persistence
     restart: on-failure
-#    mem_limit: 512M
-#    mem_reservation: 128M
+    mem_limit: 512M
+    mem_reservation: 128M
 
 #  beanstalkd-console:
 #      image: kusmierz/beanstalk-console:latest

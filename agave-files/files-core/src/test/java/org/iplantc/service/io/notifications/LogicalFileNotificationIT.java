@@ -29,7 +29,9 @@ import org.iplantc.service.notification.model.enumerations.RetryStrategyType;
 import org.iplantc.service.notification.providers.email.enumeration.EmailProviderType;
 import org.iplantc.service.notification.queue.NewNotificationQueueProcessor;
 import org.iplantc.service.systems.manager.SystemManager;
+import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
+import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
@@ -75,7 +77,6 @@ public class LogicalFileNotificationIT extends BaseTestCase
 		org.iplantc.service.notification.Settings.EMAIL_PROVIDER = EmailProviderType.LOG;
 		
 		clearLogicalFiles();
-		initSystems();
 		
 		drainQueue();
 		TEST_NOTIFICATION_URL = createRequestBin();
@@ -97,7 +98,7 @@ public class LogicalFileNotificationIT extends BaseTestCase
 	@BeforeMethod
 	protected void beforeMethod(Method m) throws Exception {
 	    clearLogicalFiles();
-	    
+
 		sched.clear();
 		startNotificationQueue(m.getName());
 	}
@@ -105,6 +106,7 @@ public class LogicalFileNotificationIT extends BaseTestCase
 	@AfterMethod
 	protected void afterMethod(Method m) throws Exception {
 	    drainQueue();
+	    clearSystems();
 	}
 	
 	private void startNotificationQueue(String name) throws SchedulerException {
@@ -244,7 +246,25 @@ public class LogicalFileNotificationIT extends BaseTestCase
 			client = null;
 		}
 	}
-	
+
+	/**
+	 * Create a single {@link StorageSystem} for basic testing.
+	 *
+	 * Templates used for these systems are taken from the
+	 * {@code target/test-classes/systems/storage/storage.example.com.json} files.
+	 *
+	 * @throws Exception if unable to persist the sotrage system
+	 */
+	protected StorageSystem createStorageSystems() throws Exception {
+		StorageSystem storageSystem = (StorageSystem) getNewInstanceOfRemoteSystem(RemoteSystemType.STORAGE, "storage");
+		storageSystem.setOwner(SYSTEM_OWNER);
+		storageSystem.setPubliclyAvailable(true);
+		storageSystem.setGlobalDefault(true);
+		storageSystem.getUsersUsingAsDefault().add(SYSTEM_OWNER);
+		systemDao.persist(storageSystem);
+		return storageSystem;
+	}
+
 	/**
 	 * Creates a bare bones LogicalFile object.
 	 * @return LogicalFile with minimal set of attributes.
@@ -255,18 +275,12 @@ public class LogicalFileNotificationIT extends BaseTestCase
 	    LogicalFile file = null;
 		try 
 		{
-		    StorageSystem storageSystem = new SystemManager().getDefaultStorageSystem();
+		    StorageSystem storageSystem = createStorageSystems();
 		    file = new LogicalFile(SYSTEM_OWNER, storageSystem, URI.create("agave://" + storageSystem.getSystemId() + "/" + LOCAL_TXT_FILE_NAME), storageSystem.getRemoteDataClient().resolvePath(LOCAL_TXT_FILE_NAME + ".copy"));
 	        file.setStatus(StagingTaskStatus.STAGING_QUEUED);
 	        file.setOwner(SYSTEM_OWNER);
 	        
 	        LogicalFileDao.persist(file);
-	        
-//	        task = new StagingTask(file);
-//	        task.setRetryCount(Settings.MAX_STAGING_RETRIES);
-//	        QueueTaskDao.persist(task);
-//	        
-//            LogicalFileDao.persist(file);
 		} 
 		catch (Exception e) {
 			Assert.fail("Failed to create LogicalFile object", e);
@@ -297,8 +311,7 @@ public class LogicalFileNotificationIT extends BaseTestCase
     protected void createIndividualNotifications(LogicalFile logicalFile, String notificationUri, boolean persistent) 
     throws NotificationException 
     {
-        Set<FileEventType> statuses = new HashSet<FileEventType>();
-        statuses.addAll(Arrays.asList(FileEventType.getFileStagingEvents()));
+		Set<FileEventType> statuses = new HashSet<FileEventType>(Arrays.asList(FileEventType.getFileStagingEvents()));
         
         for(FileEventType statusEventName: statuses) {
         	LogicalFileManager.addNotification(logicalFile, statusEventName, notificationUri, true, logicalFile.getOwner());

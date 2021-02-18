@@ -188,8 +188,9 @@ public abstract class AbstractWebhookClient implements WebhookClient {
 					byte[] bs = new byte[2048]; 
 					try {
 						HttpEntity entity = response.getEntity();
-						long contentLength = entity.getContentLength();
-						if (contentLength > 0) {
+
+						// 304 is valid response, but will throw a NPE without a null check
+						if (entity != null && entity.getContentLength() > 0) {
 							in = entity.getContent();
 							int bytesRead = in.read(bs, 0, bs.length);
 							attemptResponse.setMessage(new String(bs, 0, bytesRead).replaceAll("\\s+$", ""));

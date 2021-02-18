@@ -5,6 +5,7 @@ package org.iplantc.service.io.notifications;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.surftools.BeanstalkClientImpl.ClientImpl;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.Settings;
@@ -29,17 +30,22 @@ import org.iplantc.service.notification.model.enumerations.NotificationStatusTyp
 import org.iplantc.service.notification.model.enumerations.RetryStrategyType;
 import org.iplantc.service.notification.providers.email.enumeration.EmailProviderType;
 import org.iplantc.service.notification.queue.NewNotificationQueueProcessor;
+import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.ExecutionSystem;
+import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.json.JSONObject;
+import org.mockito.Mockito;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.KeyMatcher;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -257,12 +263,19 @@ public class LogicalFileNotificationIT extends BaseTestCase
 	 * @throws Exception if unable to persist the sotrage system
 	 */
 	protected StorageSystem createStorageSystems() throws Exception {
-		StorageSystem storageSystem = (StorageSystem) getNewInstanceOfRemoteSystem(RemoteSystemType.STORAGE, "storage");
-		storageSystem.setSystemId(UUID.randomUUID().toString());
-		storageSystem.setOwner(SYSTEM_OWNER);
+		JSONObject json = jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + File.separator +
+					"sftp.example.com.json");
+		json.remove("id");
+		json.put("id", UUID.randomUUID().toString());
+		StorageSystem storageSystem = (StorageSystem) StorageSystem.fromJSON(json);
 		storageSystem.setPubliclyAvailable(true);
 		storageSystem.setGlobalDefault(true);
 		storageSystem.getUsersUsingAsDefault().add(SYSTEM_OWNER);
+		storageSystem.setOwner(SYSTEM_OWNER);
+		String homeDir = storageSystem.getStorageConfig().getHomeDir();
+		homeDir = StringUtils.isEmpty(homeDir) ? "" : homeDir;
+		storageSystem.getStorageConfig().setHomeDir(homeDir + "/" + getClass().getSimpleName());
+
 		systemDao.persist(storageSystem);
 		return storageSystem;
 	}

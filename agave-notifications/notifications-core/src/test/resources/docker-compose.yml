@@ -44,23 +44,20 @@ services:
       - "traefik.http.routers.requestbin-secure.entrypoints=websecure"
       - "traefik.http.routers.requestbin-secure.tls=true"
 
-  redis:
-    image: redis:alpine
-
   httpbin:
-      image: agaveplatform/httpbin:latest
-      hostname: httpbin
-      restart: on-failure
-      ports:
-        - '8200:8000'
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.httpbin.rule=Host(`httpbin`)"
-        - "traefik.http.routers.httpbin.entrypoints=web"
-        - "traefik.http.routers.httpbin.tls=false"
-        - "traefik.http.routers.httpbin-secure.rule=Host(`httpbin`)"
-        - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
-        - "traefik.http.routers.httpbin-secure.tls=true"
+    image: agaveplatform/httpbin:latest
+    hostname: httpbin
+    restart: on-failure
+    ports:
+      - '8200:8000'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpbin.rule=Host(`httpbin`)"
+      - "traefik.http.routers.httpbin.entrypoints=web"
+      - "traefik.http.routers.httpbin.tls=false"
+      - "traefik.http.routers.httpbin-secure.rule=Host(`httpbin`)"
+      - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
+      - "traefik.http.routers.httpbin-secure.tls=true"
 
   httpd:
     image: agaveplatform/apache-dev:latest
@@ -85,5 +82,3 @@ services:
     image: agaveplatform/maildev:latest
     ports:
       - "25:25"
-#    volumes:
-#      - ./persistence-services/maildev/rules.json:/data/rules.json

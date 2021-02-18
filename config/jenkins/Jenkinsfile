@@ -1,46 +1,43 @@
-def LABEL = 'master'
 
-node (LABEL) {
+node ('master') {
 
     env.JAVA_HOME="${tool 'openjdk-9'}"
     env.MVN_HOME="${tool 'maven-3.6.3'}"
     env.PATH="${env.JAVA_HOME}/bin:${env.MVN_HOME}/bin:${env.PATH}"
+	env.BUILD_IMAGE="agaveplatform/maven:3.6.3-proto"
 
-	clearCurrentContainers()
-
-    // pull request or feature branch
-    if (env.BRANCH_NAME != 'master') {
-
-        checkoutSource()
-        // build()
-        // unitTest()
-        integrationTest()
-
-        // test whether this is a regular branch build or a merged PR build
-        if (!isPRMergeBuild()) {
-            buildImages()
-            // helmDeploy()
-        } else {
-            // PR-build
-            coverage()
-        }
-    } // master branch / production
-//    else {
-//        checkout()
-//        build()
-//        unitTest()
-//        thirdPartyIntegrationTests()
-//        buildImages()
-//        publishImages()
-//        helmDeploy()
-//        manualPromotion()
-//        production()
-//    }
-//  }
+	// Send a message indicating the start of the build. We record the thread and add it to the environment
+	// so we thread all future messages
+    def slackResponse = slackSend(color: "good", message: "Started Agave Science API build <${env.BUILD_URL}|${env.BUILD_DISPLAY_NAME}>")
+    env.SLACK_THREAD_ID=slackResponse.threadId
+    
+    checkoutSource()
+    // build()
+    // unitTest()
+    integrationTest()
+//     buildImages()
+//     helmDeploy()
+    slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Successful build of Agave Science APIs. Log availabl at <${env.BUILD_URL}|here>."
 }
 
 def isPRMergeBuild() {
     return (env.BRANCH_NAME ==~ /^PR-\d+$/)
+}
+
+// Returs the short commit hash for the current checkout. We use this approach to avoid compatibility issues with the
+// response from the GitSCM plugin
+//
+// @returns short 7 digit git commit hash
+def shortCommitHash() {
+	return sh(returnStdout: true, script: "git log -n 1 --pretty=format:'%h'").trim()
+}
+
+// Returns the full commit hash for the current checkout. We use this approach to avoid compatibility issues with the
+// response from the GitSCM plugin
+//
+// @returns full git commit hash
+def commitHash() {
+	return sh(returnStdout: true, script: "git rev-parse HEAD").trim()
 }
 
 def checkoutSource () {
@@ -49,70 +46,246 @@ def checkoutSource () {
 		context += isPRMergeBuild()?"pr-merge/checkout":"branch/checkout"
 		checkout([$class: 'GitSCM', branches: [[name: '*/2.2.27']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'deardooley-github-access-token', url: 'https://deardooley@github.com/agaveplatform/science-apis.git']]])
 		//    setBuildStatus ("${context}", 'Checking out completed', 'SUCCESS')
+
+		// set the commit hash and short hash for use in this build
+		env.GIT_COMMIT=commitHash()
+		env.GIT_SHORT_HASH=shortCommitHash()
+
+		slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Checked out commit ${env.GIT_SHORT_HASH} from branch ${env.GIT_BRANCH}."
 	}
 }
 
 def build () {
     stage('Build Source') {
-		def MAVEN_CMD = "/usr/bin/docker run -i --rm -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn -Dstyle.color=never  "
-        //def MAVEN_CMD = "mvn -Dstyle.color=never "
+		//def MAVEN_CMD = "/usr/bin/docker run -i --rm -w $(pwd) -v ${env.WORKSPACE}:${env.WORKSPACE} -v ${env.HOME}/.m2:/root/.m2  -v /var/run/docker.sock:/var/run/docker.sock --net host agaveplatform/maven:3.6.3-proto mvn -Dstyle.color=never "
+        def MAVEN_CMD = "mvn -Dstyle.color=never "
 		try {
-		    echo "${MAVEN_CMD} clean compile"
-			sh "${MAVEN_CMD} clean compile"
+			sh "${MAVEN_CMD} -T 1.0C -P agave,dev clean compile "
+			slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Source compilation complete."
 		}
 		catch (err) {
-			slackSend color: "red", message: "Failed to run the core services unit tests. Failed build is on display at <${env.BUILD_URL}|here>."
+			slackSend channel: env.SLACK_THREAD_ID, color: "danger", message: "Source compilation failed. Terminating build"
 			throw err
 		}
 	}
 }
 
 def unitTest() {
-    stage ('Unit Tests') {
-        def MAVEN_CMD = "/usr/bin/docker run -i --rm -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn -Dstyle.color=never "
+    	stage ('Unit Tests') {
+			//def MAVEN_CMD = "/usr/bin/docker run -i --rm -w ${env.WORKSPACE} -v ${env.WORKSPACE}:${env.WORKSPACE} -v ${env.HOME}/.m2:/root/.m2  -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn -Dstyle.color=never "
+			def MAVEN_CMD = "mvn -Dstyle.color=never "
 
-	    //def MAVEN_CMD = "mvn -Dstyle.color=never "
-		try {
-		    echo "${MAVEN_CMD} test"
-			sh "${MAVEN_CMD} test"
-			step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
+			try {
+				sh "${MAVEN_CMD} -T 1.0C -P agave,dev install"
+
+				// collect unit test output for report and archiving
+				step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
+
+				slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Unit tests complete."
+			}
+			catch (err) {
+				slackSend channel: env.SLACK_THREAD_ID, color: "danger", message: "Unit tests failed. Terminating build."
+				throw err
+			}
 		}
-		catch (err) {
-			slackSend color: "red", message: "Failed to compile the core services. Failed build is on display at <${env.BUILD_URL}|here>."
-			throw err
-		}
-
-		//mvn 'test -B -Dmaven.javadoc.skip=true -Dcheckstyle.skip=true'
-
-		//if (currentBuild.result == "UNSTABLE") {
-		//    sh "exit 1"
-		//}
 	}
 }
 
 def integrationTest() {
-    stage ('Integration Tests') {
-		withCredentials([usernamePassword(credentialsId: 'docker-hub-login', passwordVariable: 'DOCKER_REGISTRY_PASS', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
-			//def MAVEN_CMD = "/usr/bin/docker run -i --rm -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn "
-            def MAVEN_CMD = "mvn -Dstyle.color=never "
+    	stage ('Integration Tests') {
+        withCredentials([usernamePassword(credentialsId: 'docker-hub-login', passwordVariable: 'DOCKER_REGISTRY_PASS', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
+			//def MAVEN_CMD = "/usr/bin/docker run -i --rm -w ${env.WORKSPACE} -v ${env.WORKSPACE}:${env.WORKSPACE} -v ${env.HOME}/.m2:/root/.m2 -v ${env.HOME}/.docker:/root/.docker -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn -Dstyle.color=never "
+            def MAVEN_CMD = "mvn -Dstyle.color=never -P agave,integration-test verify -Dawait-maven-plugin.initialWait=15000 -Ddocker-compose-plugin.awaitDuration=10 -Dskip.post-integration.pause=false "
+            
             def DOCKER_REGISTRY_URL = ''
             def DOCKER_REGISTRY_ORG = 'agaveplatform'
-
+            
 			try {
 				// login to the docker registry
     			sh "docker login -u ${DOCKER_REGISTRY_USER} -p ${DOCKER_REGISTRY_PASS} ${DOCKER_REGISTRY_URL}"
 
-    			clearCurrentContainers()
-
-    			sh "${MAVEN_CMD} -P agave,integration-test verify"
+                stage ('Migrations') {
+                    clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl agave-migrations "
+                }
+                
+                stage ('Protobuf Java Stubs') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :protos-java "
+                }
+                
+                stage ('sftp-relay') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :sftp-relay "
+                }
+                
+                stage ('Common Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :common-core "
+                }
+                
+                stage ('Common API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :common-api "
+                }
+                
+                stage ('Common Legacy API') {
+                    clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :common-legacy-api "
+                }
+                
+                stage ('Postits API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :postits-api "
+                }
+                
+                stage ('Usage API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :usage-api "
+                	clearCurrentContainers()
+                }
+                
+                stage ('Tenants API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :tenants-api "
+                }
+                
+                stage ('Logging API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :logging-api "
+                }
+                
+                stage ('Notifications Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :notifications-core "
+                }
+                
+                stage ('Notifications API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :notifications-api "
+                }
+                
+                stage ('Profiles Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :profiles-core "
+                }
+                
+                stage ('Profiles API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :profiles-api "
+                }
+                
+                stage ('Metadata Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :metadata-core "
+                }
+                
+                stage ('Metadata API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :metadata-api "
+                }
+                
+                stage ('Systems Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :systems-core "
+                }
+                
+                stage ('Systems API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :systems-api "
+                	clearCurrentContainers()
+                }
+                
+                stage ('Monitors Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :monitors-core "
+                	clearCurrentContainers()
+                }
+                
+                stage ('Monitors API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :monitors-api "
+                	clearCurrentContainers()
+                }
+                
+                stage ('Files Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :files-core "
+                	clearCurrentContainers()
+                }
+                
+                stage ('Files API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :files-api "
+                }
+                
+                stage ('Apps Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :apps-core "
+                }
+                
+                stage ('Apps API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :apps-api "
+                }
+                
+                stage ('Jobs Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :jobs-core "
+                }
+                
+                stage ('Jobs API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :jobs-api "
+                }
+                
+                stage ('Tags Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :tags-core "
+                }
+                
+                stage ('Tags API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :tags-api "
+                }
+                
+                stage ('Realtime Core') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :realtime-core "
+                }
+                
+                stage ('Realtime API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :realtime-api "
+                }
+                
+                stage ('Stats API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :stats-api "
+                }
+                
+                stage ('Uuids API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :uuids-api "
+                }
+                
+                stage ('Apidocs API') {
+                	clearCurrentContainers()
+                	sh "${MAVEN_CMD} -pl :apidocs-api "
+                }
+                
+    // 			sh "${MAVEN_CMD} -P agave,integration-test verify -Dawait-maven-plugin.initialWait=15000 -Ddocker-compose-plugin.awaitDuration=10 -Dskip.post-integration.pause=false "
 
     			step([$class: 'JUnitResultArchiver', testResults: '**/target/failsafe-reports/TEST-*.xml'])
+
+    			slackSend channel: env.SLACK_THREAD_ID, color: "green", message: "Integration tests completed successfully. Log availabl at <${env.BUILD_URL}|here>."
+
 			}
 			catch (err) {
 
 				clearCurrentContainers()
 
-				slackSend color: "red", message: "Failed running core services integration tests. Failed build is on display at <${env.BUILD_URL}|here>."
+				slackSend channel: env.SLACK_THREAD_ID, color: "danger", message: "Integration tests failed. Terminating build."
 
 				throw err
 			}
@@ -132,19 +305,6 @@ def clearCurrentContainers() {
 
 	sh "docker ps -a --format '{{.Names}}' | grep -v traefik_traefik_  | xargs --no-run-if-empty docker rm -f"
 }
-
-//def thirtPartyIntegrationTest() {
-//    stage 'Run Third-Party Integration Tests'
-//    withCredentials([file(credentialsId: 'maven-third-party-settings-file', variable: 'MAVEN_THIRD_PARTY_SETTINGS_FILE')]) {
-//        def MAVEN_CMD = "docker run -i --rm -v ${env.MAVEN_THIRD_PARTY_SETTINGS_FILE}:/root/settings.xml -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn --settings=/root/settings.xml"
-//        try {
-//            sh "${MAVEN_CMD} -P agave,integration-test,third-party-integration-test verify"
-//        }
-//        catch (err) {
-//            slackSend color: "red", message: "Failed running third-party integration tests. Failed build is on display at <${env.BUILD_URL}|here>."
-//        }
-//    }
-//}
 
 
 def coverage() {
@@ -169,35 +329,6 @@ def coverage() {
 				slackSend color: "red", message: "Failed running third-party integration tests. Failed build is on display at <${env.BUILD_URL}|here>."
 				throw err
 			}
-		}
-	}
-}
-
-def thirdPartyIntegrationTests() {
-    stage ('Thirt-Party Integration Tests') {
-    	withCredentials([file(credentialsId: 'maven-third-party-settings-file', variable: 'MAVEN_THIRD_PARTY_SETTINGS_FILE'),
-                     usernamePassword(credentialsId: 'docker-hub-login', passwordVariable: 'DOCKER_REGISTRY_PASS', usernameVariable: 'DOCKER_REGISTRY_USER')]) {
-
-			//def MAVEN_CMD = "docker run -i --rm -v ${env.MAVEN_THIRD_PARTY_SETTINGS_FILE}:/root/settings.xml -v ${env.WORKSPACE}:/sources -v ${env.HOME}/.m2:/root/.m2  -v /usr/bin/docker:/usr/bin/docker -v /var/run/docker.sock:/var/run/docker.sock --net=host agaveplatform/maven:3.6.3-proto mvn --settings=/root/settings.xml"
-            def MAVEN_CMD = "mvn -Dstyle.color=never --settings=${env.MAVEN_THIRD_PARTY_SETTINGS_FILE} "
-			try {
-			    // login to the docker registry
-    			sh "docker login -u ${DOCKER_REGISTRY_USER} -p ${DOCKER_REGISTRY_PASS} ${DOCKER_REGISTRY_URL}"
-
-				sh "${MAVEN_CMD} -P agave,integration-test,third-party-integration-test verify"
-				step([$class: 'JUnitResultArchiver', testResults: '**/target/failsafe-reports/TEST-*.xml'])
-			}
-			catch (err) {
-				slackSend color: "red", message: "Failed running third-party integration tests. Failed build is on display at <${env.BUILD_URL}|here>."
-				throw err
-			}
-
-
-
-	//        if (currentBuild.result == "UNSTABLE") {
-	//            // input "Unit tests are failing, proceed?"
-	//            sh "exit 1"
-	//        }
 		}
 	}
 }
@@ -481,3 +612,14 @@ def getCurrentHelmRelease(app) {
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+

@@ -79,7 +79,7 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 //	public void beforeClass() throws Exception
 //	{
 //		jtd = JSONTestDataUtil.getInstance();
-////	    File file = new File("src/test/resources/hibernate.cfg.xml");
+////	    File file = new File("target/test-classes/hibernate.cfg.xml");
 ////		Configuration configuration = new Configuration().configure(file);
 ////		HibernateUtil.rebuildSessionFactory(configuration);
 //		systemsDao = new SystemDao();

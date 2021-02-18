@@ -81,12 +81,12 @@ public class AbstractDaoTest
     public static final String SYSTEM_PUBLIC_USER = "public";
     public static final String SYSTEM_UNSHARED_USER = "testother";
     public static final String SYSTEM_INTERNAL_USERNAME = "test_user";
-    public static final String EXECUTION_SYSTEM_TEMPLATE_DIR = "src/test/resources/systems/execution";
+    public static final String EXECUTION_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/execution";
     public static final String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage";
-    public static final String SOFTWARE_SYSTEM_TEMPLATE_DIR = "src/test/resources/software";
+    public static final String SOFTWARE_SYSTEM_TEMPLATE_DIR = "target/test-classes/software";
     public static final String FORK_SOFTWARE_TEMPLATE_FILE = SOFTWARE_SYSTEM_TEMPLATE_DIR + "/fork-1.0.0/app.json";
-    public static final String INTERNAL_USER_TEMPLATE_DIR = "src/test/resources/internal_users";
-    public static final String CREDENTIALS_TEMPLATE_DIR = "src/test/resources/credentials";
+    public static final String INTERNAL_USER_TEMPLATE_DIR = "target/test-classes/internal_users";
+    public static final String CREDENTIALS_TEMPLATE_DIR = "target/test-classes/credentials";
 	
 	protected JSONTestDataUtil jtd;
 	protected SystemDao systemDao = new SystemDao();

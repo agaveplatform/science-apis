@@ -22,8 +22,8 @@ public class TestDataHelper {
 	public static String TEST_USER = "testuser";
 	public static String TEST_SHAREUSER = "testshare";
 	public static String TEST_OTHERUSER = "testother";
-	public static String TEST_TAG = "src/test/resources/tags/tag.json";
-	public static String TEST_TAGS = "src/test/resources/tags/multiple_tags.json";
+	public static String TEST_TAG = "target/test-classes/tags/tag.json";
+	public static String TEST_TAGS = "target/test-classes/tags/multiple_tags.json";
 	
 	public static final String TEST_INTERNAL_USERNAME = "test_user";
 	

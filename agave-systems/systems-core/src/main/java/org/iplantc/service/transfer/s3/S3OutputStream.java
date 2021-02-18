@@ -89,7 +89,7 @@ public class S3OutputStream extends RemoteOutputStream<S3Jcloud> {
 
 //			InputStream in = null;
 			try {
-//				File test = new File("/Users/dooley/workspace/agave/agave-systems/systems-core/src/test/resources/transfer/test_upload.txt");
+//				File test = new File("/Users/dooley/workspace/agave/agave-systems/systems-core/target/test-classes/transfer/test_upload.txt");
 //				in = new FileInputStream(tempFile);
 				ByteSource byteSource = Files.asByteSource(tempFile);
 				Payload payload = new ByteSourcePayload(byteSource);

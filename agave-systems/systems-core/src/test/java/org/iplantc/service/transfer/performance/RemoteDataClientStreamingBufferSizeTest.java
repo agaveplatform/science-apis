@@ -30,7 +30,7 @@ import org.testng.annotations.Test;
 @Test(groups= {"streaming","performance"})
 public class RemoteDataClientStreamingBufferSizeTest extends BaseTransferTestCase {
 
-	protected static String LOCAL_BINARY_FILE = "src/test/resources/bufferdata.bin";
+	protected static String LOCAL_BINARY_FILE = "target/test-classes/bufferdata.bin";
 
 	private Map<String, RemoteDataClient> clientMap = new HashMap<String, RemoteDataClient>();
 	

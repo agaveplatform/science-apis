@@ -30,6 +30,7 @@ services:
       - 50052:50052
       - 28443:8080
     restart: on-failure
+    cpu_shares: 128
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     labels:
@@ -45,6 +46,8 @@ services:
       - 50051:50051
       - 9092
     restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
     volumes:
       - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
     labels:
@@ -58,22 +61,27 @@ services:
     image: agaveplatform/sshd:latest
     command: "-p 10022"
     restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
     ports:
       - '10022:10022'
 
   sftptunnel:
-   image: agaveplatform/sshd:latest
-   command: "-p 10033"
-   restart: on-failure
-   links:
-     - sftphidden
-   ports:
-     - '10033:10033'
+    image: agaveplatform/sshd:latest
+    command: "-p 10033"
+    restart: on-failure
+    cpu_shares: 128
+    links:
+      - sftphidden
+    ports:
+      - '10033:10033'
 
   sftphidden:
     image: agaveplatform/sshd:latest
     command: "-p 10044"
     restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
     ports:
       - '10044:10044'
 
@@ -82,47 +90,36 @@ services:
     command: changeit
     hostname: docker.example.com
     restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
     environment:
       - 'DOCKER_HOSTNAME=docker.example.com'
       - 'IRODS_ZONE=iplant'
     ports:
       - '1257:1247'
-      - '5442:5432'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 2G
 
   irods3:
     image: agaveapi/irods:3.3.1
     hostname: docker.example.com
     restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
     ports:
       - '10055:22'
       - '1247:1247'
-      - '5432:5432'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 2G
 
   irods3-pam:
     image: agaveapi/irods-pam:latest
     hostname: docker.example.com
     restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
     ports:
       - '10066:22'
       - '1248:1247'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 2G
 
   ##############################################################
   # Webhook containers
@@ -189,8 +186,8 @@ services:
     image: agaveplatform/sshd:latest
     command: "-p 10111"
     restart: on-failure
-#    links:
-#      - sshhidden
+    cpu_shares: 128
+    mem_reservation: 128M
     ports:
       - '10111:10111'
 
@@ -213,6 +210,7 @@ services:
   slurm:
     image: agaveplatform/slurm:20.02.3
     hostname: docker.example.com
+    restart: on-failure
     privileged: true
     ports:
       - '10133:22'
@@ -220,6 +218,7 @@ services:
   torque:
     image: agaveplatform/torque:6.1.3
     hostname: docker
+    restart: on-failure
     privileged: true
     environment:
       - "HOSTNAME=docker"
@@ -229,6 +228,7 @@ services:
   pbs:
     image: agaveplatform/pbspro:19.1.2
     hostname: docker
+    restart: on-failure
     command:
       - "tail"
       - "-f"
@@ -239,12 +239,14 @@ services:
   htcondor:
     image: agaveplatform/htcondor:8.4.9
     hostname: docker.example.com
+    restart: on-failure
     ports:
       - '10155:22'
 
   gridengine:
     image: agaveplatform/gridengine:6.2
     hostname: docker.example.com
+    restart: on-failure
     environment:
       - "HOSTNAME=docker.example.com"
     privileged: true
@@ -255,6 +257,7 @@ services:
 
   openlava:
     image: agaveplatform/openlava:3.3
+    restart: on-failure
     ports:
       - '10177:22'
       - '6879:6879'

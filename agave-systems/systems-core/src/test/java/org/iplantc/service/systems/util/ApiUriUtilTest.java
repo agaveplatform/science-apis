@@ -27,7 +27,7 @@ import org.testng.annotations.Test;
 @Test(groups={"integration"})
 public class ApiUriUtilTest
 {
-	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "src/test/resources/systems/storage/";
+	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage/";
 
 	public static final String SYSTEM_OWNER = "testuser";
 	public static final String SYSTEM_OWNER_SHARED = "shareduser";

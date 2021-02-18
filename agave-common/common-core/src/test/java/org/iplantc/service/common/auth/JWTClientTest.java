@@ -12,7 +12,7 @@ import java.io.File;
 @Test(groups = {"broken", "unit"} )
 public class JWTClientTest 
 {
-	public static String JWT_TEST_FOLDER = "src/test/resources/jwt/";
+	public static String JWT_TEST_FOLDER = "target/test-classes/jwt/";
 	@BeforeClass
 	public void beforeClass() {
 	}

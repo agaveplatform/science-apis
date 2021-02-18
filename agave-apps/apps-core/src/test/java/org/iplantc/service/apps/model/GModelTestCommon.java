@@ -23,10 +23,10 @@ public class GModelTestCommon {
 
 
     public void setUp() throws Exception {
-        jsonTreeInputs = jtd.getTestDataObject("src/test/resources/software/test_specific/baseInputsTestFragment.json");
-        jsonTreeOutputs = jtd.getTestDataObject("src/test/resources/software/test_specific/baseOutputsTestFragment.json");
-        jsonTreeParameters = jtd.getTestDataObject("src/test/resources/software/test_specific/baseParametersTestFragment.json");
-        jsonTreeSoftwareBase =  jtd.getTestDataObject("src/test/resources/software/wca-iplant-condor.tacc.utexas.edu.json");
+        jsonTreeInputs = jtd.getTestDataObject("target/test-classes/software/test_specific/baseInputsTestFragment.json");
+        jsonTreeOutputs = jtd.getTestDataObject("target/test-classes/software/test_specific/baseOutputsTestFragment.json");
+        jsonTreeParameters = jtd.getTestDataObject("target/test-classes/software/test_specific/baseParametersTestFragment.json");
+        jsonTreeSoftwareBase =  jtd.getTestDataObject("target/test-classes/software/wca-iplant-condor.tacc.utexas.edu.json");
 
     }
 

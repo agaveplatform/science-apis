@@ -33,7 +33,7 @@ auth-switch -t agave.dev -u testuser -d http://api.example.com -S
 ### Register systems
 ###########################################################
   
-SYSTEMS_FOLDER=agave-systems/systems-core/src/test/resources/systems
+SYSTEMS_FOLDER=agave-systems/systems-core/target/test-classes/systems
 
 ############### STORAGE - SFTP ######################
 systems-addupdate -d -F $SYSTEMS_FOLDER/storage/storage.example.com.json

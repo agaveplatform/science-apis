@@ -80,7 +80,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 		}
 	}
 
-	@Test//(dependsOnMethods = { "findByUuid" })
+	@Test(dependsOnMethods = { "findByUuid" })
 	public void delete() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor = null;
@@ -101,7 +101,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 		}
 	}
 
-	@Test//(dependsOnMethods = { "delete" })
+	@Test(dependsOnMethods = { "delete" })
 	public void getAll() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor1 = null;
@@ -128,7 +128,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 		}
 	}
 
-	@Test//(dependsOnMethods = { "getAll" })
+	@Test(dependsOnMethods = { "getAll" })
 	public void getAllChecksByMonitorId() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor1 = null;
@@ -166,7 +166,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 		}
 	}
 
-	@Test//(dependsOnMethods = { "getAllChecksByMonitorId" })
+	@Test(dependsOnMethods = { "getAllChecksByMonitorId" })
 	public void getLastMonitorCheck() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor1 = null;
@@ -189,7 +189,7 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 		}
 	}
 
-	@Test//(dependsOnMethods = { "getLastMonitorCheck" }, groups={"broken"})
+	@Test(dependsOnMethods = { "getLastMonitorCheck" })
 	public void getPaginatedByIdAndRange() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor1 = null;

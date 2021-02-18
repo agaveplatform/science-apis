@@ -376,7 +376,7 @@ Assert.assertTrue("not implemented yet",false)
         gSqlData.cleanAllTablesByRecord()
 
 		// load up a storage system
-		String irodsString = FileUtils.readFileToString(new File("src/test/resources/systems/storage/data.iplantcollaborative.org.json"));
+		String irodsString = FileUtils.readFileToString(new File("target/test-classes/systems/storage/data.iplantcollaborative.org.json"));
 		JSONObject irodsJson = new JSONObject(irodsString);
 		RemoteSystem irods = sysManager.parseSystem(irodsJson, "testuser");
 		irods.setAvailable(true);
@@ -385,7 +385,7 @@ Assert.assertTrue("not implemented yet",false)
 		systemDao.persist(irods);
 
 		// load up a compute system
-		String condorString = FileUtils.readFileToString(new File("src/test/resources/systems/execution/condor.opensciencegrid.org.json"));
+		String condorString = FileUtils.readFileToString(new File("target/test-classes/systems/execution/condor.opensciencegrid.org.json"));
 		JSONObject condorJson = new JSONObject(condorString);
 		RemoteSystem condor = sysManager.parseSystem(condorJson, "testuser");
 		condor.setAvailable(true);
@@ -393,7 +393,7 @@ Assert.assertTrue("not implemented yet",false)
 		condor.setPubliclyAvailable(true);
 		systemDao.persist(condor);
 
-		String wcString = FileUtils.readFileToString(new File("src/test/resources/software/wc-iplant-condor.tacc.utexas.edu.json"));
+		String wcString = FileUtils.readFileToString(new File("target/test-classes/software/wc-iplant-condor.tacc.utexas.edu.json"));
 		JSONObject wcJson = new JSONObject(wcString);
 		Software software = Software.fromJSON(wcJson);
 		software.setOwner("testuser");

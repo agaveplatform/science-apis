@@ -27,9 +27,9 @@ import java.util.List;
  */
 public class JSONTestDataUtil 
 {
-	private static String TEST_SOFTWARE_FOLDER = "src/test/resources/software/";
+	private static String TEST_SOFTWARE_FOLDER = "target/test-classes/software/";
 	public static String TEST_SOFTWARE_FILE = TEST_SOFTWARE_FOLDER + "head-lonestar.tacc.teragrid.org.json";
-	private static String TEST_SYSTEM_FOLDER = "src/test/resources/systems/";
+	private static String TEST_SYSTEM_FOLDER = "target/test-classes/systems/";
 	public static String TEST_SOFTWARE_SYSTEM_FILE = TEST_SOFTWARE_FOLDER + "system-software.json";
 	public static String TEST_EXECUTION_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "execution/execute.example.com.json";
 	public static String TEST_STORAGE_SYSTEM_FILE = TEST_SYSTEM_FOLDER + "storage/storage.example.com.json";

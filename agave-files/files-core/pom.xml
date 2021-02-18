@@ -73,7 +73,7 @@
 							<goal>Await</goal>
 						</goals>
 						<configuration>
-							<initialWait>30000</initialWait>
+							<initialWait>5000</initialWait>
 							<skip>${skip.integration.tests}</skip>
 							<poll>
 								<attempts>10</attempts>

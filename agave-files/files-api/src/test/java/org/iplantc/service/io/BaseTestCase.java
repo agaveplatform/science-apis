@@ -162,8 +162,8 @@ public class BaseTestCase {
      * a larger permutation matrix of test cases.
      *
      * Templates used for these systems are taken from the
-     * {@code src/test/resources/systems/execution/execute.example.com.json} and
-     * {@code src/test/resources/systems/storage/storage.example.com.json} files.
+     * {@code target/test-classes/systems/execution/execute.example.com.json} and
+     * {@code target/test-classes/systems/storage/storage.example.com.json} files.
      *
      * @throws Exception
      */
@@ -191,7 +191,7 @@ public class BaseTestCase {
     /**
      * Creates and persists an {@link StorageSystem} for every template
      * with file name matching {@link StorageProtocolType}.example.com.json
-     * in the {@code src/test/resources/systems/storage} folder.
+     * in the {@code target/test-classes/systems/storage} folder.
      * @throws Exception
      */
     protected void initAllStorageSystems() throws Exception {
@@ -211,7 +211,7 @@ public class BaseTestCase {
     /**
      * Creates and persists an {@link ExecutionSystem} for every template
      * with file name matching {@link LoginProtocolType}.example.com.json
-     * in the {@code src/test/resources/systems/execution} folder.
+     * in the {@code target/test-classes/systems/execution} folder.
      * @throws Exception
      */
     protected void initAllExecutionSystems() throws Exception

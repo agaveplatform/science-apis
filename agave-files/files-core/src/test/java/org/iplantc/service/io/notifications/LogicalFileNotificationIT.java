@@ -315,8 +315,7 @@ public class LogicalFileNotificationIT extends BaseTestCase
     @DataProvider(name = "logicalFileNotificationStatusProvider")
     protected Object[][] logicalFileNotificationStatusProvider() {
         ArrayList<Object[]> testCases = new ArrayList<Object[]>();
-        Set<FileEventType> statuses = new HashSet<FileEventType>();
-        statuses.addAll(Arrays.asList(FileEventType.getFileStagingEvents()));
+		Set<FileEventType> statuses = new HashSet<FileEventType>(Arrays.asList(FileEventType.getFileStagingEvents()));
        
         for(FileEventType eventType: statuses) { 
             testCases.add(new Object[] { eventType });

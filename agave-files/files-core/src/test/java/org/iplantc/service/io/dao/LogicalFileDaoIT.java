@@ -6,6 +6,7 @@ import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.model.JSONTestDataUtil;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+import org.iplantc.service.io.queue.StagingJobITRetryAnalyzer;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
@@ -17,7 +18,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
-@Test(groups={"integration"})
+@Test(singleThreaded = true, groups={"integration"})
 public class LogicalFileDaoIT extends BaseTestCase
 {
 	private LogicalFile file;
@@ -39,9 +40,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 	protected void beforeClass() throws Exception 
 	{
 		super.beforeClass();
-		clearSystems();
-		clearLogicalFiles();
-		
+
 		system = StorageSystem.fromJSON(jtd.getTestDataObject(JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE));
 		system.setOwner(SYSTEM_OWNER);
 		system.setPubliclyAvailable(true);
@@ -131,7 +130,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testPersist"})
+	@Test//(dependsOnMethods={"testPersist"})
 	public void testFindByIdInvalid() {
 		try {
 			LogicalFile f = LogicalFileDao.findById(-1);
@@ -141,7 +140,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindByIdInvalid"})
+	@Test(retryAnalyzer = StagingJobITRetryAnalyzer.class)//(dependsOnMethods={"testFindByIdInvalid"})
 	public void testFindById() {
 		try {
 			LogicalFileDao.save(file);
@@ -154,7 +153,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindById"})
+	@Test//(dependsOnMethods={"testFindById"})
 	public void testFindBySystemPath() {
 		try {
 			LogicalFileDao.save(file);
@@ -165,7 +164,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindBySystemPath"})
+	@Test//(dependsOnMethods={"testFindBySystemPath"})
 	public void testFindBySystemAndNullPath() {
 		try {
 			LogicalFileDao.save(file);
@@ -176,7 +175,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindBySystemAndNullPath"})
+	@Test//(dependsOnMethods={"testFindBySystemAndNullPath"})
 	public void testFindByNullSystemAndPath() {
 		try {
 			LogicalFileDao.save(file);
@@ -187,7 +186,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindByNullSystemAndPath"})
+	@Test//(dependsOnMethods={"testFindByNullSystemAndPath"})
 	public void testFindByNullSystemAndNullPath() {
 		try {
 			LogicalFileDao.save(file);
@@ -198,7 +197,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindByNullSystemAndNullPath"})
+	@Test//(dependsOnMethods={"testFindByNullSystemAndNullPath"})
 	public void testFindParent() {
 		try {
 			LogicalFileDao.save(parent);
@@ -211,7 +210,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindParent"})
+	@Test//(dependsOnMethods={"testFindParent"})
 	public void testFindParentMissing() {
 		try {
 			LogicalFileDao.save(file);
@@ -223,7 +222,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindParentMissing"})
+	@Test//(dependsOnMethods={"testFindParentMissing"})
 	public void testFindParentReturnsFirstParent() {
 		try {
 
@@ -238,7 +237,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindParentReturnsFirstParent"})
+	@Test//(dependsOnMethods={"testFindParentReturnsFirstParent"})
 	public void testFindClosestParentNullSystem() {
 		try {
 			LogicalFileDao.findClosestParent(null, "/");
@@ -248,7 +247,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindClosestParentNullSystem"})
+	@Test//(dependsOnMethods={"testFindClosestParentNullSystem"})
 	public void testFindClosestParentNullPath() {
 		try {
 			LogicalFileDao.findClosestParent(system, null);
@@ -258,7 +257,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindClosestParentNullPath"})
+	@Test//(dependsOnMethods={"testFindClosestParentNullPath"})
 	public void testFindClosestParentNullSystemNullPath() {
 		try {
 			LogicalFileDao.findClosestParent(null, null);
@@ -268,7 +267,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindClosestParentNullSystemNullPath"})
+	@Test//(dependsOnMethods={"testFindClosestParentNullSystemNullPath"})
 	public void testFindClosestParentReturnsImmediateParent() {
 		try {
 			LogicalFileDao.save(parent);
@@ -282,7 +281,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindClosestParentReturnsImmediateParent"})
+	@Test//(dependsOnMethods={"testFindClosestParentReturnsImmediateParent"})
 	public void testFindClosestParentReturnsRootParentWhenNoIntermediate() {
 		try {
 			LogicalFileDao.save(rootParent);
@@ -297,7 +296,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindClosestParentReturnsRootParentWhenNoIntermediate"})
+	@Test//(dependsOnMethods={"testFindClosestParentReturnsRootParentWhenNoIntermediate"})
 	public void testFindClosestParentReturnsNullWhenNoIntermediateAndNoRootParent() {
 		try {
 			LogicalFileDao.save(file);
@@ -310,7 +309,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindClosestParentReturnsNullWhenNoIntermediateAndNoRootParent"})
+	@Test//(dependsOnMethods={"testFindClosestParentReturnsNullWhenNoIntermediateAndNoRootParent"})
 	public void testFindClosestParentReturnsImmediateParentWhenImmediateAndMultipleParentsExist() {
 		try {
 			LogicalFileDao.save(parentParent);
@@ -325,7 +324,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindClosestParentReturnsImmediateParentWhenImmediateAndMultipleParentsExist"})
+	@Test//(dependsOnMethods={"testFindClosestParentReturnsImmediateParentWhenImmediateAndMultipleParentsExist"})
 	public void testFindClosestParentReturnsFirstParentWhenMultipleParentsExist() {
 		try {
 			LogicalFileDao.save(parentParentParent);
@@ -340,7 +339,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindClosestParentReturnsFirstParentWhenMultipleParentsExist"})
+	@Test//(dependsOnMethods={"testFindClosestParentReturnsFirstParentWhenMultipleParentsExist"})
 	public void testFindClosestParentReturnsFirstParentWhenMultipleParentsAndRootExist() {
 		try {
 			LogicalFileDao.save(rootParent);
@@ -355,7 +354,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindClosestParentReturnsFirstParentWhenMultipleParentsAndRootExist"})
+	@Test//(dependsOnMethods={"testFindClosestParentReturnsFirstParentWhenMultipleParentsAndRootExist"})
 	public void testFindClosestParentReturnsNullWithoutParents() {
 		try {
 			LogicalFileDao.save(file);
@@ -368,7 +367,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindParentReturnsFirstParent"})
+	@Test//(dependsOnMethods={"testFindClosestParentReturnsNullWithoutParents"})
 	public void testFindChildrenOfFolder()
 	{
 		try
@@ -395,7 +394,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindChildrenOfFolder"})
+	@Test//(dependsOnMethods={"testFindChildrenOfFolder"})
 	public void testFindChildrenOfFile()
 	{
 		try
@@ -417,7 +416,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindChildrenOfFile"})
+	@Test//(dependsOnMethods={"testFindChildrenOfFile"})
 	public void testFindChildrenOfEmptyFolder()
 	{
 		try
@@ -439,7 +438,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 
 
 
-	@Test(dependsOnMethods={"testFindChildrenOfEmptyFolder"})
+	@Test//(dependsOnMethods={"testFindChildrenOfEmptyFolder"})
 	public void testFindNonOverlappingChildrenEmptyOnIdenticalFolder()
 	{
 		try {
@@ -474,7 +473,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindNonOverlappingChildrenEmptyOnIdenticalFolder"})
+	@Test//(dependsOnMethods={"testFindNonOverlappingChildrenEmptyOnIdenticalFolder"})
 	public void testFindNonOverlappingChildrenEmptyOnIdenticalFfile()
 	{
 		try {
@@ -503,7 +502,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindNonOverlappingChildrenEmptyOnIdenticalFfile"})
+	@Test//(dependsOnMethods={"testFindNonOverlappingChildrenEmptyOnIdenticalFfile"})
 	public void testFindNonOverlappingChildrenReturnsAllChildrenOnFullCopy()
 	{
 		try {
@@ -529,7 +528,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindNonOverlappingChildrenEmptyOnIdenticalFfile"})
+	@Test//(dependsOnMethods={"testFindNonOverlappingChildrenReturnsAllChildrenOnFullCopy"})
 	public void testFindNonOverlappingChildrenReturnsOnlyOverlappingChildrenOnFullCopy()
 	{
 		try {
@@ -563,7 +562,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindNonOverlappingChildrenReturnsOnlyOverlappingChildrenOnFullCopy"})
+	@Test//(dependsOnMethods={"testFindNonOverlappingChildrenReturnsOnlyOverlappingChildrenOnFullCopy"})
 	public void testFindParentReturnsClosestParent() {
 		try {
 
@@ -577,7 +576,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindParentReturnsClosestParent"})
+	@Test//(dependsOnMethods={"testFindParentReturnsClosestParent"})
 	public void testFindParentNullArgumentThrowsException() {
 		try {
 			LogicalFileDao.findParent(null);
@@ -587,7 +586,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindParentNullArgumentThrowsException"})
+	@Test//(dependsOnMethods={"testFindParentNullArgumentThrowsException"})
 	public void testFindByOwnerNull() {
 		try {
 			LogicalFileDao.findByOwner(null);
@@ -597,7 +596,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindByOwnerNull"})
+	@Test//(dependsOnMethods={"testFindByOwnerNull"})
 	public void testFindByOwnerEmpty() {
 		try {
 			LogicalFileDao.findByOwner("");
@@ -607,7 +606,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindByOwnerEmpty"})
+	@Test//(dependsOnMethods={"testFindByOwnerEmpty"})
 	public void testFindByOwner() {
 		try {
 			LogicalFileDao.save(file);
@@ -619,7 +618,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testFindByOwner"})
+	@Test//(dependsOnMethods={"testFindByOwner"})
 	public void testUpdateTransferStatusLogicalFileNullString() {
 		try {
 			LogicalFileDao.updateTransferStatus((LogicalFile)null, StagingTaskStatus.STAGING_COMPLETED, SYSTEM_OWNER);
@@ -629,7 +628,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-//	@Test(dependsOnMethods={"testPersist", "testFindById"})
+//	@Test//(dependsOnMethods={"testPersist", "testFindById"})
 //	public void testUpdateTransferStatusLogicalFileStringNull() {
 //		try {
 //			LogicalFileDao.updateTransferStatus(file, (String)null);
@@ -639,7 +638,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 //		}
 //	}
 //
-//	@Test(dependsOnMethods={"testPersist", "testFindById"})
+//	@Test//(dependsOnMethods={"testPersist", "testFindById"})
 //	public void testUpdateTransferStatusLogicalFileStringEmpty() {
 //		try {
 //			LogicalFileDao.updateTransferStatus(file,"");
@@ -649,7 +648,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 //		}
 //	}
 
-	@Test(dependsOnMethods={"testUpdateTransferStatusLogicalFileNullString"})
+	@Test//(dependsOnMethods={"testUpdateTransferStatusLogicalFileNullString"})
 	public void testUpdateTransferStatusLogicalFileString() {
 		try {
 			LogicalFileDao.updateTransferStatus(file, StagingTaskStatus.STAGING_COMPLETED, file.getOwner());
@@ -660,7 +659,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testUpdateTransferStatusLogicalFileString"})
+	@Test//(dependsOnMethods={"testUpdateTransferStatusLogicalFileString"})
 	public void testUpdateTransferStatusStringNullString() {
 		try {
 			LogicalFileDao.updateTransferStatus((LogicalFile)null, StagingTaskStatus.STAGING_FAILED, SYSTEM_OWNER);
@@ -670,7 +669,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testUpdateTransferStatusStringNullString"})
+	@Test//(dependsOnMethods={"testUpdateTransferStatusStringNullString"})
 	public void testUpdateTransferStatusStringEmptyString() {
 		try {
 			LogicalFileDao.updateTransferStatus((RemoteSystem)null, "", StagingTaskStatus.STAGING_FAILED.name());
@@ -680,7 +679,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testUpdateTransferStatusStringEmptyString"})
+	@Test//(dependsOnMethods={"testUpdateTransferStatusStringEmptyString"})
 	public void testUpdateTransferStatusStringStringNull() {
 		try {
 			LogicalFileDao.updateTransferStatus(file.getSystem(), file.getPath(), null);
@@ -690,7 +689,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testUpdateTransferStatusStringStringNull"})
+	@Test//(dependsOnMethods={"testUpdateTransferStatusStringStringNull"})
 	public void testUpdateTransferStatusStringStringEmpty() {
 		try {
 			LogicalFileDao.updateTransferStatus(file.getSystem(), file.getPath(),"");
@@ -700,7 +699,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testUpdateTransferStatusStringStringEmpty"})
+	@Test//(dependsOnMethods={"testUpdateTransferStatusStringStringEmpty"})
 	public void testUpdateTransferStatusStringString() {
 		try {
 			LogicalFileDao.save(file);
@@ -712,7 +711,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testUpdateTransferStatusStringString"})
+	@Test//(dependsOnMethods={"testUpdateTransferStatusStringString"})
 	public void testRemoveNull() {
 		try {
 			LogicalFileDao.remove(null);
@@ -722,7 +721,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testRemoveNull"})
+	@Test//(dependsOnMethods={"testRemoveNull"})
 	public void testRemove() {
 		try {
 			LogicalFileDao.save(file);
@@ -736,7 +735,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testRemove"})
+	@Test//(dependsOnMethods={"testRemove"})
 	public void testDeleteSubtreePathDoesNotDeleteFile()
 	{
 		try {
@@ -757,7 +756,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testRemove"})
+	@Test//(dependsOnMethods={"testDeleteSubtreePathDoesNotDeleteFile"})
 	public void testDeleteSubtreePathDoesDeletesChildFiles()
 	{
 		try {
@@ -778,7 +777,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testRemove"})
+	@Test//(dependsOnMethods={"testDeleteSubtreePathDoesDeletesChildFiles"})
 	public void testDeleteSubtreePathDoesDeletesChildDirectories()
 	{
 		try {
@@ -813,7 +812,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testRemove"})
+	@Test//(dependsOnMethods={"testDeleteSubtreePathDoesDeletesChildDirectories"})
 	public void testDeleteSubtreePathDoesNotDeletesSiblingDirectories()
 	{
 		try {
@@ -851,7 +850,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testRemove"})
+	@Test//(dependsOnMethods={"testDeleteSubtreePathDoesNotDeletesSiblingDirectories"})
 	public void testDeleteSubtreePathDoesDeletesEntireTree()
 	{
 		try {
@@ -895,7 +894,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testDeleteSubtreePathDoesDeletesEntireTree"})
+	@Test//(dependsOnMethods={"testDeleteSubtreePathDoesDeletesEntireTree"})
 	public void testFindParentsAbsoluteRootReturnsNoParents()
 	{
 		try
@@ -919,7 +918,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testDeleteSubtreePathDoesDeletesEntireTree"})
+	@Test//(dependsOnMethods={"testFindParentsAbsoluteRootReturnsNoParents"})
 	public void testFindParentsRootDirectoryReturnsNoParents()
 	{
 		try
@@ -941,7 +940,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testDeleteSubtreePathDoesDeletesEntireTree"})
+	@Test//(dependsOnMethods={"testFindParentsRootDirectoryReturnsNoParents"})
 	public void testFindParents() {
 		try {
 			LogicalFileDao.save(rootParent);
@@ -973,7 +972,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testDeleteSubtreePathDoesDeletesEntireTree"})
+	@Test//(dependsOnMethods={"testFindParents"})
 	public void testFindParentsNoSiblingResults()
 	{
 		try
@@ -1004,7 +1003,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testDeleteSubtreePathDoesDeletesEntireTree"})
+	@Test//(dependsOnMethods={"testFindParentsNoSiblingResults"})
 	public void testFindParentsEmptyResultWithNoParents()
 	{
 		try
@@ -1020,7 +1019,7 @@ public class LogicalFileDaoIT extends BaseTestCase
 		}
 	}
 
-	@Test(dependsOnMethods={"testDeleteSubtreePathDoesDeletesEntireTree"})
+	@Test//(dependsOnMethods={"testFindParentsEmptyResultWithNoParents"})
 	public void testFindParentsEmptyResultWithNoEntires()
 	{
 		try

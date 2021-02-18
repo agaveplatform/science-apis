@@ -5,28 +5,75 @@ volumes:
 
 services:
 
+  traefik:
+    image: traefik:v2.1
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.grpc.address=:50052"
+    ports:
+      - 8000:80
+      - 8443:443
+      - 50052:50052
+      - 28443:8080
+    restart: on-failure
+    cpu_shares: 128
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    labels:
+      - "traefik.enable=true"
+
   sftp-relay:
     image: sftp-relay:develop
     ports:
       - 50051:50051
-    restart: always
-    volumes:
-      - scratch:/scratch
+      - 9092
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
+      - "traefik.http.routers.sftp-relay.entrypoints=grpc"
+      - "traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c"
+      - "traefik.http.services.sftp-relay.loadbalancer.server.port=50051"
 
   sftp:
     image: agaveplatform/sshd:latest
     command: "-p 10022"
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
     ports:
       - '10022:10022'
 
   ssh:
     image: agaveplatform/sshd:latest
     command: "-p 10111"
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
     ports:
       - '10111:10111'
 
   requestbin:
     image: agaveplatform/requestbin:2.0.0
     hostname: requestbin
+    restart: on-failure
+    mem_reservation: 256M
+    cpu_shares: 128
     ports:
       - '5101:5000'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.requestbin.rule=Host(`requestbin`)"
+      - "traefik.http.routers.requestbin.entrypoints=web"
+      - "traefik.http.routers.requestbin.tls=false"
+      - "traefik.http.routers.requestbin-secure.rule=Host(`requestbin`)"
+      - "traefik.http.routers.requestbin-secure.entrypoints=websecure"
+      - "traefik.http.routers.requestbin-secure.tls=true"

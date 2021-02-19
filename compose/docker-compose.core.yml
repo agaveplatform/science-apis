@@ -479,3 +479,41 @@ services:
       resources:
         limits:
           memory: 1g
+
+  transfers:
+    image: agaveplatform/transfers-api:${AGAVE_VERSION}
+    ports:
+      - 8085:8085
+      - 80
+    env_file:
+      - configs/common.conf
+      - configs/mysql-core.conf
+      - configs/transfers-api.conf
+    volumes:
+      - ./logs/transfers:/var/log/apache2
+      - ./scratch/transfers:/scratch
+    labels:
+      agave.core.service: transfers
+      agave.tenant: sandbox
+      agave.ops.component: core
+      agave.core.api: True
+      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
+      kompose.service.type: ClusterIP
+      traefik.enable: true
+      traefik.http.routers.transfers.rule: Host(`transfers`) || PathPrefix(`/transfers`)
+      traefik.http.routers.transfers.entrypoints: web
+      traefik.http.routers.transfers.middlewares: addtransfers, redirecttransfers
+      traefik.http.routers.transfers_ssl.rule: Host(`transfers`) || PathPrefix(`/transfers`)
+      traefik.http.routers.transfers_ssl.entrypoints: websecure
+      traefik.http.routers.transfers_ssl.middlewares: addtransfers, redirecttransfers
+      traefik.http.routers.transfers_ssl.tls: true
+      traefik.http.middlewares.redirecttransfers.redirectscheme.scheme: http
+      traefik.http.middlewares.redirecttransfers.redirectscheme.port: 8085
+      traefik.http.middlewares.addtransfers.addprefix.prefix: /api
+
+    #mem_limit: 1g
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+

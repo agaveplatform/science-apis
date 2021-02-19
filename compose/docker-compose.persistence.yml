@@ -22,6 +22,7 @@ services:
 
   mysql-core:
     image: agaveplatform/agave-mariadb:${AGAVE_VERSION}
+    container_name: mysql
     ports:
       - '3306:3306'
     volumes:

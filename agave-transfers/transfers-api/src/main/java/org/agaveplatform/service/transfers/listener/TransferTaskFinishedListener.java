@@ -6,7 +6,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
-import io.vertx.reactivex.ext.unit.Async;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.model.TransferTask;
@@ -56,7 +55,7 @@ public class TransferTaskFinishedListener extends AbstractTransferTaskListener {
                 if (processBodyResult.succeeded()) {
                     String uuid = body.getString("uuid");
 
-                    logger.info("Transfer task {} finished.");
+                    logger.info("Transfer task finished: {}", body);
 
                     this.processEvent(body, result -> {
                         if (result.succeeded()) {

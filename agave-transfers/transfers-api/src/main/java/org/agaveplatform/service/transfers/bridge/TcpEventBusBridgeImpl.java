@@ -1,30 +1,12 @@
 package org.agaveplatform.service.transfers.bridge;
 
 
-import static io.vertx.ext.eventbus.bridge.tcp.impl.protocol.FrameHelper.sendErrFrame;
-import static io.vertx.ext.eventbus.bridge.tcp.impl.protocol.FrameHelper.sendFrame;
-
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.DeliveryOptions;
-import io.vertx.core.eventbus.EventBus;
-import io.vertx.core.eventbus.Message;
-import io.vertx.core.eventbus.MessageConsumer;
-import io.vertx.core.eventbus.ReplyException;
+import io.vertx.core.eventbus.*;
 import io.vertx.core.json.JsonObject;
-//import io.vertx.core.logging.Logger;
-//import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
 import io.vertx.core.net.NetSocket;
@@ -36,6 +18,19 @@ import io.vertx.ext.eventbus.bridge.tcp.TcpEventBusBridge;
 import io.vertx.ext.eventbus.bridge.tcp.impl.protocol.FrameParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static io.vertx.ext.eventbus.bridge.tcp.impl.protocol.FrameHelper.sendErrFrame;
+import static io.vertx.ext.eventbus.bridge.tcp.impl.protocol.FrameHelper.sendFrame;
+
 /**
  * Abstract TCP EventBus bridge. Handles all common socket operations but has no knowledge on the payload.
  *
@@ -67,21 +62,21 @@ public class TcpEventBusBridgeImpl implements TcpEventBusBridge {
 
 
     @Override
-    public Future<TcpEventBusBridge> listen() {
+    public TcpEventBusBridge listen() {
         server.listen();
-        return (Future<TcpEventBusBridge>) this;
+        return this;
     }
 
     @Override
-    public Future<TcpEventBusBridge> listen(int port) {
+    public TcpEventBusBridge listen(int port) {
         server.listen(port);
-        return (Future<TcpEventBusBridge>) this;
+        return this;
     }
 
     @Override
-    public Future<TcpEventBusBridge> listen(int port, String address) {
+    public TcpEventBusBridge listen(int port, String address) {
         server.listen(port, address);
-        return (Future<TcpEventBusBridge>) this;
+        return this;
     }
 
     @Override
@@ -299,9 +294,9 @@ public class TcpEventBusBridgeImpl implements TcpEventBusBridge {
     }
 
     @Override
-    public Future<Void> close() {
+    public void close() {
         server.close();
-        return null;
+//        return null;
     }
 
     private void checkCallHook(Supplier<BridgeEventImp> eventSupplier, Runnable okAction, Runnable rejectAction) {

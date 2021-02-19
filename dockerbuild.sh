@@ -25,6 +25,7 @@ set -o pipefail
 export javamodules="apps files jobs metadata monitors notifications profiles systems tags uuids"
 export phpmodules="postits logging tenants usage apidocs"
 export gomodules="sftp-relay"
+export vertxmodules="transfers"
 
 delete_docker_image_if_exists()
 {
@@ -35,6 +36,7 @@ delete_docker_image_if_exists()
   else
     echo "${image} does not exist"
   fi
+  
 }
 
 clean()
@@ -52,6 +54,11 @@ clean()
 
  for gomodule in ${gomodules}; do
    delete_docker_image_if_exists $1/${gomodule}:$2
+ done
+
+ for vertxmodule in ${vertxmodules}; do
+   rm -f docker/${vertxmodule}/*.jar
+   delete_docker_image_if_exists $1/${vertxmodules}:$2
  done
 
  rm -f docker/migrations/conf/flyway.conf
@@ -135,6 +142,20 @@ build()
 
  done
 
+  for vertxmodule in ${vertxmodules}; do
+
+  image=$1/${vertxmodule}-api:$2
+
+  if [[ "$(docker images -q ${image} 2> /dev/null)" == "" || "${overwrite}" = true ]]; then
+   echo "Building image for ${javamodule}"
+   cp agave-${vertxmodule}/${vertxmodule}-api/target/*.jar docker/${vertxmodule}
+   docker build docker/${vertxmodule} -t ${image}
+  else
+   echo "${image} already exists. Skipping rebuild."
+  fi
+
+ done
+
  #finally agave migrations
  create_agave_migrations_image $1 $2
 
@@ -176,6 +197,10 @@ publish()
   push_if_exists $1/${gomodule}:$2
  done
 
+ for vertxmodule in ${vertxmodules}; do
+  push_if_exists $1/${vertxmodule}:$2
+ done
+
  #finally agave migrations
  push_if_exists $1/agave-migrations:$2
 
@@ -197,6 +222,10 @@ retag()
    docker tag $1/${gomodule}:$2 $3/${gomodule}:$4
  done
 
+ for vertxmodule in ${vertxmodules}; do
+   docker tag $1/${vertxmodule}:$2 $3/${vertxmodule}:$4
+ done
+
  #finally agave migrations
  docker tag $1/agave-migrations:$2 $3/agave-migrations:$4
 }
@@ -215,6 +244,10 @@ pull()
 
  for gomodule in ${gomodules}; do
   pull_image $1/${gomodule}-api:$2
+ done
+
+ for vertxmodule in ${vertxmodules}; do
+  pull_image $1/${vertxmodule}-api:$2
  done
 
  #finally agave migrations

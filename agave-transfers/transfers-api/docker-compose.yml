@@ -1,0 +1,30 @@
+###############################################################
+# Core Science APIs
+# docker-compose.core.yml
+#
+# This is the orchestration file to start Agave's Core Science
+# APIs. The APIs are accessible behind a reverse proxy which
+# shields them from the outside world.
+# Containers performing data operations are assigned a partition
+# of the default GridFTP and FTP port ranges to enable proper
+# operation of the protocol from within each container.
+#
+###############################################################
+---
+
+version: '3.3'
+networks:
+  transfers-api_services:
+    external: true
+
+services:
+
+  transfers:
+    image: agaveplatform/transfers-api:2.2.27
+    ports:
+      - 8085:8085
+    environment:
+      TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE: /verticles/db-queries.yml
+    networks:
+      - transfers-api_services
+

@@ -32,7 +32,7 @@ CREATE TABLE `TransferApiTasks` (
     `owner` varchar(32) NOT NULL,
     `source` varchar(2048) NOT NULL DEFAULT '',
     `start_time` TIMESTAMP DEFAULT NULL,
-    `status` varchar(16) DEFAULT NULL,
+    `status` varchar(32) DEFAULT NULL,
     `tenant_id` varchar(128) NOT NULL,
     `total_size` bigint(20) DEFAULT NULL,
     `transfer_rate` double DEFAULT NULL,

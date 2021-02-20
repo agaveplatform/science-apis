@@ -144,15 +144,17 @@ build()
 
   for vertxmodule in ${vertxmodules}; do
 
-  image=$1/${vertxmodule}-api:$2
+	  image=$1/${vertxmodule}-api:$2
 
-  if [[ "$(docker images -q ${image} 2> /dev/null)" == "" || "${overwrite}" = true ]]; then
-   echo "Building image for ${javamodule}"
-   cp agave-${vertxmodule}/${vertxmodule}-api/target/*.jar docker/${vertxmodule}
-   docker build docker/${vertxmodule} -t ${image}
-  else
-   echo "${image} already exists. Skipping rebuild."
-  fi
+	  if [[ "$(docker images -q ${image} 2> /dev/null)" == "" || "${overwrite}" = true ]]; then
+	   echo "Building image for ${vertxmodules}"
+	   cp agave-${vertxmodule}/${vertxmodule}-api/target/*.jar docker/${vertxmodule}
+	   cp agave-${vertxmodule}/${vertxmodule}-api/target/classes/config.json  docker/${vertxmodule}/
+	   cp agave-${vertxmodule}/${vertxmodule}-api/target/classes/db-queries.yml  docker/${vertxmodule}/
+	   docker build docker/${vertxmodule} -t ${image}
+	  else
+	   echo "${image} already exists. Skipping rebuild."
+	  fi
 
  done
 

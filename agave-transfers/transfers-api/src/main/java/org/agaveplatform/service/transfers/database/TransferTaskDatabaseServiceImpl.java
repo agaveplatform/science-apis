@@ -389,65 +389,68 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     return this;
   }
 
-  /**
-   * Create {@link TransferTask}
-   *
-   * @param tenantId the tenant of the {@link TransferTask} to add
-   * @param transferTask the {@link TransferTask} to add
-   * @param resultHandler the handler to resolve with {@link JsonObject} of added {@link TransferTask}
-   */
-  @Override
-  public TransferTaskDatabaseService create(String tenantId, TransferTask transferTask, Handler<AsyncResult<JsonObject>> resultHandler) {
-    final JsonArray data = new JsonArray()
-            .add(transferTask.getAttempts())
-            .add(transferTask.getBytesTransferred())
-            .add(transferTask.getCreated())
-            .add(transferTask.getDest())
-            .add(transferTask.getEndTime())
-            .add(transferTask.getEventId())
-            .add(transferTask.getLastUpdated())
-            .add(transferTask.getLastAttempt())
-            .add(transferTask.getNextAttempt())
-            .add(transferTask.getOwner())
-            .add(transferTask.getSource())
-            .add(transferTask.getStartTime())
-            .add(transferTask.getStatus().name())
-            .add(tenantId)
-            .add(transferTask.getTotalSize())
-            .add(transferTask.getTransferRate())
-            .add(transferTask.getParentTaskId())
-            .add(transferTask.getRootTaskId())
-            .add(transferTask.getUuid())
-            .add(transferTask.getTotalFiles())
-            .add(transferTask.getTotalSkippedFiles());
-    dbClient.updateWithParams(sqlQueries.get(SqlQuery.CREATE_TRANSFERTASK), data, res -> {
-      if (res.succeeded()) {
-        int transferTaskId = res.result().getKeys().getInteger(0);
-        JsonArray params = new JsonArray()
+    /**
+     * Create {@link TransferTask}
+     *
+     * @param tenantId      the tenant of the {@link TransferTask} to add
+     * @param transferTask  the {@link TransferTask} to add
+     * @param resultHandler the handler to resolve with {@link JsonObject} of added {@link TransferTask}
+     */
+    @Override
+    public TransferTaskDatabaseService create(String tenantId, TransferTask transferTask, Handler<AsyncResult<JsonObject>> resultHandler) {
+        final JsonArray data = new JsonArray()
+                .add(transferTask.getAttempts())
+                .add(transferTask.getBytesTransferred())
+                .add(transferTask.getCreated())
+                .add(transferTask.getDest())
+                .add(transferTask.getEndTime())
+                .add(transferTask.getEventId())
+                .add(transferTask.getLastUpdated())
+                .add(transferTask.getLastAttempt())
+                .add(transferTask.getNextAttempt())
+                .add(transferTask.getOwner())
+                .add(transferTask.getSource())
+                .add(transferTask.getStartTime())
+                .add(transferTask.getStatus().name())
+                .add(tenantId)
+                .add(transferTask.getTotalSize())
+                .add(transferTask.getTransferRate())
+                .add(transferTask.getParentTaskId())
+                .add(transferTask.getRootTaskId())
                 .add(transferTask.getUuid())
-                .add(tenantId);
-        dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
-          if (ar.succeeded()) {
-            resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
-          } else {
-            LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", ar.cause());
-            resultHandler.handle(Future.failedFuture(ar.cause()));
-          }
-        });
+                .add(transferTask.getTotalFiles())
+                .add(transferTask.getTotalSkippedFiles());
+        dbClient.updateWithParams(sqlQueries.get(SqlQuery.CREATE_TRANSFERTASK), data, res -> {
+            if (res.succeeded()) {
+                JsonArray params = new JsonArray()
+                        .add(transferTask.getUuid())
+                        .add(tenantId);
+                dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
+                    if (ar.succeeded()) {
+                        if (ar.result().getRows().size() > 0) {
+                            resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                        } else {
+                            LOGGER.error("Failed to fetch new transfer task record after insert, no matching transfer task {} found", transferTask.getUuid());
+                            resultHandler.handle(Future.failedFuture(ar.cause()));
+                        }
+                    } else {
+                        LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", ar.cause());
+                        resultHandler.handle(Future.failedFuture(ar.cause()));
+                    }
+                });
 
-      } else {
-        LOGGER.error("Failed to save new transfertask record: {}", res.cause().getMessage(), res.cause());
-        resultHandler.handle(Future.failedFuture(res.cause()));
-      }
-    });
-    return this;
-  }
+            } else {
+                LOGGER.error("Failed to save new transfer task record: {}", res.cause().getMessage(), res.cause());
+                resultHandler.handle(Future.failedFuture(res.cause()));
+            }
+        });
+        return this;
+    }
 
   /**
-   * @deprecated
    * @see TransferTaskDatabaseService#updateStatus(String, String, String, Handler)
    *
-   * Update {@link TransferTask} status matching {@code id}
+   * Update {@link TransferTask} status matching {@code id} for fast lookup queries
    *
    * @param id of the {@link TransferTask}
    * @param statusChangeTo the {@link TransferStatusType} to be updated

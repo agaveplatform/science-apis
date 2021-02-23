@@ -184,6 +184,7 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
         }));
     }
 
+
     @Test
     @DisplayName("TransferTaskDatabaseVerticle - find child task returns correct record")
 //    @Disabled
@@ -565,37 +566,32 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
     @Test
     @DisplayName("TransferTaskDatabaseVerticle - getByUuid should return task with matching id")
     public void getByUuidReturnsMatchingTaskTest(Vertx vertx, VertxTestContext context) {
+        final TransferTask rootTransferTask = _createTestTransferTask();
+        rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
+        rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
+        rootTransferTask.setStatus(TransferStatusType.QUEUED);
+
         service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
-            final TransferTask rootTransferTask = _createTestTransferTask();
-            rootTransferTask.setSource("agave://source/" + UUID.randomUUID().toString());
-            rootTransferTask.setDest("agave://dest/" + UUID.randomUUID().toString());
-            rootTransferTask.setStatus(TransferStatusType.QUEUED);
-
             //insert test transfer task
-            service.create(rootTransferTask.getTenantId(), rootTransferTask, rootReply -> {
-                if (rootReply.failed()) {
-                    //Test transfer task was not created
-                    context.failNow(rootReply.cause());
-                } else {
-                    TransferTask addedRootTask = new TransferTask(rootReply.result());
-                    service.getByUuid(rootTransferTask.getTenantId(), rootTransferTask.getUuid(), getByIdReply -> {
-                        if (getByIdReply.failed()) {
-                            context.failNow(getByIdReply.cause());
-                        } else {
-                            context.verify(() -> {
-                                assertTrue(getByIdReply.succeeded(),
-                                        "setTransferTaskCanceledWhereNotCompleted should have succeeded " +
-                                                "for valid transfer task");
-
-                                TransferTask getTask = new TransferTask(getByIdReply.result());
-                                assertEquals(addedRootTask, getTask,
-                                        "getById should return transfer task with matching uuid");
+            service.create(rootTransferTask.getTenantId(), rootTransferTask, context.succeeding(createdJsonTransferTask -> {
+                TransferTask createTransferTask = new TransferTask(createdJsonTransferTask);
+                service.getByUuid(createTransferTask.getTenantId(), createTransferTask.getUuid(), context.succeeding(getByIdReply -> {
+                    context.verify(() -> {
+                                assertNotNull(getByIdReply, "getById should return transfer task for valid " +
+                                        "transfer task");
+                                TransferTask getTask = new TransferTask(getByIdReply);
+                                assertEquals(rootTransferTask.getUuid(), getTask.getUuid(),
+                                        "getById should return transfer task with matching uuid as the original");
+                                assertEquals(rootTransferTask.getTenantId(), getTask.getTenantId(),
+                                        "getById should return transfer task with matching tenant id as the original");
+                                assertEquals(rootTransferTask.getSource(), getTask.getSource(),
+                                        "getById should return transfer task with matching source as the original");
+                                assertEquals(rootTransferTask.getDest(), getTask.getDest(),
+                                        "getById should return transfer task with matching destination as the original");
                                 context.completeNow();
                             });
-                        }
-                    });
-                }
-            });
+                    }));
+            }));
         }));
     }
 

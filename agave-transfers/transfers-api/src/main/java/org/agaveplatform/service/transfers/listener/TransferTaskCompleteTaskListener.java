@@ -71,17 +71,16 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 	}
 
 	public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
-		//TransferTask bodyTask = new TransferTask(body);
 		body.put("status", TransferStatusType.COMPLETED);
 		String tenantId = body.getString("tenant_id");
 		String uuid = body.getString("uuid");
-		String status = body.getString("status");
 		String parentTaskId = body.getString("parentTask") == null ? body.getString("parent_task") : body.getString("parentTask");
 		logger.debug("Updating status of transfer task {} to COMPLETED.  Tenant ID is {}", uuid, tenantId);
+		TransferTask bodyTask = new TransferTask(body);
 
 		try {
 //			dbService.updateStatus(tenantId, uuid, status, reply -> this.handleUpdateStatus(reply, tenantId, parentTaskId));
-			getDbService().updateStatus(tenantId, uuid, TransferStatusType.COMPLETED.name(), reply -> {
+			getDbService().update(tenantId, uuid, bodyTask, reply -> {
 				if (reply.succeeded()) {
 					logger.debug("Tenant ID is {}", tenantId);
 					logger.debug(TransferTaskCompleteTaskListener.class.getName() + ":Transfer task {} status updated to COMPLETED", uuid);

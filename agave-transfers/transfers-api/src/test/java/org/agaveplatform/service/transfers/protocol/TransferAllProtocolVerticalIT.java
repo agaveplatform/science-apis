@@ -241,7 +241,7 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
             Handler<AsyncResult<JsonObject>> handler = arguments.getArgumentAt(2, Handler.class);
             handler.handle(expectedUpdateStatusHandler);
             return null;
-        }).when(dbService).getByUuid(eq(tt.getTenantId()), eq(tt.getParentTaskId()), anyObject());
+        }).when(dbService).getByUuid(eq(tt.getTenantId()), eq(tt.getUuid()), anyObject());
 
         // mock the dbService getter in our mocked vertical so we don't need to use powermock
         when(txfrAllVert.getDbService()).thenReturn(dbService);

@@ -176,7 +176,8 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
                 RemoteDataClient finalDestClient = destClient;
 
                 executor.executeBlocking(promise -> {
-                        getDbService().getByUuid(tt.getTenantId(), tt.getRootTaskId(), checkCancelled -> {
+                	String taskId = (tt.getRootTaskId() == null) ? tt.getUuid() : tt.getRootTaskId();
+                        getDbService().getByUuid(tt.getTenantId(), taskId, checkCancelled -> {
                             if (checkCancelled.succeeded()){
                                 TransferTask targetTransferTask = new TransferTask(checkCancelled.result());
                                 if (targetTransferTask.getStatus().isActive()){
@@ -189,7 +190,11 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
                                         promise.complete();
                                     } catch (Exception e) {
 										log.error("Failed to copy Transfer Task {}", tt.toJSON() );
-										_doPublishEvent(MessageType.TRANSFERTASK_ERROR, tt.toJson());
+										JsonObject json = new JsonObject()
+												.put("cause", e.getClass().getName())
+												.put("message", e.getMessage())
+												.mergeIn(body);
+										_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
 										handler.handle(Future.failedFuture(e.getMessage()));
 										promise.fail(e.getMessage());
 									}
@@ -201,7 +206,11 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
                                 }
                             } else {
 								log.error("Failed to get status of parent Transfer Task {}, {}", tt.getParentTaskId(), tt.toJSON());
-								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, tt.toJson());
+								JsonObject json = new JsonObject()
+										.put("cause", checkCancelled.cause())
+										.put("message", checkCancelled.cause().getMessage())
+										.mergeIn(body);
+								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
                                 handler.handle(Future.failedFuture(checkCancelled.cause()));
                                 promise.fail("Failed to retrieve status....");
                             }
@@ -277,7 +286,11 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 						finishedTask.getDest(), finishedTask.getUuid(), finishedTask);
 			} catch (Exception e) {
 				log.error("Failed to copy Transfer Task {}, {}", transferTask.getUuid(), transferTask.toJSON() );
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, transferTask.toJson());
+				JsonObject json = new JsonObject()
+						.put("cause", e.getClass().getName())
+						.put("message", e.getMessage())
+						.mergeIn(transferTask.toJson());
+				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
 				promise.fail(e.getMessage());
 			}
 		}, res -> {

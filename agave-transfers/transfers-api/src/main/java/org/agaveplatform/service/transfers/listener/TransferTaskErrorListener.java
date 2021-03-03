@@ -219,8 +219,11 @@ public class TransferTaskErrorListener extends AbstractTransferTaskListener {
      */
     protected void processBody(JsonObject body, Handler<AsyncResult<JsonObject>> handler) {
         try {
+			String cause = body.getString("cause");
+			String message = body.getString("message", "");
+
             TransferTask transfer = new TransferTask(body);
-            handler.handle(Future.succeededFuture(transfer.toJson()));
+            handler.handle(Future.succeededFuture(transfer.toJson().put("cause", cause).put("message", message)));
         } catch (Exception e) {
             getDbService().getById(body.getString("id"), result -> {
                 if (result.succeeded()) {

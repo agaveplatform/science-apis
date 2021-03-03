@@ -655,7 +655,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		txfrErrorListener.processBody(body, resp -> ctx.verify(() -> {
 			assertTrue(resp.succeeded(), "Error handler should succeed when an IOException is received.");
 			assertNotNull(resp.result(), "processBody should return JsonObject for valid partial Transfer Task");
-			assertEquals(tt.toJson(), resp.result(), "processBody should return the Transfer Task as JsonObject");
+			assertEquals(body, resp.result(), "processBody should return the Transfer Task as JsonObject");
 			ctx.completeNow();
 		}));
 	}

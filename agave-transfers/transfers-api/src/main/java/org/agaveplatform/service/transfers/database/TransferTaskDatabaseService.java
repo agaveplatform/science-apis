@@ -99,6 +99,9 @@ public interface TransferTaskDatabaseService {
   @Fluent
   TransferTaskDatabaseService getById(String id, Handler<AsyncResult<JsonObject>> resultHandler);
 
+  @Fluent
+  TransferTaskDatabaseService getBytesTransferredForAllChildren(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler);
+
   @GenIgnore
   static TransferTaskDatabaseService create(JDBCClient dbClient, HashMap<SqlQuery, String> sqlQueries, Handler<AsyncResult<TransferTaskDatabaseService>> readyHandler) {
     return new TransferTaskDatabaseServiceImpl(dbClient, sqlQueries, readyHandler);

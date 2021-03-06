@@ -10,9 +10,11 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.agaveplatform.service.transfers.util.TransferRateHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -152,7 +154,17 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 								logger.debug("All child tasks for parent transfer task {} are cancelled or completed. " +
 										"A transfer.completed event will be created for this task.", parentTaskId);
 								// call to our publishing helper for easier testing.
-								_doPublishEvent(MessageType.TRANSFER_COMPLETED, getTaskById.result());
+								parentTask.setEndTime(Instant.now());
+
+								getDbService().getBytesTransferredForAllChildren(tenantId, parentTaskId, getBytesTransferred -> {
+									if (getBytesTransferred.succeeded()){
+										parentTask.setBytesTransferred(getBytesTransferred.result().getLong("bytes_transferred"));
+										_doPublishEvent(MessageType.TRANSFER_COMPLETED, TransferRateHelper.updateTransferRate(parentTask).toJson());
+									} else {
+										logger.debug("Failed to retrieve bytes transferred for all child tasks for parent task {}, {}", parentTaskId, getBytesTransferred.cause());
+										resultHandler.handle(Future.failedFuture(getBytesTransferred.cause()));
+									}
+								});
 							} else {
 								logger.debug("Parent transfer task {} has active children. " +
 										"Skipping further processing ", parentTaskId);

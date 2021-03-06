@@ -744,6 +744,32 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     });
     return this;
   }
+
+
+  /**
+   * Retrieve sum of all bytes transferred for all child transfers
+   *
+   * @param tenantId of the parent {@link TransferTask}
+   * @param uuid of the parent {@link TransferTask}
+   * @param resultHandler the handler to resolve with the total bytes transferred
+   */
+  @Override
+  public TransferTaskDatabaseService getBytesTransferredForAllChildren(String tenantId, String uuid, Handler<AsyncResult<JsonObject>> resultHandler){
+    JsonArray params = new JsonArray()
+            .add(tenantId)
+            .add(uuid);
+
+    dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_BYTES_TRANSFERRED_FOR_ALL_CHILDREN), params, fetch -> {
+      if (fetch.succeeded()) {
+        resultHandler.handle(Future.succeededFuture(fetch.result().getRows().get(0)));
+      } else {
+        LOGGER.error("Failed to retrieve bytes transferred of children for parent task {}.", uuid, fetch.cause());
+        resultHandler.handle(Future.failedFuture(fetch.cause()));
+      }
+    });
+
+    return this;
+  }
 }
 
 

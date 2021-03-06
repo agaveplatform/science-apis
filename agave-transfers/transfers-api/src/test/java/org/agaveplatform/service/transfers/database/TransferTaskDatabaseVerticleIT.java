@@ -833,6 +833,38 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
         }));
     }
 
+    @Test
+    @DisplayName("TransferTaskDatabaseVerticle - getBytesTransferredForAllChildren should return sum of bytes transferred for all child tasks")
+    public void getBytesTransferredForAllChildrenTest(Vertx vertx, VertxTestContext context){
+        service.deleteAll(TENANT_ID, context.succeeding(deleteAllTransferTask -> {
+            TransferTask parentTask = _createTestTransferTask();
+            TransferTask childTask = _createChildTestTransferTask(parentTask);
+            childTask.setBytesTransferred(32768);
+            TransferTask secondChildTask = _createChildTestTransferTask(parentTask);
+            secondChildTask.setBytesTransferred(32768);
+
+            ArrayList<TransferTask> listTransferTask = new ArrayList<>(Arrays.asList(parentTask, childTask, secondChildTask));
+
+            addListOfTransferTasks(listTransferTask, addResult ->{
+                if (addResult.succeeded()){
+                    service.getBytesTransferredForAllChildren(parentTask.getTenantId(), parentTask.getUuid(), fetchResult ->{
+                        if(fetchResult.succeeded()){
+                            context.verify(() -> {
+                                assertEquals(childTask.getBytesTransferred() + secondChildTask.getBytesTransferred() ,
+                                        fetchResult.result().getLong("bytes_transferred"),
+                                        "Total bytes transferred should equal the sum of all child tasks.");
+                                context.completeNow();
+                            });
+                        } else {
+                            context.failNow(fetchResult.cause());
+                        }
+                    });
+                } else {
+                    context.failNow(addResult.cause());
+                }
+            });
+        }));
+    }
 
     /**
      * Generates a tree of {@link TransferTask} with root, parent, and 2 child tasks. The resolved value will be a list

@@ -8,7 +8,6 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableBoolean;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -27,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.net.URI;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -80,8 +80,7 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                     body.put("type", getEventChannel());
                     _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
                 } else {
-                    log.error("Error with return from creating the event {}", uuid);
-                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                    //error handled in processTransferTask
                 }
             });
         });
@@ -239,7 +238,10 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                     if (updateResult.succeeded()) {
                                         log.debug("Assigning single file transfer task {} to the TRANSFER_COMPLETED queue as the remote source directory path is empty. And tenant id is {}", uuid, tenantId);
                                         // write to the completed event channel.
-                                        _doPublishEvent(TRANSFER_COMPLETED, updateResult.result());
+                                        assignedTransferTask.setStatus(TransferStatusType.COMPLETED);
+                                        assignedTransferTask.setStartTime(Instant.now());
+                                        assignedTransferTask.setEndTime(Instant.now());
+                                        _doPublishEvent(TRANSFER_COMPLETED, assignedTransferTask.toJson());
                                         handler.handle(Future.succeededFuture(true));
                                     }
                                     // we couldn't update the transfer task value
@@ -356,7 +358,9 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
                                     // all file items were processed successfully
                                     if (ar.succeeded()) {
                                         // update the original task now that we've processed all of its children
-                                        getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.name(), updateResult -> {
+                                        assignedTransferTask.setStatus(TransferStatusType.ASSIGNED);
+                                        assignedTransferTask.setStartTime(Instant.now());
+                                        getDbService().update(tenantId, uuid, assignedTransferTask, updateResult -> {
                                             if (updateResult.succeeded()) {
                                                 log.debug("Updated parent transfer task {} to ASSIGNED after processing all its children.", uuid);
                                                 // write to the completed event channel.

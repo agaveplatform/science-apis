@@ -2,11 +2,11 @@ package org.agaveplatform.service.transfers;
 
 import io.vertx.config.ConfigRetriever;
 import io.vertx.config.ConfigRetrieverOptions;
-import io.vertx.core.*;
-import io.vertx.core.json.JsonObject;
 import io.vertx.config.ConfigStoreOptions;
-import org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
+import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.listener.*;
 import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
 import org.slf4j.Logger;
@@ -23,7 +23,7 @@ public class TransferApplication {
         Vertx vertx = Vertx.vertx();
 
         int poolSize = 10;
-        int instanceSize = 10;
+        int instanceSize = 3;
 
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
                 .setType("file")
@@ -43,10 +43,16 @@ public class TransferApplication {
                 JsonObject config = json.result();
                 log.debug("Starting the app with config: " + config.encodePrettily());
 
+                DeploymentOptions dbDeploymentOptions = new DeploymentOptions()
+                        .setConfig(config)
+                        .setMaxWorkerExecuteTimeUnit(TimeUnit.MILLISECONDS)
+                        .setMaxWorkerExecuteTime(500)
+                        .setInstances(instanceSize);
+
                 Promise<String> dbVerticleDeployment = Promise.promise();
                 log.info("org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle");
                 vertx.deployVerticle("org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle",
-                        new DeploymentOptions().setConfig(config), dbVerticleDeployment);
+                        dbDeploymentOptions, dbVerticleDeployment);
 
                 dbVerticleDeployment.future().compose(id -> {
 

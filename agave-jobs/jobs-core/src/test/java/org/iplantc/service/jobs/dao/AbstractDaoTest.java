@@ -616,7 +616,7 @@ public class AbstractDaoTest
                 job.setStatus(status, status.getDescription());
             }
             
-            log.debug("Adding job " + job.getId() + " - " + job.getUuid());
+//            log.debug("Adding job " + job.getId() + " - " + job.getUuid());
             JobDao.persist(job, false);
             
             return job;

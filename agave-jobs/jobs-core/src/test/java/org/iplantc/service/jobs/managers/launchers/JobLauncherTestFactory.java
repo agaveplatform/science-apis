@@ -20,6 +20,8 @@ public class JobLauncherTestFactory
     public Object[] createInstances() {
     	HashSet<Object> testCases = new HashSet<Object>();
 
+//		testCases.add(new JobLauncherIT(ExecutionType.CLI, SchedulerType.FORK));
+
 		for (ExecutionType executionType: ExecutionType.values()) {
 			if (ExecutionType.ATMOSPHERE == executionType) continue;
 
@@ -36,13 +38,13 @@ public class JobLauncherTestFactory
 //				if (List.of(SchedulerType.PBS, SchedulerType.FORK).contains(scheduler)) {
 
 					// create the test case
-					testCases.add(new JobLauncherTest(executionType, scheduler));
+					testCases.add(new JobLauncherIT(executionType, scheduler));
 
 					// Test containers can frequently pull double duty, so we iterate over
 					// each scheduler type, and run a test for every execution type supporting a system running that kind
 					// of scheduler. This gives us decent coverage over OS (alpine, centos, ubuntu, fedora, etc), scheduler,
 					// and basic unix toolchains.
-					if (ExecutionType.CLI != executionType) testCases.add(new JobLauncherTest(ExecutionType.CLI, scheduler));
+					if (ExecutionType.CLI != executionType) testCases.add(new JobLauncherIT(ExecutionType.CLI, scheduler));
 //				}
 			}
 		}

@@ -1630,8 +1630,8 @@ public class JobRequestProcessorIT extends AbstractDaoTest
 
 			assertNotNull(job.getId(), "Job was not saved after processing.");
 
-			System.out.println("Saved: " + ServiceUtils.explode(",", testSystem.getBatchQueues().stream().map(q -> String.format("%s (%s) -> %s", q.getName(), q.getMappedName(), q.getMaxRequestedTime())).collect(Collectors.toList())));
-			System.out.println("Original: " + ServiceUtils.explode(",", Arrays.asList(batchQueues).stream().map(q -> String.format("%s (%s) -> %s", q.getName(), q.getMappedName(), q.getMaxRequestedTime())).collect(Collectors.toList())));
+//			System.out.println("Saved: " + ServiceUtils.explode(",", testSystem.getBatchQueues().stream().map(q -> String.format("%s (%s) -> %s", q.getName(), q.getMappedName(), q.getMaxRequestedTime())).collect(Collectors.toList())));
+//			System.out.println("Original: " + ServiceUtils.explode(",", Arrays.asList(batchQueues).stream().map(q -> String.format("%s (%s) -> %s", q.getName(), q.getMappedName(), q.getMaxRequestedTime())).collect(Collectors.toList())));
 			assertEquals(job.getBatchQueue(), expectedJobQueueName,
 							"Unexpected batchQueue found for job. Expected " + expectedJobQueueName + 
 							" found " + job.getBatchQueue());

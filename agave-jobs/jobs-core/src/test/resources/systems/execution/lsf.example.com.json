@@ -27,8 +27,8 @@
     }
   ],
   "login": {
-    "host": "${openlava.host}",
-    "port": ${openlava.port},
+    "host": "${lsf.host}",
+    "port": ${lsf.port},
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -37,8 +37,8 @@
     }
   },
   "storage": {
-    "host": "${openlava.host}",
-    "port": ${openlava.port},
+    "host": "${lsf.host}",
+    "port": ${lsf.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

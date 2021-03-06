@@ -26,6 +26,7 @@ import org.iplantc.service.transfer.irods4.IRODS4;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.s3.S3Jcloud;
 import org.iplantc.service.transfer.sftp.MaverickSFTP;
+import org.iplantc.service.transfer.sftp.SftpRelay;
 import org.irods.jargon.core.connection.AuthScheme;
 
 import java.io.FileNotFoundException;
@@ -98,29 +99,63 @@ public class RemoteDataClientFactory {
 						if (system.getStorageConfig().getProxyServer() == null) 
 						{
 							if (userAuthConfig.getType().equals(AuthConfigType.SSHKEYS)) {
-								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+								return new SftpRelay(host, port, username, password, rootDir, homeDir,
+										null, 0,
 										userAuthConfig.getClearTextPublicKey(salt),
-										userAuthConfig.getClearTextPrivateKey(salt));
+										userAuthConfig.getClearTextPrivateKey(salt),
+										Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
 							} else {
-								return new MaverickSFTP(host, port, username, password, rootDir, homeDir);
+								return new SftpRelay(host, port, username, password, rootDir, homeDir,
+										null, 0, null, null,
+										Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
 							}
 						} 
 						else 
 						{
 							if (userAuthConfig.getType().equals(AuthConfigType.SSHKEYS)) {
-								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
-									system.getStorageConfig().getProxyServer().getHost(),
-									system.getStorageConfig().getProxyServer().getPort(),
-									userAuthConfig.getClearTextPublicKey(salt),
-									userAuthConfig.getClearTextPrivateKey(salt));
+								return new SftpRelay(host, port, username, password, rootDir, homeDir,
+										system.getStorageConfig().getProxyServer().getHost(),
+										system.getStorageConfig().getProxyServer().getPort(),
+										userAuthConfig.getClearTextPublicKey(salt),
+										userAuthConfig.getClearTextPrivateKey(salt),
+										Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
 							} 
 							else
 							{
-								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+								return new SftpRelay(host, port, username, password, rootDir, homeDir,
 										system.getStorageConfig().getProxyServer().getHost(),
-										system.getStorageConfig().getProxyServer().getPort());
+										system.getStorageConfig().getProxyServer().getPort(),
+										null, null,
+										Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
 							}
 						}
+//					case SFTP:
+//						if (system.getStorageConfig().getProxyServer() == null)
+//						{
+//							if (userAuthConfig.getType().equals(AuthConfigType.SSHKEYS)) {
+//								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+//										userAuthConfig.getClearTextPublicKey(salt),
+//										userAuthConfig.getClearTextPrivateKey(salt));
+//							} else {
+//								return new MaverickSFTP(host, port, username, password, rootDir, homeDir);
+//							}
+//						}
+//						else
+//						{
+//							if (userAuthConfig.getType().equals(AuthConfigType.SSHKEYS)) {
+//								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+//										system.getStorageConfig().getProxyServer().getHost(),
+//										system.getStorageConfig().getProxyServer().getPort(),
+//										userAuthConfig.getClearTextPublicKey(salt),
+//										userAuthConfig.getClearTextPrivateKey(salt));
+//							}
+//							else
+//							{
+//								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+//										system.getStorageConfig().getProxyServer().getHost(),
+//										system.getStorageConfig().getProxyServer().getPort());
+//							}
+//						}
 					case GRIDFTP: 
 						GSSCredential credential = (GSSCredential)userAuthConfig.retrieveCredential(salt);
 						

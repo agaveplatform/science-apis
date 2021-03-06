@@ -3,10 +3,7 @@ package org.iplantc.service.transfer.sftp;
 import com.sshtools.logging.LoggerFactory;
 import com.sshtools.publickey.SshPrivateKeyFile;
 import com.sshtools.publickey.SshPrivateKeyFileFactory;
-import com.sshtools.sftp.DirectoryOperation;
-import com.sshtools.sftp.SftpClient;
-import com.sshtools.sftp.SftpFile;
-import com.sshtools.sftp.SftpStatusException;
+import com.sshtools.sftp.*;
 import com.sshtools.ssh.PasswordAuthentication;
 import com.sshtools.ssh.*;
 import com.sshtools.ssh.components.ComponentManager;
@@ -16,6 +13,8 @@ import com.sshtools.ssh2.KBIAuthentication;
 import com.sshtools.ssh2.Ssh2Client;
 import com.sshtools.ssh2.Ssh2Context;
 import com.sshtools.ssh2.Ssh2PublicKeyAuthentication;
+import com.sshtools.util.IOUtil;
+import com.sshtools.util.UnsignedInteger64;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.agaveplatform.transfer.proto.sftp.*;
@@ -37,9 +36,13 @@ import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Generic SFTP client to interact with remote systems.
@@ -80,10 +83,10 @@ public final class SftpRelay implements RemoteDataClient {
 
     // Socket timeouts
     public static final int CONNECT_TIMEOUT_MS = 20000;  // 20 seconds
-    public static final int READ_TIMEOUT_MS    = 120000; // 2 minutes
+    public static final int READ_TIMEOUT_MS = 120000; // 2 minutes
 
     public static final int TEST_CONNECT_TIMEOUT_MS = 8000; // 8 seconds
-    public static final int TEST_READ_TIMEOUT_MS    = 100;  // .1 seconds
+    public static final int TEST_READ_TIMEOUT_MS = 100;  // .1 seconds
 
     // Not clear what's going on here.  MAX_BUFFER_SIZE is commented out in all
     // but one place--the one place with external visibility.  Defined the jumbo
@@ -96,7 +99,6 @@ public final class SftpRelay implements RemoteDataClient {
     RemoteSystemConfig gprcRemoteSystemConfig;
     String sftpRelayServerHost = "sftp-relay";
     int sftpRelayServerPort = 50051;
-
 
 
     public SftpRelay(String host, int port, String username, String password, String rootDir, String homeDir) {
@@ -210,6 +212,7 @@ public final class SftpRelay implements RemoteDataClient {
      * in front of the grpc service. We may route instances of this class to different relay server instances
      * based on tenant, system, etc. This allows us to do that cleanly. If necessary, we can always use the
      * setter to assign the channel from an external pool later on.
+     *
      * @return managed channel builder pointing at the sftp relay service loadbalancer with retry enabled
      */
     protected ManagedChannel getGrpcManagedChannel() {
@@ -224,6 +227,7 @@ public final class SftpRelay implements RemoteDataClient {
     /**
      * Generates a single client to the relay server. We only need a single client per channel.
      * This is the way.
+     *
      * @return
      */
     protected SftpRelayGrpc.SftpRelayBlockingStub getGrpcClient() {
@@ -238,6 +242,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     /**
      * Creates a RemoteSystemConfig used for authentication in the grpc requests.
+     *
      * @return valid remote system config to pass to the grpc services
      */
     protected RemoteSystemConfig getRemoteSystemConfig() {
@@ -263,6 +268,22 @@ public final class SftpRelay implements RemoteDataClient {
         // clear cache here as we may have stale information in between authentications
         fileInfoCache.clear();
 
+        SftpRelayGrpc.SftpRelayBlockingStub grpcClient = getGrpcClient();
+
+        AuthenticationCheckRequest authenticationCheckRequest = AuthenticationCheckRequest.newBuilder()
+                .setSystemConfig(getRemoteSystemConfig())
+                .build();
+        EmptyResponse authCheckResponse = grpcClient.authCheck(authenticationCheckRequest);
+
+        if (StringUtils.isNotBlank(authCheckResponse.getError())) {
+            throw new RemoteDataException(authCheckResponse.getError());
+        }
+    }
+
+    public void nativeAuthenticate() throws RemoteDataException {
+        // clear cache here as we may have stale information in between authentications
+        fileInfoCache.clear();
+
         // Maybe we're already authenticated.
         if (ssh2 != null && ssh2.isConnected() && ssh2.isAuthenticated()) {
             return;
@@ -282,11 +303,11 @@ public final class SftpRelay implements RemoteDataClient {
             con = createSshConnector(getMsgPrefix());
 
             // Use the connected socket to perform the ssh handshake.
-            try{
+            try {
                 ssh2 = con.connect(new com.sshtools.net.SocketWrapper(sock), username);
-            } catch(Exception e) {
+            } catch (Exception e) {
                 String msg = String.format("Failure during SSH initialization for %s : %s", getMsgPrefix(), e.getMessage());
-                log.error(msg,e);
+                log.error(msg, e);
 
                 // We can retry connection failures.
                 RemoteConnectionException rex = new RemoteConnectionException(e.getMessage(), e);
@@ -315,8 +336,7 @@ public final class SftpRelay implements RemoteDataClient {
                     throw rex;
                 }
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             closeConnections(ssh2, forwardedConnection, null, sock);
 
             ssh2 = null;
@@ -348,7 +368,7 @@ public final class SftpRelay implements RemoteDataClient {
      * @throws RemoteConnectionException
      */
     public Socket connect(int connectTimeout, int socketTimeout, String username, String host,
-                                 int port, String proxyHost, int proxyPort, String msgPrefix)
+                          int port, String proxyHost, int proxyPort, String msgPrefix)
             throws RemoteConnectionException {
 
         //Initialize socket.
@@ -372,10 +392,10 @@ public final class SftpRelay implements RemoteDataClient {
         // which at least in the case of the performance preferences caused them
         // to be ignored.
         // Timeouts may get adjusted on retries.
-        if (log.isDebugEnabled()) {
-            log.debug("Setting connect timeout to " + connectTimeout + "ms.");
-            log.debug("Setting socket timeout to " + socketTimeout + "ms.");
-        }
+//        if (log.isDebugEnabled()) {
+//            log.debug("Setting connect timeout to " + connectTimeout + "ms.");
+//            log.debug("Setting socket timeout to " + socketTimeout + "ms.");
+//        }
         try {
             retSock.setTcpNoDelay(true);
             retSock.setPerformancePreferences(0, 1, 2);
@@ -397,7 +417,7 @@ public final class SftpRelay implements RemoteDataClient {
      * @throws Exception
      */
     public static SshConnector createSshConnector(String msgPrefix)
-    throws Exception {
+            throws Exception {
         SshConnector retCon;
         try {
             retCon = SshConnector.createInstance();
@@ -464,18 +484,18 @@ public final class SftpRelay implements RemoteDataClient {
      * @param password
      * @param host
      * @param port
-     * @param proxyHost - needed for capturing state in case of recoverable error
-     * @param proxyPort - needed for capturing state in case of recoverable error
+     * @param proxyHost  - needed for capturing state in case of recoverable error
+     * @param proxyPort  - needed for capturing state in case of recoverable error
      * @param msgPrefix
-     * @param isProxy - Used for logging only
+     * @param isProxy    - Used for logging only
      * @return
      * @throws Exception
      */
     public SshAuthentication authenticateByPKIOrPassword(Ssh2Client ssh2Client, String username,
-                                                                String publicKey, String privateKey, String password,
-                                                                String host, int port, String proxyHost, int proxyPort,
-                                                                String msgPrefix, boolean isProxy)
-    throws AuthenticationException {
+                                                         String publicKey, String privateKey, String password,
+                                                         String host, int port, String proxyHost, int proxyPort,
+                                                         String msgPrefix, boolean isProxy)
+            throws AuthenticationException {
         SshAuthentication retAuth;
         String[] authenticationMethods;
 
@@ -566,8 +586,7 @@ public final class SftpRelay implements RemoteDataClient {
                     && authStatus != SshAuthentication.FAILED
                     && authStatus != SshAuthentication.CANCELLED
                     && ssh2Client.isConnected());
-        }
-        else {
+        } else {
             // Authenticate the user using password authentication
             retAuth = new PasswordAuthentication();
             do {
@@ -634,14 +653,14 @@ public final class SftpRelay implements RemoteDataClient {
     private SshClient createProxyConnection(SshClient sshClient, SshConnector con,
                                             String host, int port, String proxyHost, int proxyPort,
                                             String username, String msgPrefix)
-    throws RemoteConnectionException {
+            throws RemoteConnectionException {
         Ssh2Client retClient;
         SshTunnel tunnel;
         try {
-            tunnel = sshClient.openForwardingChannel(host, port, "127.0.0.1", 22,"127.0.0.1",22, null, null);
+            tunnel = sshClient.openForwardingChannel(host, port, "127.0.0.1", 22, "127.0.0.1", 22, null, null);
         } catch (Exception e) {
             String msg = String.format("Failure open forwarding channel using proxy for %s : %s", msgPrefix, e.getMessage());
-            log.error(msg,e);
+            log.error(msg, e);
             RemoteConnectionException rex = new RemoteConnectionException(e.getMessage(), e);
             throw rex;
         }
@@ -650,7 +669,7 @@ public final class SftpRelay implements RemoteDataClient {
             retClient = con.connect(tunnel, username);
         } catch (Exception e) {
             String msg = String.format("Failure to connect using proxy for %s : %s", msgPrefix, e.getMessage());
-            log.error(msg,e);
+            log.error(msg, e);
             RemoteConnectionException rex = new RemoteConnectionException(e.getMessage(), e);
             throw rex;
         }
@@ -737,23 +756,17 @@ public final class SftpRelay implements RemoteDataClient {
     protected SftpClient getClient() throws RemoteDataException {
         // Authenticate if necessary.
         if (ssh2 == null || !ssh2.isConnected()) {
-            try
-            {
-                authenticate();
-            }
-            catch (RemoteDataException aex)
-            {
+            try {
+                nativeAuthenticate();
+            } catch (RemoteDataException aex) {
                 throw aex;
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 String msg = String.format("Failed to authenticate for %s", getMsgPrefix());
                 throw new RemoteDataException(msg, e);
             }
         }
 
-        try
-        {
+        try {
             if (sftpClient == null || sftpClient.isClosed()) {
                 try {
                     if (useTunnel()) {
@@ -761,9 +774,9 @@ public final class SftpRelay implements RemoteDataClient {
                     } else {
                         sftpClient = new SftpClient(ssh2);
                     }
-                } catch(Exception e) {
+                } catch (Exception e) {
                     String msg = String.format("Failure to create sftpClient for %s : %s", getMsgPrefix(), e.getMessage());
-                    log.error(msg,e);
+                    log.error(msg, e);
                     throw e;
                 }
 
@@ -776,14 +789,10 @@ public final class SftpRelay implements RemoteDataClient {
             }
 
             return sftpClient;
-        }
-        catch (SshException e)
-        {
+        } catch (SshException e) {
             // Throw recoverable AloeSSHConnectionException. This is typically a socket timeout exception
             throw new RemoteConnectionException(e.getMessage(), e);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             throw new RemoteDataException(e.getMessage(), e);
         }
     }
@@ -921,36 +930,45 @@ public final class SftpRelay implements RemoteDataClient {
 
         List<RemoteFileInfo> fileList = new ArrayList<RemoteFileInfo>();
 
+        SftpRelayGrpc.SftpRelayBlockingStub grpcClient = getGrpcClient();
+
+        RemoteSystemConfig remoteSystemConfig = getRemoteSystemConfig();
+
+        // create remote directory listing request
+        SrvListRequest relayListRequest = SrvListRequest.newBuilder()
+                .setSystemConfig(remoteSystemConfig)
+                .setRemotePath(remotedir)
+                .build();
+
         try {
-            SftpFile[] files;
-            try {
-                files = getClient().ls(remotedir);
-            } catch (Exception e) {
-                String msg = getMsgPrefix() + "Failure to list directory: " + remotedir + ": " + e.getMessage();
-                log.error(msg, e);
-                throw e;
+            // call the gRPC and get back a CopyLocalToRemoteResponse
+            FileInfoListResponse relayListingResponse = grpcClient.list(relayListRequest);
+
+            if (StringUtils.isNotBlank(relayListingResponse.getError())) {
+                String errorMessage = relayListingResponse.getError();
+                if (errorMessage.contains("does not exist") || errorMessage.contains("no such file or directory")) {
+                    throw new FileNotFoundException(errorMessage);
+                } else {
+                    throw new RemoteDataException(errorMessage);
+                }
             }
 
             // The exception handling here is confused and needs a redesign.
             // For now, we log what's going on where an error occurs.
-            for (SftpFile file : files) {
-                if (file.getFilename().equals(".") || file.getFilename().equals("..")) continue;
+            for (org.agaveplatform.transfer.proto.sftp.RemoteFileInfo relayFileInfo : relayListingResponse.getListingList()) {
+                if (relayFileInfo.getName().equals(".") || relayFileInfo.getName().equals("..")) continue;
                 try {
-                    fileList.add(new RemoteFileInfo(file));
+                    fileList.add(new RemoteFileInfo(relayFileInfo));
                 } catch (Exception e) {
-                    String msg = getMsgPrefix() + "No such file or directory: " + file.getAbsolutePath() + ": " + e.getMessage();
-                    log.error(msg, e);
+                    String msg = getMsgPrefix() + "No such file or directory: " + relayFileInfo.getPath() +
+                            ": " + e.getMessage();
                     throw e;
                 }
             }
             Collections.sort(fileList);
             return fileList;
-        } catch (SftpStatusException e) {
-            if (e.getMessage().toLowerCase().contains("no such file")) {
-                throw new FileNotFoundException("No such file or directory");
-            } else {
-                throw new RemoteDataException("Failed to list directory " + remotedir, e);
-            }
+        } catch (FileNotFoundException | RemoteDataException e) {
+            throw e;
         } catch (Exception e) {
             throw new RemoteDataException("Failed to list directory " + remotedir, e);
         }
@@ -960,6 +978,110 @@ public final class SftpRelay implements RemoteDataClient {
     public void get(String remotedir, String localdir)
             throws IOException, FileNotFoundException, RemoteDataException {
         get(remotedir, localdir, null);
+    }
+
+    /**
+     * Implements the {@link SftpClient#copyRemoteDirectory(String, String, boolean, boolean, boolean, FileTransferProgress)}
+     * used to copy a remote directory to the local host. We reimplement the method to leverage the sftp-relay service
+     * instead of the Java library.
+     *
+     * @param remotedir – the unresolved remote directory whose contents will be copied.
+     * @param localdir relative local path. This needs to resolve to a path within a directory shared with the sftp-relay container
+     * @param recurse – recurse into child folders
+     * @param commit – actually perform the operation. If false the operation will be processed and a DirectoryOperation will be returned without actually transfering any files.
+     * @param progress callback listener to receive progress updates
+     * @return An object containing the results of the directory operation
+     * @throws IOException
+     * @throws FileNotFoundException
+     * @throws SftpStatusException
+     * @throws SshException
+     * @throws TransferCancelledException
+     * @throws RemoteDataException
+     */
+    protected DirectoryOperation copyRemoteDirectory(String remotedir,
+                                                  String localdir, boolean recurse, boolean commit,
+                                                  RemoteTransferListener progress) throws IOException,
+            FileNotFoundException, SftpStatusException, SshException, TransferCancelledException, RemoteDataException {
+
+        // Create an operation object to hold the information
+        DirectoryOperation op = new DirectoryOperation();
+
+        // Setup the local cwd
+        remotedir += ((remotedir.endsWith("/") ? "" : "/"));
+
+        String base = remotedir;
+
+        if (base.endsWith("/"))
+            base = base.substring(0, base.length() - 1);
+
+        int idx = base.lastIndexOf('/');
+
+        if (idx != -1) {
+            base = base.substring(idx + 1);
+        }
+
+        File local = new File(localdir);
+        if (!local.exists() && commit) {
+            local.mkdirs();
+        }
+
+        File f;
+
+        for (RemoteFileInfo file: ls(remotedir)) {
+
+            if (file.isDirectory() && !file.getName().equals(".")
+                    && !file.getName().equals("..")) {
+                if (recurse) {
+                    f = new File(local, file.getName());
+                    op.addDirectoryOperation(
+                            copyRemoteDirectory(
+                                    remotedir + file.getName(),
+                                    local.getPath() + "/" + file.getName(), recurse,
+                                    commit, progress), f);
+                }
+            } else if (file.isFile()) {
+                f = new File(local, file.getName());
+
+                if (f.exists()
+                        && (f.length() == file.getSize())
+                        && ((long)(f.lastModified() / 1000) == (long)(file.getLastModified().getTime() / 1000))) {
+                    if (commit) {
+                        op.getUnchangedFiles().addElement(f);
+                    } else {
+                        op.getUnchangedFiles().addElement(file);
+                    }
+
+                    continue;
+                }
+
+                try {
+
+                    if (f.exists()) {
+                        if (commit) {
+                            op.getUpdatedFiles().addElement(f);
+                        } else {
+                            op.getUpdatedFiles().addElement(file);
+                        }
+                    } else {
+                        if (commit) {
+                            op.getNewFiles().addElement(f);
+                        } else {
+                            op.getNewFiles().addElement(file);
+                        }
+                    }
+
+                    if (commit) {
+                        // Get the file
+                        get(remotedir + file.getName(), f.getPath(), progress);
+                    }
+
+                } catch (Exception ex) {
+                    op.getFailedTransfers().put(f, ex);
+                    throw ex;
+                }
+            }
+        }
+        return op;
     }
 
     @Override
@@ -999,8 +1121,8 @@ public final class SftpRelay implements RemoteDataClient {
 
                 DirectoryOperation operation;
                 try {
-                    operation = getClient().copyRemoteDirectory(resolvePath(remoteSource), localDirectory.getAbsolutePath(),
-                            true, false, true, listener);
+                    operation = copyRemoteDirectory(resolvePath(remoteSource), localDirectory.getPath(),
+                            true, true, listener);
                 } catch (Exception e) {
                     String msg = getMsgPrefix() + "Failed to copy remote directory " + remoteSource +
                             " to local directory " + localDirectory.getPath() + ": " + e.getMessage();
@@ -1008,7 +1130,7 @@ public final class SftpRelay implements RemoteDataClient {
                     throw e;
                 }
 
-                if (operation != null && !operation.getFailedTransfers().isEmpty()) {
+                if (!operation.getFailedTransfers().isEmpty()) {
                     String msg = getMsgPrefix() + "Failed to copy at least one file from remote directory " + remoteSource +
                             " to local directory " + localDirectory.getPath() + ".";
                     log.error(msg);
@@ -1035,15 +1157,14 @@ public final class SftpRelay implements RemoteDataClient {
                 // if a directory, resolve full path
                 else if (localTarget.isDirectory()) {
                     localTarget = new File(localTarget, FilenameUtils.getName(remoteSource));
-                }
-                else {
+                } else {
                     // if not a directory, overwrite local file
                 }
 
                 try {
                     String resolvedPath = resolvePath(remoteSource);
 
-                    SftpRelayGrpc.SftpRelayBlockingStub sftpClient = getGrpcClient();
+                    SftpRelayGrpc.SftpRelayBlockingStub grpcClient = getGrpcClient();
 
                     RemoteSystemConfig remoteSystemConfig = getRemoteSystemConfig();
 
@@ -1056,7 +1177,7 @@ public final class SftpRelay implements RemoteDataClient {
                             .build();
 
                     // call the gRPC and get back a CopyLocalToRemoteResponse
-                    TransferResponse transferResponse = sftpClient.get(srvGetRequest);
+                    TransferResponse transferResponse = grpcClient.get(srvGetRequest);
 
                     if (StringUtils.isNotBlank(transferResponse.getError())) {
                         String errorMessage = transferResponse.getError();
@@ -1065,10 +1186,8 @@ public final class SftpRelay implements RemoteDataClient {
                         } else {
                             throw new RemoteDataException(errorMessage);
                         }
-                    } else {
-                        log.debug(transferResponse.toString());
                     }
-                } catch (FileNotFoundException|RemoteDataException e) {
+                } catch (FileNotFoundException | RemoteDataException e) {
                     throw e;
                 } catch (Exception e) {
                     String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource +
@@ -1171,9 +1290,97 @@ public final class SftpRelay implements RemoteDataClient {
         put(localdir, remotedir, null);
     }
 
+    public DirectoryOperation copyLocalDirectory(String localFilePath,
+                                                 String remotePath, boolean recurse, boolean commit,
+                                                 RemoteTransferListener progress) throws IOException,
+            SftpStatusException, SshException, TransferCancelledException, RemoteDataException {
+
+        DirectoryOperation op = new DirectoryOperation();
+
+        // ensure trailing slash on resolved path for dir copy
+        String remoteResolvedPath = resolvePath(remotePath);
+        remoteResolvedPath += (remoteResolvedPath.endsWith("/") ? "" : "/");
+
+        // ensure trailing slash on unresolved path
+        remotePath += (remotePath.endsWith("/") ? "" : "/");
+
+        // Setup the remote directory if were committing
+        if (commit) {
+            try {
+                stat(remoteResolvedPath);
+            } catch (FileNotFoundException ex) {
+                mkdirs(remotePath);
+            }
+        }
+
+        // List the local files and verify against the remote server
+        File localFileItem = new File(localFilePath);
+
+        String[] ls = localFileItem.list();
+        File source;
+        if (ls != null) {
+            for (String localChildPath: ls) {
+                source = new File(localFileItem, localChildPath);
+                if (source.isDirectory() && !source.getName().equals(".")
+                        && !source.getName().equals("..")) {
+                    if (recurse) {
+                        // File f = new File(local, source.getName());
+                        op.addDirectoryOperation(
+                                copyLocalDirectory(source.getPath(),
+                                        remotePath + source.getName(), recurse,
+                                        commit, progress), source);
+                    }
+                } else if (source.isFile()) {
+
+                    boolean newFile = false;
+                    boolean unchangedFile = false;
+
+                    try {
+                        RemoteFileInfo remoteFileInfo = stat(remoteResolvedPath + source.getName());
+
+                        // size and last modified must line up
+                        unchangedFile = ((source.length() == remoteFileInfo.getSize()) &&
+                                ((long)(source.lastModified() / 1000) == (long)(remoteFileInfo.getLastModified().getTime()  / 1000)));
+
+                    } catch (FileNotFoundException | RemoteDataException ex) {
+                        newFile = true;
+                    }
+
+                    try {
+
+                        if (commit && !unchangedFile) { // BPS - Added
+                            // !unChangedFile test.
+                            // Why would want to
+                            // copy that has been
+                            // determined to be
+                            // unchanged?
+                            put(source.getPath(),
+                                    remotePath + source.getName(), progress);
+                        }
+
+                        if (unchangedFile) {
+                            op.getUnchangedFiles().addElement(source);
+                        } else if (!newFile) {
+                            op.getUpdatedFiles().addElement(source);
+                        } else {
+                            op.getNewFiles().addElement(source);
+                        }
+
+                    } catch (Exception ex) {
+                        op.getFailedTransfers().put(source, ex);
+                        throw ex;
+                    }
+                }
+            }
+        }
+
+        // Return the operation details
+        return op;
+    }
+
     @Override
     public void put(String localdir, String remotedir, RemoteTransferListener listener)
-            throws IOException, FileNotFoundException, NotImplementedException,  RemoteDataException {
+            throws IOException, FileNotFoundException, NotImplementedException, RemoteDataException {
 
         File localFile = new File(localdir);
         if (!localFile.exists()) {
@@ -1225,8 +1432,8 @@ public final class SftpRelay implements RemoteDataClient {
 
                 DirectoryOperation operation;
                 try {
-                    operation = getClient().copyLocalDirectory(localFile.getAbsolutePath(), resolvedPath,
-                            true, false, true, listener);
+                    operation = copyLocalDirectory(localFile.getPath(), remotedir,
+                            true, true, listener);
                 } catch (Exception e) {
                     String msg = getMsgPrefix() + "Failure to copy local directory " + localFile.getAbsolutePath() +
                             " to " + resolvedPath + ": " + e.getMessage();
@@ -1234,7 +1441,7 @@ public final class SftpRelay implements RemoteDataClient {
                     throw e;
                 }
 
-                if (operation != null && !operation.getFailedTransfers().isEmpty()) {
+                if (!operation.getFailedTransfers().isEmpty()) {
                     String msg = getMsgPrefix() + "One or more files failed to copy from local directory " +
                             localFile.getAbsolutePath() + " to " + resolvedPath + ".";
                     log.error(msg);
@@ -1251,15 +1458,17 @@ public final class SftpRelay implements RemoteDataClient {
                 }
 
                 RemoteFileInfo remoteFileInfo = null;
-                try { remoteFileInfo = stat(resolvedPath); } catch (Exception ignored) {}
+                try {
+                    remoteFileInfo = stat(resolvedPath);
+                } catch (Exception ignored) {
+                }
 
                 // if the file is not present, check the parent directory
                 if (remoteFileInfo == null) {
                     // if parent does not exist, throw a FileNotFoundException because the path is bad
                     if (!doesExist(remotedir + (StringUtils.isEmpty(remotedir) ? ".." : "/.."))) {
                         throw new FileNotFoundException("no such file or directory");
-                    }
-                    else {
+                    } else {
                         // if parent exists, dest file path is the new file name, we allow the write to continue as is
                     }
                 } else if (remoteFileInfo.isDirectory()) {
@@ -1274,11 +1483,11 @@ public final class SftpRelay implements RemoteDataClient {
                 fileInfoCache.remove(resolvedPath);
 
                 try {
-                    SftpRelayGrpc.SftpRelayBlockingStub sftpClient = getGrpcClient();
+                    SftpRelayGrpc.SftpRelayBlockingStub grpcClient = getGrpcClient();
 
                     RemoteSystemConfig remoteSystemConfig = getRemoteSystemConfig();
 
-                    //create a CopyLocalToRemoteRequest
+                    //create a SrvPutRequest
                     SrvPutRequest srvPutRequest = SrvPutRequest.newBuilder()
                             .setSystemConfig(remoteSystemConfig)
                             .setRemotePath(resolvedPath)
@@ -1287,20 +1496,30 @@ public final class SftpRelay implements RemoteDataClient {
                             .setAppend(false)
                             .build();
 
+                    if (listener != null) listener.started(localFile.length(), localdir);
                     // call the gRPC and get back a SrvPutResponse
-                    TransferResponse transferResponse = sftpClient.put(srvPutRequest);
+                    TransferResponse transferResponse = grpcClient.put(srvPutRequest);
 
                     if (StringUtils.isNotBlank(transferResponse.getError())) {
                         String errorMessage = transferResponse.getError();
+
+                        // update the listener marking transfer as failed
+                        if (listener != null) listener.failed();
+
                         if (errorMessage.contains("does not exist") || errorMessage.contains("no such file or directory")) {
                             throw new FileNotFoundException(errorMessage);
                         } else {
                             throw new RemoteDataException(errorMessage);
                         }
                     } else {
-                        log.debug(transferResponse.toString());
+                        // update the listener with final bytes transferred and mark complete
+                        if (listener != null) {
+                            listener.progressed(transferResponse.getBytesTransferred());
+                            listener.completed();
+                        }
                     }
-                } catch (FileNotFoundException|RemoteDataException e) {
+
+                } catch (FileNotFoundException | RemoteDataException e) {
                     throw e;
                 } catch (Exception e) {
                     String msg = getMsgPrefix() + "Failure to write local file " + localFile.getAbsolutePath() +
@@ -1308,7 +1527,7 @@ public final class SftpRelay implements RemoteDataClient {
                     throw new RemoteDataException(msg, e);
                 }
             }
-        } catch (FileNotFoundException|RemoteDataException e) {
+        } catch (FileNotFoundException | RemoteDataException e) {
             throw e;
         } catch (Exception e) {
             throw new RemoteDataException("Failed to put data to " + remotedir, e);
@@ -1363,7 +1582,8 @@ public final class SftpRelay implements RemoteDataClient {
                             if (isFile(childRemotePath)) {
                                 delete(childRemotePath);
                             }
-                        } catch (FileNotFoundException ignored) {}
+                        } catch (FileNotFoundException ignored) {
+                        }
 
                         // now create the remote directory
                         mkdir(childRemotePath);
@@ -1438,18 +1658,18 @@ public final class SftpRelay implements RemoteDataClient {
      */
     protected RemoteFileInfo stat(String resolvedPath) throws FileNotFoundException, RemoteDataException {
         try {
-            SftpRelayGrpc.SftpRelayBlockingStub sftpClient = getGrpcClient();
+            SftpRelayGrpc.SftpRelayBlockingStub grpcClient = getGrpcClient();
 
             RemoteSystemConfig remoteSystemConfig = getRemoteSystemConfig();
 
-            //create a CopyLocalToRemoteRequest
+            //create a SrvStatRequest
             SrvStatRequest srvStatRequest = SrvStatRequest.newBuilder()
                     .setSystemConfig(remoteSystemConfig)
                     .setRemotePath(resolvedPath)
                     .build();
 
             // call the gRPC and get back a SrvPutResponse
-            FileInfoResponse fileInfoResponse = sftpClient.stat(srvStatRequest);
+            FileInfoResponse fileInfoResponse = grpcClient.stat(srvStatRequest);
 
             if (StringUtils.isNotBlank(fileInfoResponse.getError())) {
                 String errorMessage = fileInfoResponse.getError();
@@ -1459,24 +1679,26 @@ public final class SftpRelay implements RemoteDataClient {
                     throw new RemoteDataException(errorMessage);
                 }
             } else {
-                log.debug(fileInfoResponse.toString());
+
                 //#**********************************************************************************
                 // this has to be valid or the whole relay is busted
-                RemoteFileInfo grpcFileInfo = new RemoteFileInfo();
-
-                grpcFileInfo.setName(fileInfoResponse.getRemoteFileInfo().getName());
-                grpcFileInfo.setFileType(fileInfoResponse.getRemoteFileInfo().getIsDirectory() ?
-                        RemoteFileInfo.DIRECTORY_TYPE : RemoteFileInfo.FILE_TYPE);
-                grpcFileInfo.setSize(fileInfoResponse.getRemoteFileInfo().getSize());
-                grpcFileInfo.setLastModified(Date.from(Instant.ofEpochSecond(fileInfoResponse.getRemoteFileInfo().getLastUpdated())));
+                RemoteFileInfo grpcFileInfo = new RemoteFileInfo(fileInfoResponse.getRemoteFileInfo());
                 grpcFileInfo.setOwner(username);
-                grpcFileInfo.updateMode(fileInfoResponse.getRemoteFileInfo().getMode());
+
+
+//                grpcFileInfo.setName(fileInfoResponse.getRemoteFileInfo().getName());
+//                grpcFileInfo.setFileType(fileInfoResponse.getRemoteFileInfo().getIsDirectory() ?
+//                        RemoteFileInfo.DIRECTORY_TYPE : RemoteFileInfo.FILE_TYPE);
+//                grpcFileInfo.setSize(fileInfoResponse.getRemoteFileInfo().getSize());
+//                grpcFileInfo.setLastModified(Date.from(Instant.ofEpochSecond(fileInfoResponse.getRemoteFileInfo().getLastUpdated())));
+//                grpcFileInfo.setOwner(username);
+//                grpcFileInfo.updateMode(fileInfoResponse.getRemoteFileInfo().getMode());
 
                 fileInfoCache.put(resolvedPath, grpcFileInfo);
 
                 return grpcFileInfo;
             }
-        } catch (FileNotFoundException|RemoteDataException e) {
+        } catch (FileNotFoundException | RemoteDataException e) {
             fileInfoCache.remove(resolvedPath);
             throw e;
         } catch (Exception e) {
@@ -1550,11 +1772,11 @@ public final class SftpRelay implements RemoteDataClient {
             resolvedDestPath = StringUtils.removeEnd(resolvePath(newpath), "/");
 
 
-            SftpRelayGrpc.SftpRelayBlockingStub sftpClient = getGrpcClient();
+            SftpRelayGrpc.SftpRelayBlockingStub grpcClient = getGrpcClient();
 
             RemoteSystemConfig remoteSystemConfig = getRemoteSystemConfig();
 
-            //create a CopyLocalToRemoteRequest
+            //create a SrvRenameRequest
             SrvRenameRequest srvRenameRequest = SrvRenameRequest.newBuilder()
                     .setSystemConfig(remoteSystemConfig)
                     .setRemotePath(resolvedSourcePath)
@@ -1562,7 +1784,7 @@ public final class SftpRelay implements RemoteDataClient {
                     .build();
 
             // call the gRPC and get back a SrvPutResponse
-            FileInfoResponse renameResponse = sftpClient.rename(srvRenameRequest);
+            FileInfoResponse renameResponse = grpcClient.rename(srvRenameRequest);
 
             if (StringUtils.isNotBlank(renameResponse.getError())) {
                 String errorMessage = renameResponse.getError();
@@ -1578,7 +1800,7 @@ public final class SftpRelay implements RemoteDataClient {
 
             fileInfoCache.remove(resolvedSourcePath);
 
-        } catch (RemoteDataException|FileNotFoundException e) {
+        } catch (RemoteDataException | FileNotFoundException e) {
             throw e;
         } catch (Exception e) {
             throw new RemoteDataException("Failed to rename " + oldpath + " to " + newpath, e);
@@ -1640,7 +1862,7 @@ public final class SftpRelay implements RemoteDataClient {
                 }
 
                 String copyCommand = String.format("cp -rLf \"%s\" \"%s\"", resolvedSrc, resolvedDest);
-                log.debug("Performing remote copy on " + host + ": " + copyCommand);
+//                log.debug("Performing remote copy on " + host + ": " + copyCommand);
 
                 MaverickSSHSubmissionClient proxySubmissionClient = null;
                 String proxyResponse = null;
@@ -1691,7 +1913,8 @@ public final class SftpRelay implements RemoteDataClient {
 //			try { ssh2.disconnect(); } catch (Throwable t) {}
             try {
                 shell.close();
-            } catch (Throwable ignored) {}
+            } catch (Throwable ignored) {
+            }
         }
     }
 
@@ -1699,8 +1922,7 @@ public final class SftpRelay implements RemoteDataClient {
      * @see org.iplantc.service.transfer.RemoteDataClient#getUriForPath(java.lang.String)
      */
     @Override
-    public URI getUriForPath(String path) throws IOException,
-            RemoteDataException {
+    public URI getUriForPath(String path) throws IOException, RemoteDataException {
         try {
             return new URI("sftp://" + host + (port == 22 ? "" : ":" + port) + "/" + path);
         } catch (URISyntaxException e) {
@@ -1713,18 +1935,18 @@ public final class SftpRelay implements RemoteDataClient {
         try {
             String resolvedPath = resolvePath(remotepath);
 
-            SftpRelayGrpc.SftpRelayBlockingStub sftpClient = getGrpcClient();
+            SftpRelayGrpc.SftpRelayBlockingStub grpcClient = getGrpcClient();
 
             RemoteSystemConfig remoteSystemConfig = getRemoteSystemConfig();
 
-            //create a CopyLocalToRemoteRequest
+            //create a SrvRemoveRequest
             SrvRemoveRequest srvRemoveRequest = SrvRemoveRequest.newBuilder()
                     .setSystemConfig(remoteSystemConfig)
                     .setRemotePath(resolvedPath)
                     .build();
 
             // call the gRPC and get back a SrvPutResponse
-            EmptyResponse emptyResponse = sftpClient.remove(srvRemoveRequest);
+            EmptyResponse emptyResponse = grpcClient.remove(srvRemoveRequest);
 
             if (StringUtils.isNotBlank(emptyResponse.getError())) {
                 String errorMessage = emptyResponse.getError();
@@ -1764,11 +1986,11 @@ public final class SftpRelay implements RemoteDataClient {
         try {
             resolvedPath = resolvePath(remotedir);
 
-            SftpRelayGrpc.SftpRelayBlockingStub sftpClient = getGrpcClient();
+            SftpRelayGrpc.SftpRelayBlockingStub grpcClient = getGrpcClient();
 
             RemoteSystemConfig remoteSystemConfig = getRemoteSystemConfig();
 
-            //create a CopyLocalToRemoteRequest
+            //create a SrvMkdirRequest
             SrvMkdirRequest srvMkdirsRequest = SrvMkdirRequest.newBuilder()
                     .setSystemConfig(remoteSystemConfig)
                     .setRemotePath(resolvedPath)
@@ -1776,7 +1998,7 @@ public final class SftpRelay implements RemoteDataClient {
                     .build();
 
             // call the gRPC and get back a SrvPutResponse
-            FileInfoResponse mkdirsResponse = sftpClient.mkdir(srvMkdirsRequest);
+            FileInfoResponse mkdirsResponse = grpcClient.mkdir(srvMkdirsRequest);
 
             if (StringUtils.isNotBlank(mkdirsResponse.getError())) {
                 String errorMessage = mkdirsResponse.getError().toLowerCase();
@@ -1791,11 +2013,9 @@ public final class SftpRelay implements RemoteDataClient {
                     throw new RemoteDataException("Failed to create " + remotedir + ": " + mkdirsResponse.getError());
                 }
             } else {
-                log.debug(mkdirsResponse.toString());
-
                 return mkdirsResponse.getRemoteFileInfo().getIsDirectory();
             }
-        } catch (FileNotFoundException|RemoteDataException e) {
+        } catch (FileNotFoundException | RemoteDataException e) {
             throw e;
         } catch (Exception e) {
             throw new RemoteDataException("Failed to create " + remotedir, e);
@@ -1837,11 +2057,11 @@ public final class SftpRelay implements RemoteDataClient {
         try {
             resolvedPath = resolvePath(remotedir);
 
-            SftpRelayGrpc.SftpRelayBlockingStub sftpClient = getGrpcClient();
+            SftpRelayGrpc.SftpRelayBlockingStub grpcClient = getGrpcClient();
 
             RemoteSystemConfig remoteSystemConfig = getRemoteSystemConfig();
 
-            //create a CopyLocalToRemoteRequest
+            //create a SrvMkdirRequest
             SrvMkdirRequest srvMkdirsRequest = SrvMkdirRequest.newBuilder()
                     .setSystemConfig(remoteSystemConfig)
                     .setRemotePath(resolvedPath)
@@ -1849,7 +2069,7 @@ public final class SftpRelay implements RemoteDataClient {
                     .build();
 
             // call the gRPC and get back a SrvPutResponse
-            FileInfoResponse mkdirsResponse = sftpClient.mkdir(srvMkdirsRequest);
+            FileInfoResponse mkdirsResponse = grpcClient.mkdir(srvMkdirsRequest);
 
             if (StringUtils.isNotBlank(mkdirsResponse.getError())) {
                 String errorMessage = mkdirsResponse.getError().toLowerCase();
@@ -1866,11 +2086,9 @@ public final class SftpRelay implements RemoteDataClient {
                     throw new RemoteDataException("Failed to create " + remotedir + ": " + mkdirsResponse.getError());
                 }
             } else {
-                log.debug(mkdirsResponse.toString());
-
                 return mkdirsResponse.getRemoteFileInfo().getIsDirectory();
             }
-        } catch (FileNotFoundException|RemoteDataException e) {
+        } catch (FileNotFoundException | RemoteDataException e) {
             throw e;
         } catch (Exception e) {
             throw new RemoteDataException("Failed to create " + remotedir, e);
@@ -1881,13 +2099,16 @@ public final class SftpRelay implements RemoteDataClient {
     public void disconnect() {
         try {
             if (sftpClient != null) sftpClient.quit();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         try {
             if (forwardedConnection != null) forwardedConnection.disconnect();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         try {
             if (ssh2 != null) ssh2.disconnect();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         ssh2 = null;
         forwardedConnection = null;
@@ -1895,37 +2116,16 @@ public final class SftpRelay implements RemoteDataClient {
         try {
             if (sftpRelayServerManagedChannel != null) {
                 sftpRelayServerManagedChannel.shutdownNow();
+                sftpRelayServerManagedChannel.awaitTermination(13, TimeUnit.SECONDS);
             }
-        } catch(Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         sftpRelayServerManagedChannel = null;
         sftpRelayGrpcClient = null;
         gprcRemoteSystemConfig = null;
 
         // clear the local file info cache
         fileInfoCache.clear();
-    }
-
-    /**
-     * Determine if a resolved path exists without throwing exceptions.
-     * If the path exists, true is returned.  If the path does not exist
-     * or if the command fails for any reason, false is returned.
-     *
-     * @param resolvedPath a fully resolved pathname
-     * @return true if there's positive confirmation that the path represents
-     * an existing object, false otherwise.
-     */
-    private boolean doesExistSafe(String resolvedPath) {
-        // Is it worth trying?
-        if (resolvedPath == null) return false;
-
-        // See if we get any attributes back.
-        RemoteFileInfo atts = null;
-        try {
-            atts = stat(resolvedPath);
-        } catch (Exception ignored) {}
-
-        // object found
-        return atts != null;
     }
 
     @Override
@@ -2224,22 +2424,27 @@ public final class SftpRelay implements RemoteDataClient {
         LoggerFactory.setInstance(MaverickSFTPLogger.getInstance());
     }
 
-    /** Return the textual name associated with the states defined in the interface
+    /**
+     * Return the textual name associated with the states defined in the interface
      * com.sshtools.ssh.SshAuthentication.
      *
-     * @param authState the authentication state returned from ssh2Client.authenticate()
+     * @param authState the authentication state returned from ssh2Client.nativeAuthenticate();
      * @return the text name associated with the state
      */
-    public String getAuthStateText(int authState)
-    {
-        switch (authState)
-        {
-            case 1:  return "COMPLETE";
-            case 2:  return "FAILED";
-            case 3:  return "FURTHER_AUTHENTICATION_REQUIRED";
-            case 4:  return "CANCELLED";
-            case 5:  return "PUBLIC_KEY_ACCEPTABLE";
-            default: return "UNKNOWN";
+    public String getAuthStateText(int authState) {
+        switch (authState) {
+            case 1:
+                return "COMPLETE";
+            case 2:
+                return "FAILED";
+            case 3:
+                return "FURTHER_AUTHENTICATION_REQUIRED";
+            case 4:
+                return "CANCELLED";
+            case 5:
+                return "PUBLIC_KEY_ACCEPTABLE";
+            default:
+                return "UNKNOWN";
         }
     }
 
@@ -2251,25 +2456,28 @@ public final class SftpRelay implements RemoteDataClient {
      * @param sock
      */
     public void closeConnections(SshClient sshClient, SshClient forwardedConnection,
-                                 SshSession sshSession, Socket sock)
-    {
-        if (sshClient != null) try { sshClient.disconnect(); }
-        catch (Throwable t) {
+                                 SshSession sshSession, Socket sock) {
+        if (sshClient != null) try {
+            sshClient.disconnect();
+        } catch (Throwable t) {
             String msg = "sshClient disconnect failure.";
             log.warn(msg, t);
         }
-        if (forwardedConnection != null) try { forwardedConnection.disconnect(); }
-        catch (Throwable t) {
+        if (forwardedConnection != null) try {
+            forwardedConnection.disconnect();
+        } catch (Throwable t) {
             String msg = "forwardedConnection disconnect failure.";
             log.warn(msg, t);
         }
-        if (sshSession != null) try { sshSession.close(); }
-        catch (Throwable t) {
+        if (sshSession != null) try {
+            sshSession.close();
+        } catch (Throwable t) {
             String msg = "sshSession close failure.";
             log.warn(msg, t);
         }
-        if (sock != null) try { sock.close(); }
-        catch (Throwable t) {
+        if (sock != null) try {
+            sock.close();
+        } catch (Throwable t) {
             String msg = "socket close failure.";
             log.warn(msg, t);
         }

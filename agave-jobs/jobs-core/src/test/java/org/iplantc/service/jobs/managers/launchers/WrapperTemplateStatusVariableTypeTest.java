@@ -60,10 +60,8 @@ public class WrapperTemplateStatusVariableTypeTest {
 		when(resolver.resolveTenantJobUrl(any())).thenReturn(Settings.IPLANT_JOB_SERVICE);
 
 		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
-		System.out.println("Resolved wrapper code: " + resolvedWrapperCode);
 		for (String uniqueName: new HashSet<String>(Arrays.asList(customVariableNames))) {
 			String expectedString = String.format("echo '  \"%s\": \"'$(printf %%q \"$%s\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n", uniqueName, uniqueName);
-			System.out.println("Expected substring: " + expectedString);
 			Assert.assertTrue(resolvedWrapperCode.contains(expectedString), "User custom data should be written into the output data");
 			resolvedWrapperCode = StringUtils.replaceOnce(resolvedWrapperCode,expectedString, "");
 			Assert.assertFalse(resolvedWrapperCode.contains(expectedString), "Duplicate user variable names should be filtered out prior to writing the callback output");

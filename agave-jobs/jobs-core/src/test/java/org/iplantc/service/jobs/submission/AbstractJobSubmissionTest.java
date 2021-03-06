@@ -865,7 +865,7 @@ public class AbstractJobSubmissionTest {
             if (actuallyThrewException != shouldThrowException) se.printStackTrace();
         }
 		
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
         Assert.assertEquals(shouldThrowException, actuallyThrewException, exceptionMsg);
 		
 	}
@@ -922,7 +922,7 @@ public class AbstractJobSubmissionTest {
 		    job = submissionAction.getJob();
 		}
 		
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
         Assert.assertEquals(shouldThrowException, actuallyThrewException, exceptionMsg);
 		
 		return job;
@@ -981,7 +981,7 @@ public class AbstractJobSubmissionTest {
 		    job = submissionAction.getJob();
 		}
 		
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
         Assert.assertEquals(shouldThrowException, actuallyThrewException, exceptionMsg);
 		
 		return job;

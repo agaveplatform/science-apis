@@ -28,7 +28,7 @@
   },
   "storage": {
     "host": "${ssh.host}",
-    "port": ${ssh.port},
+    "port": ${ssh.data.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

@@ -28,7 +28,7 @@
   },
   "storage": {
     "host": "${slurm.host}",
-    "port": ${slurm.port},
+    "port": ${slurm.data.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

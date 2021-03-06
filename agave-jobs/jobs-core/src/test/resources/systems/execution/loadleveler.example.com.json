@@ -28,7 +28,7 @@
   },
   "storage": {
     "host": "${loadleveler.host}",
-    "port": ${loadleveler.port},
+    "port": ${loadleveler.data.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

@@ -114,7 +114,7 @@ public class NotificationEventIT extends AbstractNotificationTest {
 			NotificationAttempt attempt = NotificationMessageProcessor.process(notification, "SENT", TEST_USER, notification.getAssociatedUuid(), notification.toJSON());
 			Assert.assertNotNull(attempt, "No attempt returned from processing notification");
 			
-			Assert.assertEquals(attempt.isSuccess(), shouldSucceed, "Unexpcted result from notification attempt");
+			Assert.assertEquals(attempt.isSuccess(), shouldSucceed, "Unexpected result from notification attempt");
 			Notification updatedNotification = dao.findByUuidAcrossTenants(notification.getUuid());
 			
 			Assert.assertEquals(shouldSucceed, updatedNotification.getStatus() == NotificationStatusType.COMPLETE, errorMessage);

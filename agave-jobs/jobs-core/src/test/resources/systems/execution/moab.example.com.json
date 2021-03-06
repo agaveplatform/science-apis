@@ -35,7 +35,7 @@
   },
   "storage": {
     "host": "${moab.host}",
-    "port": ${moab.host},
+    "port": ${moab.data.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

@@ -34,7 +34,7 @@ import java.util.Date;
 import java.util.List;
 
 @Test(groups={"integration"})
-public class JobLauncherTest extends AbstractJobSubmissionTest {
+public class JobLauncherIT extends AbstractJobSubmissionTest {
 
 	private final ExecutionType executionType;
 	private String remoteFilePath;
@@ -42,7 +42,7 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 	protected SchedulerType schedulerType;
 	protected ObjectMapper mapper = new ObjectMapper();
 	
-	public JobLauncherTest(ExecutionType executionType, SchedulerType schedulerType) {
+	public JobLauncherIT(ExecutionType executionType, SchedulerType schedulerType) {
 		this.schedulerType = schedulerType;
 		this.executionType = executionType;
 	}
@@ -121,7 +121,7 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 			remoteDataClient.authenticate();
 			remoteDataClient.mkdirs(software.getDeploymentPath());
 			String remoteTemplatePath = software.getDeploymentPath() + File.separator + software.getExecutablePath();
-			remoteDataClient.put(SOFTWARE_WRAPPER_FILE, 
+			remoteDataClient.put(SOFTWARE_WRAPPER_FILE,
 					software.getDeploymentPath() + File.separator + software.getExecutablePath());
 			Assert.assertTrue(remoteDataClient.doesExist(remoteTemplatePath), 
 					"Failed to copy software assets to deployment system " 
@@ -206,7 +206,7 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 		return testData.toArray(new Object[][]{});
 	}
 
-	@Test(dataProvider = "submitJobProvider", enabled = true)
+	@Test(dataProvider = "submitJobProvider")
 	public void testRun(Software software, String message, boolean shouldThrowException)
 	throws Exception {
 		Job job = null;
@@ -225,7 +225,7 @@ public class JobLauncherTest extends AbstractJobSubmissionTest {
 		}
 	}
 
-	public ExecutionType getExecutionType() {
+	protected ExecutionType getExecutionType() {
 		return executionType;
 	}
 }

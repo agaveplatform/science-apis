@@ -93,8 +93,6 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
     @BeforeMethod(alwaysRun=true)
     protected void beforeMethod(Method m) throws Exception
     {
-        log.debug("Before method " + m.getName());
-
         String resolvedHomeDir = "";
         try {
             // auth client and ensure test directory is present

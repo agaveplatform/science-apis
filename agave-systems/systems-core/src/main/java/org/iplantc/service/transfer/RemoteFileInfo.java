@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.file.attribute.PosixFilePermission;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -139,6 +140,25 @@ public class RemoteFileInfo implements Comparable<RemoteFileInfo> {
             throw new RemoteDataException("Could not parse access permission bits");
         }
     }
+
+    public RemoteFileInfo(org.agaveplatform.transfer.proto.sftp.RemoteFileInfo file) throws RemoteDataException {
+		this.name = file.getName();
+
+		if (file.getIsDirectory())
+			this.fileType = DIRECTORY_TYPE;
+		else if (file.getIsLink())
+			this.fileType = SOFTLINK_TYPE;
+		else
+			this.fileType = FILE_TYPE;
+
+		this.size = file.getSize();
+
+		updateMode(file.getMode());
+
+		this.lastModified = Date.from(Instant.ofEpochSecond(file.getLastUpdated()));
+
+		this.owner = UNKNOWN_STRING;
+	}
     
     public RemoteFileInfo(File file) throws RemoteDataException 
     {

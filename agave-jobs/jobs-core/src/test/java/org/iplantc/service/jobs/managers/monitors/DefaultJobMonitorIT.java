@@ -2,7 +2,7 @@ package org.iplantc.service.jobs.managers.monitors;
 
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.managers.launchers.JobLauncherTest;
+import org.iplantc.service.jobs.managers.launchers.JobLauncherIT;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Test(groups={"integration","broken"})
-public class DefaultJobMonitorIT extends JobLauncherTest {
+public class DefaultJobMonitorIT extends JobLauncherIT {
 
     public DefaultJobMonitorIT(ExecutionType executionType, SchedulerType schedulerType) {
         super(executionType, schedulerType);

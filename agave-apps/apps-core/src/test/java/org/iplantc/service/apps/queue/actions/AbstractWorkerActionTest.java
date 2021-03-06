@@ -119,7 +119,7 @@ public abstract class AbstractWorkerActionTest extends AbstractDaoTest {
 
             String parentPath = FilenameUtils.getPath(software.getDeploymentPath());
             storageDataClient.mkdirs(parentPath);
-            storageDataClient.put(localSoftwareDeploymentDir.toAbsolutePath().toString(), parentPath);
+            storageDataClient.put(localSoftwareDeploymentDir.toString(), parentPath);
 
 //            if (!storageDataClient.doesExist(software.getDeploymentPath())) {
 //                String parentPath = FilenameUtils.getPath(software.getDeploymentPath());

@@ -4,19 +4,18 @@ import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.util.IPAddressValidator;
 import org.iplantc.service.common.util.OSValidator;
 import org.joda.time.DateTimeZone;
 
 import javax.net.ssl.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
@@ -232,7 +231,36 @@ public class Settings
 
         API_VERSION = props.getProperty("iplant.api.version");
 
+        // ensure the default system temp directory is set to the TEMP_DIRECTORY value so that any containers
+        // sharing a mounted directory will both have access to any temp directories created.
         TEMP_DIRECTORY = props.getProperty("iplant.server.temp.dir", "/scratch");
+        System.setProperty("java.io.tmpdir", TEMP_DIRECTORY);
+        try {
+            // ensure the temp dir exists and is writeble. If not, none of our file operations are going to work
+            // in a containerized setting.
+            File tmpDir = Paths.get(TEMP_DIRECTORY).toFile();
+            // create dir if not present
+            if (!tmpDir.exists()) {
+                // if unable to create it, throw an exception we can log and catch.
+                if (!tmpDir.mkdirs()) {
+                    throw new IOException("Failed to create missing temp directory");
+                }
+                else {
+                    log.debug("Successfully created temp directory: " + TEMP_DIRECTORY);
+                }
+            } else {
+                log.debug("Temp directory found: " + TEMP_DIRECTORY);
+            }
+
+            if (!tmpDir.canWrite()) {
+                throw new PermissionException("Temp directory is not writeable");
+            } else if (!tmpDir.canRead()) {
+                throw new PermissionException("Temp directory is not readable");
+            }
+        } catch (IOException|PermissionException e) {
+            log.error("Error found while validating temp directory, " + TEMP_DIRECTORY + ": " +
+                    e.getMessage() + ". Some remote data movement operations may fail.");
+        }
 
         SERVICE_VERSION = props.getProperty("iplant.service.version");
 

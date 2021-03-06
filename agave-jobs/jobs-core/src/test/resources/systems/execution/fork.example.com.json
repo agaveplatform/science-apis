@@ -16,8 +16,8 @@
     }
   ],
   "login": {
-    "host": "${sftp.host}",
-    "port": ${sftp.port},
+    "host": "${ssh.host}",
+    "port": ${ssh.port},
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -26,8 +26,8 @@
     }
   },
   "storage": {
-    "host": "${sftp.host}",
-    "port": ${sftp.port},
+    "host": "${ssh.host}",
+    "port": ${ssh.data.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

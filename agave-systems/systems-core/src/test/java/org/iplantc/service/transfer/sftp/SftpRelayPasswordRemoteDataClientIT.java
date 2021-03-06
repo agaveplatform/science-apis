@@ -3,6 +3,7 @@
  */
 package org.iplantc.service.transfer.sftp;
 
+import org.apache.commons.io.FileUtils;
 import org.iplantc.service.systems.exceptions.EncryptionException;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.AuthConfig;
@@ -18,6 +19,7 @@ import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -29,7 +31,7 @@ import java.util.UUID;
  * @author dooley
  *
  */
-@Test(groups={"sftp","sftprelay.operations"})
+@Test(groups={"sftprelay","sftprelay.operations"})
 public class SftpRelayPasswordRemoteDataClientIT extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
 
 	/* (non-Javadoc)
@@ -429,6 +431,59 @@ public class SftpRelayPasswordRemoteDataClientIT extends RemoteDataClientTestUti
 	@Test(groups={"get"}, dataProvider="getDirectoryRetrievesToCorrectLocationProvider", retryAnalyzer = TransferTestRetryAnalyzer.class)
 	public void getDirectoryRetrievesToCorrectLocation(String localdir, boolean createTestDownloadFolder, String expectedDownloadPath, String message) {
 		_getDirectoryRetrievesToCorrectLocation(localdir, createTestDownloadFolder, expectedDownloadPath, message);
+	}
+
+	@Test
+	public void copyRemoteDirectory() {
+		String remoteBasePath = null;
+		Path tmpDir = null;
+		Path testDownloadPath = null;
+		try
+		{
+			tmpDir = _createTempDirectory(null);
+			testDownloadPath = tmpDir.resolve("copyRemoteDirTest");
+
+			testDownloadPath.toFile().mkdirs();
+
+			remoteBasePath = createRemoteTestDir();
+
+			getClient().put(LOCAL_BINARY_FILE, remoteBasePath);
+			getClient().put(LOCAL_TXT_FILE, remoteBasePath);
+			String remoteSubpath = UUID.randomUUID().toString();
+			getClient().mkdir(remoteBasePath + "/" + remoteSubpath);
+			getClient().put(LOCAL_BINARY_FILE, remoteBasePath + "/" + remoteSubpath);
+			getClient().put(LOCAL_TXT_FILE, remoteBasePath + "/" + remoteSubpath);
+
+			Assert.assertTrue(getClient().doesExist(remoteBasePath),
+					"Test directory not found on remote test system after put.");
+
+			((SftpRelay)getClient()).copyRemoteDirectory(remoteBasePath, testDownloadPath.toString(),
+					true, true, null);
+
+			Assert.assertTrue(testDownloadPath.resolve(LOCAL_BINARY_FILE_NAME).toFile().exists(),
+							"Binary file not found on local system after copyRemoteDirectory.");
+			Assert.assertTrue(testDownloadPath.resolve(LOCAL_TXT_FILE_NAME).toFile().exists(),
+					"Text file not found on local system after copyRemoteDirectory.");
+			Assert.assertTrue(testDownloadPath.resolve(remoteSubpath).toFile().exists(),
+					"Subdirectory not found on local system after copyRemoteDirectory.");
+			Assert.assertTrue(testDownloadPath.resolve(remoteSubpath).toFile().exists(),
+					"Remote directory not present as directory on local system after copyRemoteDirectory.");
+			Assert.assertTrue(testDownloadPath.resolve(remoteSubpath + "/" + LOCAL_BINARY_FILE_NAME).toFile().exists(),
+					"Nested binary file not found on local system after copyRemoteDirectory.");
+			Assert.assertTrue(testDownloadPath.resolve(remoteSubpath + "/" + LOCAL_TXT_FILE_NAME).toFile().exists(),
+					"Nested text file not found on local system after copyRemoteDirectory.");
+		}
+		catch (Exception e) {
+			Assert.fail("get should not throw unexpected exception", e);
+		}
+		finally {
+			try { getClient().delete(remoteBasePath); } catch (Exception ignore) {}
+			try {
+				if (testDownloadPath != null)
+					FileUtils.deleteQuietly(testDownloadPath.toFile());
+			} catch (Exception ignore) {}
+			try { if (tmpDir != null) FileUtils.deleteQuietly(tmpDir.toFile()); } catch (Exception ignore) {}
+		}
 	}
 
 	@Override

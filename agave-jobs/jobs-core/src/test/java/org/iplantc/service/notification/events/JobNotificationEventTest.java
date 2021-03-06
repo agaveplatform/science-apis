@@ -152,16 +152,16 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 		String resolvedTemplate = event.getEmailBody();
 		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the plain text email template body");
 //		Assert.assertTrue(resolvedTemplate.contains("Execution System: " + job.getSystem()), "Execution system should be resolved in email body.");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 		
 		resolvedTemplate = event.getHtmlEmailBody();
 		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the html email template body");
 //		Assert.assertTrue(resolvedTemplate.contains("<strong>Execution System:</strong> " + job.getSystem()), "Execution system should be resolved in email body.");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 		
 		resolvedTemplate = event.getEmailSubject();
 //		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the email subject");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 	}
 	
 	/**
@@ -190,16 +190,16 @@ public class JobNotificationEventTest extends AbstractDaoTest {
 		String resolvedTemplate = event.getEmailBody();
 		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the plain text email template body");
 //		Assert.assertTrue(resolvedTemplate.contains("Execution System: " + job.getSystem()), "Execution system should be resolved in email body.");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 		
 		resolvedTemplate = event.getHtmlEmailBody();
 		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the html email template body");
 //		Assert.assertTrue(resolvedTemplate.contains("<strong>Execution System:</strong> " + job.getSystem()), "Execution system should be resolved in email body.");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 		
 		resolvedTemplate = event.getEmailSubject();
 		Assert.assertFalse(resolvedTemplate.contains("${"), "No template variables should be found in the email subject");
-		System.out.println(resolvedTemplate);
+//		System.out.println(resolvedTemplate);
 	}
 	
 }

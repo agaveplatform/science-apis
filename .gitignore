@@ -79,3 +79,4 @@ agave-protos/protos-go/pkg
 agave-transfers/sftp-relay/cmd/client/main.go.bak
 agave-transfers/sftp-relay/cmd/client/cmd/root.go.bak
 sftp.pb.go
+/scratch

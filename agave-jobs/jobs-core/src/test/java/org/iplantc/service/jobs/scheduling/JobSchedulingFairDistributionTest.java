@@ -140,16 +140,16 @@ public class JobSchedulingFairDistributionTest extends AbstractJobSchedulingTest
         NormalDistribution nd = new NormalDistribution(mean, sd);
         
         ObjectMapper mapper = new ObjectMapper();
-        System.out.println("Job assignment and distribution:");
-        System.out.println("\tstandard deviation: " + sd);
-        System.out.println("\tmean: " + mean);
+//        System.out.println("Job assignment and distribution:");
+//        System.out.println("\tstandard deviation: " + sd);
+//        System.out.println("\tmean: " + mean);
         for(String username: jobSelection.keySet()) {
             JsonNode json = mapper.createObjectNode()
                 .put("username", username)
                 .put("created", jobDistribution.get(username).size())
                 .put("assigned", jobSelection.get(username))
                 .put("probability", nd.cumulativeProbability((double)jobSelection.get(username)));
-            System.out.println(json.toString());
+//            System.out.println(json.toString());
         }
             
         for (String username: jobSelection.keySet()) {

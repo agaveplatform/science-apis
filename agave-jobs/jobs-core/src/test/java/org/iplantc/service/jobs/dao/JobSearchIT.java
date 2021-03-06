@@ -66,7 +66,7 @@ public class JobSearchIT extends AbstractDaoTest {
         Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 
         int searchValue = (int) ((new DateTime(job.getEndTime()).getMillis() - new DateTime(job.getStartTime()).getMillis()) / 1000);
-        log.debug("Searching for " + searchField + "=" + String.valueOf(searchValue) + " (" + JobDao.getJobRunTime(job.getUuid()) + ")");
+//        log.debug("Searching for " + searchField + "=" + String.valueOf(searchValue) + " (" + JobDao.getJobRunTime(job.getUuid()) + ")");
 
         Map<String, String> map = new HashMap<String, String>();
         map.put(searchField, String.valueOf(searchValue));
@@ -122,7 +122,7 @@ public class JobSearchIT extends AbstractDaoTest {
         Assert.assertNotNull(job.getId(), "Failed to generate a job ID.");
 
         int searchValue = (int) ((new DateTime(job.getEndTime()).getMillis() - new DateTime(job.getCreated()).getMillis()) / 1000);
-        log.debug("Searching for " + searchField + "=" + String.valueOf(searchValue) + " (" + JobDao.getJobWallTime(job.getUuid()) + ")");
+//        log.debug("Searching for " + searchField + "=" + String.valueOf(searchValue) + " (" + JobDao.getJobWallTime(job.getUuid()) + ")");
 
         Map<String, String> map = new HashMap<String, String>();
         map.put(searchField, String.valueOf(searchValue));
@@ -269,25 +269,25 @@ public class JobSearchIT extends AbstractDaoTest {
         Calendar cal = searchDateTime.getCal();
         String searchValue = formatter.format(cal.getTime());
 
-        log.debug("Searching for " + searchTerm + "=" + searchValue + " (" + searchPhrase + " | " + formatter.format(searchDate) + ")");
+//        log.debug("Searching for " + searchTerm + "=" + searchValue + " (" + searchPhrase + " | " + formatter.format(searchDate) + ")");
         Map<String, String> map = new HashMap<String, String>();
         map.put(searchTerm, searchValue);
 
-        log.debug("Total active jobs at time of search: " + JobDao.countTotalActiveJobs());
+//        log.debug("Total active jobs at time of search: " + JobDao.countTotalActiveJobs());
         List<JobDTO> searchJobs = JobDao.findMatching(jobOwner, new JobSearchFilter().filterCriteria(map));
         Assert.assertNotNull(searchJobs, "findMatching should never return null");
 
         if (shouldMatch) {
             if (searchJobs.size() != 1) {
                 Job unreturnedJob = JobDao.getByUuid(jobUuid);
-                log.error("No job returned in match: \n\t" +
-                        searchTerm + "=" + searchValue +
-                        "(" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(unreturnedJob.getCreated()) + ")");
+//                log.error("No job returned in match: \n\t" +
+//                        searchTerm + "=" + searchValue +
+//                        "(" + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(unreturnedJob.getCreated()) + ")");
             }
             Assert.assertEquals(searchJobs.size(), 1, "findMatching returned the wrong number of jobs for search by " + searchTerm);
             Assert.assertEquals(searchJobs.get(0).getUuid(), jobUuid, "findMatching did not return the saved job when searching by " + searchTerm);
         } else {
-            searchJobs.stream().forEach(dto -> {try { System.out.println(dto.toJSON());} catch (Exception ignored){}});
+//            searchJobs.stream().forEach(dto -> {try { System.out.println(dto.toJSON());} catch (Exception ignored){}});
             Assert.assertTrue(searchJobs.isEmpty(), "findMatching should not return any matches for queries out of range.");
         }
     }
@@ -357,7 +357,7 @@ public class JobSearchIT extends AbstractDaoTest {
         Calendar cal = searchDate.getCal();
         String searchValue = formatter.format(cal.getTime());
 
-        log.debug("Searching for " + searchTerm + "=" + searchValue + " (" + searchTerm + " | " + formatter.format(searchDate) + ")");
+//        log.debug("Searching for " + searchTerm + "=" + searchValue + " (" + searchTerm + " | " + formatter.format(searchDate) + ")");
 
         Map<String, String> map = new HashMap<String, String>();
 //        map.put("id.eq", jobUuid);

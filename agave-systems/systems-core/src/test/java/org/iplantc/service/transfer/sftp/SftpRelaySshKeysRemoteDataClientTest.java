@@ -18,7 +18,7 @@ import java.io.IOException;
  * @author dooley
  *
  */
-@Test(groups={"sftp-sshkeys.operations"})
+@Test(groups={"sftprelay", "sftprelay-sshkeys.operations"})
 public class SftpRelaySshKeysRemoteDataClientTest extends SftpRelayPasswordRemoteDataClientIT {
 
 	@Override

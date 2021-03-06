@@ -94,14 +94,14 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
         StorageSystem privateStorageSystem = createStorageSystem();
         privateStorageSystem.setGlobalDefault(true);
         privateStorageSystem.setPubliclyAvailable(true);
-        log.debug("Inserting public storage system " + privateStorageSystem.getSystemId());
+//        log.debug("Inserting public storage system " + privateStorageSystem.getSystemId());
         systemDao.persist(privateStorageSystem);
 
         ExecutionSystem privateExecutionSystem = createExecutionSystem();
         privateExecutionSystem.setOwner(TEST_OWNER);
         privateExecutionSystem.setType(RemoteSystemType.EXECUTION);
         privateExecutionSystem.getBatchQueues().clear();
-        log.debug("Inserting private execution system " + privateExecutionSystem.getSystemId());
+//        log.debug("Inserting private execution system " + privateExecutionSystem.getSystemId());
         systemDao.persist(privateExecutionSystem);
         privateExecutionSystem.addBatchQueue(UNLIMITED_QUEUE.clone());
         privateExecutionSystem.addBatchQueue(MEDIUM_QUEUE.clone());
@@ -134,7 +134,7 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
                 execSystem.setType(RemoteSystemType.EXECUTION);
                 execSystem.setTenantId(tenantId);
                 execSystem.setSystemId(createNonce() + tenantId + "-" + systemId);
-                log.debug("Inserting execution system " + privateExecutionSystem.getSystemId());
+//                log.debug("Inserting execution system " + privateExecutionSystem.getSystemId());
                 systemDao.persist(execSystem);
 
                 for(BatchQueue q: execSystem.getBatchQueues())
@@ -146,7 +146,7 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
                     testSoftware.setDefaultMemoryPerNode(q.getMaxMemoryPerNode());
                     testSoftware.setDefaultNodes(q.getMaxNodes());
                     testSoftware.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode());
-                    log.debug("Adding software " + testSoftware.getUniqueName());
+//                    log.debug("Adding software " + testSoftware.getUniqueName());
                     SoftwareDao.persist(testSoftware);
                 }
             }
@@ -460,7 +460,7 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
             
             StandardDeviation stdev = new StandardDeviation();
             double sd = stdev.evaluate(doubles, mean);
-            System.out.println("{standardDeviation: " + sd + ", mean: " + mean + "}");
+//            System.out.println("{standardDeviation: " + sd + ", mean: " + mean + "}");
             Assert.assertTrue(mean > ((TEST_COUNT / uuidSelections.size() ) - 0.5) 
                     && mean < ((TEST_COUNT / uuidSelections.size() ) + 0.5), 
                     "Average should be roughly equaly to " + TEST_COUNT + " / " + uuidSelections.size());

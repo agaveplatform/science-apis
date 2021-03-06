@@ -21,7 +21,7 @@ import java.net.URI;
 public enum NotificationCallbackProviderType {
 	EMAIL, WEBHOOK, SMS, REALTIME, SLACK, AGAVE, NONE;
 	
-	public static NotificationCallbackProviderType getInstanceForUri(String callbackUrl) 
+	public static NotificationCallbackProviderType getInstanceForUri(String callbackUrl, String tenantId)
 	throws BadCallbackException
 	{
 		if (StringUtils.isEmpty(callbackUrl)) {
@@ -47,7 +47,7 @@ public enum NotificationCallbackProviderType {
 			}
 			
 		// realtime push messages are detected based on a prefix match of <pre>{@link Tenant#baseUrl()}/realtime</pre>
-		} else if (ServiceUtils.isValidRealtimeChannel(callbackUrl, callbackUrl)) {
+		} else if (ServiceUtils.isValidRealtimeChannel(callbackUrl, tenantId)) {
 		    return REALTIME;
 		
 		// is it a slack webhook url?

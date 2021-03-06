@@ -13,7 +13,7 @@ import java.io.IOException;
  * @author dooley
  *
  */
-@Test(groups= {"sftp","sftp-password-tunnel.operations","disabled"})
+@Test(groups= {"sftp","sftp-password-tunnel.operations","broken"})
 public class SftpPasswordTunnelRemoteDataClientTest extends SftpPasswordRemoteDataClientIT {
 
 	@Override

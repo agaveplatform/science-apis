@@ -160,24 +160,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
     }
 
     @AfterMethod(alwaysRun=true)
-    protected void afterMethod() throws Exception
-    {   
-//      FileUtils.deleteQuietly(new File(getLocalDownloadDir()));
-//      FileUtils.deleteQuietly(tmpFile);
-//        
-//      try
-//      {
-//          // remove test directory
-//          getClient().delete("");
-//          Assert.assertFalse(getClient().doesExist(""), "Failed to clean up home directory after test.");
-//      } 
-//      catch (Exception e) {
-//          Assert.fail("Failed to clean up test home directory " + getClient().resolvePath("") + " after test method.", e);
-//      }
-//      finally {
-////            try { getClient().disconnect(); } catch (Exception e) {}
-//      }
-    }
+    protected void afterMethod() throws Exception {}
 
     /**
      * Since there won't be a universally forbidden path, we delegate

@@ -3,12 +3,16 @@
  */
 package org.iplantc.service.transfer.sftp;
 
+import org.iplantc.service.systems.exceptions.EncryptionException;
+import org.iplantc.service.systems.model.AuthConfig;
 import org.iplantc.service.transfer.IRemoteDataClientIT;
+import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientTestUtils;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.FileNotFoundException;
@@ -40,6 +44,36 @@ public class SftpSshKeysRemoteDataClientIT extends RemoteDataClientTestUtils imp
 		} else {
 			return "/root/" + UUID.randomUUID().toString();
 		}
+	}
+
+	@Override
+	protected RemoteDataClient getClient()
+	{
+		RemoteDataClient client;
+		try {
+			if (threadClient.get() == null) {
+				AuthConfig userAuthConfig = system.getStorageConfig().getDefaultAuthConfig();
+				String salt = system.getSystemId() + system.getStorageConfig().getHost() + userAuthConfig.getUsername();
+				String username = userAuthConfig.getUsername();
+				String password = userAuthConfig.getClearTextPassword(salt);
+				String privateKey = userAuthConfig.getClearTextPrivateKey(salt);;
+				String publicKey = userAuthConfig.getClearTextPublicKey(salt);
+				String host = system.getStorageConfig().getHost();
+				int port = system.getStorageConfig().getPort();
+				String rootDir = system.getStorageConfig().getRootDir();
+				String threadHomeDir = String.format("%s/thread-%s-%d",
+						system.getStorageConfig().getHomeDir(),
+						UUID.randomUUID().toString(),
+						Thread.currentThread().getId());
+
+				client = new MaverickSFTP(host, port, username, password, rootDir, threadHomeDir, publicKey, privateKey);
+				threadClient.set(client);
+			}
+		} catch (EncryptionException e) {
+			Assert.fail("Failed to get client", e);
+		}
+
+		return threadClient.get();
 	}
 
 	@Override

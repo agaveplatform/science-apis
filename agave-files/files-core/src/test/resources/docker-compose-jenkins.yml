@@ -2,7 +2,7 @@ version: '2'
 
 services:
 
-  traefik:
+  test-proxy:
     image: traefik:v2.4
     command:
       - "--log.level=DEBUG"
@@ -80,7 +80,7 @@ services:
       - "traefik.tcp.routers.sftp.entrypoints=sftp"
       - "traefik.tcp.routers.sftp.service=sftp-svc"
       - "traefik.tcp.services.sftp-svc.loadbalancer.server.port=10022"
-        
+
   sftptunnel:
     image: agaveplatform/sshd:latest
     container_name: sftptunnel

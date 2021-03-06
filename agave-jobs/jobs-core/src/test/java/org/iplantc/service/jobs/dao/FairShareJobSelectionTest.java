@@ -110,7 +110,7 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
                 exeSystem.setPubliclyAvailable(true);
                 exeSystem.setType(RemoteSystemType.EXECUTION);
                 exeSystem.setTenantId(tenantId);
-                log.debug("Inserting execution system " + exeSystem.getSystemId());
+//                log.debug("Inserting execution system " + exeSystem.getSystemId());
                 systemDao.persist(exeSystem);
             }
 
@@ -160,7 +160,7 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
                     software.setDefaultNodes(q.getMaxNodes() > 0 ? q.getMaxNodes() : null);
                     software.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode() > 0 ? q
                             .getMaxProcessorsPerNode() : null);
-                    log.debug("Adding software " + software.getUniqueName());
+//                    log.debug("Adding software " + software.getUniqueName());
                     SoftwareDao.persist(software);
                 }
             }

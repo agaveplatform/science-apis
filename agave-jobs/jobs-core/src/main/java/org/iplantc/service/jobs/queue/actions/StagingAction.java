@@ -65,8 +65,7 @@ public class StagingAction extends AbstractWorkerAction {
      * .agave.archive shadow file from the remote job directory and staging
      * everything not in there to the user-supplied Job.archivePath on the 
      * Job.archiveSystem
-     * 
-     * @param job
+     *
      * @throws SystemUnavailableException
      * @throws SystemUnknownException
      * @throws JobException

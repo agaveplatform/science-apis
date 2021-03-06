@@ -28,7 +28,7 @@
 	},
 	"storage":{
       "host": "${condor.host}",
-      "port": ${condor.port},
+      "port": ${condor.data.port},
       "protocol":"SFTP",
       "rootDir":"/",
       "homeDir":"/home/testuser",

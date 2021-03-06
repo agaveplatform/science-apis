@@ -4,8 +4,8 @@ volumes: {}
 
 services:
 
-  traefik:
-    image: traefik:v2.1
+  test-proxy:
+    image: traefik:v2.4
     command:
       - "--log.level=DEBUG"
       - "--api.insecure=true"
@@ -14,11 +14,9 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entryPoints.web.address=:80"
       - "--entryPoints.websecure.address=:443"
-      - "--entryPoints.grpc.address=:50052"
     ports:
       - 8000:80
       - 8443:443
-      - 50052:50052
       - 28443:8080
     restart: on-failure
     volumes:
@@ -30,11 +28,11 @@ services:
     image: agaveplatform/requestbin:2.0.0
     hostname: requestbin
     restart: on-failure
+    environment:
+      - 'STORAGE_BACKEND=requestbin.storage.redis.RedisStorage'
+      - 'REDIS_URL=redis://redis:6379/5000'
     ports:
       - '5101:5000'
-    environment:
-      REDIS_URL: redis://redis:6379/0
-      STORAGE_BACKEND: requestbin.storage.redis.RedisStorage
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.requestbin.rule=Host(`requestbin`)"
@@ -81,10 +79,19 @@ services:
   redis:
     image: redis:alpine
     restart: on-failure
+    ports:
+      - '6379'
 
   maildev:
     image: agaveplatform/maildev:latest
     ports:
       - "25:25"
-#    volumes:
-#      - ./persistence-services/maildev/rules.json:/data/rules.json
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.maildev.rule=Host(`maildev`)"
+      - "traefik.http.routers.maildev.entrypoints=web"
+      - "traefik.http.routers.maildev.tls=false"
+      - "traefik.http.routers.maildev-secure.rule=Host(`maildev`)"
+      - "traefik.http.routers.maildev-secure.entrypoints=websecure"
+      - "traefik.http.routers.maildev-secure.tls=true"
+      - "traefik.http.services.maildev.loadbalancer.server.port=80"

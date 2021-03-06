@@ -231,6 +231,7 @@
         <skip.integration.irods3.tests>true</skip.integration.irods3.tests>
         <skip.integration.irods4.tests>true</skip.integration.irods4.tests>
         <skip.integration.sftp.tests>true</skip.integration.sftp.tests>
+        <skip.integration.sftprelay.tests>true</skip.integration.sftprelay.tests>
         <skip.integration.http.tests>true</skip.integration.http.tests>
         <skip.post-integration.pause>true</skip.post-integration.pause>
 
@@ -795,6 +796,17 @@
             </properties>
         </profile>
         <profile>
+            <id>remote-data-tests</id>
+            <properties>
+                <skip.integration.tests>false</skip.integration.tests>
+                <skip.integration.irods3.tests>true</skip.integration.irods3.tests>
+                <skip.integration.irods4.tests>false</skip.integration.irods4.tests>
+                <skip.integration.sftp.tests>false</skip.integration.sftp.tests>
+                <skip.integration.sftprelay.tests>false</skip.integration.sftprelay.tests>
+                <skip.integration.http.tests>false</skip.integration.http.tests>
+            </properties>
+        </profile>
+        <profile>
             <id>coverage</id>
             <!-- **********************************************************************
                 **	Enabled Jacoco coverage reporting on unit and integration tests  **
@@ -942,53 +954,85 @@
                 <myproxy.host>myproxy</myproxy.host>
                 <myproxy.port>7515</myproxy.port>
 
-                <sftp.host>sftp</sftp.host>
+<!--                <sftp.host>sftp</sftp.host>-->
+                <sftp.host>test-proxy</sftp.host>
                 <sftp.port>10022</sftp.port>
-                <sftptunnel.host>sftptunnel</sftptunnel.host>
+                <sftptunnel.host>test-proxy</sftptunnel.host>
+<!--                <sftptunnel.host>sftptunnel</sftptunnel.host>-->
                 <sftptunnel.port>10033</sftptunnel.port>
                 <sftphidden.host>sftphidden</sftphidden.host>
-                <sftphidden.port>10022</sftphidden.port>
+                <sftphidden.port>22</sftphidden.port>
 
-                <irods3.host>irods3</irods3.host>
+<!--                <irods3.host>irods3</irods3.host>-->
+                <irods3.host>test-proxy</irods3.host>
                 <irods3.port>1247</irods3.port>
 
-                <irods3pam.host>irods3-pam</irods3pam.host>
+<!--                <irods3pam.host>irods3-pam</irods3pam.host>-->
+                <irods3pam.host>test-proxy</irods3pam.host>
                 <irods3pam.port>1248</irods3pam.port>
 
-                <irods4.host>irods4</irods4.host>
+<!--                <irods4.host>irods4</irods4.host>-->
+                <irods4.host>test-proxy</irods4.host>
                 <irods4.port>1257</irods4.port>
 
                 <ftp.host>ftpd</ftp.host>
                 <ftp.port>10021</ftp.port>
 
-                <condor.host>condor</condor.host>
+                <condor.host>test-proxy</condor.host>
+<!--                <condor.host>condor</condor.host>-->
+<!--                <condor.data.port>22</condor.data.port>-->
+                <condor.data.port>10155</condor.data.port>
                 <condor.port>10155</condor.port>
 
                 <gsissh.host>gridftp</gsissh.host>
                 <gsissh.port>2222</gsissh.port>
 
-                <ssh.host>ssh</ssh.host>
+                <ssh.host>test-proxy</ssh.host>
+<!--                <ssh.host>ssh</ssh.host>-->
+<!--                <ssh.data.port>22</ssh.data.port>-->
+                <ssh.data.port>10111</ssh.data.port>
                 <ssh.port>10111</ssh.port>
 
-                <loadleveler.host>openlava</loadleveler.host>
+                <loadleveler.host>test-proxy</loadleveler.host>
+<!--                <loadleveler.host>openlava</loadleveler.host>-->
+<!--                <loadleveler.data.port>22</loadleveler.data.port>-->
+                <loadleveler.data.port>10177</loadleveler.data.port>
                 <loadleveler.port>10177</loadleveler.port>
 
-                <lsf.host>openlava</lsf.host>
+                <lsf.host>test-proxy</lsf.host>
+<!--                <lsf.host>openlava</lsf.host>-->
+<!--                <lsf.data.port>22</lsf.data.port>-->
+                <lsf.data.port>10177</lsf.data.port>
                 <lsf.port>10177</lsf.port>
 
-                <moab.host>torque</moab.host>
+                <moab.host>test-proxy</moab.host>
+<!--                <moab.host>torque</moab.host>-->
+<!--                <moab.data.port>22</moab.data.port>-->
+                <moab.data.port>10144</moab.data.port>
                 <moab.port>10144</moab.port>
 
-                <pbs.host>pbs</pbs.host>
+                <pbs.host>test-proxy</pbs.host>
+<!--                <pbs.host>pbs</pbs.host>-->
+<!--                <pbs.data.port>22</pbs.data.port>-->
+                <pbs.data.port>10188</pbs.data.port>
                 <pbs.port>10188</pbs.port>
 
-                <gridengine.host>gridengine</gridengine.host>
+                <gridengine.host>test-proxy</gridengine.host>
+<!--                <gridengine.host>gridengine</gridengine.host>-->
+<!--                <gridengine.data.port>22</gridengine.data.port>-->
+                <gridengine.data.port>10166</gridengine.data.port>
                 <gridengine.port>10166</gridengine.port>
 
-                <slurm.host>slurm</slurm.host>
+<!--                <slurm.host>slurm</slurm.host>-->
+                <slurm.host>test-proxy</slurm.host>
+                <slurm.data.port>10133</slurm.data.port>
+<!--                <slurm.data.port>22</slurm.data.port>-->
                 <slurm.port>10133</slurm.port>
 
-                <torque.host>torque</torque.host>
+<!--                <torque.host>torque</torque.host>-->
+                <torque.host>test-proxy</torque.host>
+                <torque.data.port>10144</torque.data.port>
+<!--                <torque.data.port>22</torque.data.port>-->
                 <torque.port>10144</torque.port>
 
                 <!-- *********************************************************************

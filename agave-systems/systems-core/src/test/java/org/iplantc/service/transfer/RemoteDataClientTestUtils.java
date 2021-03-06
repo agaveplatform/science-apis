@@ -109,9 +109,7 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
     @BeforeMethod(alwaysRun=true)
     protected void beforeMethod(Method m) throws Exception
     {
-        log.debug("Before method " + m.getName());
-
-    	String resolvedHomeDir = "";
+        String resolvedHomeDir = "";
         try {
             // auth client and ensure test directory is present
             getClient().authenticate();

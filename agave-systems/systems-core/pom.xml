@@ -58,7 +58,7 @@
 									<value>2</value>
 								</property>
 							</properties>
-							<excludedGroups>broken,notReady,irods4,s3,irods3,http,sftp</excludedGroups>
+							<excludedGroups>broken,notReady,irods4,s3,irods3,http,sftp,sftprelay</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
 								</log4j.configuration>
@@ -104,6 +104,29 @@
 								</property>
 							</properties>
 							<groups>sftp</groups>
+							<excludedGroups>broken,notReady</excludedGroups>
+							<systemPropertyVariables>
+								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+								</log4j.configuration>
+							</systemPropertyVariables>
+						</configuration>
+					</execution>
+
+					<execution>
+						<id>${project.artifactId}-integration-sftprelay</id>
+						<phase>integration-test</phase>
+						<goals>
+							<goal>integration-test</goal>
+						</goals>
+						<configuration>
+							<skipTests>${skip.integration.sftprelay.tests}</skipTests>
+							<properties>
+								<property>
+									<name>parallel</name>
+									<value>methods</value>
+								</property>
+							</properties>
+							<groups>sftprelay</groups>
 							<excludedGroups>broken,notReady</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties

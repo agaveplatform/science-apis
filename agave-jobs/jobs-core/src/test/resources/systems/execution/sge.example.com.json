@@ -28,7 +28,7 @@
   },
   "storage": {
     "host": "${gridengine.host}",
-    "port": ${gridengine.port},
+    "port": ${gridengine.data.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

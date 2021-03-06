@@ -31,7 +31,7 @@ public class AgaveJobCleanupListener implements JobListener {
 	@Override
 	public void jobToBeExecuted(JobExecutionContext context) {
 		// ignore this bit. we only care about cleaning up the job.
-		log.debug("About to execution " + context.getJobDetail().getKey().toString());
+		log.debug("About to execute job " + context.getJobDetail().getKey().toString());
 	}
 
 	/* (non-Javadoc)

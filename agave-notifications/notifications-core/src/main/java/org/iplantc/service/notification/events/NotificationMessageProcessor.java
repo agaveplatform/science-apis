@@ -127,7 +127,8 @@ public class NotificationMessageProcessor
 		
 		
 		try {
-			NotificationCallbackProviderType provider = NotificationCallbackProviderType.getInstanceForUri(event.getNotification().getCallbackUrl());
+			NotificationCallbackProviderType provider = NotificationCallbackProviderType.getInstanceForUri(
+					event.getNotification().getCallbackUrl(), event.getNotification().getTenantId());
 			
 			ObjectMapper mapper = new ObjectMapper();
 			if (provider == EMAIL) {

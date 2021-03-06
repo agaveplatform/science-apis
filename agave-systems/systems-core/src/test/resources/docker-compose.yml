@@ -1,9 +1,11 @@
 version: '2'
 
+volumes: {}
+
 services:
 
-  traefik:
-    image: traefik:v2.1
+  test-proxy:
+    image: traefik:v2.4
     command:
       - "--log.level=DEBUG"
       - "--api.insecure=true"
@@ -12,12 +14,22 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entryPoints.web.address=:80"
       - "--entryPoints.websecure.address=:443"
-      - "--entryPoints.grpc.address=:50052"
+      - "--entryPoints.grpc.address=:50051"
+      - "--entryPoints.sftp.address=:${sftp.port}"
+      - "--entryPoints.sftptunnel.address=:${sftptunnel.port}"
+      - "--entryPoints.irods3.address=:${irods3.port}"
+      - "--entryPoints.irods3pam.address=:${irods3pam.port}"
+      - "--entryPoints.irods4.address=:${irods4.port}"
     ports:
       - 8000:80
       - 8443:443
-      - 50052:50052
+      - 50051:50051
       - 28443:8080
+      - ${sftp.port}:${sftp.port}
+      - ${sftptunnel.port}:${sftptunnel.port}
+      - ${irods3.port}:${irods3.port}
+      - ${irods3pam.port}:${irods3pam.port}
+      - ${irods4.port}:${irods4.port}
     restart: on-failure
     cpu_shares: 128
     volumes:
@@ -25,16 +37,18 @@ services:
     labels:
       - "traefik.enable=true"
 
+  ##############################################################
+  # Data containers
+  ##############################################################
+
   sftp-relay:
     image: sftp-relay:develop
-    ports:
-      - 50051:50051
-      - 9092
     restart: on-failure
     cpu_shares: 128
     mem_reservation: 128M
     volumes:
-      - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
+      - ${project.basedir}/../../scratch:${project.basedir}/../../scratch
+      - ../:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
@@ -44,31 +58,34 @@ services:
 
   sftp:
     image: agaveplatform/sshd:latest
-    command: "-p 10022"
     restart: on-failure
     cpu_shares: 128
     mem_reservation: 128M
-    ports:
-      - '10022:10022'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.sftp.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.sftp.entrypoints=sftp"
+      - "traefik.tcp.routers.sftp.service=sftp-svc"
+      - "traefik.tcp.services.sftp-svc.loadbalancer.server.port=22"
 
   sftptunnel:
     image: agaveplatform/sshd:latest
-    command: "-p 10033"
     restart: on-failure
     cpu_shares: 128
     links:
       - sftphidden
-    ports:
-      - '10033:10033'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.sftptunnel.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.sftptunnel.entrypoints=sftptunnel"
+      - "traefik.tcp.routers.sftptunnel.service=sftptunnel"
+      - "traefik.tcp.services.sftptunnel-svc.loadbalancer.server.port=22"
 
   sftphidden:
     image: agaveplatform/sshd:latest
-    command: "-p 10044"
     restart: on-failure
     cpu_shares: 128
     mem_reservation: 128M
-    ports:
-      - '10044:10044'
 
   irods4:
     image: agaveapi/irods:4.0.3
@@ -81,9 +98,12 @@ services:
     environment:
       - 'DOCKER_HOSTNAME=docker.example.com'
       - 'IRODS_ZONE=iplant'
-    ports:
-      - '1257:1247'
-      - '5442:5432'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.irods4.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.irods4.entrypoints=irods4"
+      - "traefik.tcp.routers.irods4.service=irods4-svc"
+      - "traefik.tcp.services.irods4-svc.loadbalancer.server.port=1247"
 
   irods3:
     image: agaveapi/irods:3.3.1
@@ -92,10 +112,12 @@ services:
     mem_reservation: 1G
     cpus: 1.0
     cpu_shares: 1024
-    ports:
-      - '10055:22'
-      - '1247:1247'
-      - '5432:5432'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.irods3.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.irods3.entrypoints=irods3"
+      - "traefik.tcp.routers.irods3.service=irods3-svc"
+      - "traefik.tcp.services.irods3-svc.loadbalancer.server.port=1247"
 
   irods3-pam:
     image: agaveapi/irods-pam:latest
@@ -104,16 +126,21 @@ services:
     mem_reservation: 1G
     cpus: 1.0
     cpu_shares: 1024
-    ports:
-      - '10066:22'
-      - '1248:1247'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.irods3pam.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.irods3pam.entrypoints=irods3pam"
+      - "traefik.tcp.routers.irods3pam.service=irods3pam-svc"
+      - "traefik.tcp.services.irods3pam-svc.loadbalancer.server.port=1247"
+
+  ##############################################################
+  # Webhook containers
+  ##############################################################
 
   requestbin:
     image: agaveplatform/requestbin:2.0.0
     hostname: requestbin
     restart: on-failure
-    mem_reservation: 256M
-    cpu_shares: 128
     ports:
       - '5101:5000'
     labels:
@@ -130,8 +157,6 @@ services:
     image: agaveplatform/httpbin:latest
     hostname: httpbin
     restart: on-failure
-    mem_reservation: 256M
-    cpu_shares: 256
     ports:
       - '8200:8000'
     labels:
@@ -147,8 +172,6 @@ services:
     image: agaveplatform/apache-dev:latest
     hostname: docker.example.com
     restart: on-failure
-    mem_reservation: 256M
-    cpu_shares: 256
     ports:
       - '10080:80'
       - '10443:443'
@@ -167,6 +190,7 @@ services:
       - "traefik.http.routers.httpd-secure.service=httpd"
       - "traefik.http.routers.httpd-secure.tls=true"
       - "traefik.http.services.httpd.loadbalancer.server.port=80"
+
 
 #  ftp:
 #    image: agaveapi/pure-ftpd:latest

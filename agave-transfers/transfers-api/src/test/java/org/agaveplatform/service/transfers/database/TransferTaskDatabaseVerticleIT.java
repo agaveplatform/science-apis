@@ -96,8 +96,9 @@ public class TransferTaskDatabaseVerticleIT extends BaseTestCase {
                     service.updateStatus(TENANT_ID, testTransferTask.getUuid(), TransferStatusType.TRANSFERRING.name(), context.succeeding(updateStatusJsonTransferTask -> {
                         assertEquals(TransferStatusType.TRANSFERRING.name(), updateStatusJsonTransferTask.getString("status"),
                                 "Object returned from updateStatus should have updated status");
-                        assertTrue(getByIdJsonTransferTask.getInstant("last_updated").isBefore(updateStatusJsonTransferTask.getInstant("last_updated")),
-                                "Object returned from udpate have last_updated value more recent than original");
+                        assertTrue(getByIdJsonTransferTask.getInstant("last_updated").isBefore(updateStatusJsonTransferTask.getInstant("last_updated")) ||
+                                getByIdJsonTransferTask.getInstant("last_updated").equals(updateStatusJsonTransferTask.getInstant("last_updated")),
+                                "Object returned from update have last_updated value more recent than original");
                         assertEquals(createdJsonTransferTask.getLong("id"), updateStatusJsonTransferTask.getLong("id"),
                                 "Object returned from create should have same id as original");
 

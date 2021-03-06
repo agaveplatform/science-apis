@@ -33,7 +33,7 @@ create-transfertasks-table: |
   ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
   
 get-transfertask: |
-  SELECT * FROM TransferApiTasks USE INDEX (uuid_tenant) WHERE `uuid` = ? and `tenant_id` = ?
+  SELECT * FROM TransferApiTasks WHERE `uuid` = ? and `tenant_id` = ?
 get-transfertask-by-id: |
   SELECT * FROM TransferApiTasks WHERE `id` = ?
 create-transfertask: |
@@ -151,3 +151,7 @@ find_transfertask_by_root_task_id_src_dest: |
     AND `source` = ?
     AND `dest` = ?
     AND `tenant_id` = ?
+get_bytes_transferred_for_all_children: |
+  SELECT SUM(bytes_transferred) as bytes_transferred from TransferApiTasks
+  WHERE `tenant_id` = ? AND `parent_task` = ?
+

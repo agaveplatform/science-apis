@@ -1,10 +1,14 @@
 package org.iplantc.service.transfer;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.UUID;
 
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,73 +19,107 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-public abstract class AbstractPathResolutionTests extends BaseTransferTestCase 
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+public abstract class AbstractPathResolutionTests// extends BaseTransferTestCase
 {
-	protected abstract JSONObject getSystemJson() throws JSONException, IOException;
-	
-	@BeforeClass
-    public void beforeClass() throws Exception {
-    	super.beforeClass();
-    	
-    	JSONObject json = getSystemJson();
-    	system = (StorageSystem)StorageSystem.fromJSON(json);
-    	system.setOwner(SYSTEM_USER);
+//	protected abstract JSONObject getSystemJson() throws JSONException, IOException;
+//
+//	@BeforeClass
+//    public void beforeClass() throws Exception {
+//    	super.beforeClass();
+//
+//    	JSONObject json = getSystemJson();
+//    	system = (StorageSystem)StorageSystem.fromJSON(json);
+//    	system.setOwner(SYSTEM_USER);
+//
+//		String originalHomeDir = system.getStorageConfig().getHomeDir();
+//		originalHomeDir = StringUtils.isEmpty(originalHomeDir) ? "" : originalHomeDir;
+//		String threadHomeDir = String.format("%s/%s/thread-%s-%d",
+//				originalHomeDir,
+//				getClass().getSimpleName(),
+//				UUID.randomUUID().toString(),
+//				Thread.currentThread().getId());
+//
+//		system.getStorageConfig().setHomeDir(threadHomeDir);
+//		storageConfig = system.getStorageConfig();
+//        String oldSalt = system.getSystemId() + storageConfig.getHost() +
+//        		storageConfig.getDefaultAuthConfig().getUsername();
+//
+//        salt = this.getClass().getSimpleName() +
+//				system.getStorageConfig().getHost() +
+//    			system.getStorageConfig().getDefaultAuthConfig().getUsername();
+//
+//        if (!StringUtils.isEmpty(system.getStorageConfig().getDefaultAuthConfig().getPassword())) {
+//        	system.getStorageConfig().getDefaultAuthConfig().setPassword(system.getStorageConfig().getDefaultAuthConfig().getClearTextPassword(oldSalt));
+//        	system.getStorageConfig().getDefaultAuthConfig().encryptCurrentPassword(salt);
+//        }
+//
+//        if (!StringUtils.isEmpty(system.getStorageConfig().getDefaultAuthConfig().getPublicKey())) {
+//        	system.getStorageConfig().getDefaultAuthConfig().setPublicKey(system.getStorageConfig().getDefaultAuthConfig().getClearTextPublicKey(oldSalt));
+//        	system.getStorageConfig().getDefaultAuthConfig().encryptCurrentPublicKey(salt);
+//        }
+//
+//        if (!StringUtils.isEmpty(system.getStorageConfig().getDefaultAuthConfig().getPrivateKey())) {
+//        	system.getStorageConfig().getDefaultAuthConfig().setPrivateKey(system.getStorageConfig().getDefaultAuthConfig().getClearTextPrivateKey(oldSalt));
+//        	system.getStorageConfig().getDefaultAuthConfig().encryptCurrentPrivateKey(salt);
+//        }
+//
+//        if (!StringUtils.isEmpty(system.getStorageConfig().getDefaultAuthConfig().getCredential())) {
+//        	system.getStorageConfig().getDefaultAuthConfig().encryptCurrentCredential(salt);
+//        }
+//
+//		system.setSystemId("serializedCredentialTest");
+//
+//		SystemDao dao = Mockito.mock(SystemDao.class);
+//        Mockito.when(dao.findBySystemId(Mockito.anyString()))
+//            .thenReturn(system);
+//    }
+//
+//	@AfterClass
+//    public void afterClass() throws Exception
+//    {
+//    	clearSystems();
+//    }
 
-		String originalHomeDir = system.getStorageConfig().getHomeDir();
-		originalHomeDir = StringUtils.isEmpty(originalHomeDir) ? "" : originalHomeDir;
-		String threadHomeDir = String.format("%s/%s/thread-%s-%d",
-				originalHomeDir,
-				getClass().getSimpleName(),
-				UUID.randomUUID().toString(),
-				Thread.currentThread().getId());
+	/**
+	 * Returns the {@link RemoteDataClient} class to mock out for testing.
+	 * @return the class to tests
+	 */
+	protected abstract Class<? extends RemoteDataClient> getRemoteDataClientClass();
 
-		system.getStorageConfig().setHomeDir(threadHomeDir);
-		storageConfig = system.getStorageConfig();
-        String oldSalt = system.getSystemId() + storageConfig.getHost() + 
-        		storageConfig.getDefaultAuthConfig().getUsername();
-        
-        salt = this.getClass().getSimpleName() + 
-				system.getStorageConfig().getHost() + 
-    			system.getStorageConfig().getDefaultAuthConfig().getUsername();
-		
-        if (!StringUtils.isEmpty(system.getStorageConfig().getDefaultAuthConfig().getPassword())) {
-        	system.getStorageConfig().getDefaultAuthConfig().setPassword(system.getStorageConfig().getDefaultAuthConfig().getClearTextPassword(oldSalt));
-        	system.getStorageConfig().getDefaultAuthConfig().encryptCurrentPassword(salt);
-        }
-        
-        if (!StringUtils.isEmpty(system.getStorageConfig().getDefaultAuthConfig().getPublicKey())) {
-        	system.getStorageConfig().getDefaultAuthConfig().setPublicKey(system.getStorageConfig().getDefaultAuthConfig().getClearTextPublicKey(oldSalt));
-        	system.getStorageConfig().getDefaultAuthConfig().encryptCurrentPublicKey(salt);
-        }
-        
-        if (!StringUtils.isEmpty(system.getStorageConfig().getDefaultAuthConfig().getPrivateKey())) {
-        	system.getStorageConfig().getDefaultAuthConfig().setPrivateKey(system.getStorageConfig().getDefaultAuthConfig().getClearTextPrivateKey(oldSalt));
-        	system.getStorageConfig().getDefaultAuthConfig().encryptCurrentPrivateKey(salt);
-        }
-        
-        if (!StringUtils.isEmpty(system.getStorageConfig().getDefaultAuthConfig().getCredential())) {
-        	system.getStorageConfig().getDefaultAuthConfig().encryptCurrentCredential(salt);
-        }
-		
-		system.setSystemId("serializedCredentialTest");
-		
-		SystemDao dao = Mockito.mock(SystemDao.class);
-        Mockito.when(dao.findBySystemId(Mockito.anyString()))
-            .thenReturn(system);
-    }
-    
-    @AfterClass
-    public void afterClass() throws Exception 
-    {
-    	clearSystems();
-    }
-    
-    protected abstract RemoteDataClient createRemoteDataClient(String rootDir, String homeDir)  throws Exception;
+	/**
+	 * Creates a mock {@link RemoteDataClient} instance of type {@link #getRemoteDataClientClass()}}
+	 * with rootDir and homeDir set to the proper values and {@link RemoteDataClient#resolvePath(String)}
+	 * left to call the real method.
+	 * @param rootDir the {@link StorageConfig#getRootDir()}
+	 * @param homeDir the {@link StorageConfig#getHomeDir()}
+	 * @return a mocked {@link RemoteDataClient} to test
+	 * @throws Exception
+	 */
+	protected RemoteDataClient createRemoteDataClient(String rootDir, String homeDir)  throws Exception {
+		Path rootPath = Paths.get(rootDir.isEmpty() ? "/" : rootDir);
+		Path homePath = rootPath.resolve(homeDir.startsWith("/") ? homeDir.substring(1) : homeDir);
+
+		String srootPath = rootPath.toString();
+		srootPath += srootPath.endsWith("/") ? "" : "/";
+
+		String shomePath = homePath.toString();
+		shomePath += shomePath.endsWith("/") ? "" : "/";
+
+		RemoteDataClient remoteDataClient = mock(getRemoteDataClientClass());
+		when(remoteDataClient.getRootDir()).thenReturn(srootPath);
+		when(remoteDataClient.getHomeDir()).thenReturn(shomePath);
+		when(remoteDataClient.resolvePath(anyString())).thenCallRealMethod();
+
+		return remoteDataClient;
+	}
     
 	@DataProvider(name = "resolvePathProvider", parallel=true)
     public Object[][] resolvePathProvider() throws Exception 
-    {	
-		
+    {
 		RemoteDataClient noRootNoHome = createRemoteDataClient("",  "");
     	RemoteDataClient absoluteRootNoHome = createRemoteDataClient("/root",  "");
     	RemoteDataClient relateveRootNoHome = createRemoteDataClient("root",  "");
@@ -185,28 +223,26 @@ public abstract class AbstractPathResolutionTests extends BaseTransferTestCase
 	/**
 	 * Tests whether the given path resolves correctly against the virutal root and home for a given protocol's remote data client.
 	 * 
-	 * @param client
-	 * @param beforePath
-	 * @param resolvedPath
-	 * @param shouldThrowException
-	 * @param message
+	 * @param remoteDataClient mock remote data client to test the method
+	 * @param testAgaveSystemPath the {@link RemoteSystem} path provided by users for remote data actions
+	 * @param expectedResolvedRemotePath the expected path the {@code testAgaveSystemPath} resolves to on the remote system
+	 * @param shouldThrowException true if the path resolution should throw an exception
+	 * @param message message for failed test assertion exceptions
 	 */
-	protected void abstractResolvePath(RemoteDataClient client, String beforePath, String resolvedPath, boolean shouldThrowException, String message)
+	protected void abstractResolvePath(RemoteDataClient remoteDataClient, String testAgaveSystemPath, String expectedResolvedRemotePath, boolean shouldThrowException, String message)
 	{
-    	boolean actuallyThrewException = false;
-    	
-		try 
+    	try
     	{
-    		String afterPath = client.resolvePath(beforePath);
-    		Assert.assertEquals(afterPath, resolvedPath, 
-    				"Resolved path " + afterPath + " did not match the expected resolved path of " + resolvedPath);
+    		String afterPath = remoteDataClient.resolvePath(testAgaveSystemPath);
+    		Assert.assertEquals(afterPath, expectedResolvedRemotePath,
+    				"Resolved path " + afterPath + " did not match the expected resolved path of " +
+							expectedResolvedRemotePath);
     	} 
     	catch (Exception e) {
-    		actuallyThrewException = true;
-        	if (!shouldThrowException) e.printStackTrace();
+    		if (!shouldThrowException) {
+        		Assert.fail(message, e);
+			}
         }
-    	
-    	Assert.assertEquals(actuallyThrewException, shouldThrowException, message);
 	}
 	
 	public abstract void resolvePath(RemoteDataClient client, String beforePath, String resolvedPath, boolean shouldThrowException, String message);

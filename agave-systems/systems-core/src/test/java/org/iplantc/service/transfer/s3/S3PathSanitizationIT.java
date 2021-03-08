@@ -11,6 +11,7 @@ import java.util.UUID;
 
 import org.iplantc.service.transfer.AbstractPathSanitizationTest;
 import org.iplantc.service.transfer.IPathSanitizationTest;
+import org.iplantc.service.transfer.TransferTestRetryAnalyzer;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -39,7 +40,6 @@ public class S3PathSanitizationIT extends AbstractPathSanitizationTest implement
      */
     @Override
     protected char[] getSpecialCharArray() {
-//        String specialChars = "{";
         String specialChars = " _-!@#$%^*()+[]{}:."; // excluding "&" due to a bug in irods
         return specialChars.toCharArray();
     }

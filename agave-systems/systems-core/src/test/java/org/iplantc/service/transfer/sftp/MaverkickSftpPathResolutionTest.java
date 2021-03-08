@@ -1,15 +1,15 @@
-package org.iplantc.service.transfer.azure;
+package org.iplantc.service.transfer.sftp;
 
 import org.iplantc.service.transfer.AbstractPathResolutionTests;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.testng.annotations.Test;
 
-@Test(enabled = false, groups={"unit"})
-public class AzurePathResolutionTests extends AbstractPathResolutionTests
+@Test(groups={"unit"})
+public class MaverkickSftpPathResolutionTest extends AbstractPathResolutionTests
 {
 	@Override
 	protected Class<? extends RemoteDataClient> getRemoteDataClientClass() {
-		return AzureJcloud.class;
+		return MaverickSFTP.class;
 	}
 
 	@Test(dataProvider="resolvePathProvider")

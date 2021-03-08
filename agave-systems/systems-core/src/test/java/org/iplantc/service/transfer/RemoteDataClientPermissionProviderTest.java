@@ -11,6 +11,8 @@ import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.FileUtils;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
+import org.iplantc.service.systems.exceptions.SystemException;
+import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageConfig;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -31,13 +33,8 @@ import org.testng.annotations.Test;
 
 public abstract class RemoteDataClientPermissionProviderTest extends BaseTransferTestCase implements IRemoteDataClientPermissionProviderTest {
 	private static final Logger	log	= Logger.getLogger(RemoteDataClientPermissionProviderTest.class);
-	protected RemoteDataClient client;
-	protected StorageSystem system;
-	protected StorageConfig storageConfig;
-//	protected String SYSTEM_USER;
-//	protected String tempDir = "deleteme-" + System.currentTimeMillis();
-	
-	protected ThreadLocal<RemoteDataClient> threadClient = new ThreadLocal<RemoteDataClient>();
+
+	protected ThreadLocal<RemoteDataClient> threadClient = new ThreadLocal<>();
     
 	protected String permissionDir;
 	protected String permissionFile;
@@ -49,53 +46,69 @@ public abstract class RemoteDataClientPermissionProviderTest extends BaseTransfe
 	 * @throws Exception
 	 */
 	@BeforeClass
-	protected void beforeClass() throws Exception 
-	{
+	protected void beforeClass() throws Exception {
 		super.beforeClass();
-	    
+
+		init();
+	}
+
+	/**
+	 * Initialize storage system and permission directories
+	 * @throws Exception if the client cannot be initialized
+	 */
+	protected void init() throws Exception {
 		permissionDir = LOCAL_DIR_NAME;
 		permissionFile = permissionDir + "/" + LOCAL_BINARY_FILE_NAME;
 		
 		JSONObject json = getSystemJson();
     	json.remove("id");
     	json.put("id", this.getClass().getSimpleName());
-		system = (StorageSystem)StorageSystem.fromJSON(json);
+		StorageSystem system = StorageSystem.fromJSON(json);
     	system.setOwner(SYSTEM_USER);
-    	storageConfig = system.getStorageConfig();
-    	String homeDir = storageConfig.getHomeDir();
+    	String homeDir = system.getStorageConfig().getHomeDir();
         homeDir = StringUtils.isEmpty(homeDir) ? "" : homeDir;
         system.getStorageConfig().setHomeDir( homeDir + "/" + getClass().getSimpleName());
-        salt = system.getSystemId() + storageConfig.getHost() + 
-        		storageConfig.getDefaultAuthConfig().getUsername();
-        
-//        SystemDao dao = new SystemDao();
-//        if (dao.findBySystemId(system.getSystemId()) == null) {
-//            dao.persist(system);
-//        }
+        this.system = system;
+        this.storageConfig = system.getStorageConfig();
+        this.salt = system.getSystemId() + system.getStorageConfig().getHost() +
+				system.getStorageConfig().getDefaultAuthConfig().getUsername();
+
         SystemDao dao = Mockito.mock(SystemDao.class);
         Mockito.when(dao.findBySystemId(Mockito.anyString()))
-            .thenReturn(system);
+               .thenReturn(this.system);
+	}
+
+	protected StorageSystem getSystem() throws SystemException {
+		if (this.system == null) {
+			try {
+				init();
+			} catch (Exception e) {
+				throw new SystemException("Failed to initialize test StorageSystem", e);
+			}
+		}
+
+		return this.system;
 	}
 	
 	/**
-     * Gets getClient() from current thread
-     * @return
-     * @throws RemoteCredentialException 
-     * @throws RemoteDataException 
+     * Gets {@link RemoteDataClient} from current thread
+     * @return a valid client configured to use the test directory for this class
      */
     protected RemoteDataClient getClient() 
     {
         RemoteDataClient client;
         try {
-            if (threadClient.get() == null) {
-                client = system.getRemoteDataClient();
+			if (threadClient.get() == null) {
+				client = getSystem().getRemoteDataClient();
 				String threadHomeDir = String.format("%s/thread-%s-%d",
-						system.getStorageConfig().getHomeDir(),
+						getSystem().getStorageConfig().getHomeDir(),
 						UUID.randomUUID().toString(),
 						Thread.currentThread().getId());
-				client.updateSystemRoots(client.getRootDir(),  threadHomeDir);
+				client.updateSystemRoots(client.getRootDir(), threadHomeDir);
 				threadClient.set(client);
-            } 
+			}
+		} catch (SystemException e) {
+        	Assert.fail("Unable to initialize RemoteDataClient due to missing system definition.", e);
         } catch (RemoteDataException | RemoteCredentialException e) {
             Assert.fail("Failed to get client", e);
         }

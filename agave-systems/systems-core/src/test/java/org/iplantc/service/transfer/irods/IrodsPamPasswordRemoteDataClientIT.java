@@ -14,7 +14,7 @@ import java.io.IOException;
  *
  */
 @Test(groups={"integration", "irods3","irods3-pam.operations"})
-public class IrodsPamPasswordRemoteDataClientTest extends IrodsPasswordRemoteDataClientIT {
+public class IrodsPamPasswordRemoteDataClientIT extends IrodsPasswordRemoteDataClientIT {
 
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.transfer.AbstractRemoteDataClientTest#getSystemJson()

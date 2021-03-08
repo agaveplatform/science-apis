@@ -24,8 +24,8 @@ import com.google.common.io.Files;
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"local.filesystem"})
-public class LocalRemoteDataClientTest extends AbstractRemoteDataClientTest 
+@Test(singleThreaded=true, groups={"integration","local","local.filesystem"})
+public class LocalRemoteDataClientIT extends AbstractRemoteDataClientTest
 {
     @BeforeClass
     @Override
@@ -43,9 +43,7 @@ public class LocalRemoteDataClientTest extends AbstractRemoteDataClientTest
     	FileUtils.deleteQuietly(new File(getLocalDownloadDir()));
         
     	try
-    	{	
-//    		getClient().authenticate();
-    		
+    	{
     		// ensure test directory is present and empty
             File homeDir = new File(getClient().resolvePath(""));
             if (homeDir.exists()) {

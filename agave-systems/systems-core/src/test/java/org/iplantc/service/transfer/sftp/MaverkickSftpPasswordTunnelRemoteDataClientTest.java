@@ -13,8 +13,8 @@ import java.io.IOException;
  * @author dooley
  *
  */
-@Test(groups= {"sftp","sftp-password-tunnel.operations","broken"})
-public class SftpPasswordTunnelRemoteDataClientTest extends SftpPasswordRemoteDataClientIT {
+@Test(enabled=false, groups= {"sftp","sftp-password-tunnel.operations","broken"})
+public class MaverkickSftpPasswordTunnelRemoteDataClientTest extends MaverkickSftpPasswordRemoteDataClientIT {
 
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {

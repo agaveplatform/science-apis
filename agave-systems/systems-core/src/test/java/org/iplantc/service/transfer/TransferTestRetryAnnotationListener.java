@@ -1,8 +1,7 @@
-package org.iplantc.service.transfer.s3;
+package org.iplantc.service.transfer;
 
 import org.testng.IAnnotationTransformer;
 import org.testng.annotations.ITestAnnotation;
-import org.testng.util.RetryAnalyzerCount;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;

@@ -19,8 +19,8 @@ import java.util.UUID;
  * @author dooley
  *
  */
-@Test(groups= {"sftp","sftp-sshkeys-tunnel.operation","broken"})
-public class SftpSshKeysTunnelRemoteDataClientTest extends SftpSshKeysRemoteDataClientIT {
+@Test(enabled=false, groups={"sftp","sftp-sshkeys-tunnel.operation","broken"})
+public class MaverkickSftpSshKeysTunnelRemoteDataClientTest extends MaverkickSftpSshKeysRemoteDataClientIT {
 
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {

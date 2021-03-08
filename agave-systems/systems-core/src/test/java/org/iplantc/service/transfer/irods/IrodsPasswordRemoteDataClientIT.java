@@ -7,7 +7,7 @@ import org.iplantc.service.systems.model.JSONTestDataUtil;
 import org.iplantc.service.transfer.IRemoteDataClientIT;
 import org.iplantc.service.transfer.RemoteDataClientTestUtils;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
+import org.iplantc.service.transfer.TransferTestRetryAnalyzer;
 import org.irods.jargon.core.connection.AuthScheme;
 import org.json.JSONException;
 import org.json.JSONObject;

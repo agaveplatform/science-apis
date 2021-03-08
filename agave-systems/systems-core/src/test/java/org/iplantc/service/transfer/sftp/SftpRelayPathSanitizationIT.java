@@ -1,33 +1,33 @@
 /**
  * 
  */
-package org.iplantc.service.transfer.ftp;
+package org.iplantc.service.transfer.sftp;
+
+import org.iplantc.service.transfer.AbstractPathSanitizationTest;
+import org.iplantc.service.transfer.IPathSanitizationTest;
+import org.iplantc.service.transfer.TransferTestRetryAnalyzer;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.testng.annotations.Test;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.UUID;
 
-import org.iplantc.service.transfer.AbstractPathSanitizationTest;
-import org.iplantc.service.transfer.IPathSanitizationTest;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.testng.annotations.Test;
-
 /**
  * @author dooley
  *
  */
-@Test(singleThreaded=true, groups= {"ftp","ftp.file.sanitization","broken"})
-public class FtpPathSanitizationTest extends AbstractPathSanitizationTest implements IPathSanitizationTest {
+@Test(groups= {"sftprelay","sftprelay.path.sanitization"})
+public class SftpRelayPathSanitizationIT extends AbstractPathSanitizationTest implements IPathSanitizationTest {
 
     /* (non-Javadoc)
      * @see org.iplantc.service.transfer.AbstractPathSanitizationTest#getSystemJson()
      */
     @Override
     protected JSONObject getSystemJson() throws JSONException, IOException {
-        return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "ftp.example.com.json");
+        return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "sftp.example.com.json");
     }
 
     @Override

@@ -1,40 +1,43 @@
 /**
  * 
  */
-package org.iplantc.service.transfer.irods4;
+package org.iplantc.service.transfer.sftp;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.exceptions.EncryptionException;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
+import org.iplantc.service.systems.model.AuthConfig;
+import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.AbstractPathSanitizationTest;
 import org.iplantc.service.transfer.IPathSanitizationTest;
+import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.TransferTestRetryAnalyzer;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.mockito.Mockito;
+import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.UUID;
 
 /**
  * @author dooley
  *
  */
-@Test(groups={"irods4","irods4.path.sanitization"})
-public class Irods4PathSanitizationIT extends AbstractPathSanitizationTest implements IPathSanitizationTest {
+@Test(groups= {"sftp","sftp.path.sanitization"})
+public class MaverkickSftpPathSanitizationIT extends AbstractPathSanitizationTest implements IPathSanitizationTest {
 
-    private static final Logger log = Logger.getLogger(Irods4PathSanitizationIT.class);
+    private static final Logger log = Logger.getLogger(AbstractPathSanitizationTest.class);
 
-    /* (non-Javadoc)
-     * @see org.iplantc.service.transfer.AbstractPathSanitizationTest#getSystemJson()
-     */
-    @Override
-    protected JSONObject getSystemJson() throws JSONException, IOException {
-        return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "irods4.example.com.json");
-    }
-
-//    @BeforeClass
-//    @Override
+//    @BeforeClass(alwaysRun=true)
 //    protected void beforeSubclass() throws Exception {
 //        super.beforeClass();
 //
@@ -53,21 +56,66 @@ public class Irods4PathSanitizationIT extends AbstractPathSanitizationTest imple
 //        SystemDao dao = Mockito.mock(SystemDao.class);
 //        Mockito.when(dao.findBySystemId(Mockito.anyString()))
 //                .thenReturn(system);
-//
-//        log.debug("Pausing to allow irods4 to catchup.");
-//        Thread.sleep(3000);
-//
-//        try {
-//            RemoteDataClient client = system.getRemoteDataClient();
-//            client.authenticate();
-//            client.delete("/testuser/" + getClass().getSimpleName());
-//        } catch (Exception e) {
-//            log.debug("IRODS4 home directory " + system.getStorageConfig().getHomeDir() +
-//                    " not present at start of test.");
-//        }
 //    }
 
+//    @BeforeMethod(alwaysRun=true)
+//    protected void beforeMethod(Method m) throws Exception
+//    {
+//        String resolvedHomeDir = "";
+//        try {
+//            // auth client and ensure test directory is present
+//            getClient().authenticate();
+//        } catch (RemoteDataException e) {
+//            log.error(e.getMessage());
+//        }
+//
+//        try {
+//            resolvedHomeDir = getClient().resolvePath("");
+//
+//            if (!getClient().mkdirs("")) {
+//                if (!getClient().isDirectory("")) {
+//                    Assert.fail("System home directory " + resolvedHomeDir + " exists, but is not a directory.");
+//                }
+//            }
+//        } catch (IOException | RemoteDataException | AssertionError e) {
+//            throw e;
+//        } catch (Exception e) {
+//            Assert.fail("Failed to create home directory " + resolvedHomeDir + " before test method.", e);
+//        }
+//    }
+//
+//    @Override
+//    protected RemoteDataClient getClient()
+//    {
+//        RemoteDataClient client;
+//        try {
+//            AuthConfig userAuthConfig = system.getStorageConfig().getDefaultAuthConfig();
+//            String salt = system.getSystemId() + system.getStorageConfig().getHost() + userAuthConfig.getUsername();
+//            String username = userAuthConfig.getUsername();
+//            String password = userAuthConfig.getClearTextPassword(salt);
+//            String host = system.getStorageConfig().getHost();
+//            int port = system.getStorageConfig().getPort();
+//            String rootDir = system.getStorageConfig().getRootDir();
+//            String threadHomeDir = String.format("%s/thread-%s-%d",
+//                    system.getStorageConfig().getHomeDir(),
+//                    UUID.randomUUID().toString(),
+//                    Thread.currentThread().getId());
+//            client = new MaverickSFTP(host, port, username, password, rootDir, threadHomeDir);
+//            threadClient.set(client);
+//        } catch (EncryptionException e) {
+//            Assert.fail("Failed to get client", e);
+//        }
+//
+//        return threadClient.get();
+//    }
 
+    /* (non-Javadoc)
+     * @see org.iplantc.service.transfer.AbstractPathSanitizationTest#getSystemJson()
+     */
+    @Override
+    protected JSONObject getSystemJson() throws JSONException, IOException {
+        return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "sftp.example.com.json");
+    }
 
     @Override
     @Test(groups={"mkdir"}, dataProvider="mkDirSanitizesSingleSpecialCharacterProvider", retryAnalyzer = TransferTestRetryAnalyzer.class)
@@ -88,8 +136,6 @@ public class Irods4PathSanitizationIT extends AbstractPathSanitizationTest imple
 
         _mkDirsSanitizationTest(absolutePath + filename, shouldSucceed, message);
     }
-
-
 
     @Override
     @Test(groups={"mkdir"}, dataProvider="mkDirSanitizesRepeatedSpecialCharacterProvider", retryAnalyzer = TransferTestRetryAnalyzer.class)

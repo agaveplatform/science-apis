@@ -1,15 +1,15 @@
-package org.iplantc.service.transfer.azure;
+package org.iplantc.service.transfer.s3;
 
 import org.iplantc.service.transfer.AbstractPathResolutionTests;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.testng.annotations.Test;
 
-@Test(enabled = false, groups={"unit"})
-public class AzurePathResolutionTests extends AbstractPathResolutionTests
+@Test(groups={"unit"})
+public class S3PathResolutionTest extends AbstractPathResolutionTests
 {
 	@Override
 	protected Class<? extends RemoteDataClient> getRemoteDataClientClass() {
-		return AzureJcloud.class;
+		return S3Jcloud.class;
 	}
 
 	@Test(dataProvider="resolvePathProvider")

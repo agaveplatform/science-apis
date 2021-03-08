@@ -1,11 +1,8 @@
-package org.iplantc.service.transfer.s3;
+package org.iplantc.service.transfer;
 
 import org.apache.log4j.Logger;
-import org.testng.IRetryAnalyzer;
 import org.testng.ITestResult;
 import org.testng.util.RetryAnalyzerCount;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class TransferTestRetryAnalyzer extends RetryAnalyzerCount {
@@ -32,7 +29,6 @@ public class TransferTestRetryAnalyzer extends RetryAnalyzerCount {
                 result.getMethod().getMethodName(),
                 getCount());
         log.debug(message);
-        System.out.println(message);
         return true;
     }
 

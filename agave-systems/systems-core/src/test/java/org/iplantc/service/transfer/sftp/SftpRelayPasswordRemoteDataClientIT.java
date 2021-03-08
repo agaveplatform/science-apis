@@ -13,13 +13,12 @@ import org.iplantc.service.transfer.IRemoteDataClientIT;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientTestUtils;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
+import org.iplantc.service.transfer.TransferTestRetryAnalyzer;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -157,6 +156,9 @@ public class SftpRelayPasswordRemoteDataClientIT extends RemoteDataClientTestUti
 	@Override
 	protected Path _createTempFile(String prefix, String suffix) throws IOException {
 		Path mountedRelayServerDataDirectory = Paths.get("target/test-classes/transfer");
+//		if (!Files.exists(mountedRelayServerDataDirectory)) {
+//			Files.createDirectory(mountedRelayServerDataDirectory, null);
+//		}
 		return Files.createTempFile(mountedRelayServerDataDirectory, prefix, suffix);
 	}
 

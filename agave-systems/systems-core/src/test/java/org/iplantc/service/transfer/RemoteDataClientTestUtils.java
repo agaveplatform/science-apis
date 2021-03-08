@@ -1307,18 +1307,25 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
         finally {
             try { getClient().delete(remoteBaseDir); } catch (Exception ignore) {}
             try {
-                if (expectedDownloadPath != null)
-                    Assert.assertTrue(FileUtils.deleteQuietly(expectedDownloadPath.toFile()),
-                            "Failed to cleanup expected download path " + expectedDownloadPath.toString());
+                if (expectedDownloadPath != null) {
+                    if (Files.exists(expectedDownloadPath) && expectedDownloadPath.toFile().isFile()) {
+                        Assert.assertTrue(FileUtils.deleteQuietly(expectedDownloadPath.getParent().toFile()),
+                                "Failed to cleanup expected download parent directory " + expectedDownloadPath.getParent().toString());
+                    } else {
+                        Assert.assertTrue(FileUtils.deleteQuietly(expectedDownloadPath.toFile()),
+                                "Failed to cleanup expected download path " + expectedDownloadPath.toString());
+                    }
+                }
             } catch(Throwable ignore) {}
+
             try {
                 if (localPath != null) {
-                    if (Files.isDirectory(localPath)) {
-                        Assert.assertTrue(FileUtils.deleteQuietly(localPath.toFile()),
-                                "Failed to cleanup test dir " + localPath.toString());
+                    if (Files.exists(localPath) && localPath.toFile().isFile()) {
+                            Assert.assertTrue(FileUtils.deleteQuietly(localPath.getParent().toFile()),
+                                    "Failed to cleanup local test dir " + localPath.getParent().toString());
                     } else {
-                        Assert.assertTrue(FileUtils.deleteQuietly(localPath.getParent().toFile()),
-                                "Failed to cleanup test dir " + localPath.getParent().toString());
+                        Assert.assertTrue(FileUtils.deleteQuietly(localPath.toFile()),
+                                "Failed to cleanup local test dir " + localPath.toString());
                     }
                 }
             } catch(Throwable ignore) { }
@@ -2113,9 +2120,15 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
             for (RemoteFileInfo fileInfo: remoteListing)
             {
                 File localFile = new File(LOCAL_DIR, fileInfo.getName());
-
-                Assert.assertEquals(fileInfo.getSize(), localFile.length(),
-                        "Remote file is a different size than the local one.");
+                if (fileInfo.isFile()) {
+                    Assert.assertTrue(localFile.isFile(),
+                            "Synchronized local directory should not exist as a file on the remote system.");
+                    Assert.assertEquals(fileInfo.getSize(), localFile.length(),
+                            "Remote file is a different size than the local one.");
+                } else {
+                    Assert.assertTrue(localFile.isDirectory(),
+                            "Synchronized local file should not exist as a directory on the remote system.");
+                }
             }
         }
         catch (Exception e)
@@ -2167,8 +2180,15 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
                         String.format("No local file found matching remote remote file item %s/%s",
                                 remoteBaseDir, fileInfo.getName()));
 
-                Assert.assertEquals(fileInfo.getSize(), localFile.length(),
-                        "Remote file is a different size than the local one.");
+                if (fileInfo.isFile()) {
+                    Assert.assertTrue(localFile.isFile(),
+                            "Synchronized local directory should not exist as a file on the remote system.");
+                    Assert.assertEquals(fileInfo.getSize(), localFile.length(),
+                            "Remote file is a different size than the local one.");
+                } else {
+                    Assert.assertTrue(localFile.isDirectory(),
+                            "Synchronized local file should not exist as a directory on the remote system.");
+                }
 
                 Assert.assertEquals(fileInfo.getLastModified(), lastUpdatedMap.get(fileInfo.getName()),
                         "Dates do not match up. File must have been overwritten.");
@@ -2222,9 +2242,15 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
             for (RemoteFileInfo fileInfo: remoteListing)
             {
                 File localFile = new File(LOCAL_DIR, fileInfo.getName());
-
-                Assert.assertEquals(fileInfo.getSize(), localFile.length(),
-                        "Remote file is a different size than the local one.");
+                if (fileInfo.isFile()) {
+                    Assert.assertTrue(localFile.isFile(),
+                            "Synchronized local directory should not exist as a file on the remote system.");
+                    Assert.assertEquals(fileInfo.getSize(), localFile.length(),
+                            "Remote file is a different size than the local one.");
+                } else {
+                    Assert.assertTrue(localFile.isDirectory(),
+                            "Synchronized local file should not exist as a directory on the remote system.");
+                }
             }
         }
         catch (Exception e)
@@ -2269,12 +2295,14 @@ public abstract class RemoteDataClientTestUtils extends BaseTransferTestCase
             {
                 File localFile = new File(LOCAL_DIR, fileInfo.getName());
 
-                Assert.assertEquals(fileInfo.getSize(), localFile.length(),
-                        "Remote file is a different size than the local one.");
-
                 Assert.assertEquals(fileInfo.isDirectory(), localFile.isDirectory(),
                         "Remote file is " + (localFile.isDirectory()? "not ": "") +
-                        "a file like the local one. Sync should delete remote and replace with local.");
+                                "a file like the local one. Sync should delete remote and replace with local.");
+
+                if (fileInfo.isFile()) {
+                    Assert.assertEquals(fileInfo.getSize(), localFile.length(),
+                            "Remote file is a different size than the local one.");
+                }
             }
         }
         catch (Exception e)

@@ -19,7 +19,7 @@ import java.io.IOException;
  *
  */
 @Test(groups={"sftprelay", "sftprelay-sshkeys.operations"})
-public class SftpRelaySshKeysRemoteDataClientTest extends SftpRelayPasswordRemoteDataClientIT {
+public class SftpRelaySshKeysRemoteDataClientIT extends SftpRelayPasswordRemoteDataClientIT {
 
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {

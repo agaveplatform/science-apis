@@ -15,6 +15,7 @@ import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.BaseTransferTestCase;
 import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.TransferTestRetryAnalyzer;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.Instant;
 import org.json.JSONException;

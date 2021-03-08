@@ -1,15 +1,15 @@
-package org.iplantc.service.transfer.azure;
+package org.iplantc.service.transfer.irods;
 
 import org.iplantc.service.transfer.AbstractPathResolutionTests;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.testng.annotations.Test;
 
-@Test(enabled = false, groups={"unit"})
-public class AzurePathResolutionTests extends AbstractPathResolutionTests
+@Test(groups= {"unit"})
+public class IrodsPathResolutionTest extends AbstractPathResolutionTests
 {
 	@Override
 	protected Class<? extends RemoteDataClient> getRemoteDataClientClass() {
-		return AzureJcloud.class;
+		return IRODS.class;
 	}
 
 	@Test(dataProvider="resolvePathProvider")

@@ -1,7 +1,6 @@
 package org.iplantc.service.transfer;
 
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
 import org.testng.annotations.Test;
 
 import java.io.FileNotFoundException;

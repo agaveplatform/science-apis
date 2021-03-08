@@ -5,14 +5,12 @@ package org.iplantc.service.transfer.irods;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import org.iplantc.service.transfer.AbstractPathSanitizationTest;
 import org.iplantc.service.transfer.IPathSanitizationTest;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
+import org.iplantc.service.transfer.TransferTestRetryAnalyzer;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.annotations.DataProvider;

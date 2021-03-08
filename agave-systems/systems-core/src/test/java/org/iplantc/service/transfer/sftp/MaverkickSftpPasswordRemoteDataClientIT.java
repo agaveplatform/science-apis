@@ -9,7 +9,7 @@ import org.iplantc.service.transfer.IRemoteDataClientIT;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientTestUtils;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
+import org.iplantc.service.transfer.TransferTestRetryAnalyzer;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
@@ -24,8 +24,8 @@ import java.util.UUID;
  * @author dooley
  *
  */
-@Test(singleThreaded = false, groups={"sftp","sftp.operations"})
-public class SftpSshKeysRemoteDataClientIT extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
+@Test(groups={"sftp","sftp.operations"})
+public class MaverkickSftpPasswordRemoteDataClientIT extends RemoteDataClientTestUtils implements IRemoteDataClientIT {
 
 	protected String containerName;
 
@@ -34,7 +34,7 @@ public class SftpSshKeysRemoteDataClientIT extends RemoteDataClientTestUtils imp
 	 */
 	@Override
 	protected JSONObject getSystemJson() throws JSONException, IOException {
-		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "sftp-sshkeys.example.com.json");
+		return jtd.getTestDataObject(STORAGE_SYSTEM_TEMPLATE_DIR + "/" + "sftp-password.example.com.json");
 	}
 
 	@Override
@@ -56,8 +56,6 @@ public class SftpSshKeysRemoteDataClientIT extends RemoteDataClientTestUtils imp
 				String salt = system.getSystemId() + system.getStorageConfig().getHost() + userAuthConfig.getUsername();
 				String username = userAuthConfig.getUsername();
 				String password = userAuthConfig.getClearTextPassword(salt);
-				String privateKey = userAuthConfig.getClearTextPrivateKey(salt);;
-				String publicKey = userAuthConfig.getClearTextPublicKey(salt);
 				String host = system.getStorageConfig().getHost();
 				int port = system.getStorageConfig().getPort();
 				String rootDir = system.getStorageConfig().getRootDir();
@@ -66,7 +64,7 @@ public class SftpSshKeysRemoteDataClientIT extends RemoteDataClientTestUtils imp
 						UUID.randomUUID().toString(),
 						Thread.currentThread().getId());
 
-				client = new MaverickSFTP(host, port, username, password, rootDir, threadHomeDir, publicKey, privateKey);
+				client = new MaverickSFTP(host, port, username, password, rootDir, threadHomeDir);
 				threadClient.set(client);
 			}
 		} catch (EncryptionException e) {

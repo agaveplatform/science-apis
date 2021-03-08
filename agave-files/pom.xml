@@ -29,6 +29,54 @@
                 <artifactId>maven-failsafe-plugin</artifactId>
             </plugin>
         </plugins>
+
+		<pluginManagement>
+			<plugins>
+				<!-- iRODS containers take a while to startup, so we use a custom await config here
+					 to wait for them to start up completely. -->
+				<plugin>
+					<groupId>org.agaveplatform.ops</groupId>
+					<artifactId>await-maven-plugin</artifactId>
+					<version>${await-maven-plugin.version}</version>
+					<executions>
+						<execution>
+							<phase>pre-integration-test</phase>
+							<goals>
+								<goal>Await</goal>
+							</goals>
+							<configuration>
+								<initialWait>5000</initialWait>
+								<skip>${skip.integration.tests}</skip>
+								<poll>
+									<attempts>10</attempts>
+									<sleep>5000</sleep>
+								</poll>
+								<tcpConnections>
+									<tcpConnection>
+										<host>${irods3.host}</host>
+										<port>${irods3.port}</port>
+									</tcpConnection>
+									<tcpConnection>
+										<host>${irods4.host}</host>
+										<port>${irods4.port}</port>
+									</tcpConnection>
+								</tcpConnections>
+								<httpConnections>
+									<httpConnection>
+										<url>http://httpd:10080/public/</url>
+										<statusCode>200</statusCode>
+									</httpConnection>
+									<httpConnection>
+										<url>http://httpbin:8200/status/200</url>
+										<statusCode>200</statusCode>
+									</httpConnection>
+								</httpConnections>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
+			</plugins>
+		</pluginManagement>
 	</build>
 
 	<modules>

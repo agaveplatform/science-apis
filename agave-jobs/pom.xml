@@ -89,7 +89,7 @@
 								<goal>Await</goal>
 							</goals>
 							<configuration>
-								<initialWait>30000</initialWait>
+								<initialWait>5000</initialWait>
 								<skip>${skip.integration.tests}</skip>
 								<poll>
 									<attempts>10</attempts>
@@ -108,19 +108,17 @@
 										<host>${irods3pam.host}</host>
 										<port>${irods3pam.port}</port>
 									</tcpConnection>
-									<httpConnections>
-										<host>httpd</host>
-										<port>10443</port>
-									</httpConnections>
-									<httpConnections>
-										<host>httpd</host>
-										<port>10080</port>
-									</httpConnections>
-									<httpConnections>
-										<host>httpbin</host>
-										<port>8200</port>
-									</httpConnections>
 								</tcpConnections>
+								<httpConnections>
+									<httpConnection>
+										<url>http://httpd:10080/public/</url>
+										<status>200</status>
+									</httpConnection>
+									<httpConnection>
+										<url>http://httpbin:8200/status/200</url>
+										<status>200</status>
+									</httpConnection>
+								</httpConnections>
 							</configuration>
 						</execution>
 					</executions>

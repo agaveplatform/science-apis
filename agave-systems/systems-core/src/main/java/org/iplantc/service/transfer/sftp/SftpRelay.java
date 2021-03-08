@@ -1847,6 +1847,10 @@ public final class SftpRelay implements RemoteDataClient {
         String resolvedSrc = resolvePath(remotesrc);
         String resolvedDest = resolvePath(remotedest);
 
+        // ensure the native streaming client is authenticated in case this is the first
+        // use of the native maverick library.
+        nativeAuthenticate();
+
         Shell shell = null;
         try {
             if (ssh2.isAuthenticated()) {

@@ -163,15 +163,15 @@ public class FTP extends FTPClient implements RemoteDataClient
 	public String resolvePath(String path) throws FileNotFoundException
 	{
 		if (StringUtils.isEmpty(path)) {
-		    return StringUtils.stripEnd(homeDir, " ");
+		    return StringUtils.stripEnd(getHomeDir(), " ");
 		}
 		else if (path.startsWith("/")) 
 		{
-			path = rootDir + path.replaceFirst("/", "");
+			path = getRootDir() + path.replaceFirst("/", "");
 		}
 		else
 		{
-			path = homeDir + path;
+			path = getHomeDir() + path;
 		}
 		
 		String adjustedPath = path;
@@ -188,8 +188,8 @@ public class FTP extends FTPClient implements RemoteDataClient
 		if (path == null) {
 			throw new FileNotFoundException("The specified path " + path + 
 					" does not exist or the user does not have permission to view it.");
-		} else if (!path.startsWith(rootDir)) {
-			if (!path.equals(StringUtils.removeEnd(rootDir, "/"))) {
+		} else if (!path.startsWith(getRootDir())) {
+			if (!path.equals(StringUtils.removeEnd(getRootDir(), "/"))) {
 				throw new FileNotFoundException("The specified path " + path + 
 					" does not exist or the user does not have permission to view it.");
 			}
@@ -205,8 +205,8 @@ public class FTP extends FTPClient implements RemoteDataClient
     		String parent = StringUtils.isEmpty(dir) ? ".." : dir + "/..";
     		String resolvedParentPath = resolvePath(parent);
             if (!doesExist(parent) 
-                    && StringUtils.startsWith(resolvedParentPath, rootDir) 
-                    && !StringUtils.equals(resolvedParentPath, rootDir)) 
+                    && StringUtils.startsWith(resolvedParentPath, getRootDir())
+                    && !StringUtils.equals(resolvedParentPath, getRootDir()))
             {
                 mkdirs(parent);
             }

@@ -249,7 +249,7 @@ public class IRODS implements RemoteDataClient
 		{
 			this.irodsAccount = createAccount();
 
-			log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " open connection for thread");
+			log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()  + " open connection for thread");
 			stat("/", false); // Avoid an infinite loop.
 		}
 		catch (java.io.FileNotFoundException | FileNotFoundException ignored) {
@@ -398,15 +398,15 @@ public class IRODS implements RemoteDataClient
 	public String resolvePath(String path) throws java.io.FileNotFoundException
 	{
 		if (StringUtils.isBlank(path)) {
-		    return StringUtils.stripEnd(homeDir, " ");
+		    return StringUtils.stripEnd(getHomeDir(), " ");
 		}
 		else if (path.startsWith("/"))
 		{
-			path = rootDir + path.replaceFirst("/", "");
+			path = getRootDir() + path.replaceFirst("/", "");
 		}
 		else
 		{
-			path = homeDir + path;
+			path = getHomeDir() + path;
 		}
 
 		String adjustedPath = path;
@@ -423,8 +423,8 @@ public class IRODS implements RemoteDataClient
 		if (path == null) {
 			throw new java.io.FileNotFoundException("The specified path " + path +
 					" does not exist or the user does not have permission to view it.");
-		} else if (!path.startsWith(rootDir)) {
-			if (!path.equals(StringUtils.removeEnd(rootDir, "/"))) {
+		} else if (!path.startsWith(getRootDir())) {
+			if (!path.equals(StringUtils.removeEnd(getRootDir(), "/"))) {
 				throw new java.io.FileNotFoundException("The specified path " + path +
 					" does not exist or the user does not have permission to view it.");
 			}
@@ -459,7 +459,7 @@ public class IRODS implements RemoteDataClient
 		catch (JargonException e) {
 			// check if this means that it already exists, and call that a
 			// 'false' instead of an error
-			if (e.getMessage().indexOf("-809000") > -1) {
+			if (e.getMessage().contains("-809000")) {
 				return false;
 			}
 			throw new RemoteDataException("Failed to create " + remotedir, e);
@@ -494,7 +494,7 @@ public class IRODS implements RemoteDataClient
 		catch (JargonException e) {
 			// check if this means that it already exists, and call that a
 			// 'false' instead of an error
-			if (e.getMessage().indexOf("-809000") > -1) {
+			if (e.getMessage().contains("-809000")) {
 				return false;
 			}
 			throw new RemoteDataException("Failed to create " + remotedir, e);
@@ -872,9 +872,9 @@ public class IRODS implements RemoteDataClient
                     }
                 }
                 finally {
-                    try { in.close(); } catch (Exception e) {}
-                    try { bis.close(); } catch (Exception e) {}
-                    try { randomAccessFile.close(); } catch (Exception e) {}
+                    try { in.close(); } catch (Exception ignored) {}
+                    try { bis.close(); } catch (Exception ignored) {}
+                    try { randomAccessFile.close(); } catch (Exception ignored) {}
                 }
             }
         }
@@ -1513,9 +1513,9 @@ public class IRODS implements RemoteDataClient
 	{
 		try {
 			getAccessObjectFactory().closeSessionAndEatExceptions(irodsAccount);
-		} catch (Throwable e) {}
+		} catch (Throwable ignored) {}
 		this.accessObjectFactory = null;
-		log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " closed connection for thread");
+		log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()  + " closed connection for thread");
 	}
 
 	/* (non-Javadoc)
@@ -1524,16 +1524,11 @@ public class IRODS implements RemoteDataClient
 	@Override
 	public boolean doesExist(String path) throws IOException, RemoteDataException
 	{
-		try
-		{
+		try {
 		    stat(path);
 		    return true;
-		}
-		catch (java.io.FileNotFoundException e) {
+		} catch (java.io.FileNotFoundException e) {
 		    return false;
-		}
-		catch(IOException | RemoteDataException e) {
-			throw e;
 		}
 	}
 
@@ -1565,11 +1560,10 @@ public class IRODS implements RemoteDataClient
 				}
 			}
 
-		    log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " opening raw input stream connection for thread");
-			InputStream in =  irodsFileFactory
-					.instanceIRODSFileInputStream(irodsFile);
+		    log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()  + " opening raw input stream connection for thread");
 
-			return in;
+			return irodsFileFactory
+					.instanceIRODSFileInputStream(irodsFile);
 		}
 		catch (IOException | RemoteDataException e) {
 			throw e;
@@ -1605,11 +1599,10 @@ public class IRODS implements RemoteDataClient
 				}
 			}
 
-			log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  + " opening raw output stream connection for thread");
-			OutputStream out = new BufferedOutputStream(getIRODSFileFactory()
-					.instanceIRODSFileOutputStream(file));
+			log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()  + " opening raw output stream connection for thread");
 
-			return out;
+			return new BufferedOutputStream(getIRODSFileFactory()
+					.instanceIRODSFileOutputStream(file));
 		}
 		catch (IOException | RemoteDataException e) {
 			throw e;
@@ -1646,7 +1639,7 @@ public class IRODS implements RemoteDataClient
                 }
             }
 
-            log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()
+            log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()
             		+ " opening raw random output stream connection for thread");
             return getIRODSFileFactory().instanceIRODSRandomAccessFile(file);
 
@@ -1771,7 +1764,7 @@ public class IRODS implements RemoteDataClient
     			if (!remotePems.isEmpty()) {
     				return remotePems;
     			}
-    		} catch (Exception e) {}
+    		} catch (Exception ignored) {}
 
             file = getFile(path);
 

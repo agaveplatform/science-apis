@@ -114,7 +114,8 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
         if (task != null)
 		{
         	if (log.isDebugEnabled())
-        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task " + transferTask.getUuid() + ".\n" + transferStatus.toString());
+        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task " +
+						transferTask.getUuid());
         	
 			if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_INITIATION)) {
 				task.setStatus(TransferStatusType.TRANSFERRING);
@@ -134,12 +135,12 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 		}
         else {
         	if (log.isDebugEnabled())
-        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task unknown.\n" + transferStatus.toString());
+        		log.debug("Transfer " + transferStatus.getTransferState().name() +
+						" callback received for task unknown.");
         }
         
         if (hasChanged()) {
-			throw new JargonException("Listener received a cancel request for transfer " 
-					+ transferTask.getUuid());
+			throw new JargonException("Listener received a cancel request for transfer " + transferTask.getUuid());
 		}
 	}
 
@@ -157,7 +158,7 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
         if (task != null)
 		{
         	if (log.isDebugEnabled())
-        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task " + transferTask.getUuid() + ".\n" + transferStatus.toString());
+        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task " + transferTask.getUuid());
         	
 			if (transferStatus.getTransferState().equals(TransferStatus.TransferState.OVERALL_INITIATION)) {
 				task.setStatus(TransferStatusType.TRANSFERRING);
@@ -200,7 +201,7 @@ implements MarkerListener, TransferStatusCallbackListener, FileTransferProgress
 		}
         else {
         	if (log.isDebugEnabled())
-        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task unknown.\n" + transferStatus.toString());
+        		log.debug("Transfer " + transferStatus.getTransferState().name() + " callback received for task unknown.");
         }
         return FileStatusCallbackResponse.CONTINUE;
 	}

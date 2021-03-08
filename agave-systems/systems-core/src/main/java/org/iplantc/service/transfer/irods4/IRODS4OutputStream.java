@@ -20,17 +20,13 @@ public class IRODS4OutputStream extends RemoteOutputStream<IRODS4> {
 		this.outFile = remotePath;
 		try 
 		{
-			log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  
+			log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()
 					+ " opening IRODS4 output stream connection for thread");
 			this.output = client.getRawOutputStream(remotePath);
 		}
-		catch (IOException e) {
+		catch (IOException | RemoteDataException e) {
 			throw e;
-		}
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteDataException("Failed to obtain remote output stream for " + remotePath);
 		}
 	}
@@ -49,8 +45,8 @@ public class IRODS4OutputStream extends RemoteOutputStream<IRODS4> {
 
 	public void abort()
 	{
-		try { output.close(); } catch (Exception e) {}
-		log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  
+		try { output.close(); } catch (Exception ignored) {}
+		log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()
 				+ " aborting IRODS4 output stream connection for thread");
 		
 		// We need to explicity give the user who just created this file 
@@ -62,13 +58,13 @@ public class IRODS4OutputStream extends RemoteOutputStream<IRODS4> {
 			log.error("Failed to set permissions on " + outFile + " after stream was closed", e);
 		}
 		
-		try { client.disconnect(); } catch (Exception e) {}
+		try { client.disconnect(); } catch (Exception ignored) {}
 	}
 
 	public void close() throws IOException
 	{	
 		abort();
-		log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  
+		log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()
 				+ " closing IRODS4 output stream connection for thread");
 	}
 

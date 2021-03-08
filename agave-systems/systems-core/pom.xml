@@ -135,22 +135,22 @@
 						</configuration>
 					</execution>
 
-					<execution>
-						<id>${project.artifactId}-integration-irods3-sanitization</id>
-						<phase>integration-test</phase>
-						<goals>
-							<goal>integration-test</goal>
-						</goals>
-						<configuration>
-							<skipTests>${skip.integration.irods3.tests}</skipTests>
-							<groups>irods3.path.sanitization</groups>
-							<excludedGroups>broken,notReady</excludedGroups>
-							<systemPropertyVariables>
-								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
-								</log4j.configuration>
-							</systemPropertyVariables>
-						</configuration>
-					</execution>
+<!--					<execution>-->
+<!--						<id>${project.artifactId}-integration-irods3-sanitization</id>-->
+<!--						<phase>integration-test</phase>-->
+<!--						<goals>-->
+<!--							<goal>integration-test</goal>-->
+<!--						</goals>-->
+<!--						<configuration>-->
+<!--							<skipTests>${skip.integration.irods3.tests}</skipTests>-->
+<!--							<groups>irods3.path.sanitization</groups>-->
+<!--							<excludedGroups>broken,notReady</excludedGroups>-->
+<!--							<systemPropertyVariables>-->
+<!--								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties-->
+<!--								</log4j.configuration>-->
+<!--							</systemPropertyVariables>-->
+<!--						</configuration>-->
+<!--					</execution>-->
 					<execution>
 						<id>${project.artifactId}-integration-irods3</id>
 						<phase>integration-test</phase>
@@ -166,23 +166,6 @@
 								</property>
 							</properties>
 							<groups>irods3</groups>
-							<excludedGroups>broken,notReady,irods3.path.sanitization</excludedGroups>
-							<systemPropertyVariables>
-								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
-								</log4j.configuration>
-							</systemPropertyVariables>
-						</configuration>
-					</execution>
-
-					<execution>
-						<id>${project.artifactId}-integration-irods4-sanitization</id>
-						<phase>integration-test</phase>
-						<goals>
-							<goal>integration-test</goal>
-						</goals>
-						<configuration>
-							<skipTests>${skip.integration.irods4.tests}</skipTests>
-							<groups>irods4.path.sanitization</groups>
 							<excludedGroups>broken,notReady</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
@@ -190,6 +173,23 @@
 							</systemPropertyVariables>
 						</configuration>
 					</execution>
+
+<!--					<execution>-->
+<!--						<id>${project.artifactId}-integration-irods4-sanitization</id>-->
+<!--						<phase>integration-test</phase>-->
+<!--						<goals>-->
+<!--							<goal>integration-test</goal>-->
+<!--						</goals>-->
+<!--						<configuration>-->
+<!--							<skipTests>${skip.integration.irods4.tests}</skipTests>-->
+<!--							<groups>irods4.path.sanitization</groups>-->
+<!--							<excludedGroups>broken,notReady</excludedGroups>-->
+<!--							<systemPropertyVariables>-->
+<!--								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties-->
+<!--								</log4j.configuration>-->
+<!--							</systemPropertyVariables>-->
+<!--						</configuration>-->
+<!--					</execution>-->
 					<execution>
 						<id>${project.artifactId}-integration-irods4</id>
 						<phase>integration-test</phase>
@@ -205,7 +205,7 @@
 								</property>
 							</properties>
 							<groups>irods4</groups>
-							<excludedGroups>broken,notReady,irods4.path.sanitization</excludedGroups>
+							<excludedGroups>broken,notReady</excludedGroups>
 							<systemPropertyVariables>
 								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
 								</log4j.configuration>
@@ -213,61 +213,10 @@
 						</configuration>
 					</execution>
 
-
-<!--					<execution>-->
-<!--						<phase>integration-test</phase>-->
-<!--						<goals>-->
-<!--							<goal>integration-test</goal>-->
-<!--						</goals>-->
-<!--						<configuration>-->
-<!--							<skipTests>${skip.integration.tests}</skipTests>-->
-<!--							<properties>-->
-<!--								<property>-->
-<!--									<name>parallel</name>-->
-<!--									<value>methods</value>-->
-<!--								</property>-->
-<!--								<property>-->
-<!--									<name>dataproviderthreadcount</name>-->
-<!--									<value>2</value>-->
-<!--								</property>-->
-<!--							</properties>-->
-<!--							<groups>irods4.operations,irods4.file.sanitization,irods4.file.resolution</groups>-->
-<!--							<excludedGroups>broken,notReady</excludedGroups>-->
-<!--							<systemPropertyVariables>-->
-<!--								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties-->
-<!--								</log4j.configuration>-->
-<!--							</systemPropertyVariables>-->
-<!--						</configuration>-->
-<!--					</execution>-->
-<!--					<execution>-->
-<!--						<phase>integration-test</phase>-->
-<!--						<goals>-->
-<!--							<goal>integration-test</goal>-->
-<!--						</goals>-->
-<!--						<configuration>-->
-<!--							<skipTests>${skip.integration.tests}</skipTests>-->
-<!--							<properties>-->
-<!--								<property>-->
-<!--									<name>parallel</name>-->
-<!--									<value>methods</value>-->
-<!--								</property>-->
-<!--								<property>-->
-<!--									<name>dataproviderthreadcount</name>-->
-<!--									<value>2</value>-->
-<!--								</property>-->
-<!--							</properties>-->
-<!--							<groups>irods4</groups>-->
-<!--							<excludedGroups>broken,notReady,s3.operations,s3.file.sanitization,s3.file.resolution</excludedGroups>-->
-<!--							<systemPropertyVariables>-->
-<!--								<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties-->
-<!--								</log4j.configuration>-->
-<!--							</systemPropertyVariables>-->
-<!--						</configuration>-->
-<!--					</execution>-->
 					<!-- S3 tests  are disabled by default as they require a valid set of aws keys
 					     and bucket to test against. This is not expensive, and can easily fit in the free
 					     tier, but is not something we configure out of the box, so we leave it a
-					     flagged integration test until we find a suitable s3 compatibile container to
+					     flagged integration test until we find a suitable S3 compatibile container to
 					     test against. -->
 					<execution>
 						<id>${project.artifactId}-integration-s3</id>

@@ -74,6 +74,59 @@
 			<!-- ************************************ -->
 
 		</plugins>
+		<pluginManagement>
+			<plugins>
+				<!-- iRODS containers take a while to startup, so we use a custom await config here
+                     to wait for them to start up completely. -->
+				<plugin>
+					<groupId>org.agaveplatform.ops</groupId>
+					<artifactId>await-maven-plugin</artifactId>
+					<version>${await-maven-plugin.version}</version>
+					<executions>
+						<execution>
+							<phase>pre-integration-test</phase>
+							<goals>
+								<goal>Await</goal>
+							</goals>
+							<configuration>
+								<initialWait>30000</initialWait>
+								<skip>${skip.integration.tests}</skip>
+								<poll>
+									<attempts>10</attempts>
+									<sleep>5000</sleep>
+								</poll>
+								<tcpConnections>
+									<tcpConnection>
+										<host>${irods3.host}</host>
+										<port>${irods3.port}</port>
+									</tcpConnection>
+									<tcpConnection>
+										<host>${irods4.host}</host>
+										<port>${irods4.port}</port>
+									</tcpConnection>
+									<tcpConnection>
+										<host>${irods3pam.host}</host>
+										<port>${irods3pam.port}</port>
+									</tcpConnection>
+									<httpConnections>
+										<host>httpd</host>
+										<port>10443</port>
+									</httpConnections>
+									<httpConnections>
+										<host>httpd</host>
+										<port>10080</port>
+									</httpConnections>
+									<httpConnections>
+										<host>httpbin</host>
+										<port>8200</port>
+									</httpConnections>
+								</tcpConnections>
+							</configuration>
+						</execution>
+					</executions>
+				</plugin>
+			</plugins>
+		</pluginManagement>
 	</build>
 	<dependencies>
 

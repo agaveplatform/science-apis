@@ -1,100 +1,214 @@
 version: '2'
 
-volumes:
-  scratch:
-  etcceph:
-  varlibceph:
+volumes: {}
 
-networks:
-  ceph_net:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.41.0.0/16
 services:
+
+  test-proxy:
+    image: traefik:v2.4
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.grpc.address=:50051"
+      #      - "--entryPoints.mysql.address=:3306"
+      #      - "--entryPoints.mongodb.address=:27017"
+      #      - "--entryPoints.beanstalkd.address=:11300"
+      - "--entryPoints.sftp.address=:${sftp.port}"
+      - "--entryPoints.sftptunnel.address=:${sftptunnel.port}"
+      - "--entryPoints.irods3.address=:${irods3.port}"
+      - "--entryPoints.irods3pam.address=:${irods3pam.port}"
+      - "--entryPoints.irods4.address=:${irods4.port}"
+      - "--entryPoints.ssh.address=:${ssh.port}"
+      - "--entryPoints.slurm.address=:${slurm.port}"
+      - "--entryPoints.torque.address=:${torque.port}"
+      - "--entryPoints.pbs.address=:${pbs.port}"
+      - "--entryPoints.condor.address=:${condor.port}"
+      - "--entryPoints.gridengine.address=:${gridengine.port}"
+      - "--entryPoints.loadleveler.address=:${loadleveler.port}"
+    ports:
+      - 8000:80
+      - 8443:443
+      - 50051:50051
+      - 28443:8080
+      #      - 3306:3306
+      #      - 27017:27017
+      #      - 11300:11300
+      - ${sftp.port}:${sftp.port}
+      - ${sftptunnel.port}:${sftptunnel.port}
+      - ${irods3.port}:${irods3.port}
+      - ${irods3pam.port}:${irods3pam.port}
+      - ${irods4.port}:${irods4.port}
+      - ${ssh.port}:${ssh.port}
+      - ${slurm.port}:${slurm.port}
+      - ${torque.port}:${torque.port}
+      - ${pbs.port}:${pbs.port}
+      - ${condor.port}:${condor.port}
+      - ${gridengine.port}:${gridengine.port}
+      - ${loadleveler.port}:${loadleveler.port}
+    restart: on-failure
+    cpu_shares: 128
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    labels:
+      - "traefik.enable=true"
+
+  ##############################################################
+  # Data containers
+  ##############################################################
 
   sftp-relay:
     image: sftp-relay:develop
-    ports:
-      - 50051:50051
-    restart: always
+    #    ports:
+    #      - 50051
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
     volumes:
-      - scratch:/scratch
+      - ${project.basedir}/../../scratch:${project.basedir}/../../scratch
+      - ../:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
+      - "traefik.http.routers.sftp-relay.entrypoints=grpc"
+      - "traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c"
+      - "traefik.http.services.sftp-relay.loadbalancer.server.port=50051"
 
   sftp:
     image: agaveplatform/sshd:latest
-    command: "-p 10022"
-    hostname: docker.example.com
-    ports:
-      - '10022:10022'
+    #    command: "-p ${sftp.port}"
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
+    #    ports:
+    #      - '${sftp.port}:${sftp.port}'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.sftp.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.sftp.entrypoints=sftp"
+      - "traefik.tcp.routers.sftp.service=sftp-svc"
+      - "traefik.tcp.services.sftp-svc.loadbalancer.server.port=22"
 
   sftptunnel:
-   image: agaveplatform/sshd:latest
-   command: "-p 10033"
-   links:
-     - sftphidden
-   ports:
-     - '10033:10033'
+    image: agaveplatform/sshd:latest
+    #    command: "-p ${sftptunnel.port}"
+    restart: on-failure
+    cpu_shares: 128
+    links:
+      - sftphidden
+    #    ports:
+    #      - '${sftptunnel.port}:${sftptunnel.port}'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.sftptunnel.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.sftptunnel.entrypoints=sftptunnel"
+      - "traefik.tcp.routers.sftptunnel.service=sftptunnel"
+      - "traefik.tcp.services.sftptunnel-svc.loadbalancer.server.port=22"
 
   sftphidden:
     image: agaveplatform/sshd:latest
-    command: "-p 10044"
-    ports:
-      - '10044:10044'
+    #    command: "-p ${sftphidden.port}"
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
+  #    ports:
+  #      - '${sftphidden.port}:${sftphidden.port}'
 
   irods4:
     image: agaveapi/irods:4.0.3
     command: changeit
     hostname: docker.example.com
+    restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
     environment:
       - 'DOCKER_HOSTNAME=docker.example.com'
       - 'IRODS_ZONE=iplant'
-    ports:
-      - '1257:1247'
-      - '5442:5432'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 2G
+    #    ports:
+    #      - '1247'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.irods4.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.irods4.entrypoints=irods4"
+      - "traefik.tcp.routers.irods4.service=irods4-svc"
+      - "traefik.tcp.services.irods4-svc.loadbalancer.server.port=1247"
 
   irods3:
     image: agaveapi/irods:3.3.1
     hostname: docker.example.com
-    ports:
-      - '10055:22'
-      - '1247:1247'
-      - '5432:5432'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 2G
+    restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
+    #    ports:
+    #      - '1247'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.irods3.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.irods3.entrypoints=irods3"
+      - "traefik.tcp.routers.irods3.service=irods3-svc"
+      - "traefik.tcp.services.irods3-svc.loadbalancer.server.port=1247"
 
   irods3-pam:
     image: agaveapi/irods-pam:latest
     hostname: docker.example.com
-    ports:
-      - '10066:22'
-      - '1248:1247'
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 2G
+    restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
+    #    ports:
+    #      - '1247'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.irods3pam.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.irods3pam.entrypoints=irods3pam"
+      - "traefik.tcp.routers.irods3pam.service=irods3pam-svc"
+      - "traefik.tcp.services.irods3pam-svc.loadbalancer.server.port=1247"
+
+  ##############################################################
+  # Webhook containers
+  ##############################################################
 
   requestbin:
     image: agaveplatform/requestbin:2.0.0
     hostname: requestbin
+    restart: on-failure
     ports:
       - '5101:5000'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.requestbin.rule=Host(`requestbin`)"
+      - "traefik.http.routers.requestbin.entrypoints=web"
+      - "traefik.http.routers.requestbin.tls=false"
+      - "traefik.http.routers.requestbin-secure.rule=Host(`requestbin`)"
+      - "traefik.http.routers.requestbin-secure.entrypoints=websecure"
+      - "traefik.http.routers.requestbin-secure.tls=true"
+
+
+  httpbin:
+    image: agaveplatform/httpbin:latest
+    hostname: httpbin
+    restart: on-failure
+    ports:
+      - '8200:8000'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpbin.rule=Host(`httpbin`)"
+      - "traefik.http.routers.httpbin.entrypoints=web"
+      - "traefik.http.routers.httpbin.tls=false"
+      - "traefik.http.routers.httpbin-secure.rule=Host(`httpbin`)"
+      - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
+      - "traefik.http.routers.httpbin-secure.tls=true"
 
   httpd:
     image: agaveplatform/apache-dev:latest
     hostname: docker.example.com
+    restart: on-failure
     ports:
       - '10080:80'
       - '10443:443'
@@ -102,62 +216,134 @@ services:
       - type: bind
         source: ./transfer
         target: /var/www/html/public
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 512M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpd.rule=Host(`httpd`)"
+      - "traefik.http.routers.httpd.entrypoints=web"
+      - "traefik.http.routers.httpd.tls=false"
+      - "traefik.http.routers.httpd.service=httpd"
+      - "traefik.http.routers.httpd-secure.rule=Host(`httpd`)"
+      - "traefik.http.routers.httpd-secure.entrypoints=websecure"
+      - "traefik.http.routers.httpd-secure.service=httpd"
+      - "traefik.http.routers.httpd-secure.tls=true"
+      - "traefik.http.services.httpd.loadbalancer.server.port=80"
 
-#  cephrgw:
-#    image: ceph/daemon:latest-nautilus
-#    command: demo
-#    ports:
-#      - "5000:5000"
-#      - "8080:8080"
-#      - "9000:9000"
-#    environment:
-#      CEPH_PUBLIC_NETWORK: 172.41.0.0/16
-#      MON_IP: 172.41.0.10
-#      RGW_REMOTE_CGI: 1
-#      RGW_REMOTE_CGI_HOST: 172.41.0.10
-#      CEPH_DEMO_UID: 1000
-#      CEPH_DEMO_ACCESS_KEY: agaveuser
-#      CEPH_DEMO_SECRET_KEY: password
-#      CEPH_DEMO_BUCKET: agaveapitestdata
-#    volumes:
-#      - etcceph:/etc/ceph
-#      - varlibceph:/var/lib/ceph
-#    networks:
-#      ceph_net:
-#        ipv4_address: 172.41.0.10
-#
-#  minio:
-#    image: minio/minio:RELEASE.2019-10-12T01-39-57Z
-#    command: "server /data"
-#    environment:
-#      MINIO_ACCESS_KEY: agaveuser
-#      MINIO_SECRET_KEY: password
-#    ports:
-#      - '9000:9000'
-#
-#  minio-init:
-#    image: minio/mc:latest
-#    environment:
-#      MINIO_BUCKET: agaveapitestdata
-#      MINIO_ACCESS_KEY: agaveuser
-#      MINIO_SECRET_KEY: password
-#    depends_on:
-#      - minio
-#    entrypoint:
-#      - sh
-#    command: |
-#        -c "\
-#          set +x && \
-#          while ! nc -z minio 9000; do echo 'Wait minio to startup...' && sleep 0.1; done; \
-#          sleep 5 && \
-#          echo mc config host add myminio http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY && \
-#          mc config host add myminio http://minio:9000 $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY && \
-#          mc rm -r --force myminio/$$MINIO_BUCKET || true && \
-#          mc mb myminio/$$MINIO_BUCKET \
-#        "
+  ##############################################################
+  # Compute containers
+  ##############################################################
+  ssh:
+    image: agaveplatform/sshd:latest
+    #    command: "-p ${ssh.port}"
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
+    #    ports:
+    #      - '${ssh.port}:${ssh.port}'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.ssh.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.ssh.entrypoints=ssh"
+      - "traefik.tcp.routers.ssh.service=ssh-svc"
+      - "traefik.tcp.services.ssh-svc.loadbalancer.server.port=22"
+
+  #  gsissh:
+  #    image: agaveplatform/gridftp:5
+  #    hostname: docker.example.com
+  #    ports:
+  #      - '2222:2222'
+  #      - '2022:22'
+  #      - '7515:7512'
+
+  slurm:
+    image: agaveplatform/slurm:20.02.3
+    hostname: docker.example.com
+    restart: on-failure
+    privileged: true
+    #    ports:
+    #      - '22'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.slurm.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.slurm.entrypoints=slurm"
+      - "traefik.tcp.routers.slurm.service=slurm-svc"
+      - "traefik.tcp.services.slurm-svc.loadbalancer.server.port=22"
+
+  torque:
+    image: agaveplatform/torque:6.1.3
+    hostname: docker
+    restart: on-failure
+    privileged: true
+    environment:
+      - "HOSTNAME=docker"
+    #    ports:
+    #      - '22'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.torque.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.torque.entrypoints=torque"
+      - "traefik.tcp.routers.torque.service=torque-svc"
+      - "traefik.tcp.services.torque-svc.loadbalancer.server.port=22"
+
+  pbs:
+    image: agaveplatform/pbspro:19.1.2
+    hostname: docker
+    restart: on-failure
+    command:
+      - "tail"
+      - "-f"
+      - "/dev/null"
+    #    ports:
+    #      - '22'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.pbs.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.pbs.entrypoints=pbs"
+      - "traefik.tcp.routers.pbs.service=pbs-svc"
+      - "traefik.tcp.services.pbs-svc.loadbalancer.server.port=22"
+
+  condor:
+    image: agaveplatform/htcondor:8.4.9
+    hostname: docker.example.com
+    restart: on-failure
+    #    ports:
+    #      - '${condor.port}:22'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.condor.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.condor.entrypoints=condor"
+      - "traefik.tcp.routers.condor.service=condor-svc"
+      - "traefik.tcp.services.condor-svc.loadbalancer.server.port=22"
+
+  gridengine:
+    image: agaveplatform/gridengine:6.2
+    hostname: docker.example.com
+    restart: on-failure
+    environment:
+      - "HOSTNAME=docker.example.com"
+    privileged: true
+    #    ports:
+    #      - '${gridengine.port}:22'
+    #      - '6444:6444'
+    #      - '6445:6445'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.gridengine.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.gridengine.entrypoints=gridengine"
+      - "traefik.tcp.routers.gridengine.service=gridengine-svc"
+      - "traefik.tcp.services.gridengine-svc.loadbalancer.server.port=22"
+
+  loadleveler:
+    image: agaveplatform/openlava:3.3
+    restart: on-failure
+    #    ports:
+    #      - '22'
+    #      - '6879:6879'
+    #      - '6878:6878'
+    #      - '6882:6882'
+    #      - '6881:6881'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.loadleveler.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.loadleveler.entrypoints=loadleveler"
+      - "traefik.tcp.routers.loadleveler.service=loadleveler-svc"
+      - "traefik.tcp.services.loadleveler-svc.loadbalancer.server.port=22"

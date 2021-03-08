@@ -119,20 +119,6 @@ services:
       - "traefik.tcp.routers.irods3.service=irods3-svc"
       - "traefik.tcp.services.irods3-svc.loadbalancer.server.port=1247"
 
-  irods3-pam:
-    image: agaveapi/irods-pam:latest
-    hostname: docker.example.com
-    restart: on-failure
-    mem_reservation: 1G
-    cpus: 1.0
-    cpu_shares: 1024
-    labels:
-      - "traefik.enable=true"
-      - "traefik.tcp.routers.irods3pam.rule=HostSNI(`*`)"
-      - "traefik.tcp.routers.irods3pam.entrypoints=irods3pam"
-      - "traefik.tcp.routers.irods3pam.service=irods3pam-svc"
-      - "traefik.tcp.services.irods3pam-svc.loadbalancer.server.port=1247"
-
   ##############################################################
   # Webhook containers
   ##############################################################

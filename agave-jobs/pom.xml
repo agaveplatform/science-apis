@@ -112,11 +112,11 @@
 								<httpConnections>
 									<httpConnection>
 										<url>http://httpd:10080/public/</url>
-										<status>200</status>
+										<statusCode>200</statusCode>
 									</httpConnection>
 									<httpConnection>
 										<url>http://httpbin:8200/status/200</url>
-										<status>200</status>
+										<statusCode>200</statusCode>
 									</httpConnection>
 								</httpConnections>
 							</configuration>

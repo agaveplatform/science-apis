@@ -7,13 +7,14 @@ import io.vertx.core.file.FileSystemException;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.spi.json.JsonCodec;
+import io.vertx.ext.auth.JWTOptions;
 import io.vertx.ext.auth.PubSecKeyOptions;
 import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.jwt.JWTAuth;
 import io.vertx.ext.auth.jwt.JWTAuthOptions;
+//import io.vertx.ext.jwt.
 import io.vertx.ext.jwt.JWK;
 import io.vertx.ext.jwt.JWT;
-import io.vertx.ext.jwt.JWTOptions;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -38,7 +39,6 @@ public class AgaveJWTAuthProviderImpl implements JWTAuth {
     public AgaveJWTAuthProviderImpl(JWTAuthOptions config) {
         this.permissionsClaimKey = config.getPermissionsClaimKey();
         this.jwtOptions = config.getJWTOptions();
-
 
         try {
             // attempt to load pem keys
@@ -106,7 +106,7 @@ public class AgaveJWTAuthProviderImpl implements JWTAuth {
     }
 
     @Override
-    public String generateToken(JsonObject claims, final JWTOptions options) {
+    public String generateToken(JsonObject claims, io.vertx.ext.auth.JWTOptions options) {
         final JsonObject _claims = claims.copy();
 
         // we do some "enhancement" of the claims to support roles and permissions
@@ -116,4 +116,10 @@ public class AgaveJWTAuthProviderImpl implements JWTAuth {
 
         return jwt.sign(_claims, options);
     }
+
+
+//    @Override
+//    public String generateToken(JsonObject jsonObject, io.vertx.ext.auth.JWTOptions jwtOptions) {
+//        return null;
+//    }
 }

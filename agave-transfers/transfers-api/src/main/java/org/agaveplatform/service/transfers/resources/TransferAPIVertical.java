@@ -118,17 +118,17 @@ public class TransferAPIVertical extends AbstractVerticle {
 
         router.delete("/api/transfers/deleteAll").handler(this::deleteAll);
         router.delete("/api/transfers/:uuid").handler(this::deleteOne);
-
+        log.debug("got here");
         // Accept post of a TransferTask, validates the request, and inserts into the db.
         router.post("/api/transfers")
                 // Mount validation handler to ensure the posted json is valid prior to adding
-                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
+//                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
                 // Mount primary handler
                 .handler(this::addOne);
 
         router.put("/api/transfers/:uuid")
                 // Mount validation handler to ensure the posted json is valid prior to adding
-                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferUpdate.class)))
+//                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferUpdate.class)))
                 // Mount primary handler
                 .handler(this::updateOne);
 
@@ -140,7 +140,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         // Accept post of a cancel TransferTask, validates the request, and inserts into the db.
         router.post("/api/transfers/cancel")
                 // Mount validation handler to ensure the posted json is valid prior to adding
-                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
+//                .handler(HTTPRequestValidationHandler.create().addJsonBodySchema(AgaveSchemaFactory.getForClass(TransferTaskRequest.class)))
                 // Mount primary handler
                 .handler(this::cancelAll);
 
@@ -156,6 +156,7 @@ public class TransferAPIVertical extends AbstractVerticle {
 //            HttpServerResponse response = failureRoutingContext.response();
 //            response.setStatusCode(statusCode).end("Sorry! Not today");
 //        });
+
 
         router.errorHandler(500, ctx -> ctx.response()
             .putHeader("content-type", "application/json")
@@ -756,7 +757,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                 .put("http://wso2.org/claims/role", ServiceUtils.explode(",", List.of("Internal/everyone,Internal/subscriber", roles)))
                 .put("http://wso2.org/claims/title", "N/A");
 
-        JWTOptions jwtOptions = new JWTOptions()
+        JWTOptions jwtOptions = (JWTOptions) new JWTOptions()
                 .setAlgorithm("RS256")
                 .setExpiresInMinutes(10_080) // 7 days
                 .setIssuer("transfers-api-integration-tests")

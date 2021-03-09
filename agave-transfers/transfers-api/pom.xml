@@ -19,7 +19,7 @@
     <properties>
         <force.check.update>false</force.check.update>
         <main.basedir>${project.basedir}/../../</main.basedir>
-        <vertx.version>3.8.5</vertx.version>
+        <vertx.version>3.9.6</vertx.version>
         <vertx-testsuite>2.1.6</vertx-testsuite>
         <vertx-maven-plugin.version>1.0.13</vertx-maven-plugin.version>
         <junit5.version>5.4.0</junit5.version>
@@ -167,6 +167,13 @@
     </reporting>
 
     <dependencies>
+        <dependency>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-report-plugin</artifactId>
+            <version>3.0.0-M5</version>
+        </dependency>
+
+
         <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>

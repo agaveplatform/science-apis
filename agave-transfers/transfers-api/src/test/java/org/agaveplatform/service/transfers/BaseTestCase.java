@@ -218,7 +218,7 @@ public abstract class BaseTestCase {
                 .put("http://wso2.org/claims/role", ServiceUtils.explode(",", List.of("Internal/everyone,Internal/subscriber", roles)))
                 .put("http://wso2.org/claims/title", "N/A");
 
-        JWTOptions jwtOptions = new JWTOptions()
+        JWTOptions jwtOptions = (JWTOptions) new JWTOptions()
                 .setAlgorithm("RS256")
                 .setExpiresInMinutes(10_080) // 7 days
                 .setIssuer("transfers-api-integration-tests")

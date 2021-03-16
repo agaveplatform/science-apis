@@ -245,7 +245,7 @@ public class RemoteDataClientFactory {
 			{
 				throw new RemoteCredentialException("No credentials associated with " + system.getSystemId() + ". " +
 						"Please set a default credential" + 
-						(!StringUtils.isEmpty(internalUsername) ? " or a credential for " + internalUsername : "") + 
+						(StringUtils.isNotEmpty(internalUsername) ? " or a credential for " + internalUsername : "") +
 						" in order to access data on this system.");
 			}
 		}
@@ -296,7 +296,7 @@ public class RemoteDataClientFactory {
 	 * @throws NotImplementedException when the schema is not supported
 	 */
 	public RemoteDataClient getInstance(String apiUsername, String internalUsername, URI uri) 
-	throws RemoteDataException, RemoteCredentialException, PermissionException, 
+	throws RemoteDataException, RemoteCredentialException, PermissionException,
 		   SystemUnknownException, AgaveNamespaceException, FileNotFoundException
 	{
 		// first look for internal URI
@@ -329,7 +329,7 @@ public class RemoteDataClientFactory {
 	    else if (!RemoteDataClientFactory.isSchemeSupported(uri))
 	    {
 	        String msg = "Schema not supported: " + uri.toString();
-	        log.error(msg);
+//	        log.error(msg);
 	        throw new NotImplementedException(msg);
 	    }
 	    else 
@@ -371,12 +371,14 @@ public class RemoteDataClientFactory {
 					throw new RemoteDataException("Invalid hostname provided for URI, " + uri.toString());
 				}
 
-    			return new MaverickSFTP(host, port, username, password, null, null);
+//    			return new MaverickSFTP(host, port, username, password, null, null);
+				return new SftpRelay(host, port, username, password, null, null,
+						Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
     		}
     		else {
     		    // should not ever happen;
                 String msg = "Invalid URI: " + uri.toString();
-                log.error(msg);
+//                log.error(msg);
     		    throw new NotImplementedException(msg);
     		}
 	    }

@@ -6,10 +6,17 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.dao.JobEventDao;
 import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
+import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.queue.actions.WorkerAction;
 import org.iplantc.service.jobs.queue.factory.AbstractJobProducerFactory;
+import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.exceptions.SystemUnavailableException;
+import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.systems.model.ExecutionSystem;
+import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -26,7 +33,6 @@ public abstract class AbstractJobWatch implements WorkerWatch {
     protected Job job = null;
     private WorkerAction workerAction = null;
     protected boolean allowFailure = false;
-//    private JobProducerFactory jobProducerFactory;
 
     private String jobUuid;
     
@@ -38,7 +44,25 @@ public abstract class AbstractJobWatch implements WorkerWatch {
         this();
         this.allowFailure = allowFailure;
     }
-    
+
+    /**
+     * Null-safe getter for the {@link ExecutionSystem} associated with the job.
+     * @return the job {@link ExecutionSystem}
+     * @throws SystemUnavailableException if the system cannot be found, is not available, or has a stauts other than UP
+     * @throws SystemUnknownException if the system is not in the db
+     */
+    protected ExecutionSystem getJobExecutionSystem() throws SystemUnavailableException, SystemUnknownException {
+        ExecutionSystem jobExecutionSystem = (ExecutionSystem) new SystemDao().findBySystemId(getJob().getSystem());
+        if (jobExecutionSystem == null) {
+            throw new SystemUnknownException("No system found matching job execution system " + getJob().getSystem());
+        } else if (!jobExecutionSystem.isAvailable() || !jobExecutionSystem.getStatus().equals(SystemStatusType.UP)) {
+            throw new SystemUnavailableException("Job execution system " + getJob().getSystem() +
+                    " is not currently available");
+        }
+
+        return jobExecutionSystem;
+    }
+
     /* (non-Javadoc)
      * @see org.quartz.Job#execute(org.quartz.JobExecutionContext)
      */
@@ -115,11 +139,10 @@ public abstract class AbstractJobWatch implements WorkerWatch {
                 	}
                 }
             } catch (JobException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                log.error("Failed to cancel transfers related to job " + getJob().getUuid() +
+                        " during submission interrupt.", e);
             }
-        		
-        		
+
     		// set status back to previous state that will allow it to 
     		// be picked up by a worker again.
     		rollbackStatus();
@@ -199,30 +222,36 @@ public abstract class AbstractJobWatch implements WorkerWatch {
      */
     @Override
     public synchronized Job getJob() {
-        if (this.job == null && StringUtils.isNotEmpty(this.jobUuid)) {
+        if (this.job == null && StringUtils.isNotBlank(this.jobUuid)) {
             try {
                 this.job = JobDao.getByUuid(this.jobUuid);
             } catch (JobException e) {
-                log.error("Unable to resolve job uuid " + this.jobUuid);
+                log.error("Unable to resolve job " + this.jobUuid);
             }
         }
         
         return job;
     }
 
-//    /**
-//     * @return the jobProducerFactory
-//     */
-//    public synchronized JobProducerFactory getJobProducerFactory() {
-//        return jobProducerFactory;
-//    }
-//
-//    /**
-//     * @param jobProducerFactory the jobProducerFactory to set
-//     */
-//    @Override
-//    public synchronized void setJobProducerFactory(JobProducerFactory jobProducerFactory) {
-//        this.jobProducerFactory = jobProducerFactory;
-//    }
+    /**
+     * Convenience method to update job status and update the class-local variable. Any {@link JobException} are
+     * logged and swallowed to allow for cleaner code. Hibernate runtime exceptions are still thrown as they are
+     * RunTimeExceptions.
+     *
+     * @param jobStatusType the new job status
+     * @param message       the job event message for the update event
+     * @throws org.hibernate.StaleStateException if the local job is out of sync with the db and cannot be updated. This
+     *                                           can happen when two tasks compete for the same job. Only one can update the db to claim the task.
+     */
+    protected void updateJobStatus(JobStatusType jobStatusType, String message) {
+        try {
+            setJob(JobManager.updateStatus(getJob(), jobStatusType, message));
+        } catch (JobException e) {
+            log.error("Failed to update job " + getJob().getUuid() + " status to " + jobStatusType.name());
+        } catch (Throwable t) {
+            log.error("Failed to update job " + getJob().getUuid() + " status to " + jobStatusType.name());
+            throw t;
+        }
+    }
 
 }

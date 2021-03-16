@@ -47,17 +47,6 @@ public class ArchiveAction extends AbstractWorkerAction {
         super(job);
     }
 
-    /**
-     * Basic getter for job manager instance. Useful for testing
-     * @return JobManager instance
-     */
-    protected JobManager getJobManager() {
-        if (jobManager == null) {
-            jobManager = new JobManager();
-        }
-
-        return jobManager;
-    }
 
     /**
      * This method attempts to archive a job's output by retrieving the

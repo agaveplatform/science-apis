@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.exceptions.UnknownSoftwareException;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.jobs.exceptions.JobEventProcessingException;
@@ -211,7 +212,9 @@ public class JobEventProcessor {
     	ObjectNode jsonContent = mapper.createObjectNode();
         try 
     	{
-        	software = getJobManager().getJobSoftware(getEvent().getJob());
+    	    // use this vs the JobManager#getJobSoftware(String) because we don't care if it's available
+            // we just wnat to serialize it for the message.
+        	software = SoftwareDao.getSoftwareByUniqueName(getEvent().getJob().getSoftwareName());
             jsonContent.set("job", jsonJob);
             if (software == null) {
             	throw new UnknownSoftwareException("No software found for id " + getEvent().getJob().getSoftwareName());

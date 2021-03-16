@@ -4,7 +4,9 @@
 package org.iplantc.service.jobs.managers.monitors.parsers;
 
 import org.iplantc.service.apps.exceptions.SoftwareException;
+import org.iplantc.service.apps.exceptions.UnknownSoftwareException;
 import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.jobs.exceptions.SoftwareUnavailableException;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
@@ -47,10 +49,9 @@ public class JobMonitorResponseParserFactory {
 	 * Wrapper for call to {@link JobManager#getJobSoftware(Job)} for easier testing.
 	 * @param job the job for which to return the {@link ExecutionSystem}
 	 * @return the job software
-	 * @throws SoftwareException if unable to query for software
 	 */
-	protected Software getSoftware(Job job) throws SoftwareException {
-		return getJobManager().getJobSoftware(job);
+	protected Software getSoftware(Job job) throws SoftwareUnavailableException, UnknownSoftwareException {
+		return getJobManager().getJobSoftware(job.getSoftwareName());
 	}
 
 	/**

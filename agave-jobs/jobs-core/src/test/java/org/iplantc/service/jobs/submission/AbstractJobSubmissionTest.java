@@ -376,7 +376,7 @@ public class AbstractJobSubmissionTest {
    }
    
    /**
-    * Stages test data for the {@code job}'s {@link Software} to the remote {@link Software#getDeploymentPath()}.
+    * Stages test job inputs {@code job}'s {@link Software} to the remote {@link Software#getDeploymentPath()}.
     * value.
     * @param job the job whose software needs data staging.
     */

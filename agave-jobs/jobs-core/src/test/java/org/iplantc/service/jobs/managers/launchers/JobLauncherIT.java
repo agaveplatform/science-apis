@@ -124,8 +124,7 @@ public class JobLauncherIT extends AbstractJobSubmissionTest {
 			remoteDataClient.put(SOFTWARE_WRAPPER_FILE,
 					software.getDeploymentPath() + File.separator + software.getExecutablePath());
 			Assert.assertTrue(remoteDataClient.doesExist(remoteTemplatePath), 
-					"Failed to copy software assets to deployment system " 
-			+ software.getStorageSystem().getSystemId());
+					"Failed to copy software assets to deployment system " + software.getStorageSystem().getSystemId());
 		} catch (RemoteDataException e) {
 			Assert.fail("Failed to authenticate to the storage system " + job.getSoftwareName(), e);
 		} catch (Exception e) {

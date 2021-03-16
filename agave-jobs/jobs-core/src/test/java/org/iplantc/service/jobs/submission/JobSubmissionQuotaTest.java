@@ -54,8 +54,6 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 	public void beforeClass() throws Exception
 	{
 		super.beforeClass();
-		
-		
 	}
 	
 	@AfterClass

@@ -12,6 +12,7 @@ import org.iplantc.service.jobs.submission.AbstractJobSubmissionTest;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
+import org.iplantc.service.transfer.Settings;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -24,12 +25,12 @@ import org.testng.annotations.Test;
  */
 @Test(groups={"integration"})
 public class SubmissionActionTest extends AbstractJobSubmissionTest {
-    
-    
+
     @BeforeClass
     @Override
     public void beforeClass() throws Exception {
-        
+
+//        Settings.ALLOW_RELAY_TRANSFERS = false;
         super.beforeClass();
         
         for (Software software: SoftwareDao.getAll()) {

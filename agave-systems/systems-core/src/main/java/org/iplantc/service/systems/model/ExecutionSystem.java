@@ -155,7 +155,7 @@ public class ExecutionSystem extends RemoteSystem implements SerializableSystem 
 	 */
 	public void setWorkDir(String workDir) 
 	{
-		if (!StringUtils.isEmpty(workDir) && workDir.length() > 255) {
+		if (StringUtils.isNotBlank(workDir) && workDir.length() > 255) {
 			throw new SystemException("'system.workDir' must be less than 255 characters.");
 		}
 		
@@ -177,7 +177,7 @@ public class ExecutionSystem extends RemoteSystem implements SerializableSystem 
 	 */
 	public void setScratchDir(String scratchDir)
 	{
-		if (!StringUtils.isEmpty(scratchDir) && scratchDir.length() > 255) {
+		if (StringUtils.isNotBlank(scratchDir) && scratchDir.length() > 255) {
 			throw new SystemException("'system.scratchDir' must be less than 255 characters.");
 		}
 		

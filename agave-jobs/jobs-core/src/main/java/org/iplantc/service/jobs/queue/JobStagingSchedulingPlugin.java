@@ -81,16 +81,11 @@ public class JobStagingSchedulingPlugin extends GenericSchedulingPlugin
 				}
 			}
 		}
-		catch (NullPointerException e) {
+		catch (NullPointerException | SchedulerException e) {
 		    // happens when the scheduler wasn't initialized properly. Ususally due to us
 		    // disabling it completely.
 		    log.error("Failed to shut down " + getPluginGroup() + "queue properly.", e);
-		}
-		catch (SchedulerException e)
-		{
-			log.error("Failed to shut down " + getPluginGroup() + "queue properly.", e);
-		}
-		finally {
+		} finally {
 			for (String uuid: AbstractJobProducerFactory.getStagingjobtaskqueue()) {
 				log.debug("Rolling back staging job " + uuid + " prior to shutdown.");
 				try {

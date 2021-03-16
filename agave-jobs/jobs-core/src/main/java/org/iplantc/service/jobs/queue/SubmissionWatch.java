@@ -1,15 +1,20 @@
 package org.iplantc.service.jobs.queue;
 
 import java.nio.channels.ClosedByInterruptException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.UnresolvableObjectException;
+import org.iplantc.service.apps.exceptions.UnknownSoftwareException;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.dao.JobDao;
+import org.iplantc.service.jobs.exceptions.JobDependencyException;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.QuotaViolationException;
 import org.iplantc.service.jobs.exceptions.SchedulerException;
@@ -48,126 +53,49 @@ public class SubmissionWatch extends AbstractJobWatch
 	
 	public void doExecute() throws JobExecutionException
 	{
+		ExecutionSystem executionSystem = null;
 		// pull the oldest job with JobStatusType.PENDING from the db and submit
 		// it to the remote scheduler.
 		try
 		{
-	    	// verify the user is within quota to run the job before staging the data.
-			try 
-			{
-				JobQuotaCheck quotaValidator = new JobQuotaCheck(job);
-				quotaValidator.check();
-			} 
-			catch (QuotaViolationException e) 
-			{
-				try
-				{
-					log.debug("Remote execution of job " + job.getUuid() + " is currently paused due to quota restrictions. " + e.getMessage());
-					this.job = JobManager.updateStatus(job, JobStatusType.STAGED, 
-						"Remote execution of job " + job.getUuid() + " is currently paused due to quota restrictions. " + 
-						e.getMessage() + ". This job will resume staging once one or more current jobs complete.");
-				}
-				catch (Throwable e1) {
-					log.error("Failed to update job " + job.getUuid() + " status to STAGED");
-				}	
+			// verify the user is within quota to run the job before staging the data.
+			// this should have been caught by the original job selection, but could change
+			// due to high concurrency.
+			try {
+				executionSystem = getJobExecutionSystem();
+
+				JobQuotaCheck quotaValidator = new JobQuotaCheck();
+				quotaValidator.check(getJob(), executionSystem);
+			} catch (QuotaViolationException e) {
+				log.debug("Remote execution of job " + getJob().getUuid() + " is currently paused due to quota restrictions. " + e.getMessage());
+				updateJobStatus(JobStatusType.STAGED,
+					"Remote execution of job " + getJob().getUuid() + " is currently paused due to quota restrictions. " +
+					e.getMessage() + ". This job will resume staging once one or more current jobs complete.");
 				throw new JobExecutionException(e);
-			}
-			catch (SystemUnavailableException e) 
-			{
-				try
-				{
-				    log.debug("One or more dependent systems for job " + getJob().getUuid() 
-				            + " is currently unavailable. " + e.getMessage());
-				    this.job = JobManager.updateStatus(job, JobStatusType.STAGED, 
-						"Remote execution of job " + job.getUuid() + " is currently paused waiting for " + job.getSystem() + 
-						" to become available. If the system becomes available again within 7 days, this job " + 
-						"will resume staging. After 7 days it will be killed.");
-				}
-				catch (Throwable e1) {
-					log.error("Failed to update job " + job.getUuid() + " status to STAGED");
-				}	
-				throw new JobExecutionException(e);
-			}
-			catch (StaleObjectStateException e) {
-				log.debug("Just avoided a job submission race condition for job " + job.getUuid());
-				throw new JobExecutionException(e);
-			}
-			catch (Throwable e) 
-			{
-				try
-				{
-					log.error("Failed to verify user quota for job " + job.getUuid() + 
-							". Job will be returned to queue and retried later.", e);
-					job.setRetries(job.getRetries()+1);
-					this.job = JobManager.updateStatus(job, JobStatusType.STAGED, 
-							"Failed to verify user quota for job " + job.getUuid() + 
-							". Job will be returned to queue and retried later.");
-				}
-				catch (Throwable e1) {
-					log.error("Failed to update job " + job.getUuid() + " status to FAILED");
-				}
+			} catch (Throwable e) {
+				log.error("Failed to verify user quota for job " + getJob().getUuid() +
+						". Job will be returned to queue and retried later.", e);
+				getJob().setRetries(job.getRetries()+1);
+				updateJobStatus(JobStatusType.STAGED,
+						"Failed to verify user quota for job " + job.getUuid() +
+						". Job will be returned to queue and retried later.");
 				throw new JobExecutionException(e);
 			}
 			
 			// kill jobs past their max lifetime
-			DateTime jobSubmissionDeadline = new DateTime(job.getSubmitTime());
+			Instant jobSubmissionDeadline = getJob().getSubmitTime().toInstant();
 			
-			if (jobSubmissionDeadline.plusDays(14).isBeforeNow()) 
+			if (jobSubmissionDeadline.plus(30, ChronoUnit.DAYS).isBefore(Instant.now()))
 			{
-				log.debug("Terminating job " + job.getUuid() + 
-						" after 42 days of running without a status update.");
-				this.job = JobManager.updateStatus(job, JobStatusType.KILLED, 
-					"Killing job after 42 days of running without a status update");
-				this.job = JobManager.updateStatus(job, JobStatusType.FAILED, 
-						"Job did not complete with 42 days. Job cancelled.");
+				log.debug("Terminating job " + getJob().getUuid() +
+						" after 30 days of attempting to submit.");
+				updateJobStatus(JobStatusType.KILLED,
+					"Killing job after 30 days of attempting to submit.");
+				updateJobStatus(JobStatusType.FAILED,
+						"Job did not submit within 30 days. Job cancelled.");
 				return;
 			} 
-			
-			ExecutionSystem executionSystem = null;
-			try {
-				
-				executionSystem = (ExecutionSystem)new SystemDao().findUserSystemBySystemId(job.getOwner(), job.getSystem(), RemoteSystemType.EXECUTION);
-				
-				if (executionSystem == null) {
-					throw new SystemUnknownException("Submission failed due to the job "
-							+ "execution system, " + job.getSystem() + ", having been deleted. No further "
-							+ "action can be taken for this job. The job will be terminated immediately. ");
-				}
-				else if (!executionSystem.isAvailable()) {
-					throw new SystemUnavailableException();
-				}
-				else if (executionSystem.getStatus() != SystemStatusType.UP) {
-					throw new SystemUnavailableException("Job execution system " + job.getSystem() + 
-							" is not currently available. " + executionSystem.getStatus().getExpression());
-				}
-			}	
-			catch (SystemUnknownException e) {
-				try
-				{
-					log.error("Failed to submit job job " + this.job.getUuid(), e);
-					this.job = JobManager.updateStatus(this.job, JobStatusType.ARCHIVING_FAILED, e.getMessage());
-					this.job = JobManager.updateStatus(this.job, JobStatusType.FAILED, 
-							"Job failed during submission due to missing execution system.");
-				}
-				catch (Exception e1) {
-					log.error("Failed to update job " + this.job.getUuid() + " status to FAILED");
-				}
-				throw new JobExecutionException(e);
-			}
-			catch (SystemUnavailableException e) {
-				try
-				{
-					this.job = JobManager.updateStatus(job, JobStatusType.STAGED,
-						"Submission is currently paused waiting for the execution system " + executionSystem.getSystemId() +
-						" to become available. If the system becomes available again within 7 days, this job " +
-						"will resume archiving. After 7 days it will be killed.");
-				}
-				catch (Throwable e1) {
-					log.error("Failed to update job " + this.job.getUuid() + " status to PENDING");
-				}	
-				throw new JobExecutionException(e);
-			}
-			
+
 			// if the execution system login config is local, then we cannot submit
 			// jobs to this system remotely. In this case, a worker will be running
 			// dedicated to that system and will submitting jobs locally. All workers
@@ -177,12 +105,12 @@ public class SubmissionWatch extends AbstractJobWatch
 			{
 				return;
 			}
-			else // otherwise, throw it in remotely
+			else // otherwise, submit to the remote system
 			{
 				// mark the job as submitting so no other process claims it
 				// note: we should have jpa optimistic locking enabled, so
 				// no race conditions should exist at this point.
-			    this.job = JobManager.updateStatus(job, JobStatusType.SUBMITTING, 
+			    updateJobStatus(JobStatusType.SUBMITTING,
 						"Preparing job for submission.");
 				
 				if (isStopped()) {
@@ -191,78 +119,109 @@ public class SubmissionWatch extends AbstractJobWatch
                 
 				setWorkerAction(new SubmissionAction(getJob()));
 				
+				// wrap this in a try/catch so we can update the local reference to the
+				// job before handling the exception
 				try {
-				    // wrap this in a try/catch so we can update the local reference to the 
-				    // job before it hist
-				    getWorkerAction().run();
-				} catch (Exception e) {
-				    throw e;
-				}
-				finally {
-				    this.job = getWorkerAction().getJob();
+					getWorkerAction().run();
+				} finally {
+				    setJob(getWorkerAction().getJob());
 				}
                 
-                if (!isStopped() || this.job.getStatus() == JobStatusType.QUEUED || 
-                        this.job.getStatus() == JobStatusType.RUNNING)
-                {       
+                if (!isStopped() ||
+						List.of(JobStatusType.RUNNING, JobStatusType.QUEUED).contains(getJob().getStatus())) {
                     getJob().setRetries(0);
-                    JobDao.persist(this.job);
+                    JobDao.persist(getJob());
                 }
 			}
 		}
+		catch (JobException e) {
+			try {
+				if (e.getCause() instanceof UnknownSoftwareException) {
+					log.debug("Submission task for job " + getJob().getUuid() + " aborted due to unknown software id " + getJob().getSoftwareName());
+
+					updateJobStatus(JobStatusType.FAILED,
+							"Submission failed due to the app associated with this job, "
+									+ ", " + getJob().getSoftwareName() + ", having been deleted. No further "
+									+ "action can be taken for this getJob(). The job will be terminated immediately.");
+					throw new JobExecutionException("Staging task for job " + getJob().getUuid() + " aborted due to missing app.");
+				} else {
+					String message = "Failed to stage input data for job " + getJob().getUuid() + ". " + e.getMessage();
+					log.error(message, e);
+					updateJobStatus(JobStatusType.FAILED, message);
+					throw new JobExecutionException(e);
+				}
+			} catch (Throwable t) {
+				log.error("Failed to roll back job " + getJob().getUuid() + " status when staging task was aborted due to missing app.", t);
+			}
+		}
 		catch (JobExecutionException e) {
-		    throw e;
+			throw e;
+		}
+		catch (JobDependencyException e) {
+			log.error("Failed to submit  for job " + getJob().getUuid(), e);
+			updateJobStatus(JobStatusType.FAILED, e.getMessage());
+			throw new JobExecutionException(e);
+
+			log.debug("Submission task for job " + getJob().getUuid() + " aborted due to interrupt by worker process.");
+
+			try {
+				updateJobStatus(JobStatusType.PENDING,
+						"Job staging reset due to worker shutdown. Staging will resume in another worker automatically.");
+			} catch (Throwable t) {}
+//				log.error("Failed to roll back job " + getJob().getUuid() + " status when staging task was interrupted.", t);
+//			}
+			throw new JobExecutionException("Staging task for job " + getJob().getUuid() + " aborted due to interrupt by worker process.");
+		}
+		catch (SystemUnknownException e) {
+			log.debug("System for job " + getJob().getUuid() + " is missing. " + e.getMessage());
+			updateJobStatus(JobStatusType.FAILED,"Submission failed due to missing execution system, " +
+					getJob().getSystem() + ". No further action can be taken for this job. " +
+					"The job will be terminated immediately. ");
+			throw new JobExecutionException(e);
+		}
+		catch (SystemUnavailableException e) {
+			log.debug("System for job " + getJob().getUuid() + " is currently unavailable. " + e.getMessage());
+			updateJobStatus(JobStatusType.STAGED, "Remote execution of job " + getJob().getUuid() +
+					" is currently paused waiting for execution system " + getJob().getSystem() +
+					" to become available. If the system becomes available again within 30 days, this job " +
+					"will resume staging. After 30 days it will be killed.");
+			throw new JobExecutionException(e);
 		}
 		catch (ClosedByInterruptException e) {
-            log.debug("Submission task for job " + job.getUuid() + " aborted due to interrupt by worker process.");
-            
+            log.debug("Submission task for job " + getJob().getUuid() + " aborted due to interrupt by worker process.");
             try {
-                job = JobManager.updateStatus(getJob(), JobStatusType.STAGED, 
+            	updateJobStatus(JobStatusType.STAGED,
                     "Job submission aborted due to worker shutdown. Job will be resubmitted automatically.");
-                JobDao.persist(job);
-            } catch (UnresolvableObjectException | JobException e1) {
+//                JobDao.persist(job);
+            } catch (Throwable t) {
                 log.error("Failed to roll back job status when archive task was interrupted.", e);
             }
-            throw new JobExecutionException("Submission task for job " + job.getUuid() + " aborted due to interrupt by worker process.");
+            throw new JobExecutionException("Submission task for job " + getJob().getUuid() + " aborted due to interrupt by worker process.");
         }
         catch (StaleObjectStateException | UnresolvableObjectException e) {
-			log.debug("Job " + job.getUuid() + " already being processed by another submission thread. Ignoring.");
-			throw new JobExecutionException("Job " + job.getUuid() + " already being processed by another submission thread. Ignoring.");
+			log.debug("Job " + getJob().getUuid() + " already being processed by another submission thread. Ignoring.");
+			throw new JobExecutionException("Job " + getJob().getUuid() + " already being processed by another submission thread. Ignoring.");
 		}
-		catch (Throwable e)
-		{
-			if (e.getCause() instanceof StaleObjectStateException) {
-				log.debug("Just avoided a job submission staging race condition for job " + job.getUuid());
-				throw new JobExecutionException("Job " + job.getUuid() + " already being processed by another thread. Ignoring.");
-			}
-			else if (job == null)
-			{
-				log.error("Failed to retrieve job information from db", e);
-				throw new JobExecutionException(e);
-			}
-			else
-			{
-				try
-				{
-					log.error("Failed to submit job " + job.getUuid(), e);
-					this.job = JobManager.updateStatus(job, JobStatusType.FAILED,
-							"Failed to submit job " + job.getUuid() + " due to internal errors");
-				}
-				catch (Exception e1)
-				{
-					log.error("Failed to update job " + job.getUuid() + " status to failed");
-				}
-				throw new JobExecutionException(e);
-			}
-		}
+//		catch (Throwable e) {
+//			if (job == null) {
+//				log.error("Failed to retrieve job information from db", e);
+//			} else {
+//				try {
+//					log.error("Failed to submit job " + getJob().getUuid() + " due to internal errors. " + e.getMessage());
+//					updateJobStatus(JobStatusType.FAILED,
+//							"Failed to submit job " + getJob().getUuid() + " due to internal errors");
+//				} catch (Throwable ignored) {}
+//			}
+//			throw new JobExecutionException(e);
+//		}
 		finally {
 		    setTaskComplete(true);
-            try { HibernateUtil.flush(); } catch (Exception e) {}//e.printStackTrace();};
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}//e.printStackTrace();};
-            try { HibernateUtil.disconnectSession(); } catch (Exception e) {}//e.printStackTrace();};
+            try { HibernateUtil.flush(); } catch (Exception ignored) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
+            try { HibernateUtil.disconnectSession(); } catch (Exception ignored) {}
 		}
 	}
-	
+
 	/* (non-Javadoc)
      * @see org.iplantc.service.jobs.queue.AbstractJobWatch#rollbackStatus()
      */
@@ -271,14 +230,13 @@ public class SubmissionWatch extends AbstractJobWatch
     {
         try 
         {
-            if (getJob().getStatus() != JobStatusType.QUEUED && getJob().getStatus() != JobStatusType.RUNNING) 
-            {
+            if (getJob().getStatus() != JobStatusType.QUEUED && getJob().getStatus() != JobStatusType.RUNNING) {
                 JobManager.updateStatus(getJob(), JobStatusType.STAGED, 
                         "Job submission reset due to worker shutdown. Staging will resume in another worker automatically.");
             }
-        } catch (Throwable e) {
+        } catch (Throwable t) {
             log.error("Failed to roll back status of job " + 
-                    getJob().getUuid() + " to STAGED upon worker failure.", e);
+                    getJob().getUuid() + " to STAGED upon worker failure.", t);
         }
     }
     

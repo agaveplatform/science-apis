@@ -32,11 +32,9 @@ public abstract class GenericSchedulingPlugin implements SchedulerPlugin
 	public GenericSchedulingPlugin() {}
 
 	/**
-     * <p>
-     * Called during creation of the <code>Scheduler</code> in order to give
-     * the <code>SchedulerPlugin</code> a chance to initialize.
-     * </p>
-     * 
+     * Called during creation of the {@link Scheduler} in order to give
+     * the {@link SchedulerPlugin} a chance to initialize.
+     *
      * @throws org.quartz.SchedulerConfigException
      *           if there is an error initializing.
      */
@@ -78,7 +76,7 @@ public abstract class GenericSchedulingPlugin implements SchedulerPlugin
                         .withIdentity(getPluginGroup().toLowerCase() + "-job-"+i, getPluginGroup())
                         .requestRecovery(true)
                         .storeDurably()
-                        .build();
+						.build();
 	            
 	            Trigger trigger = newTrigger()
 	                    .withIdentity(getPluginGroup().toLowerCase() + "-trigger"+i, getPluginGroup())
@@ -103,11 +101,9 @@ public abstract class GenericSchedulingPlugin implements SchedulerPlugin
 	}	
 
     /**
-     * <p>
-     * Called in order to inform the <code>SchedulerPlugin</code> that it
+     * Called in order to inform the {@link SchedulerPlugin} that it
      * should free up all of it's resources because the scheduler is shutting
      * down.
-     * </p>
      */
 	@Override
 	public void shutdown()

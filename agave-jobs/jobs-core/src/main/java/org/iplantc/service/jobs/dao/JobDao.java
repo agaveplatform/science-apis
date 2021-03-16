@@ -694,7 +694,7 @@ public class JobDao
      * @throws JobException if unable to save the job
      */
 	public static void persist(Job job, boolean forceTimestamp) 
-	throws JobException, UnresolvableObjectException
+	throws JobException, StaleStateException
 	{
 		if (job == null)
 			throw new JobException("Job cannot be null");

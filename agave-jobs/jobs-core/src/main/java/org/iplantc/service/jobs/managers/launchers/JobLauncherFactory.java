@@ -5,6 +5,7 @@ package org.iplantc.service.jobs.managers.launchers;
 
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.exceptions.UnknownSoftwareException;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.MissingSoftwareDependencyException;
@@ -12,7 +13,10 @@ import org.iplantc.service.jobs.exceptions.SoftwareUnavailableException;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
+import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
+import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
@@ -44,134 +48,99 @@ public class JobLauncherFactory
 	 * Prior to creating the {@link JobLauncher}, this method validates the availability
 	 * of the {@link Software} and {@link ExecutionSystem}.
 	 * 
-	 * @param job the job to launch
-	 * @return
-	 * @throws JobException
-	 * @throws SystemUnavailableException
-	 * @throws SoftwareUnavailableException
+	 * @param job the job for which to create a {@link JobLauncher}
+	 * @throws SystemUnavailableException when the job {@link ExecutionSystem} or {@link Software#getStorageSystem()} is disabled or has a non-UP status.
+	 * @throws SystemUnknownException when the job {@link ExecutionSystem} or {@link Software#getStorageSystem()}does not exist
+	 * @throws SoftwareUnavailableException when the {@link Software} is unavailable due to explicit or implicit reasons
+	 * @throws UnknownSoftwareException when the {@link Software} has been deleted
 	 */
-	public JobLauncher getInstance(Job job) throws JobException, SystemUnavailableException, SoftwareUnavailableException
+	public JobLauncher getInstance(Job job) throws SystemUnknownException, SystemUnavailableException, UnknownSoftwareException, SoftwareUnavailableException
 	{
-	    Software software = SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName());
-		ExecutionSystem executionSystem = getJobManager().getJobExecutionSystem(job);
-		
-		// if the system is unavailable or missing...
-		if (!executionSystem.isAvailable()) {
-			String msg = "Job execution system " + executionSystem.getSystemId() + " is not currently available.";
-			log.warn(msg);
-		    throw new SystemUnavailableException(msg);
-        } 
-		// if the system is in down time or otherwise unavailable...
-        else if (executionSystem.getStatus() != SystemStatusType.UP)
-        {
-        	String msg = "Job execution system " + executionSystem.getSystemId() + 
-        			     " is currently " + executionSystem.getStatus() + ".";
-        	log.warn(msg);
-            throw new SystemUnavailableException(msg);
-        }
-		// if the software app is missing...
-        else if (software == null) 
-		{ 
-        	String msg = job.getSoftwareName() + " is not a recognized application.";
-        	log.error(msg);
-			throw new JobException(msg); 
-		}
-		// if the software app is unavailable...
-		else if (!software.isAvailable())
-		{
-			String msg = "Application " + job.getSoftwareName() + " is not available for execution.";
-			log.warn(msg);
-			throw new SoftwareUnavailableException(msg); 
-		}
-		// if the software deployment system is unavailable...
-        else if (software.getStorageSystem() == null || !software.getStorageSystem().isAvailable()) 
-		{
-        	String msg = "Software deployment system " + software.getStorageSystem().getSystemId() + 
-        			     " is not currently available.";
-        	log.warn(msg);
-		    throw new SystemUnavailableException(msg);
-		} 
-		// if the software deployment system is unavailable...
-		else if (software.getStorageSystem().getStatus() != SystemStatusType.UP)
-		{
-			String msg = "Software deployment system " + software.getStorageSystem().getSystemId() + 
-					     " is currently " + software.getStorageSystem().getStatus() + ".";
-			log.warn(msg);
-		    throw new SystemUnavailableException(msg);
-		}
-		// if the software assets are missing...
-        else 
-		{
-			RemoteDataClient remoteDataClient = null;
-			try {
-				
-				remoteDataClient = software.getStorageSystem().getRemoteDataClient();
-				remoteDataClient.authenticate();
-				
-				if (software.isPubliclyAvailable())
-				{	
-					if (!remoteDataClient.doesExist(software.getDeploymentPath()))
-					{
-//					    // TODO: no point doing this until the underlying systems get more reliable
-////					    if (Settings.DISABLE_MISSING_SOFTWARE) {
-////    						software.setAvailable(false);
-////    						SoftwareDao.persist(software);
-////    						EmailMessage.send("Rion Dooley", 
-////    								"dooley@tacc.utexas.edu", 
-////    								"Public app " + software.getUniqueName() + " is missing.", 
-////    								"While submitting a job, the Job Service noticed that the app bundle " +
-////    								"of the public app " + software.getUniqueName() + " was missing. This " +
-////    								"will impact provenance and could impact experiment reproducability. " +
-////    								"Please restore the application zip bundle from archive and re-enable " + 
-////    								"the application via the admin console.\n\n" +
-////    								"Name: " + software.getUniqueName() + "\n" + 
-////    								"User: " + job.getOwner() + "\n" +
-////    								"Job: " + job.getUuid() + "\n" +
-////    								"Time: " + job.getCreated().toString() + "\n\n");
-////					    }
-//						throw new MissingSoftwareDependencyException("Application executable is missing. Software is not available.");
-					    String msg = "Missing software on host " + remoteDataClient.getHost() + " at path " +
-					    		     software.getDeploymentPath() + ".";
-					    log.error(msg);
-						throw new MissingSoftwareDependencyException(msg);
-					} 
-				}
-			    else if (!remoteDataClient.doesExist(software.getDeploymentPath() + '/' + software.getExecutablePath())) 
-				{
-				    String msg = "Missing software on host " + remoteDataClient.getHost() + " at path " +
-			    		         software.getDeploymentPath() + '/' + software.getExecutablePath() + ".";
-				    log.error(msg);
-					throw new MissingSoftwareDependencyException(msg);
-				}
-			} catch (MissingSoftwareDependencyException e) {
-				String msg = "Unable to locate the application wrapper template at agave://" 
-                        + software.getStorageSystem().getSystemId() + "/" 
-                        + software.getDeploymentPath() + '/' + software.getExecutablePath() 
-                        + ". Job cannot run until the template is restored.";
-				log.error(msg, e);
-			    throw new SoftwareUnavailableException(msg);
-			} catch (Throwable e) {
-				String msg = "Unable to verify the availability of the application executable. Software is not available.";
-				log.error(msg, e);
-				throw new JobException(msg, e);
-			} 
-			finally {
-				try { if (remoteDataClient != null) remoteDataClient.disconnect(); } catch(Exception ignored) {}
-			}
-		}
+		Software software = getJobManager().getJobSoftware(job.getSoftwareName());
+
+		// Fetch the execution system info and ensure it's available.
+		ExecutionSystem executionSystem = (ExecutionSystem) getJobManager().getAvailableSystem(job.getSystem());
+
+		assertSoftwareExecutionTypeMatchesSystem(executionSystem, software);
+
+		assertSoftwareWrapperTemplateExists(software);
 
 		// now submit the job to the target system using the correct launcher.
-		if (software.getExecutionSystem().getExecutionType().equals(ExecutionType.HPC))
-		{
-			return new HPCLauncher(job);
+		if (software.getExecutionType().equals(ExecutionType.HPC)){
+			return new HPCLauncher(job, software, executionSystem);
+		}else if (software.getExecutionType().equals(ExecutionType.CONDOR)) {
+			return new CondorLauncher(job, software, executionSystem);
+		} else {
+			return new CLILauncher(job, software, executionSystem);
 		}
-		else if (software.getExecutionSystem().getExecutionType().equals(ExecutionType.CONDOR))
-		{
-			return new CondorLauncher(job);
+	}
+
+	/**
+	 * Verifies that the {@link Software#getExecutionType()} is supported by the system matching the
+	 * {@code executionSystemId}. An exception is thrown if they do not line up.
+	 *
+	 * @param executionSystem the system whose {@link ExecutionSystem#getExecutionType()} will be checked
+	 *                             for compatibility with the {@link Software#getExecutionType()}
+	 * @param software the {@link Software} whose {@link ExecutionType} will be checked
+	 * @throws SystemUnavailableException when the job {@link ExecutionSystem} is disabled or has a non-UP status.
+	 * @throws SystemUnknownException when the job {@link ExecutionSystem} does not exist
+	 * @throws SoftwareUnavailableException when the execution system cannot support the {@link ExecutionType}
+	 *                             			required by the {@link Software}
+	 */
+	protected void assertSoftwareExecutionTypeMatchesSystem(ExecutionSystem executionSystem, Software software) throws SystemUnavailableException, SystemUnknownException, SoftwareUnavailableException {
+		// ensure the execution system supports the execution type configured for the app. This may change over time,
+		// so we ensure it's still possible to do so here.
+		if (!software.getExecutionType().getCompatibleExecutionTypes().contains(executionSystem.getExecutionType())) {
+			throw new SoftwareUnavailableException("The software requested by for this job requires an execution type of " +
+					software.getExecutionType() + ", but the requested execution system, " + executionSystem.getSystemId() +
+					", has an incompatible execution type, " + executionSystem.getExecutionType() +
+					", which prevents this job from being launched.");
 		}
-		else
-		{
-			return new CLILauncher(job);
+	}
+
+	/**
+	 * Ensures the {@link Software#getStorageSystem()} is available and has the {@link Software#getExecutablePath()}
+	 * present.
+	 * @param software the application whose deployment assets will be validated
+	 * @throws SystemUnknownException if the {@link Software#getStorageSystem()} does not exist.
+	 * @throws SystemUnavailableException if the {@link Software#getStorageSystem()} is not available and up.
+	 * @throws SoftwareUnavailableException if the {@link Software#getExecutablePath()} is not present on the remote system.
+	 */
+	protected void assertSoftwareWrapperTemplateExists(Software software) throws SystemUnknownException, SystemUnavailableException, SoftwareUnavailableException {
+		// if the software assets are missing...
+		RemoteDataClient remoteDataClient = null;
+		try {
+			StorageSystem storageSystem = (StorageSystem) getJobManager().getAvailableSystem(software.getStorageSystem().getSystemId());
+			remoteDataClient = storageSystem.getRemoteDataClient();
+			remoteDataClient.authenticate();
+
+			if (software.isPubliclyAvailable()) {
+				if (!remoteDataClient.doesExist(software.getDeploymentPath())) {
+					throw new MissingSoftwareDependencyException("Public app assets were not present at  agave://" +
+							remoteDataClient.getHost() + ":" +
+							 software.getDeploymentPath() + ". Job cannot run until the assets are restored.");
+				}
+			} else if (!remoteDataClient.doesExist(software.getDeploymentPath() + '/' + software.getExecutablePath())) {
+				throw new MissingSoftwareDependencyException("App wrapper template expected at agave://" +
+						remoteDataClient.getHost() + ":" + software.getDeploymentPath() + '/' +
+						software.getExecutablePath() + ". Job cannot run until the assets are restored.");
+			}
+		} catch (SystemUnknownException e) {
+			throw new SystemUnknownException("No system found matching id of app deployment system, " +
+					software.getStorageSystem().getSystemId() + ".");
+		} catch (SystemUnavailableException e) {
+			throw new SystemUnavailableException("App deployment system " + software.getStorageSystem().getSystemId() +
+					" is currently unavailable.");
+		} catch (MissingSoftwareDependencyException e) {
+			throw new SoftwareUnavailableException(e);
+		} catch (Throwable e) {
+			throw new SoftwareUnavailableException("Unable to verify the availability of the wrapper " +
+					"template at agave://" + software.getStorageSystem().getStorageConfig().getHost() + ":" +
+					software.getDeploymentPath() + '/' + software.getExecutablePath() +
+					".Job cannot run until the assets are restored.", e);
+		}
+		finally {
+			try { if (remoteDataClient != null) remoteDataClient.disconnect(); } catch(Exception ignored) {}
 		}
 	}
 }

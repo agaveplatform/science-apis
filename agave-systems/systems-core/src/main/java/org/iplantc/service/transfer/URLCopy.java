@@ -205,12 +205,14 @@ public class URLCopy {
 
                     if (transferTask != null) {
                         transferTask = TransferTaskDao.getById(transferTask.getId());
-                        transferTask.setEndTime(new Date());
-                        transferTask.setTotalSize(sourceClient.length(srcPath));
-                        transferTask.setBytesTransferred(transferTask.getTotalSize());
-                        transferTask.setLastUpdated(new Date());
-                        transferTask.setStatus(TransferStatusType.COMPLETED);
-                        TransferTaskDao.persist(transferTask);
+                        if (transferTask != null) {
+                            transferTask.setEndTime(new Date());
+                            transferTask.setTotalSize(sourceClient.length(srcPath));
+                            transferTask.setBytesTransferred(transferTask.getTotalSize());
+                            transferTask.setLastUpdated(new Date());
+                            transferTask.setStatus(TransferStatusType.COMPLETED);
+                            TransferTaskDao.persist(transferTask);
+                        }
                     }
 
                     return transferTask;
@@ -265,6 +267,8 @@ public class URLCopy {
 
                         TransferTaskDao.persist(childTransferTask);
                         // Recursively copy this file item
+                        // TODO: this should be queued up and processed as a list of tasks to avoid the overhead of
+                        // queueing up a potentially large tree in memory.
                         childTransferTask = copy(childSrcPath, childDestPath, childTransferTask);
                         childTransferTask = TransferTaskDao.getById(childTransferTask.getId());
 
@@ -287,7 +291,6 @@ public class URLCopy {
                         }
                     }
 
-//    				if (transferTask != null) {
                     if (isKilled()) {
                         transferTask.setStatus(TransferStatusType.CANCELLED);
                     } else {
@@ -297,7 +300,6 @@ public class URLCopy {
                     transferTask.setEndTime(new Date());
 
                     TransferTaskDao.persist(transferTask);
-//    				}
 
                     return transferTask;
                 }
@@ -320,12 +322,14 @@ public class URLCopy {
 
                     if (transferTask != null) {
                         transferTask = TransferTaskDao.getById(transferTask.getId());
-                        transferTask.setEndTime(new Date());
-                        transferTask.setTotalSize(sourceClient.length(srcPath));
-                        transferTask.setBytesTransferred(transferTask.getTotalSize());
-                        transferTask.setLastUpdated(new Date());
-                        transferTask.setStatus(TransferStatusType.COMPLETED);
-                        TransferTaskDao.persist(transferTask);
+                        if (transferTask != null) {
+                            transferTask.setEndTime(new Date());
+                            transferTask.setTotalSize(sourceClient.length(srcPath));
+                            transferTask.setBytesTransferred(transferTask.getTotalSize());
+                            transferTask.setLastUpdated(new Date());
+                            transferTask.setStatus(TransferStatusType.COMPLETED);
+                            TransferTaskDao.persist(transferTask);
+                        }
                     }
                 }
                 // delegate to third-party transfer if supported
@@ -496,11 +500,9 @@ public class URLCopy {
                 } catch (RemoteDataException e) {
 
                     try {
-                        if (srcChildTransferTask != null) {
-                            srcChildTransferTask.setStatus(TransferStatusType.FAILED);
-                            srcChildTransferTask.setEndTime(new Date());
-                            TransferTaskDao.updateProgress(srcChildTransferTask);
-                        }
+                        srcChildTransferTask.setStatus(TransferStatusType.FAILED);
+                        srcChildTransferTask.setEndTime(new Date());
+                        TransferTaskDao.updateProgress(srcChildTransferTask);
                     } catch (Throwable t) {
                         log.error("Failed to set status of relay source child task to failed.", t);
                     }

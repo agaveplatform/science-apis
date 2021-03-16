@@ -5,17 +5,21 @@ package org.iplantc.service.jobs.managers.launchers;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.managers.launchers.parsers.RemoteJobIdParser;
 import org.iplantc.service.jobs.managers.launchers.parsers.RemoteJobIdParserFactory;
 import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.remote.RemoteSubmissionClient;
+import org.iplantc.service.systems.model.ExecutionSystem;
+import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.iplantc.service.transfer.RemoteDataClient;
 
 /**
  * Class to fork a background task on a remote linux system. The process
- * id will be stored as the Job.localJobId for querying by the monitoring
+ * id will be stored as the {@link Job#getLocalJobId()} for querying by the monitoring
  * queue.
  *  
  * @author dooley
@@ -31,19 +35,20 @@ public class CLILauncher extends HPCLauncher
 	protected CLILauncher() {
 		super();
 	}
-	
+
 	/**
-	 * Creates an instance of a JobLauncher capable of submitting jobs to
-	 * Atmosphere VMs.
+	 * Creates an instance of a JobLauncher capable of forking processes on remote hosts.
+	 *
+	 * @param job the job to launch
+	 * @param software the software corresponding to the {@link Job#getSoftwareName()}
+	 * @param executionSystem the system corresponding to the {@link Job#getSystem()}
 	 */
-	public CLILauncher(Job job)
-	{
-		super(job);
+	public CLILauncher(Job job, Software software, ExecutionSystem executionSystem) {
+		super(job, software, executionSystem);
 	}
 
 	@Override
-	protected String submitJobToQueue() throws JobException
-	{
+	protected String submitJobToQueue() throws JobException {
 		step = String.format("Submitting job %s to the %s scheduler on %s %s",
 				getJob().getUuid(), getJob().getSchedulerType().name(), getJob().getExecutionType().name(), getJob().getSystem());
 
@@ -134,6 +139,30 @@ public class CLILauncher extends HPCLauncher
 			try {
 				if (remoteExecutionDataClient != null) remoteExecutionDataClient.disconnect();
 			} catch (Exception ignored) {}
+		}
+	}
+
+	@Override
+	protected void checkJobStatus() throws JobException {
+		if (!getJob().getStatus().equals(JobStatusType.RUNNING)) {
+
+			getJob().setStatus(JobStatusType.QUEUED, "CLI job " + getJob().getUuid() +
+					" successfully forked as process id " + getJob().getLocalJobId());
+
+			//   Forked jobs start running right away. if they bomb out right after submission,
+			// then they would stay in the queued state for the entire job runtime before being
+			// cleaned up. By setting the job status to running here, we can activate the monitor
+			// immediately and keep the feedback loop on failed jobs tight.
+			//   It's worth noting that the RUNNING status on valid jobs will still come through,
+			// but it will be ignored since the job state is already running. no harm no foul.
+			getJob().setStatus(JobStatusType.RUNNING, "CLI job started running as process id " +
+					getJob().getLocalJobId());
+		}
+		else
+		{
+			if (log.isDebugEnabled())
+				log.debug("Callback already received for job " + getJob().getUuid() +
+						" skipping duplicate status update.");
 		}
 	}
 }

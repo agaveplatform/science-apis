@@ -40,7 +40,7 @@ public interface JobLauncher
     /**
      * Stops the submission task asynchronously.
      * 
-     * @param stopped
+     * @param stopped true if the launcher should be set to stopped, false otherwise
      */
     public void setStopped(boolean stopped);
     
@@ -50,7 +50,6 @@ public interface JobLauncher
 	 * @throws JobException
 	 * @throws SchedulerException
 	 * @throws IOException
-	 * @throws QuotaViolationException
 	 * @throws SystemUnavailableException
 	 */
 	public void launch() throws JobException, SchedulerException, IOException, SystemUnavailableException;

@@ -5,12 +5,14 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.exceptions.SoftwareException;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
+import org.iplantc.service.jobs.exceptions.SchedulerException;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.managers.launchers.parsers.CondorJobIdParser;
 import org.iplantc.service.jobs.model.Job;
@@ -38,11 +40,11 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 /**
- * Created with IntelliJ IDEA.
- * User: steve
- * Date: 11/4/12
- * Time: 7:35 PM
- * To change this template use File | Settings | File Templates.
+ * Class to fork a background task on a HTCondor system. The condor job id will be stored as {@link Job#getLocalJobId()}
+ * for querying by the monitoring queue.
+ *
+ * @author dooley
+ *
  */
 @SuppressWarnings("unused")
 public class CondorLauncher  extends AbstractJobLauncher {
@@ -62,13 +64,17 @@ public class CondorLauncher  extends AbstractJobLauncher {
 	protected CondorLauncher() {
 		super();
 	}
-	
+
     /**
      * Creates an instance of a JobLauncher capable of submitting jobs to batch
-     * queuing systems on Condor resources.
+     * queuing systems on HTCondor resources.
+     * @param job the job to launch
+     * @param software the software corresponding to the {@link Job#getSoftwareName()}
+     * @param executionSystem the system corresponding to the {@link Job#getSystem()}
      */
-    public CondorLauncher(Job job) {
-        super(job);
+    public CondorLauncher(Job job, Software software, ExecutionSystem executionSystem) {
+        super(job, software, executionSystem);
+
         this.submitFileObject = SubmitScriptFactory.getInstance(getJob(), getSoftware(), getExecutionSystem());
     }
 
@@ -516,7 +522,7 @@ public class CondorLauncher  extends AbstractJobLauncher {
     }
 
     @Override
-    public void launch() throws JobException, SystemUnavailableException, ClosedByInterruptException
+    public void launch() throws JobException, SchedulerException, IOException, SystemUnavailableException
     {
         String condorSubmitCmdString = null;
         try 
@@ -700,29 +706,9 @@ public class CondorLauncher  extends AbstractJobLauncher {
     private void cleanup() {
         try {
             HibernateUtil.closeSession();
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
         try {
             FileUtils.deleteDirectory(tempAppDir);
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
     }
-
-    public static void main(String[] args) throws IOException 
-    {
-        CondorLauncher launcher = null;
-
-        try {
-            // load the service configuration settings and start the queues
-
-            Job job = JobDao.getById(9);
-            // job.setStatus(JobStatusType.PENDING);
-            // job.setCreated(new DateTime().toDate());            // this should give us a new directory for storing output
-            launcher = new CondorLauncher(job);
-            //JobManager.submit(job);
-            launcher.launch();
-        } 
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
 }

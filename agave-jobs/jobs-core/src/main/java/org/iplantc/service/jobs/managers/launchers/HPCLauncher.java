@@ -7,14 +7,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.exceptions.JobException;
-import org.iplantc.service.jobs.exceptions.RemoteJobIDParsingException;
-import org.iplantc.service.jobs.exceptions.SchedulerException;
-import org.iplantc.service.jobs.exceptions.SoftwareUnavailableException;
+import org.iplantc.service.jobs.exceptions.*;
 import org.iplantc.service.jobs.managers.launchers.parsers.RemoteJobIdParser;
 import org.iplantc.service.jobs.managers.launchers.parsers.RemoteJobIdParserFactory;
 import org.iplantc.service.jobs.model.Job;
@@ -26,6 +24,8 @@ import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.remote.exceptions.RemoteExecutionException;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
+import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
@@ -56,13 +56,16 @@ public class HPCLauncher extends AbstractJobLauncher
 	protected HPCLauncher() {
 		super();
 	}
-	
+
 	/**
 	 * Creates an instance of a JobLauncher capable of submitting jobs to batch
 	 * queuing systems on HPC resources.
+	 * @param job the job to launch
+	 * @param software the software corresponding to the {@link Job#getSoftwareName()}
+	 * @param executionSystem the system corresponding to the {@link Job#getSystem()}
 	 */
-	public HPCLauncher(Job job) {
-		super(job);
+	public HPCLauncher(Job job, Software software, ExecutionSystem executionSystem) {
+		super(job, software, executionSystem);
 	}
 
 	public String getBatchScriptName() {
@@ -78,39 +81,11 @@ public class HPCLauncher extends AbstractJobLauncher
 	 * Put the job in the batch scheduling queue
 	 */
 	@Override
-	public void launch() throws JobException, ClosedByInterruptException, SchedulerException, IOException, SystemUnavailableException
+	public void launch() throws IOException, JobException, SoftwareUnavailableException, SchedulerException, SystemUnknownException, SystemUnavailableException
 	{
 		File tempAppDir = null;
 		try
 		{
-			if (getSoftware() == null) {
-				String msg = "Cannot launch a null application.";
-				log.error(msg);
-				throw new SoftwareUnavailableException(msg);
-			}
-			
-			if (!getSoftware().isAvailable()) {
-				String msg = "Application " + getJob().getSoftwareName() + " is not longer available for execution.";
-				log.error(msg);
-				throw new SoftwareUnavailableException(msg);
-			}
-			
-			// if the system is down, return it to the queue to wait for the system to come back up.
-			if (getExecutionSystem() == null) 
-			{
-				String msg = "Null execution system assigned in application " + getSoftware().getName() + ".";
-				log.error(msg);
-				throw new SystemUnavailableException(msg);
-			} 
-			
-			// if the system is down, return it to the queue to wait for the system to come back up.
-			if (!getExecutionSystem().getStatus().equals(SystemStatusType.UP)) 
-			{
-				String msg = "Execution system " + getExecutionSystem().getName() + " is not up.";
-				log.error(msg);
-				throw new SystemUnavailableException(msg);
-			} 
-			
 			// sets up the application directory to execute this job launch; see comments in method
             createTempAppDir();
             
@@ -142,62 +117,52 @@ public class HPCLauncher extends AbstractJobLauncher
             getJob().setSubmitTime(new DateTime().toDate());   // Date job submitted to queue
             getJob().setLastUpdated(new DateTime().toDate());  // Date job started by queue
             getJob().setLocalJobId(remoteJobId);
-            
-            if (!getJob().getStatus().equals(JobStatusType.RUNNING)) {
-                String message = "Job successfully submitted to execution system as local id " + getJob().getLocalJobId();
-	            if (getExecutionSystem().getExecutionType() == ExecutionType.HPC) {
-	            	message = "HPC job successfully placed into " + 
-	            			getJob().getBatchQueue() + " queue as local job " + getJob().getLocalJobId();
-	            } else if (getExecutionSystem().getExecutionType() == ExecutionType.CLI) {
-	            	message = "CLI job successfully forked as process id " + getJob().getLocalJobId();
-	            }
-	            
-	            if (log.isDebugEnabled()) 
-	            	log.debug(message.replaceFirst("job", "job " + getJob().getUuid()));
-	            
-	            getJob().setStatus(JobStatusType.QUEUED, message);
-	            
-	            //   Forked jobs start running right away. if they bomb out right after submission,
-	            // then they would stay in the queued state for the entire job runtime before being
-	            // cleaned up. By setting the job status to running here, we can activate the monitor
-	            // immediately and keep the feedback loop on failed jobs tight. 
-	            //   It's worth noting that the RUNNING status on valid jobs will still come through, 
-	            // but it will be ignored since the job state is already running. no harm no foul.  
-	            if (getSoftware().getExecutionType() == ExecutionType.CLI) {
-	            	getJob().setStatus(JobStatusType.RUNNING, "CLI job started running as process id " + getJob().getLocalJobId());
-	            }
-            }
-            else
-            {
-            	if (log.isDebugEnabled())
-            		log.debug("Callback already received for job " + getJob().getUuid() +
-                              " skipping duplicate status update.");    
-            }
-            
-            JobDao.persist(getJob());
+
+			checkJobStatus();
+
+			JobDao.persist(getJob());
+
+            // upon success, delete the temp app dir containing the job's application assets and wrapper script.
+			FileUtils.deleteQuietly(tempAppDir);
 		}
-		catch (ClosedByInterruptException e) {
-			if (log.isDebugEnabled()) log.debug("Launch interrupted for job " + getJob().getUuid(), e);
-            throw e;
-        }
-        catch (SchedulerException e) {
-        	log.error("Scheduler exception occurred during launch of job " + getJob().getUuid(), e);
-			throw e;
-		}
-		catch (Exception e)
-		{
-			String msg = "Launch exception for job " + getJob().getUuid() + ": " + e.getMessage();
-			log.error(msg, e);
-			throw new JobException(msg, e);
-		}
+//		catch (SoftwareUnavailableException | SchedulerException | ClosedByInterruptException e) {
+//			throw e;
+//		}
+//        catch (SchedulerException e) {
+////        	log.error("Scheduler exception occurred during launch of job " + getJob().getUuid(), e);
+//			throw e;
+//		}
+//		catch (Exception e)
+//		{
+//			String msg = "Launch exception for job " + getJob().getUuid() + ": " + e.getMessage();
+//			log.error(msg, e);
+//			throw new JobException(msg, e);
+//		}
 		finally
 		{
-			try { HibernateUtil.closeSession(); } catch (Exception e) {}
-			try { FileUtils.deleteDirectory(tempAppDir); } catch (Exception e) {}
-			try { submissionClient.close(); } catch (Exception e) {}
+			try { HibernateUtil.closeSession(); } catch (Exception ignored) {}
+			try { if (submissionClient != null) submissionClient.close(); } catch (Exception ignored) {}
 		}
 	}
-	
+
+	/**
+	 * Checks to see if the job already started running right after submission. This can happen when a callback
+	 * comes in immediately and is processed prior to the job submission process completing.
+	 * @throws JobException if the status event cannot be raised.
+	 */
+	protected void checkJobStatus() throws JobException {
+		if (!getJob().getStatus().equals(JobStatusType.RUNNING)) {
+			getJob().setStatus(JobStatusType.QUEUED, "HPC job " + getJob().getUuid() +
+					" successfully placed into " + getJob().getBatchQueue() + " queue as local job " +
+					getJob().getLocalJobId());
+		}
+		else {
+			if (log.isDebugEnabled())
+				log.debug("Callback already received for job " + getJob().getUuid() +
+						  " skipping duplicate status update.");
+		}
+	}
+
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.jobs.managers.launchers.AbstractJobLauncher#processApplicationTemplate()
 	 */
@@ -210,9 +175,9 @@ public class HPCLauncher extends AbstractJobLauncher
 		setBatchScriptName(Slug.toSlug(getJob().getName()) + ".ipcexe");
 
 		String appTemplate = null;
-        File ipcexeFile = null;
+
 		// create the submit script in the temp folder
-		ipcexeFile = new File(getTempAppDir() + File.separator + getBatchScriptName());
+		File ipcexeFile = new File(getTempAppDir() + File.separator + getBatchScriptName());
 
 		try (FileWriter batchWriter = new FileWriter(ipcexeFile);) {
 
@@ -324,24 +289,27 @@ public class HPCLauncher extends AbstractJobLauncher
 			return ipcexeFile;
 		} 
         catch (IOException e) {
-        	String msg = "FileUtil operation failed.";
-            log.error(msg, e);
+        	String msg = "IO operation failed on wrapper template file " + ipcexeFile.getPath();
+//            log.error(msg, e);
             throw new JobException(msg, e);
         } 
         catch (JobException e) {
-        	String msg = "Json failure from job inputs or parameters.";
-        	log.error(msg, e);
+        	String msg = "Invalid syntax found when resolving wrapper template variables.";
+//        	log.error(msg, e);
             throw new JobException(msg, e);
         }
 		catch (URISyntaxException e) {
-			String msg = "Failed to parse input URI.";
-			log.error(msg, e);
+			String msg = "Failed to parse input URI " + e.getInput();
+//			log.error(msg, e);
             throw new JobException(msg, e);
-		} 
-        catch (Exception e) {
-			String msg = "Failed to resolve remote execution system prior to staging application.";
-			log.error(msg, e);
-			throw new JobException(msg, e);
+		}
+		catch(JobMacroResolutionException e) {
+			throw new JobException("Failed resolving job macros when building executable app wrapper " +
+					"script from template file. " + e.getMessage(), e);
+//        catch (Exception e) {
+//			String msg = "Failed to resolve remote execution system prior to staging application.";
+////			log.error(msg, e);
+//			throw new JobException(msg, e);
 		}
     }
 
@@ -558,7 +526,7 @@ public class HPCLauncher extends AbstractJobLauncher
 				if (remoteExecutionDataClient != null) {
 					remoteExecutionDataClient.disconnect();
 				}
-			} catch (Exception e){}
+			} catch (Exception ignored){}
 		}
 	}
 }

@@ -14,6 +14,7 @@ import org.hibernate.StaleObjectStateException;
 import org.hibernate.StaleStateException;
 import org.hibernate.UnresolvableObjectException;
 import org.iplantc.service.apps.dao.SoftwareDao;
+import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.exceptions.UnknownSoftwareException;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
@@ -22,10 +23,7 @@ import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.util.TimeUtils;
 import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.exceptions.JobDependencyException;
-import org.iplantc.service.jobs.exceptions.JobException;
-import org.iplantc.service.jobs.exceptions.JobProcessingException;
-import org.iplantc.service.jobs.exceptions.JobTerminationException;
+import org.iplantc.service.jobs.exceptions.*;
 import org.iplantc.service.jobs.managers.killers.JobKiller;
 import org.iplantc.service.jobs.managers.killers.JobKillerFactory;
 import org.iplantc.service.jobs.model.Job;
@@ -88,12 +86,46 @@ public class JobManager {
     }
 
     /**
-     * Returns the {@link Software} for the given {@code job}.
-     * @param job the job for which the software object will be returned
-     * @return a valid {@link Software} object or null of it no longer exists.
+     * Null-safe getter for the {@link ExecutionSystem} associated with the job. Ensures system is available for use
+     * or will throw an exception.
+     * @param systemId the system id for which the execution system should be obtained.
+     * @return the job {@link ExecutionSystem}
+     * @throws SystemUnavailableException if the system cannot be found, is not available, or has a stauts other than UP
+     * @throws SystemUnknownException if the system is not in the db
      */
-    public Software getJobSoftware(Job job) {
-        return SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName());
+    public RemoteSystem getAvailableSystem(String systemId) throws SystemUnavailableException, SystemUnknownException {
+        RemoteSystem remoteSystem = (RemoteSystem) new SystemDao().findBySystemId(systemId);
+        if (remoteSystem == null) {
+            throw new SystemUnknownException("No system found matching system id " + systemId);
+        } else if (!remoteSystem.isAvailable() || !remoteSystem.getStatus().equals(SystemStatusType.UP)) {
+            throw new SystemUnavailableException(StringUtils.capitalize(remoteSystem.getType().name().toLowerCase()) +
+                    " system " + systemId + " is not currently available");
+        }
+
+        return remoteSystem;
+    }
+
+    /**
+     * Returns the {@link Software} for the given {@code job}.
+     * @param softwareName the {@link Software#getUniqueName()} to look up
+     * @return a valid {@link Software} object or null of it no longer exists.
+     * @throws UnknownSoftwareException if the software has been erased, or is no longer in the db.
+     * @throws SoftwareUnavailableException if the software has been disabled by an owner or admin
+     */
+    public Software getJobSoftware(String softwareName) throws UnknownSoftwareException, SoftwareUnavailableException {
+        try {
+            Software software = SoftwareDao.getSoftwareByUniqueName(softwareName);
+            if (software == null) {
+                throw new UnknownSoftwareException("No app found matching id " + softwareName);
+            } else if (!software.isAvailable()) {
+                throw new SoftwareUnavailableException("Job application " + softwareName +
+                        " has been disabled and is no longer available for execution.");
+            }
+
+            return software;
+        } catch (SoftwareException e) {
+            throw new UnknownSoftwareException("Unable to query for job application " + softwareName, e);
+        }
     }
 
     /**
@@ -103,7 +135,7 @@ public class JobManager {
      * @throws JobException if unable to update the job or delete the data
      * @throws SystemUnavailableException if the job's {@link ExecutionSystem} is not available
      */
-    public static Job deleteStagedData(Job job) throws JobException, SystemUnavailableException {
+    public Job deleteStagedData(Job job) throws JobException, SystemUnavailableException {
         ExecutionSystem system = new JobManager().getJobExecutionSystem(job);
 
         log.debug("Cleaning up staging directory for failed job " + job.getUuid());
@@ -111,29 +143,21 @@ public class JobManager {
 
         ExecutionSystem remoteExecutionSystem = null;
         RemoteDataClient remoteExecutionDataClient = null;
-        String remoteWorkPath = null;
+        String remoteWorkPath = job.getWorkPath();
+
         try {
             // copy to remote execution work directory
-            remoteExecutionSystem = (ExecutionSystem) new SystemDao().findBySystemId(job.getSystem());
+            remoteExecutionSystem = getJobExecutionSystem(job);
             remoteExecutionDataClient = remoteExecutionSystem.getRemoteDataClient(job.getInternalUsername());
             remoteExecutionDataClient.authenticate();
 
-            Software software = SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName());
-
-            if (!StringUtils.isEmpty(software.getExecutionSystem().getScratchDir())) {
-                remoteWorkPath = software.getExecutionSystem().getScratchDir();
-            } else if (!StringUtils.isEmpty(software.getExecutionSystem().getWorkDir())) {
-                remoteWorkPath = software.getExecutionSystem().getWorkDir();
+            // if the job work directory has not been saved yet, calculate it manually. This shouldn't be
+            // an issue given the directory should have been created prior to staging, but we do this in
+            // the event the directory was created, but an error happened during staging that prevented the
+            // db from being updated. This guarantees the directory will be properly defined and removed.
+            if (StringUtils.isBlank(remoteWorkPath)) {
+                remoteWorkPath = calculateJobRemoteWorkPath(job, remoteExecutionSystem);
             }
-
-            if (!StringUtils.isEmpty(remoteWorkPath)) {
-                if (!remoteWorkPath.endsWith("/")) remoteWorkPath += "/";
-            } else {
-                remoteWorkPath = "";
-            }
-
-            remoteWorkPath += job.getOwner() +
-                    "/job-" + job.getUuid() + "-" + Slug.toSlug(job.getName());
 
             if (remoteExecutionDataClient.doesExist(remoteWorkPath)) {
                 remoteExecutionDataClient.delete(remoteWorkPath);
@@ -146,14 +170,77 @@ public class JobManager {
 
             return job;
         } catch (RemoteDataException | IOException | RemoteCredentialException e) {
-            throw new JobException(e.getMessage(), e);
+            throw new JobException(e);
         } finally {
             try {
                 if (remoteExecutionDataClient != null) remoteExecutionDataClient.disconnect();
-            } catch (Exception ignored) {
-            }
+            } catch (Exception ignored) {}
         }
     }
+
+    /**
+     * Calculates the remote job work directory as an agave relative path. This agave path value will be identical for every
+     * staging attempt, regardless of changes in the execution system root and home directory values, so this method
+     * ensures the work directory exists and returns the path for use in staging each file.
+     *
+     * @param job the job for which the directory is calculated
+     * @param executionSystem the job execution system
+     * @return the agave relative path to the job work directory on the execution system.
+     */
+    public String calculateJobRemoteWorkPath(Job job, ExecutionSystem executionSystem) {
+
+        // Execution system scratch directory is checked first
+        String remoteJobDirectoryPath = executionSystem.getScratchDir();
+
+        // Execution system work directory is checked if scratch is blank
+        if (StringUtils.isBlank(remoteJobDirectoryPath)) {
+            remoteJobDirectoryPath = executionSystem.getWorkDir();
+        }
+
+        // trim to remove any spaces and ensure a non-null value
+        remoteJobDirectoryPath = StringUtils.trimToEmpty(remoteJobDirectoryPath);
+
+        // strip trailing slash
+        if (remoteJobDirectoryPath.endsWith("/")) remoteJobDirectoryPath += "/";
+
+        // create a unique job directory per job. We do not use another uuid here because we need
+        // the job directory to be consistent between retries so we can save time by avoiding
+        // restaging data.
+        remoteJobDirectoryPath += String.format("%s/job-%s-%s",
+                job.getOwner(), job.getUuid(), Slug.toSlug(job.getName()));
+
+        return remoteJobDirectoryPath;
+    }
+
+//    private String determineRemoteWorkPathForJob(Job job, ExecutionSystem remoteExecutionSystem) {
+//
+//        Software software = SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName());
+//
+//        String remoteWorkPath = job.getWorkPath();
+//        // use existing job work directory if present
+//        if (StringUtils.isNotBlank(remoteWorkPath)) {
+//            return job.getWorkPath();
+//        }
+//
+//        // Otherwise, we will calculate it here
+//        if (StringUtils.isNotBlank()) {
+//            remoteExecutionSystem.getScratchDir()
+//        } else if (!StringUtils.isEmpty(software.getExecutionSystem().getScratchDir())) {
+//            remoteWorkPath = software.getExecutionSystem().getScratchDir();
+//        } else if (!StringUtils.isEmpty(software.getExecutionSystem().getWorkDir())) {
+//            remoteWorkPath = software.getExecutionSystem().getWorkDir();
+//        }
+//
+//        if (!StringUtils.isEmpty(remoteWorkPath)) {
+//            if (!remoteWorkPath.endsWith("/")) remoteWorkPath += "/";
+//        } else {
+//            remoteWorkPath = "";
+//        }
+//
+//        remoteWorkPath += job.getOwner() +
+//                "/job-" + job.getUuid() + "-" + Slug.toSlug(job.getName());
+//        return remoteWorkPath;
+//    }
 
     /**
      * Kills a running job by updating its status and using the remote scheduler command and local id to stop it forcefully.
@@ -417,8 +504,7 @@ public class JobManager {
      * @throws JobException if the update was unable to complete
      * @throws StaleStateException when a concurrency issue prevents the job update
      */
-    public static Job updateStatus(Job job, JobStatusType status, String eventMessage)
-            throws JobException {
+    public static Job updateStatus(Job job, JobStatusType status, String eventMessage) throws JobException {
         job.setStatus(status, eventMessage);
 
         Date date = new DateTime().toDate();

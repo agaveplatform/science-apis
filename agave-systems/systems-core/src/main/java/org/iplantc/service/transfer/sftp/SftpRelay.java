@@ -28,6 +28,7 @@ import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteTransferListener;
+import org.iplantc.service.transfer.Settings;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.*;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
@@ -97,52 +98,56 @@ public final class SftpRelay implements RemoteDataClient {
     ManagedChannel sftpRelayServerManagedChannel;
     SftpRelayGrpc.SftpRelayBlockingStub sftpRelayGrpcClient;
     RemoteSystemConfig gprcRemoteSystemConfig;
-    String sftpRelayServerHost = "sftp-relay";
-    int sftpRelayServerPort = 50051;
+    String sftpRelayServerHost;
+    int sftpRelayServerPort;
 
 
     public SftpRelay(String host, int port, String username, String password, String rootDir, String homeDir) {
-        this.host = host;
-        this.port = port > 0 ? port : 22;
-        this.username = username;
-        this.password = password;
-
-        updateSystemRoots(rootDir, homeDir);
+        this(host, port, username, password, rootDir, homeDir, null, null);
+//        this.host = host;
+//        this.port = port > 0 ? port : 22;
+//        this.username = username;
+//        this.password = password;
+//
+//        updateSystemRoots(rootDir, homeDir);
     }
 
     public SftpRelay(String host, int port, String username, String password, String rootDir, String homeDir, String proxyHost, int proxyPort) {
-        this.host = host;
-        this.port = port > 0 ? port : 22;
-        this.username = username;
-        this.password = password;
-        this.proxyHost = proxyHost;
-        this.proxyPort = proxyPort;
-
-        updateSystemRoots(rootDir, homeDir);
+        this(host, port, username, password, rootDir, homeDir, proxyHost, proxyPort, null, null, Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
+//        this.host = host;
+//        this.port = port > 0 ? port : 22;
+//        this.username = username;
+//        this.password = password;
+//        this.proxyHost = proxyHost;
+//        this.proxyPort = proxyPort;
+//
+//        updateSystemRoots(rootDir, homeDir);
     }
 
     public SftpRelay(String host, int port, String username, String password, String rootDir, String homeDir, String publicKey, String privateKey) {
-        this.host = host;
-        this.port = port > 0 ? port : 22;
-        this.username = username;
-        this.password = password;
-        this.publicKey = publicKey;
-        this.privateKey = privateKey;
-
-        updateSystemRoots(rootDir, homeDir);
+        this(host, port, username, password, rootDir, homeDir, null, 0, publicKey, privateKey, Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
+//        this.host = host;
+//        this.port = port > 0 ? port : 22;
+//        this.username = username;
+//        this.password = password;
+//        this.publicKey = publicKey;
+//        this.privateKey = privateKey;
+//
+//        updateSystemRoots(rootDir, homeDir);
     }
 
     public SftpRelay(String host, int port, String username, String password, String rootDir, String homeDir, String proxyHost, int proxyPort, String publicKey, String privateKey) {
-        this.host = host;
-        this.port = port > 0 ? port : 22;
-        this.username = username;
-        this.password = password;
-        this.proxyHost = proxyHost;
-        this.proxyPort = proxyPort;
-        this.publicKey = publicKey;
-        this.privateKey = privateKey;
-
-        updateSystemRoots(rootDir, homeDir);
+        this(host, port, username, password, rootDir, homeDir, proxyHost, proxyPort, publicKey, privateKey, Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
+//        this.host = host;
+//        this.port = port > 0 ? port : 22;
+//        this.username = username;
+//        this.password = password;
+//        this.proxyHost = proxyHost;
+//        this.proxyPort = proxyPort;
+//        this.publicKey = publicKey;
+//        this.privateKey = privateKey;
+//
+//        updateSystemRoots(rootDir, homeDir);
     }
 
     public SftpRelay(String host, int port, String username, String password, String rootDir, String homeDir, String proxyHost, int proxyPort, String publicKey, String privateKey, String sftpRelayServerHost, int sftpRelayServerPort) {
@@ -969,7 +974,7 @@ public final class SftpRelay implements RemoteDataClient {
             return fileList;
         } catch (FileNotFoundException | RemoteDataException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new RemoteDataException("Failed to list directory " + remotedir, e);
         }
     }
@@ -1189,7 +1194,7 @@ public final class SftpRelay implements RemoteDataClient {
                     }
                 } catch (FileNotFoundException | RemoteDataException e) {
                     throw e;
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     String msg = getMsgPrefix() + "Failed to copy remote file " + remoteSource +
                             " to local target " + localTarget.getAbsolutePath() + ": " + e.getMessage();
                     throw new RemoteDataException(msg, e);
@@ -1521,7 +1526,7 @@ public final class SftpRelay implements RemoteDataClient {
 
                 } catch (FileNotFoundException | RemoteDataException e) {
                     throw e;
-                } catch (Exception e) {
+                } catch (Throwable e) {
                     String msg = getMsgPrefix() + "Failure to write local file " + localFile.getAbsolutePath() +
                             " to " + resolvedPath + ": " + e.getMessage();
                     throw new RemoteDataException(msg, e);
@@ -1701,7 +1706,7 @@ public final class SftpRelay implements RemoteDataClient {
         } catch (FileNotFoundException | RemoteDataException e) {
             fileInfoCache.remove(resolvedPath);
             throw e;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             fileInfoCache.remove(resolvedPath);
             throw new RemoteDataException("Unknown error calling stat on the relay server");
         }
@@ -1802,7 +1807,7 @@ public final class SftpRelay implements RemoteDataClient {
 
         } catch (RemoteDataException | FileNotFoundException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new RemoteDataException("Failed to rename " + oldpath + " to " + newpath, e);
         }
     }
@@ -1973,7 +1978,7 @@ public final class SftpRelay implements RemoteDataClient {
             throw e;
         } catch (RemoteDataException e) {
             throw new RemoteDataException("Failed to delete " + remotepath + ": " + e.getMessage());
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new RemoteDataException("Failed to delete " + remotepath, e);
         }
     }
@@ -2021,7 +2026,7 @@ public final class SftpRelay implements RemoteDataClient {
             }
         } catch (FileNotFoundException | RemoteDataException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new RemoteDataException("Failed to create " + remotedir, e);
         }
     }
@@ -2094,7 +2099,7 @@ public final class SftpRelay implements RemoteDataClient {
             }
         } catch (FileNotFoundException | RemoteDataException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             throw new RemoteDataException("Failed to create " + remotedir, e);
         }
     }

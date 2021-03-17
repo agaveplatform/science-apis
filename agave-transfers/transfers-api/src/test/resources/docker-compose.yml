@@ -43,6 +43,17 @@ services:
       - "traefik.enable=true"
 
 
+  nats:
+    image: nats:latest
+    hostname: nats-server
+    networks:
+      - services
+    ports:
+      - 4222:4222
+      - 6222:6222
+      - 8222:8222
+    restart: on-failure
+
 #  sftp-relay:
 #    image: agaveplatform/sftp-relay:develop
 #    ports:
@@ -169,28 +180,28 @@ services:
         - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
         - "traefik.http.routers.httpbin-secure.tls=true"
 
-  httpd:
-    image: agaveplatform/apache-dev:latest
-    hostname: docker.example.com
-    restart: on-failure
-    networks:
-      - services
-    ports:
-      - '10080:80'
-      - '10443:443'
-    volumes:
-      - ./transfer:/var/www/html/public
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.httpd.rule=Host(`httpd`)"
-      - "traefik.http.routers.httpd.entrypoints=web"
-      - "traefik.http.routers.httpd.tls=false"
-      - "traefik.http.routers.httpd.service=httpd"
-      - "traefik.http.routers.httpd-secure.rule=Host(`httpd`)"
-      - "traefik.http.routers.httpd-secure.entrypoints=websecure"
-      - "traefik.http.routers.httpd-secure.service=httpd"
-      - "traefik.http.routers.httpd-secure.tls=true"
-      - "traefik.http.services.httpd.loadbalancer.server.port=80"
+#  httpd:
+#    image: agaveplatform/apache-dev:latest
+#    hostname: docker.example.com
+#    restart: on-failure
+#    networks:
+#      - services
+#    ports:
+#      - '10080:80'
+#      - '10443:443'
+#    volumes:
+#      - ./transfer:/var/www/html/public
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.httpd.rule=Host(`httpd`)"
+#      - "traefik.http.routers.httpd.entrypoints=web"
+#      - "traefik.http.routers.httpd.tls=false"
+#      - "traefik.http.routers.httpd.service=httpd"
+#      - "traefik.http.routers.httpd-secure.rule=Host(`httpd`)"
+#      - "traefik.http.routers.httpd-secure.entrypoints=websecure"
+#      - "traefik.http.routers.httpd-secure.service=httpd"
+#      - "traefik.http.routers.httpd-secure.tls=true"
+#      - "traefik.http.services.httpd.loadbalancer.server.port=80"
 
 #  ftp:
 #    image: agaveapi/pure-ftpd:latest

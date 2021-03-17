@@ -1,23 +1,8 @@
-package org.agaveplatform.service.transfers.bridge;
+package org.agaveplatform.service.transfers.bridge.tcp.impl;
 
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.*;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.net.NetServer;
-import io.vertx.core.net.NetServerOptions;
-import io.vertx.core.net.NetSocket;
-import io.vertx.ext.bridge.BridgeEventType;
-import io.vertx.ext.bridge.BridgeOptions;
-import io.vertx.ext.bridge.PermittedOptions;
-import io.vertx.ext.eventbus.bridge.tcp.BridgeEvent;
-import io.vertx.ext.eventbus.bridge.tcp.TcpEventBusBridge;
-import io.vertx.ext.eventbus.bridge.tcp.impl.protocol.FrameParser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.agaveplatform.service.transfers.bridge.tcp.impl.protocol.FrameHelper.sendErrFrame;
+import static org.agaveplatform.service.transfers.bridge.tcp.impl.protocol.FrameHelper.sendFrame;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -28,8 +13,27 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static io.vertx.ext.eventbus.bridge.tcp.impl.protocol.FrameHelper.sendErrFrame;
-import static io.vertx.ext.eventbus.bridge.tcp.impl.protocol.FrameHelper.sendFrame;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.eventbus.Message;
+import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.eventbus.ReplyException;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.core.net.NetServer;
+import io.vertx.core.net.NetServerOptions;
+import io.vertx.core.net.NetSocket;
+import io.vertx.ext.bridge.BridgeEventType;
+import io.vertx.ext.bridge.BridgeOptions;
+import io.vertx.ext.bridge.PermittedOptions;
+import org.agaveplatform.service.transfers.bridge.tcp.BridgeEvent;
+import org.agaveplatform.service.transfers.bridge.tcp.TcpEventBusBridge;
+import org.agaveplatform.service.transfers.bridge.tcp.impl.protocol.FrameParser;
 
 /**
  * Abstract TCP EventBus bridge. Handles all common socket operations but has no knowledge on the payload.
@@ -232,7 +236,7 @@ public class TcpEventBusBridgeImpl implements TcpEventBusBridge {
         final FrameParser parser = new FrameParser(res -> {
             if (res.failed()) {
                 // could not parse the message properly
-                log.error(String.valueOf(res.cause()));
+                log.error("Failed the frame parser. "+res.cause());
                 return;
             }
 
@@ -246,7 +250,7 @@ public class TcpEventBusBridgeImpl implements TcpEventBusBridge {
             final String address = msg.getString("address");
             BridgeEventType eventType = parseType(type);
 
-            checkCallHook(() -> new BridgeEventImp(eventType, msg, socket),
+            checkCallHook(() -> new BridgeEventImpl(eventType, msg, socket),
                     () -> {
                         if (eventType == BridgeEventType.SOCKET_PING) {
                             // No specific action
@@ -296,17 +300,16 @@ public class TcpEventBusBridgeImpl implements TcpEventBusBridge {
     @Override
     public void close() {
         server.close();
-//        return null;
     }
 
-    private void checkCallHook(Supplier<BridgeEventImp> eventSupplier, Runnable okAction, Runnable rejectAction) {
+    private void checkCallHook(Supplier<BridgeEventImpl> eventSupplier, Runnable okAction, Runnable rejectAction) {
         if (bridgeEventHandler == null) {
             if (okAction != null) {
                 okAction.run();
             }
         } else {
-            BridgeEventImp event = eventSupplier.get();
-            bridgeEventHandler.handle(event);
+            BridgeEventImpl event = eventSupplier.get();
+            bridgeEventHandler.handle((BridgeEvent) event);
             event.future().setHandler(res -> {
                 if (res.succeeded()) {
                     if (res.result()) {
@@ -321,7 +324,7 @@ public class TcpEventBusBridgeImpl implements TcpEventBusBridge {
                         }
                     }
                 } else {
-                    log.error("Failure in bridge event handler",  res.cause());
+                    log.error("Failure in bridge event handler", res.cause());
                 }
             });
         }
@@ -413,4 +416,3 @@ public class TcpEventBusBridgeImpl implements TcpEventBusBridge {
         }
     }
 }
-

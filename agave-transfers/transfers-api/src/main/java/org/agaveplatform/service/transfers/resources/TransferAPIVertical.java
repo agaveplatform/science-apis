@@ -118,7 +118,6 @@ public class TransferAPIVertical extends AbstractVerticle {
 
         router.delete("/api/transfers/deleteAll").handler(this::deleteAll);
         router.delete("/api/transfers/:uuid").handler(this::deleteOne);
-        log.debug("got here");
         // Accept post of a TransferTask, validates the request, and inserts into the db.
         router.post("/api/transfers")
                 // Mount validation handler to ensure the posted json is valid prior to adding

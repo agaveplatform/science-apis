@@ -4,6 +4,9 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.bridge.BridgeOptions;
 import io.vertx.ext.bridge.PermittedOptions;
 import io.vertx.ext.eventbus.bridge.tcp.TcpEventBusBridge;
+import org.agaveplatform.service.transfers.bridge.tcp.impl.TcpEventBusBridgeImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
@@ -11,8 +14,9 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
  *
  */
 public class TcpBridge {
+    private static final Logger log = LoggerFactory.getLogger(TcpEventBusBridgeImpl.class);
 
-    public void example1(Vertx vertx) {
+    public void setUp(Vertx vertx) {
 
         TcpEventBusBridge bridge = TcpEventBusBridge.create(
                 vertx,
@@ -81,11 +85,12 @@ public class TcpBridge {
                         .addOutboundPermitted(new PermittedOptions().setAddress(UrlCopy))
         );
 
-        bridge.listen(4222, res -> {
+        bridge.listen(7000, res -> {
             if (res.succeeded()) {
-                // succeed...
+                log.info("Passed the listener");
             } else {
-                // fail...
+                log.debug("Failed to start the listener");
+                log.debug(res.cause().toString());
             }
         });
     }

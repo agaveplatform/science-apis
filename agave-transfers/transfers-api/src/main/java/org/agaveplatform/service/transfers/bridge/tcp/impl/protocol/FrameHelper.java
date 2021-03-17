@@ -1,4 +1,4 @@
-package org.agaveplatform.service.transfers.bridge;
+package org.agaveplatform.service.transfers.bridge.tcp.impl.protocol;
 
 
 import io.vertx.core.buffer.Buffer;

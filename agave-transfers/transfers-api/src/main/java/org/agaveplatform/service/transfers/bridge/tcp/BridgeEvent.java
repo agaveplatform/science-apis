@@ -1,4 +1,4 @@
-package org.agaveplatform.service.transfers.bridge;
+package org.agaveplatform.service.transfers.bridge.tcp;
 
 import io.vertx.codegen.annotations.CacheReturn;
 import io.vertx.codegen.annotations.Fluent;
@@ -6,8 +6,12 @@ import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.NetSocket;
 
-
-//@VertxGen
+/**
+ * Represents an event that occurs on the event bus bridge.
+ * <p>
+ * Please consult the documentation for a full explanation.
+ */
+@VertxGen
 public interface BridgeEvent extends io.vertx.ext.bridge.BaseBridgeEvent {
 
     /**

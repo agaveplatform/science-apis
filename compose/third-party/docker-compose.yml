@@ -45,14 +45,7 @@ services:
     ports:
       - 6379:6379
 
-  nats:
-    image: nats:latest
-    restart: on-failure
-    ports:
-      - 4222:4222
-      - 8222:8222
-
-  #  migrate:
+#  migrate:
 #    image: agaveplatform/agave-migrations:2.2.6
 #    depends_on:
 #     - mysql
@@ -161,6 +154,8 @@ services:
             memory: 512M
           reservations:
             memory: 128M
+
+
 
   ##############################################################
   # Pushpin

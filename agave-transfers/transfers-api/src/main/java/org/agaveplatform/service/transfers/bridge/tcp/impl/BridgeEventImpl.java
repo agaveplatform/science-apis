@@ -1,5 +1,4 @@
-package org.agaveplatform.service.transfers.bridge;
-
+package org.agaveplatform.service.transfers.bridge.tcp.impl;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -10,15 +9,17 @@ import io.vertx.ext.bridge.BridgeEventType;
 import io.vertx.ext.eventbus.bridge.tcp.BridgeEvent;
 
 /**
+ * @author <a href="http://tfox.org">Tim Fox</a>
+ * @author grant@iowntheinter.net
  */
-class BridgeEventImp implements BridgeEvent {
+class BridgeEventImpl implements BridgeEvent {
 
-    private BridgeEventType type;
-    private JsonObject rawMessage;
-    private NetSocket socket;
-    private Promise<Boolean> promise;
+    private final BridgeEventType type;
+    private final JsonObject rawMessage;
+    private final NetSocket socket;
+    private final Promise<Boolean> promise;
 
-    public BridgeEventImp(BridgeEventType type, JsonObject rawMessage, NetSocket socket) {
+    public BridgeEventImpl(BridgeEventType type, JsonObject rawMessage, NetSocket socket) {
         this.type = type;
         this.rawMessage = rawMessage;
         this.socket = socket;

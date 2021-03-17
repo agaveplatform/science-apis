@@ -1,5 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
 import io.vertx.core.*;
 import io.vertx.core.impl.ConcurrentHashSet;
 import io.vertx.core.json.JsonObject;
@@ -10,8 +12,15 @@ import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
+
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.Channel;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
@@ -24,6 +33,8 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
     final public ConcurrentHashSet<String> cancelledTasks = new ConcurrentHashSet<>();
     final public ConcurrentHashSet<String> pausedTasks = new ConcurrentHashSet<>();
     private RetryRequestManager retryRequestManager;
+
+
     public AbstractTransferTaskListener() {
         super();
     }

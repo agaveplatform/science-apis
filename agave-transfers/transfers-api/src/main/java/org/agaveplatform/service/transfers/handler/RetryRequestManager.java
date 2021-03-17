@@ -69,20 +69,6 @@ public class RetryRequestManager {
                         }
                     } else {
                         log.debug("Successfully sent {} event for transfer task {}", address, body.getString("uuid"));
-//                    log.debug("Sending notification event for transfer task {} with status {}",
-//                            body.getString("uuid"), body.getString("status"));
-
-                    // this is now handled by TransferTaskNotificationListener
-                    // now send notification of the event...this kinda feels wrong, but we can evaluate later.
-//                    getVertx().eventBus().request(TRANSFERTASK_NOTIFICATION, body, reply -> {
-//                        if (reply.succeeded()) {
-//                            log.debug("Successfully sent {} event for transfer task {}", TRANSFERTASK_NOTIFICATION, body.getString("uuid"));
-//                        } else {
-//                            log.error("Error with Notification");
-////                            log.error("Unable to send {} event for transfer task {} after {} attempts for message {}. \"{}.\" No further attempts will be made.",
-////                                    TRANSFERTASK_NOTIFICATION, body.getString("uuid"), attempts, event.result().body().encode(), event.cause().getMessage());
-//                        }
-//                    });
                 }
             }
         });

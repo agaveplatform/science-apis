@@ -1,4 +1,4 @@
-package org.agaveplatform.service.transfers.bridge;
+package org.agaveplatform.service.transfers.bridge.tcp;
 
 import io.vertx.codegen.annotations.Fluent;
 import io.vertx.codegen.annotations.VertxGen;
@@ -7,13 +7,14 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.net.NetServerOptions;
 import io.vertx.ext.bridge.BridgeOptions;
-import io.vertx.ext.eventbus.bridge.tcp.impl.TcpEventBusBridgeImpl;
+import org.agaveplatform.service.transfers.bridge.tcp.impl.TcpEventBusBridgeImpl;
 
 /**
  * TCP EventBus bridge for Vert.x
  *
+ * @author <a href="mailto:plopes@redhat.com">Paulo Lopes</a>
  */
-//@VertxGen
+@VertxGen
 public interface TcpEventBusBridge {
 
     static TcpEventBusBridge create(Vertx vertx) {
@@ -25,10 +26,10 @@ public interface TcpEventBusBridge {
     }
 
     static TcpEventBusBridge create(Vertx vertx, BridgeOptions options, NetServerOptions netServerOptions) {
-        return (TcpEventBusBridge) new TcpEventBusBridgeImpl(vertx, options, netServerOptions,null);
+        return new TcpEventBusBridgeImpl(vertx, options, netServerOptions,null);
     }
-    static TcpEventBusBridge create(Vertx vertx, BridgeOptions options, NetServerOptions netServerOptions,Handler<io.vertx.ext.eventbus.bridge.tcp.BridgeEvent> eventHandler) {
-        return (TcpEventBusBridge) new TcpEventBusBridgeImpl(vertx, options, netServerOptions, eventHandler);
+    static TcpEventBusBridge create(Vertx vertx, BridgeOptions options, NetServerOptions netServerOptions,Handler<BridgeEvent> eventHandler) {
+        return new TcpEventBusBridgeImpl(vertx, options, netServerOptions, eventHandler);
     }
     /**
      * Listen on default port 7000
@@ -55,7 +56,6 @@ public interface TcpEventBusBridge {
      *
      * @return self
      */
-
     @Fluent
     TcpEventBusBridge listen(int port, String address);
 

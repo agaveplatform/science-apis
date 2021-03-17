@@ -7,12 +7,19 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+
+import org.agaveplatform.service.transfers.bridge.TcpBridge;
 import org.agaveplatform.service.transfers.listener.*;
 import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
+
+import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+
 public class TransferApplication {
 
     private static final Logger log = LoggerFactory.getLogger(TransferApplication.class);
@@ -43,6 +50,7 @@ public class TransferApplication {
                 JsonObject config = json.result();
                 log.debug("Starting the app with config: " + config.encodePrettily());
 
+
                 DeploymentOptions dbDeploymentOptions = new DeploymentOptions()
                         .setConfig(config)
                         .setMaxWorkerExecuteTimeUnit(TimeUnit.MILLISECONDS)
@@ -55,6 +63,13 @@ public class TransferApplication {
                         dbDeploymentOptions, dbVerticleDeployment);
 
                 dbVerticleDeployment.future().compose(id -> {
+
+                    // start up the TcpBridge and set the Inbound and Outbound addresses
+                    log.info("Starting up the Tcp bridge on port 4222");
+                    TcpBridge tcpBridge = new TcpBridge();
+                    tcpBridge.setUp(vertx);
+                    log.info("Done with starting up the bridge");
+
 
                     Promise<String> httpVerticleDeployment = Promise.promise();
                     vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferAPIVertical", new DeploymentOptions().setConfig(config), res -> {

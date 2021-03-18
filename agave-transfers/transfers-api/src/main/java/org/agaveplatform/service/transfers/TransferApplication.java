@@ -50,6 +50,12 @@ public class TransferApplication {
                 JsonObject config = json.result();
                 log.debug("Starting the app with config: " + config.encodePrettily());
 
+                int tcpPort = 7000;
+                // start up the TcpBridge and set the Inbound and Outbound addresses
+                log.info("Starting up the Tcp bridge on port {}", tcpPort);
+                TcpBridge tcpBridge = new TcpBridge();
+                tcpBridge.setUp(vertx, tcpPort);
+                log.info("Done with starting up the bridge");
 
                 DeploymentOptions dbDeploymentOptions = new DeploymentOptions()
                         .setConfig(config)
@@ -63,13 +69,6 @@ public class TransferApplication {
                         dbDeploymentOptions, dbVerticleDeployment);
 
                 dbVerticleDeployment.future().compose(id -> {
-
-                    // start up the TcpBridge and set the Inbound and Outbound addresses
-                    log.info("Starting up the Tcp bridge on port 4222");
-                    TcpBridge tcpBridge = new TcpBridge();
-                    tcpBridge.setUp(vertx);
-                    log.info("Done with starting up the bridge");
-
 
                     Promise<String> httpVerticleDeployment = Promise.promise();
                     vertx.deployVerticle("org.agaveplatform.service.transfers.resources.TransferAPIVertical", new DeploymentOptions().setConfig(config), res -> {
@@ -258,6 +257,16 @@ public class TransferApplication {
                                             log.info("TransferTaskFinishedListener Deployment id is " + res.result());
                                         } else {
                                             log.error("TransferTaskFinishedListener Deployment failed !");
+                                        }
+                                    });
+
+                            // Deploy the Nats vertical
+                            vertx.deployVerticle(NatsListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskFinishedListener",
+                                    localOptions, res16 -> {
+                                        if (res.succeeded()) {
+                                            log.info("Nats Deployment id is " + res.result());
+                                        } else {
+                                            log.error("Nats Deployment failed !");
                                         }
                                     });
                         } else {

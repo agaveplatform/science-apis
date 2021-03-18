@@ -20,6 +20,7 @@ import io.vertx.ext.web.handler.impl.Wso2JwtUser;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.listener.AbstractNatsListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.model.TransferTaskRequest;
 import org.agaveplatform.service.transfers.model.TransferUpdate;
@@ -43,7 +44,7 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANS
  * This is the user-facing vertical providing the http interface to internal services.
  * It provides crud functionality and basic jwt authorization.
  */
-public class TransferAPIVertical extends AbstractVerticle {
+public class TransferAPIVertical extends AbstractNatsListener {
 
     private final static Logger log = LoggerFactory.getLogger(TransferAPIVertical.class);
 
@@ -274,7 +275,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         dbService.create(tenantId, transferTask, reply -> {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());
-                _doPublishEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
+                _doPublishNatsEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
                 routingContext.response()
                         .putHeader("content-type", "application/json")
                             .setStatusCode(201)
@@ -317,7 +318,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                         dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
                             if (deleteReply.succeeded()) {
 
-                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+                                _doPublishNatsEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -374,9 +375,9 @@ public class TransferAPIVertical extends AbstractVerticle {
                             user.isAdminRoleExists()) {
                         dbService.cancelAll(tenantId, deleteReply -> {
                             if (deleteReply.succeeded()) {
-                                // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                                // _doPublishNatsEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
                                 //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+                                _doPublishNatsEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -401,7 +402,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         dbService.getByUuid(tenantId, transferTask.getUuid(), reply -> {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());
-                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
+                _doPublishNatsEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
                 routingContext.response()
                         .putHeader("content-type", "application/json")
                         .setStatusCode(201)
@@ -442,7 +443,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                         dbService.delete(tenantId, uuid, deleteReply -> {
                             if (deleteReply.succeeded()) {
 
-                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+                                _doPublishNatsEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -489,9 +490,9 @@ public class TransferAPIVertical extends AbstractVerticle {
                             user.isAdminRoleExists()) {
                         dbService.deleteAll(tenantId, deleteReply -> {
                             if (deleteReply.succeeded()) {
-                               // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                               // _doPublishNatsEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
                                 //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+                                _doPublishNatsEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -588,7 +589,7 @@ public class TransferAPIVertical extends AbstractVerticle {
                         // perform the update
                         dbService.update(tenantId, uuid, tt, updateReply -> {
                             if (updateReply.succeeded()) {
-                                _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
+                                _doPublishNatsEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
                                 routingContext.response().end(
                                         AgaveResponseBuilder.getInstance(routingContext)
                                                 .setResult(updateReply.result())
@@ -619,7 +620,7 @@ public class TransferAPIVertical extends AbstractVerticle {
      * @param event the event channel to which the message will be published
      * @param message the message to publish
      */
-    public void _doPublishEvent(String event, Object message) {
+    public void _doPublishNatsEvent(String event, Object message) {
         log.debug("Publishing {} event: {}", event, message);
         getVertx().eventBus().publish(event, message);
     }
@@ -668,7 +669,7 @@ public class TransferAPIVertical extends AbstractVerticle {
      *
      * @param vertx the current instance of vertx
      */
-    private void setVertx(Vertx vertx) {
+    public void setVertx(Vertx vertx) {
         this.vertx = vertx;
     }
 

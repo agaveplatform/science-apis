@@ -15,6 +15,9 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.stubbing.Answer;
 
+import java.io.IOException;
+import java.util.concurrent.TimeoutException;
+
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Matchers.any;
@@ -114,7 +117,15 @@ public class RetryRequestManagerTest extends BaseTestCase {
 
         //mock TransferTaskAssignedListener
         TransferTaskAssignedListener mockAssignedListener = mock(TransferTaskAssignedListener.class);
-        doCallRealMethod().when(mockAssignedListener).start();
+        try {
+            doCallRealMethod().when(mockAssignedListener).start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (TimeoutException e) {
+            e.printStackTrace();
+        }
         when(mockAssignedListener.config()).thenReturn(config);
         doReturn(getMockTranserTaskDatabaseService(rootTransferTaskJson)).when(TransferTaskDatabaseService.createProxy(any(Vertx.class), anyString()));
         doNothing().when(vertx.eventBus()).registerDefaultCodec(any(), any());
@@ -126,7 +137,16 @@ public class RetryRequestManagerTest extends BaseTestCase {
 
         //Mock request sent onto the event bus
         Handler<DeliveryContext<Object>> inboundInterceptor = dc -> {
-            mockAssignedListener.start();
+
+            try {
+                mockAssignedListener.start();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (TimeoutException e) {
+                e.printStackTrace();
+            }
         };
 
         vertx.eventBus().addInboundInterceptor(inboundInterceptor);

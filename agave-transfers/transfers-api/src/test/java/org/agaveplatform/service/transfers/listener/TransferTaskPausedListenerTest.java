@@ -25,6 +25,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -63,7 +64,15 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
-		doCallRealMethod().when(listener).start();
+		try {
+			doCallRealMethod().when(listener).start();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (TimeoutException e) {
+			e.printStackTrace();
+		}
 		return listener;
 	}
 
@@ -899,8 +908,15 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		when(ta.taskIsNotInterrupted(any())).thenReturn(true,false);
 
 
-
-		ta.start();
+		try {
+			ta.start();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (TimeoutException e) {
+			e.printStackTrace();
+		}
 		vertx.eventBus().send(TRANSFERTASK_PAUSED_SYNC, rootTransferTaskJson);
 		ctx.verify(() ->{
 			doCallRealMethod().when(ta).addCancelledTask(anyString());

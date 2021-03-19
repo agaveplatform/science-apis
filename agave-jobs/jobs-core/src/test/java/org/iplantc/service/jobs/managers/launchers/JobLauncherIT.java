@@ -2,12 +2,14 @@ package org.iplantc.service.jobs.managers.launchers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
+import org.iplantc.service.common.Settings;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
@@ -29,9 +31,14 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Test(groups={"integration"})
 public class JobLauncherIT extends AbstractJobSubmissionTest {
@@ -108,22 +115,42 @@ public class JobLauncherIT extends AbstractJobSubmissionTest {
 
 		software = Software.fromJSON(json, SYSTEM_OWNER);
 		software.setOwner(SYSTEM_OWNER);
+		software.setExecutablePath("bin/" + software.getExecutablePath());
 		
 		SoftwareDao.persist(software);
 	}
 
 	protected void stageSoftwareDeploymentDirectory(Software software)
 	throws Exception {
+		Path tempTestSoftwareDeploymentDir = Files.createDirectories(
+				Paths.get(Settings.TEMP_DIRECTORY)
+					.resolve(UUID.randomUUID().toString())
+					.resolve(FilenameUtils.getName(software.getDeploymentPath())));
+
+		for (String subdir: new String[]{"bin", "lib", "etc", "test"}) {
+			Path tempSubDirPath = Files.createDirectory(tempTestSoftwareDeploymentDir.resolve(subdir));
+			Path tempSubDirFilePath = Files.createFile(tempSubDirPath.resolve(UUID.randomUUID().toString()));
+			Files.write(tempSubDirFilePath, ("This is test file " + tempSubDirFilePath.toString()).getBytes());
+		}
+		Files.copy(Paths.get(SOFTWARE_WRAPPER_FILE),
+				tempTestSoftwareDeploymentDir.resolve("bin").resolve(FilenameUtils.getName(SOFTWARE_WRAPPER_FILE)),
+				StandardCopyOption.REPLACE_EXISTING);
+
 		RemoteDataClient remoteDataClient = null;
 		try 
 		{
+			Path deploymentPath = Paths.get(software.getDeploymentPath());
 			remoteDataClient = software.getStorageSystem().getRemoteDataClient();
 			remoteDataClient.authenticate();
-			remoteDataClient.mkdirs(software.getDeploymentPath());
-			String remoteTemplatePath = software.getDeploymentPath() + File.separator + software.getExecutablePath();
-			remoteDataClient.put(SOFTWARE_WRAPPER_FILE,
-					software.getDeploymentPath() + File.separator + software.getExecutablePath());
-			Assert.assertTrue(remoteDataClient.doesExist(remoteTemplatePath), 
+			remoteDataClient.mkdirs(deploymentPath.toString());
+
+			Path remoteTemplatePath = deploymentPath.resolve(software.getExecutablePath());
+
+			// copy the directory to the parent directory on the software storage system so it has the expected
+			// deployment path name
+			remoteDataClient.put(tempTestSoftwareDeploymentDir.toString(), deploymentPath.getParent().toString());
+
+			Assert.assertTrue(remoteDataClient.doesExist(remoteTemplatePath.toString()),
 					"Failed to copy software assets to deployment system " + software.getStorageSystem().getSystemId());
 		} catch (RemoteDataException e) {
 			Assert.fail("Failed to authenticate to the storage system " + job.getSoftwareName(), e);
@@ -131,15 +158,18 @@ public class JobLauncherIT extends AbstractJobSubmissionTest {
 			Assert.fail("Failed to copy input file to remote system", e);
 		} 
 		finally {
-			try {if (remoteDataClient != null) remoteDataClient.disconnect();} catch (Exception ignored){}
+			if (remoteDataClient != null) {
+				remoteDataClient.disconnect();
+			}
+			FileUtils.deleteQuietly(tempTestSoftwareDeploymentDir.toFile());
 		}
 	}
 
 	/**
 	 * Quick job setup method to create a job we can submit
-	 * @param software
-	 * @return
-	 * @throws Exception
+	 * @param software the app for which to create a job
+	 * @return the persisted job
+	 * @throws Exception if job cannot be created and saved
 	 */
 	protected Job createAndPersistJob(Software software) throws Exception {
 		Job job = new Job();

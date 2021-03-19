@@ -68,6 +68,7 @@ public class JobEventProcessorIT extends AbstractDaoTest {
 
 	protected Notification createNotification(Job job)
 			throws NotificationException, IOException {
+
 		Notification notification = new Notification(job.getUuid(),
 				job.getOwner(), job.getStatus().name(),
 				"http://httpbin:8000/post", true);
@@ -103,16 +104,18 @@ public class JobEventProcessorIT extends AbstractDaoTest {
 		when(job.getUuid()).thenReturn(new AgaveUUID(UUIDType.JOB).toString());
 		when(job.getStatus()).thenReturn(status);
 		when(job.toJSON()).thenReturn(mapper.createObjectNode().toString());
+		when(job.getSystem()).thenReturn("testSystem");
+		when(job.getSoftwareName()).thenReturn("testSoftware");
 
 		JsonNode jsonJob = mapper.readTree(job.toJSON());
 
 		JobEvent event = new JobEvent(job, status, status.getDescription(),
 				job.getOwner());
 
-		JobEventProcessor processor = new JobEventProcessor(event);
-		
-		JobEventProcessor mockEventProcessor = Mockito.spy(processor);
-		
+		JobEventProcessor mockEventProcessor = Mockito.mock(JobEventProcessor.class);
+		when(mockEventProcessor.getEvent()).thenReturn(event);
+		doCallRealMethod().when(mockEventProcessor).process();
+
 		mockEventProcessor.process();
 
 		verify(mockEventProcessor).processJobExecutionSystemEvent(
@@ -142,15 +145,17 @@ public class JobEventProcessorIT extends AbstractDaoTest {
 		when(job.getUuid()).thenReturn(new AgaveUUID(UUIDType.JOB).toString());
 		when(job.getStatus()).thenReturn(status);
 		when(job.toJSON()).thenReturn(mapper.createObjectNode().toString());
+		when(job.getSystem()).thenReturn("testSystem");
+		when(job.getSoftwareName()).thenReturn("testSoftware");
 
 		JsonNode jsonJob = mapper.readTree(job.toJSON());
 
 		JobEvent event = new JobEvent(job, status, status.getDescription(),
 				job.getOwner());
-
-		JobEventProcessor processor = new JobEventProcessor(event);
 		
-		JobEventProcessor mockEventProcessor = Mockito.spy(processor);
+		JobEventProcessor mockEventProcessor = Mockito.mock(JobEventProcessor.class);
+		when(mockEventProcessor.getEvent()).thenReturn(event);
+		doCallRealMethod().when(mockEventProcessor).process();
 		
 		mockEventProcessor.process();
 		

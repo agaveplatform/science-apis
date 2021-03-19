@@ -13,6 +13,7 @@ import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.exceptions.*;
+import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.managers.launchers.parsers.RemoteJobIdParser;
 import org.iplantc.service.jobs.managers.launchers.parsers.RemoteJobIdParserFactory;
 import org.iplantc.service.jobs.model.Job;
@@ -29,6 +30,7 @@ import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.DateTime;
 
@@ -79,6 +81,13 @@ public class HPCLauncher extends AbstractJobLauncher
 
 	/*
 	 * Put the job in the batch scheduling queue
+	 *
+	 * @throws IOException when there is an issue parsing or locating the application template and deployment assets.
+	 * @throws JobException when an error occurs interacting with the remote system or updating the job details.
+	 * @throws SchedulerException when the scheduler on the {@link ExecutionSystem} rejects the job.
+	 * @throws SoftwareUnavailableException when the job software is disabled, or deployment assets are missing.
+	 * @throws SystemUnavailableException when one or more dependent systems is unavailable.
+	 * @throws SystemUnknownException when a dependent system (job execution, software deployment, etc) are no longer in the db.
 	 */
 	@Override
 	public void launch() throws IOException, JobException, SoftwareUnavailableException, SchedulerException, SystemUnknownException, SystemUnavailableException
@@ -86,6 +95,9 @@ public class HPCLauncher extends AbstractJobLauncher
 		File tempAppDir = null;
 		try
 		{
+			// calculate remote job path if not already set
+			setRemoteJobPath();
+
 			// sets up the application directory to execute this job launch; see comments in method
             createTempAppDir();
             
@@ -123,7 +135,7 @@ public class HPCLauncher extends AbstractJobLauncher
 			JobDao.persist(getJob());
 
             // upon success, delete the temp app dir containing the job's application assets and wrapper script.
-			FileUtils.deleteQuietly(tempAppDir);
+			FileUtils.deleteQuietly(getTempAppDir());
 		}
 //		catch (SoftwareUnavailableException | SchedulerException | ClosedByInterruptException e) {
 //			throw e;
@@ -148,6 +160,7 @@ public class HPCLauncher extends AbstractJobLauncher
 	/**
 	 * Checks to see if the job already started running right after submission. This can happen when a callback
 	 * comes in immediately and is processed prior to the job submission process completing.
+	 *
 	 * @throws JobException if the status event cannot be raised.
 	 */
 	protected void checkJobStatus() throws JobException {
@@ -306,15 +319,16 @@ public class HPCLauncher extends AbstractJobLauncher
 		catch(JobMacroResolutionException e) {
 			throw new JobException("Failed resolving job macros when building executable app wrapper " +
 					"script from template file. " + e.getMessage(), e);
-//        catch (Exception e) {
-//			String msg = "Failed to resolve remote execution system prior to staging application.";
-////			log.error(msg, e);
-//			throw new JobException(msg, e);
+		} catch (Exception e) {
+			String msg = "Failed to resolve job path on remote execution system prior to staging application.";
+//			log.error(msg, e);
+			throw new JobException(msg, e);
 		}
     }
 
 	/**
 	 * Utility method to resolve the {@link Job#getWorkPath()} to an absolute path on the remote host.
+	 *
 	 * @return the absolute path of the job directory on the execution system
 	 * @throws FileNotFoundException if the path cannot be found on the remote system
 	 * @throws RemoteCredentialException if unable to auth to the remote system or credentials missing
@@ -375,6 +389,7 @@ public class HPCLauncher extends AbstractJobLauncher
 
 	/**
 	 * Filters the app template with the input values from the job request
+	 *
 	 * @param appTemplate the app wrapper template content
 	 * @return the filtered content
 	 * @throws JobException if the parameters cannot be fetched as a JsonObject
@@ -501,27 +516,24 @@ public class HPCLauncher extends AbstractJobLauncher
 			
 			return jobIdParser.getJobId(submissionResponse);
 		}
-		catch (RemoteJobIDParsingException | RemoteExecutionException e) {
-			log.error("Error submitting job " + getJob().getUuid() + ".", e);
-			throw new JobException(e.getMessage(), e);
+		catch (RemoteJobIDParsingException e) {
+			throw new JobException("Error parsing response from the scheduler for job " + getJob().getUuid() + ".", e);
+		}
+		catch (RemoteExecutionException| RemoteConnectionException e) {
+			throw new JobException("Error communicating with remote execution system " + getJob().getSystem() + ".", e);
 		}
 		catch (JobException e) {
-			log.error("Error submitting job " + getJob().getUuid() + ".", e);
-			throw e;
+			throw new JobException("Error submitting job to remote scheduler.", e);
 		}
 		catch (SchedulerException e) {
-			log.error("Error returned from remote scheduler while submitting job " + getJob().getUuid() + ".", e);
-			throw e;
+			throw new SchedulerException("Error returned from remote scheduler while submitting job " + getJob().getUuid() + ".", e);
 		}
-		catch (Exception e)
-		{
-			String msg = "Failed to submit HPC job " + getJob().getUuid() + ".";
-			log.error(msg, e);
-			throw new JobException(msg, e);
+		catch (Exception e) {
+			throw new JobException("Failed to submit HPC job " + getJob().getUuid() + ".", e);
 		}
 		finally
 		{
-			try { submissionClient.close(); } catch (Exception ignored){}
+			try { if (submissionClient != null) submissionClient.close(); } catch (Exception ignored){}
 			try {
 				if (remoteExecutionDataClient != null) {
 					remoteExecutionDataClient.disconnect();

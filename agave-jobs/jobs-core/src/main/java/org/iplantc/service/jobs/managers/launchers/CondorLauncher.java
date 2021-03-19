@@ -10,9 +10,7 @@ import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.exceptions.JobException;
-import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
-import org.iplantc.service.jobs.exceptions.SchedulerException;
+import org.iplantc.service.jobs.exceptions.*;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.managers.launchers.parsers.CondorJobIdParser;
 import org.iplantc.service.jobs.model.Job;
@@ -21,13 +19,17 @@ import org.iplantc.service.jobs.model.scripts.CommandStripper;
 import org.iplantc.service.jobs.model.scripts.SubmitScript;
 import org.iplantc.service.jobs.model.scripts.SubmitScriptFactory;
 import org.iplantc.service.remote.RemoteSubmissionClient;
+import org.iplantc.service.remote.exceptions.RemoteExecutionException;
 import org.iplantc.service.remote.local.CmdLineProcessHandler;
 import org.iplantc.service.remote.local.CmdLineProcessOutput;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
+import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.exceptions.AuthenticationException;
+import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 import org.joda.time.DateTime;
 
 import java.io.File;
@@ -35,8 +37,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
 
 /**
@@ -78,20 +85,20 @@ public class CondorLauncher  extends AbstractJobLauncher {
         this.submitFileObject = SubmitScriptFactory.getInstance(getJob(), getSoftware(), getExecutionSystem());
     }
 
-    /**
-     * This method gets the current working directory
-     *
-     * @return String of directory path
-     */
-    private String getWorkDirectory() {
-        String wd = "";
-        try {
-            wd = new File("test.txt").getCanonicalPath().replace("/test.txt", "");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return wd;
-    }
+//    /**
+//     * This method gets the current working directory
+//     *
+//     * @return String of directory path
+//     */
+//    private String getWorkDirectory() {
+//        String wd = "";
+//        try {
+//            wd = new File("test.txt").getCanonicalPath().replace("/test.txt", "");
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+//        return wd;
+//    }
 
     /**
      * makes and sets new time marker for creation of job run directories
@@ -134,86 +141,86 @@ public class CondorLauncher  extends AbstractJobLauncher {
 	        String condorSubmitFileContents = resolveTemplateMacros(submitFileObject.getScriptText());
 	        
 	        String submitFileName = "condorSubmit";   //createSubmitFileName(timeMark);
-	        condorSubmitFile = new File(tempAppDir, submitFileName);
+	        condorSubmitFile = new File(getTempAppDir(), submitFileName);
         
-            FileUtils.writeStringToFile(condorSubmitFile, condorSubmitFileContents);
+            Files.write(condorSubmitFile.toPath(), condorSubmitFileContents.getBytes());
         }
         catch (JobMacroResolutionException e) {
             String msg = "Unable to resolve macros in the submit script: " + e.getMessage();
-            log.error(msg);
+//            log.error(msg);
             throw new JobException(msg, e);
         }
         catch (JobException e) {
         	String msg = "Unable to create condor submit file.";
-        	log.error(msg, e);
+//        	log.error(msg, e);
         	throw e;
         } 
         catch (IOException | URISyntaxException e) {
         	String msg = "Failed to write condor submit file to local cache.";
-        	log.error(msg, e);
+//        	log.error(msg, e);
             throw new JobException(msg, e);
         }
     }
 
-    /**
-     * Method to help with multiple calls to outside processes for a variety of tasks
-     *
-     * @param command String of command line parameters
-     * @param cmdName Name of the command being executed
-     * @return an Object that includes int exit code, String out and String err from the execution
-     * @throws JobException if the exitCode is not equal to 0
-     */
-    private CmdLineProcessOutput executeLocalCommand(String command, String cmdName) throws JobException {
-        CmdLineProcessHandler cmdLineProcessHandler = new CmdLineProcessHandler();
-        int exitCode = cmdLineProcessHandler.executeCommand(command);
-
-        if (exitCode != 0) {
-        	String msg = "Job exited with error code " + exitCode + " please check your arguments and try again.";
-        	log.error(msg);
-            throw new JobException(msg);
-        }
-        return cmdLineProcessHandler.getProcessOutput();
-    }
-
-    /**
-     * Takes a String representing the directory path and extracts the last directory name
-     *
-     * @param path String directory path
-     * @return String of last directory name in path
-     * @throws Exception if path is null or empty
-     */
-    private String getDirectoryName(String path) throws Exception {
-        String name = null;
-
-        // is it null or empty throw Exception
-        if (path == null || path.isEmpty()) {
-            throw new Exception("path can't be null or empty");
-        }
-        path = path.trim();
-        String separator = File.separator;
-
-        StringTokenizer st = new StringTokenizer(path, separator);
-        while (st.hasMoreElements()) {
-            name = (String) st.nextElement();
-        }
-        return name;
-    }
+//    /**
+//     * Method to help with multiple calls to outside processes for a variety of tasks
+//     *
+//     * @param command String of command line parameters
+//     * @param cmdName Name of the command being executed
+//     * @return an Object that includes int exit code, String out and String err from the execution
+//     * @throws JobException if the exitCode is not equal to 0
+//     */
+//    private CmdLineProcessOutput executeLocalCommand(String command, String cmdName) throws JobException {
+//        CmdLineProcessHandler cmdLineProcessHandler = new CmdLineProcessHandler();
+//        int exitCode = cmdLineProcessHandler.executeCommand(command);
+//
+//        if (exitCode != 0) {
+//        	String msg = "Job exited with error code " + exitCode + " please check your arguments and try again.";
+//        	log.error(msg);
+//            throw new JobException(msg);
+//        }
+//        return cmdLineProcessHandler.getProcessOutput();
+//    }
+//
+//    /**
+//     * Takes a String representing the directory path and extracts the last directory name
+//     *
+//     * @param path String directory path
+//     * @return String of last directory name in path
+//     * @throws Exception if path is null or empty
+//     */
+//    private String getDirectoryName(String path) throws Exception {
+//        String name = null;
+//
+//        // is it null or empty throw Exception
+//        if (path == null || path.isEmpty()) {
+//            throw new Exception("path can't be null or empty");
+//        }
+//        path = path.trim();
+//        String separator = File.separator;
+//
+//        StringTokenizer st = new StringTokenizer(path, separator);
+//        while (st.hasMoreElements()) {
+//            name = (String) st.nextElement();
+//        }
+//        return name;
+//    }
 
     /**
 	 * This method will write the generic transfer_wrapper.sh file that condor_submit
 	 * uses as it's executable. The file wraps the defined executable for the job along
 	 * with the data all tar'd and zipped to transfer to OSG
+     *
+     * @throws JobException if unable to write or set permissions on template and executable files.
 	 */
 	private void createTransferWrapper() throws JobException {
 	    step = "Creating Condor submission transfer wrapper to run " + 
 	            getJob().getSoftwareName() + " for job " + getJob().getUuid();
 	    log.debug(step);
 	    StringBuilder transferScript = new StringBuilder();
-	    FileWriter transferWriter = null;
-	    String executablePath;
-	
-	    try {
-	        transferWriter = new FileWriter(tempAppDir + File.separator + "transfer_wrapper.sh");
+        String executablePath;
+
+        try(FileWriter transferWriter = new FileWriter(getTempAppDir() + File.separator + "transfer_wrapper.sh");) {
 	
 	        transferScript.append("#!/bin/bash\n\n");
 	        transferScript.append("tar xzvf transfer.tar.gz\n");
@@ -224,25 +231,22 @@ public class CondorLauncher  extends AbstractJobLauncher {
 	        }
 	        //transferScript.append("chmod u+x " + executablePath + " \n");
 	        transferScript.append("./" + executablePath + "  # this in turn wraps the final executable along with inputs, parameters and output.\n");
-	
-	        // write the transfer_wrapper.sh file
+            // write the transfer_wrapper.sh file
 	        transferWriter.write(transferScript.toString());
 	        transferWriter.flush();
+
+            // need to make sure that transfer_wrapper.sh is executable
+            Files.setPosixFilePermissions(getTempAppDir().toPath().resolve("transfer_wrapper.sh"),
+                    PosixFilePermissions.fromString("rwxr-x---"));
+
+            Files.setPosixFilePermissions(getTempAppDir().toPath().resolve(executablePath),
+                    PosixFilePermissions.fromString("rwxr-x---"));
+
 	    } catch (IOException e) {
-	        String msg = "Failure to write transfer script for Condor submission to " + tempAppDir + ".";
+	        String msg = "Failure to write transfer script for Condor submission to " + getTempAppDir() + ".";
 	        log.error(msg, e);
 	        throw new JobException(msg, e);
-	    } finally {
-	        try {
-	            transferWriter.close();
-	        } catch (IOException e) {
-	            log.warn("Failed to close transferWriter outputStream.", e);
-	        }
 	    }
-	
-	    // need to make sure that transfer_wrapper.sh is executable
-	    String chmodCmdString = new String("cd " + tempAppDir + "; " + "chmod +x transfer_wrapper.sh; chmod +x " + executablePath);
-	    executeLocalCommand(chmodCmdString, "chmod +x transfer_wrapper.sh; chmod +x " + executablePath);
 	}
 
     /* (non-Javadoc)
@@ -254,10 +258,10 @@ public class CondorLauncher  extends AbstractJobLauncher {
         step = "Processing " + getJob().getSoftwareName() + " wrapper template for job " + getJob().getUuid();
         log.debug(step);
 
-        // need tempAppDir + software.getExecutablePath()
+        // need getTempAppDir() + software.getExecutablePath()
         // read in the template file
         // create the submit script in the temp folder
-        File appTemplateFile = new File(tempAppDir + File.separator + getSoftware().getExecutablePath());
+        File appTemplateFile = new File(getTempAppDir() + File.separator + getSoftware().getExecutablePath());
         // replace the executable script file references with the file names
         Map<String, String> inputMap = null;
         String appTemplate = null;
@@ -350,30 +354,29 @@ public class CondorLauncher  extends AbstractJobLauncher {
             // append the template with
             batchScript.append(appTemplate);
             batchWriter = new FileWriter(appTemplateFile);
+
             // write new contents to appTemplate for execution
-            if (batchWriter != null) {
-                batchWriter.write(batchScript.toString());
-            }
-            
+            batchWriter.write(batchScript.toString());
+
             return appTemplateFile;
         } 
         catch (IOException e) {
         	String msg = "FileUtil operation failed.";
-        	log.error(msg, e);
+//        	log.error(msg, e);
             throw new JobException(msg, e);
         } 
         catch (JobException e) {
         	String msg = "Json failure from job inputs or parameters.";
-        	log.error(msg);
+//        	log.error(msg);
             throw new JobException(msg, e);
         }
         catch(JobMacroResolutionException e) {
-            log.error(e);
+//            log.error(e);
             throw new JobException(e.getMessage(), e);
         }
 		catch (URISyntaxException e) {
 			String msg = "Failed to parse input URI.";
-			log.error(msg, e);
+//			log.error(msg, e);
 			throw new JobException(msg, e);
 		} finally {
             try {
@@ -386,14 +389,13 @@ public class CondorLauncher  extends AbstractJobLauncher {
     }
 
 	/**
-	 * Parses all the inputs, parameters, and macros for the given 
-	 * string. This is appropriate for both resolving wrapper templates 
-	 * and condor submit scripts.
+	 * Parses all the inputs, parameters, and macros for the given string. This is appropriate for both resolving
+     * wrapper templates and condor submit scripts.
 	 * 
-	 * @param appTemplate
-	 * @return
-	 * @throws JobException
-	 * @throws URISyntaxException
+	 * @param appTemplate the wrapper template as provided by the app definition
+	 * @return fully resolved template to run and start the condor job
+	 * @throws JobException if unable to parse the job template
+	 * @throws URISyntaxException when invalid input URI are found in the job inputs.
 	 */
 	protected String resolveTemplateMacros(String appTemplate)
 	throws JobException, URISyntaxException, JobMacroResolutionException {
@@ -475,35 +477,51 @@ public class CondorLauncher  extends AbstractJobLauncher {
 		appTemplate = resolveMacros(appTemplate);
 		return appTemplate;
 	}
-    
-    private void createRemoteTransferPackage() throws Exception {
+
+    /**
+     * Packages up the app assets and wrapper template into a tarball for transfer and submission to
+     * the condor {@link ExecutionSystem} where they can be submitted as a single job to the condor
+     * scheduler by the condor executable.
+     *
+     * @throws JobException when an error occurs trying to submit the job
+     */
+    private void createRemoteTransferPackage() throws JobException {
         step = "Creating the " + getJob().getSoftwareName() + " transfer package for job " + getJob().getUuid();
         log.debug(step);
         
         String createTransferPackageCmd = new String("cd " + getJob().getWorkPath() + "; "
                 + "tar czvf ./transfer.tar.gz  --exclude condorSubmit --warning=no-file-changed .");
         ExecutionSystem system = (ExecutionSystem) new SystemDao().findBySystemId(getJob().getSystem());
-        
-    	RemoteSubmissionClient remoteSubmissionClient = system.getRemoteSubmissionClient(getJob().getInternalUsername());
-    	String response = remoteSubmissionClient.runCommand(createTransferPackageCmd);
-    	response = StringUtils.lowerCase(response);
-    	if (StringUtils.contains(response, "cannot") || StringUtils.contains(response, "command not found")) {
-    		String msg = "Failed to create transfer package for condor submission. \n" + response;
-    		log.error(msg);
-    		throw new JobException(msg);
-    	}
-    	
-    	remoteSubmissionClient.close();
 
+        RemoteSubmissionClient remoteSubmissionClient = null;
+        try {
+            remoteSubmissionClient = system.getRemoteSubmissionClient(getJob().getInternalUsername());
+
+            String response = remoteSubmissionClient.runCommand(createTransferPackageCmd);
+            response = StringUtils.lowerCase(response);
+            if (StringUtils.contains(response, "cannot") || StringUtils.contains(response, "command not found")) {
+                String msg = "Failed to create transfer package for condor submission. \n" + response;
+//                log.error(msg);
+                throw new JobException(msg);
+            }
+        } catch (AuthenticationException e) {
+            throw new JobException(e);
+        }
+        catch (RemoteExecutionException| RemoteConnectionException e) {
+            throw new JobException("Error communicating with remote execution system " + getJob().getSystem() + ".", e);
+        }
+        finally {
+            try {if (remoteSubmissionClient != null) remoteSubmissionClient.close();} catch (Throwable ignored) {}
+        }
     }
 
     /**
      * Currently for the OSG condor submit host, IRods files pushed to the execution system lose their executable setting so they
      * need to be reset.
      *
-     * @throws JobException
+     * @throws JobException if unable to change permissions on the remote execution scripts, or communicate with the system
      */
-    private void addExecutionPermissionsToWrapper(){
+    private void addExecutionPermissionsToWrapper() throws JobException {
         step = "Changing execute permissions on transfer_wrapper and executable for job " + getJob().getUuid();
         log.debug(step);
 
@@ -521,31 +539,26 @@ public class CondorLauncher  extends AbstractJobLauncher {
         }
     }
 
+    /**
+     * Submit job to the condor scheduler.
+     *
+     * @throws IOException when there is an issue parsing or locating the application template and deployment assets.
+     * @throws JobException when an error occurs interacting with the remote system or updating the job details.
+     * @throws SchedulerException when the scheduler on the {@link ExecutionSystem} rejects the job.
+     * @throws SoftwareUnavailableException when the job software is disabled, or deployment assets are missing.
+     * @throws SystemUnavailableException when one or more dependent systems is unavailable.
+     * @throws SystemUnknownException when a dependent system (job execution, software deployment, etc) are no longer in the db.
+     */
     @Override
-    public void launch() throws JobException, SchedulerException, IOException, SystemUnavailableException
+    public void launch() throws IOException, JobException, SoftwareUnavailableException, SchedulerException, SystemUnknownException, SystemUnavailableException
     {
         String condorSubmitCmdString = null;
         try 
         {
-        	if (getSoftware() == null || !getSoftware().isAvailable()) {
-				throw new SoftwareException("App is not longer available for execution");
-			}
-        	
-        	// if the system is down, return it to the queue to wait for the system
-			// to come back up.
-			if (getExecutionSystem() == null)
-			{
-				throw new JobException("Execution system " + getJob().getSystem() + 
-						" is no longer a registered system.");
-			} 
-			else if (!getExecutionSystem().getStatus().equals(SystemStatusType.UP) || 
-					!getExecutionSystem().isAvailable()) 
-			{
-				throw new SystemUnavailableException("Execution system " + getJob().getSystem() + 
-						" is not currently available for job submission.");
-			} 
-        				
-            // this is used to set the tempAppDir identifier so that we can come back
+            // calculate remote job path if not already set
+            setRemoteJobPath();
+
+        	// this is used to set the tempAppDir identifier so that we can come back
             // later to find the directory when the job is done (Failed for cleanup or Successful for archiving)
             setTimeMarker();
             
@@ -610,10 +623,6 @@ public class CondorLauncher  extends AbstractJobLauncher {
             JobDao.persist(getJob());
             
         }
-        catch (ClosedByInterruptException e) {
-        	if (log.isDebugEnabled()) log.debug("Condor launch interrupted.", e);
-            throw e;
-        } 
         catch (JobException e) {
         	jobFailed = true;
         	log.error(step);
@@ -633,7 +642,7 @@ public class CondorLauncher  extends AbstractJobLauncher {
             throw new JobException("Failed to invoke app: \"" + getSoftware().getUniqueName() + "\n\"   with command:  " + condorSubmitCmdString + "\n" + e.getMessage(), e);
         } 
         finally {
-        	FileUtils.deleteQuietly(tempAppDir);
+        	FileUtils.deleteQuietly(getTempAppDir());
         }
     }
 
@@ -684,19 +693,23 @@ public class CondorLauncher  extends AbstractJobLauncher {
 			CondorJobIdParser jobIdParser = new CondorJobIdParser();
 	        
 	        return jobIdParser.getJobId(submissionResponse);
-    	} 
+    	}
+        catch (RemoteJobIDParsingException | RemoteExecutionException e) {
+            log.debug("Error submitting job " + getJob().getUuid() + " to the remote condor queue. Unable to parse the " + e.getMessage());
+            throw new JobException(e);
+        }
     	catch (JobException e) {
     		log.error(e.getMessage(), e);
     		throw e;
-    	} 
+    	}
     	catch (Exception e) {
     		String msg = "Failed to submit job to condor queue.";
     		log.error(msg, e);
     		throw new JobException(msg, e);
     	}
     	finally {
-    		try { submissionClient.close(); } catch (Exception e) {}
-			try { remoteExecutionDataClient.disconnect(); } catch (Exception e) {}
+    		try { if (submissionClient != null) submissionClient.close(); } catch (Exception ignored) {}
+			try { if (remoteExecutionDataClient != null) remoteExecutionDataClient.disconnect(); } catch (Exception ignored) {}
     	}
     }
     
@@ -708,7 +721,7 @@ public class CondorLauncher  extends AbstractJobLauncher {
             HibernateUtil.closeSession();
         } catch (Exception ignored) {}
         try {
-            FileUtils.deleteDirectory(tempAppDir);
+            FileUtils.deleteDirectory(getTempAppDir());
         } catch (Exception ignored) {}
     }
 }

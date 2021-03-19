@@ -100,9 +100,25 @@ public class StagingWatch extends AbstractJobWatch {
                                 e.getMessage() + ". This job will resume staging once one or more current jobs complete.");
                 throw new JobExecutionException(e);
             } catch (Throwable e) {
-                log.error("Failed to stage inputs for job " + getJob().getUuid(), e);
-                updateJobStatus(JobStatusType.FAILED, e.getMessage());
+                log.error("Failed to verify user quota for job " + getJob().getUuid() +
+                        ". Job will be returned to queue and retried later.", e);
+                getJob().setRetries(getJob().getRetries()+1);
+                updateJobStatus(JobStatusType.STAGED,
+                        "Failed to verify user quota for job " + getJob().getUuid() +
+                                ". Job will be returned to queue and retried later.");
                 throw new JobExecutionException(e);
+            }
+
+            // kill jobs past their max staging deadline
+            Instant jobCreatedTime = getJob().getCreated().toInstant();
+
+            // we will only retry for 7 days
+            if (jobCreatedTime.plus(7, ChronoUnit.DAYS).isBefore(Instant.now())) {
+                log.debug("Terminating job " + getJob().getUuid() + " after 7 days of attempting to stage inputs.");
+                updateJobStatus(JobStatusType.KILLED,
+                        "Terminating job from after 7 days attempting to stage inputs.");
+                updateJobStatus(JobStatusType.FAILED,
+                        "Unable to stage inputs for job after 7 days. Job cancelled.");
             }
 
             // if the execution system for this job has a local storage config,
@@ -115,104 +131,95 @@ public class StagingWatch extends AbstractJobWatch {
                 int attempts = 0;
                 boolean staged = false;
 
-                // we will only retry for 7 days
-                if (getJob().getCreated().toInstant().plus(7L, ChronoUnit.DAYS).isBefore(Instant.now())) {
-                    updateJobStatus(JobStatusType.KILLED,
-                            "Removing job from queue after 7 days attempting to stage inputs.");
-                    updateJobStatus(JobStatusType.FAILED,
-                            "Unable to stage inputs for job after 7 days. Job cancelled.");
+                // if the job doesn't need to be staged, just move on with things.
+                if (JobManager.getJobInputMap(getJob()).isEmpty()) {
+                    updateJobStatus(JobStatusType.STAGED,
+                            "Skipping staging. No input data associated with this job.");
+                }
+                // otherwise, attempt to stage the job Settings.MAX_SUBMISSION_RETRIES times
+                else {
+                    while (!staged && !isStopped() && attempts <= Settings.MAX_SUBMISSION_RETRIES) {
+                        attempts++;
 
-                } else {
-                    // if the job doesn't need to be staged, just move on with things.
-                    if (JobManager.getJobInputMap(getJob()).isEmpty()) {
-                        updateJobStatus(JobStatusType.STAGED,
-                                "Skipping staging. No input data associated with this job.");
-                    }
-                    // otherwise, attempt to stage the job Settings.MAX_SUBMISSION_RETRIES times
-                    else {
-                        while (!staged && !isStopped() && attempts <= Settings.MAX_SUBMISSION_RETRIES) {
-                            attempts++;
+                        getJob().setRetries(attempts - 1);
 
-                            getJob().setRetries(attempts - 1);
+                        log.debug("Attempt " + attempts + " to stage job " + getJob().getUuid() + " inputs");
 
-                            log.debug("Attempt " + attempts + " to stage job " + getJob().getUuid() + " inputs");
+                        // mark the job as submitting so no other process claims it
+                        updateJobStatus(JobStatusType.PROCESSING_INPUTS,
+                                "Attempt " + attempts + " to stage job inputs");
 
-                            // mark the job as submitting so no other process claims it
-                            updateJobStatus(JobStatusType.PROCESSING_INPUTS,
-                                    "Attempt " + attempts + " to stage job inputs");
+                        try {
+                            if (isStopped()) {
+                                throw new ClosedByInterruptException();
+                            }
+
+                            setWorkerAction(new StagingAction(getJob()));
 
                             try {
-                                if (isStopped()) {
-                                    throw new ClosedByInterruptException();
-                                }
-
-                                setWorkerAction(new StagingAction(getJob()));
-
-                                try {
-                                    // wrap this in a try/catch so we can update the local reference to the
-                                    // job before it hist
-                                    getWorkerAction().run();
-                                } finally {
-                                    setJob(getWorkerAction().getJob());
-                                }
-
-                                // if the task was not stopped, or it was stopped, but after the inputs were all staged,
-                                // then we can mark the job as staged and move on.
-                                if (!isStopped() || getJob().getStatus() == JobStatusType.STAGED) {
-                                    staged = true;
-                                    getJob().setRetries(0);
-                                    JobDao.persist(getJob());
-                                } else {
-                                    // otherwise, one or more inputs failed to stage. The job will go back into the queue
-                                    // to get picked up by some other task.
-                                }
-                            } catch (ClosedByInterruptException e) {
-                                log.debug("Job input staging cancelled by outside process for job " + getJob().getUuid());
-                                throw e;
-                            } catch (SystemUnavailableException e) {
-                                log.debug(e.getMessage());
-                                updateJobStatus(JobStatusType.PENDING,
-                                        "Input staging is currently paused waiting for a system containing " +
-                                                "input data to become available. If the system becomes available " +
-                                                "again within 7 days, this job " +
-                                                "will resume staging. After 7 days it will be killed.");
-                                throw new JobExecutionException(e);
-                            } catch (JobDependencyException e) {
-                                log.error("Failed to stage inputs for job " + getJob().getUuid(), e);
-                                updateJobStatus(JobStatusType.FAILED, e.getMessage());
-                                throw new JobExecutionException(e);
-                            } catch (JobException e) {
-                                if (attempts >= Settings.MAX_SUBMISSION_RETRIES) {
-                                    log.error("Failed to stage job " + getJob().getUuid() +
-                                            " inputs after " + attempts + " attempts.", e);
-
-                                    updateJobStatus(JobStatusType.STAGING_INPUTS, "Attempt "
-                                            + attempts + " failed to stage job inputs. " + e.getMessage());
-                                    try {
-                                        setJob(getJobManager().deleteStagedData(getJob()));
-                                    } catch (Throwable t) {
-                                        log.error("Failed to remove remote work directory for job " + getJob().getUuid(), t);
-                                        updateJobStatus(JobStatusType.FAILED,
-                                                "Failed to remove remote work directory.");
-                                    }
-
-                                    log.error("Unable to stage inputs for job " + getJob().getUuid() +
-                                            " after " + attempts + " attempts. Job cancelled.");
-                                    updateJobStatus(JobStatusType.FAILED,
-                                            "Unable to stage inputs for job" +
-                                                    " after " + attempts + " attempts. Job cancelled.");
-
-                                    throw new JobExecutionException(e);
-                                } else {
-                                    updateJobStatus(JobStatusType.PENDING, "Attempt "
-                                            + attempts + " failed to stage job inputs. " + e.getMessage());
-                                }
-                            } catch (Exception e) {
-                                log.error("Failed to stage inputs for job " + getJob().getUuid(), e);
-                                updateJobStatus(JobStatusType.FAILED,
-                                        "Failed to stage file due to unexpected error.");
-                                throw new JobExecutionException(e);
+                                // wrap this in a try/catch so we can update the local reference to the
+                                // job before it hist
+                                getWorkerAction().run();
+                            } finally {
+                                setJob(getWorkerAction().getJob());
                             }
+
+                            // if the task was not stopped, or it was stopped, but after the inputs were all staged,
+                            // then we can mark the job as staged and move on.
+                            if (!isStopped() || getJob().getStatus() == JobStatusType.STAGED) {
+                                staged = true;
+                                getJob().setRetries(0);
+                                JobDao.persist(getJob());
+                            } else {
+                                // otherwise, one or more inputs failed to stage. The job will go back into the queue
+                                // to get picked up by some other task.
+                            }
+                        } catch (ClosedByInterruptException e) {
+                            log.debug("Job input staging cancelled by outside process for job " + getJob().getUuid());
+                            throw e;
+                        } catch (SystemUnavailableException e) {
+                            log.debug(e.getMessage());
+                            updateJobStatus(JobStatusType.PENDING,
+                                    "Input staging is currently paused waiting for a system containing " +
+                                            "input data to become available. If the system becomes available " +
+                                            "again within 7 days, this job " +
+                                            "will resume staging. After 7 days it will be killed.");
+                            throw new JobExecutionException(e);
+                        } catch (JobDependencyException e) {
+                            log.error("Failed to stage inputs for job " + getJob().getUuid() + ". " + e.getMessage(), e);
+                            updateJobStatus(JobStatusType.FAILED, e.getMessage());
+                            throw new JobExecutionException(e);
+                        } catch (JobException e) {
+                            if (attempts >= Settings.MAX_SUBMISSION_RETRIES) {
+                                log.error("Failed to stage job " + getJob().getUuid() +
+                                        " inputs after " + attempts + " attempts.", e);
+
+                                updateJobStatus(JobStatusType.STAGING_INPUTS, "Attempt "
+                                        + attempts + " failed to stage job inputs. " + e.getMessage());
+                                try {
+                                    setJob(getJobManager().deleteStagedData(getJob()));
+                                } catch (Throwable t) {
+                                    log.error("Failed to remove remote work directory for job " + getJob().getUuid(), t);
+                                    updateJobStatus(JobStatusType.FAILED,
+                                            "Failed to remove remote work directory.");
+                                }
+
+                                log.error("Unable to stage inputs for job " + getJob().getUuid() +
+                                        " after " + attempts + " attempts. Job cancelled.");
+                                updateJobStatus(JobStatusType.FAILED,
+                                        "Unable to stage inputs for job" +
+                                                " after " + attempts + " attempts. Job cancelled.");
+
+                                throw new JobExecutionException(e);
+                            } else {
+                                updateJobStatus(JobStatusType.PENDING, "Attempt "
+                                        + attempts + " failed to stage job inputs. " + e.getMessage());
+                            }
+                        } catch (Exception e) {
+                            log.error("Failed to stage inputs for job " + getJob().getUuid(), e);
+                            updateJobStatus(JobStatusType.FAILED,
+                                    "Failed to stage file due to unexpected error.");
+                            throw new JobExecutionException(e);
                         }
                     }
                 }

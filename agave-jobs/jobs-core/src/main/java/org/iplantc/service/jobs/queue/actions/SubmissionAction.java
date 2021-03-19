@@ -166,7 +166,7 @@ public class SubmissionAction extends AbstractWorkerAction {
                         log.error("Failed to submit job " + getJob().getUuid() +
                             " after " + attempts + " attempts.", e);
                         updateJobStatus(getJob().getStatus(), "Attempt "
-                                + attempts + " failed to submit job. " + e.getCause().getMessage());
+                                + attempts + " failed to submit job. " + e.getMessage());
 
                         try {
                             if (getJob().isArchived()) {
@@ -188,7 +188,7 @@ public class SubmissionAction extends AbstractWorkerAction {
                     {
                         try 
                         {
-                            String msg = "Attempt " + attempts + " failed to submit job. " + e.getCause().getMessage();
+                            String msg = "Attempt " + attempts + " failed to submit job. " + e.getMessage();
                             log.info(msg, e);
                             updateJobStatus(getJob().getStatus(), msg);
                         }

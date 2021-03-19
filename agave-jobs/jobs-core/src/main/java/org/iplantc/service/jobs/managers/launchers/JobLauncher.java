@@ -4,13 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
-import org.iplantc.service.jobs.exceptions.JobException;
-import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
-import org.iplantc.service.jobs.exceptions.QuotaViolationException;
-import org.iplantc.service.jobs.exceptions.SchedulerException;
+import org.iplantc.service.jobs.exceptions.*;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariableType;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
+import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.transfer.URLCopy;
 
@@ -47,12 +45,15 @@ public interface JobLauncher
 	/** 
 	 * Performs the tasks required to start a job on a remote execution system.
 	 *  
-	 * @throws JobException
-	 * @throws SchedulerException
-	 * @throws IOException
-	 * @throws SystemUnavailableException
+	 * @throws IOException when there is an issue parsing or locating the application template and deployment assets.
+	 * @throws JobException when an error occurs interacting with the remote system or updating the job details.
+	 * @throws SchedulerException when the scheduler on the {@link ExecutionSystem} rejects the job.
+	 * @throws SoftwareUnavailableException when the job software is disabled, or deployment assets are missing.
+	 * @throws SystemUnavailableException when one or more dependent systems is unavailable.
+	 * @throws SystemUnknownException when a dependent system (job execution, software deployment, etc) are no longer in the db.
+	 * @
 	 */
-	public void launch() throws JobException, SchedulerException, IOException, SystemUnavailableException;
+	public void launch() throws IOException, JobException, SchedulerException, SoftwareUnavailableException, SystemUnavailableException, SystemUnknownException;
 
 	/**
 	 * Resolves a parameter JSON value or JSON array of values into a serialized string of variables

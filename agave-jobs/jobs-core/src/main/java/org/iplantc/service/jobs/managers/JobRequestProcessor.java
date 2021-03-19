@@ -171,7 +171,7 @@ public class JobRequestProcessor {
 		    catch (Exception e) {
                 String msg = "Assignment for json key " + currentKey + " failed: " +
                              e.getMessage();
-                log.error(msg, e);
+                log.error(msg);
                 throw e;
 		    }
 
@@ -180,7 +180,7 @@ public class JobRequestProcessor {
    				job = processJob(jobRequestMap);
    			} catch (Exception e) {
 				String msg = "Job processing failed: " + e.getMessage();
-				log.error(msg, e);
+				log.error(msg);
 				throw e;
 			}
    			
@@ -194,7 +194,7 @@ public class JobRequestProcessor {
 					try { input = json.get("notifications").toString(); } catch (Exception ignored) {}
 					String msg = "General notification processing failed with input [" +
 								 input + "]\n" + e.getMessage();
-					log.error(msg, e);
+					log.error(msg);
 					throw e;
 				}
 			}
@@ -206,7 +206,7 @@ public class JobRequestProcessor {
 					try {input = json.get("callbackUrl").toString();} catch (Exception ignored) {}
 					String msg = "Callback notification processing failed with input [" +
 								 input + "]\n" + e.getMessage();
-					log.error(msg, e);
+					log.error(msg);
 					throw e;
 				}
 			}
@@ -216,7 +216,7 @@ public class JobRequestProcessor {
 					job.addNotification(notification);
 				} catch (Exception e) {
 					String msg = "Add notification to job failure: " + e.getMessage();
-					log.error(msg, e);
+					log.error(msg);
 					throw e;
 				}
 			}
@@ -230,7 +230,7 @@ public class JobRequestProcessor {
 			    } catch (Exception e) {
 					String msg = "Failure to process job event " + jobEvent.getUuid() +
 								 " for tenant " + jobEvent.getTenantId() + ": " + e.getMessage();
-					log.error(msg, e);
+					log.error(msg);
 					throw e;
 				}
 			}
@@ -238,22 +238,22 @@ public class JobRequestProcessor {
 			return job;
 		}
 		catch (NotificationException e) {
-		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
-			throw new JobProcessingException(500, e.getMessage());
+//		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+			throw new JobProcessingException(500, e);
 		}
 		catch (JobProcessingException e) {
-		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+//		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
 			throw e;
 		}
 		catch (SoftwareException e) {
-		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
-			throw new JobProcessingException(400, e.getMessage());
+//		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+			throw new JobProcessingException(400, e);
 		}
 		catch (Throwable e) {
-		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
+//		    log.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
 			throw new JobProcessingException(400,
 					"Job processing failed with exception type " +
-					e.getClass().getSimpleName() + ": " + e.getMessage());
+					e.getClass().getSimpleName() + ": " + e.getMessage(), e);
 		}
 	}
 	

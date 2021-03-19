@@ -1,23 +1,30 @@
 package org.iplantc.service.jobs.managers.launchers;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.exceptions.SoftwareException;
+import org.iplantc.service.apps.managers.SoftwareEventProcessor;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
+import org.iplantc.service.apps.model.enumerations.SoftwareEventType;
 import org.iplantc.service.apps.model.enumerations.SoftwareParameterType;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.apps.util.ZipUtil;
+import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.dao.TenantDao;
 import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.util.HTMLizer;
+import org.iplantc.service.io.dao.LogicalFileDao;
+import org.iplantc.service.io.manager.LogicalFileManager;
+import org.iplantc.service.io.model.FileEvent;
+import org.iplantc.service.io.model.LogicalFile;
+import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
@@ -29,6 +36,7 @@ import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariableType;
 import org.iplantc.service.jobs.util.Slug;
+import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.notification.util.EmailMessage;
 import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -40,6 +48,7 @@ import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteTransferListener;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
@@ -47,19 +56,28 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.TransferTask;
+import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.iplantc.service.transfer.util.MD5Checksum;
 import org.joda.time.DateTime;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.channels.ClosedByInterruptException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFileAttributes;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.time.Instant;
+import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /**
  * Interface to define how to launch applications on various resources
@@ -77,6 +95,7 @@ public abstract class AbstractJobLauncher implements JobLauncher {
     protected Job job;
     protected Software software;
     protected ExecutionSystem executionSystem;
+    protected JobManager jobManager = new JobManager();
 //    protected RemoteDataClient localDataClient;
     protected RemoteSubmissionClient submissionClient = null;
     protected URLCopy urlCopy;
@@ -96,8 +115,7 @@ public abstract class AbstractJobLauncher implements JobLauncher {
         this.setJob(job);
         this.setSoftware(software);//SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName()));
         this.setExecutionSystem(executionSystem);//((ExecutionSystem) new SystemDao().findBySystemId(job.getSystem()));
-
-//        localDataClient = new Local(null, "/", Files.createTempDir().getAbsolutePath());
+//        localDataClient = new Local(null, "/", Files.createTempDir().getPath());
 
     }
 
@@ -137,6 +155,14 @@ public abstract class AbstractJobLauncher implements JobLauncher {
         this.urlCopy = urlCopy;
     }
 
+    public JobManager getJobManager() {
+        return jobManager;
+    }
+
+    public void setJobManager(JobManager jobManager) {
+        this.jobManager = jobManager;
+    }
+
     /* (non-Javadoc)
      * @see org.iplantc.service.jobs.managers.launchers.JobLauncher#checkStopped()
      */
@@ -152,7 +178,21 @@ public abstract class AbstractJobLauncher implements JobLauncher {
      * @see org.iplantc.service.jobs.managers.launchers.JobLauncher#launch()
      */
     @Override
-    public abstract void launch() throws JobException, ClosedByInterruptException, SchedulerException, IOException, SystemUnavailableException, SoftwareUnavailableException, SystemUnknownException;
+    public abstract void launch() throws IOException, JobException, SoftwareUnavailableException, SchedulerException, SystemUnknownException, SystemUnavailableException;
+
+    /**
+     * Sets the job work path if not already set for the current job. Does not persist the value.
+     * @throws JobException if the path is too long or null
+     */
+    protected void setRemoteJobPath() throws JobException {
+        try {
+            if (StringUtils.isBlank(getJob().getWorkPath())) {
+                getJob().setWorkPath(getJobManager().calculateJobRemoteWorkPath(getJob(), getExecutionSystem()));
+            }
+        } catch (Throwable t) {
+            throw new JobException("Unable to set remote work path.", t);
+        }
+    }
 
     /**
      * Users can include any of the {@link WrapperTemplateStatusVariableType#userAccessibleJobCallbackMacros()} in their
@@ -188,7 +228,6 @@ public abstract class AbstractJobLauncher implements JobLauncher {
         WrapperTemplateMacroResolver resolver = new WrapperTemplateMacroResolver(getJob(), getExecutionSystem());
         return resolver.removeReservedJobStatusMacros(appTemplate);
     }
-
 
     /* (non-Javadoc)
      * @see org.iplantc.service.jobs.managers.launchers.JobLauncher#resolveMacros(java.lang.String)
@@ -228,194 +267,62 @@ public abstract class AbstractJobLauncher implements JobLauncher {
     }
 
     /**
-     * sets up the application dir for job launch
+     * Sets up the temp directory to stage application deployment assets, build and resolve wrapper templates, create
+     * manifests, etc.
      *
-     * @throws JobException
+     * @throws IOException when directory cannot be created
      */
-    protected void createTempAppDir() throws JobException {
+    protected void createTempAppDir() throws IOException {
         step = "Creating cache directory to process " + getJob().getSoftwareName() +
                 " wrapper template for job " + getJob().getUuid();
         log.debug(step);
 
-        // local temp directory on server for staging execution folders.
-        // this should have been created by the staging task, but in case
-        // there were no inputs, we need to create it ourself.
-        if (StringUtils.isEmpty(getJob().getWorkPath())) {
-            String remoteWorkPath = null;
+        File tempAppDir = Paths.get(Settings.TEMP_DIRECTORY).resolve(FilenameUtils.getName(getJob().getWorkPath())).toFile();
 
-            if (!StringUtils.isEmpty(getSoftware().getExecutionSystem().getScratchDir())) {
-                remoteWorkPath = getSoftware().getExecutionSystem().getScratchDir();
-            } else if (!StringUtils.isEmpty(getSoftware().getExecutionSystem().getWorkDir())) {
-                remoteWorkPath = getSoftware().getExecutionSystem().getWorkDir();
+        // ensure directory exists
+        if (!tempAppDir.exists()) {
+            if (!tempAppDir.mkdirs()) {
+                throw new IOException("Unable to create temp directory to stage app assets for job " +
+                        getJob().getUuid());
             }
-
-            if (!StringUtils.isEmpty(remoteWorkPath)) {
-                if (!remoteWorkPath.endsWith("/")) remoteWorkPath += "/";
-            } else {
-                remoteWorkPath = "";
-            }
-
-            remoteWorkPath += getJob().getOwner() +
-                    "/job-" + getJob().getUuid() + "-" + Slug.toSlug(getJob().getName());
-
-            getJob().setWorkPath(remoteWorkPath);
-
-            JobDao.persist(getJob());
         }
 
-        tempAppDir = new File(Files.createTempDir(), FilenameUtils.getName(getJob().getWorkPath()));
-
-        // TODO: do we want to delete the temp app dir every time? would it save time to not do
-        //    this every time and instead, just overwrite the existing files that we need to edit?
-        if (tempAppDir.exists()) {
-            FileUtils.deleteQuietly(tempAppDir);
-        }
-
-        tempAppDir.mkdirs();
+        // update the tempAppDir with the calcualted directory
+        setTempAppDir(tempAppDir);
     }
 
     /**
-     * copies the deployment path in irods to the local tempAppDir in preparation of condor_submit
+     * Copies the {@link Software#getDeploymentPath()} from the {@link Software#getStorageSystem()} for the current job
+     * to the local job temp directory. If the software is public, then the deployment path represents a zipped archive
+     * and will be unpacked before returning. The resulting files in either situation are checked for consistency in
+     * checksums and {@link Software#getExecutablePath()} existence.
+     * @throws JobException if unable to fetch the remote assets
+     * @throws SoftwareUnavailableException when the software assets cannot be verified.
+     * @throws SystemUnknownException if the {@link Software#getStorageSystem()} has been deleted.
+     * @throws SystemUnavailableException when the {@link Software#getStorageSystem()} is unavailable to fetch the assets from
      */
     protected void copySoftwareToTempAppDir() throws JobException, SoftwareUnavailableException, SystemUnknownException, SystemUnavailableException {
         step = "Fetching app assets for job " + getJob().getUuid() + " from " +
                 "agave://" + getSoftware().getStorageSystem().getSystemId() + "/" +
                 getSoftware().getDeploymentPath() + " to temp application directory " +
-                tempAppDir.getAbsolutePath();
+                getTempAppDir().getPath();
 
         log.debug(step);
 
-        TransferTask transferTask;
-        RemoteDataClient remoteSoftwareDataClient = null;
-        StorageSystem storageSystem = null;
         try {
-            storageSystem = (StorageSystem) new JobManager().getAvailableSystem(getSoftware().getStorageSystem().getSystemId());
 
-            remoteSoftwareDataClient = storageSystem.getRemoteDataClient();
+            // downloads the software deployment directory to the tempAppDir, optimizing data movement whenever possible
+            fetchSoftwareDeploymentDirectory();
 
-            if (remoteSoftwareDataClient != null) {
-                remoteSoftwareDataClient.authenticate();
+            checkStopped();
 
-                checkStopped();
-
-                // what we really want is to just copy contents into tempAppDir, so we work around default behavior
-                // first copy the remote data here
-                transferTask = new TransferTask(
-                        "agave://" + storageSystem.getSystemId() + "/" + getSoftware().getDeploymentPath(),
-                        "https://workers.prod.agaveplatform.org/" + tempAppDir.getAbsolutePath(),
-                        getJob().getOwner(), null, null);
-
-                TransferTaskDao.persist(transferTask);
-
-                JobDao.refresh(getJob());
-
-                getJob().addEvent(new JobEvent(JobStatusType.STAGING_JOB,
-                        "Fetching app assets from " + transferTask.getSource(),
-                        null,
-                        getJob().getOwner()));
-
-                JobDao.persist(getJob());
-
-                remoteSoftwareDataClient.get(getSoftware().getDeploymentPath(), tempAppDir.getPath(), new RemoteTransferListener(transferTask));
-
-                checkStopped();
-
-                // now copy the contents of the deployment folder to the parent dir, which is tempAppDir
-                // ?? surely we can avoid this?
-
-                File copiedDeploymentFolder = new File(tempAppDir, FilenameUtils.getName(StringUtils.removeEnd(getSoftware().getDeploymentPath(), "/")));
-                if (!copiedDeploymentFolder.equals(tempAppDir) && copiedDeploymentFolder.exists() && copiedDeploymentFolder.isDirectory()) {
-                    FileUtils.copyDirectory(copiedDeploymentFolder, tempAppDir, null, true);
-                    // now delete the redundant deployment folder
-                    FileUtils.deleteQuietly(copiedDeploymentFolder);
-                }
-
-                checkStopped();
-
-                // public apps have thier assets compressed in a zip archive. If the app is public, we need
-                // to decompress the assets in the local tempAppDir before continuing.
-                if (getSoftware().isPubliclyAvailable()) {
-                    // validate the checksum to make sure the app itself hasn't  changed
-                    File zippedFile = new File(tempAppDir, FilenameUtils.getName(getSoftware().getDeploymentPath()));
-                    String checksum = MD5Checksum.getMD5Checksum(zippedFile);
-                    if (getSoftware().getChecksum() == null
-                            || StringUtils.equals(checksum, getSoftware().getChecksum())
-                            || storageSystem.getStorageConfig().getProtocol().equals(StorageProtocolType.IRODS)) {
-                        ZipUtil.unzip(zippedFile, tempAppDir);
-                        String[] unzippedFiles = tempAppDir.list();
-                        if (unzippedFiles != null && unzippedFiles.length > 1) {
-                            FileUtils.deleteQuietly(zippedFile);
-                        } else {
-                            String msg = "Failed to unpack the application bundle.";
-//                            log.error(msg);
-                            throw new SoftwareUnavailableException(msg);
-                        }
-                    } else {
-                        String message = "While submitting a job, the Job Service noticed that the checksum " +
-                                "of the public app " + getSoftware().getUniqueName() + " had changed. This " +
-                                "will impact provenance and could impact experiment reproducability. " +
-                                "Please restore the application zip bundle from archive and re-enable " +
-                                "the application via the admin console.\n\n" +
-                                "Name: " + getSoftware().getUniqueName() + "\n" +
-                                "User: " + getJob().getOwner() + "\n" +
-                                "Job: " + getJob().getUuid() + "\n" +
-                                "Time: " + getJob().getCreated().toInstant().toString();
-                        try {
-                            Tenant tenant = new TenantDao().findByTenantId(TenancyHelper.getCurrentTenantId());
-                            EmailMessage.send(tenant.getContactName(),
-                                    tenant.getContactEmail(),
-                                    "Public app " + getSoftware().getUniqueName() + " has been corrupted.",
-                                    message, HTMLizer.htmlize(message));
-                        } catch (Throwable e) {
-                            log.error("Failed to notify admin that " + message, e);
-                        }
-
-                        String msg = "Public app bundle for " + getSoftware().getUniqueName() +
-                                " has changed. Please verify this app and try again.";
-//                        log.error(msg);
-                        throw new SoftwareUnavailableException(msg);
-                    }
-
-                    File standardLocation = new File(tempAppDir, new File(getSoftware().getDeploymentPath()).getName());
-                    if (standardLocation.exists()) {
-                        tempAppDir = standardLocation.getAbsoluteFile();
-                    } else {
-                        standardLocation = new File(tempAppDir, getSoftware().getExecutablePath());
-
-                        if (!standardLocation.exists()) {
-                            // need to go searching for the path. no idea how this could happen
-                            boolean foundDeploymentPath = false;
-                            File[] tempAppDirFiles = tempAppDir.listFiles();
-                            if (tempAppDirFiles != null) {
-                                for (File child : tempAppDirFiles) {
-                                    if (child.isDirectory()) {
-                                        standardLocation = new File(child, getSoftware().getExecutablePath());
-                                        if (standardLocation.exists()) {
-                                            File copyDir = new File(tempAppDir.getAbsolutePath() + ".copy");
-                                            FileUtils.moveDirectory(child, copyDir);
-                                            FileUtils.deleteDirectory(tempAppDir);
-                                            copyDir.renameTo(tempAppDir);
-                                            //tempAppDir = child;
-                                            foundDeploymentPath = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (!foundDeploymentPath) {
-                                log.error("Unable to find app path for public app " + getSoftware().getUniqueName());
-                                throw new SoftwareException("Unable to find the deployment path for the public app " + getSoftware().getUniqueName());
-                            }
-                        }
-                    }
-                }
-            } else {
-                throw new JobException("Unable to obtain a remote data client for the storage system.");
+            // public apps have thier assets compressed in a zip archive. If the app is public, we need
+            // to decompress the assets in the local tempAppDir before continuing.
+            if (getSoftware().isPubliclyAvailable()) {
+                unzipPublicSoftwareArchive();
             }
         } catch (ClosedByInterruptException e) {
-            if (log.isDebugEnabled())
-                log.debug("Software asset copying for job " + getJob().getUuid() + " aborted due to interrupt by worker process.");
+            log.debug("Software asset copying for job " + getJob().getUuid() + " aborted due to interrupt by worker process.");
             // check is made upon return. Exception will be rethrown then.
         } catch (SystemUnknownException e) {
             throw new SystemUnknownException("No system found matching id of app deployment system, " +
@@ -423,9 +330,9 @@ public abstract class AbstractJobLauncher implements JobLauncher {
         } catch (SystemUnavailableException e) {
             throw new SystemUnavailableException("App deployment system " + getSoftware().getStorageSystem().getSystemId() +
                     " is currently unavailable.");
-        } catch(TransferException | RemoteDataException | RemoteCredentialException e) {
-            throw new JobException("Unable to fetch deployment path for app " + getSoftware().getUniqueName() +
-                    " from " + getSoftware().getStorageSystem().getSystemId(), e);
+//        } catch(TransferException | RemoteDataException | RemoteCredentialException e) {
+//            throw new JobException("Unable to fetch deployment path for app " + getSoftware().getUniqueName() +
+//                    " from " + getSoftware().getStorageSystem().getSystemId(), e);
         } catch(IOException e) {
             throw new JobException("Failed to process staged app deployment path.", e);
         } catch (SoftwareUnavailableException | JobException e) {
@@ -434,75 +341,386 @@ public abstract class AbstractJobLauncher implements JobLauncher {
 //            String msg = "Remote data connection to " + getSoftware().getExecutionSystem().getSystemId() + " threw exception and stopped job execution";
 //            log.error(msg, e);
 //            throw new JobException(msg, e);
-        } finally {
+        }
+    }
+
+    /**
+     * Unzips a public {@link Software} deployment archive and ensures the contents corresponding to the
+     * {@link Software#getExecutablePath()} are rooted at the tempAppDir.
+     *
+     * @throws SoftwareUnavailableException if the archive cannot be unzipped
+     */
+    protected void unzipPublicSoftwareArchive() throws IOException, SoftwareUnavailableException {
+        // validate the checksum to make sure the app itself hasn't  changed
+        File zippedFile = new File(getTempAppDir(), FilenameUtils.getName(getSoftware().getDeploymentPath()));
+        File[] unzippedFiles = null;
+        String checksum = MD5Checksum.getMD5Checksum(zippedFile);
+        if (StringUtils.isBlank(getSoftware().getChecksum()) ||
+                StringUtils.equals(checksum, getSoftware().getChecksum())) {
             try {
-                if (remoteSoftwareDataClient != null) remoteSoftwareDataClient.disconnect();
-            } catch (Exception ignored) {
+                ZipUtil.unzip(zippedFile, getTempAppDir());
+                unzippedFiles = getTempAppDir().listFiles();
+                if (unzippedFiles != null && unzippedFiles.length > 1) {
+                    // remove zip archive after unpacking
+                    FileUtils.deleteQuietly(zippedFile);
+                } else {
+                    throw new SoftwareUnavailableException("Failed to unpack the application bundle.");
+                }
+            } catch (IOException e) {
+                throw new SoftwareUnavailableException("Failed to unzip the application bundle.", e);
+            }
+        } else {
+            notifyOfSoftwareChecksumChangeEvent(getSoftware(), checksum);
+            throw new SoftwareUnavailableException("Public app bundle for " + getSoftware().getUniqueName() +
+                    " has changed. Please verify this app and try again.");
+        }
+
+        // if the archive was created by zipping the deployment folder rather than it's contents, then
+        // the executable path will be relative to the enclosing directory into which the deployment assets
+        // were unpacked. Here we check for the expected path and, if not found, iterate over the first-level
+        // directories (should only be one) to find the executable. If not found at that point, we
+        // cannot invoke the app as we have no wrapper template to launch.
+        boolean foundDeploymentPath = false;
+        if (!Files.exists(getTempAppDir().toPath().resolve(getSoftware().getExecutablePath()))) {
+            for (File unzippedFileItem : unzippedFiles) {
+                if (unzippedFileItem.isDirectory()) {
+                    // if the executable path exists within the dir, then make that dir the tempAppDir
+                    // by
+                    if (Files.exists(unzippedFileItem.toPath().resolve(getSoftware().getExecutablePath()))) {
+                        File renamedUnzippedFileItem = new File(getTempAppDir().getPath() + ".copy");
+                        FileUtils.moveDirectory(unzippedFileItem, renamedUnzippedFileItem);
+                        FileUtils.deleteDirectory(getTempAppDir());
+                        renamedUnzippedFileItem.renameTo(getTempAppDir());
+                        foundDeploymentPath = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!foundDeploymentPath) {
+                log.error("Unable to find app path for public app " + getSoftware().getUniqueName());
+                throw new SoftwareUnavailableException("Unable to find the wrapper template for " +
+                        getSoftware().getUniqueName() + ". The executablePath in the app definition does not exist.");
             }
         }
     }
 
-    public abstract File processApplicationTemplate() throws JobException;
+    /**
+     * Sends notifications for {@link SoftwareEventType#UPDATED} and {@link FileEventType#CONTENT_CHANGE} in response to
+     * detecting a change in the {@link Software#getChecksum()} of a public app.
+     */
+    protected void notifyOfSoftwareChecksumChangeEvent(Software software, String currentChecksum) {
+        String message = "While processing a job request, it was observed that the checksum " +
+                "of the public app " + software.getUniqueName() + " had changed from " +
+                software.getChecksum() + " to " + currentChecksum + ". This " +
+                "will impact provenance and could impact experiment reproducibility. " +
+                "Please restore the app zip archive at " + software.getDeploymentPath() +
+                " from the original deployment directory, or disable the app. All jobs submitted using " +
+                "this app will fail until the zip archive is restored.";
+
+        // Create software event indicating that the app is updated because of the changed zip archive checksum.
+        new SoftwareEventProcessor().processSoftwareContentEvent(
+                software, SoftwareEventType.UPDATED, message, software.getStorageSystem().getOwner());
+
+        String deploymentPathUrl = String.format("agave://%s/%s",
+                software.getStorageSystem().getSystemId(), software.getDeploymentPath());
+
+        // Create logical file event indicating that the app zip archive is updated because of the changed checksum
+        try {
+            // lookup the logical file
+            LogicalFile logicalFile = LogicalFileDao.findBySourceUrl(deploymentPathUrl);
+            // create event for it.
+            logicalFile.addContentEvent(new FileEvent(FileEventType.CONTENT_CHANGE, message, software.getStorageSystem().getOwner()));
+            // save the updated logical file to perist the event
+            LogicalFileDao.persist(logicalFile);
+        } catch (Throwable e) {
+            log.error("Failed to send notification of a checksum change in the public application " +
+                    "bundle of " + software.getUniqueName() + " at " + deploymentPathUrl, e);
+        }
+    }
 
     /**
-     * Pushes the app assets which are currently on the staging server to the job
-     * work directory on the execution system.
-     * TODO: use a server-side copy when possible and avoid bringing the apps
-     * assets to the staging server alltogther. All we <i>really</i> need is the
-     * wrapper template.
-     *
-     * @throws JobException
+     * Creates a {@link TransferTask} and associates it with a {@link JobStatusType#STAGING_JOB} event, then saves the
+     * {@link Job} history. Separated here for easier testing and to avoid mocking static DAO methods.
+     * @return transfer task for the overall {@link Software#getDeploymentPath()} download
+     * @throws JobException if unable to persist the transfer task or job event.
      */
-    protected void stageSofwareApplication() throws JobException {
+    protected TransferTask createJobSoftwareDeploymentDirectoryTransferTask() throws JobException{
         TransferTask transferTask;
-        RemoteDataClient remoteExecutionDataClient = null;
         try {
-            log.debug("Staging " + getJob().getSoftwareName() + " app dependencies for job " + getJob().getUuid() + " to agave://" + getJob().getSystem() + "/" + getJob().getWorkPath());
-            remoteExecutionDataClient = new SystemDao().findBySystemId(getJob().getSystem()).getRemoteDataClient(getJob().getInternalUsername());
-            remoteExecutionDataClient.authenticate();
-            remoteExecutionDataClient.mkdirs(getJob().getWorkPath(), getJob().getOwner());
-
-            checkStopped();
-
+            // create the parent transfer task to copy the deployment directory on the software storage system.
             transferTask = new TransferTask(
-                    "https://workers.prod.agaveplatform.org/" + tempAppDir.getAbsolutePath(),
-                    "agave://" + getJob().getSystem() + "/" + getJob().getWorkPath(),
+                    "agave://" + getSoftware().getStorageSystem().getSystemId() + "/" + getSoftware().getDeploymentPath(),
+                    "https://workers.prod.agaveplatform.org/" + getTempAppDir().getPath(),
                     getJob().getOwner(), null, null);
-
-            transferTask.setTotalSize(FileUtils.sizeOfDirectory(tempAppDir));
-//			transferTask.setBytesTransferred(0);
-//			transferTask.setAttempts(1);
-//			transferTask.setStatus(TransferStatusType.TRANSFERRING);
-//			transferTask.setStartTime(new DateTime().toDate());
 
             TransferTaskDao.persist(transferTask);
 
             JobDao.refresh(getJob());
 
             getJob().addEvent(new JobEvent(JobStatusType.STAGING_JOB,
-                    "Staging runtime assets to " + transferTask.getDest(),
+                    "Fetching app assets from " + transferTask.getSource(),
                     null,
                     getJob().getOwner()));
 
             JobDao.persist(getJob());
 
+            return transferTask;
+        } catch (TransferException e) {
+            throw new JobException("Unable to save transfer task to track staging of job app assets from software deployment system.", e);
+        } catch (JobException e) {
+            throw new JobException("Unable to add STAGING_JOB event to job history.", e);
+        }
+    }
+
+    /**
+     * Downloads the {@link Software#getDeploymentPath()} from the {@link Software#getStorageSystem()} for the current
+     * {@link Job}. Proper {@link JobEvent} and {@link TransferTask} are created and saved with the job history.
+     *
+     * @return path to the downloaded software deployment directory
+     * @throws ClosedByInterruptException
+     * @throws JobException
+     */
+    protected Path fetchSoftwareDeploymentDirectory() throws ClosedByInterruptException, JobException, SystemUnknownException, SystemUnavailableException, SoftwareUnavailableException {
+        Path result;
+        TransferTask transferTask;
+        RemoteDataClient remoteSoftwareDataClient = null;
+        StorageSystem storageSystem = null;
+        try {
+            storageSystem = (StorageSystem) getJobManager().getAvailableSystem(getSoftware().getStorageSystem().getSystemId());
+            remoteSoftwareDataClient = storageSystem.getRemoteDataClient();
+            remoteSoftwareDataClient.authenticate();
+
+            checkStopped();
+
+            transferTask = createJobSoftwareDeploymentDirectoryTransferTask();
+
+            try {
+                // stat the remote deployment directory. This gives us file info an an existence check.
+                RemoteFileInfo deploymentPathFileInfo = remoteSoftwareDataClient.getFileInfo(getSoftware().getDeploymentPath());
+
+                checkStopped();
+
+                // if the remote is a directory, we copy its contents to this host. Because the RDC classes always
+                // include the parent directory in a get/put operation, we iterate through the remote directory and
+                // copy each value to the tempAppDirectory so we can skip existing file items on retries.
+                if (deploymentPathFileInfo.isDirectory()) {
+                    // update the parent task to show progress
+                    transferTask.setStatus(TransferStatusType.TRANSFERRING);
+                    updateTransferTask(transferTask);
+
+                    // iterate over remote directory contents, copying each child in turn
+                    for (RemoteFileInfo child : remoteSoftwareDataClient.ls(getSoftware().getDeploymentPath())) {
+                        // break if interrupt received
+                        checkStopped();
+
+                        // create a transfer task to track the child
+                        TransferTask childTransferTask = new TransferTask(
+                                transferTask.getSource() + "/" + child.getName(),
+                                transferTask.getDest() + "/" + child.getName(),
+                                getJob().getOwner(), transferTask, transferTask);
+                        RemoteTransferListener remoteListener = new RemoteTransferListener(childTransferTask);
+                        Path childPath = Paths.get(getSoftware().getDeploymentPath()).resolve(child.getName());
+
+                        // skip existing files already present in the local tempAppDir
+                        if (child.isFile()) {
+                            childTransferTask.setTotalSize(child.getSize());
+                            childTransferTask.setTotalFiles(1);
+
+                            File localChild = new File(getTempAppDir(), child.getName());
+                            // only copy if the file is missing and size differs duplicate copies
+                            if (localChild.exists() && localChild.length() != child.getSize()) {
+                                // skip existing, unchanged file
+                                childTransferTask.setTotalSkippedFiles(1);
+                            }
+                        }
+
+                        // save the transfer task regardless
+                        try {
+                            updateTransferTask(childTransferTask);
+                        } catch (TransferException e) {
+                            // have to fail the entire directory copy if this fails since we can't record progress
+                            childTransferTask.setStatus(TransferStatusType.CANCELLED);
+                            try {
+                                transferTask.updateSummaryStats(childTransferTask);
+                            } catch (Throwable ignored) {
+                            }
+                            throw new JobException("Unable to save child transfer task during staging of software deployment directory", e);
+                        }
+
+                        // fetch the data
+                        try {
+                            // we have a valid task, make the copy unless we're skipping due to prior success
+                            if (childTransferTask.getTotalSkippedFiles() == 0) {
+                                remoteSoftwareDataClient.get(childPath.toString(), getTempAppDir().getPath(), remoteListener);
+                            } else {
+                                remoteListener.skipped(childTransferTask.getTotalSize(), childPath.toString());
+                            }
+                        } catch (IOException | RemoteDataException e) {
+                            try {
+                                // ensure the child task has been properly terminated and recorded, then tidy up the
+                                // parent transfertask and exit
+                                if (remoteListener.getTransferTask().getStatus() != TransferStatusType.FAILED) {
+                                    remoteListener.failed();
+                                }
+
+                                transferTask.updateSummaryStats(remoteListener.getTransferTask());
+                                updateTransferTask(transferTask);
+                            } catch (Throwable ignored) {
+                                log.error("Failed to update parent transfer task " + transferTask.getUuid() +
+                                        " after failing to fetch " + childTransferTask.getSource() +
+                                        " while staging deployment directory of " + getSoftware().getUniqueName() +
+                                        " for job " + getJob().getUuid());
+                            }
+
+                            throw new RemoteDataException("Failed to fetch " + childTransferTask.getSource() +
+                                    " while staging deployment directory of " + getSoftware().getUniqueName(), e);
+                        }
+
+                        // update parent task with results of child transfer task
+                        transferTask.updateSummaryStats(remoteListener.getTransferTask());
+                        updateTransferTask(transferTask);
+                    }
+
+                    // once everything completes, complete the parent task
+                    transferTask.setStatus(TransferStatusType.COMPLETED);
+                    updateTransferTask(transferTask);
+
+                } else {
+                    // otherwise it's a file and we can can just copy the file. This is usually because the software is
+                    // public.
+                    remoteSoftwareDataClient.get(getSoftware().getDeploymentPath(), getTempAppDir().getPath(), new RemoteTransferListener(transferTask));
+                }
+            } catch (FileNotFoundException e) {
+                // if the deployment path does not exist, we can't run the software, so we report it as unavailble
+                // to the calling method.
+                throw new SoftwareUnavailableException("Deployment path " + getSoftware().getDeploymentPath() +
+                        " does not exist on the deployment system, " + storageSystem.getSystemId());
+            }
+
+            result = getTempAppDir().toPath();
+
+        } catch (ClosedByInterruptException e) {
+            throw e;
+        } catch (SystemUnknownException e) {
+            throw new SystemUnknownException("No system found matching id of app deployment system, " +
+                    getSoftware().getStorageSystem().getSystemId() + ".");
+        } catch (SystemUnavailableException e) {
+            throw new SystemUnavailableException("App deployment system " + getSoftware().getStorageSystem().getSystemId() +
+                    " is currently unavailable.");
+        } catch (IOException | TransferException | RemoteDataException | RemoteCredentialException e) {
+            throw new JobException("Unable to fetch deployment path for app " + getSoftware().getUniqueName() +
+                    " from " + getSoftware().getStorageSystem().getSystemId(), e);
+        } finally {
+
+            if (remoteSoftwareDataClient != null) {
+                remoteSoftwareDataClient.disconnect();
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Saves or updates a {@link TransferTask} object, updating timestamps based on status.
+     *
+     * @param transferTask the object to save
+     * @erturns the updated {@link TransferTask}
+     * @throws TransferException if the sql operation failed.
+     */
+    protected TransferTask updateTransferTask(TransferTask transferTask) throws TransferException {
+        Date currentTime = Date.from(Instant.now());
+
+        transferTask.setLastUpdated(currentTime);
+        if (!TransferStatusType.getActiveStatusValues().contains(transferTask.getStatus())) {
+            if (transferTask.getEndTime() == null) {
+                transferTask.setEndTime(currentTime);
+            }
+            transferTask.updateTransferRate();
+        } else if (transferTask.getStatus() == TransferStatusType.TRANSFERRING) {
+            if (transferTask.getStartTime() == null) {
+                transferTask.setStartTime(currentTime);
+            }
+        }
+
+        TransferTaskDao.persist(transferTask);
+
+        return transferTask;
+    }
+
+    public abstract File processApplicationTemplate() throws JobException;
+
+    /**
+     * Creates a {@link TransferTask} to copy the tempAppDir contents to the job work directory and associates
+     * it with a {@link JobStatusType#STAGING_JOB} event, then saves the
+     * {@link Job} history. Separated here for easier testing and to avoid mocking static DAO methods.
+     *
+     * @return transfer task for the overall {@link #getTempAppDir()} upload
+     * @throws JobException if unable to persist the transfer task or job event.
+     */
+    protected TransferTask createJobWorkDirectoryTransferTask() throws JobException {
+        TransferTask transferTask;
+        try {
+            transferTask = new TransferTask(
+                    "https://workers.prod.agaveplatform.org/" + getTempAppDir().getPath(),
+                    "agave://" + getJob().getSystem() + "/" + getJob().getWorkPath(),
+                    getJob().getOwner(), null, null);
+
+            updateTransferTask(transferTask);
+
+            JobDao.refresh(getJob());
+
+            getJob().addEvent(new JobEvent(JobStatusType.STAGING_JOB,
+                    "Staging runtime assets to " + transferTask.getDest(),
+                    transferTask,
+                    getJob().getOwner()));
+
+            JobDao.persist(getJob());
+
+            return transferTask;
+        } catch (TransferException e) {
+            throw new JobException("Unable to save transfer task to track deploying of job app assets to execution system.", e);
+        } catch (JobException e) {
+            throw new JobException("Unable to add STAGING_JOB event to job history.", e);
+        }
+    }
+
+    /**
+     * Pushes the app assets which are currently on the staging server to the job
+     * work directory on the execution system.
+     *
+     * @throws JobException when unable to complete the transfer
+     */
+    protected void stageSofwareApplication() throws ClosedByInterruptException, JobException {
+        TransferTask transferTask;
+        RemoteDataClient remoteExecutionDataClient = null;
+        try {
+            log.debug("Staging " + getJob().getSoftwareName() + " app dependencies for job " + getJob().getUuid() + " to agave://" + getJob().getSystem() + "/" + getJob().getWorkPath());
+            remoteExecutionDataClient = getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername());
+            remoteExecutionDataClient.authenticate();
+            remoteExecutionDataClient.mkdirs(getJob().getWorkPath(), getJob().getOwner());
+
+            checkStopped();
+
+            transferTask = createJobWorkDirectoryTransferTask();
+
             // first time around we copy everything
             if (getJob().getRetries() <= 0) {
-                remoteExecutionDataClient.put(tempAppDir.getAbsolutePath(),
-                        new File(getJob().getWorkPath()).getParent(),
+                remoteExecutionDataClient.put(getTempAppDir().getPath(),
+                        Paths.get(getJob().getWorkPath()).getParent().toString(),
                         new RemoteTransferListener(transferTask));
             }
             // after that we try to save some time on retries by only copying the assets
             // that are missing or changed since the last attempt.
             else {
-                remoteExecutionDataClient.syncToRemote(tempAppDir.getAbsolutePath(),
+                remoteExecutionDataClient.syncToRemote(getTempAppDir().getPath(),
                         new File(getJob().getWorkPath()).getParent(),
                         new RemoteTransferListener(transferTask));
             }
-        } catch (Exception e) {
-            String msg = "Failed to stage application dependencies to execution system";
-            log.error(msg, e);
-            throw new JobException(msg, e);
+        } catch (ClosedByInterruptException e) {
+            throw e;
+        } catch (IOException | RemoteDataException | RemoteCredentialException e) {
+            throw new JobException("Unable to stage application dependencies to execution system " + getJob().getSystem(), e);
         } finally {
             try {
                 if (remoteExecutionDataClient != null) remoteExecutionDataClient.disconnect();
@@ -520,21 +738,22 @@ public abstract class AbstractJobLauncher implements JobLauncher {
      * @throws JobException if the file cannot be created and opened
      */
     protected File createArchiveLog(String logFileName) throws JobException {
+        step = "Creating an archive manifest file for job " + getJob().getUuid();
+        log.debug(step);
+
         FileWriter logWriter = null;
         try {
-            File archiveLog = new File(tempAppDir, logFileName);
+            File archiveLog = new File(getTempAppDir(), logFileName);
             if (archiveLog.createNewFile()) {
                 logWriter = new FileWriter(archiveLog);
 
-                printListing(tempAppDir, tempAppDir, logWriter);
+                printListing(getTempAppDir(), getTempAppDir(), logWriter);
 
                 return archiveLog;
             } else {
                 throw new JobException("Failed to create manifest file for job " + getJob().getUuid());
             }
         } catch (IOException e) {
-            step = "Creating an archive manifest file for job " + getJob().getUuid();
-            log.debug(step);
             String msg = "Failed to create manifest file for job " + getJob().getUuid();
             log.error(msg, e);
             throw new JobException(msg, e);
@@ -548,21 +767,31 @@ public abstract class AbstractJobLauncher implements JobLauncher {
         }
     }
 
+    /**
+     * Generates recursive listing of file items relative to the given baseFolder.
+     * @param file the file to explore
+     * @param baseFolder the root of the original listing
+     * @param writer the {@link FileWriter} to where the file item should be written
+     * @throws IOException if unable to write to the given writer
+     */
     protected void printListing(File file, File baseFolder, FileWriter writer) throws IOException {
         if (file.isFile()) {
             String relativeFilePath = StringUtils.removeStart(file.getPath(), baseFolder.getPath());
             if (relativeFilePath.startsWith("/"))
                 relativeFilePath = relativeFilePath.substring(1);
-            writer.append(relativeFilePath + "\n");
+            writer.append(relativeFilePath).append("\n");
         } else {
-            for (File child : file.listFiles()) {
-                String relativeChildPath = StringUtils.removeStart(child.getPath(), baseFolder.getPath());
-                if (relativeChildPath.startsWith("/"))
-                    relativeChildPath = relativeChildPath.substring(1);
-                writer.append(relativeChildPath + "\n");
+            File[] fileListing = file.listFiles();
+            if (fileListing != null) {
+                for (File child : fileListing) {
+                    String relativeChildPath = StringUtils.removeStart(child.getPath(), baseFolder.getPath());
+                    if (relativeChildPath.startsWith("/"))
+                        relativeChildPath = relativeChildPath.substring(1);
+                    writer.append(relativeChildPath).append("\n");
 
-                if (child.isDirectory()) {
-                    printListing(child, baseFolder, writer);
+                    if (child.isDirectory()) {
+                        printListing(child, baseFolder, writer);
+                    }
                 }
             }
         }
@@ -575,7 +804,7 @@ public abstract class AbstractJobLauncher implements JobLauncher {
      *
      * @return the response from the remote scheduler
      * @throws JobException       when an error occurs trying to submit the job
-     * @throws SchedulerException when the remote schedueler response cannot be parsed
+     * @throws SchedulerException when the remote scheduler response cannot be parsed
      */
     protected abstract String submitJobToQueue() throws JobException, SchedulerException;
 

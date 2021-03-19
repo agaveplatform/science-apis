@@ -26,39 +26,28 @@ public class ZipUtil extends org.iplantc.service.common.util.ZipUtil
 		URI base = directory.toURI();
 		LinkedList<File> queue = new LinkedList<File>();
 		queue.add(directory);
-		OutputStream out = new FileOutputStream(zipFile);
-		Closeable res = out;
-		ZipOutputStream zout = null;
-		try
-		{
-			zout = new ZipOutputStream(out);
-			res = zout;
+
+		try(OutputStream out = new FileOutputStream(zipFile);ZipOutputStream zout = new ZipOutputStream(out);) {
+
 			while (!queue.isEmpty())
 			{
 				directory = queue.removeLast();
-				for (File kid : directory.listFiles())
-				{
-					String name = base.relativize(kid.toURI()).getPath();
-					if (kid.isDirectory())
-					{
-						queue.add(kid);
-						name = name.endsWith("/") ? name : name + "/";
-						zout.putNextEntry(new ZipEntry(name));
-					}
-					else
-					{
-						zout.putNextEntry(new ZipEntry(name));
-						copy(kid, zout);
-						zout.closeEntry();
+				File[] directoryListing = directory.listFiles();
+				if (directoryListing != null) {
+					for (File kid : directoryListing) {
+						String name = base.relativize(kid.toURI()).getPath();
+						if (kid.isDirectory()) {
+							queue.add(kid);
+							name = name.endsWith("/") ? name : name + "/";
+							zout.putNextEntry(new ZipEntry(name));
+						} else {
+							zout.putNextEntry(new ZipEntry(name));
+							copy(kid, zout);
+							zout.closeEntry();
+						}
 					}
 				}
 			}
-		}
-		finally
-		{
-			try {res.close();} catch (Exception e) {}
-			try {out.close();} catch (Exception e) {}
-			try {zout.close();} catch (Exception e) {}
 		}
 	}
 
@@ -70,21 +59,13 @@ public class ZipUtil extends org.iplantc.service.common.util.ZipUtil
 		{
 			ZipEntry entry = entries.nextElement();
 			File file = new File(directory, entry.getName());
-			if (entry.isDirectory())
-			{
+			if (entry.isDirectory()) {
 				file.mkdirs();
 			}
-			else
-			{
+			else {
 				file.getParentFile().mkdirs();
-				InputStream in = zFile.getInputStream(entry);
-				try
-				{
+				try (InputStream in = zFile.getInputStream(entry);) {
 					copy(in, file);
-				}
-				finally
-				{
-					in.close();
 				}
 			}
 		}

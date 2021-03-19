@@ -37,10 +37,6 @@ import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
 import java.io.*;
 import java.net.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -223,8 +219,11 @@ public final class SftpRelay implements RemoteDataClient {
     protected ManagedChannel getGrpcManagedChannel() {
         if (sftpRelayServerManagedChannel == null) {
             sftpRelayServerManagedChannel =
-                    ManagedChannelBuilder.forAddress(sftpRelayServerHost, sftpRelayServerPort).enableRetry()
-                            .usePlaintext().build();
+                    ManagedChannelBuilder.forAddress(sftpRelayServerHost, sftpRelayServerPort)
+                            .enableRetry()
+                            .usePlaintext()
+                            .idleTimeout(1, TimeUnit.MINUTES)
+                            .build();
         }
         return sftpRelayServerManagedChannel;
     }
@@ -1093,16 +1092,16 @@ public final class SftpRelay implements RemoteDataClient {
     public void get(String remoteSource, String localdir, RemoteTransferListener listener)
             throws IOException, FileNotFoundException, RemoteDataException {
         try {
-            boolean isRemoteDir;
+            RemoteFileInfo remoteFileInfo = null;
             try {
-                isRemoteDir = isDirectory(remoteSource);
+                remoteFileInfo = getFileInfo(remoteSource);
             } catch (Exception e) {
                 String msg = getMsgPrefix() + "Failure to access remote path " + remoteSource + ": " + e.getMessage();
                 throw e;
             }
 
 
-            if (isRemoteDir) {
+            if (remoteFileInfo.isDirectory()) {
                 File localDirectory = new File(localdir);
 
                 // if local directory is not there
@@ -1181,15 +1180,23 @@ public final class SftpRelay implements RemoteDataClient {
                             .setForce(true)
                             .build();
 
+                    if (listener != null) listener.started(remoteFileInfo.getSize(), remoteFileInfo.getName());
+
                     // call the gRPC and get back a CopyLocalToRemoteResponse
                     TransferResponse transferResponse = grpcClient.get(srvGetRequest);
 
                     if (StringUtils.isNotBlank(transferResponse.getError())) {
                         String errorMessage = transferResponse.getError();
+                        if (listener != null) listener.failed();
                         if (errorMessage.contains("does not exist") || errorMessage.contains("no such file or directory")) {
                             throw new FileNotFoundException(errorMessage);
                         } else {
                             throw new RemoteDataException(errorMessage);
+                        }
+                    } else {
+                        if (listener != null) {
+                            listener.progressed(transferResponse.getBytesTransferred());
+                            listener.completed();
                         }
                     }
                 } catch (FileNotFoundException | RemoteDataException e) {
@@ -1502,14 +1509,12 @@ public final class SftpRelay implements RemoteDataClient {
                             .build();
 
                     if (listener != null) listener.started(localFile.length(), localdir);
+
                     // call the gRPC and get back a SrvPutResponse
                     TransferResponse transferResponse = grpcClient.put(srvPutRequest);
 
                     if (StringUtils.isNotBlank(transferResponse.getError())) {
                         String errorMessage = transferResponse.getError();
-
-                        // update the listener marking transfer as failed
-                        if (listener != null) listener.failed();
 
                         if (errorMessage.contains("does not exist") || errorMessage.contains("no such file or directory")) {
                             throw new FileNotFoundException(errorMessage);
@@ -1525,8 +1530,10 @@ public final class SftpRelay implements RemoteDataClient {
                     }
 
                 } catch (FileNotFoundException | RemoteDataException e) {
+                    if (listener != null) listener.failed();
                     throw e;
                 } catch (Throwable e) {
+
                     String msg = getMsgPrefix() + "Failure to write local file " + localFile.getAbsolutePath() +
                             " to " + resolvedPath + ": " + e.getMessage();
                     throw new RemoteDataException(msg, e);

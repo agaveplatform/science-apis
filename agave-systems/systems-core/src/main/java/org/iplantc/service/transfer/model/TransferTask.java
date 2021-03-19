@@ -21,6 +21,7 @@ import org.joda.time.DateTime;
 import javax.persistence.*;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -690,7 +691,7 @@ public class TransferTask {
 			this.totalFiles += transferTask.getTotalFiles();
 			this.totalSize += transferTask.getTotalSize();
 			this.totalSkippedFiles += transferTask.getTotalSkippedFiles();
-			this.lastUpdated = new Date();
+			this.lastUpdated = Date.from(Instant.now());
 			this.updateTransferRate();
 		}
 	}

@@ -115,7 +115,7 @@ public class SubmissionAction extends AbstractWorkerAction {
                     throw e;
                 } 
                 catch (UnknownSoftwareException|SystemUnknownException e) {
-                    log.debug("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() +
+                    log.error("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() +
                                     ". " + e.getMessage());
                     updateJobStatus(JobStatusType.FAILED, "Unable to submit job " + getJob().getUuid() + ". " +
                             e.getMessage() + " No further attempts will be made.");
@@ -138,23 +138,20 @@ public class SubmissionAction extends AbstractWorkerAction {
                     break;
                 }
                 catch (SchedulerException e) {
-                    log.error("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() +
+                    log.debug("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() +
                             " due to scheduler exception: " + e.getMessage());
-                    updateJobStatus(getJob().getStatus(), "Attempt "
+                    updateJobStatus(JobStatusType.STAGED, "Attempt "
                         + attempts + " failed to submit job due to scheduler exception. " + e.getMessage());
                 }
                 catch (IOException e) {
-                    log.debug("Failed to submit job " + getJob().getUuid() +
-                            ". Unable to connect to remote system " + e.getMessage());
-                    updateJobStatus(getJob().getStatus(), e.getMessage() +
+                    log.error("Failed to submit job " + getJob().getUuid() +
+                            ". Unable to connect to remote system " + e.getMessage(),e);
+                    updateJobStatus(JobStatusType.STAGED, e.getMessage() +
                             " The service was unable to connect to the target execution system " +
                             "for this application, " + getJob().getSystem() + ". This job will " +
                             "remain in queue until the system becomes available. Original error message: " + e.getMessage());
                 }
-                catch (JobException e) {
-
-                }
-                catch (Exception e)
+                catch (Throwable e)
                 {   
                     if (e.getCause() instanceof UnresolvableObjectException ||
                             e.getCause() instanceof ObjectNotFoundException) {

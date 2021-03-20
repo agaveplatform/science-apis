@@ -187,28 +187,27 @@ public class SubmissionWatch extends AbstractJobWatch
 			try {
 				updateJobStatus(JobStatusType.STAGED,
 						"Job submission aborted due to worker shutdown. Job will be resubmitted automatically.");
-//                JobDao.persist(job);
 			} catch (Throwable t) {
 				log.error("Failed to roll back job status when archive task was interrupted.", e);
 			}
 			throw new JobExecutionException("Submission task for job " + getJob().getUuid() + " aborted due to interrupt by worker process.");
 		}
 		catch (StaleObjectStateException | UnresolvableObjectException e) {
-			log.debug("Job " + getJob().getUuid() + " already being processed by another submission thread. Ignoring.");
+			log.error("Job " + getJob().getUuid() + " already being processed by another submission thread. Ignoring.");
 			throw new JobExecutionException("Job " + getJob().getUuid() + " already being processed by another submission thread. Ignoring.");
 		}
-//		catch (Throwable e) {
-//			if (job == null) {
-//				log.error("Failed to retrieve job information from db", e);
-//			} else {
-//				try {
-//					log.error("Failed to submit job " + getJob().getUuid() + " due to internal errors. " + e.getMessage());
-//					updateJobStatus(JobStatusType.FAILED,
-//							"Failed to submit job " + getJob().getUuid() + " due to internal errors");
-//				} catch (Throwable ignored) {}
-//			}
-//			throw new JobExecutionException(e);
-//		}
+		catch (Throwable e) {
+			if (job == null) {
+				log.error("Failed to retrieve job information from db", e);
+			} else {
+				try {
+					log.error("Failed to submit job " + getJob().getUuid() + " due to internal errors. " + e.getMessage(), e);
+					updateJobStatus(JobStatusType.FAILED,
+							"Failed to submit job " + getJob().getUuid() + " due to internal errors");
+				} catch (Throwable ignored) {}
+			}
+			throw new JobExecutionException(e);
+		}
 		finally {
 			setTaskComplete(true);
 			try { HibernateUtil.flush(); } catch (Exception ignored) {}

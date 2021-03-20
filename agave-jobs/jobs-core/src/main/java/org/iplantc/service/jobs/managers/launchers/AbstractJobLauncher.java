@@ -115,8 +115,6 @@ public abstract class AbstractJobLauncher implements JobLauncher {
         this.setJob(job);
         this.setSoftware(software);//SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName()));
         this.setExecutionSystem(executionSystem);//((ExecutionSystem) new SystemDao().findBySystemId(job.getSystem()));
-//        localDataClient = new Local(null, "/", Files.createTempDir().getPath());
-
     }
 
     /* (non-Javadoc)
@@ -273,16 +271,24 @@ public abstract class AbstractJobLauncher implements JobLauncher {
      * @throws IOException when directory cannot be created
      */
     protected void createTempAppDir() throws IOException {
-        step = "Creating cache directory to process " + getJob().getSoftwareName() +
+        step = "Creating local temp directory to process " + getJob().getSoftwareName() +
                 " wrapper template for job " + getJob().getUuid();
         log.debug(step);
 
         File tempAppDir = Paths.get(Settings.TEMP_DIRECTORY).resolve(FilenameUtils.getName(getJob().getWorkPath())).toFile();
 
         // ensure directory exists
-        if (!tempAppDir.exists()) {
+        if (tempAppDir.exists()) {
+            log.debug("Local temp directory " + tempAppDir.getPath() + " for job " + getJob().getUuid() +
+                    " already exists.");
+        } else {
             if (!tempAppDir.mkdirs()) {
-                throw new IOException("Unable to create temp directory to stage app assets for job " +
+                throw new IOException("Unable to create temp directory at " + tempAppDir.getPath() + " to process " +
+                        getJob().getSoftwareName() + " wrapper template for job " +
+                        getJob().getUuid());
+            } else {
+                log.debug("Successfully created local temp directory " + tempAppDir.getPath() + " to process " +
+                        getJob().getSoftwareName() + " wrapper template for job " +
                         getJob().getUuid());
             }
         }
@@ -337,10 +343,10 @@ public abstract class AbstractJobLauncher implements JobLauncher {
             throw new JobException("Failed to process staged app deployment path.", e);
         } catch (SoftwareUnavailableException | JobException e) {
             throw e;
-//        } catch (Exception e) {
-//            String msg = "Remote data connection to " + getSoftware().getExecutionSystem().getSystemId() + " threw exception and stopped job execution";
-//            log.error(msg, e);
-//            throw new JobException(msg, e);
+        } catch (Exception e) {
+            String msg = "Remote data connection to " + getSoftware().getExecutionSystem().getSystemId() + " threw exception and stopped job execution";
+            log.error(msg, e);
+            throw new JobException(msg, e);
         }
     }
 

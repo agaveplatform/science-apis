@@ -888,10 +888,6 @@ public class AbstractJobSubmissionTest {
 		
 		try
         {
-//		    job.setArchivePath(job.getOwner() + "/archive/jobs/job-" + job.getUuid() + "-" + Slug.toSlug(job.getName()));
-//		    
-//			JobDao.persist(job);
-//			
 			submissionAction.run();
             
             job = submissionAction.getJob();

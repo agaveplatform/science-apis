@@ -799,7 +799,7 @@
             <id>remote-data-tests</id>
             <properties>
                 <skip.integration.tests>false</skip.integration.tests>
-                <skip.integration.irods3.tests>false</skip.integration.irods3.tests>
+                <skip.integration.irods3.tests>true</skip.integration.irods3.tests>
                 <skip.integration.irods4.tests>false</skip.integration.irods4.tests>
                 <skip.integration.sftp.tests>false</skip.integration.sftp.tests>
                 <skip.integration.sftprelay.tests>false</skip.integration.sftprelay.tests>

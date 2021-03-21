@@ -222,7 +222,6 @@ public final class SftpRelay implements RemoteDataClient {
                     ManagedChannelBuilder.forAddress(sftpRelayServerHost, sftpRelayServerPort)
                             .enableRetry()
                             .usePlaintext()
-                            .idleTimeout(1, TimeUnit.MINUTES)
                             .build();
         }
         return sftpRelayServerManagedChannel;

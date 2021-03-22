@@ -38,6 +38,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public class TransferTaskAssignedListener extends AbstractNatsListener {
@@ -87,25 +88,23 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                     //   respective listeners in the same way.
                     body.put("event", this.getClass().getName());
                     body.put("type", getEventChannel());
-                    _doPublishNatsEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+                    _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
                 } else {
                     //error handled in processTransferTask
                 }
             });
         });
         d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
-        nc.flush(Duration.ofMillis(500));
+        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
-        // cancel tasks
-        //Connection nc = _connect();
-
-        //Dispatcher d = nc.createDispatcher((msg) -> {});
-        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {
+            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            log.debug("response is {}", response);
             JsonObject body = new JsonObject(response) ;
-
             String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            log.debug("response is {}", response);
 
             log.info("Transfer task {} cancel detected", uuid);
             if (uuid != null) {

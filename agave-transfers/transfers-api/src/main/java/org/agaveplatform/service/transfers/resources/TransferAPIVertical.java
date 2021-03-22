@@ -275,7 +275,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
         dbService.create(tenantId, transferTask, reply -> {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());
-                _doPublishNatsEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
+                _doPublishEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
                 routingContext.response()
                         .putHeader("content-type", "application/json")
                             .setStatusCode(201)
@@ -318,7 +318,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
                         dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
                             if (deleteReply.succeeded()) {
 
-                                _doPublishNatsEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -375,9 +375,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                             user.isAdminRoleExists()) {
                         dbService.cancelAll(tenantId, deleteReply -> {
                             if (deleteReply.succeeded()) {
-                                // _doPublishNatsEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                                // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
                                 //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                _doPublishNatsEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -402,7 +402,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
         dbService.getByUuid(tenantId, transferTask.getUuid(), reply -> {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());
-                _doPublishNatsEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
+                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
                 routingContext.response()
                         .putHeader("content-type", "application/json")
                         .setStatusCode(201)
@@ -443,7 +443,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
                         dbService.delete(tenantId, uuid, deleteReply -> {
                             if (deleteReply.succeeded()) {
 
-                                _doPublishNatsEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -490,9 +490,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                             user.isAdminRoleExists()) {
                         dbService.deleteAll(tenantId, deleteReply -> {
                             if (deleteReply.succeeded()) {
-                               // _doPublishNatsEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                               // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
                                 //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                _doPublishNatsEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -589,7 +589,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
                         // perform the update
                         dbService.update(tenantId, uuid, tt, updateReply -> {
                             if (updateReply.succeeded()) {
-                                _doPublishNatsEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
+                                _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
                                 routingContext.response().end(
                                         AgaveResponseBuilder.getInstance(routingContext)
                                                 .setResult(updateReply.result())
@@ -620,7 +620,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
      * @param event the event channel to which the message will be published
      * @param message the message to publish
      */
-    public void _doPublishNatsEvent(String event, Object message) {
+    public void _doPublishEvent(String event, Object message) {
         log.debug("Publishing {} event: {}", event, message);
         getVertx().eventBus().publish(event, message);
     }

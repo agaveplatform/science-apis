@@ -1,5 +1,8 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.nats.client.Connection;
+import io.nats.client.Dispatcher;
+import io.nats.client.Subscription;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -11,9 +14,15 @@ import org.agaveplatform.service.transfers.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 
-public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListener implements Handler<RoutingContext> {
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
+
+public class TransferTaskErrorFailureHandler extends AbstractNatsListener implements Handler<RoutingContext> {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskErrorFailureHandler.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_FAILED;
 
@@ -45,17 +54,25 @@ public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListene
 
 
 	@Override
-	public void start() {
-		EventBus bus = vertx.eventBus();
+	public void start() throws IOException, InterruptedException, TimeoutException {
+		//EventBus bus = vertx.eventBus();
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
 		//final String err ;
-		bus.<JsonObject>consumer(getEventChannel(), msg -> {
-			msg.reply(TransferTaskErrorFailureHandler.class.getName() + " received.");
+		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+		Connection nc = _connect();
+		Dispatcher d = nc.createDispatcher((msg) -> {});
+		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+			JsonObject body = new JsonObject(response) ;
+			String uuid = body.getString("uuid");
+			String source = body.getString("source");
+			String dest = body.getString("dest");
 
-			JsonObject body = msg.body();
 
 			log.info("Transfer task {} failed: {}: {}",
 					body.getString("uuid"), body.getString("cause"), body.getString("message"));
@@ -71,6 +88,8 @@ public class TransferTaskErrorFailureHandler extends AbstractTransferTaskListene
 				}
 			});
 		});
+		d.subscribe(EVENT_CHANNEL);
+		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
 	}
 

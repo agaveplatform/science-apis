@@ -21,4 +21,5 @@ public class TransferTaskConfigProperties {
 
     public static final String MAX_TIME_FOR_HEALTHCHECK = "MAX_TIME_FOR_HEALTHCHECK";
     public static final String MAX_TIME_FOR_HEALTHCHECK_PARENT = "MAX_TIME_FOR_HEALTHCHECK_PARENT";
+    public static final int FLUSH_DELAY_NATS = 500;
 }

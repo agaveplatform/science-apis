@@ -1,10 +1,14 @@
 package org.agaveplatform.service.transfers.protocol;
 
+import io.nats.client.Connection;
+import io.nats.client.Dispatcher;
+import io.nats.client.Subscription;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.listener.AbstractNatsListener;
 import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang.NotImplementedException;
@@ -26,11 +30,15 @@ import org.slf4j.LoggerFactory;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
 
-public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
+public class TransferAllProtocolVertical extends AbstractNatsListener {
 	private static final Logger log = LoggerFactory.getLogger(TransferAllProtocolVertical.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_ALL;
 	private TransferTaskDatabaseService dbService;
@@ -50,21 +58,26 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 	}
 
 	@Override
-	public void start() {
-		EventBus bus = vertx.eventBus();
+	public void start() throws IOException, InterruptedException, TimeoutException {
+		//EventBus bus = vertx.eventBus();
 		log.debug("Got into TransferAllProtocolVertical");
 
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-		bus.<JsonObject>consumer(getEventChannel(), msg -> {
-            msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
-
-            JsonObject body = msg.body();
+		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+		Connection nc = _connect();
+		Dispatcher d = nc.createDispatcher((msg) -> {});
+		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+			JsonObject body = new JsonObject(response) ;
 			String uuid = body.getString("uuid");
 			String source = body.getString("source");
 			String dest = body.getString("dest");
+            //msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
 
 			log.info("Transfer task (ALL) {} transferring: {} -> {}", uuid, source, dest);
 			processEvent(body, resp -> {
@@ -75,56 +88,82 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 				}
 			});
 		});
+		d.subscribe(EVENT_CHANNEL);
+		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+
 
 		// cancel tasks
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
-            msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
-
-            JsonObject body = msg.body();
+		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+			JsonObject body = new JsonObject(response) ;
 			String uuid = body.getString("uuid");
+            //msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
 
 			log.info("Transfer task {} cancel detected", uuid);
 			if (uuid != null) {
 				addCancelledTask(uuid);
 			}
 		});
+		d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
+		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
-        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-            msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
 
-            JsonObject body = msg.body();
-            String uuid = body.getString("uuid");
+
+        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+			JsonObject body = new JsonObject(response) ;
+			String uuid = body.getString("uuid");
+            //msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
 
 			log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
 			if (uuid != null) {
 				removeCancelledTask(uuid);
 			}
 		});
+		d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
+		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+
 
         // paused tasks
-        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
-            msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
-
-            JsonObject body = msg.body();
-            String uuid = body.getString("uuid");
+        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+			JsonObject body = new JsonObject(response) ;
+			String uuid = body.getString("uuid");
+            //msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
 
 			log.info("Transfer task {} paused detected", uuid);
 			if (uuid != null) {
 				addPausedTask(uuid);
 			}
 		});
+		d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
+		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
-        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-            msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
 
-            JsonObject body = msg.body();
-            String uuid = body.getString("uuid");
+
+        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+			JsonObject body = new JsonObject(response) ;
+			String uuid = body.getString("uuid");
+			//msg.reply(TransferAllProtocolVertical.class.getName() + " received.");
 
 			log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
 			if (uuid != null) {
 				addPausedTask(uuid);
 			}
 		});
+		d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
+		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+
+
 	}
 
 	/**

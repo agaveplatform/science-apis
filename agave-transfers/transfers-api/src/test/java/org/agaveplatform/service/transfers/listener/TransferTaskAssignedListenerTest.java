@@ -31,6 +31,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -494,7 +495,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask aborts processing childen when interrupt is received")
-	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws InterruptedException, TimeoutException, IOException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 

@@ -21,7 +21,7 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANS
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
 
 
-public class TransferTaskWatchListener extends AbstractTransferTaskListener {
+public class TransferTaskWatchListener extends AbstractNatsListener {
 	private final static Logger log = LoggerFactory.getLogger(TransferTaskWatchListener.class);
 
 	private TransferTaskDatabaseService dbService;

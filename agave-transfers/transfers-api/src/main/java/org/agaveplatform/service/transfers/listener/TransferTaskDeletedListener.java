@@ -1,5 +1,8 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.nats.client.Connection;
+import io.nats.client.Dispatcher;
+import io.nats.client.Subscription;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -12,15 +15,20 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.FAILED;
 
-public class TransferTaskDeletedListener extends AbstractTransferTaskListener {
+public class TransferTaskDeletedListener extends AbstractNatsListener {
     private static final Logger logger = LoggerFactory.getLogger(TransferTaskDeletedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_DELETED;
 
@@ -42,30 +50,45 @@ public class TransferTaskDeletedListener extends AbstractTransferTaskListener {
     }
 
     @Override
-    public void start() {
+    public void start() throws IOException, InterruptedException, TimeoutException {
         // init our db connection from the pool
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-        EventBus bus = vertx.eventBus();
-        bus.<JsonObject>consumer(getEventChannel(), msg -> {
-            msg.reply(TransferTaskDeletedListener.class.getName() + " received.");
-
-            JsonObject body = msg.body();
+        Connection nc = _connect();
+        Dispatcher d = nc.createDispatcher((msg) -> {});
+        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
+        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+            JsonObject body = new JsonObject(response) ;
             String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+
             logger.info("Transfer task {} cancel detected.", uuid);
             this.processDeletedRequest(body, result -> {
                 //result should be true
             });
         });
+        d.subscribe(EVENT_CHANNEL);
+        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
-        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
-            JsonObject body = msg.body();
+
+        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
+        s = d.subscribe(EVENT_CHANNEL, msg -> {
+            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+            JsonObject body = new JsonObject(response) ;
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} ackowledged cancellation", uuid);
             this.processDeletedAck(body, result -> {});
         });
+        d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK);
+        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+
+
     }
 
 

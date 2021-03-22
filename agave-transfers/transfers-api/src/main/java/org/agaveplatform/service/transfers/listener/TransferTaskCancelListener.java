@@ -1,5 +1,8 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.nats.client.Connection;
+import io.nats.client.Dispatcher;
+import io.nats.client.Subscription;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -12,14 +15,19 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
-public class TransferTaskCancelListener extends AbstractTransferTaskListener {
+public class TransferTaskCancelListener extends AbstractNatsListener {
     private static final Logger logger = LoggerFactory.getLogger(TransferTaskCancelListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CANCELED;
 
@@ -41,32 +49,41 @@ public class TransferTaskCancelListener extends AbstractTransferTaskListener {
     }
 
     @Override
-    public void start() {
+    public void start() throws IOException, InterruptedException, TimeoutException {
         // init our db connection from the pool
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-        EventBus bus = vertx.eventBus();
-        bus.<JsonObject>consumer(getEventChannel(), msg -> {
-            msg.reply(TransferTaskCancelListener.class.getName() + " received.");
-
-            JsonObject body = msg.body();
+        //EventBus bus = vertx.eventBus();
+        Connection nc = _connect();
+        Dispatcher d = nc.createDispatcher((msg) -> {});
+        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
+        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+            JsonObject body = new JsonObject(response) ;
             String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
             logger.info("Transfer task {} cancel detected.", uuid);
             this.processCancelRequest(body, result -> {
                 //result should be true
             });
         });
+        d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
+        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
-        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_ACK, msg -> {
-            msg.reply(TransferTaskCancelListener.class.getName() + " received.");
-
-            JsonObject body = msg.body();
+        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
+        s = d.subscribe(EVENT_CHANNEL, msg -> {
+            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+            JsonObject body = new JsonObject(response) ;
             String uuid = body.getString("uuid");
 
             logger.info("Transfer task {} ackowledged cancellation", uuid);
             this.processCancelAck(body, result -> {});
         });
+        d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
+        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
     }
 
     protected void processCancelRequest(JsonObject body, Handler<AsyncResult<Boolean>> resultHandler) {

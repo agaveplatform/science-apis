@@ -1,5 +1,8 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.nats.client.Connection;
+import io.nats.client.Dispatcher;
+import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -14,15 +17,20 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_SYNC;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
-public class TransferTaskPausedListener extends AbstractTransferTaskListener {
+public class TransferTaskPausedListener extends AbstractNatsListener {
 	private static final Logger logger = LoggerFactory.getLogger(TransferTaskPausedListener.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_PAUSED;
 
@@ -46,16 +54,20 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 	}
 
 	@Override
-	public void start() {
+	public void start() throws IOException, InterruptedException, TimeoutException {
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-		EventBus bus = vertx.eventBus();
-		bus.<JsonObject>consumer(getEventChannel(), msg -> {
-			msg.reply(TransferTaskPausedListener.class.getName() + " received.");
-
-			JsonObject body = msg.body();
+		//EventBus bus = vertx.eventBus();
+		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+		Connection nc = _connect();
+		Dispatcher d = nc.createDispatcher((msg) -> {});
+		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+			JsonObject body = new JsonObject(response) ;
 			String uuid = body.getString("uuid");
 
 			logger.info("Transfer task {} pause detected.", uuid);
@@ -69,12 +81,18 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 				}
 			});
 		});
+		d.subscribe(EVENT_CHANNEL);
+		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
-			msg.reply(TransferTaskPausedListener.class.getName() + " received.");
-
-			JsonObject body = msg.body();
+		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
+			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+			String response = new String(msg.getData(), StandardCharsets.UTF_8);
+			JsonObject body = new JsonObject(response) ;
 			String uuid = body.getString("uuid");
+
+//			msg.reply(TransferTaskPausedListener.class.getName() + " received.");
+
 			String parentTaskId = body.getString("parentTaskId");
 			String rootTaskId = body.getString("rootTaskId");
 			String tenantId = body.getString("owner");
@@ -85,6 +103,9 @@ public class TransferTaskPausedListener extends AbstractTransferTaskListener {
 
 			});
 		});
+		d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK);
+		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+
 	}
 
 	/**

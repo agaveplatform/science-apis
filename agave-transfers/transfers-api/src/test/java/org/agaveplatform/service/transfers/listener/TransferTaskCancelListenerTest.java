@@ -19,7 +19,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
+import java.io.IOException;
 import java.time.Instant;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -995,7 +997,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCncelListener - processCancelAck message")
-	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) {
+	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws InterruptedException, TimeoutException, IOException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

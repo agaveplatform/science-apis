@@ -1,6 +1,9 @@
 package org.agaveplatform.service.transfers.listener;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.nats.client.Connection;
+import io.nats.client.Dispatcher;
+import io.nats.client.Subscription;
 import io.vertx.core.Vertx;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
@@ -13,10 +16,16 @@ import org.iplantc.service.notification.queue.messaging.NotificationMessageConte
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
+
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
 
 
-public class TransferTaskNotificationListener extends AbstractTransferTaskListener {
+public class TransferTaskNotificationListener extends AbstractNatsListener {
 	private static final Logger logger = LoggerFactory.getLogger(TransferTaskNotificationListener.class);
 	protected static final String EVENT_CHANNEL = TRANSFERTASK_NOTIFICATION ;
 
@@ -35,15 +44,23 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 	}
 
 	@Override
-	public void start() {
-		EventBus bus = vertx.eventBus();
+	public void start() throws IOException, InterruptedException, TimeoutException {
+		//EventBus bus = vertx.eventBus();
 
 		// poc listener to show propagated notifications that woudl be sent to users
-		bus.<JsonObject>consumer(getEventChannel(), msg -> {
-			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
+        Connection nc = _connect();
+        Dispatcher d = nc.createDispatcher((msg) -> {});
+        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
+        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+            JsonObject body = new JsonObject(response) ;
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+			//msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
 
-			JsonObject body = msg.body();
-			String uuid = body.getString("uuid");
 
 			NotificationMessageContext messageBodyContext = new NotificationMessageContext(
 					MessageType.TRANSFERTASK_CANCELED_COMPLETED, body.encode(), uuid);
@@ -72,67 +89,85 @@ public class TransferTaskNotificationListener extends AbstractTransferTaskListen
 						body.getString("uuid"), e.getMessage());
 			}
 		});
+        d.subscribe(EVENT_CHANNEL);
+        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+            JsonObject body = new JsonObject(response) ;
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            //msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
 
-            JsonObject body = msg.body();
+
             JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_CANCELED_COMPLETED, body);
             notificationEventProcess(notificationMessageBody);
             logger.info("Transfer task {} completed.", body.getString("uuid"));
 
 			_doPublishEvent(MessageType.NOTIFICATION_CANCELED, body);
 		});
+        d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
+        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_FINISHED, msg -> {
-			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
 
-            JsonObject body = msg.body();
+		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_FINISHED, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_FINISHED, msg -> {
+            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+            JsonObject body = new JsonObject(response) ;
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+			//msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+
             JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_FINISHED, body);
             notificationEventProcess(notificationMessageBody);
             logger.info("Transfer task {} completed.", body.getString("uuid"));
 
 			getVertx().eventBus().publish(MessageType.NOTIFICATION_COMPLETED, body);
 		});
-
-//		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CREATED, msg -> {
-//			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
-//
-//            JsonObject body = msg.body();
-//            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_CREATED, body);
-//            notificationEventProcess(notificationMessageBody);
-//
-//            logger.info("Transfer task {} created.", body.getString("uuid"));
-//            _doPublishEvent(MessageType.NOTIFICATION_TRANSFERTASK, body);
-//        });
+        d.subscribe(MessageType.TRANSFERTASK_FINISHED);
+        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
 
-		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+            JsonObject body = new JsonObject(response) ;
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+			//msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
 
-            JsonObject body = msg.body();
             JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_PAUSED_COMPLETED, body);
             notificationEventProcess(notificationMessageBody);
             logger.info("Transfer task {} created.", body.getString("uuid"));
         });
+        d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
+        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
 
-//		bus.<JsonObject>consumer(MessageType.TRANSFERTASK_ERROR, msg -> {
-//			msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
-//
-//            JsonObject body = msg.body();
-//            JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_ERROR, body);
-//            notificationEventProcess(notificationMessageBody);
-//            logger.info("Transfer task {} created.", body.getString("uuid"));
-//        });
 
-        bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
-            msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
+        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
+            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+            String response = new String(msg.getData(), StandardCharsets.UTF_8);
+            JsonObject body = new JsonObject(response) ;
+            String uuid = body.getString("uuid");
+            String source = body.getString("source");
+            String dest = body.getString("dest");
+            //msg.reply(TransferTaskNotificationListener.class.getName() + " received.");
 
-            JsonObject body = msg.body();
             JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_PARENT_ERROR, body);
             notificationEventProcess(notificationMessageBody);
             logger.info("Transfer task {} created.", body.getString("uuid"));
         });
+        d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR);
+        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+
     }
 
 

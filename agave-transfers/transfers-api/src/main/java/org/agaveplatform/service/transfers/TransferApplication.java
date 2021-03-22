@@ -50,12 +50,12 @@ public class TransferApplication {
                 JsonObject config = json.result();
                 log.debug("Starting the app with config: " + config.encodePrettily());
 
-                int tcpPort = 7000;
-                // start up the TcpBridge and set the Inbound and Outbound addresses
-                log.info("Starting up the Tcp bridge on port {}", tcpPort);
-                TcpBridge tcpBridge = new TcpBridge();
-                tcpBridge.setUp(vertx, tcpPort);
-                log.info("Done with starting up the bridge");
+//                int tcpPort = 7000;
+//                // start up the TcpBridge and set the Inbound and Outbound addresses
+//                log.info("Starting up the Tcp bridge on port {}", tcpPort);
+//                TcpBridge tcpBridge = new TcpBridge();
+//                tcpBridge.setUp(vertx, tcpPort);
+//                log.info("Done with starting up the bridge");
 
                 DeploymentOptions dbDeploymentOptions = new DeploymentOptions()
                         .setConfig(config)
@@ -261,14 +261,14 @@ public class TransferApplication {
                                     });
 
                             // Deploy the Nats vertical
-                            vertx.deployVerticle(NatsListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskFinishedListener",
-                                    localOptions, res16 -> {
-                                        if (res.succeeded()) {
-                                            log.info("Nats Deployment id is " + res.result());
-                                        } else {
-                                            log.error("Nats Deployment failed !");
-                                        }
-                                    });
+//                            vertx.deployVerticle(NatsListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskFinishedListener",
+//                                    localOptions, res16 -> {
+//                                        if (res.succeeded()) {
+//                                            log.info("Nats Deployment id is " + res.result());
+//                                        } else {
+//                                            log.error("Nats Deployment failed !");
+//                                        }
+//                                    });
                         } else {
                             log.error("TransferAPIVertical deployment failed !\n" + res.cause());
                             res.cause().printStackTrace();

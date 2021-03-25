@@ -275,14 +275,20 @@ public class TransferAPIVertical extends AbstractNatsListener {
         dbService.create(tenantId, transferTask, reply -> {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());
-                _doPublishEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
-                routingContext.response()
+                try {
+                    _doPublishEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
+                    routingContext.response()
                         .putHeader("content-type", "application/json")
                             .setStatusCode(201)
                             .end(AgaveResponseBuilder.getInstance(routingContext)
                                     .setResult(tt.toJson())
                                     .build()
                                     .toString());
+                } catch (IOException e) {
+                    log.debug(e.getMessage());
+                } catch (InterruptedException e) {
+                    log.debug(e.getMessage());
+                }
             } else {
                 routingContext.fail(reply.cause());
             }
@@ -317,12 +323,17 @@ public class TransferAPIVertical extends AbstractNatsListener {
                             user.isAdminRoleExists()) {
                         dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
                             if (deleteReply.succeeded()) {
+                                try {
+                                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
-                                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
-
-                                routingContext.response()
-                                        .putHeader("content-type", "application/json")
-                                        .setStatusCode(203).end();
+                                    routingContext.response()
+                                            .putHeader("content-type", "application/json")
+                                            .setStatusCode(203).end();
+                                } catch (IOException e) {
+                                    log.debug(e.getMessage());
+                                } catch (InterruptedException e) {
+                                    log.debug(e.getMessage());
+                                }
                             } else {
                                 // delete failed
                                 routingContext.fail(deleteReply.cause());
@@ -402,14 +413,20 @@ public class TransferAPIVertical extends AbstractNatsListener {
         dbService.getByUuid(tenantId, transferTask.getUuid(), reply -> {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());
-                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
-                routingContext.response()
-                        .putHeader("content-type", "application/json")
-                        .setStatusCode(201)
-                        .end(AgaveResponseBuilder.getInstance(routingContext)
-                                .setResult(tt.toJson())
-                                .build()
-                                .toString());
+                try {
+                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
+                    routingContext.response()
+                            .putHeader("content-type", "application/json")
+                            .setStatusCode(201)
+                            .end(AgaveResponseBuilder.getInstance(routingContext)
+                                    .setResult(tt.toJson())
+                                    .build()
+                                    .toString());
+                } catch (IOException e) {
+                    log.debug(e.getMessage());
+                } catch (InterruptedException e) {
+                    log.debug(e.getMessage());
+                }
             } else {
                 routingContext.fail(reply.cause());
             }
@@ -589,12 +606,18 @@ public class TransferAPIVertical extends AbstractNatsListener {
                         // perform the update
                         dbService.update(tenantId, uuid, tt, updateReply -> {
                             if (updateReply.succeeded()) {
-                                _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
-                                routingContext.response().end(
-                                        AgaveResponseBuilder.getInstance(routingContext)
-                                                .setResult(updateReply.result())
-                                                .build()
-                                                .toString());
+                                try {
+                                    _doPublishEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
+                                    routingContext.response().end(
+                                            AgaveResponseBuilder.getInstance(routingContext)
+                                                    .setResult(updateReply.result())
+                                                    .build()
+                                                    .toString());
+                                } catch (IOException e) {
+                                    log.debug(e.getMessage());
+                                } catch (InterruptedException e) {
+                                    log.debug(e.getMessage());
+                                }
                             } else {
                                 // update failed
                                 routingContext.fail(updateReply.cause());

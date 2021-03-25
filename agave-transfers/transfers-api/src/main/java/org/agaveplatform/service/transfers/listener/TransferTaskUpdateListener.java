@@ -77,12 +77,18 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
                     logger.info("Succeeded with the processing transfer update event for transfer task {}", uuid);
                 } else {
                     logger.error("Error with return from update event {}", uuid);
-                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                    try {
+                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                    } catch (IOException e) {
+                        logger.debug(e.getMessage());
+                    } catch (InterruptedException e) {
+                        logger.debug(e.getMessage());
+                    }
                 }
             });
         });
         d.subscribe(EVENT_CHANNEL);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
     }
 
@@ -111,8 +117,14 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
 //                    doHandleError(reply.cause(), msg, body, handler);
 //                }
 //            });
-        } catch (Exception e) {
-            doHandleError(e, e.getMessage(), body, handler);
+        } catch (Exception ex) {
+            try {
+                doHandleError(ex, ex.getMessage(), body, handler);
+            } catch (IOException e) {
+                logger.debug(e.getMessage());
+            } catch (InterruptedException e) {
+                logger.debug(e.getMessage());
+            }
         }
     }
 

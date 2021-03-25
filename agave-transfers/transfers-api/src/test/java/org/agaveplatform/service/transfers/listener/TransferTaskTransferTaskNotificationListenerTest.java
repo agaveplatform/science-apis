@@ -15,6 +15,8 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Matchers.any;
@@ -28,7 +30,7 @@ import static org.mockito.Mockito.*;
 class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskTransferTaskNotificationListenerTest.class);
 
-	protected TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) {
+	protected TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskNotificationListener listener = mock(TransferTaskNotificationListener.class );
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_NOTIFICATION);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -42,7 +44,7 @@ class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("notificationEventProcess Test")
-	void notificationEventProcess(Vertx vertx, VertxTestContext ctx) {
+	void notificationEventProcess(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		log.info("Starting process of notificationEventProcess.");
 		TransferTask transferTask = _createTestTransferTask();
 		JsonObject body = transferTask.toJson();

@@ -95,19 +95,37 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 						//   this point
 						body.put("event", this.getClass().getName());
 						body.put("type", getEventChannel());
-						_doPublishEvent(TRANSFERTASK_NOTIFICATION, body);
+						try {
+							_doPublishEvent(TRANSFERTASK_NOTIFICATION, body);
+						} catch (IOException e) {
+							log.debug(e.getMessage());
+						} catch (InterruptedException e) {
+							log.debug(e.getMessage());
+						}
 					} else {
-						log.error("Unable to process {} event for transfer task (TTRL) message: {}", getEventChannel(), body.encode(), resp.cause());
-						_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+						log.debug("Unable to process {} event for transfer task (TTRL) message: {}", getEventChannel(), body.encode(), resp.cause());
+						try {
+							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+						} catch (IOException e) {
+							log.debug(e.getMessage());
+						} catch (InterruptedException e) {
+							log.debug(e.getMessage());
+						}
 					}
 				});
-			} catch (Exception e) {
-				log.error("Error with the TRANSFER_RETRY message.  The error is {}", e.getMessage());
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+			} catch (Exception ex) {
+				log.debug("Error with the TRANSFER_RETRY message.  The error is {}", ex.getMessage());
+				try {
+					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+				} catch (IOException e) {
+					log.debug(e.getMessage());
+				} catch (InterruptedException e) {
+					log.debug(e.getMessage());
+				}
 			}
 		});
 		d.subscribe(getEventChannel());
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 
 		// cancel tasks
@@ -127,7 +145,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
 		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -143,7 +161,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 		// paused tasks
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
@@ -160,7 +178,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -176,7 +194,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 
 	}
@@ -220,8 +238,14 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 											.put("cause", updateBody.cause().getClass().getName())
 											.put("message", updateBody.cause().getMessage())
 											.mergeIn(body);
-									_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-									handler.handle(Future.succeededFuture(false));
+									try {
+										_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+										handler.handle(Future.succeededFuture(false));
+									} catch (IOException e) {
+										log.debug(e.getMessage());
+									} catch (InterruptedException e) {
+										log.debug(e.getMessage());
+									}
 								}
 							});
 						} else {
@@ -231,9 +255,14 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 									.put("cause", MaxTransferTaskAttemptsExceededException.class.getName())
 									.put("message", msg)
 									.mergeIn(body);
-
-							_doPublishEvent(TRANSFER_FAILED, json);
-							handler.handle(Future.succeededFuture(false));
+							try {
+								_doPublishEvent(TRANSFER_FAILED, json);
+								handler.handle(Future.succeededFuture(false));
+							} catch (IOException e) {
+								log.debug(e.getMessage());
+							} catch (InterruptedException e) {
+								log.debug(e.getMessage());
+							}
 						}
 					} else {
 						log.debug("Skipping retry of transfer task {}. Task has a status of {} and is no longer in an active state.",
@@ -246,9 +275,14 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 							.put("cause", reply.cause().getClass().getName())
 							.put("message", msg)
 							.mergeIn(body);
-
-					_doPublishEvent(TRANSFERTASK_ERROR, json);
-					handler.handle(Future.succeededFuture(false));
+					try {
+						_doPublishEvent(TRANSFERTASK_ERROR, json);
+						handler.handle(Future.succeededFuture(false));
+					} catch (IOException e) {
+						log.debug(e.getMessage());
+					} catch (InterruptedException e) {
+						log.debug(e.getMessage());
+					}
 				}
 
 			});
@@ -260,9 +294,14 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 					.put("cause", t.getClass().getName())
 					.put("message", t.getMessage())
 					.mergeIn(body);
-			_doPublishEvent(TRANSFERTASK_ERROR, json);
-
-			handler.handle(Future.failedFuture(t));
+			try {
+				_doPublishEvent(TRANSFERTASK_ERROR, json);
+				handler.handle(Future.failedFuture(t));
+			} catch (IOException e) {
+				log.debug(e.getMessage());
+			} catch (InterruptedException e) {
+				log.debug(e.getMessage());
+			}
 		}
 	}
 
@@ -386,10 +425,22 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 										getDbService().updateStatus(retryTransferTask.getTenantId(), retryTransferTask.getUuid(), org.iplantc.service.transfer.model.enumerations.TransferStatusType.CANCELLED.name(), updateReply -> {
 											if (updateReply.succeeded()) {
 												handler.handle(Future.succeededFuture(false));
-												_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+												try {
+													_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+												} catch (IOException e) {
+													log.debug(e.getMessage());
+												} catch (InterruptedException e) {
+													log.debug(e.getMessage());
+												}
 											} else {
-												handler.handle(Future.failedFuture(updateReply.cause()));
-												_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+												try {
+													_doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, retryTransferTask.toJson());
+													handler.handle(Future.failedFuture(updateReply.cause()));
+												} catch (IOException e) {
+													log.debug(e.getMessage());
+												} catch (InterruptedException e) {
+													log.debug(e.getMessage());
+												}
 											}
 										});
 
@@ -410,11 +461,23 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			} else {
 				log.info("rootTaskId or parentTaskId are null {}  {}", retryTransferTask.getParentTaskId(), retryTransferTask.getRootTaskId());
 			}
-		} catch (RemoteDataSyntaxException e) {
-			String message = String.format("Failing transfer task %s due to invalid source syntax. %s", retryTransferTask.getTenantId(), e.getMessage());
-			doHandleFailure(e, message, retryTransferTask.toJson(), handler);
-		} catch (Exception e) {
-			doHandleError(e, e.getMessage(), retryTransferTask.toJson(), handler);
+		} catch (RemoteDataSyntaxException ex) {
+			String message = String.format("Failing transfer task %s due to invalid source syntax. %s", retryTransferTask.getTenantId(), ex.getMessage());
+			try {
+				doHandleFailure(ex, message, retryTransferTask.toJson(), handler);
+			} catch (IOException e) {
+				log.debug(e.getMessage());
+			} catch (InterruptedException e) {
+				log.debug(e.getMessage());
+			}
+		} catch (Exception ex) {
+			try {
+				doHandleError(ex, ex.getMessage(), retryTransferTask.toJson(), handler);
+			} catch (IOException e) {
+				log.debug(e.getMessage());
+			} catch (InterruptedException e) {
+				log.debug(e.getMessage());
+			}
 		} finally {
 			// cleanup the remote data client connections
 			try { if (srcClient != null) srcClient.disconnect(); } catch (Exception ignored) {}

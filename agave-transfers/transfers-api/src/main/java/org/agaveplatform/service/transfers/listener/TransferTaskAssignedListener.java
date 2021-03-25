@@ -77,27 +77,37 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             String dest = body.getString("dest");
             log.info("Transfer task {} assigned: {} -> {}", uuid, source, dest);
 
-            processTransferTask(body, resp -> {
-                if (resp.succeeded()) {
-                    log.debug("Succeeded with the processTransferTask in the assigning of the event {}", uuid);
-                    // TODO: codify our notification behavior here. Do we rewrap? How do we ensure ordering? Do we just
-                    //   throw it over the fence to Camel and forget about it? Boy, that would make things easier,
-                    //   thought not likely faster.
-                    // TODO: This seems like the correct pattern. Handler sent to the processing function, then
-                    //   only send the notification on success. We can add a failure and error notification to the
-                    //   respective listeners in the same way.
-                    body.put("event", this.getClass().getName());
-                    body.put("type", getEventChannel());
-                    _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
-                } else {
-                    //error handled in processTransferTask
-                }
-            });
+            try {
+                processTransferTask(body, resp -> {
+                    if (resp.succeeded()) {
+                        log.debug("Succeeded with the processTransferTask in the assigning of the event {}", uuid);
+                        // TODO: codify our notification behavior here. Do we rewrap? How do we ensure ordering? Do we just
+                        //   throw it over the fence to Camel and forget about it? Boy, that would make things easier,
+                        //   thought not likely faster.
+                        // TODO: This seems like the correct pattern. Handler sent to the processing function, then
+                        //   only send the notification on success. We can add a failure and error notification to the
+                        //   respective listeners in the same way.
+                        body.put("event", this.getClass().getName());
+                        body.put("type", getEventChannel());
+                        try {
+                            _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+                        } catch (IOException e) {
+                            log.debug(e.getMessage());
+                        } catch (InterruptedException e) {
+                            log.debug(e.getMessage());
+                        }
+                    } else {
+                        //error handled in processTransferTask
+                    }
+                });
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         });
         d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
-        s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -114,7 +124,6 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
         nc.flush(Duration.ofMillis(500));
-
 
         s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
@@ -146,7 +155,6 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
         nc.flush(Duration.ofMillis(500));
 
-
         s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             log.debug("response is {}", response);
@@ -163,8 +171,8 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         nc.flush(Duration.ofMillis(500));
     }
 
-    protected void processTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
-        log.trace("Got into TransferTaskAssignedListener.processTransferTask");
+    protected void processTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
+        log.debug("Got into TransferTaskAssignedListener.processTransferTask");
         //Promise<Boolean> promise = Promise.promise();
         String uuid = body.getString("uuid");
         String source = body.getString("source");
@@ -173,7 +181,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         String tenantId = (body.getString("tenant_id"));
         String protocol = null;
         TransferTask assignedTransferTask = new TransferTask(body);
-
+        log.debug("Body of JsonObject: {}", body.toString());
         RemoteDataClient srcClient = null;
         RemoteDataClient destClient = null;
 
@@ -238,7 +246,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                             // list the remote directory
                             log.info("list the remote directory");
                             List<RemoteFileInfo> remoteFileInfoList = srcClient.ls(srcUri.getPath());
-
+                            log.debug(String.valueOf(remoteFileInfoList.size()));
                             // if the directory is empty, the listing will only contain the target path as the "." folder.
                             // mark as complete and wrap it up.
                             if (remoteFileInfoList.size() <= 1) {
@@ -250,7 +258,13 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                         assignedTransferTask.setStatus(TransferStatusType.COMPLETED);
                                         assignedTransferTask.setStartTime(Instant.now());
                                         assignedTransferTask.setEndTime(Instant.now());
-                                        _doPublishEvent(TRANSFER_COMPLETED, assignedTransferTask.toJson());
+                                        try{
+                                            _doPublishEvent(TRANSFER_COMPLETED, assignedTransferTask.toJson());
+                                        } catch (IOException e) {
+                                            log.debug(e.getMessage());
+                                        } catch (InterruptedException e) {
+                                            log.debug(e.getMessage());
+                                        }
                                         handler.handle(Future.succeededFuture(true));
                                     }
                                     // we couldn't update the transfer task value
@@ -258,7 +272,13 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                         String message = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
                                                 uuid, updateResult.cause().getMessage());
                                         // write to error queue. we can retry
-                                        doHandleError(updateResult.cause(), message, body, handler);
+                                        try {
+                                            doHandleError(updateResult.cause(), message, body, handler);
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                        } catch (InterruptedException e) {
+                                            e.printStackTrace();
+                                        }
                                     }
                                 });
                             }
@@ -290,7 +310,9 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                             try {
                                                 // if the assigned or ancestor transfer task were cancelled while this was running,
                                                 // skip the rest.
+                                                log.debug("Check interrupted?");
                                                 if (taskIsNotInterrupted(assignedTransferTask)) {
+                                                    log.debug("Task is good.  Creating task");
 
                                                     TransferTask childTransferTask = new TransferTask(childSource, childDest, tenantId);
                                                     childTransferTask.setTenantId(assignedTransferTask.getTenantId());
@@ -298,21 +320,25 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                     childTransferTask.setParentTaskId(uuid);
                                                     childTransferTask.setRootTaskId(rootTaskId);
                                                     childTransferTask.setStatus(childFileItem.isDirectory() ? TransferStatusType.CREATED : TransferStatusType.ASSIGNED);
-
+                                                    log.debug("Creating db insert.  JsonObject = {}", childTransferTask);
                                                     getDbService().createOrUpdateChildTransferTask(tenantId, childTransferTask, childResult -> {
                                                         String fileItemType = childFileItem.isFile() ? "file" : "directory";
                                                         if (childResult.succeeded()) {
 
                                                             String childMessageType = childFileItem.isFile() ? TRANSFER_ALL : TRANSFERTASK_CREATED;
-
+                                                            log.debug(childMessageType);
                                                             log.debug("Finished processing child {} transfer tasks for {}: {} => {}",
                                                                     fileItemType,
                                                                     childResult.result().getString("uuid"),
                                                                     childSource,
                                                                     childDest);
-
-                                                            _doPublishEvent(childMessageType, childResult.result());
-
+                                                            try {
+                                                                _doPublishEvent(childMessageType, childResult.result());
+                                                            } catch (IOException e) {
+                                                                log.debug(e.getMessage());
+                                                            } catch (InterruptedException e) {
+                                                                log.debug(e.getMessage());
+                                                            }
                                                             promise.complete();
                                                         }
                                                         // we couldn't create a new task and none previously existed for this child, so we must
@@ -322,12 +348,19 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                         else {
                                                             // this will break the stream processing and exit the loop without completing the
                                                             // remaining RemoteFileItem in the listing.
+                                                            log.debug("Failed db insert.");
                                                             ongoing.setFalse();
 
                                                             String message = String.format("Error creating new child file transfer task for %s: %s -> %s. %s",
                                                                     uuid, childSource, childDest, childResult.cause().getMessage());
-
-                                                            doHandleFailure(childResult.cause(), message, body, null);
+                                                            log.debug(message);
+                                                            try {
+                                                                doHandleFailure(childResult.cause(), message, body, null);
+                                                            } catch (IOException e) {
+                                                                e.printStackTrace();
+                                                            } catch (InterruptedException e) {
+                                                                e.printStackTrace();
+                                                            }
 
                                                             promise.fail(childResult.cause());
                                                         }
@@ -350,8 +383,14 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
 
                                                 String message = String.format("Failed processing child file transfer task for %s: %s -> %s. %s",
                                                         uuid, childSource, childDest, t.getMessage());
-
-                                                doHandleFailure(t, message, body, null);
+                                                log.debug(message);
+                                                try {
+                                                    doHandleFailure(t, message, body, null);
+                                                } catch (IOException e) {
+                                                    e.printStackTrace();
+                                                } catch (InterruptedException e) {
+                                                    e.printStackTrace();
+                                                }
                                                 promise.fail(t);
                                             }
 
@@ -381,7 +420,13 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                 String message = String.format("Error updating status of parent transfer task %s to ASSIGNED. %s",
                                                         uuid, updateResult.cause().getMessage());
                                                 // write to error queue. we can retry
-                                                doHandleError(updateResult.cause(), message, body, handler);
+                                                try {
+                                                    doHandleError(updateResult.cause(), message, body, handler);
+                                                } catch (IOException e) {
+                                                    e.printStackTrace();
+                                                } catch (InterruptedException e) {
+                                                    e.printStackTrace();
+                                                }
                                             }
                                         });
                                     } else if (!ongoing.booleanValue()) {

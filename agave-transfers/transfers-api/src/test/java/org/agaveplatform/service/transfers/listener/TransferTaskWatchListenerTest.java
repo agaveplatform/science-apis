@@ -15,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
+import java.io.IOException;
+
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Matchers.any;
@@ -27,7 +29,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("Transfers Watch Listener Test")
 class TransferTaskWatchListenerTest extends BaseTestCase {
 
-	TransferTaskWatchListener getMockListenerInstance(Vertx vertx) {
+	TransferTaskWatchListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskWatchListener listener = Mockito.mock(TransferTaskWatchListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -41,7 +43,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with no active transfer tasks")
-	public void processEvent(Vertx vertx, VertxTestContext ctx) {
+	public void processEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
@@ -75,7 +77,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with a single active transfer tasks")
-	public void processEventHandlesASingleActiveTask(Vertx vertx, VertxTestContext ctx) {
+	public void processEventHandlesASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
@@ -117,7 +119,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with multiple active transfer tasks")
-	public void processEventHandlesMultipleActiveTasks(Vertx vertx, VertxTestContext ctx) {
+	public void processEventHandlesMultipleActiveTasks(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);

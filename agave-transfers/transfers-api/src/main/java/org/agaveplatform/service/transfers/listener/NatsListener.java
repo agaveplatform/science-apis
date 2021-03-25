@@ -60,7 +60,6 @@ public class NatsListener extends  AbstractNatsListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         Connection nc = _connect();
-
         Dispatcher d = nc.createDispatcher((msg) -> {});
         Subscription s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);

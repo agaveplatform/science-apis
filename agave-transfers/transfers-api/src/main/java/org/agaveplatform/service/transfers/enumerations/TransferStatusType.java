@@ -76,4 +76,5 @@ public enum TransferStatusType implements ITransferStatus
 	public boolean isActive() {
 		return getActive().contains(this);
 	}
+
 }

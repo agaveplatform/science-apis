@@ -88,7 +88,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
             });
         });
         d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
     }
 
@@ -111,8 +111,14 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
                 TransferTask transferTask = new TransferTask(updateStatus.result());
                 logger.info("[{}] Transfer task {} updated to completed.", transferTask.getTenantId(), transferTask.getUuid());
                 //parentList.remove(uuid);
-                _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
-                //promise.handle(Future.succeededFuture(Boolean.TRUE));
+                try {
+                    _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
+                    //promise.handle(Future.succeededFuture(Boolean.TRUE));
+                } catch (IOException e) {
+                    logger.debug(e.getMessage());
+                } catch (InterruptedException e) {
+                    logger.debug(e.getMessage());
+                }
             } else {
                 logger.error("[{}] Task completed, but unable to update status: {}",
                         id, updateStatus.cause());
@@ -122,8 +128,14 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
                         .put("cause", updateStatus.cause().getClass().getName())
                         .put("message", updateStatus.cause().getMessage())
                         .mergeIn(body);
-                _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                //promise.handle(Future.failedFuture(updateStatus.cause()));
+                try {
+                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+                    //promise.handle(Future.failedFuture(updateStatus.cause()));
+                } catch (IOException e) {
+                    logger.debug(e.getMessage());
+                } catch (InterruptedException e) {
+                    logger.debug(e.getMessage());
+                }
             }
         });
 

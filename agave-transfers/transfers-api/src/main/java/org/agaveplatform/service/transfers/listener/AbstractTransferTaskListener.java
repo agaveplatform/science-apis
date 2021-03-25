@@ -72,7 +72,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param eventName the name of the event. This doubles as the address in the request invocation.
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
-    public void _doPublishEvent(String eventName, JsonObject body) {
+    public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
         logger.info(super.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
         getRetryRequestManager().request(eventName, body, config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, 0));
     }
@@ -85,7 +85,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param originalMessageBody the body of the original message that caused that failed
      * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
      */
-    protected void doHandleFailure(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
+    protected void doHandleFailure(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
         JsonObject json = new JsonObject()
                 .put("cause", throwable.getClass().getName())
                 .put("message", failureMessage)
@@ -107,7 +107,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param originalMessageBody the body of the original message that caused that failed
      * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
      */
-    protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) {
+    protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
         JsonObject json = new JsonObject()
                 .put("cause", throwable.getClass().getName())
                 .put("message", failureMessage)

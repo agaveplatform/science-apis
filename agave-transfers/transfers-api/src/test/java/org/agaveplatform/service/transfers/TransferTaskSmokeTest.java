@@ -55,7 +55,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 	private TransferTaskDatabaseService dbService;
 	List<String> messages = new ArrayList<String>();
 
-	TransferTaskErrorListener getMockErrListenerInstance(Vertx vertx) {
+	TransferTaskErrorListener getMockErrListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskErrorListener listener = spy(new TransferTaskErrorListener(vertx));
 		when(listener.getEventChannel()).thenCallRealMethod();
 		when(listener.getVertx()).thenReturn(vertx);
@@ -64,7 +64,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		return listener;
 	}
 
-	TransferTaskErrorFailureHandler getMockFailListenerInstance(Vertx vertx) {
+	TransferTaskErrorFailureHandler getMockFailListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskErrorFailureHandler listener = spy(new TransferTaskErrorFailureHandler(vertx));
 		when(listener.getEventChannel()).thenCallRealMethod();
 		when(listener.getVertx()).thenReturn(vertx);
@@ -73,58 +73,58 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 		return listener;
 	}
 
-	InteruptEventListener getMockInteruptListenerInstance(Vertx vertx) {
+	InteruptEventListener getMockInteruptListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		InteruptEventListener listener = spy(new InteruptEventListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
-	TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) {
+	TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 //		NotificationListener listener = spy(new NotificationListener(vertx));
 		TransferTaskNotificationListener listener = Mockito.spy(new TransferTaskNotificationListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
-	TransferTaskCompleteTaskListener getMockTCTListenerInstance(Vertx vertx) {
+	TransferTaskCompleteTaskListener getMockTCTListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskCompleteTaskListener listener = spy(new TransferTaskCompleteTaskListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
-	TransferTaskAssignedListener getMockTTAListenerInstance(Vertx vertx) {
+	TransferTaskAssignedListener getMockTTAListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskAssignedListener listener = spy(new TransferTaskAssignedListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
-	TransferTaskCancelListener getMockTTCancelListenerInstance(Vertx vertx) {
+	TransferTaskCancelListener getMockTTCancelListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskCancelListener listener = spy(new TransferTaskCancelListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
-	TransferTaskCreatedListener getMockTTCListenerInstance(Vertx vertx) {
+	TransferTaskCreatedListener getMockTTCListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskCreatedListener listener = spy(new TransferTaskCreatedListener(vertx));
 		doReturn(config).when(listener).config();
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
-	TransferTaskPausedListener getMockTTPausedListenerInstance(Vertx vertx) {
+	TransferTaskPausedListener getMockTTPausedListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskPausedListener listener = spy(new TransferTaskPausedListener(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 
-	TransferAllProtocolVertical getMockAllProtocolVerticalInstance(Vertx vertx) {
+	TransferAllProtocolVertical getMockAllProtocolVerticalInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferAllProtocolVertical listener = spy(new TransferAllProtocolVertical(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
 		return listener;
 	}
 
-	TransferAPIVertical getMockTransferAPIVerticalInstance(Vertx vertx) {
+	TransferAPIVertical getMockTransferAPIVerticalInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferAPIVertical listener = spy(new TransferAPIVertical(vertx));
 		when(listener.config()).thenReturn(config);
 		doCallRealMethod().when(listener)._doPublishEvent(any(), any());
@@ -215,7 +215,7 @@ public class TransferTaskSmokeTest extends BaseTestCase {
 	@Test
 	@DisplayName("Single file transfer task smoke test")
 	@Disabled
-	public void singleFileTransferSmokeTest(Vertx vertx, VertxTestContext ctx) {
+	public void singleFileTransferSmokeTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
 		parentTask.setStatus(TransferStatusType.QUEUED);

@@ -82,15 +82,25 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
                             body.getString("uuid"), body.getString("cause"), body.getString("message"));
 
                     if (processBodyResult.succeeded()) {
-                        processError(body, resp -> {
-                            if (resp.succeeded()) {
-                                log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
-                            } else {
-                                log.error("Unable to process {} event for transfer task (TTEL) message: {}", getEventChannel(), body.encode(), resp.cause());
-                                _doPublishEvent(TRANSFER_FAILED, body);
-                            }
-                        });
-                    } else {
+						try {
+							processError(body, resp -> {
+								if (resp.succeeded()) {
+									log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
+								} else {
+									log.error("Unable to process {} event for transfer task (TTEL) message: {}", getEventChannel(), body.encode(), resp.cause());
+									try {
+										_doPublishEvent(TRANSFER_FAILED, body);
+									} catch (IOException e) {
+										log.debug(e.getMessage());
+									} catch (InterruptedException e) {
+										log.debug(e.getMessage());
+									}
+								}
+							});
+						} catch (IOException | InterruptedException e) {
+							e.printStackTrace();
+						}
+					} else {
                         log.error("Error with retrieving Transfer Task {}", body.getString("id"));
                     }
                 });
@@ -99,11 +109,11 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
             }
         });
 		d.subscribe(getEventChannel());
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -111,9 +121,11 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 			log.error("Transfer task {} failed to check it's parent task {} for completion: {}: {}",
 					body.getString("uuid"), body.getString("parentTaskId"), body.getString("cause"), body.getString("message"));
 		});
+		d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR);
+		nc.flush(Duration.ofMillis(500));
 	}
 
-	protected void processError(JsonObject body, Handler<AsyncResult<Boolean>> handler){
+	protected void processError(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
 		try {
 			TransferTask tt = new TransferTask(body);
 			log.debug(body.encode());
@@ -142,14 +154,26 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 										if (errorTask.getAttempts() <= maxTries) {
 											getDbService().updateStatus(tenantId, uuid, TransferStatusType.ERROR.name(), updateStatusResult -> {
 												if (updateStatusResult.succeeded()) {
-													log.error("Transfer task {} experienced a non-terminal error and will be retried. The error was {}", tt.getUuid(), message);
-													_doPublishEvent(TRANSFER_RETRY, updateStatusResult.result());
-													handler.handle(Future.succeededFuture(true));
+													try {
+														log.error("Transfer task {} experienced a non-terminal error and will be retried. The error was {}", tt.getUuid(), message);
+														_doPublishEvent(TRANSFER_RETRY, updateStatusResult.result());
+														handler.handle(Future.succeededFuture(true));
+													} catch (IOException e) {
+														log.debug(e.getMessage());
+													} catch (InterruptedException e) {
+														log.debug(e.getMessage());
+													}
 												} else {
 													String msg = String.format("Error updating status of transfer task %s to ERROR. %s",
 															uuid, updateStatusResult.cause().getMessage());
 													// write to error queue. we can retry
-													doHandleError(updateStatusResult.cause(), msg, body, handler);
+													try {
+														doHandleError(updateStatusResult.cause(), msg, body, handler);
+													} catch (IOException e) {
+														e.printStackTrace();
+													} catch (InterruptedException e) {
+														e.printStackTrace();
+													}
 												}
 											});
 										} else {
@@ -163,7 +187,13 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 													String msg = String.format("Error updating status of transfer task %s to FAILED. %s",
 															uuid, updateStatusResult.cause().getMessage());
 													// write to error queue. we can retry
-													doHandleError(updateStatusResult.cause(), msg, body, handler);
+													try {
+														doHandleError(updateStatusResult.cause(), msg, body, handler);
+													} catch (IOException e) {
+														e.printStackTrace();
+													} catch (InterruptedException e) {
+														e.printStackTrace();
+													}
 												}
 											});
 										}
@@ -185,7 +215,13 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 											String msg = String.format("Error updating status of transfer task %s to FAILED. %s",
 													uuid, updateStatusResult.cause().getMessage());
 											// write to error queue. we can retry
-											doHandleError(updateStatusResult.cause(), msg, body, handler);
+											try {
+												doHandleError(updateStatusResult.cause(), msg, body, handler);
+											} catch (IOException e) {
+												e.printStackTrace();
+											} catch (InterruptedException e) {
+												e.printStackTrace();
+											}
 										}
 									});
 								}
@@ -195,15 +231,26 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 								log.info("Skipping error processing of transfer task {} due to interrupt event.", tt.getUuid());
 								getDbService().updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(), updateStatusResult -> {
 									if (updateStatusResult.succeeded()) {
-										log.error("Updated status of transfer task {} to CANCELLED after interrupt received. No retires will be attempted.", uuid);
-										_doPublishEvent(TRANSFERTASK_CANCELED_ACK, updateStatusResult.result());
-
-										handler.handle(Future.succeededFuture(true));
+										try {
+											log.error("Updated status of transfer task {} to CANCELLED after interrupt received. No retires will be attempted.", uuid);
+											_doPublishEvent(TRANSFERTASK_CANCELED_ACK, updateStatusResult.result());
+											handler.handle(Future.succeededFuture(true));
+										} catch (IOException e) {
+											log.debug(e.getMessage());
+										} catch (InterruptedException e) {
+											log.debug(e.getMessage());
+										}
 									} else {
 										String msg = String.format("Error updating status of transfer task %s to CANCELLED. %s",
 												uuid, updateStatusResult.cause().getMessage());
 										// write to error queue. we can retry
-										doHandleError(updateStatusResult.cause(), msg, body, handler);
+										try {
+											doHandleError(updateStatusResult.cause(), msg, body, handler);
+										} catch (IOException e) {
+											e.printStackTrace();
+										} catch (InterruptedException e) {
+											e.printStackTrace();
+										}
 									}
 								});
 							}
@@ -219,7 +266,13 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 					// write to error queue. we can retry, but we need a circuite breaker here at some point to avoid
 					// an infinite loop.
 					log.error(msg);
-					doHandleError(getByIdReply.cause(), msg, body, handler);
+					try {
+						doHandleError(getByIdReply.cause(), msg, body, handler);
+					} catch (IOException e) {
+						e.printStackTrace();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
 			});
 		} catch (Throwable t) {

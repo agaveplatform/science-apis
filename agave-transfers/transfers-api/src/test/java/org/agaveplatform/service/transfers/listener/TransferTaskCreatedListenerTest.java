@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
+import java.io.IOException;
 import java.net.URI;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
@@ -36,7 +37,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 //	private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListenerTest.class);
 
-	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) {
+	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskCreatedListener listener = Mockito.mock(TransferTaskCreatedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -54,7 +55,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment succeeds for valid transfer task")
-	public void assignTransferTask(Vertx vertx, VertxTestContext ctx) {
+	public void assignTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// get the JsonObject to pass back and forth between verticles
 		TransferTask transferTask = _createTestTransferTask();
@@ -99,7 +100,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid source")
 	@Disabled
-	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) {
+	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// get the JsonObject to pass back and forth between verticles
 		TransferTask transferTask = _createTestTransferTask();
@@ -133,7 +134,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid dest")
 	@Disabled
-	public void assignTransferTaskFailDestTest(Vertx vertx, VertxTestContext ctx) {
+	public void assignTransferTaskFailDestTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// get the JsonObject to pass back and forth between verticles
 		TransferTask transferTask = _createTestTransferTask();

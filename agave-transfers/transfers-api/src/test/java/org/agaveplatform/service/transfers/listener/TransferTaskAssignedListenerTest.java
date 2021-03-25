@@ -57,7 +57,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	 * @param vertx the test vertx instance
 	 * @return a mocked of {@link TransferTaskAssignedListener}
 	 */
-	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) {
+	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -184,7 +184,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns single file transfer task")
 	//@Disabled
-	public void processTransferTaskAssignsSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskAssignsSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 
@@ -264,7 +264,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns empty directory transfer task")
 	@Disabled
-	public void processTransferTaskAssignsEmptyDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskAssignsEmptyDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 
@@ -357,7 +357,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns populated directory transfer task")
 	@Disabled
-	public void processTransferTaskAssignsPopulatedDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskAssignsPopulatedDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 

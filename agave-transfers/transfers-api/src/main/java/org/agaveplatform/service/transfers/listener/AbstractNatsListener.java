@@ -32,25 +32,24 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         return null;
     }
 
-    public void _doPublishNatsEvent(String eventName, JsonObject body) {
+    public void _doPublishNatsEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
         log.info(super.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
  //       getRetryRequestManager().request(eventName, body, config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, 0));
 
         Connection nc = null;
-        try {
-            nc = _connect();
-        } catch (IOException e) {
-            log.debug(e.getMessage());
-        } catch (InterruptedException e) {
-            log.debug(e.getMessage());
-        }
+
+        nc = _connect();
+
+        //log.info(super.getClass().getName() + ": _doPublishEvent({}, {})", eventName, body);
+        //getRetryRequestManager().request(eventName, body, config().getInteger(TRANSFERTASK_MAX_ATTEMPTS, 0));
+
         log.debug("NATS connection made.");
-        nc.publish(MessageType.TRANSFERTASK_ASSIGNED, body.toString().getBytes(StandardCharsets.UTF_8));
+        nc.publish(eventName, body.toString().getBytes(StandardCharsets.UTF_8));
         log.debug("Message sent.");
     }
 
     @Override
-    public void _doPublishEvent(String eventName, JsonObject body) {
+    public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
         this._doPublishNatsEvent(eventName, body);
     }
 

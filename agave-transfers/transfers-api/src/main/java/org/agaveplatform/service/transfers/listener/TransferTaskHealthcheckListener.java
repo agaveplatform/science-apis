@@ -76,7 +76,7 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 
 		});
 		d.subscribe(EVENT_CHANNEL);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 	}
 
@@ -100,8 +100,14 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 						if (updateStatus.succeeded()) {
 							logger.info("[{}] Transfer task {} updated to completed.", tenantId, uuid);
 							//parentList.remove(uuid);
-							_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
-							promise.handle(Future.succeededFuture(Boolean.TRUE));
+							try {
+								_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
+								promise.handle(Future.succeededFuture(Boolean.TRUE));
+							} catch (IOException e) {
+								logger.debug(e.getMessage());
+							} catch (InterruptedException e) {
+								logger.debug(e.getMessage());
+							}
 						} else {
 							logger.error("[{}] Task {} completed, but unable to update status: {}",
 									tenantId, uuid, reply.cause());
@@ -109,8 +115,14 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 									.put("cause", updateStatus.cause().getClass().getName())
 									.put("message", updateStatus.cause().getMessage())
 									.mergeIn(body);
-							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-							promise.handle(Future.failedFuture(updateStatus.cause()));
+							try {
+								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+								promise.handle(Future.failedFuture(updateStatus.cause()));
+							} catch (IOException e) {
+								logger.debug(e.getMessage());
+							} catch (InterruptedException e) {
+								logger.debug(e.getMessage());
+							}
 						}
 					});
 				} else {
@@ -129,8 +141,14 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 									.put("cause", updateStatus.cause().getClass().getName())
 									.put("message", updateStatus.cause().getMessage())
 									.mergeIn(body);
-							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-							//promise.handle(Future.failedFuture(updateStatus.cause()));
+							try {
+								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+								//promise.handle(Future.failedFuture(updateStatus.cause()));
+							} catch (IOException e) {
+								logger.debug(e.getMessage());
+							} catch (InterruptedException e) {
+								logger.debug(e.getMessage());
+							}
 						}
 					});
 
@@ -143,8 +161,14 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 						.put("cause", reply.cause().getClass().getName())
 						.put("message", reply.cause().getMessage())
 						.mergeIn(body);
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-				promise.handle(Future.failedFuture(reply.cause()));
+				try {
+					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+					promise.handle(Future.failedFuture(reply.cause()));
+				} catch (IOException e) {
+					logger.debug(e.getMessage());
+				} catch (InterruptedException e) {
+					logger.debug(e.getMessage());
+				}
 			}
 		});
 

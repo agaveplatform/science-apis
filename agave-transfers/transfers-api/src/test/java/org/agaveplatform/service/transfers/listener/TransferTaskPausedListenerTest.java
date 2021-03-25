@@ -40,7 +40,7 @@ import static org.mockito.Mockito.*;
 //@Disabled
 class TransferTaskPausedListenerTest extends BaseTestCase {
 
-	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) {
+	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskPausedListener listener = Mockito.mock(TransferTaskPausedListener.class);
 		when(listener.getEventChannel()).thenReturn(MessageType.TRANSFERTASK_PAUSED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -53,7 +53,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		return listener;
 	}
 
-	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) {
+	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -173,7 +173,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Paused Listener - task uuid != root/parent uuid")
 	@Disabled
-	public void processPauseRequestTest(Vertx vertx, VertxTestContext ctx) {
+	public void processPauseRequestTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -264,7 +264,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Paused Listener with parent that is active, no parent/root uuid")
 	@Disabled
-	public void processPauseRequestWithParent(Vertx vertx, VertxTestContext ctx) {
+	public void processPauseRequestWithParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -356,7 +356,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Paused Listener with no parent that is active - processPauseRequest")
 	@Disabled
-	public void processPauseRequestWithNoParentPaused(Vertx vertx, VertxTestContext ctx) {
+	public void processPauseRequestWithNoParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -448,7 +448,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Paused Listener with parent = child that is active - processPauseRequest")
 	@Disabled
-	public void processPauseRequestWithParentSamePaused(Vertx vertx, VertxTestContext ctx) {
+	public void processPauseRequestWithParentSamePaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -541,7 +541,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTask Paused Listener with parent=child that is active - processParentEvent")
 	@Disabled
-	public void processPauseRequestProcessParentPaused(Vertx vertx, VertxTestContext ctx) {
+	public void processPauseRequestProcessParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -613,7 +613,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTask Paused Listener with child and parent task that is active - processParentEvent")
 	@Disabled
-	public void processPauseRequestProcessNotParentPaused(Vertx vertx, VertxTestContext ctx) {
+	public void processPauseRequestProcessNotParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -678,7 +678,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTask Paused Listener with parent task that is active - processParentEvent")
 	@Disabled
-	public void processParentEventParentPaused(Vertx vertx, VertxTestContext ctx) {
+	public void processParentEventParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -747,7 +747,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTask Paused Listener with parent and check TaskAssigned - processParentEvent")
 	@Disabled
-	public void processParentEvent2ParentPaused(Vertx vertx, VertxTestContext ctx) {
+	public void processParentEvent2ParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -821,7 +821,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Paused Listener smoke test with Assigned Vertical and checking Paused Vertical")
 	@Disabled
-	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 		// mock of the Paused Listener

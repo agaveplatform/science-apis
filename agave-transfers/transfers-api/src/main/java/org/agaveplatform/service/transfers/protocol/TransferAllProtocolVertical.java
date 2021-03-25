@@ -89,7 +89,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			});
 		});
 		d.subscribe(EVENT_CHANNEL);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 
 		// cancel tasks
@@ -107,7 +107,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 
 
@@ -125,7 +125,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 
         // paused tasks
@@ -143,7 +143,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 
 
@@ -161,7 +161,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 
 	}
@@ -227,19 +227,31 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
                                         resultingTransferTask = processCopyRequest(finalSrcClient, finalDestClient, tt);
                                         handler.handle(Future.succeededFuture(result));
                                         promise.complete();
-                                    } catch (Exception e) {
+                                    } catch (Exception ex) {
 										log.error("Failed to copy Transfer Task {}", tt.toJSON() );
 										JsonObject json = new JsonObject()
-												.put("cause", e.getClass().getName())
-												.put("message", e.getMessage())
+												.put("cause", ex.getClass().getName())
+												.put("message", ex.getMessage())
 												.mergeIn(body);
-										_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-										handler.handle(Future.failedFuture(e.getMessage()));
-										promise.fail(e.getMessage());
+										try {
+											_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+										} catch (IOException e) {
+											log.debug(e.getMessage());
+										} catch (InterruptedException e) {
+											log.debug(e.getMessage());
+										}
+										handler.handle(Future.failedFuture(ex.getMessage()));
+										promise.fail(ex.getMessage());
 									}
                                 } else {
                                     log.info("Worker Transfer task {} was interrupted", tt.getUuid());
-                                    _doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
+                                    try {
+                                    	_doPublishEvent(TRANSFERTASK_CANCELED_ACK, tt.toJson());
+									} catch (IOException e) {
+										log.debug(e.getMessage());
+									} catch (InterruptedException e) {
+										log.debug(e.getMessage());
+									}
                                     handler.handle(Future.succeededFuture(false));
                                     promise.complete();
                                 }
@@ -249,7 +261,13 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 										.put("cause", checkCancelled.cause())
 										.put("message", checkCancelled.cause().getMessage())
 										.mergeIn(body);
-								_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+								try {
+									_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+								} catch (IOException e) {
+									log.debug(e.getMessage());
+								} catch (InterruptedException e) {
+									log.debug(e.getMessage());
+								}
                                 handler.handle(Future.failedFuture(checkCancelled.cause()));
                                 promise.fail("Failed to retrieve status....");
                             }
@@ -264,39 +282,63 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 //				_doPublishEvent(MessageType.TRANSFER_COMPLETED, body);
 				handler.handle(Future.succeededFuture(true));
 			}
-		} catch (RemoteDataException e){
-			log.error("RemoteDataException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
+		} catch (RemoteDataException ex){
+			log.error("RemoteDataException occured for TransferAllVerticle {}: {}", body.getString("uuid"), ex.getMessage());
 			JsonObject json = new JsonObject()
-					.put("cause", e.getClass().getName())
-					.put("message", e.getMessage())
+					.put("cause", ex.getClass().getName())
+					.put("message", ex.getMessage())
 					.mergeIn(body);
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			handler.handle(Future.failedFuture(e));
-		} catch (RemoteCredentialException e){
-			log.error("RemoteCredentialException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
-			JsonObject json = new JsonObject()
-					.put("cause", e.getClass().getName())
-					.put("message", e.getMessage())
-					.mergeIn(body);
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			handler.handle(Future.failedFuture(e));
-		} catch (IOException e){
-			log.error("IOException occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
-			JsonObject json = new JsonObject()
-					.put("cause", e.getClass().getName())
-					.put("message", e.getMessage())
-					.mergeIn(body);
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			handler.handle(Future.failedFuture(e));
-		} catch (Exception e){
-			log.error("Unexpected Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), e.getMessage());
-			JsonObject json = new JsonObject()
-					.put("cause", e.getClass().getName())
-					.put("message", e.getMessage())
-					.mergeIn(body);
+			try {
+				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+			} catch (IOException e) {
+				log.debug(e.getMessage());
+			} catch (InterruptedException e) {
+				log.debug(e.getMessage());
+			}
+			handler.handle(Future.failedFuture(ex));
 
-			_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-			handler.handle(Future.failedFuture(e));
+		} catch (RemoteCredentialException ex){
+			log.error("RemoteCredentialException occured for TransferAllVerticle {}: {}", body.getString("uuid"), ex.getMessage());
+			JsonObject json = new JsonObject()
+					.put("cause", ex.getClass().getName())
+					.put("message", ex.getMessage())
+					.mergeIn(body);
+			try {
+				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+			} catch (IOException e) {
+				log.debug(e.getMessage());
+			} catch (InterruptedException e) {
+				log.debug(e.getMessage());
+			}
+			handler.handle(Future.failedFuture(ex));
+		} catch (IOException ex){
+			log.error("IOException occured for TransferAllVerticle {}: {}", body.getString("uuid"), ex.getMessage());
+			JsonObject json = new JsonObject()
+					.put("cause", ex.getClass().getName())
+					.put("message", ex.getMessage())
+					.mergeIn(body);
+			try {
+				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+			} catch (IOException e) {
+				log.debug(e.getMessage());
+			} catch (InterruptedException e) {
+				log.debug(e.getMessage());
+			}
+			handler.handle(Future.failedFuture(ex));
+		} catch (Exception ex){
+			log.error("Unexpected Exception occured for TransferAllVerticle {}: {}", body.getString("uuid"), ex.getMessage());
+			JsonObject json = new JsonObject()
+					.put("cause", ex.getClass().getName())
+					.put("message", ex.getMessage())
+					.mergeIn(body);
+			try {
+				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+			} catch (IOException e) {
+				log.debug(e.getMessage());
+			} catch (InterruptedException e) {
+				log.debug(e.getMessage());
+			}
+			handler.handle(Future.failedFuture(ex));
 		}
 	}
 
@@ -329,7 +371,13 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 						.put("cause", e.getClass().getName())
 						.put("message", e.getMessage())
 						.mergeIn(transferTask.toJson());
-				_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+				try {
+					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+				} catch (IOException ex) {
+					log.debug(ex.getMessage());
+				} catch (InterruptedException ex) {
+					log.debug(ex.getMessage());
+				}
 				promise.fail(e.getMessage());
 			}
 		}, res -> {

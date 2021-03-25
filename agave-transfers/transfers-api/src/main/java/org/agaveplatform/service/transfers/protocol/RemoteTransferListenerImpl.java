@@ -14,6 +14,7 @@ import org.iplantc.service.transfer.model.TransferTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -82,7 +83,7 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
      * @param eventName the name of the event. This doubles as the address in the request invocation.
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
-    public void _doPublishEvent(String eventName, JsonObject body) {
+    public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
         log.debug("_doPublishEvent({}, {})", eventName, body);
         getRetryRequestManager().request(eventName, body, 2);
     }
@@ -93,7 +94,13 @@ public class RemoteTransferListenerImpl extends AbstractRemoteTransferListener {
      * @param transferTask
      */
     public synchronized void setTransferTask(TransferTask transferTask) {
-        _doPublishEvent(TRANSFERTASK_UPDATED, ((org.agaveplatform.service.transfers.model.TransferTask)transferTask).toJson());
+        try {
+            _doPublishEvent(TRANSFERTASK_UPDATED, ((org.agaveplatform.service.transfers.model.TransferTask)transferTask).toJson());
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         this.transferTask = transferTask;
     }
 

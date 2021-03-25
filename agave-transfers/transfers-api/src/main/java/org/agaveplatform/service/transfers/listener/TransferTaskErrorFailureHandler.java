@@ -82,14 +82,20 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 					log.debug("Completed processing {} event for transfer task {}", getEventChannel(), body.getString("uuid"));
 					body.put("event", this.getClass().getName());
 					body.put("type", getEventChannel());
-					_doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+					try {
+						_doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+					} catch (IOException e) {
+						log.debug(e.getMessage());
+					} catch (InterruptedException e) {
+						log.debug(e.getMessage());
+					}
 				} else {
 					log.error("Unable to process {} event for transfer task message: {}", getEventChannel(), body.encode(), resp.cause());
 				}
 			});
 		});
 		d.subscribe(EVENT_CHANNEL);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 
 	}
 

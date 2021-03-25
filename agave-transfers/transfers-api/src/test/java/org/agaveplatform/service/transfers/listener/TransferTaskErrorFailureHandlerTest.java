@@ -23,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 
+import java.io.IOException;
 import java.time.Instant;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_COMPLETED;
@@ -38,7 +39,7 @@ import static org.mockito.Mockito.*;
 class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 //	private static final Logger log = LoggerFactory.getLogger(TransferFailureHandlerTest.class);
 
-	protected TransferTaskErrorFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) {
+	protected TransferTaskErrorFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskErrorFailureHandler listener = mock(TransferTaskErrorFailureHandler.class );
 		when(listener.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -58,7 +59,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferFailureHandlerTest - testProcessFailure returns true on successful update")
-	void testProcessFailure(Vertx vertx, VertxTestContext ctx) {
+	void testProcessFailure(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setId(2L);
 
@@ -106,7 +107,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferFailureHandlerTest - testProcessFailure returns true on successful update")
-	void testProcessFailureRecordsAndReturnsDBExceptions(Vertx vertx, VertxTestContext ctx) {
+	void testProcessFailureRecordsAndReturnsDBExceptions(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setId(2L);
 
@@ -153,7 +154,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorFailureHandler.processBody partial Transfer Task should return Transfer Task")
-	protected void processBodyWithPartialTransferTaskTest(Vertx vertx, VertxTestContext ctx) {
+	protected void processBodyWithPartialTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -203,7 +204,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorFailureHandler.processBody Transfer Task should return Transfer Task")
-	protected void processBodyWithTransferTaskTest(Vertx vertx, VertxTestContext ctx) {
+	protected void processBodyWithTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();

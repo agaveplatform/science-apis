@@ -90,7 +90,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 			}
 		});
         d.subscribe(EVENT_CHANNEL);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
         s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -106,11 +106,16 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_CANCELED_COMPLETED, body);
             notificationEventProcess(notificationMessageBody);
             logger.info("Transfer task {} completed.", body.getString("uuid"));
-
-			_doPublishEvent(MessageType.NOTIFICATION_CANCELED, body);
+            try {
+			    _doPublishEvent(MessageType.NOTIFICATION_CANCELED, body);
+            } catch (IOException e) {
+                logger.debug(e.getMessage());
+            } catch (InterruptedException e) {
+                logger.debug(e.getMessage());
+            }
 		});
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_FINISHED, msg -> {
@@ -126,11 +131,16 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_FINISHED, body);
             notificationEventProcess(notificationMessageBody);
             logger.info("Transfer task {} completed.", body.getString("uuid"));
-
-			getVertx().eventBus().publish(MessageType.NOTIFICATION_COMPLETED, body);
+            try {
+                _doPublishEvent(MessageType.NOTIFICATION_COMPLETED, body);
+            } catch (IOException e) {
+                logger.debug(e.getMessage());
+            } catch (InterruptedException e) {
+                logger.debug(e.getMessage());
+            }
 		});
         d.subscribe(MessageType.TRANSFERTASK_FINISHED);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -148,7 +158,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             logger.info("Transfer task {} created.", body.getString("uuid"));
         });
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
 
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
@@ -166,7 +176,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             logger.info("Transfer task {} created.", body.getString("uuid"));
         });
         d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
     }
 

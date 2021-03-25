@@ -44,7 +44,7 @@ public class RetryRequestManagerTest extends BaseTestCase {
      * @param vertx the test vertx instance
      * @return a mocked of {@link TransferTaskAssignedListener}
      */
-    protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) {
+    protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException {
         TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
         when(listener.getVertx()).thenReturn(vertx);
@@ -108,7 +108,7 @@ public class RetryRequestManagerTest extends BaseTestCase {
     @Test
     @DisplayName("RetryRequestManager - request and process TransferTaskAssignedListener")
     @Disabled
-    public void requestTransferTaskAssignedEvent(Vertx vertx, VertxTestContext ctx) {
+    public void requestTransferTaskAssignedEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
         // generate a fake transfer task
         TransferTask rootTransferTask = _createTestTransferTask();
         rootTransferTask.setId(1L);

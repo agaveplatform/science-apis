@@ -73,20 +73,30 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 
 			logger.info("Transfer task {} completed: {} -> {} and tenant id is {}", uuid, source, dest, tenant);
 
-			this.processEvent(body, result -> {
-				if (result.succeeded()) {
-					logger.info("Succeeded with the processing transfer completed event for transfer task {}", uuid);
-				} else {
-					logger.error("Error with return from complete event {} and body {}", uuid, body);
-					_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-				}
-			});
+			try {
+				this.processEvent(body, result -> {
+					if (result.succeeded()) {
+						logger.info("Succeeded with the processing transfer completed event for transfer task {}", uuid);
+					} else {
+						logger.error("Error with return from complete event {} and body {}", uuid, body);
+						try {
+							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+						} catch (IOException e) {
+							logger.debug(e.getMessage());
+						} catch (InterruptedException e) {
+							logger.debug(e.getMessage());
+						}
+					}
+				});
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(500));
 	}
 
-	public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
+	public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
 		body.put("status", TransferStatusType.COMPLETED);
 		String tenantId = body.getString("tenant_id");
 		String uuid = body.getString("uuid");
@@ -100,8 +110,13 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 				if (reply.succeeded()) {
 					logger.debug("Tenant ID is {}", tenantId);
 					logger.debug(TransferTaskCompleteTaskListener.class.getName() + ":Transfer task {} status updated to COMPLETED", uuid);
-					_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, reply.result());
-
+					try {
+						_doPublishEvent(MessageType.TRANSFERTASK_FINISHED, reply.result());
+					} catch (IOException e) {
+						logger.debug(e.getMessage());
+					} catch (InterruptedException e) {
+						logger.debug(e.getMessage());
+					}
 					if (parentTaskId != null ) {
 						logger.debug("Checking parent task {} for completed transfer task {}.", parentTaskId, uuid);
 						processParentEvent(tenantId, parentTaskId, tt -> {
@@ -115,7 +130,13 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 										.put("message", tt.cause().getMessage())
 										.mergeIn(body);
 								logger.debug("update failed. {}.  The message is {}", tt.cause().getClass().getName(), tt.cause().getMessage());
-								_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
+								try {
+									_doPublishEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
+								} catch (IOException e) {
+									logger.debug(e.getMessage());
+								} catch (InterruptedException e) {
+									logger.debug(e.getMessage());
+								}
 								handler.handle(Future.succeededFuture(false));
 							}
 						});
@@ -129,7 +150,13 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 					String msg = String.format("Failed to set status of transfer task %s to completed. error: %s",
 							uuid, reply.cause().getMessage());
 					logger.debug(msg);
-					doHandleError(reply.cause(), msg, body, handler);
+					try {
+						doHandleError(reply.cause(), msg, body, handler);
+					} catch (IOException e) {
+						e.printStackTrace();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
 			});
 		} catch (Exception e) {
@@ -173,7 +200,13 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 								getDbService().getBytesTransferredForAllChildren(tenantId, parentTaskId, getBytesTransferred -> {
 									if (getBytesTransferred.succeeded()){
 										parentTask.setBytesTransferred(getBytesTransferred.result().getLong("bytes_transferred"));
-										_doPublishEvent(MessageType.TRANSFER_COMPLETED, TransferRateHelper.updateTransferRate(parentTask).toJson());
+										try {
+											_doPublishEvent(MessageType.TRANSFER_COMPLETED, TransferRateHelper.updateTransferRate(parentTask).toJson());
+										} catch (IOException e) {
+											logger.debug(e.getMessage());
+										} catch (InterruptedException e) {
+											logger.debug(e.getMessage());
+										}
 									} else {
 										logger.debug("Failed to retrieve bytes transferred for all child tasks for parent task {}, {}", parentTaskId, getBytesTransferred.cause());
 										resultHandler.handle(Future.failedFuture(getBytesTransferred.cause()));

@@ -58,9 +58,9 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
         Dispatcher d = nc.createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
-            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            JsonObject body = new JsonObject(response) ;
+        //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
+        String response = new String(msg.getData(), StandardCharsets.UTF_8);
+        JsonObject body = new JsonObject(response) ;
 
             this.processBody(body, processBodyResult -> {
                 if (processBodyResult.succeeded()) {
@@ -68,28 +68,45 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
 
                     logger.info("Transfer task finished: {}", body);
 
-                    this.processEvent(body, result -> {
-                        if (result.succeeded()) {
-                            logger.trace("Succeeded with the processing the transfer finished event for transfer task {}", uuid);
-                            //msg.reply(TransferTaskFinishedListener.class.getName() + " completed.");
-                        } else {
-                            logger.error("Error with return from update event {}", uuid);
-                            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-                        }
-                    });
+                    try {
+                        this.processEvent(body, result -> {
+                            if (result.succeeded()) {
+                                logger.trace("Succeeded with the processing the transfer finished event for transfer task {}", uuid);
+                                //msg.reply(TransferTaskFinishedListener.class.getName() + " completed.");
+                            } else {
+                                logger.error("Error with return from update event {}", uuid);
+                                try {
+                                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                                } catch (IOException e) {
+                                    logger.debug(e.getMessage());
+                                } catch (InterruptedException e) {
+                                    logger.debug(e.getMessage());
+                                }
+                            }
+                        });
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 } else {
-                    logger.error("Error with retrieving Transfer Task {}", body.getString("id"));
-                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                    logger.debug("Error with retrieving Transfer Task {}", body.getString("id"));
+                    try {
+                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                    } catch (IOException e) {
+                        logger.debug(e.getMessage());
+                    } catch (InterruptedException e) {
+                        logger.debug(e.getMessage());
+                    }
                 }
             });
-
         });
         d.subscribe(EVENT_CHANNEL);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
     }
 
-    public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
+    public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
         String tenantId = body.getString("tenant_id");
         String uuid = body.getString("uuid");
         String status = body.getString("status");

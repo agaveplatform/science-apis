@@ -50,7 +50,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
      * @param vertx the test vertx instance
      * @return a mocked of {@link TransferTaskUpdateListener}
      */
-    protected TransferTaskUpdateListener getMockTransferUpdateListenerInstance(Vertx vertx) {
+    protected TransferTaskUpdateListener getMockTransferUpdateListenerInstance(Vertx vertx) throws IOException, InterruptedException {
         TransferTaskUpdateListener listener = mock(TransferTaskUpdateListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFERTASK_UPDATED);
         when(listener.getVertx()).thenReturn(vertx);
@@ -177,7 +177,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
     @Test
     @DisplayName("TransferTaskUpdateListener - processTransferTask updates single file transfer task")
     @Disabled
-    public void processTransferTaskUpdatesSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) {
+    public void processTransferTaskUpdatesSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
         // mock out the test class
         TransferTaskUpdateListener ta = getMockTransferUpdateListenerInstance(vertx);
 

@@ -9,6 +9,7 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
+import org.agaveplatform.service.transfers.listener.AbstractNatsListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
@@ -44,7 +45,7 @@ import static org.agaveplatform.service.transfers.enumerations.TransferTaskEvent
  * @author dooley
  *
  */
-public class URLCopy{
+public class URLCopy extends AbstractNatsListener {
     //private static Logger log = Logger.getLogger(URLCopy.class);
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(URLCopy.class);
     private final RetryRequestManager retryRequestManager;
@@ -1356,7 +1357,7 @@ public class URLCopy{
      * Returns a {@link RetryRequestManager} to ensure messages are retried before failure.
      * @return a retry request manager.
      */
-    protected RetryRequestManager getRetryRequestManager() {
+    public RetryRequestManager getRetryRequestManager() {
         return retryRequestManager;
     }
 
@@ -1368,7 +1369,7 @@ public class URLCopy{
      * @param eventName the name of the event. This doubles as the address in the request invocation.
      * @param body the message of the body. Currently only {@link JsonObject} are supported.
      */
-    public void _doPublishEvent(String eventName, JsonObject body) {
+    public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
         log.debug("_doPublishEvent({}, {})", eventName, body);
         getRetryRequestManager().request(eventName, body, 2);
     }

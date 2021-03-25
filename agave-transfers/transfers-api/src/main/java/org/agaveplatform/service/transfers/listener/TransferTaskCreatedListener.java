@@ -38,7 +38,6 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANS
 public class TransferTaskCreatedListener extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
-
     private TransferTaskDatabaseService dbService;
 
     public TransferTaskCreatedListener() {
@@ -64,7 +63,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         Connection nc = _connect();
         Dispatcher d = nc.createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+        Subscription s = d.subscribe(MessageType.TRANSFERTASK_CREATED, msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -80,19 +79,37 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         log.info("Succeeded with the processing transfer created event for transfer task {}", uuid);
                         body.put("event", this.getClass().getName());
                         body.put("type", getEventChannel());
-                        _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+                        try {
+                            _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+                        } catch (IOException e) {
+                            log.debug(e.getMessage());
+                        } catch (InterruptedException e) {
+                            log.debug(e.getMessage());
+                        }
                     } else {
                         log.error("Error with return from creating the event {}", uuid);
-                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                        try {
+                            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                        } catch (IOException e) {
+                            log.debug(e.getMessage());
+                        } catch (InterruptedException e) {
+                            log.debug(e.getMessage());
+                        }
                     }
                 });
-            } catch (Exception e){
-                log.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", e.getMessage());
-                _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+            } catch (Exception ex){
+                log.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", ex.getMessage());
+                try {
+                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+                } catch (IOException e) {
+                    log.debug(e.getMessage());
+                } catch (InterruptedException e) {
+                    log.debug(e.getMessage());
+                }
             }
         });
-        d.subscribe(EVENT_CHANNEL);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        d.subscribe(MessageType.TRANSFERTASK_CREATED);
+        nc.flush(Duration.ofMillis(500));
 
         // cancel tasks
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
@@ -108,7 +125,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             }
         });
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
         s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -124,7 +141,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             }
         });
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
         // paused tasks
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
@@ -141,7 +158,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             }
         });
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
         s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -157,7 +174,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             }
         });
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-        nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+        nc.flush(Duration.ofMillis(500));
 
     }
 
@@ -166,7 +183,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
      * @param body the transfer task event body
      * @param handler callback to recieve a boolean response with the result of the assigned event processing.
      */
-    public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
+    public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
         String uuid = body.getString("uuid");
         String source = body.getString("source");
         String dest = body.getString("dest");
@@ -245,14 +262,26 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         if (updateResult.succeeded()) {
                             // continue assigning the task and return
                             log.info("Assigning transfer task {} for processing.", uuid);
-                            _doPublishEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
+                            try {
+                                _doPublishEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
+                            } catch (IOException e) {
+                                log.debug(e.getMessage());
+                            } catch (InterruptedException e) {
+                                log.debug(e.getMessage());
+                            }
                             handler.handle(Future.succeededFuture(true));
                         } else {
                             // update failed
                             String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
                                     uuid, updateResult.cause().getMessage());
                             log.error(msg);
-                            doHandleError(updateResult.cause(), msg, body, handler);
+                            try {
+                                doHandleError(updateResult.cause(), msg, body, handler);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
                         }
                     });
                 } else {

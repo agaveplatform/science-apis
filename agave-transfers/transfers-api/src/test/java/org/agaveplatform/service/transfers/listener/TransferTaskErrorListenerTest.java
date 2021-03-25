@@ -40,7 +40,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		vertx.close(ctx.completing());
 	}
 
-	protected TransferTaskErrorListener getMockTransferErrorListenerInstance(Vertx vertx) {
+	protected TransferTaskErrorListener getMockTransferErrorListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskErrorListener listener = mock(TransferTaskErrorListener.class );
 		when(listener.config()).thenReturn(config);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ERROR);
@@ -61,7 +61,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processError RemoteDataException and Status= QUEUED test")
-	protected void processErrorRDE_test(Vertx vertx, VertxTestContext ctx) {
+	protected void processErrorRDE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(4L);
 		tt.setStatus(QUEUED);
@@ -127,7 +127,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processError Child Task RemoteDataException and Status= QUEUED test")
-	protected void processErrorChildRDE_test(Vertx vertx, VertxTestContext ctx) {
+	protected void processErrorChildRDE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -183,7 +183,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferErrorListener.processError Parent/Root Task IOException and Status= QUEUED test")
 //	@Disabled
-	protected void processErrorIOE_test(Vertx vertx, VertxTestContext ctx) {
+	protected void processErrorIOE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(3L);
 		tt.setStatus(QUEUED);
@@ -252,7 +252,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processError Child Task IOException and Status= QUEUED test")
-	protected void processErrorChildIOE_test(Vertx vertx, VertxTestContext ctx) {
+	protected void processErrorChildIOE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -315,7 +315,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferErrorListener.processError IOException and Status= COMPLETED test")
 //	@Disabled
-	protected void processErrorCOMPLETED_test(Vertx vertx, VertxTestContext ctx) {
+	protected void processErrorCOMPLETED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(1L);
@@ -378,7 +378,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferErrorListener.processError Child Task IOException and Status= COMPLETED test")
 //	@Disabled
-	protected void processErrorChildCOMPLETED_test(Vertx vertx, VertxTestContext ctx) {
+	protected void processErrorChildCOMPLETED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -437,7 +437,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferErrorListener.processError Parent/Root task InterruptedException and Status= FAILED test")
 //	@Disabled
-	protected void processErrorInterruptedException_FAILED_test(Vertx vertx, VertxTestContext ctx) {
+	protected void processErrorInterruptedException_FAILED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(2L);
 		tt.setStatus(FAILED);
@@ -500,7 +500,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processError Child Task InterruptedException and Status= FAILED test")
-	protected void processErrorChildInterruptedException_FAILED_test(Vertx vertx, VertxTestContext ctx) {
+	protected void processErrorChildInterruptedException_FAILED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -560,7 +560,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processBody partial Transfer Task should return Transfer Task")
-	protected void processBodyWithPartialTransferTaskTest(Vertx vertx, VertxTestContext ctx) {
+	protected void processBodyWithPartialTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -611,7 +611,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processBody Transfer Task should return Transfer Task")
-	protected void processBodyWithTransferTaskTest(Vertx vertx, VertxTestContext ctx) {
+	protected void processBodyWithTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();

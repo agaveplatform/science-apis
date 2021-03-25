@@ -35,7 +35,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	private Object Handler;
 
-	TransferTaskCancelListener getMockListenerInstance(Vertx vertx) {
+	TransferTaskCancelListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskCancelListener listener = Mockito.mock(TransferTaskCancelListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -46,7 +46,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		return listener;
 	}
 
-	TransferTaskCancelListener getMockCancelAckListenerInstance(Vertx vertx) {
+	TransferTaskCancelListener getMockCancelAckListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskCancelListener listener = Mockito.mock(TransferTaskCancelListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELED_ACK);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -56,7 +56,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel request fails when unable to lookup transfer task by id")
-	public void processCancelRequestFailDBTest(Vertx vertx, VertxTestContext ctx) {
+	public void processCancelRequestFailDBTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -114,7 +114,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel request fails for non root tasks")
-	public void processCancelRequestFailsForNonRootTasks(Vertx vertx, VertxTestContext ctx) {
+	public void processCancelRequestFailsForNonRootTasks(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -194,7 +194,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel request for assigned root task sends syncs and updates status")
-	public void processCancelRequestUpdatesAndSendsSyncForActiveRootTask(Vertx vertx, VertxTestContext ctx) {
+	public void processCancelRequestUpdatesAndSendsSyncForActiveRootTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setStatus(TransferStatusType.ASSIGNED);
@@ -266,7 +266,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel request for cancelled root task sends syncs and skips update")
-	public void processCancelRequestSkipsUpdateAndSendsSyncForInactiveRootTask(Vertx vertx, VertxTestContext ctx) {
+	public void processCancelRequestSkipsUpdateAndSendsSyncForInactiveRootTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setStatus(TransferStatusType.CANCELLED);
@@ -342,7 +342,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel ack without parent should succeed")
-	public void processCancelAckTest(Vertx vertx, VertxTestContext ctx){
+	public void processCancelAckTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// set up the parent task
 		TransferTask parentTask = _createTestTransferTask();
 		parentTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -444,7 +444,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel ack with parent should succeed and check parent")
-	public void processCancelAckWithParentTest(Vertx vertx, VertxTestContext ctx) {
+	public void processCancelAckWithParentTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -550,7 +550,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel ack with parent who has all other children failed should create cancel event on parent")
-	public void processCancelAckWithParentAllChildrenTest(Vertx vertx, VertxTestContext ctx) {
+	public void processCancelAckWithParentAllChildrenTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -642,7 +642,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel ack with not empty parent id should check parent")
-	public void processCancelAckWithParentNotEmptyTest(Vertx vertx, VertxTestContext ctx) {
+	public void processCancelAckWithParentNotEmptyTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -719,7 +719,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC Ack Lstn with Parent - pCA w/Parent is not empty Failed")
-	public void processCancelAckWithParentIsNotEmptyTest(Vertx vertx, VertxTestContext ctx) {
+	public void processCancelAckWithParentIsNotEmptyTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -821,7 +821,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC processParentAck - pPA w/Parent")
-	public void processParentAckWithParentTest(Vertx vertx, VertxTestContext ctx) {
+	public void processParentAckWithParentTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -919,7 +919,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC processParentEvent - pPE w/Parent")
-	public void processParentEventTest(Vertx vertx, VertxTestContext ctx) {
+	public void processParentEventTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -1030,7 +1030,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process parent ack with active children")
-	public void processParentAckWithActiveChildren(Vertx vertx, VertxTestContext ctx){
+	public void processParentAckWithActiveChildren(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
 		parentTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -1090,7 +1090,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process parent ack with completed or cancelled children")
-	public void processParentAckWithInactiveChildren(Vertx vertx, VertxTestContext ctx){
+	public void processParentAckWithInactiveChildren(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
 		parentTask.setStatus(TransferStatusType.TRANSFERRING);

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
+import java.io.IOException;
 import java.time.Instant;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
@@ -35,7 +36,7 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 	private Vertx vertx;
 	private JWTAuth jwtAuth;
 
-	TransferTaskHealthcheckListener getMockListenerInstance(Vertx vertx) {
+	TransferTaskHealthcheckListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskHealthcheckListener listener = Mockito.mock(TransferTaskHealthcheckListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -50,7 +51,7 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - processEvent")
-	public void processEvent(Vertx vertx, VertxTestContext ctx) {
+	public void processEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskHealthcheckListener thc = getMockListenerInstance(vertx);

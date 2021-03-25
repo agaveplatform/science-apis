@@ -18,6 +18,7 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.stubbing.Answer;
 
+import java.io.IOException;
 import java.net.URI;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
@@ -35,7 +36,7 @@ import static org.mockito.Mockito.*;
 //@Disabled
 class TransferTaskRetryListenerTest extends BaseTestCase {
 
-	protected TransferTaskRetryListener getMockTransferRetryListenerInstance(Vertx vertx) {
+	protected TransferTaskRetryListener getMockTransferRetryListenerInstance(Vertx vertx) throws IOException, InterruptedException {
 		TransferTaskRetryListener listener = mock(TransferTaskRetryListener.class );
 		when(listener.getEventChannel()).thenReturn(TRANSFER_RETRY);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -59,7 +60,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Process TransferTaskPublishesProtocolEvent")
 	@Disabled
-	public void processTransferTaskPublishesProtocolEvent(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskPublishesProtocolEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		//JsonObject body = new JsonObject();
 		TransferTask tt = new TransferTask(TRANSFER_SRC, TRANSFER_DEST, TEST_USERNAME, TENANT_ID, null, null);
 
@@ -96,7 +97,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Process processTransferTaskPublishesChildTasksForDirectory")
 	@Disabled
-	public void processTransferTaskPublishesChildTasksForDirectory(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskPublishesChildTasksForDirectory(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		TransferTask tt = _createTestTransferTask();
 
@@ -177,7 +178,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Process processTransferTaskPublishesErrorOnSystemUnavailble")
 	@Disabled
-	public void processTransferTaskPublishesErrorOnSystemUnavailble(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskPublishesErrorOnSystemUnavailble(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -214,7 +215,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskRetryListenerTest - error event thrown on unknown dest system")
-	public void processTransferTaskPublishesErrorOnSystemUnknown(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskPublishesErrorOnSystemUnknown(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
@@ -247,7 +248,7 @@ class TransferTaskRetryListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferRetryListenerTest - error event thrown on unknown source system")
-	public void processTransferTaskPublishesErrorOnSrcSystemUnknown(Vertx vertx, VertxTestContext ctx) {
+	public void processTransferTaskPublishesErrorOnSrcSystemUnknown(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

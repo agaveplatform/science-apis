@@ -5,8 +5,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.iplantc.service.apps.dao.SoftwareDao;
-import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.managers.SoftwareEventProcessor;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
@@ -16,12 +14,7 @@ import org.iplantc.service.apps.model.enumerations.SoftwareParameterType;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.apps.util.ZipUtil;
 import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.dao.TenantDao;
-import org.iplantc.service.common.model.Tenant;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.util.HTMLizer;
 import org.iplantc.service.io.dao.LogicalFileDao;
-import org.iplantc.service.io.manager.LogicalFileManager;
 import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
@@ -35,18 +28,11 @@ import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariableType;
-import org.iplantc.service.jobs.util.Slug;
-import org.iplantc.service.notification.managers.NotificationManager;
-import org.iplantc.service.notification.util.EmailMessage;
-import org.iplantc.service.remote.RemoteSubmissionClient;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.RemoteTransferListener;
@@ -54,11 +40,9 @@ import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.TransferException;
-import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.iplantc.service.transfer.util.MD5Checksum;
-import org.joda.time.DateTime;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -70,14 +54,9 @@ import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.attribute.FileAttribute;
-import java.nio.file.attribute.PosixFileAttributes;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Instant;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 /**
  * Interface to define how to launch applications on various resources
@@ -96,8 +75,7 @@ public abstract class AbstractJobLauncher implements JobLauncher {
     protected Software software;
     protected ExecutionSystem executionSystem;
     protected JobManager jobManager = new JobManager();
-//    protected RemoteDataClient localDataClient;
-    protected RemoteSubmissionClient submissionClient = null;
+    protected RemoteDataClient remoteExecutionDataClient;
     protected URLCopy urlCopy;
     protected TransferTask transferTask;
 
@@ -618,7 +596,6 @@ public abstract class AbstractJobLauncher implements JobLauncher {
             throw new JobException("Unable to fetch deployment path for app " + getSoftware().getUniqueName() +
                     " from " + getSoftware().getStorageSystem().getSystemId(), e);
         } finally {
-
             if (remoteSoftwareDataClient != null) {
                 remoteSoftwareDataClient.disconnect();
             }
@@ -699,12 +676,15 @@ public abstract class AbstractJobLauncher implements JobLauncher {
      */
     protected void stageSofwareApplication() throws ClosedByInterruptException, JobException {
         TransferTask transferTask;
-        RemoteDataClient remoteExecutionDataClient = null;
+
         try {
+            if (getRemoteExecutionDataClient() == null) {
+                setRemoteExecutionDataClient(getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername()));
+                getRemoteExecutionDataClient().authenticate();
+            }
+
             log.debug("Staging " + getJob().getSoftwareName() + " app dependencies for job " + getJob().getUuid() + " to agave://" + getJob().getSystem() + "/" + getJob().getWorkPath());
-            remoteExecutionDataClient = getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername());
-            remoteExecutionDataClient.authenticate();
-            remoteExecutionDataClient.mkdirs(getJob().getWorkPath(), getJob().getOwner());
+            getRemoteExecutionDataClient().mkdirs(getJob().getWorkPath(), getJob().getOwner());
 
             checkStopped();
 
@@ -712,14 +692,14 @@ public abstract class AbstractJobLauncher implements JobLauncher {
 
             // first time around we copy everything
             if (getJob().getRetries() <= 0) {
-                remoteExecutionDataClient.put(getTempAppDir().getPath(),
+                getRemoteExecutionDataClient().put(getTempAppDir().getPath(),
                         Paths.get(getJob().getWorkPath()).getParent().toString(),
                         new RemoteTransferListener(transferTask));
             }
             // after that we try to save some time on retries by only copying the assets
             // that are missing or changed since the last attempt.
             else {
-                remoteExecutionDataClient.syncToRemote(getTempAppDir().getPath(),
+                getRemoteExecutionDataClient().syncToRemote(getTempAppDir().getPath(),
                         new File(getJob().getWorkPath()).getParent(),
                         new RemoteTransferListener(transferTask));
             }
@@ -729,7 +709,7 @@ public abstract class AbstractJobLauncher implements JobLauncher {
             throw new JobException("Unable to stage application dependencies to execution system " + getJob().getSystem(), e);
         } finally {
             try {
-                if (remoteExecutionDataClient != null) remoteExecutionDataClient.disconnect();
+                if (getRemoteExecutionDataClient() != null) getRemoteExecutionDataClient().disconnect();
             } catch (Exception ignored) {
             }
         }
@@ -1079,5 +1059,22 @@ public abstract class AbstractJobLauncher implements JobLauncher {
      */
     public void setJob(Job job) {
         this.job = job;
+    }
+
+    /**
+     * Gets the {@link RemoteDataClient} for the job {@link ExecutionSystem}.
+     * @return the client for the remote execution system
+     */
+    public RemoteDataClient getRemoteExecutionDataClient() {
+        return this.remoteExecutionDataClient;
+    }
+
+    /**
+     * Sets the {@link RemoteDataClient} for the job {@link ExecutionSystem}
+     *
+     * @param remoteExecutionDataClient the {@link RemoteDataClient} to set
+     */
+    public void setRemoteExecutionDataClient(RemoteDataClient remoteExecutionDataClient){
+        this.remoteExecutionDataClient = remoteExecutionDataClient;
     }
 }

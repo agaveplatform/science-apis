@@ -1,10 +1,5 @@
 package org.iplantc.service.jobs.queue;
 
-import java.nio.channels.ClosedByInterruptException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
@@ -14,25 +9,24 @@ import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.exceptions.*;
+import org.iplantc.service.jobs.exceptions.JobDependencyException;
+import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.QuotaViolationException;
+import org.iplantc.service.jobs.exceptions.SchedulerException;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.managers.JobQuotaCheck;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.queue.actions.StagingAction;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.exceptions.TransferException;
-import org.joda.time.DateTime;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.JobExecutionException;
 
-import static java.util.concurrent.TimeUnit.*;
+import java.nio.channels.ClosedByInterruptException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Class to pull a job from the db queue and attempt to stage any input files to the

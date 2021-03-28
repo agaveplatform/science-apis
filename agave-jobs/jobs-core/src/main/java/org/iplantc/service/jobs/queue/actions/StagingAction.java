@@ -149,7 +149,6 @@ public class StagingAction extends AbstractWorkerAction {
                         remoteJobInputPath = singleRawInputUri.getPath();
                     }
 
-
                     // figure out the agave relative path of the job input on the execution system
                     String destPath = Paths.get(remoteJobWorkPath).resolve(FilenameUtils.getName(remoteJobInputPath)).toString();
 
@@ -161,8 +160,6 @@ public class StagingAction extends AbstractWorkerAction {
                         if (!isJobInputAlreadyTransferred(singleRawInputValue, destPath, jobExecutionSystemRemoteDataClient, remoteJobInputPath, jobInputRemoteDataClient)) {
                             // finally ok to make the remote transfer
                             transferJobInput(jobInputRemoteDataClient, jobExecutionSystemRemoteDataClient, singleRawInputValue, remoteJobInputPath, destPath);
-                        } else {
-                            // input is a file and is already present, skip the transfer.
                         }
                     } finally {
                         // close connections every time since we reuse these RDC.
@@ -175,52 +172,64 @@ public class StagingAction extends AbstractWorkerAction {
             log.debug("Completed staging inputs for job " + getJob().getUuid() + " to " +
                     executionSystem.getSystemId() + ":" + getJob().getWorkPath());
 
-        } catch (ClosedByInterruptException e) {
+        }
+        catch (JobException|ClosedByInterruptException e) {
             throw e;
-        } catch (SystemUnknownException | MissingDataException e) {
+        }
+        catch (SystemUnknownException | MissingDataException e) {
             log.error(e.getMessage());
             throw new JobDependencyException(e);
-        } catch (PermissionException e) {
+        }
+        catch (PermissionException e) {
             String message = "User lacks permissions to access input for job " + getJob().getUuid() + ". " +
                     e.getMessage();
             log.error(message);
             throw new JobDependencyException(message, e);
-        } catch (AuthenticationException e) {
+        }
+        catch (AuthenticationException e) {
             log.error("Unable to authenticate to stage input file for job " + getJob().getUuid() + ". " +
                     e.getMessage());
             throw new JobDependencyException(e);
-        } catch (URISyntaxException e) {
+        }
+        catch (URISyntaxException e) {
             String message = "Invalid input url, " + e.getInput() + " provided as input for job " +
                     getJob().getUuid();
             log.error(message);
             throw new JobDependencyException(message, e);
-        } catch (AgaveNamespaceException e) {
+        }
+        catch (AgaveNamespaceException e) {
             String message = "Invalid url format provided as input for job " +
                     getJob().getUuid() + ". " + e.getMessage();
             log.error(message);
             throw new JobDependencyException(message, e);
-        } catch (NotImplementedException e) {
+        }
+        catch (NotImplementedException e) {
             log.error("Invalid input protocol provided for job " + getJob().getUuid());
             throw new JobDependencyException(e.getMessage());
-        } catch (JobInputStagingException e) {
+        }
+        catch (JobInputStagingException e) {
             log.error("Failed to create work directory for job " + getJob().getUuid(), e);
             throw new JobException(e);
-        } catch (TransferException | RemoteDataException e) {
+        }
+        catch (TransferException | RemoteDataException e) {
             // these will be self-describing, non-fatal exceptions
             log.error(e.getMessage());
             throw new JobException(e);
-        } catch (JobException e) {
-            throw e;
-        } catch (Throwable e) {
+        }
+        catch (Throwable e) {
             log.error("Failed to stage input for job " + getJob().getUuid(), e);
             throw new JobException(e);
+        }
+        finally {
+            if (jobInputRemoteDataClient != null) jobInputRemoteDataClient.disconnect();
+            if (jobExecutionSystemRemoteDataClient != null) jobExecutionSystemRemoteDataClient.disconnect();
         }
 
         if (!isStopped()) {
             // status should have been updated in job object if anything was
             // staged
             if (getJob().getStatus() == JobStatusType.STAGING_INPUTS) {
-                JobManager.updateStatus(getJob(), JobStatusType.STAGED);
+                updateJobStatus(JobStatusType.STAGED, JobStatusType.STAGED.getDescription());
                 log.debug("Completed staging inputs for job " + getJob().getUuid() + " " + getJob().getName());
             }
         }
@@ -338,11 +347,10 @@ public class StagingAction extends AbstractWorkerAction {
      * @param jobExecutionSystemRemoteDataClient a preauthenticated client to the execution system
      * @param singleRawInputValue the raw job input value
      * @param remoteJobInputPath the path to the job input on the source system
-     * @param destPath
+     * @param destPath the target path to which data will be copied
      * @throws TransferException when the transfer cannot be carried out due to procedural issues
      * @throws JobException when the job status and/or event cannot be udpated
      * @throws ClosedByInterruptException when the transfer is interrupted by an outside process
-     * @throws RemoteDataException when a remote data operation fails due to connection, auth, or network issues.
      */
     protected void transferJobInput(RemoteDataClient jobInputRemoteDataClient, RemoteDataClient jobExecutionSystemRemoteDataClient, String singleRawInputValue, String remoteJobInputPath, String destPath)
     throws TransferException, JobException, ClosedByInterruptException {
@@ -366,7 +374,7 @@ public class StagingAction extends AbstractWorkerAction {
         getJob().setLastUpdated(new DateTime().toDate());
         JobDao.persist(getJob());
 
-        urlCopy = new URLCopy(jobInputRemoteDataClient, jobExecutionSystemRemoteDataClient);
+        URLCopy urlCopy = getURLCopy(jobInputRemoteDataClient, jobExecutionSystemRemoteDataClient);
 
         try {
             urlCopy.copy(remoteJobInputPath, destPath, rootTransferTask);
@@ -383,6 +391,18 @@ public class StagingAction extends AbstractWorkerAction {
             throw new TransferException("Failed to transfer input " + singleRawInputValue + " for job " +
                     getJob().getUuid(), e);
         }
+    }
+
+    /**
+     * Getter to create a {@link URLCopy} top copy data from a job request input url to the job work directory.
+     * This is primarily here for easier mocking during tests.
+     *
+     * @param srcRemoteDataClient the source data client
+     * @param destSystemRemoteDataClient the dest data client
+     * @return an initialized URLCopy class for the given clients
+     */
+    protected URLCopy getURLCopy(RemoteDataClient srcRemoteDataClient, RemoteDataClient destSystemRemoteDataClient) {
+        return new URLCopy(srcRemoteDataClient, destSystemRemoteDataClient);
     }
 
     /**
@@ -419,30 +439,32 @@ public class StagingAction extends AbstractWorkerAction {
 
                         if (StringUtils.equals(sourceChecksum, destChecksum)) {
                             message = "Input file " + singleRawInputValue + " of idential size was found in the work folder of job "
-                                    + job.getUuid() + ". The checksums were identical. This input will not be recopied.";
+                                    + getJob().getUuid() + ". The checksums were identical. This input will not be recopied.";
                             skipTransfer = true;
                         } else {
                             message = "Input file " + singleRawInputValue + " of idential size was found in the work folder of job "
-                                    + job.getUuid() + ". The checksums did not match, so the input file will be transfered to the "
+                                    + getJob().getUuid() + ". The checksums did not match, so the input file will be transfered to the "
                                     + "target system and overwrite the existing file.";
                         }
                     }
                     catch (NotImplementedException e) {
                         // checksum comparison not available. we'll go ahead and trust the size
                         message = "Input file " + singleRawInputValue + " of idential size was found in the work folder of job "
-                                + job.getUuid() + ". Unable to calculate checksums. This input will not be recopied.";
+                                + getJob().getUuid() + ". Unable to calculate checksums. This input will not be recopied.";
 
                         skipTransfer = true;
                     } catch (Throwable e) {
                         // couldn't calculate the checksum due to server side error
                         // we'll err on the side of caution and recopy
                         message = "Unable to locate file " + singleRawInputValue + " in the work folder of job "
-                                + job.getUuid() + ". This input will not be recopied.";
+                                + getJob().getUuid() + ". This input will not be recopied.";
                     }
                 }
             }
         } catch (IOException | RemoteDataException ignored) {
             // destination path does not exist or is unreadable. The transfer will proceed.
+            message = singleRawInputValue + " is not present in the work folder of job "
+                    + getJob().getUuid() + ". This input will be copied.";
         }
 
         log.debug(message);
@@ -498,7 +520,7 @@ public class StagingAction extends AbstractWorkerAction {
 
         if (!isSystemAvailable(jobInputSystem)) {
             throw new SystemUnavailableException("Unable to stage input " + singleRawInputValue +
-                    " for job " + job.getUuid() + " from system " + jobInputSystem.getSystemId() +
+                    " for job " + getJob().getUuid() + " from system " + jobInputSystem.getSystemId() +
                     ". The system is currently unavailable.");
         }
 
@@ -517,6 +539,7 @@ public class StagingAction extends AbstractWorkerAction {
         try {
             remoteDataClient.authenticate();
         } catch (Throwable e) {
+            remoteDataClient.disconnect();
             throw new AuthenticationException("Authentication failed when connecting to " + singleRawInputValue +
                     " for job " + getJob().getUuid() + ". " + e.getMessage(), e);
         }
@@ -548,6 +571,7 @@ public class StagingAction extends AbstractWorkerAction {
         try {
             remoteDataClient.authenticate();
         } catch (Throwable e) {
+            remoteDataClient.disconnect();
             throw new AuthenticationException("Authentication failed when connecting to execution system " +
                     executionSystem.getSystemId() + " for job " + getJob().getUuid() + ". " + e.getMessage(), e);
         }
@@ -584,6 +608,7 @@ public class StagingAction extends AbstractWorkerAction {
         try {
             remoteDataClient.authenticate();
         } catch (Throwable e) {
+            remoteDataClient.disconnect();
             throw new AuthenticationException("Authentication failed when connecting to " + singleRawInputUri +
                     " for job " + getJob().getUuid() + ". " + e.getMessage(), e);
         }

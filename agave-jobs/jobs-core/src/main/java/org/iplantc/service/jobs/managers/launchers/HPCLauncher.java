@@ -13,7 +13,6 @@ import org.iplantc.service.apps.model.SoftwareParameter;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.jobs.dao.JobDao;
 import org.iplantc.service.jobs.exceptions.*;
-import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.managers.launchers.parsers.RemoteJobIdParser;
 import org.iplantc.service.jobs.managers.launchers.parsers.RemoteJobIdParserFactory;
 import org.iplantc.service.jobs.model.Job;
@@ -22,14 +21,12 @@ import org.iplantc.service.jobs.model.scripts.CommandStripper;
 import org.iplantc.service.jobs.model.scripts.SubmitScript;
 import org.iplantc.service.jobs.model.scripts.SubmitScriptFactory;
 import org.iplantc.service.jobs.util.Slug;
+import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.remote.exceptions.RemoteExecutionException;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.enumerations.ExecutionType;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
-import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.DateTime;
@@ -39,7 +36,6 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.nio.channels.ClosedByInterruptException;
 import java.util.List;
 
 /**
@@ -95,6 +91,17 @@ public class HPCLauncher extends AbstractJobLauncher
 		File tempAppDir = null;
 		try
 		{
+			try {
+				if (getRemoteExecutionDataClient() == null) {
+					setRemoteExecutionDataClient(getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername()));
+					getRemoteExecutionDataClient().authenticate();
+				}
+			} catch (IOException | RemoteDataException | RemoteCredentialException e) {
+				String msg = "Failed to create a remote connection to " + getJob().getSystem() +
+						". App assets cannot be staged to the job execution system.";
+				throw new JobException(msg, e);
+			}
+
 			// calculate remote job path if not already set
 			setRemoteJobPath();
 
@@ -152,8 +159,8 @@ public class HPCLauncher extends AbstractJobLauncher
 //		}
 		finally
 		{
+			if (getRemoteExecutionDataClient() != null) { getRemoteExecutionDataClient().disconnect(); }
 			try { HibernateUtil.closeSession(); } catch (Exception ignored) {}
-			try { if (submissionClient != null) submissionClient.close(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -331,19 +338,9 @@ public class HPCLauncher extends AbstractJobLauncher
 	 *
 	 * @return the absolute path of the job directory on the execution system
 	 * @throws FileNotFoundException if the path cannot be found on the remote system
-	 * @throws RemoteCredentialException if unable to auth to the remote system or credentials missing
-	 * @throws RemoteDataException if unable to contact the remote system.
 	 */
-	protected String getAbsoluteRemoteJobDirPath() throws FileNotFoundException, RemoteCredentialException, RemoteDataException {
-		RemoteDataClient remoteExecutionDataClient = null;
-		try {
-			remoteExecutionDataClient = getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername());
-			return remoteExecutionDataClient.resolvePath(getJob().getWorkPath());
-		} finally {
-			try {
-				if (remoteExecutionDataClient != null) { remoteExecutionDataClient.disconnect(); }
-			} catch (Exception ignored) {}
-		}
+	protected String getAbsoluteRemoteJobDirPath() throws FileNotFoundException {
+		return getRemoteExecutionDataClient().resolvePath(getJob().getWorkPath());
 	}
 
 	/**
@@ -460,32 +457,27 @@ public class HPCLauncher extends AbstractJobLauncher
 		log.debug(step);
 
 		String submissionResponse = null;
-		RemoteDataClient remoteExecutionDataClient = null;
-		try
-		{
-			submissionClient = getExecutionSystem().getRemoteSubmissionClient(getJob().getInternalUsername());
-			
-			remoteExecutionDataClient = getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername());
-			
-			// Get the remote work directory for the log file
-			String remoteWorkPath = remoteExecutionDataClient.resolvePath(getJob().getWorkPath());
-			
-			// Resolve the startupScript and generate the command to run it and log the response to the
-			// remoteWorkPath + "/.agave.log" file
-			String startupScriptCommand = getStartupScriptCommand(remoteWorkPath);
-			
-			// command to cd to the remoteWorkPath
-			String cdCommand = "cd " + remoteExecutionDataClient.resolvePath(getJob().getWorkPath());
-			
-			// ensure the wrapper template has execute permissions
-			String chmodCommand = "chmod +x " + batchScriptName;
-			
-			// command to submit the batch script to the scheduler. 
-			String submitCommand = getExecutionSystem().getScheduler().getBatchSubmitCommand() + " "
+		try (RemoteSubmissionClient submissionClient = getExecutionSystem().getRemoteSubmissionClient(getJob().getInternalUsername())) {
+
+			 // Get the remote work directory for the log file
+			 String remoteWorkPath = getRemoteExecutionDataClient().resolvePath(getJob().getWorkPath());
+
+			 // Resolve the startupScript and generate the command to run it and log the response to the
+			 // remoteWorkPath + "/.agave.log" file
+			 String startupScriptCommand = getStartupScriptCommand(remoteWorkPath);
+
+			 // command to cd to the remoteWorkPath
+			 String cdCommand = "cd " + remoteWorkPath;
+
+			 // ensure the wrapper template has execute permissions
+			 String chmodCommand = "chmod +x " + batchScriptName;
+
+			 // command to submit the batch script to the scheduler.
+			 String submitCommand = getExecutionSystem().getScheduler().getBatchSubmitCommand() + " "
 					+ batchScriptName;
-			
-			// run the aggregate command on the remote system
-			submissionResponse = submissionClient.runCommand(
+
+			 // run the aggregate command on the remote system
+			 submissionResponse = submissionClient.runCommand(
 					startupScriptCommand + "; " + cdCommand + "; " + chmodCommand + "; " + submitCommand);
 					
 			if (StringUtils.isBlank(submissionResponse)) 
@@ -530,15 +522,6 @@ public class HPCLauncher extends AbstractJobLauncher
 		}
 		catch (Exception e) {
 			throw new JobException("Failed to submit HPC job " + getJob().getUuid() + ".", e);
-		}
-		finally
-		{
-			try { if (submissionClient != null) submissionClient.close(); } catch (Exception ignored){}
-			try {
-				if (remoteExecutionDataClient != null) {
-					remoteExecutionDataClient.disconnect();
-				}
-			} catch (Exception ignored){}
 		}
 	}
 }

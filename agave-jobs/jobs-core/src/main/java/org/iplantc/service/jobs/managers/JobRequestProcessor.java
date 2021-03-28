@@ -807,7 +807,8 @@ public class JobRequestProcessor {
 			throw new JobProcessingException(400, "No app found matching " + softwareName + " for " + getUsername());
 		}
 		else if (!isSoftwareInvokableByUser(software, getUsername())) {
-			throw new JobProcessingException(403, "Permission denied. You do not have permission to access this app");
+			throw new JobProcessingException(403,
+					"Permission denied. You do not have permission to use the requeste app, " + softwareName);
 		}
 		
 		return software;

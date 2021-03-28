@@ -23,6 +23,7 @@ import org.iplantc.service.remote.exceptions.RemoteExecutionException;
 import org.iplantc.service.remote.local.CmdLineProcessHandler;
 import org.iplantc.service.remote.local.CmdLineProcessOutput;
 import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
@@ -30,6 +31,7 @@ import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.AuthenticationException;
 import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.DateTime;
 
 import java.io.File;
@@ -555,6 +557,17 @@ public class CondorLauncher  extends AbstractJobLauncher {
         String condorSubmitCmdString = null;
         try 
         {
+            try {
+                if (getRemoteExecutionDataClient() == null) {
+                    setRemoteExecutionDataClient(getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername()));
+                    getRemoteExecutionDataClient().authenticate();
+                }
+            } catch (IOException | RemoteDataException | RemoteCredentialException e) {
+                String msg = "Failed to create a remote connection to " + getJob().getSystem() +
+                        ". App assets cannot be staged to the job execution system.";
+                throw new JobException(msg, e);
+            }
+
             // calculate remote job path if not already set
             setRemoteJobPath();
 
@@ -642,22 +655,21 @@ public class CondorLauncher  extends AbstractJobLauncher {
             throw new JobException("Failed to invoke app: \"" + getSoftware().getUniqueName() + "\n\"   with command:  " + condorSubmitCmdString + "\n" + e.getMessage(), e);
         } 
         finally {
-        	FileUtils.deleteQuietly(getTempAppDir());
+            // do we always clean up, or just on success so we have the cache available for retry?
+            if (getRemoteExecutionDataClient() != null) { getRemoteExecutionDataClient().disconnect(); }
+            FileUtils.deleteQuietly(getTempAppDir());
         }
     }
 
     @Override
     protected String submitJobToQueue() throws JobException
     {
-    	RemoteDataClient remoteExecutionDataClient = null;
-		try {
-			submissionClient = getExecutionSystem().getRemoteSubmissionClient(getJob().getInternalUsername());
+    	try (RemoteSubmissionClient submissionClient = getExecutionSystem().getRemoteSubmissionClient(getJob().getInternalUsername())) {
 			
 	        //String[] condorSubmitCmdString = new String[]{"/bin/bash", "-cl", "cd " + tempAppDir.getAbsolutePath() + "; condor_submit " + condorSubmitFile.getName()};
-    		remoteExecutionDataClient = getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername());
-			
+
     		// Get the remote work directory for the log file
-			String remoteWorkPath = remoteExecutionDataClient.resolvePath(getJob().getWorkPath());
+			String remoteWorkPath = getRemoteExecutionDataClient().resolvePath(getJob().getWorkPath());
 						
 			// Resolve the startupScript and generate the command to run it and log the response to the
 			// remoteWorkPath + "/.agave.log" file
@@ -706,10 +718,6 @@ public class CondorLauncher  extends AbstractJobLauncher {
     		String msg = "Failed to submit job to condor queue.";
     		log.error(msg, e);
     		throw new JobException(msg, e);
-    	}
-    	finally {
-    		try { if (submissionClient != null) submissionClient.close(); } catch (Exception ignored) {}
-			try { if (remoteExecutionDataClient != null) remoteExecutionDataClient.disconnect(); } catch (Exception ignored) {}
     	}
     }
     

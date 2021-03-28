@@ -14,8 +14,6 @@ import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.enumerations.ExecutionType;
-import org.iplantc.service.transfer.RemoteDataClient;
 
 /**
  * Class to fork a background task on a remote linux system. The process
@@ -54,13 +52,11 @@ public class CLILauncher extends HPCLauncher
 
 		log.debug(step);
 
-		RemoteDataClient remoteExecutionDataClient = null;
+		String submissionResponse;
 		try (RemoteSubmissionClient submissionClient = getExecutionSystem().getRemoteSubmissionClient(getJob().getInternalUsername())) {
 
-			remoteExecutionDataClient = getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername());
-
 			// Get the remote work directory for the log file
-			String remoteWorkPath = remoteExecutionDataClient.resolvePath(getJob().getWorkPath());
+			String remoteWorkPath = getAbsoluteRemoteJobDirPath();
 
 			// Resolve the startupScript and generate the command to run it and log the response to the
 			// remoteWorkPath + "/.agave.log" file
@@ -99,7 +95,7 @@ public class CLILauncher extends HPCLauncher
 					logFileBaseName);
 
 			// run the aggregate command on the remote system
-			String submissionResponse = submissionClient.runCommand(
+			submissionResponse = submissionClient.runCommand(
 					startupScriptCommand + " ; " + cdCommand + " && " + chmodCommand + " && " + submitCommand);
 
 			if (StringUtils.isBlank(submissionResponse)) {
@@ -135,10 +131,6 @@ public class CLILauncher extends HPCLauncher
 			String msg = "Failed to submit CLI job " + getJob().getUuid() + ".";
 			log.error(msg, e);
 			throw new JobException(msg, e);
-		} finally {
-			try {
-				if (remoteExecutionDataClient != null) remoteExecutionDataClient.disconnect();
-			} catch (Exception ignored) {}
 		}
 	}
 

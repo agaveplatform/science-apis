@@ -37,6 +37,7 @@ help: ## Print help for targets with comments.
 	"make test" "Run all unit tests." \
 	"make genproto" "Re-build protobuf libraries" \
 	"make build" "Build $(PROJECT_NAME) binaries" \
+	"make cli" "Build $(PROJECT_NAME) cli binaries" \
 	"make validate" "Run linter and code quality tool against Go source." \
 	"make install" "Install $(PROJECT_NAME) binary to local GOBIN directory" \
 	"make image" "Build Docker images for the $(PROJECT_NAME)" \

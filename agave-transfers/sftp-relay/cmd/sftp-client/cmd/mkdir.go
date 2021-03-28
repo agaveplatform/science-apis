@@ -80,7 +80,7 @@ command in linux.`,
 func init() {
 	rootCmd.AddCommand(mkdirCmd)
 
-	mkdirCmd.Flags().BoolVarP(&recursive, "recursive", "p", false, " Create intermediate directories as required.  If this option is not specified, the full path prefix of each operand must already exist.  On the other hand, with this option specified, no error will be reported if a directory given as an operand already exists.")
+	mkdirCmd.Flags().BoolVarP(&recursive, "recursive", "r", false, " Create intermediate directories as required.  If this option is not specified, the full path prefix of each operand must already exist.  On the other hand, with this option specified, no error will be reported if a directory given as an operand already exists.")
 
 	viper.BindPFlag("recursive", mkdirCmd.Flags().Lookup("recursive"))
 }

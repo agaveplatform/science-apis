@@ -9,6 +9,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/minio/highwayhash v1.0.0
 	github.com/mitchellh/go-homedir v1.1.0
+	github.com/phayes/permbits v0.0.0-20190612203442-39d7c581d2ee
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/sftp v1.12.0
 	github.com/prometheus/client_golang v1.7.1

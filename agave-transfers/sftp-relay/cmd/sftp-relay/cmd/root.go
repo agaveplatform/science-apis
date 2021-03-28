@@ -9,13 +9,13 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	hpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -27,6 +27,7 @@ var (
 	cfgFile     string
 	listen      string
 	verbose     bool
+	debug     bool
 	metricsPort int
 	poolSize    int
 	idleTimeout int
@@ -68,7 +69,10 @@ pooling and a convenient protobuf wrapper for interacting with one or more remot
 				Timeout:           (time.Duration(10) * time.Second),
 			}))
 
-		cp := clientpool.New(clientpool.WithPoolSize(poolSize), clientpool.WithExpireAfter(time.Duration(idleTimeout)*time.Second))
+		log.Printf("Initializing sftp client pool with size %d", poolSize)
+		cp := clientpool.New(
+				clientpool.WithPoolSize(poolSize),
+				clientpool.WithExpireAfter(time.Duration(idleTimeout) * time.Second))
 		defer cp.Close()
 
 		// Init a new api server to register with the grpc server
@@ -79,6 +83,17 @@ pooling and a convenient protobuf wrapper for interacting with one or more remot
 		}
 		// set up prometheus metrics
 		server.InitMetrics()
+
+		// init logging
+		if (viper.GetBool("verbose")) {
+			log.Println("Verbose logging level configured")
+			server.SetLogLevel(logrus.TraceLevel)
+		} else if (viper.GetBool("debug")) {
+			log.Println("Debug logging level configured")
+			server.SetLogLevel(logrus.DebugLevel)
+		} else {
+			log.Println("Falling back to Info logging level")
+		}
 
 		agaveproto.RegisterSftpRelayServer(grpcServer, &server)
 		hpb.RegisterHealthServer(grpcServer, health.NewServer())
@@ -126,13 +141,13 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// log to console and file
-	f, err := os.OpenFile("sftp-relay.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("Error opening file: %v", err)
-	}
-	wrt := io.MultiWriter(os.Stdout, f)
-	log.SetOutput(wrt)
+	//// log to console and file
+	//f, err := os.OpenFile("sftp-relay.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	//if err != nil {
+	//	log.Fatalf("Error opening file: %v", err)
+	//}
+	//wrt := io.MultiWriter(os.Stdout, f)
+	//log.SetOutput(wrt)
 
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
@@ -140,12 +155,14 @@ func init() {
 	pflags := rootCmd.PersistentFlags()
 
 	pflags.StringVar(&cfgFile, "config", "", "Location of configuration file, if wanted instead of flags. (default is $HOME/.sftp-client.yaml)")
+	pflags.BoolVarP(&verbose, "debug", "D", true, "Debug logging.")
 	pflags.StringVar(&listen, "listen", ":50051", "Address on which to listen for gRPC requests.")
 	pflags.BoolVarP(&verbose, "verbose", "V", false, "Verbose logging.")
 	pflags.IntVar(&metricsPort, "metrics_port", 9092, "Port for Prometheus metrics service")
 	pflags.IntVarP(&poolSize, "pool_size", "s", 10, "Maximum pool size")
 	pflags.IntVarP(&idleTimeout, "idle_timeout", "i", 300, "Amount of time, in seconds, that an idle connection will be kept around before reaping.")
 
+	viper.BindPFlag("debug", pflags.Lookup("debug"))
 	viper.BindPFlag("listen", pflags.Lookup("listen"))
 	viper.BindPFlag("verbose", pflags.Lookup("verbose"))
 	viper.BindPFlag("metricsPort", pflags.Lookup("metricsPort"))
@@ -171,7 +188,8 @@ func initConfig() {
 		viper.SetConfigName(".sftp-relay")
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	viper.SetEnvPrefix("AGAVE")
+	viper.AutomaticEnv()
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {

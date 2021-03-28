@@ -56,6 +56,7 @@ func init() {
 	lis = bufconn.Listen(bufSize)
 	s := grpc.NewServer()
 	cp := clientpool.New()
+	cp.Exhausted()
 	defer cp.Close()
 	// Init a new api server to register with the grpc server
 	relaysvr := Server{
@@ -65,6 +66,7 @@ func init() {
 	}
 	// set up prometheus metrics
 	relaysvr.InitMetrics()
+	relaysvr.SetLogLevel(logrus.TraceLevel)
 	agaveproto.RegisterSftpRelayServer(s, &relaysvr)
 	go func() {
 		if err := s.Serve(lis); err != nil {
@@ -112,6 +114,7 @@ func _resolveTestPathToRemotePath(localTestPath string) string {
 }
 
 func beforeTest(t *testing.T) {
+	consolelog.Debugf("***************************************************************************************\n");
 	// create a new unique test directory for the test
 	CurrentBaseTestDirPath = filepath.Join("sftprelay_test", t.Name(), uuid.New().String())
 
@@ -142,6 +145,9 @@ func afterTest(t *testing.T) {
 		sharedRandomTestDirPath := filepath.Dir(_resolveTestPath(CurrentBaseTestDirPath, LocalSharedTestDir))
 
 		consolelog.Debugf("Removing test directory for test %s, %s", t.Name(), sharedRandomTestDirPath)
+		consolelog.Debugf("***************************************************************************************");
+		consolelog.Debugf(" ")
+		consolelog.Debugf(" ")
 
 		//err := os.RemoveAll(sharedRandomTestDirPath)
 		//if err != nil {
@@ -1791,4 +1797,103 @@ func _doTestRenamePathReturnsErr(t *testing.T, client agaveproto.SftpRelayClient
 			assert.Contains(t, grpcResponse.Error, expectedError, "Rename to a forbidden path should return error " + expectedError)
 		}
 	}
+}
+
+func TestPutAndGetDirectory(t *testing.T) {
+	beforeTest(t)
+
+	conn := _getConnection(t)
+	defer conn.Close()
+
+	//client := agaveproto.NewSftpRelayClient(conn)
+
+	tmpTestDirPath, err := _createTempDirectory("")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test dir: %s", err.Error())
+	}
+
+	// create a local temp directory
+	_createTempFileInDirectory(tmpTestDirPath, "tmp1", ".txt")
+	_createTempFileInDirectory(tmpTestDirPath, "tmp2", ".txt")
+	_createTempFileInDirectory(tmpTestDirPath, "tmp3", ".txt")
+
+	tmpNestedTestDirPath, err := _createTempDirectoryInDirectory(tmpTestDirPath, "")
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to create temp test subdirectory: %s", err.Error())
+	}
+	_createTempFileInDirectory(tmpNestedTestDirPath, "tmp3", ".txt")
+	_createTempFileInDirectory(tmpNestedTestDirPath, "tmp4", ".txt")
+
+	_, err = os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to open temp test file: %s", err.Error())
+	}
+
+	err = _updateLocalSharedTestDirOwnership()
+	if err != nil {
+		assert.FailNowf(t, err.Error(), "Unable to change permission on temp test dir: %s", err.Error())
+	}
+
+	// copy the temp directory to the remote host
+	//remoteDirPath := _resolveTestPath(tmpTestDirPath, SFTP_SHARED_TEST_DIR)
+
+	//mkdirRequest := &agaveproto.SrvMkdirRequest{
+	//	SystemConfig: _createRemoteSystemConfig(),
+	//	Recursive: true,
+	//	RemotePath:   remoteDirPath,}
+	//grpcResponse, err := client.Mkdir(context.Background(), mkdirRequest)
+	//
+
+	err = filepath.Walk(tmpTestDirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			assert.FailNow(t, err.Error(), "unable to fetch file info walking path %q: %v\n", path, err)
+			return err
+		}
+		if info.IsDir() {
+			fmt.Printf("creating dir without errors: %q: %+v \n", path, info.Name())
+			//mkdirRequest.RemotePath = path + "/" + info.Name()
+			//grpcResponse, err := client.Mkdir(context.Background(), mkdirRequest)
+			//if err != nil {
+			//	assert.Nilf(t, err, "Error while calling RPC Mkdir: %v", err)
+			//}
+		} else {
+			fmt.Printf("Putting file to upload: %q: %+v \n", path, info.Name())
+			//putRequest.RemotePath = path + "/" + info.Name()
+			//grpcResponse, err := client.Put(context.Background(), putRequest)
+			//if err != nil {
+			//	assert.Nilf(t, err, "Error while calling RPC Mkdir: %v", err)
+			//}
+		}
+		fmt.Printf("visited file or dir: %q\n", path)
+		return nil
+	})
+	if err != nil {
+		fmt.Printf("error walking the path %q: %v\n", tmpTestDirPath, err)
+		return
+	}
+
+
+
+
+	//grpcResponse, err := client.Rename(context.Background(), req)
+	//if err != nil {
+	//	assert.Nilf(t, err, "Error while calling RPC Rename: %v", err)
+	//} else {
+	//	_, err := os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
+	//	if (! os.IsNotExist(err)) {
+	//		assert.FailNowf(t, err.Error(), "Original temp dir should not be present after rename operation: %s", err.Error())
+	//	} else if grpcResponse.RemoteFileInfo == nil {
+	//		assert.FailNow(t, "Returned file info should not be nil on successful rename")
+	//	} else {
+	//		assert.Equal(t, "", grpcResponse.Error, "Rename on existing dir should return empty error")
+	//		assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test dir size")
+	//		assert.Equal(t, tmpTestDirInfo.Name() + "-renamed", grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test dir")
+	//		assert.Equal(t, renamedRemoteDirPath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test dir")
+	//		assert.Equal(t, tmpTestDirInfo.IsDir(), grpcResponse.RemoteFileInfo.IsDirectory, "Returned directory flag should match the flag of the test dir")
+	//		assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned mode should match the mode of the test dir")
+	//		assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned last updated timestamp should match the test dir")
+	//	}
+	//}
+
+	afterTest(t)
 }

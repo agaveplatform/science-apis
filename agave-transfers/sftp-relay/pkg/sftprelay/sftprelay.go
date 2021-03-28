@@ -120,6 +120,11 @@ func init() {
 	log.Debugf("SSH_AUTH_SOCK = %v", AgentSocket)
 }
 
+// sets the log level on the current logger of this relay instance
+func (s *Server) SetLogLevel(level logrus.Level) {
+	log.SetLevel(level)
+}
+
 func (s *Server) InitMetrics() {
 	// Register standard server metrics and customized metrics to registry.
 
@@ -156,7 +161,7 @@ func (s *Server) getSftpClientFromPool(ctx context.Context, systemConfig *agavep
 		HostKeyCallback: sshConfig.HostKeyCallback,
 	}
 
-	sftpClient, closeSFTP, err := sesspool.AsSFTPClient(s.Pool.ClaimSession(ctx, clientpool.WithDialArgs("tcp", addr, cfg), clientpool.WithID(sshConfig.String())))
+	sftpClient, closeSFTP, err := sesspool.AsSFTPClient(s.Pool.TryClaimSession(ctx, clientpool.WithDialArgs("tcp", addr, cfg), clientpool.WithID(sshConfig.String())))
 	if err != nil {
 		if errors.Cause(err) == sesspool.PoolExhausted {
 			log.Errorf("Connection pool exhausted for %s@%s:%d", systemConfig.Username, systemConfig.Host, systemConfig.Port)
@@ -534,17 +539,17 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 		}
 		defer remoteFile.Close()
 
-		var bytesWritten int64
+		var bytesRead int64
 		// if there were no error opening the two files then process the file.
 
 		log.Debugf("Writing to remote file %s", remoteFilePath)
 		// this will write the file BufferSize blocks until EOF is returned.
-		bytesWritten, err = remoteFile.ReadFrom(localFile)
+		bytesRead, err = remoteFile.ReadFrom(localFile)
 		if err != nil {
-			log.Errorf("Error after writing %d byes to file %s: %v", bytesWritten, remoteFilePath, err)
-			return agaveproto.TransferResponse{BytesTransferred: bytesWritten, Error: err.Error()}
+			log.Errorf("Error after writing %d byes to file %s: %v", bytesRead, remoteFilePath, err)
+			return agaveproto.TransferResponse{BytesTransferred: bytesRead, Error: err.Error()}
 		}
-		log.Debugf("%d bytes copied to %s", bytesWritten, remoteFilePath)
+		log.Debugf("%d bytes copied to %s", bytesRead, remoteFilePath)
 
 		// flush the buffer to ensure everything was written
 		err = localFile.Sync()
@@ -573,7 +578,7 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 		rfi := NewRemoteFileInfo(remoteFilePath, remoteFileInfo)
 		return agaveproto.TransferResponse{
 			RemoteFileInfo:   &rfi,
-			BytesTransferred: bytesWritten,
+			BytesTransferred: bytesRead,
 		}
 	} else {
 		return agaveproto.TransferResponse{Error: "file already exists"}

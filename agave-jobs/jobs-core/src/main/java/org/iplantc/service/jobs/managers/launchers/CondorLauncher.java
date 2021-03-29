@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareInput;
 import org.iplantc.service.apps.model.SoftwareParameter;
@@ -20,15 +19,11 @@ import org.iplantc.service.jobs.model.scripts.SubmitScript;
 import org.iplantc.service.jobs.model.scripts.SubmitScriptFactory;
 import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.remote.exceptions.RemoteExecutionException;
-import org.iplantc.service.remote.local.CmdLineProcessHandler;
-import org.iplantc.service.remote.local.CmdLineProcessOutput;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
-import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.AuthenticationException;
 import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -38,15 +33,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
 
 /**
  * Class to fork a background task on a HTCondor system. The condor job id will be stored as {@link Job#getLocalJobId()}
@@ -359,6 +349,9 @@ public class CondorLauncher  extends AbstractJobLauncher {
 
             // write new contents to appTemplate for execution
             batchWriter.write(batchScript.toString());
+
+            // ensure the file is executable so permissions are set when deploying and running
+            Files.setPosixFilePermissions(appTemplateFile.toPath(), PosixFilePermissions.fromString("rwxr-x---"));
 
             return appTemplateFile;
         } 

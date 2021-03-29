@@ -36,7 +36,10 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author dooley
@@ -265,7 +268,7 @@ public class HPCLauncher extends AbstractJobLauncher
             	batchWriter.write("# No custom environment variables configured for this app\n\n\n");   
             }
 
-			appTemplate = "##########################################################\n" +
+            appTemplate = "##########################################################\n" +
             			  "# Begin App Wrapper Template Logic \n" +
 					      "##########################################################\n\n";
 
@@ -303,8 +306,12 @@ public class HPCLauncher extends AbstractJobLauncher
 			appTemplate = resolveMacros(appTemplate);
 			
 			batchWriter.write(appTemplate);
+			batchWriter.write("\n\n");
 
 			batchWriter.flush();
+
+			// ensure the file is executable so permissions are set when deploying and running
+			Files.setPosixFilePermissions(ipcexeFile.toPath(), PosixFilePermissions.fromString("rwxr-x---"));
 
 			return ipcexeFile;
 		} 

@@ -53,6 +53,7 @@ pooling and a convenient protobuf wrapper for interacting with one or more remot
 		//log.SetOutput(wrt)
 
 		// set up the protobuf server
+		listen = viper.GetString("listen")
 		lis, err := net.Listen("tcp", listen)
 		if err != nil {
 			log.Fatalf("Failed to listen: %v", err)
@@ -69,6 +70,8 @@ pooling and a convenient protobuf wrapper for interacting with one or more remot
 				Timeout:           (time.Duration(10) * time.Second),
 			}))
 
+		poolSize = viper.GetInt("poolSize")
+		idleTimeout = viper.GetInt("idleTimeout")
 		log.Printf("Initializing sftp client pool with size %d", poolSize)
 		cp := clientpool.New(
 				clientpool.WithPoolSize(poolSize),
@@ -95,32 +98,30 @@ pooling and a convenient protobuf wrapper for interacting with one or more remot
 			log.Println("Falling back to Info logging level")
 		}
 
+		// register the grpc services
 		agaveproto.RegisterSftpRelayServer(grpcServer, &server)
 		hpb.RegisterHealthServer(grpcServer, health.NewServer())
 
-		// Create a HTTP server for prometheus.
+		// Create a HTTP server for prometheus metrics scraping
+		metricsPort = viper.GetInt("metricsPort")
 		httpServer := &http.Server{
-			Handler: promhttp.HandlerFor(metricsRegistry, promhttp.HandlerOpts{}),
-			Addr:    fmt.Sprintf("0.0.0.0:%d", metricsPort),
+			Addr:              fmt.Sprintf("0.0.0.0:%d", metricsPort),
+			Handler:           promhttp.HandlerFor(metricsRegistry, promhttp.HandlerOpts{}),
 		}
 
 		// start the http server in a goroutine
 		go func() {
-			log.Printf("sftp-relay metrics listening -> 0.0.0.0:%d", metricsPort)
+			log.Printf("sftp-relay metrics server listening -> 0.0.0.0:%d", metricsPort)
 			if err := httpServer.ListenAndServe(); err != nil {
-				log.Fatal("Unable to start a http server.")
+				log.Fatalf("Unable to start metrics server on port %d: %v", metricsPort, err.Error())
 			}
 		}()
 
 		// start the grpc server
-		log.Printf("sftp-relay grpc listening -> %s", listen)
-
+		log.Printf("sftp-relay grpc server listening -> %s", listen)
 		if err = grpcServer.Serve(lis); err != nil {
-			log.Fatalf("Ca c'est le temps: %v", err)
+			log.Fatalf("Unable to start GRPC server listening on port %d: %v", metricsPort, err.Error())
 		}
-
-		//// grpcServer is a *grpc.Server
-		//service.RegisterChannelzServiceToServer(grpcServer)
 	},
 }
 
@@ -154,13 +155,13 @@ func init() {
 	// will be global for your application.
 	pflags := rootCmd.PersistentFlags()
 
-	pflags.StringVar(&cfgFile, "config", "", "Location of configuration file, if wanted instead of flags. (default is $HOME/.sftp-client.yaml)")
-	pflags.BoolVarP(&verbose, "debug", "D", true, "Debug logging.")
-	pflags.StringVar(&listen, "listen", ":50051", "Address on which to listen for gRPC requests.")
-	pflags.BoolVarP(&verbose, "verbose", "V", false, "Verbose logging.")
-	pflags.IntVar(&metricsPort, "metrics_port", 9092, "Port for Prometheus metrics service")
-	pflags.IntVarP(&poolSize, "pool_size", "s", 10, "Maximum pool size")
-	pflags.IntVarP(&idleTimeout, "idle_timeout", "i", 300, "Amount of time, in seconds, that an idle connection will be kept around before reaping.")
+	pflags.StringVarP(&cfgFile, "config", "c", "", "Location of configuration file, if wanted instead of flags. (default is $HOME/.sftp-client.yaml)")
+	pflags.BoolVarP(&verbose, "debug", "d", true, "Debug logging.")
+	pflags.StringVarP(&listen, "listen", "l", ":50051", "Address on which to listen for gRPC requests.")
+	pflags.BoolVarP(&verbose, "verbose", "v", false, "Verbose logging.")
+	pflags.IntVar(&metricsPort, "metricsPort", 9092, "Port for Prometheus metrics service")
+	pflags.IntVarP(&poolSize, "poolSize", "p", 10, "Maximum pool size")
+	pflags.IntVarP(&idleTimeout, "idleTimeout", "i", 300, "Amount of time, in seconds, that an idle connection will be kept around before reaping.")
 
 	viper.BindPFlag("debug", pflags.Lookup("debug"))
 	viper.BindPFlag("listen", pflags.Lookup("listen"))

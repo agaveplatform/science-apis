@@ -23,7 +23,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"google.golang.org/grpc"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,11 +43,11 @@ var putCmd = &cobra.Command{
 
 		//log.Infof("connecting to %v...", grpcservice)
 
-		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
+		conn, err := helper.NewGrpcServiceConn()
 		if err != nil {
-			//log.Fatalf("could not connect: %v", err)
+			fmt.Printf("Unable to establish a connection to service at %s: %v", grpcservice, err.Error())
+			os.Exit(1)
 		}
-		//log.Infof("Connected to %s", conn.Target())
 		defer conn.Close()
 
 		sftpRelay := sftppb.NewSftpRelayClient(conn)

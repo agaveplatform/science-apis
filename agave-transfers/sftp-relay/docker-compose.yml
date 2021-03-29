@@ -6,6 +6,8 @@ services:
     image: sftp-relay:develop
     ports:
       - 50051:50051
+    environment:
+      AGAVE_VERBOSE: 1
     restart: always
 
   sftp:

@@ -15,14 +15,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	"io"
 	"os"
 	"time"
 )
 
 var log = logrus.New()
-
-const MAX_PACKET_SIZE = 32768
 
 type Server struct {
 	Registry    prometheus.Registry
@@ -30,12 +27,8 @@ type Server struct {
 	Pool        *clientpool.ClientPool
 }
 
-//The Pool and AgentSocket variables are created here and instantiated in the init() function.
+//The Pool and AgentSocket variables are created here and instantiated in the init function.
 var (
-
-	// The path to the unix socket on which the ssh-agent is listen
-	AgentSocket string
-
 	// key used to hash the ssh configs in the pool
 	sshKeyHash []byte
 
@@ -103,22 +96,22 @@ func NewRemoteFileInfo(path string, fileInfo os.FileInfo) agaveproto.RemoteFileI
 	}
 }
 
-func init() {
-	// Open a log file to log the server
-	f, err := os.OpenFile("sftp-relay.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	wrt := io.MultiWriter(os.Stdout, f)
-	log.SetOutput(wrt)
-
-	// Now set up the ssh connection pool
-	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
-	if !ok {
-		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
-	}
-	log.Debugf("SSH_AUTH_SOCK = %v", AgentSocket)
-}
+//func init() {
+//	// Open a log file to log the server
+//	f, err := os.OpenFile("sftp-relay.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+//	if err != nil {
+//		log.Fatalf("error opening file: %v", err)
+//	}
+//	wrt := io.MultiWriter(os.Stdout, f)
+//	log.SetOutput(wrt)
+//
+//	// Now set up the ssh connection pool
+//	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
+//	if !ok {
+//		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
+//	}
+//	log.Debugf("SSH_AUTH_SOCK = %v", AgentSocket)
+//}
 
 // sets the log level on the current logger of this relay instance
 func (s *Server) SetLogLevel(level logrus.Level) {
@@ -179,7 +172,9 @@ func (s *Server) getSftpClientFromPool(ctx context.Context, systemConfig *agavep
 
 // Performs a basic authentication handshake to the remote system
 func (s *Server) AuthCheck(ctx context.Context, req *agaveproto.AuthenticationCheckRequest) (*agaveproto.EmptyResponse, error) {
-	log.Tracef("Invoking Auth service")
+	log.Trace("Invoking Auth service")
+
+	log.Printf("AUTH sftp://%s@%s:%d", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port)
 
 	_, closeSFTP, err := s.getSftpClientFromPool(ctx, req.SystemConfig)
 	if err != nil {
@@ -196,7 +191,7 @@ func (s *Server) AuthCheck(ctx context.Context, req *agaveproto.AuthenticationCh
 
 // Performs a mkdirs operation on a remote system.
 func (s *Server) Mkdir(ctx context.Context, req *agaveproto.SrvMkdirRequest) (*agaveproto.FileInfoResponse, error) {
-	log.Printf("Invoking Mkdirs service")
+	log.Trace("Invoking Mkdirs service")
 
 	sftpClient, closeSFTP, err := s.getSftpClientFromPool(ctx, req.SystemConfig)
 	if err != nil {
@@ -204,7 +199,7 @@ func (s *Server) Mkdir(ctx context.Context, req *agaveproto.SrvMkdirRequest) (*a
 	}
 	defer closeSFTP()
 
-	log.Infof(fmt.Sprintf("Creating remote directory sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
+	log.Printf("MKDIR sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath)
 
 	// increment the request metric
 	mkdirsCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
@@ -219,7 +214,7 @@ func (s *Server) Mkdir(ctx context.Context, req *agaveproto.SrvMkdirRequest) (*a
 
 // Fetches file info for a remote path
 func (s *Server) Stat(ctx context.Context, req *agaveproto.SrvStatRequest) (*agaveproto.FileInfoResponse, error) {
-	log.Printf("Invoking Stat service")
+	log.Trace("Invoking Stat service")
 
 	sftpClient, closeSFTP, err := s.getSftpClientFromPool(ctx, req.SystemConfig)
 	if err != nil {
@@ -227,7 +222,7 @@ func (s *Server) Stat(ctx context.Context, req *agaveproto.SrvStatRequest) (*aga
 	}
 	defer closeSFTP()
 
-	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
+	log.Printf("STAT sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath)
 
 	// increment the request metric
 	statCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
@@ -242,7 +237,7 @@ func (s *Server) Stat(ctx context.Context, req *agaveproto.SrvStatRequest) (*aga
 
 // Removes the remote path. If the remote path is a directory, the entire tree is deleted.
 func (s *Server) Remove(ctx context.Context, req *agaveproto.SrvRemoveRequest) (*agaveproto.EmptyResponse, error) {
-	log.Printf("Invoking Remove service")
+	log.Trace("Invoking Remove service")
 
 	sftpClient, closeSFTP, err := s.getSftpClientFromPool(ctx, req.SystemConfig)
 	if err != nil {
@@ -250,7 +245,7 @@ func (s *Server) Remove(ctx context.Context, req *agaveproto.SrvRemoveRequest) (
 	}
 	defer closeSFTP()
 
-	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
+	log.Printf("REMOVE sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath)
 
 	// increment the request metric
 	removeCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
@@ -273,7 +268,7 @@ func (s *Server) Get(ctx context.Context, req *agaveproto.SrvGetRequest) (*agave
 	}
 	defer closeSFTP()
 
-	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s => file://localhost/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath, req.LocalPath))
+	log.Printf("GET sftp://%s@%s:%d/%s => file://localhost/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath, req.LocalPath)
 
 	// increment the request metric
 	getCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
@@ -300,7 +295,7 @@ func (s *Server) Put(ctx context.Context, req *agaveproto.SrvPutRequest) (*agave
 	}
 	defer closeSFTP()
 
-	log.Infof(fmt.Sprintf("put file://localhost/%s => sftp://%s@%s:%d/%s", req.LocalPath, req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
+	log.Printf("PUT file://localhost/%s => sftp://%s@%s:%d/%s", req.LocalPath, req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath)
 
 	// increment the request metric
 	putCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
@@ -328,7 +323,7 @@ func (s *Server) List(ctx context.Context, req *agaveproto.SrvListRequest) (*aga
 	}
 	defer closeSFTP()
 
-	log.Infof(fmt.Sprintf("ls sftp://%s@%s:%d/%s", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath))
+	log.Printf("LIST sftp://%s@%s:%d/%s",  req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath)
 
 	// increment the request metric
 	listCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
@@ -343,7 +338,7 @@ func (s *Server) List(ctx context.Context, req *agaveproto.SrvListRequest) (*aga
 
 // Fetches file info for a remote path
 func (s *Server) Rename(ctx context.Context, req *agaveproto.SrvRenameRequest) (*agaveproto.FileInfoResponse, error) {
-	log.Printf("Invoking Rename service")
+	log.Trace("Invoking Rename service")
 
 	sftpClient, closeSFTP, err := s.getSftpClientFromPool(ctx, req.SystemConfig)
 	if err != nil {
@@ -351,9 +346,9 @@ func (s *Server) Rename(ctx context.Context, req *agaveproto.SrvRenameRequest) (
 	}
 	defer closeSFTP()
 
-	log.Infof(fmt.Sprintf("sftp://%s@%s:%d/%s => sftp://%s@%s:%d/%s",
+	log.Printf("RENAME sftp://%s@%s:%d/%s => sftp://%s@%s:%d/%s",
 		req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.RemotePath,
-		req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.NewName))
+		req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port, req.NewName)
 
 	// increment the request metric
 	statCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
@@ -366,6 +361,25 @@ func (s *Server) Rename(ctx context.Context, req *agaveproto.SrvRenameRequest) (
 	return &response, nil
 }
 
+//func (s *Server) Close(ctx context.Context, req *agaveproto.AuthenticationCheckRequest) (*agaveproto.EmptyResponse, error) {
+//	log.Trace("Invoking Rename service")
+//
+//	log.Printf("AUTH sftp://%s@%s:%d", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port)
+//
+//	s.Pool.Close()
+//	_, closeSFTP, err := s.getSftpClientFromPool(ctx, req.SystemConfig)
+//	if err != nil {
+//		return &agaveproto.EmptyResponse{Error: err.Error()}, nil
+//	}
+//	defer closeSFTP()
+//
+//	// increment the request metric
+//	authCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
+//
+//	// success returns an empty response
+//	return &agaveproto.EmptyResponse{}, nil
+//}
+
 //*****************************************************************************************
 
 /*
@@ -373,7 +387,7 @@ The last sections each implement an SFTP process.
 */
 
 func get(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, force bool, byteRanges string) agaveproto.TransferResponse {
-	log.Trace("WriteTo (PUT) sFTP Service function was invoked ")
+	log.Trace("WriteTo (PUT) GRPC service function was invoked ")
 
 	// check if the file already exists. If is  does not and Force = false then error. Otherwise remove the
 	//file first then do everything else
@@ -427,14 +441,14 @@ func get(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 
 		localFile, err := os.OpenFile(localFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
 		if err != nil {
-			log.Errorf("Failed to open source file %s: %v", localFilePath, err)
+			log.Errorf("Error opening source file %s: %v", localFilePath, err)
 			return agaveproto.TransferResponse{Error: err.Error()}
 		}
 		defer localFile.Close()
 
 		var bytesWritten int64
 
-		log.Debugf("Writing to remote file %s", remoteFilePath)
+		log.Debugf("Writing to local file %s", remoteFilePath)
 		// this will write the file BufferSize blocks until EOF is returned.
 		bytesWritten, err = remoteFile.WriteTo(localFile)
 		if err != nil {
@@ -444,28 +458,29 @@ func get(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 		log.Debugf("%d bytes copied to %s", bytesWritten, localFilePath)
 
 		// flush the buffer to ensure everything was written
+		log.Debugf("Flushing local buffer after writing %s", localFilePath)
 		err = localFile.Sync()
 		if err != nil {
 			log.Errorf("Error flushing local file, %s, when reading from %s: %v", localFilePath, remoteFilePath, err)
 			return agaveproto.TransferResponse{Error: err.Error()}
 		}
 		// ensure permissions are retained
-		log.Debugf("Setting permissions of dest file %s", localFilePath)
-		err = os.Chmod(localFilePath, remoteFileInfo.Mode().Perm())
+		log.Debugf("Setting permissions of local file %s", localFilePath)
+		err = os.Chmod(localFilePath, remoteFileInfo.Mode())
 		if err != nil {
 			log.Errorf("Error setting permissions of dest file %s after download: %v", localFilePath, err)
 			return agaveproto.TransferResponse{Error: err.Error()}
 		}
 
 		// ensure timestamps are retained
-		log.Debugf("Setting modification time of dest file %s", localFilePath)
+		log.Debugf("Setting modification time of local file %s", localFilePath)
 		err = os.Chtimes(localFilePath, time.Now(), remoteFileInfo.ModTime())
 		if err != nil {
-			log.Errorf("Error setting modifcation time of dest file %s after download: %v", localFilePath, err)
+			log.Errorf("Error setting modifcation time of local file %s after download: %v", localFilePath, err)
 			return agaveproto.TransferResponse{Error: err.Error()}
 		}
 
-		log.Debugf("Completed transfer to dest file %s", localFilePath)
+		log.Debugf("Completed transfer to local file %s", localFilePath)
 		localFileInfo, _ = os.Stat(localFilePath)
 
 		rfi := NewRemoteFileInfo(localFilePath, localFileInfo)
@@ -479,7 +494,7 @@ func get(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 }
 
 func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, force bool, append bool) agaveproto.TransferResponse {
-	log.Trace("WriteTo (PUT) sFTP Service function was invoked ")
+	log.Trace("WriteTo (PUT) GRPC service function was invoked ")
 
 	// verify existence of local path
 	localFileInfo, err := os.Stat(localFilePath)
@@ -490,7 +505,7 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 
 	// check that the local path is not a directory
 	if localFileInfo.IsDir() {
-		err = errors.New(fmt.Sprintf("Error opening, %s. Local path is a directory.", localFilePath))
+		log.Errorf("Error verifying local file %s: directory uploads not supported", localFilePath)
 		return agaveproto.TransferResponse{Error: "source path is a directory"}
 	}
 
@@ -498,9 +513,11 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 	// check if the file already exists. If is  does not and Force = false then error. Otherwise remove the
 	//file first then do everything else
 	var remoteFileExists bool
+	log.Debugf("Fetching info for %s to verify write eligibility", remoteFilePath)
 	remoteFileInfo, err := sftpClient.Stat(remoteFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
+			log.Debugf("New file will be created at %s", remoteFilePath)
 			remoteFileExists = false
 		} else {
 			log.Errorf("Error attempting to stat remote path %s: %v", remoteFilePath, err)
@@ -524,14 +541,14 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 
 		// now that the dest file is created the next step is to open the source file
 		log.Debugf("Opening local source file %s", localFilePath)
-
 		localFile, err := os.Open(localFilePath)
 		if err != nil {
-			log.Errorf("Failed to open source file %s: %v", localFilePath, err)
+			log.Errorf("Error opening source file %s: %v", localFilePath, err)
 			return agaveproto.TransferResponse{Error: err.Error()}
 		}
 		defer localFile.Close()
 
+		log.Debugf("Opening remote destination file %s", remoteFilePath)
 		remoteFile, err := sftpClient.OpenFile(remoteFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
 		if err != nil {
 			log.Errorf("Error opening handle to dest file. %s. %v", remoteFilePath, err)
@@ -552,14 +569,16 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 		log.Debugf("%d bytes copied to %s", bytesRead, remoteFilePath)
 
 		// flush the buffer to ensure everything was written
+		log.Debugf("Flushing remote buffer after writing %s", remoteFilePath)
 		err = localFile.Sync()
 		if err != nil {
 			log.Errorf("Error flushing source file, %s, when writing to %s: %v", localFilePath, remoteFilePath, err)
 			return agaveproto.TransferResponse{Error: err.Error()}
 		}
+
 		// ensure permissions are retained
 		log.Debugf("Setting permissions of dest file %s", remoteFilePath)
-		err = sftpClient.Chmod(remoteFilePath, localFileInfo.Mode().Perm())
+		err = sftpClient.Chmod(remoteFilePath, localFileInfo.Mode())
 		if err != nil {
 			log.Errorf("Error setting permissions of dest file %s after upload: %v", remoteFilePath, err)
 			return agaveproto.TransferResponse{Error: err.Error()}
@@ -573,7 +592,7 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 			return agaveproto.TransferResponse{Error: err.Error()}
 		}
 
-		log.Debugf("Completed transfer to dest file %s", remoteFilePath)
+		log.Debugf("Completed writing to dest file %s", remoteFilePath)
 		remoteFileInfo, _ = sftpClient.Stat(remoteFilePath)
 		rfi := NewRemoteFileInfo(remoteFilePath, remoteFileInfo)
 		return agaveproto.TransferResponse{
@@ -581,16 +600,17 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 			BytesTransferred: bytesRead,
 		}
 	} else {
+		log.Debugf("Refusing to overwrite remote file %s when force is false", remoteFilePath)
 		return agaveproto.TransferResponse{Error: "file already exists"}
 	}
 }
 
 func mkdir(sftpClient *sftp.Client, remoteDirectoryPath string, recursive bool) agaveproto.FileInfoResponse {
-	log.Trace("Mkdir (Mkdirs) sFTP Service function was invoked ")
+	log.Trace("Mkdir (Mkdirs) GRPC service function was invoked ")
 
 	// Create destination directory
-	log.Debugf("Create destination directory %s", remoteDirectoryPath)
 	if recursive {
+		log.Debugf("Creating nested destination directory %s", remoteDirectoryPath)
 		err := sftpClient.MkdirAll(remoteDirectoryPath)
 		if err != nil {
 			log.Errorf("Error creating directory. %s. %v", remoteDirectoryPath, err)
@@ -598,6 +618,8 @@ func mkdir(sftpClient *sftp.Client, remoteDirectoryPath string, recursive bool) 
 		}
 	} else {
 		remoteFileInfo, err := sftpClient.Stat(remoteDirectoryPath)
+		// ignore errors here since we can potentially get odd errors besides os.IsNotExist when performing a stat
+		// on a nested tree that does not exist
 		if err == nil {
 			if remoteFileInfo.IsDir() {
 				return agaveproto.FileInfoResponse{Error: "dir already exists"}
@@ -606,6 +628,7 @@ func mkdir(sftpClient *sftp.Client, remoteDirectoryPath string, recursive bool) 
 			}
 		}
 
+		log.Debugf("Creating destination directory %s", remoteDirectoryPath)
 		err = sftpClient.Mkdir(remoteDirectoryPath)
 		if err != nil {
 			log.Errorf("Error creating directory. %s. %v", remoteDirectoryPath, err)
@@ -613,13 +636,15 @@ func mkdir(sftpClient *sftp.Client, remoteDirectoryPath string, recursive bool) 
 		}
 	}
 
-	log.Debugf("Created destination directory: " + remoteDirectoryPath)
-
 	// stat the remoete file to return the fileinfo data
+	log.Debugf("Checking existence of new directory %s" + remoteDirectoryPath)
 	remoteFileInfo, err := sftpClient.Stat(remoteDirectoryPath)
 	if err != nil {
+		log.Errorf("Error verifying existence of remote directory %s: %s", remoteDirectoryPath, err.Error())
 		return agaveproto.FileInfoResponse{Error: err.Error()}
 	}
+
+	log.Debugf("Completed creating remote directory: %s", remoteDirectoryPath)
 
 	rfi := NewRemoteFileInfo(remoteDirectoryPath, remoteFileInfo)
 	return agaveproto.FileInfoResponse{
@@ -628,9 +653,10 @@ func mkdir(sftpClient *sftp.Client, remoteDirectoryPath string, recursive bool) 
 }
 
 func stat(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoResponse {
-	log.Trace("Stat (Stat) sFTP Service function was invoked ")
+	log.Trace("Stat (Stat) GRPC service function was invoked ")
 
 	// Stat the remote path
+	log.Debugf("Fetching file info for %s" + remotePath)
 	remoteFileInfo, err := sftpClient.Stat(remotePath)
 	if err != nil {
 		log.Errorf("Unable to stat file %v", remotePath)
@@ -644,9 +670,10 @@ func stat(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoRespons
 }
 
 func remove(sftpClient *sftp.Client, remotePath string) agaveproto.EmptyResponse {
-	log.Trace("Remove (Remove) sFTP Service function was invoked ")
+	log.Trace("Remove (Remove) GRPC service function was invoked ")
 
 	// Get the FileInfo for the remote path so we know how to proceed
+	log.Debugf("Fetching info for %s to determine delete behavior", remotePath)
 	stat, err := sftpClient.Stat(remotePath)
 	if err != nil {
 		log.Errorf("Unable to stat %s: %v", remotePath, err)
@@ -658,14 +685,14 @@ func remove(sftpClient *sftp.Client, remotePath string) agaveproto.EmptyResponse
 	if stat.IsDir() {
 		subdirMap := make(map[string]os.FileInfo)
 
-		log.Printf("Deleting destination directory %s", remotePath)
+		log.Debugf("Deleting nested files in destination directory %s", remotePath)
 		walker := sftpClient.Walk(remotePath)
 		// the sftp.Walk object will traverse the tree breadth first, allowing us to
 		// delete files as they come, and build a list of directories to delete
 		// after we complete walking the full tree.
 		for walker.Step() {
 			if err := walker.Err(); err != nil && err.Error() != "EOF" {
-				log.Warnf("Error traversing directory tree: %v", err)
+				log.Errorf("Error traversing directory tree: %v", err)
 				break
 			}
 
@@ -686,6 +713,8 @@ func remove(sftpClient *sftp.Client, remotePath string) agaveproto.EmptyResponse
 		// if we finished walking the tree cleanly, then all files are deleted.
 		// Now that there are no more files, we can attempt to remove the directories.
 		if walker.Err() == nil && err == nil {
+			log.Debugf("Completed deleting nested files of destination directory %s", remotePath)
+			log.Debugf("Deleting nested subdirectories of destination directory %s", remotePath)
 			// get the list of directories we need to delete from our map above
 			paths := make([]string, 0, len(subdirMap))
 			for k := range subdirMap {
@@ -710,6 +739,7 @@ func remove(sftpClient *sftp.Client, remotePath string) agaveproto.EmptyResponse
 					return agaveproto.EmptyResponse{Error: err.Error()}
 				}
 			}
+			log.Debugf("Completed deleting nested subdirectories of destination directory %s", remotePath)
 		} else if err != nil {
 			log.Errorf("Error deleting one or more nested files below %s. %v", remotePath, err)
 			return agaveproto.EmptyResponse{Error: err.Error()}
@@ -718,16 +748,16 @@ func remove(sftpClient *sftp.Client, remotePath string) agaveproto.EmptyResponse
 			return agaveproto.EmptyResponse{Error: walker.Err().Error()}
 		}
 
-		log.Debugf("Deleted remote directory: %s", remotePath)
+		log.Debugf("Completed deleting remote directory: %s", remotePath)
 	} else {
 		// the remote path was a file, so we just delete it directly.
 		log.Printf("Deleting destination file %s", remotePath)
 		err = sftpClient.Remove(remotePath)
 		if err != nil {
-			log.Errorf("Error deleting remote file %s: %v", remotePath, err)
+			log.Errorf("Error deleting file %s: %v", remotePath, err)
 			return agaveproto.EmptyResponse{Error: err.Error()}
 		}
-		log.Debugf("Deleted remote file: %s", remotePath)
+		log.Debugf("Completed deleting remote file: %s", remotePath)
 	}
 
 	// everything went well so we can return a successful response
@@ -735,35 +765,35 @@ func remove(sftpClient *sftp.Client, remotePath string) agaveproto.EmptyResponse
 }
 
 func list(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoListResponse {
-	log.Trace("List (List) sFTP Service function was invoked ")
-
-	defer sftpClient.Close()
+	log.Trace("List (List) GRPC service function was invoked ")
 
 	// Stat the remote path
+	log.Debugf("Fetching info for %s to determine listing behavior", remotePath)
 	remoteFileInfo, err := sftpClient.Stat(remotePath)
 	if err != nil {
 		log.Infof("Unable to stat file %s", remotePath)
 		return agaveproto.FileInfoListResponse{Error: err.Error()}
 	}
+
 	var remoteFileInfoList []*agaveproto.RemoteFileInfo
 
 	if !remoteFileInfo.IsDir() {
-		log.Debugf("Remote path is a file, returning stat for the file %s", remotePath)
+		log.Debugf("Listing file %s", remotePath)
 		remoteFileInfoList = make([]*agaveproto.RemoteFileInfo, 1)
 		rfi := NewRemoteFileInfo(filepath.Join(remotePath, remoteFileInfo.Name()), remoteFileInfo)
 		remoteFileInfoList[0] = &rfi
 	} else {
 		var sftpFileInfoList []os.FileInfo
 
-		log.Debugf("Listing directory %s", remotePath)
-
 		// fetch the directory listing
+		log.Debugf("Listing directory %s", remotePath)
 		sftpFileInfoList, err = sftpClient.ReadDir(remotePath)
 		if err != nil {
 			log.Errorf("Unable to list directory %s", remotePath)
 			return agaveproto.FileInfoListResponse{Error: err.Error()}
 		}
 
+		log.Tracef("Serializing directory listing response of %s", remotePath)
 		// convert the os.FileInfo into RemoteFileInfo for the response to the user
 		remoteFileInfoList = make([]*agaveproto.RemoteFileInfo, len(sftpFileInfoList))
 		for index, fileInfo := range sftpFileInfoList {
@@ -771,6 +801,7 @@ func list(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoListRes
 			remoteFileInfoList[index] = &rfi
 		}
 	}
+	log.Debugf("Completed deleting remote file: %s", remotePath)
 
 	return agaveproto.FileInfoListResponse{
 		Listing: remoteFileInfoList,
@@ -778,11 +809,10 @@ func list(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoListRes
 }
 
 func rename(sftpClient *sftp.Client, oldRemotePath string, newRemotePath string) agaveproto.FileInfoResponse {
-	log.Trace("Rename (Rename) sFTP Service function was invoked ")
-
-	defer sftpClient.Close()
+	log.Trace("Rename (Rename) GRPC service function was invoked ")
 
 	// stat the renamed path to catch permission and existence checks ahead of time
+	log.Debugf("Checking existence of file item with new name %s", newRemotePath)
 	remoteRenamedFileInfo, err := sftpClient.Stat(newRemotePath)
 	if err != nil && !os.IsNotExist(err) {
 		log.Errorf("Unable to stat renamed file, %s: %v", newRemotePath, err)
@@ -793,6 +823,7 @@ func rename(sftpClient *sftp.Client, oldRemotePath string, newRemotePath string)
 	}
 
 	// Stat the remote path
+	log.Infof("Renaming %s to %s", oldRemotePath, newRemotePath)
 	err = sftpClient.Rename(oldRemotePath, newRemotePath)
 	if err != nil {
 		log.Errorf("Unable to rename file %s to %s: %v", oldRemotePath, newRemotePath, err)
@@ -800,11 +831,13 @@ func rename(sftpClient *sftp.Client, oldRemotePath string, newRemotePath string)
 	}
 
 	// stat the remoete file to return the fileinfo data
+	log.Debugf("Checking existence %s after rename", newRemotePath)
 	remoteRenamedFileInfo, err = sftpClient.Stat(newRemotePath)
 	if err != nil {
 		log.Errorf("Unable to stat renamed file, %s: %v", newRemotePath, err)
 		return agaveproto.FileInfoResponse{Error: err.Error()}
 	}
+	log.Debugf("Completed renaming %s to %s", oldRemotePath, newRemotePath)
 
 	rfi := NewRemoteFileInfo(newRemotePath, remoteRenamedFileInfo)
 	return agaveproto.FileInfoResponse{

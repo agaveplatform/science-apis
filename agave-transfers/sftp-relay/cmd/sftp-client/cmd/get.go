@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"google.golang.org/grpc"
 	"os"
 	"path/filepath"
 	"time"
@@ -29,9 +28,10 @@ to quickly create a Cobra application.`,
 		//log.Debugf("localPath = %v", localPath)
 		//log.Debugf("remotePath = %v", remotePath)
 
-		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
+		conn, err := helper.NewGrpcServiceConn()
 		if err != nil {
-			//log.Fatalf("Could not connect: %v", err)
+			fmt.Printf("Unable to establish a connection to service at %s: %v", grpcservice, err.Error())
+			os.Exit(1)
 		}
 		defer conn.Close()
 
@@ -54,13 +54,13 @@ to quickly create a Cobra application.`,
 		// Fetch remote file info so we know whether to download a file or folder
 		statResp, err := sftpRelay.Stat(context.Background(), req)
 		if err != nil {
-			fmt.Printf("No such path found: %s\n", localPath)
+			fmt.Printf("Failed to query the remote path %q: %v\n", remotePath, err.Error())
 			os.Exit(1)
 		} else if statResp == nil {
 			fmt.Println("Empty response received from gRPC server")
 			os.Exit(1)
 		} else if statResp.Error != "" {
-			fmt.Println(statResp.GetError())
+			fmt.Println("Failed to stat the remote path %q: %v", remotePath, statResp.GetError())
 			os.Exit(1)
 		}
 
@@ -101,8 +101,7 @@ func getDir(sftpRelay agaveproto.SftpRelayClient, remoteSystemConfig *agaveproto
 		// if path does not exist, we will create it
 		if os.IsNotExist(err) {
 			fmt.Printf("Creating local download directory %q ...\n", localDirPath)
-			fMode := parseFileMode(remoteDirectoryInfo)
-			err = os.Mkdir(localDirPath, fMode)
+			err = os.Mkdir(localDirPath, 0755)
 			if err != nil {
 				return downloadStats, errors.New(fmt.Sprintf("Unable to create local directory %q: %v \n", localPath, err.Error()))
 			}
@@ -147,17 +146,26 @@ func getDir(sftpRelay agaveproto.SftpRelayClient, remoteSystemConfig *agaveproto
 					// update the parent stats with the results from the subdirectory
 					downloadStats.Add(childTransferStats)
 					if err != nil {
-						return downloadStats, errors.New(fmt.Sprintf("Error processing remote directory download %q: %+v \n", localDirPath, err.Error()))
+						return downloadStats, errors.New(fmt.Sprintf("Error processing remote directory download %q: %+v \n", remoteChildInfo.GetPath(), err.Error()))
 					}
+					// apply the remote permission to the local child directory file. We do this after the fact ot ensure we can write to the
+					// local directory in the event the remote permissions did not allow listing or writing
+					//fMode := parseFileMode(remoteChildInfo)
+					//os.Chmod(localChildPath, fMode)
 				} else {
 					// make recursive call to get the directory contents
 					childTransferStats, err := getFile(sftpRelay, remoteSystemConfig, remoteChildInfo.GetPath(), localChildPath, remoteChildInfo)
 					downloadStats.Add(childTransferStats)
 					if err != nil {
-						return downloadStats, errors.New(fmt.Sprintf("Error processing remote file download %q: %+v \n", localDirPath, err.Error()))
+						return downloadStats, errors.New(fmt.Sprintf("Error processing remote file download %q: %+v \n", remoteChildInfo.GetPath(), err.Error()))
 					}
 				}
 			}
+			// apply the remote permission to the local file. We do this after the fact ot ensure we can write to the
+			// local directory in the event the remote permissions did not allow listing or writing
+			//fMode := parseFileMode(remoteDirectoryInfo)
+			//os.Chmod(localDirPath, fMode)
+
 			// end processing this directory
 			downloadStats.Runtime = time.Since(start).Milliseconds()
 			return downloadStats, nil
@@ -224,7 +232,7 @@ func init() {
 	rootCmd.AddCommand(getCmd)
 
 	getCmd.Flags().StringVarP(&localPath, "localPath", "s", DefaultLocalPath, "Path of the local file item.")
-	getCmd.Flags().BoolVarP(&force, "force", "f", DefaultForce, "Force true = overwrite the existing remote file.")
+	getCmd.Flags().BoolVarP(&force, "force", "f", DefaultForce, "Force true = overwrite the existing local file.")
 	getCmd.Flags().StringVarP(&byteRange, "byteRange", "b", DefaultByteRange, "Byte range to fetch.  Defaults to the entire file")
 
 	viper.BindPFlag("localPath", getCmd.Flags().Lookup("localPath"))

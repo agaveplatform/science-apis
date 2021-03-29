@@ -21,7 +21,6 @@ import (
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	"os"
 )
 
@@ -36,9 +35,10 @@ command in linux.`,
 		//log.Info("Remove Command =====================================")
 		//log.Infof("remotePath = %v", remotePath)
 
-		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
+		conn, err := helper.NewGrpcServiceConn()
 		if err != nil {
-			//log.Fatalf("could not connect: %v", err)
+			fmt.Printf("Unable to establish a connection to service at %s: %v", grpcservice, err.Error())
+			os.Exit(1)
 		}
 		defer conn.Close()
 

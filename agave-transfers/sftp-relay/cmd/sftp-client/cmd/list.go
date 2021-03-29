@@ -21,8 +21,8 @@ import (
 	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	"os"
+	"sort"
 	"time"
 )
 
@@ -37,9 +37,10 @@ var listCmd = &cobra.Command{
 		//log.Infof("List Command =====================================")
 		//log.Infof("remotePath = %v", remotePath)
 
-		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
+		conn, err := helper.NewGrpcServiceConn()
 		if err != nil {
-			//log.Fatalf("could not connect: %v", err)
+			fmt.Printf("Unable to establish a connection to service at %s: %v", grpcservice, err.Error())
+			os.Exit(1)
 		}
 		defer conn.Close()
 
@@ -66,6 +67,13 @@ var listCmd = &cobra.Command{
 			if res.Error != "" {
 				fmt.Printf("%s\n", res.Error)
 			} else {
+				sort.SliceStable(res.Listing, func(i, j int) bool {
+					if res.Listing[i].IsDirectory == res.Listing[j].IsDirectory {
+						return res.Listing[i].Name < res.Listing[j].Name
+					} else {
+						return res.Listing[i].IsDirectory
+					}
+				})
 				for _,remoteFileInfo := range res.Listing {
 					fmt.Printf("%s\t%s\t%s\t%s\t%d\t%s\n", remoteFileInfo.Mode, username, username, time.Unix(remoteFileInfo.LastUpdated, 0).String(), remoteFileInfo.Size, remoteFileInfo.Name)
 				}

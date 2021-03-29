@@ -73,6 +73,11 @@ test:
 install:
 	cp release/$(PROJECT_NAME)-$(PLATFORM)-$(ARCH) $(firstGOPATH)/bin/$(PROJECT_NAME)
 
+# Install the application binary into $GOBIN
+.PHONY: install-client
+install-client:
+	cp release/$(CLIENT_NAME) $(firstGOPATH)/bin/$(CLIENT_NAME)
+
 # Build the application into a Docker image
 .PHONY: image
 image:
@@ -96,8 +101,8 @@ deps: genproto
 build:
 	BASE_CMD_NAME=$(PROJECT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
 
-.PHONY: cli
-cli:
+.PHONY: client
+client:
 	BASE_CMD_NAME=$(CLIENT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
 	@ mv release/$(CLIENT_NAME)-$(PLATFORM)-$(ARCH) release/$(CLIENT_NAME)
 

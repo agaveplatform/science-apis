@@ -54,7 +54,7 @@ services:
       - configs/jobs-api.conf
     volumes:
       - ./logs/jobs:/opt/tomcat/logs
-      - ./scratch/jobs:/scratch
+      - ./scratch:/scratch
     labels:
       agave.tenant: sandbox
       agave.ops.component: core
@@ -86,7 +86,7 @@ services:
       - configs/files-api.conf
     volumes:
       - ./logs/files:/opt/tomcat/logs
-      - ./scratch/files:/scratch
+      - ./scratch:/scratch
     labels:
       agave.core.service:  files
       agave.tenant: sandbox
@@ -116,7 +116,7 @@ services:
       - configs/common.conf
     volumes:
       - ./logs/apps:/opt/tomcat/logs
-      - ./scratch/apps:/scratch
+      - ./scratch:/scratch
     labels:
       agave.core.service: apps
       agave.tenant: sandbox
@@ -144,7 +144,7 @@ services:
       - configs/apps-api.conf
     volumes:
       - ./logs/apps:/opt/tomcat/logs
-      - ./scratch/apps:/scratch
+      - ./scratch:/scratch
     labels:
       agave.core.service: apps
       agave.tenant: sandbox

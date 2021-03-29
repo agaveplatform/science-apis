@@ -110,12 +110,10 @@ services:
   sftp-relay:
     image: sftp-relay:develop
     ports:
-      - 80
-      - 52911
+      - 50051
+      - 9092
     env_file:
       - configs/common.conf
-      - configs/mysql-core.conf
-      - configs/apps-api.conf
     volumes:
       - ./logs/apps:/opt/tomcat/logs
       - ./scratch/apps:/scratch
@@ -129,7 +127,6 @@ services:
       traefik.enable: true
       traefik.http.routers.sftprelay.rule: Host(`sftprelay`) || PathPrefix(`/sftprelay`)
       traefik.http.routers.sftprelay.entrypoints: grpc
-      traefik.http.middlewares.stripsftprelay.stripprefix.prefixes: /sftprelay
     #mem_limit: 2g
     deploy:
       resources:

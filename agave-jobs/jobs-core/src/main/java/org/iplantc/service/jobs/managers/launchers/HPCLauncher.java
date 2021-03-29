@@ -310,6 +310,8 @@ public class HPCLauncher extends AbstractJobLauncher
 
 			batchWriter.flush();
 
+			batchWriter.close();
+
 			// ensure the file is executable so permissions are set when deploying and running
 			Files.setPosixFilePermissions(ipcexeFile.toPath(), PosixFilePermissions.fromString("rwxr-x---"));
 

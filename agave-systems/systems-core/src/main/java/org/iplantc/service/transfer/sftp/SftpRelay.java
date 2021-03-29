@@ -224,6 +224,7 @@ public final class SftpRelay implements RemoteDataClient {
                             .usePlaintext()
                             .build();
         }
+
         return sftpRelayServerManagedChannel;
     }
 
@@ -1851,6 +1852,8 @@ public final class SftpRelay implements RemoteDataClient {
     @Override
     public void copy(String remotesrc, String remotedest, RemoteTransferListener listener)
             throws IOException, FileNotFoundException, RemoteDataException, RemoteDataSyntaxException {
+
+        // ensure remote path exists before attempting the copy
         if (!doesExist(remotesrc)) {
             throw new FileNotFoundException("No such file or directory");
         }
@@ -1925,7 +1928,6 @@ public final class SftpRelay implements RemoteDataClient {
         } catch (Throwable t) {
             throw new RemoteDataException("Failed to perform a remote copy command on " + host, t);
         } finally {
-//			try { ssh2.disconnect(); } catch (Throwable t) {}
             try {
                 shell.close();
             } catch (Throwable ignored) {
@@ -2133,8 +2135,7 @@ public final class SftpRelay implements RemoteDataClient {
                 sftpRelayServerManagedChannel.shutdownNow();
                 sftpRelayServerManagedChannel.awaitTermination(13, TimeUnit.SECONDS);
             }
-        } catch (Exception ignored) {
-        }
+        } catch (Exception ignored) {}
         sftpRelayServerManagedChannel = null;
         sftpRelayGrpcClient = null;
         gprcRemoteSystemConfig = null;

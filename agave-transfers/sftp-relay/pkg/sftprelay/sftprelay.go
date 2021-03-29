@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+	"io"
 	"path/filepath"
 	"sort"
 
@@ -450,7 +451,8 @@ func get(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 
 		log.Debugf("Writing to local file %s", remoteFilePath)
 		// this will write the file BufferSize blocks until EOF is returned.
-		bytesWritten, err = remoteFile.WriteTo(localFile)
+		//bytesWritten, err = remoteFile.WriteTo(localFile)
+		bytesWritten, err = io.Copy(localFile, remoteFile)
 		if err != nil {
 			log.Errorf("Error after writing %d byes to file %s: %v", bytesWritten, localFilePath, err)
 			return agaveproto.TransferResponse{Error: err.Error()}
@@ -561,7 +563,8 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 
 		log.Debugf("Writing to remote file %s", remoteFilePath)
 		// this will write the file BufferSize blocks until EOF is returned.
-		bytesRead, err = remoteFile.ReadFrom(localFile)
+		bytesRead, err = io.Copy(remoteFile, localFile)
+		//bytesRead, err = remoteFile.ReadFrom(localFile)
 		if err != nil {
 			log.Errorf("Error after writing %d byes to file %s: %v", bytesRead, remoteFilePath, err)
 			return agaveproto.TransferResponse{BytesTransferred: bytesRead, Error: err.Error()}

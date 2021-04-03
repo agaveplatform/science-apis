@@ -47,16 +47,17 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_RETRY;
 
 	private TransferTaskDatabaseService dbService;
+	public final Connection nc = _connect();
 
-	public TransferTaskRetryListener() {
+	public TransferTaskRetryListener() throws IOException, InterruptedException {
 		super();
 	}
 
-	public TransferTaskRetryListener(Vertx vertx) {
+	public TransferTaskRetryListener(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
 	}
 
-	public TransferTaskRetryListener(Vertx vertx, String eventChannel) {
+	public TransferTaskRetryListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
 	}
 
@@ -73,10 +74,10 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 
 		//EventBus bus = vertx.eventBus();
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Connection nc = _connect();
+		//Connection nc = _connect();
 		Dispatcher d = nc.createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(getEventChannel(), msg -> {
+		Subscription s = d.subscribe(MessageType.TRANSFER_RETRY, msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -124,7 +125,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 				}
 			}
 		});
-		d.subscribe(getEventChannel());
+		d.subscribe(MessageType.TRANSFER_RETRY);
 		nc.flush(Duration.ofMillis(500));
 
 

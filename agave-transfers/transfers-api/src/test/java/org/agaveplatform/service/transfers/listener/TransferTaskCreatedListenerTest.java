@@ -167,7 +167,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCreatedListener - taskIsNotInterrupted")
-	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) {
+	void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

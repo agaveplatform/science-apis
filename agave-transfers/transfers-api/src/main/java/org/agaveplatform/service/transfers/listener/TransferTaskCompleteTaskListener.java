@@ -35,14 +35,15 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 
 	private TransferTaskDatabaseService dbService;
 	protected List<String>  parentList = new ArrayList<String>();
+	public final Connection nc = _connect();
+	public TransferTaskCompleteTaskListener() throws IOException, InterruptedException { super(); }
 
-	public TransferTaskCompleteTaskListener() { super(); }
-
-	public TransferTaskCompleteTaskListener(Vertx vertx) {
+	public TransferTaskCompleteTaskListener(Vertx vertx) throws IOException, InterruptedException {
+		super();
 		setVertx(vertx);
 	}
 
-	public TransferTaskCompleteTaskListener(Vertx vertx, String eventChannel) {
+	public TransferTaskCompleteTaskListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
 	}
 
@@ -57,7 +58,7 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
 		//EventBus bus = vertx.eventBus();
-		Connection nc = _connect();
+		//Connection nc = _connect();
 		Dispatcher d = nc.createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
@@ -92,7 +93,7 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 				e.printStackTrace();
 			}
 		});
-		d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
+		d.subscribe(EVENT_CHANNEL);
 		nc.flush(Duration.ofMillis(500));
 	}
 

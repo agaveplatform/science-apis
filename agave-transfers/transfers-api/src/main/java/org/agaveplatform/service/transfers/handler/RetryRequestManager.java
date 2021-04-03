@@ -44,14 +44,18 @@ public class RetryRequestManager extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(RetryRequestManager.class);
     private Vertx vertx;
     private TransferTaskDatabaseService dbService;
-    public RetryRequestManager() {}
+    public Connection nc = _connect();
+    public RetryRequestManager() throws IOException, InterruptedException {
+        super();
+    }
 
     /**
      * Constructs a RetryRequest that will attempt to make a request to the event bus and, upon failure, retry the
      * messsage up to {@code maxRetries} times.
      * @param vertx instance of vertx
      */
-    public RetryRequestManager(Vertx vertx) {
+    public RetryRequestManager(Vertx vertx) throws IOException, InterruptedException {
+        super();
         log.info("RetryRequestManager starting");
         setVertx(vertx);
     }
@@ -66,7 +70,7 @@ public class RetryRequestManager extends AbstractNatsListener {
         log.debug("Got into the RetryRequestManager.request method.");
 
         //getVertx().eventBus().request(address, body, new DeliveryOptions(), new Handler<AsyncResult<Message<JsonObject>>>() {
-        Connection nc = _connect();
+
         Dispatcher d = nc.createDispatcher((msg) -> {});
         Subscription s = d.subscribe(address, msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
@@ -141,7 +145,6 @@ public class RetryRequestManager extends AbstractNatsListener {
                     });
 
                     //getVertx().eventBus().request(address, body, new DeliveryOptions(), this);
-                    Connection nc = _connect();
                     Dispatcher d = nc.createDispatcher((msg) -> {});
                     Subscription s = d.subscribe(address, msg -> {
                         String response = new String(msg.getData(), StandardCharsets.UTF_8);

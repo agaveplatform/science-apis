@@ -39,13 +39,11 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 			InterruptedException.class.getName() // interrupted tasks warrant a retry as it may have been due to a worker shutdown.
 	);
 
-	public TransferTaskErrorListener() { super(); }
-
-	public TransferTaskErrorListener(Vertx vertx) {
+	public TransferTaskErrorListener() throws IOException, InterruptedException { super(); }
+	public TransferTaskErrorListener(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
 	}
-
-	public TransferTaskErrorListener(Vertx vertx, String eventChannel) {
+	public TransferTaskErrorListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
 	}
 
@@ -54,17 +52,17 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 	}
 
 	private TransferTaskDatabaseService dbService;
-
+	private Connection nc = _connect();
 	@Override
 	public void start() throws IOException, InterruptedException, TimeoutException {
 		//EventBus bus = vertx.eventBus();
 
 		//final String err ;
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Connection nc = _connect();
+		//Connection nc = _connect();
 		Dispatcher d = nc.createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(getEventChannel(), msg -> {
+		Subscription s = d.subscribe(MessageType.TRANSFERTASK_ERROR, msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -108,9 +106,8 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
                 log.error(e.getMessage());
             }
         });
-		d.subscribe(getEventChannel());
+		d.subscribe(MessageType.TRANSFERTASK_ERROR);
 		nc.flush(Duration.ofMillis(500));
-
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
 		s = d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
@@ -123,6 +120,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR);
 		nc.flush(Duration.ofMillis(500));
+		//d.unsubscribe(MessageType.TRANSFERTASK_PARENT_ERROR);
 	}
 
 	protected void processError(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {

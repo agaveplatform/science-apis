@@ -120,7 +120,7 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 	@Test
 	@DisplayName("Test actual data transfer")
 	public void testProcessCopyRequest (Vertx vertx, VertxTestContext ctx) throws SystemUnknownException, AgaveNamespaceException, RemoteCredentialException,
-			PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException {
+			PermissionException, IOException, RemoteDataException, TransferException, RemoteDataSyntaxException, InterruptedException {
 
 		RemoteSystem destSystem = getTestSystem(StorageProtocolType.SFTP);
 		// save the system so it can be referenced in the transfer protocol vertical
@@ -195,7 +195,7 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
 
     @Test
     @DisplayName("Test cancel request during processing...")
-    public void testProcessCancelSync(Vertx vertx, VertxTestContext ctx) throws RemoteDataException, RemoteCredentialException, IOException, SystemUnknownException, AgaveNamespaceException, PermissionException, TransferException, RemoteDataSyntaxException {
+    public void testProcessCancelSync(Vertx vertx, VertxTestContext ctx) throws RemoteDataException, RemoteCredentialException, IOException, SystemUnknownException, AgaveNamespaceException, PermissionException, TransferException, RemoteDataSyntaxException, InterruptedException {
         RemoteSystem destSystem = getTestSystem(StorageProtocolType.SFTP);
         // save the system so it can be referenced in the transfer protocol vertical
         SystemDao systemDao = new SystemDao();

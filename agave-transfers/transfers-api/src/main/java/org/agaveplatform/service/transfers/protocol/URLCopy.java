@@ -56,7 +56,8 @@ public class URLCopy extends AbstractNatsListener {
     private AtomicBoolean killed = new AtomicBoolean(false);
     private TransferTaskDatabaseService dbService;
 
-    public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient, Vertx vertx, RetryRequestManager retryRequestManager) {
+    public URLCopy(RemoteDataClient sourceClient, RemoteDataClient destClient, Vertx vertx, RetryRequestManager retryRequestManager) throws IOException, InterruptedException {
+        super();
         this.sourceClient = sourceClient;
         this.destClient = destClient;
         this.vertx = vertx;

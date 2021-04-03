@@ -27,18 +27,18 @@ import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANS
 
 public class TransferTaskNotificationListener extends AbstractNatsListener {
 	private static final Logger logger = LoggerFactory.getLogger(TransferTaskNotificationListener.class);
-	protected static final String EVENT_CHANNEL = TRANSFERTASK_NOTIFICATION ;
+	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_NOTIFICATION ;
 
 	protected String eventChannel;
 
-	public TransferTaskNotificationListener() { super(); }
-	public TransferTaskNotificationListener(Vertx vertx) {
+	public TransferTaskNotificationListener() throws IOException, InterruptedException { super(); }
+	public TransferTaskNotificationListener(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
 	}
-	public TransferTaskNotificationListener(Vertx vertx, String eventChannel) {
+	public TransferTaskNotificationListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
 	}
-
+    public final Connection nc = _connect();
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
 	}
@@ -49,10 +49,10 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 
 		// poc listener to show propagated notifications that woudl be sent to users
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Connection nc = _connect();
+        //Connection nc = _connect();
         Dispatcher d = nc.createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+        Subscription s = d.subscribe(MessageType.TRANSFERTASK_NOTIFICATION, msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -89,7 +89,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 						body.getString("uuid"), e.getMessage());
 			}
 		});
-        d.subscribe(EVENT_CHANNEL);
+        d.subscribe(MessageType.TRANSFERTASK_NOTIFICATION);
         nc.flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -105,7 +105,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 
             JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_CANCELED_COMPLETED, body);
             notificationEventProcess(notificationMessageBody);
-            logger.info("Transfer task {} completed.", body.getString("uuid"));
+            logger.info("Transfer task canceled for uuid {} is completed.", body.getString("uuid"));
             try {
 			    _doPublishEvent(MessageType.NOTIFICATION_CANCELED, body);
             } catch (IOException e) {
@@ -130,7 +130,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 
             JsonObject notificationMessageBody = processForNotificationMessageBody(MessageType.TRANSFERTASK_FINISHED, body);
             notificationEventProcess(notificationMessageBody);
-            logger.info("Transfer task {} completed.", body.getString("uuid"));
+            logger.info("Transfer task finished for uuid {} is completed.", body.getString("uuid"));
             try {
                 _doPublishEvent(MessageType.NOTIFICATION_COMPLETED, body);
             } catch (IOException e) {

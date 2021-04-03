@@ -34,14 +34,14 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
 
     private TransferTaskDatabaseService dbService;
     private List<TransferTask> ttTree = new ArrayList<TransferTask>();
-
-    public TransferTaskDeletedListener() {
+    public final Connection nc = _connect();
+    public TransferTaskDeletedListener() throws IOException, InterruptedException {
         super();
     }
-    public TransferTaskDeletedListener(Vertx vertx) {
+    public TransferTaskDeletedListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
     }
-    public TransferTaskDeletedListener(Vertx vertx, String eventChannel) {
+    public TransferTaskDeletedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
     }
 
@@ -55,10 +55,10 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-        Connection nc = _connect();
+        //Connection nc = _connect();
         Dispatcher d = nc.createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+        Subscription s = d.subscribe(getEventChannel(), msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -71,12 +71,12 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                 //result should be true
             });
         });
-        d.subscribe(EVENT_CHANNEL);
+        d.subscribe(getEventChannel());
         nc.flush(Duration.ofMillis(500));
 
 
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
-        s = d.subscribe(EVENT_CHANNEL, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;

@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.nats.client.Connection;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -10,6 +11,7 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,16 +31,16 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_HEALTHCHECK;
 
-	public TransferTaskWatchListener() {
+	public TransferTaskWatchListener() throws IOException, InterruptedException {
 		super();
 	}
-	public TransferTaskWatchListener(Vertx vertx) {
+	public TransferTaskWatchListener(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
 	}
-	public TransferTaskWatchListener(Vertx vertx, String eventChannel) {
+	public TransferTaskWatchListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
 	}
-
+	public final Connection nc = _connect();
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
 	}

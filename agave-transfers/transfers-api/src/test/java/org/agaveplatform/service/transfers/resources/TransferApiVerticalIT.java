@@ -23,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -108,7 +109,14 @@ public class TransferApiVerticalIT extends BaseTestCase {
         dbService = TransferTaskDatabaseService.createProxy(vertx, config.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
 
         dbService.deleteAll(TENANT_ID, ctx.succeeding(deleteAllTransferTask -> {
-            TransferAPIVertical apiVert = new TransferAPIVertical(vertx);
+            TransferAPIVertical apiVert = null;
+            try {
+                apiVert = new TransferAPIVertical(vertx);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             vertx.deployVerticle(apiVert, options, ctx.succeeding(apiId -> {
 
                 apiDeploymentCheckpoint.flag();
@@ -154,7 +162,14 @@ public class TransferApiVerticalIT extends BaseTestCase {
             dbService = TransferTaskDatabaseService.createProxy(vertx, config.getString(CONFIG_TRANSFERTASK_DB_QUEUE));
 
             dbService.deleteAll(TENANT_ID, ctx.succeeding(deleteAllTransferTask -> {
-                TransferAPIVertical apiVert = new TransferAPIVertical(vertx);
+                TransferAPIVertical apiVert = null;
+                try {
+                    apiVert = new TransferAPIVertical(vertx);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 vertx.deployVerticle(apiVert, options, ctx.succeeding(apiId -> {
                     apiDeploymentCheckpoint.flag();
 

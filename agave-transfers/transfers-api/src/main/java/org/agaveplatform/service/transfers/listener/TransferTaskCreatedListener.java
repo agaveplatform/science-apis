@@ -39,18 +39,19 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
     private TransferTaskDatabaseService dbService;
-
-    public TransferTaskCreatedListener() {
+    public final Connection nc = _connect();
+    public TransferTaskCreatedListener() throws IOException, InterruptedException {
         super();
     }
-    public TransferTaskCreatedListener(Vertx vertx) {super(vertx); }
-    public TransferTaskCreatedListener(Vertx vertx, String eventChannel) {
+    public TransferTaskCreatedListener(Vertx vertx) throws IOException, InterruptedException {super(vertx); }
+    public TransferTaskCreatedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
     }
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
+    //public Connection nc = _connect();
 
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
@@ -60,7 +61,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-        Connection nc = _connect();
+        //Connection nc = _connect();
         Dispatcher d = nc.createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         Subscription s = d.subscribe(MessageType.TRANSFERTASK_CREATED, msg -> {
@@ -110,6 +111,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_CREATED);
         nc.flush(Duration.ofMillis(500));
+        //d.unsubscribe(MessageType.TRANSFERTASK_CREATED);
 
         // cancel tasks
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
@@ -126,6 +128,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
         nc.flush(Duration.ofMillis(500));
+        //d.unsubscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
 
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
         s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -142,6 +145,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
         nc.flush(Duration.ofMillis(500));
+        //d.unsubscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
 
         // paused tasks
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
@@ -159,6 +163,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
         nc.flush(Duration.ofMillis(500));
+        //d.unsubscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
 
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
         s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -175,6 +180,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
         nc.flush(Duration.ofMillis(500));
+        //d.unsubscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
 
     }
 

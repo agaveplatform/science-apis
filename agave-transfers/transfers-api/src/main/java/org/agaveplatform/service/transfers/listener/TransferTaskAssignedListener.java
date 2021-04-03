@@ -45,12 +45,13 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskAssignedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ASSIGNED;
     private TransferTaskDatabaseService dbService;
+    public final Connection nc = _connect();
 
-    public TransferTaskAssignedListener() {super();}
-    public TransferTaskAssignedListener(Vertx vertx) {
+    public TransferTaskAssignedListener() throws IOException, InterruptedException {super();}
+    public TransferTaskAssignedListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
     }
-    public TransferTaskAssignedListener(Vertx vertx, String eventChannel) {
+    public TransferTaskAssignedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
     }
 
@@ -65,7 +66,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         //EventBus bus = vertx.eventBus();
-        Connection nc = _connect();
+        //Connection nc = _connect();
         Dispatcher d = nc.createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         Subscription s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {
@@ -106,6 +107,8 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
         nc.flush(Duration.ofMillis(500));
+        //d.unsubscribe(MessageType.TRANSFERTASK_ASSIGNED);
+
 
         s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -124,6 +127,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
         nc.flush(Duration.ofMillis(500));
+        //d.unsubscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
 
         s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
@@ -139,6 +143,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
         nc.flush(Duration.ofMillis(500));
+        //d.unsubscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
 
         s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
@@ -154,6 +159,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
         nc.flush(Duration.ofMillis(500));
+        //d.unsubscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
 
         s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
@@ -169,6 +175,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         });
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
         nc.flush(Duration.ofMillis(500));
+        //d.unsubscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
     }
 
     protected void processTransferTask(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {

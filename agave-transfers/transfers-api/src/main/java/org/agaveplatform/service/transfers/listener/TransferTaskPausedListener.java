@@ -36,14 +36,15 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 
 	private TransferTaskDatabaseService dbService;
 	private List<TransferTask> ttTree = new ArrayList<TransferTask>();
+	public final Connection nc = _connect();
 
-	public TransferTaskPausedListener() {
+	public TransferTaskPausedListener() throws IOException, InterruptedException {
 		super();
 	}
-	public TransferTaskPausedListener(Vertx vertx) {
+	public TransferTaskPausedListener(Vertx vertx) throws IOException, InterruptedException {
 		this(vertx, null);
 	}
-	public TransferTaskPausedListener(Vertx vertx, String eventChannel) {
+	public TransferTaskPausedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super();
 		setVertx(vertx);
 		setEventChannel(eventChannel);
@@ -61,10 +62,10 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 
 		//EventBus bus = vertx.eventBus();
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Connection nc = _connect();
+		//Connection nc = _connect();
 		Dispatcher d = nc.createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+		Subscription s = d.subscribe(MessageType.TRANSFERTASK_PAUSED, msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -87,7 +88,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 				}
 			});
 		});
-		d.subscribe(EVENT_CHANNEL);
+		d.subscribe(MessageType.TRANSFERTASK_PAUSED);
 		nc.flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {

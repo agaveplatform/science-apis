@@ -29,7 +29,7 @@ public class TransferApplication {
         Vertx vertx = Vertx.vertx();
 
         int poolSize = 10;
-        int instanceSize = 10;
+        int instanceSize = 2;
 
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
                 .setType("file")
@@ -194,7 +194,7 @@ public class TransferApplication {
                                         if (res11.succeeded()){
                                             System.out.println("TransferErrorListener Deployment id is " + res.result());
                                         }else{
-                                            System.out.println("TransferErrorListener Deployment failed !");
+                                            System.out.println("TransferErrorListener Deployment failed !"+ res.result());
                                         }
                                     });
 

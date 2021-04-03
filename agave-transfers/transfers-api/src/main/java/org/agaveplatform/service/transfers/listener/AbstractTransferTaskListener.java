@@ -288,7 +288,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
 
     public abstract String getDefaultEventChannel();
 
-    public RetryRequestManager getRetryRequestManager() {
+    public RetryRequestManager getRetryRequestManager() throws IOException, InterruptedException {
         logger.trace("Got into the getRetryRequestManager call");
         if (retryRequestManager == null) {
             logger.info("getRetryRequestManager check for null");

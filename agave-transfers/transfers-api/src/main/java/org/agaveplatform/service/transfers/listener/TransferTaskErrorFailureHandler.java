@@ -27,14 +27,14 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_FAILED;
 
 	private TransferTaskDatabaseService dbService;
+	public final Connection nc = _connect();
+	public TransferTaskErrorFailureHandler() throws IOException, InterruptedException { super(); }
 
-	public TransferTaskErrorFailureHandler() { super(); }
-
-	public TransferTaskErrorFailureHandler(Vertx vertx) {
+	public TransferTaskErrorFailureHandler(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
 	}
 
-	public TransferTaskErrorFailureHandler(Vertx vertx, String eventChannel) {
+	public TransferTaskErrorFailureHandler(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
 	}
 
@@ -62,17 +62,13 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 
 		//final String err ;
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Connection nc = _connect();
+		//Connection nc = _connect();
 		Dispatcher d = nc.createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+		Subscription s = d.subscribe(MessageType.TRANSFER_FAILED, msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
-			String uuid = body.getString("uuid");
-			String source = body.getString("source");
-			String dest = body.getString("dest");
-
 
 			log.info("Transfer task {} failed: {}: {}",
 					body.getString("uuid"), body.getString("cause"), body.getString("message"));
@@ -94,9 +90,9 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 				}
 			});
 		});
-		d.subscribe(EVENT_CHANNEL);
+		d.subscribe(MessageType.TRANSFER_FAILED);
 		nc.flush(Duration.ofMillis(500));
-
+		//d.unsubscribe(EVENT_CHANNEL);
 	}
 
 	protected void processFailure(JsonObject body, Handler<AsyncResult<Boolean>> handler) {

@@ -30,17 +30,17 @@ import static org.agaveplatform.service.transfers.enumerations.TransferStatusTyp
 public class TransferTaskCancelListener extends AbstractNatsListener {
     private static final Logger logger = LoggerFactory.getLogger(TransferTaskCancelListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CANCELED;
-
+    public final Connection nc = _connect();
     private TransferTaskDatabaseService dbService;
     private List<TransferTask> ttTree = new ArrayList<TransferTask>();
 
-    public TransferTaskCancelListener() {
+    public TransferTaskCancelListener() throws IOException, InterruptedException {
         super();
     }
-    public TransferTaskCancelListener(Vertx vertx) {
+    public TransferTaskCancelListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
     }
-    public TransferTaskCancelListener(Vertx vertx, String eventChannel) {
+    public TransferTaskCancelListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
     }
 
@@ -55,7 +55,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         //EventBus bus = vertx.eventBus();
-        Connection nc = _connect();
+        //Connection nc = _connect();
         Dispatcher d = nc.createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {

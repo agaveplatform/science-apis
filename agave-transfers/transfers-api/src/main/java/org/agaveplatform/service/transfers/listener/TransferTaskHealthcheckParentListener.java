@@ -33,18 +33,18 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
 
     private TransferTaskDatabaseService dbService;
     protected List<String> parentList = new ArrayList<String>();
-
+    public final Connection nc = _connect();
     protected static final String EVENT_CHANNEL = TRANSFERTASK_HEALTHCHECK_PARENT;
 
-    public TransferTaskHealthcheckParentListener() {
+    public TransferTaskHealthcheckParentListener() throws IOException, InterruptedException {
         super();
     }
 
-    public TransferTaskHealthcheckParentListener(Vertx vertx) {
+    public TransferTaskHealthcheckParentListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
     }
 
-    public TransferTaskHealthcheckParentListener(Vertx vertx, String eventChannel) {
+    public TransferTaskHealthcheckParentListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
     }
 
@@ -64,7 +64,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
         // listen for healthcheck events to determine if a task is complete
         // before its transfertask_completed event was received.
         //getVertx().eventBus().<JsonObject>consumer(TRANSFERTASK_HEALTHCHECK_PARENT, msg -> {
-        Connection nc = _connect();
+        //Connection nc = _connect();
         Dispatcher d = nc.createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         Subscription s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {

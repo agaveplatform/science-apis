@@ -53,9 +53,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
     protected String eventChannel = TRANSFERTASK_DB_QUEUE;
     protected JWTAuth jwtAuth;
 
-    public TransferAPIVertical(){super();}
+    public TransferAPIVertical() throws IOException, InterruptedException {super();}
 
-    public TransferAPIVertical(Vertx vertx) {
+    public TransferAPIVertical(Vertx vertx) throws IOException, InterruptedException {
         super();
         setVertx(vertx);
     }

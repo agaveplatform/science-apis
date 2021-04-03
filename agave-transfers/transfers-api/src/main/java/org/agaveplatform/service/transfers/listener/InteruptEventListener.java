@@ -23,11 +23,11 @@ public class InteruptEventListener extends AbstractNatsListener {
 	private static final Logger log = LoggerFactory.getLogger(InteruptEventListener.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_INTERUPTED;
 
-	public InteruptEventListener() { super(); }
-	public InteruptEventListener(Vertx vertx) {
+	public InteruptEventListener() throws IOException, InterruptedException { super(); }
+	public InteruptEventListener(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
 	}
-	public InteruptEventListener(Vertx vertx, String eventChannel) {
+	public InteruptEventListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
 	}
 

@@ -31,19 +31,18 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
 
     private TransferTaskDatabaseService dbService;
     protected List<String> parentList = new ArrayList();
+    public final Connection nc = _connect();
 
-    public TransferTaskFinishedListener() {
+    public TransferTaskFinishedListener() throws IOException, InterruptedException {
         super();
     }
-
-    public TransferTaskFinishedListener(Vertx vertx) {
+    public TransferTaskFinishedListener(Vertx vertx) throws IOException, InterruptedException {
+        super();
         setVertx(vertx);
     }
-
-    public TransferTaskFinishedListener(Vertx vertx, String eventChannel) {
+    public TransferTaskFinishedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
     }
-
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
@@ -54,10 +53,9 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-        Connection nc = _connect();
         Dispatcher d = nc.createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+        Subscription s = d.subscribe(MessageType.TRANSFERTASK_FINISHED, msg -> {
         //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
         String response = new String(msg.getData(), StandardCharsets.UTF_8);
         JsonObject body = new JsonObject(response) ;
@@ -101,20 +99,12 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
                 }
             });
         });
-        d.subscribe(EVENT_CHANNEL);
+        d.subscribe(MessageType.TRANSFERTASK_FINISHED);
         nc.flush(Duration.ofMillis(500));
 
     }
 
     public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
-        String tenantId = body.getString("tenant_id");
-        String uuid = body.getString("uuid");
-        String status = body.getString("status");
-        String parentTaskId = body.getString("parentTask");
-        String rootTaskId = body.getString("rootTask");
-        String eventId = body.getString("eventId");
-//        body.put("type", status);
-//        body.put("event", eventId);
         logger.debug("Processing finished task, sending notification");
 
         try {

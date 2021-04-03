@@ -31,16 +31,18 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
 
     private TransferTaskDatabaseService dbService;
     protected List<String> parentList = new ArrayList();
+    public final Connection nc = _connect();
 
-    public TransferTaskUpdateListener() {
+    public TransferTaskUpdateListener() throws IOException, InterruptedException {
         super();
     }
 
-    public TransferTaskUpdateListener(Vertx vertx) {
+    public TransferTaskUpdateListener(Vertx vertx) throws IOException, InterruptedException {
+        super();
         setVertx(vertx);
     }
 
-    public TransferTaskUpdateListener(Vertx vertx, String eventChannel) {
+    public TransferTaskUpdateListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
     }
 
@@ -56,10 +58,10 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
 
         //EventBus bus = vertx.eventBus();
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Connection nc = _connect();
+        //Connection nc = _connect();
         Dispatcher d = nc.createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+        Subscription s = d.subscribe(MessageType.TRANSFERTASK_UPDATED, msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -87,7 +89,7 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
                 }
             });
         });
-        d.subscribe(EVENT_CHANNEL);
+        d.subscribe(MessageType.TRANSFERTASK_UPDATED);
         nc.flush(Duration.ofMillis(500));
 
     }

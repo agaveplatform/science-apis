@@ -35,16 +35,17 @@ public class NatsListener extends  AbstractNatsListener {
 
     private TransferTaskDatabaseService dbService;
     protected List<String> parentList = new ArrayList<>();
+    public final Connection nc = _connect();
 
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ASSIGNED;
 
-    public NatsListener() {
+    public NatsListener() throws IOException, InterruptedException {
         super();
     }
-    public NatsListener(Vertx vertx) {
+    public NatsListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
     }
-    public NatsListener(Vertx vertx, String eventChannel) {
+    public NatsListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
     }
 
@@ -59,7 +60,6 @@ public class NatsListener extends  AbstractNatsListener {
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-        Connection nc = _connect();
         Dispatcher d = nc.createDispatcher((msg) -> {});
         Subscription s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);

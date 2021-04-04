@@ -31,15 +31,12 @@ import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.DateTime;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.attribute.PosixFilePermissions;
+import java.nio.file.Path;
 import java.util.List;
-import java.util.Set;
 
 /**
  * @author dooley
@@ -106,7 +103,7 @@ public class HPCLauncher extends AbstractJobLauncher
 			}
 
 			// calculate remote job path if not already set
-			setRemoteJobPath();
+			calculateRemoteJobPath();
 
 			// sets up the application directory to execute this job launch; see comments in method
             createTempAppDir();
@@ -117,19 +114,23 @@ public class HPCLauncher extends AbstractJobLauncher
             copySoftwareToTempAppDir();
             
             checkStopped();
-            
+
             // prepend the application template with call back to let the Job service know the job has started
             // parse the application template and replace tokens with the inputs, parameters and outputs.
-            processApplicationTemplate();
+            String applicationWrapperContent = processApplicationWrapperTemplate();
+			writeToRemoteJobDir(getBatchScriptName(), applicationWrapperContent);
 			
             checkStopped();
-            
+
+
             // create the shadow file containing the exclusion files for archiving
-            createArchiveLog(ARCHIVE_FILENAME);
-			
+            String jobArchiveManifestContent = processJobArchiveManifest();
+			writeToRemoteJobDir(ARCHIVE_FILENAME, jobArchiveManifestContent);
+
             checkStopped();
-            
-            // move the local temp directory to the remote system
+
+
+            // copy the local temp directory to the remote system
             stageSofwareApplication();
 			
             checkStopped();
@@ -190,7 +191,7 @@ public class HPCLauncher extends AbstractJobLauncher
 	 * @see org.iplantc.service.jobs.managers.launchers.AbstractJobLauncher#processApplicationTemplate()
 	 */
 	@Override
-    public File processApplicationTemplate() throws JobException 
+    public String processApplicationWrapperTemplate() throws JobException
     {
 		step = "Processing the " + getJob().getSoftwareName() + " wrapper template for job " + getJob().getUuid();
 		log.debug(step);
@@ -200,9 +201,11 @@ public class HPCLauncher extends AbstractJobLauncher
 		String appTemplate = null;
 
 		// create the submit script in the temp folder
-		File ipcexeFile = new File(getTempAppDir() + File.separator + getBatchScriptName());
+//		File ipcexeFile = new File(getTempAppDir() + File.separator + getBatchScriptName());
 
-		try (FileWriter batchWriter = new FileWriter(ipcexeFile);) {
+		StringWriter batchWriter = new StringWriter();
+		try {
+//			batchWriter = new FileWriter(ipcexeFile);
 
 			SubmitScript script = SubmitScriptFactory.getInstance(getJob(), getSoftware(), getExecutionSystem());
 	
@@ -220,19 +223,19 @@ public class HPCLauncher extends AbstractJobLauncher
 			
             batchWriter.write("# Location of agave job lifecycle log file \n");
             batchWriter.write("AGAVE_LOG_FILE=" + absWorkDir + "/.agave.log\n\n\n");
-			
+
             batchWriter.write("##########################################################\n");
             batchWriter.write("# Agave Utility functions \n");
             batchWriter.write("##########################################################\n\n");
-            
+
             // datetime function
             batchWriter.write("# cross-plaltform function to print an ISO8601 formatted timestamp \n");
             batchWriter.write("function agave_datetime_iso() { \n  date '+%Y-%m-%dT%H:%M:%S%z'; \n} \n\n");
-	
+
 			// logging function
             batchWriter.write("# standard logging function to write agave job lifecycle logs\n");
             batchWriter.write("function agave_log_response() { \n  echo \"[$(agave_datetime_iso)] ${@}\"; \n} 2>&1 >> \"${AGAVE_LOG_FILE}\"\n\n");
-         			
+
             // write the callback to trigger status update at start
             batchWriter.write("# Callback to signal the job has started executing user-defined logic\n");
             batchWriter.write(resolveMacros("${AGAVE_JOB_CALLBACK_RUNNING}"));
@@ -241,12 +244,11 @@ public class HPCLauncher extends AbstractJobLauncher
             batchWriter.write("##########################################################\n");
             batchWriter.write("# Agave App and System Environment Settings \n");
             batchWriter.write("##########################################################\n\n");
-            
-            
+
             List<String> appModules = getSoftware().getModulesAsList();
             if (!appModules.isEmpty()) {
 	            batchWriter.write("# App specific module commands\n");
-	            
+
 	            // add modules if specified by the app. Generally these won't be used in a condor app,
 	            // but in the event they're running mpi or gliding in, these are available.
 				for (String module : appModules) {
@@ -255,7 +257,7 @@ public class HPCLauncher extends AbstractJobLauncher
 				batchWriter.write("\n");
             }
             else {
-            	batchWriter.write("# No modules commands configured for this app\n\n");   
+            	batchWriter.write("# No modules commands configured for this app\n\n");
             }
 			
             // add in any custom environment variables that need to be set
@@ -265,7 +267,7 @@ public class HPCLauncher extends AbstractJobLauncher
             	batchWriter.write("\n");
         	}
             else {
-            	batchWriter.write("# No custom environment variables configured for this app\n\n\n");   
+            	batchWriter.write("# No custom environment variables configured for this app\n\n\n");
             }
 
             appTemplate = "##########################################################\n" +
@@ -308,17 +310,17 @@ public class HPCLauncher extends AbstractJobLauncher
 			batchWriter.write(appTemplate);
 			batchWriter.write("\n\n");
 
-			batchWriter.flush();
-
-			batchWriter.close();
-
+			return batchWriter.toString();
+//
+//
+//			return remoteApplicationWrapperPath;
 			// ensure the file is executable so permissions are set when deploying and running
-			Files.setPosixFilePermissions(ipcexeFile.toPath(), PosixFilePermissions.fromString("rwxr-x---"));
+//			Files.setPosixFilePermissions(ipcexeFile.toPath(), PosixFilePermissions.fromString("rwxr-x---"));
 
-			return ipcexeFile;
+//			return remoteApplicationWrapperPath;
 		} 
         catch (IOException e) {
-        	String msg = "IO operation failed on wrapper template file " + ipcexeFile.getPath();
+        	String msg = "IO operation failed while creating application wrapper.";
 //            log.error(msg, e);
             throw new JobException(msg, e);
         } 
@@ -335,12 +337,38 @@ public class HPCLauncher extends AbstractJobLauncher
 		catch(JobMacroResolutionException e) {
 			throw new JobException("Failed resolving job macros when building executable app wrapper " +
 					"script from template file. " + e.getMessage(), e);
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			String msg = "Failed to resolve job path on remote execution system prior to staging application.";
 //			log.error(msg, e);
 			throw new JobException(msg, e);
 		}
     }
+
+//	/**
+//	 * Takes the content of the application wrapper and writes it to the remote system via an output stream to avoid
+//	 * any platform-specific IO issues found during copy.
+//	 *
+//	 * @param content the processed application wrapper template to be written
+//	 * @return the name of the remote file written
+//	 * @throws JobException when unable to connect or write the content.
+//	 */
+//	void writeWrapperTemplateToRemoteJobDir(String content) throws JobException {
+//
+//		String remoteApplicationWrapperPath = getJob().getWorkPath() + File.separator + getBatchScriptName();
+//
+//		try (RemoteOutputStream<?> remoteOutputStream = getRemoteExecutionDataClient().getOutputStream(remoteApplicationWrapperPath, false, false);
+//			 OutputStreamWriter batchWriter = new OutputStreamWriter(remoteOutputStream);) {
+//
+//			batchWriter.write(content);
+//
+//			batchWriter.flush();
+//		}
+//		catch (IOException | RemoteDataException e) {
+//			throw new JobException("Failed to write the application wrapper to the job work directory. " +
+//					e.getMessage(), e);
+//		}
+//	}
 
 	/**
 	 * Utility method to resolve the {@link Job#getWorkPath()} to an absolute path on the remote host.
@@ -442,16 +470,15 @@ public class HPCLauncher extends AbstractJobLauncher
 	 * @throws IOException if the file cannot be read or found
 	 */
 	protected String getAppTemplateFileContents() throws IOException {
-		File appTemplateFile = new File(getTempAppDir()
-				+ File.separator + getSoftware().getExecutablePath());
+		Path appTemplatePath =  getTempAppDir().toPath().resolve(getSoftware().getExecutablePath());
 
-		if (!appTemplateFile.exists()) {
+		if (!Files.exists(appTemplatePath)) {
 			throw new FileNotFoundException("Unable to locate wrapper script for \"" +
 					getSoftware().getUniqueName() + "\" at " +
-					appTemplateFile.getAbsolutePath());
+					appTemplatePath.toString());
 		}
 
-		return FileUtils.readFileToString(appTemplateFile);
+		return FileUtils.readFileToString(appTemplatePath.toFile(), StandardCharsets.UTF_8.name());
 	}
 
 	/* (non-Javadoc)

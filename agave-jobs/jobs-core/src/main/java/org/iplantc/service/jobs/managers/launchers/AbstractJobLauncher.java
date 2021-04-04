@@ -33,10 +33,7 @@ import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.URLCopy;
+import org.iplantc.service.transfer.*;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.TransferException;
@@ -44,10 +41,7 @@ import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.iplantc.service.transfer.util.MD5Checksum;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.channels.ClosedByInterruptException;
@@ -160,7 +154,7 @@ public abstract class AbstractJobLauncher implements JobLauncher {
      * Sets the job work path if not already set for the current job. Does not persist the value.
      * @throws JobException if the path is too long or null
      */
-    protected void setRemoteJobPath() throws JobException {
+    protected void calculateRemoteJobPath() throws JobException {
         try {
             if (StringUtils.isBlank(getJob().getWorkPath())) {
                 getJob().setWorkPath(getJobManager().calculateJobRemoteWorkPath(getJob(), getExecutionSystem()));
@@ -631,7 +625,46 @@ public abstract class AbstractJobLauncher implements JobLauncher {
         return transferTask;
     }
 
-    public abstract File processApplicationTemplate() throws JobException;
+//    public abstract String processApplicationWrapperTemplate() throws JobException;
+
+    @Override
+    public void writeToRemoteJobDir(String filePathRelativeToRemoteJobDir, String content) throws JobException {
+        // write the file at a path relative to the remote job work directory
+        Path remoteJobWorkPath = Paths.get(getJob().getWorkPath());
+        Path remoteTargetPath = remoteJobWorkPath.resolve(filePathRelativeToRemoteJobDir);
+
+        // if the target is not a file, ensure the subdirectory is present as this method can be called
+        // before the software assets are staged out and the directory structure is created on the
+        // execution system.
+        if (!remoteTargetPath.getParent().equals(remoteJobWorkPath)) {
+            String remoteParentDirectory = remoteTargetPath.getParent().toString();
+            log.debug("Creating remote directory " + remoteParentDirectory + " prior to staging file " +
+                    remoteTargetPath.toString() + " for job " + getJob().getUuid());
+
+            try {
+                if (!getRemoteExecutionDataClient().doesExist(remoteParentDirectory)) {
+                    getRemoteExecutionDataClient().mkdirs(remoteParentDirectory);
+                }
+            } catch (IOException|RemoteDataException e) {
+                throw new JobException("Failed to create parent directories prior to staging file " +
+                        remoteTargetPath.toString() + " to remote job work directory.", e);
+            }
+        }
+        log.debug("Staging file " + filePathRelativeToRemoteJobDir + " for job " + getJob().getUuid());
+
+        try (RemoteOutputStream<?> remoteOutputStream =
+                     getRemoteExecutionDataClient().getOutputStream(remoteTargetPath.toString(), false, false);
+             OutputStreamWriter batchWriter = new OutputStreamWriter(remoteOutputStream);) {
+
+            batchWriter.write(content);
+
+            batchWriter.flush();
+        }
+        catch (IOException | RemoteDataException e) {
+            throw new JobException("Failed to stage file " + filePathRelativeToRemoteJobDir +
+                    " to remote job work directory ", e);
+        }
+    }
 
     /**
      * Creates a {@link TransferTask} to copy the tempAppDir contents to the job work directory and associates
@@ -683,7 +716,8 @@ public abstract class AbstractJobLauncher implements JobLauncher {
                 getRemoteExecutionDataClient().authenticate();
             }
 
-            log.debug("Staging " + getJob().getSoftwareName() + " app dependencies for job " + getJob().getUuid() + " to agave://" + getJob().getSystem() + "/" + getJob().getWorkPath());
+            log.debug("Staging " + getJob().getSoftwareName() + " app dependencies for job " + getJob().getUuid() +
+                    " to agave://" + getJob().getSystem() + "/" + getJob().getWorkPath());
             getRemoteExecutionDataClient().mkdirs(getJob().getWorkPath(), getJob().getOwner());
 
             checkStopped();
@@ -719,37 +753,27 @@ public abstract class AbstractJobLauncher implements JobLauncher {
      * This method creates a manifest file for the job work directory that contains all the file items that will be
      * present when the job starts. These file items will be ignored during archiving.
      *
-     * @param logFileName the name of the log file to create
-     * @return the local file created
+     * @return the newline separated manifest of existing files and folders
      * @throws JobException if the file cannot be created and opened
      */
-    protected File createArchiveLog(String logFileName) throws JobException {
+    protected String processJobArchiveManifest() throws JobException {
         step = "Creating an archive manifest file for job " + getJob().getUuid();
         log.debug(step);
 
-        FileWriter logWriter = null;
+        StringWriter archiveLogWriter = new StringWriter();
         try {
-            File archiveLog = new File(getTempAppDir(), logFileName);
-            if (archiveLog.createNewFile()) {
-                logWriter = new FileWriter(archiveLog);
+//            File archiveLog = new File(getTempAppDir(), logFileName);
+//            if (archiveLog.createNewFile()) {
+                printListing(getTempAppDir(), getTempAppDir(), archiveLogWriter);
 
-                printListing(getTempAppDir(), getTempAppDir(), logWriter);
-
-                return archiveLog;
-            } else {
-                throw new JobException("Failed to create manifest file for job " + getJob().getUuid());
-            }
+                return archiveLogWriter.toString();
+//            } else {
+//                throw new JobException("Failed to create manifest file for job " + getJob().getUuid());
+//            }
         } catch (IOException e) {
             String msg = "Failed to create manifest file for job " + getJob().getUuid();
             log.error(msg, e);
             throw new JobException(msg, e);
-        } finally {
-            try {
-                if (logWriter != null) {
-                    logWriter.close();
-                }
-            } catch (Exception ignored) {
-            }
         }
     }
 
@@ -757,10 +781,10 @@ public abstract class AbstractJobLauncher implements JobLauncher {
      * Generates recursive listing of file items relative to the given baseFolder.
      * @param file the file to explore
      * @param baseFolder the root of the original listing
-     * @param writer the {@link FileWriter} to where the file item should be written
+     * @param writer the {@link Writer} to where the file item should be written
      * @throws IOException if unable to write to the given writer
      */
-    protected void printListing(File file, File baseFolder, FileWriter writer) throws IOException {
+    protected void printListing(File file, File baseFolder, Writer writer) throws IOException {
         if (file.isFile()) {
             String relativeFilePath = StringUtils.removeStart(file.getPath(), baseFolder.getPath());
             if (relativeFilePath.startsWith("/"))

@@ -3,7 +3,6 @@ package org.iplantc.service.jobs.submission;
 import java.io.File;
 import java.net.URI;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -48,14 +47,19 @@ import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
+import org.mockito.ArgumentCaptor;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 public class AbstractJobSubmissionTest {
 
@@ -1013,9 +1017,12 @@ public class AbstractJobSubmissionTest {
 	throws Exception 
 	{
 		JobLauncher launcher = new JobLauncherFactory().getInstance(job);
-		File ipcexeFile = launcher.processApplicationTemplate();
-		String contents = FileUtils.readFileToString(ipcexeFile);
-		
-		Assert.assertTrue(contents.contains(expectedString), message);
+		String applicationWrapperContent = launcher.processApplicationWrapperTemplate();
+
+        Assert.assertTrue(applicationWrapperContent.contains(expectedString), message);
+//        ArgumentCaptor<String> wrapperTemplateContentCaptor = ArgumentCaptor.forClass(String.class);
+//        verify(launcher).writeWrapperTemplateToRemoteJobDir(eq(anyString()), wrapperTemplateContentCaptor.capture());
+//
+//        Assert.assertTrue(wrapperTemplateContentCaptor.getValue().contains(expectedString), message);
 	}
 }

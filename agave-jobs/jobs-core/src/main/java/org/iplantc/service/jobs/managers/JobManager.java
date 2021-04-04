@@ -200,13 +200,13 @@ public class JobManager {
         // trim to remove any spaces and ensure a non-null value
         remoteJobDirectoryPath = StringUtils.trimToEmpty(remoteJobDirectoryPath);
 
-        // strip trailing slash
-        if (remoteJobDirectoryPath.endsWith("/")) remoteJobDirectoryPath += "/";
+        // ensure trailing slash
+        remoteJobDirectoryPath = StringUtils.stripEnd(remoteJobDirectoryPath, "/");
 
         // create a unique job directory per job. We do not use another uuid here because we need
         // the job directory to be consistent between retries so we can save time by avoiding
         // restaging data.
-        remoteJobDirectoryPath += String.format("%s/job-%s-%s",
+        remoteJobDirectoryPath += String.format("/%s/job-%s-%s",
                 job.getOwner(), job.getUuid(), Slug.toSlug(job.getName()));
 
         return remoteJobDirectoryPath;
@@ -505,6 +505,7 @@ public class JobManager {
      * @throws StaleStateException when a concurrency issue prevents the job update
      */
     public static Job updateStatus(Job job, JobStatusType status, String eventMessage) throws JobException {
+
         job.setStatus(status, eventMessage);
 
         Date date = new DateTime().toDate();

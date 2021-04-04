@@ -70,9 +70,20 @@ public interface JobLauncher
 	 * callbacks, black and whitelist commands, etc. Resulting content is used to create the *.ipcexe file that will be staged
 	 * to the remote system and invoked to start the job.
 	 * @throws JobException
+     * @return
 	 */
-	public File processApplicationTemplate() throws JobException;
-	
+	public String processApplicationWrapperTemplate() throws JobException;
+
+	/**
+	 * Takes the content of the application wrapper and writes it to the remote system via an output stream to avoid
+	 * any platform-specific IO issues found during copy.
+	 *
+	 * @param filePathRelativeToRemoteJobDir the agave relative path where the app wrapper will be written
+	 * @param content the processed application wrapper template to be written
+	 * @throws JobException when unable to connect or write the content.
+	 */
+	public void writeToRemoteJobDir(String filePathRelativeToRemoteJobDir, String content) throws JobException;
+
 	/**
 	 * Resolves a input JSON value or JSON array of values into a serialized string of variables
 	 * adding in the appropriate argument value(s) and applying enquote as needed.

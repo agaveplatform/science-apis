@@ -97,23 +97,6 @@ func NewRemoteFileInfo(path string, fileInfo os.FileInfo) agaveproto.RemoteFileI
 	}
 }
 
-//func init() {
-//	// Open a log file to log the server
-//	f, err := os.OpenFile("sftp-relay.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-//	if err != nil {
-//		log.Fatalf("error opening file: %v", err)
-//	}
-//	wrt := io.MultiWriter(os.Stdout, f)
-//	log.SetOutput(wrt)
-//
-//	// Now set up the ssh connection pool
-//	AgentSocket, ok := os.LookupEnv("SSH_AUTH_SOCK")
-//	if !ok {
-//		log.Fatalln("Could not connect to SSH_AUTH_SOCK. Is ssh-agent running?")
-//	}
-//	log.Debugf("SSH_AUTH_SOCK = %v", AgentSocket)
-//}
-
 // sets the log level on the current logger of this relay instance
 func (s *Server) SetLogLevel(level logrus.Level) {
 	log.SetLevel(level)
@@ -182,6 +165,9 @@ func (s *Server) AuthCheck(ctx context.Context, req *agaveproto.AuthenticationCh
 		return &agaveproto.EmptyResponse{Error: err.Error()}, nil
 	}
 	defer closeSFTP()
+
+	//mctx, mcancel := mergeContext(ctx, s.gctx)
+	//defer mcancel() // so we don't leak, if neither client or server context cancels
 
 	// increment the request metric
 	authCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
@@ -551,19 +537,28 @@ func put(sftpClient *sftp.Client, localFilePath string, remoteFilePath string, f
 		defer localFile.Close()
 
 		log.Debugf("Opening remote destination file %s", remoteFilePath)
-		remoteFile, err := sftpClient.OpenFile(remoteFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
+		remoteFile, err := sftpClient.OpenFile(remoteFilePath, os.O_WRONLY|os.O_CREATE)
 		if err != nil {
 			log.Errorf("Error opening handle to dest file. %s. %v", remoteFilePath, err)
 			return agaveproto.TransferResponse{Error: err.Error()}
 		}
 		defer remoteFile.Close()
 
+		log.Debugf("Truncating remote destination file %s", remoteFilePath)
+		err = remoteFile.Truncate(0)
+		if err != nil {
+			log.Errorf("Error truncating dest file prior to write. %s. %v", remoteFilePath, err)
+			return agaveproto.TransferResponse{Error: err.Error()}
+		}
+
 		var bytesRead int64
 		// if there were no error opening the two files then process the file.
 
 		log.Debugf("Writing to remote file %s", remoteFilePath)
 		// this will write the file BufferSize blocks until EOF is returned.
+		//bytesRead, err = remoteFile.ReadFrom(localFile)
 		bytesRead, err = io.Copy(remoteFile, localFile)
+
 		//bytesRead, err = remoteFile.ReadFrom(localFile)
 		if err != nil {
 			log.Errorf("Error after writing %d byes to file %s: %v", bytesRead, remoteFilePath, err)
@@ -640,7 +635,7 @@ func mkdir(sftpClient *sftp.Client, remoteDirectoryPath string, recursive bool) 
 	}
 
 	// stat the remoete file to return the fileinfo data
-	log.Debugf("Checking existence of new directory %s" + remoteDirectoryPath)
+	log.Debugf("Checking existence of new directory %s", remoteDirectoryPath)
 	remoteFileInfo, err := sftpClient.Stat(remoteDirectoryPath)
 	if err != nil {
 		log.Errorf("Error verifying existence of remote directory %s: %s", remoteDirectoryPath, err.Error())
@@ -659,7 +654,7 @@ func stat(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoRespons
 	log.Trace("Stat (Stat) GRPC service function was invoked ")
 
 	// Stat the remote path
-	log.Debugf("Fetching file info for %s" + remotePath)
+	log.Debugf("Fetching file info for %s", remotePath)
 	remoteFileInfo, err := sftpClient.Stat(remotePath)
 	if err != nil {
 		log.Errorf("Unable to stat file %v", remotePath)
@@ -774,7 +769,7 @@ func list(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoListRes
 	log.Debugf("Fetching info for %s to determine listing behavior", remotePath)
 	remoteFileInfo, err := sftpClient.Stat(remotePath)
 	if err != nil {
-		log.Infof("Unable to stat file %s", remotePath)
+		log.Infof("Unable to stat %s", remotePath)
 		return agaveproto.FileInfoListResponse{Error: err.Error()}
 	}
 
@@ -804,7 +799,7 @@ func list(sftpClient *sftp.Client, remotePath string) agaveproto.FileInfoListRes
 			remoteFileInfoList[index] = &rfi
 		}
 	}
-	log.Debugf("Completed deleting remote file: %s", remotePath)
+	log.Debugf("Completed listing: %s", remotePath)
 
 	return agaveproto.FileInfoListResponse{
 		Listing: remoteFileInfoList,

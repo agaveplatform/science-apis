@@ -17,9 +17,10 @@
     <packaging>pom</packaging>
 
     <properties>
-        <grpc.version>1.23.0</grpc.version><!-- CURRENT_GRPC_VERSION -->
-        <protobuf.version>3.9.1</protobuf.version>
-        <protoc.version>3.9.1</protoc.version>
+        <grpc.version>1.24.0</grpc.version><!-- CURRENT_GRPC_VERSION -->
+        <protobuf.version>3.15.3</protobuf.version>
+        <protoc.version>3.10.0</protoc.version>
+        <protoc-gen-grpc-java.version>1.23.1</protoc-gen-grpc-java.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
 
     </properties>

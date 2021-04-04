@@ -43,5 +43,5 @@
 	"workDir": "/tmp",
 	"scheduler": "CONDOR",
 	"environment": "",
-	"startupScript": "./bashrc"
+	"startupScript": "~/.bashrc"
 }

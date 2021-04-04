@@ -49,5 +49,5 @@
   },
   "scheduler": "SLURM",
   "environment": "",
-  "startupScript": ".bashrc"
+  "startupScript": "~/.bashrc"
 }

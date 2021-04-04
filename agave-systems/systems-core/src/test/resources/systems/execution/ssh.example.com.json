@@ -48,5 +48,5 @@
 	},
 	"scheduler": "FORK",
 	"environment": "",
-	"startupScript": "./bashrc"
+	"startupScript": null
 }

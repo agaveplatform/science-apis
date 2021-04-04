@@ -43,5 +43,5 @@
   "workDir": "/tmp",
   "scheduler": "FORK",
   "environment": "",
-  "startupScript": "/home/testuser/.bashrc"
+  "startupScript": null
 }

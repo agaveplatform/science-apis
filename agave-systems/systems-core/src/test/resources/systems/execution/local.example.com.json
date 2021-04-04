@@ -26,5 +26,5 @@
 	},
 	"scheduler": "SGE",
 	"environment": "",
-	"startupScript": ".bashrc"
+	"startupScript": "~/.bashrc"
 }

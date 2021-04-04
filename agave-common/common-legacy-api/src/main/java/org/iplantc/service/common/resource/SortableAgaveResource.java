@@ -8,6 +8,7 @@ import org.iplantc.service.common.search.AgaveResourceResultOrdering;
 import org.iplantc.service.common.search.AgaveResourceSearchFilter;
 import org.iplantc.service.common.search.SearchTerm;
 import org.restlet.Context;
+import org.restlet.Restlet;
 import org.restlet.data.Form;
 import org.restlet.data.Request;
 import org.restlet.data.Response;
@@ -60,7 +61,7 @@ public abstract class SortableAgaveResource<T extends AgaveResourceSearchFilter>
 	        	}
 	        	catch (IllegalArgumentException e) {
 	        		throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                            "Invalid value for order. If specified, please provide one of: ASC, DESC");
+                            "Invalid value for order, \"" + sorder + "\". If specified, please provide one of: ASC, DESC");
 	        	}
 	        }
         }
@@ -93,7 +94,7 @@ public abstract class SortableAgaveResource<T extends AgaveResourceSearchFilter>
 	        	}
 	        	catch (Exception e) {
 	        		throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                            "Invalid value for orderBy. If specified, please provide a valid search field by which to sort.", e);
+                            "Invalid value for orderBy, \"" +  orderByQueryTerm + "\". If specified, please provide a valid search field by which to sort.", e);
 	        	}
 	        }
         }

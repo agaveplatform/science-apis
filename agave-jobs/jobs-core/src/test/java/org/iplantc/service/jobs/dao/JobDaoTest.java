@@ -13,8 +13,11 @@ import java.util.List;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.common.search.AgaveResourceResultOrdering;
+import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
+import org.iplantc.service.jobs.search.JobSearchFilter;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
@@ -271,4 +274,6 @@ public class JobDaoTest extends AbstractDaoTest {
 		Assert.assertTrue(job.getEvents().size() == 2, "Incorrect number of job events after adding status");
 		
 	}
+
+
 }

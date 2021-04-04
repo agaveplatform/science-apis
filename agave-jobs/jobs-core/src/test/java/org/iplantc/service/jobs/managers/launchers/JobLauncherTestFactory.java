@@ -21,6 +21,8 @@ public class JobLauncherTestFactory
     	HashSet<Object> testCases = new HashSet<Object>();
 
 //		testCases.add(new JobLauncherIT(ExecutionType.CLI, SchedulerType.FORK));
+//		testCases.add(new JobLauncherIT(ExecutionType.CONDOR, SchedulerType.CONDOR));
+//		testCases.add(new JobLauncherIT(ExecutionType.CONDOR, SchedulerType.FORK));
 
 		for (ExecutionType executionType: ExecutionType.values()) {
 			if (ExecutionType.ATMOSPHERE == executionType) continue;

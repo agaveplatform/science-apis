@@ -21,33 +21,30 @@ import java.util.regex.Pattern;
 public enum AgaveUriRegex {
 
     /**
-     * Represents all standard paths which imply relation to the user
-     * default {@link StorageSystem}. 
+     * Represents traditional unix file paths.
      */
     RELATIVE_PATH("([^\\?]*)([\\?]+.*)?"),
     
     /**
-     * Represents all custom Agave data URI. Hostname can be a 
-     * {@link RemoteSystem#systeId}
+     * Represents all custom Agave data URI. Hostname can be an valid system id
      */
     AGAVE_URI("(?:(?i)agave(?-i)\\://)([0-9a-zA-Z\\.\\-]{0,64})/([^\\?]*)([\\?]+.*)?"),
     
     /**
-     * Represents all urls to a {@link Job} output folder. This can change over 
+     * Represents all urls to a job output folder. This can change over
      * time, so using these convenience URL is helpful to prevent breaking links
      * and to enable late-binding of values.
      */
     JOBS_URI("([0-9a-f]+-[0-9a-f]+-[0-9]+-007)/outputs/(?:media|listings|pems|index|history)/([^\\?]*)([\\?]+.*)?"),
     
     /**
-     * Represents a url to the Files API with the {@link RemoteSystem#systeId} 
-     * explicitly included in the path.
+     * Represents a url to the Files API with the system id explicitly included in the path.
      */
     FILES_URI_CUSTOM_SYSTEM("(?:media|listings|pems|index|history)/system/([0-9a-zA-Z\\.\\-]{3,64})/([^\\?]*)([\\?]+.*)?"),
     
     /**
-     * Represents a url to the Files API without the {@link RemoteSystem#systemId} 
-     * included in the path. These links imply use of the user's default {@link StorageSystem}.
+     * Represents a url to the Files API without a RemoteSystem id included in the path. These links imply use of
+     * the user's default StorageSystem.
      */
     FILES_URI_DEFAULT_SYSTEM("(?:media|listings|pems|index|history)/([^\\?]*)([\\?]+.*)?"),
     
@@ -72,9 +69,9 @@ public enum AgaveUriRegex {
      * Checks to see if the given URI matches this {@link AgaveUriRegex} value
      * in the context of the current tenant.
      * 
-     * @see {@link #matches(String, String)} to match against a named tenant
-     * @param uri the url to check 
+     * @param uri the url to check
      * @return true if the {@code uri} matches any known regex, false otherwise
+     * @see #matches(URI, String) to match against a named tenant
      */
     public boolean matches(URI uri) {
         return matches(uri, null);
@@ -84,7 +81,7 @@ public enum AgaveUriRegex {
      * Checks to see if the given URI matches this {@link AgaveUriRegex} value
      * in the context of the current tenant.
      * 
-     * @param suri the url to check
+     * @param uri the uri to check
      * @param tenantId the tenant to check against. Defaults to current tenant if null 
      * @return true if the {@code uri} matches any known regex, false otherwise
      */
@@ -133,7 +130,7 @@ public enum AgaveUriRegex {
      * Checks to see if the given URI matches any {@link AgaveUriRegex} value
      * in the context of the current tenant.
      * 
-     * This falls back to the individual {@link #matches(String, String)} methods.
+     * This falls back to the individual {@link #matches(URI, String)} methods.
      * 
      * @param uri the uri to check 
      * @return true if the {@code uri} matches any known regex, false otherwise
@@ -146,7 +143,7 @@ public enum AgaveUriRegex {
      * Checks to see if the given URI matches any {@link AgaveUriRegex} value
      * in the context of the current tenant.
      * 
-     * This falls back to the individual {@link #matches(String, String)} methods.
+     * This falls back to the individual {@link #matches(URI, String)} methods.
      * 
      * @param uri the uri to check 
      * @param tenantId the tenant to check against. Defaults to current tenant if null
@@ -185,7 +182,7 @@ public enum AgaveUriRegex {
      * matcher.get(2); // path minus url query 
      * matcher.get(3); // url query path or null if none provided
      * </code></pre>
-     * Default {@link StorageSystem} and standard path URI have the
+     * Default StorageSystem and standard path URI have the
      * following, reduced structure in their {@link Matcher}.
      * <pre><code>
      * Matcher matcher = AgaveUriRegex.getMatcher(uri);

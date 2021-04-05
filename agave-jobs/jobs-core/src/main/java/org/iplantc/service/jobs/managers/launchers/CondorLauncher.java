@@ -594,8 +594,12 @@ public class CondorLauncher  extends AbstractJobLauncher {
                 throw new JobException(msg, e);
             }
 
-            // calculate remote job path if not already set
-            calculateRemoteJobPath();
+            // Calculate and sets the remote job path if not already set. This folder could not exist at this
+            // point if the job had no inputs to stage in. We create the directory here just to ensure it's
+            // present when we write the wrapper template
+            String remoteJobWorkPath = calculateRemoteJobPath();
+            createJobRemoteWorkPath(getExecutionSystem(), getRemoteExecutionDataClient(), remoteJobWorkPath);
+            getJob().setWorkPath(remoteJobWorkPath);
 
         	// this is used to set the tempAppDir identifier so that we can come back
             // later to find the directory when the job is done (Failed for cleanup or Successful for archiving)

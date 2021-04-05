@@ -201,13 +201,22 @@ public class JobManager {
         remoteJobDirectoryPath = StringUtils.trimToEmpty(remoteJobDirectoryPath);
 
         // ensure trailing slash
-        remoteJobDirectoryPath = StringUtils.stripEnd(remoteJobDirectoryPath, "/");
+        if (!remoteJobDirectoryPath.isEmpty()) {
+            remoteJobDirectoryPath = StringUtils.stripEnd(remoteJobDirectoryPath, "/") + "/";
+        }
 
         // create a unique job directory per job. We do not use another uuid here because we need
         // the job directory to be consistent between retries so we can save time by avoiding
         // restaging data.
-        remoteJobDirectoryPath += String.format("/%s/job-%s-%s",
+        remoteJobDirectoryPath += String.format("%s/job-%s-%s",
                 job.getOwner(), job.getUuid(), Slug.toSlug(job.getName()));
+
+        remoteJobDirectoryPath = remoteJobDirectoryPath.replaceAll("[/]+", "/");
+
+        // the job_dir column in the db has a 255 char limit.
+        if (remoteJobDirectoryPath.length() > 255) {
+            remoteJobDirectoryPath = remoteJobDirectoryPath.substring(0, 254);
+        }
 
         return remoteJobDirectoryPath;
     }

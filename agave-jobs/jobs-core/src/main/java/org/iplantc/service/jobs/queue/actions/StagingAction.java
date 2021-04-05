@@ -92,7 +92,7 @@ public class StagingAction extends AbstractWorkerAction {
 
             // calculate the job work directory. we do this here in the event the execution system
             // root, home, work, or scratch directories change between job request time and  input staging.
-            String remoteJobWorkPath = getJobManager().calculateJobRemoteWorkPath(getJob(), executionSystem);
+            String remoteJobWorkPath = calculateRemoteJobPath(executionSystem);
             createJobRemoteWorkPath(executionSystem, jobExecutionSystemRemoteDataClient, remoteJobWorkPath);
 
             getJob().setWorkPath(remoteJobWorkPath);
@@ -178,7 +178,7 @@ public class StagingAction extends AbstractWorkerAction {
         }
         catch (SystemUnknownException | MissingDataException e) {
             log.error(e.getMessage());
-            throw new JobDependencyException(e);
+            throw new JobDependencyException(e.getMessage(), e);
         }
         catch (PermissionException e) {
             String message = "User lacks permissions to access input for job " + getJob().getUuid() + ". " +
@@ -189,7 +189,7 @@ public class StagingAction extends AbstractWorkerAction {
         catch (AuthenticationException e) {
             log.error("Unable to authenticate to stage input file for job " + getJob().getUuid() + ". " +
                     e.getMessage());
-            throw new JobDependencyException(e);
+            throw new JobDependencyException(e.getMessage(), e);
         }
         catch (URISyntaxException e) {
             String message = "Invalid input url, " + e.getInput() + " provided as input for job " +
@@ -209,16 +209,16 @@ public class StagingAction extends AbstractWorkerAction {
         }
         catch (JobInputStagingException e) {
             log.error("Failed to create work directory for job " + getJob().getUuid(), e);
-            throw new JobException(e);
+            throw new JobException(e.getMessage(), e);
         }
         catch (TransferException | RemoteDataException e) {
             // these will be self-describing, non-fatal exceptions
             log.error(e.getMessage());
-            throw new JobException(e);
+            throw new JobException(e.getMessage(), e);
         }
         catch (Throwable e) {
             log.error("Failed to stage input for job " + getJob().getUuid(), e);
-            throw new JobException(e);
+            throw new JobException(e.getMessage(), e);
         }
         finally {
             if (jobInputRemoteDataClient != null) jobInputRemoteDataClient.disconnect();
@@ -233,6 +233,20 @@ public class StagingAction extends AbstractWorkerAction {
                 log.debug("Completed staging inputs for job " + getJob().getUuid() + " " + getJob().getName());
             }
         }
+    }
+
+    /**
+     * Calculates the job work path if not already set for the current job.
+     * @param executionSystem the {@link ExecutionSystem} on which the job will run
+     * @return the remote job work directory
+     * @see JobManager#calculateJobRemoteWorkPath(Job, ExecutionSystem)
+     */
+    protected String calculateRemoteJobPath(ExecutionSystem executionSystem) {
+        String remoteJobPath = getJob().getWorkPath();
+        if (StringUtils.isBlank(remoteJobPath)) {
+            remoteJobPath = getJobManager().calculateJobRemoteWorkPath(getJob(), executionSystem);
+        }
+        return remoteJobPath;
     }
 
     /**

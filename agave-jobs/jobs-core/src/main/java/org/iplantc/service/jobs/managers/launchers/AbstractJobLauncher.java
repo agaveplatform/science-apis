@@ -19,10 +19,7 @@ import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.exceptions.JobException;
-import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
-import org.iplantc.service.jobs.exceptions.SchedulerException;
-import org.iplantc.service.jobs.exceptions.SoftwareUnavailableException;
+import org.iplantc.service.jobs.exceptions.*;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
@@ -151,16 +148,36 @@ public abstract class AbstractJobLauncher implements JobLauncher {
     public abstract void launch() throws IOException, JobException, SoftwareUnavailableException, SchedulerException, SystemUnknownException, SystemUnavailableException;
 
     /**
-     * Sets the job work path if not already set for the current job. Does not persist the value.
-     * @throws JobException if the path is too long or null
+     * Calculates the job work path if not already set for the current job.
+     * @return the remote job work directory
+     * @see JobManager#calculateJobRemoteWorkPath(Job, ExecutionSystem)
      */
-    protected void calculateRemoteJobPath() throws JobException {
+    protected String calculateRemoteJobPath() {
+        String remoteJobPath = getJob().getWorkPath();
+        if (StringUtils.isBlank(remoteJobPath)) {
+            remoteJobPath = getJobManager().calculateJobRemoteWorkPath(getJob(), getExecutionSystem());
+        }
+        return remoteJobPath;
+    }
+
+    /**
+     * Creates the remote job work directory if not already present
+     * @param executionSystem the system on which the job will run
+     * @param jobExecutionSystemRemoteDataClient the client used to create the directory
+     * @param remoteJobDirectoryPath path to the job directory to create
+     * @throws JobException when unable to create the directory or connect to the system
+     */
+    protected void createJobRemoteWorkPath(ExecutionSystem executionSystem, RemoteDataClient jobExecutionSystemRemoteDataClient, String remoteJobDirectoryPath) throws JobException {
         try {
-            if (StringUtils.isBlank(getJob().getWorkPath())) {
-                getJob().setWorkPath(getJobManager().calculateJobRemoteWorkPath(getJob(), getExecutionSystem()));
-            }
-        } catch (Throwable t) {
-            throw new JobException("Unable to set remote work path.", t);
+            jobExecutionSystemRemoteDataClient.mkdirs(remoteJobDirectoryPath, getJob().getOwner());
+        } catch (RemoteDataException e) {
+            throw new JobException("Unable to create the remote job directory, " +
+                    remoteJobDirectoryPath + ", on " + executionSystem.getSystemId() +
+                    " for job " + getJob().getUuid() + ". Response from the server was: " + e.getMessage(), e);
+        } catch (IOException e) {
+            throw new JobException("Failed to connect to " + executionSystem.getSystemId() +
+                    " to create the remote job directory for job " + getJob().getUuid() +
+                    ". Response from server was: " + e.getMessage(), e);
         }
     }
 

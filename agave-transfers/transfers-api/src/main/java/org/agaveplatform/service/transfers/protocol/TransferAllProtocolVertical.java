@@ -20,12 +20,14 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.util.TimeZone;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
@@ -51,8 +53,12 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
 	@Override
 	public void start() {
+		DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
+		TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
+
 		EventBus bus = vertx.eventBus();
 		log.debug("Got into TransferAllProtocolVertical");
+
 
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
@@ -177,8 +183,10 @@ public class TransferAllProtocolVertical extends AbstractTransferTaskListener {
 
                 executor.executeBlocking(promise -> {
                 	String taskId = (tt.getRootTaskId() == null) ? tt.getUuid() : tt.getRootTaskId();
-                        getDbService().getByUuid(tt.getTenantId(), taskId, checkCancelled -> {
-                            if (checkCancelled.succeeded()){
+
+				getDbService().getByUuid(tt.getTenantId(), taskId, checkCancelled -> {
+
+							if (checkCancelled.succeeded()){
                                 TransferTask targetTransferTask = new TransferTask(checkCancelled.result());
                                 if (targetTransferTask.getStatus().isActive()){
                                     TransferTask resultingTransferTask = new TransferTask();

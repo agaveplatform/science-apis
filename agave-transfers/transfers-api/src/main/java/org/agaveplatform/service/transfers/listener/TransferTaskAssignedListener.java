@@ -21,6 +21,7 @@ import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +30,7 @@ import java.net.URI;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
@@ -55,6 +57,9 @@ public class TransferTaskAssignedListener extends AbstractTransferTaskListener {
 
     @Override
     public void start() {
+        DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
+
         // init our db connection from the pool
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);

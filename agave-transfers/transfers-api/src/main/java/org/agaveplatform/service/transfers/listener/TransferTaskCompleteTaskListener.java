@@ -11,12 +11,14 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
@@ -44,6 +46,9 @@ public class TransferTaskCompleteTaskListener extends AbstractTransferTaskListen
 
 	@Override
 	public void start() {
+		DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
+		TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
+
 		// init our db connection from the pool
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);

@@ -12,7 +12,6 @@ import io.vertx.ext.auth.jwt.JWTAuthOptions;
 import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.api.validation.HTTPRequestValidationHandler;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthHandlerImpl;
 import io.vertx.ext.web.handler.impl.AgaveJWTAuthProviderImpl;
@@ -21,20 +20,21 @@ import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.agaveplatform.service.transfers.model.TransferTaskRequest;
 import org.agaveplatform.service.transfers.model.TransferUpdate;
-import org.agaveplatform.service.transfers.util.AgaveSchemaFactory;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.agaveplatform.service.transfers.util.ServiceUtils;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.Settings;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
+import java.time.Instant;
 import java.util.List;
+import java.util.TimeZone;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_DB_QUEUE;
@@ -77,6 +77,9 @@ public class TransferAPIVertical extends AbstractVerticle {
 
     @Override
     public void start(Promise<Void> promise) {
+        DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
+
         // set the config from the main vertical
 
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE, TRANSFERTASK_DB_QUEUE); // <1>
@@ -265,6 +268,7 @@ public class TransferAPIVertical extends AbstractVerticle {
         // request body was validated prior to this method being called
 //        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
         TransferTask transferTask = new TransferTask();
+        transferTask.setCreated(Instant.now());
         transferTask.setTenantId(tenantId);
         transferTask.setOwner(username);
 

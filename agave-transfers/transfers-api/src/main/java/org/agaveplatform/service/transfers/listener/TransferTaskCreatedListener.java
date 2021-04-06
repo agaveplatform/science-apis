@@ -19,10 +19,12 @@ import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.util.TimeZone;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
@@ -47,6 +49,9 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
 
     @Override
     public void start() {
+        DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
+
         EventBus bus = vertx.eventBus();
 
         // init our db connection from the pool
@@ -205,6 +210,8 @@ public class TransferTaskCreatedListener extends AbstractTransferTaskListener {
             log.info("checking for interrupted before proceeding");
             log.info(" rootTaskID = {}", createdTransferTask.getRootTaskId() );
             log.info(" parentTaskID = {}", createdTransferTask.getParentTaskId() );
+
+
 
             // check to be sure that the root task or parent task are not null first
             //if (createdTransferTask.getRootTaskId() != null && createdTransferTask.getParentTaskId() != null) {

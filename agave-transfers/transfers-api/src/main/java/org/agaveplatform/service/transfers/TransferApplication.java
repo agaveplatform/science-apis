@@ -7,17 +7,12 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-
 import org.agaveplatform.service.transfers.listener.*;
 import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
-
-import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public class TransferApplication {
 
@@ -29,7 +24,8 @@ public class TransferApplication {
         Vertx vertx = Vertx.vertx();
 
         int poolSize = 10;
-        int instanceSize = 2;
+        int instanceSize = 50;
+        int dbInstanceSize = 10;
 
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
                 .setType("file")
@@ -53,7 +49,7 @@ public class TransferApplication {
                         .setConfig(config)
                         .setMaxWorkerExecuteTimeUnit(TimeUnit.MILLISECONDS)
                         .setMaxWorkerExecuteTime(500)
-                        .setInstances(instanceSize);
+                        .setInstances(dbInstanceSize);
 
                 Promise<String> dbVerticleDeployment = Promise.promise();
                 log.info("org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle");
@@ -189,7 +185,7 @@ public class TransferApplication {
                                     });
 
                             // Deploy the TransferErrorListener vertical
-                            vertx.deployVerticle("org.agaveplatform.service.transfers.listener.TransferErrorListener",
+                            vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorListener"
                                     localOptions, res11 -> {
                                         if (res11.succeeded()){
                                             System.out.println("TransferErrorListener Deployment id is " + res.result());

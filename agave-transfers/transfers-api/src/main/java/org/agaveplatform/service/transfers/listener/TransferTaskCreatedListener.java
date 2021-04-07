@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
+import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -22,6 +23,7 @@ import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,10 +31,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.TimeZone;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
 
 public class TransferTaskCreatedListener extends AbstractNatsListener {
@@ -56,6 +58,10 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
         //EventBus bus = vertx.eventBus();
+        DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
+        TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
+
+        EventBus bus = vertx.eventBus();
 
         // init our db connection from the pool
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);

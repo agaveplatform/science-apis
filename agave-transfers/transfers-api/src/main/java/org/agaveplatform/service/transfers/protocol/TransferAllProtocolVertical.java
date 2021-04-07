@@ -9,7 +9,6 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.listener.AbstractNatsListener;
-import org.agaveplatform.service.transfers.listener.AbstractTransferTaskListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang.NotImplementedException;
 import org.iplantc.service.common.exceptions.AgaveNamespaceException;
@@ -24,6 +23,7 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
 import org.iplantc.service.transfer.exceptions.TransferException;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,10 +32,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.TimeZone;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
 
 public class TransferAllProtocolVertical extends AbstractNatsListener {
@@ -61,6 +61,10 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 	@Override
 	public void start() throws IOException, InterruptedException, TimeoutException {
 		//EventBus bus = vertx.eventBus();
+		DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
+		TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
+
+		EventBus bus = vertx.eventBus();
 		log.debug("Got into TransferAllProtocolVertical");
 
 		// init our db connection from the pool

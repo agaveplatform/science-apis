@@ -7,7 +7,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
@@ -25,9 +24,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_SYNC;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskPausedListener extends AbstractNatsListener {
@@ -36,22 +33,36 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 
 	private TransferTaskDatabaseService dbService;
 	private List<TransferTask> ttTree = new ArrayList<TransferTask>();
-	public final Connection nc = _connect();
+	public Connection nc;
 
 	public TransferTaskPausedListener() throws IOException, InterruptedException {
 		super();
+		setConnection();
 	}
 	public TransferTaskPausedListener(Vertx vertx) throws IOException, InterruptedException {
 		this(vertx, null);
+		setConnection();
 	}
 	public TransferTaskPausedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super();
 		setVertx(vertx);
 		setEventChannel(eventChannel);
+		setConnection();
 	}
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
+	}
+
+	public Connection getConnection(){return nc;}
+
+	public void setConnection() throws IOException, InterruptedException {
+		try {
+			nc = _connect(CONNECTION_URL);
+		} catch (IOException e) {
+			//use default URL
+			nc = _connect();
+		}
 	}
 
 	@Override
@@ -63,7 +74,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 		//EventBus bus = vertx.eventBus();
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		//Connection nc = _connect();
-		Dispatcher d = nc.createDispatcher((msg) -> {});
+		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		Subscription s = d.subscribe(MessageType.TRANSFERTASK_PAUSED, msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -89,7 +100,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 			});
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PAUSED);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
 		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
@@ -111,7 +122,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 			});
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 	}
 

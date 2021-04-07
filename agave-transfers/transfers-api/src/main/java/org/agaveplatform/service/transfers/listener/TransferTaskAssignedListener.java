@@ -47,18 +47,38 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskAssignedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ASSIGNED;
     private TransferTaskDatabaseService dbService;
-    public final Connection nc = _connect();
+    public Connection nc;
 
-    public TransferTaskAssignedListener() throws IOException, InterruptedException {super();}
+    public TransferTaskAssignedListener() throws IOException, InterruptedException {
+        super();
+        setConnection();
+    }
+
     public TransferTaskAssignedListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
+        setConnection();
     }
+
     public TransferTaskAssignedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
+        setConnection();
     }
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
+    }
+
+    public Connection getConnection() {
+        return nc;
+    }
+
+    public void setConnection() throws IOException, InterruptedException {
+        try {
+            nc = _connect(CONNECTION_URL);
+        } catch (IOException e) {
+            //use default URL
+            nc = _connect(Options.DEFAULT_URL);
+        }
     }
 
     @Override
@@ -72,7 +92,8 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
 
         //EventBus bus = vertx.eventBus();
         //Connection nc = _connect();
-        Dispatcher d = nc.createDispatcher((msg) -> {});
+        Dispatcher d = getConnection().createDispatcher((msg) -> {
+        });
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         Subscription s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -111,7 +132,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             }
         });
         d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
         //d.unsubscribe(MessageType.TRANSFERTASK_ASSIGNED);
 
 
@@ -131,7 +152,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             }
         });
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
         //d.unsubscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
 
         s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -147,7 +168,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             }
         });
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
         //d.unsubscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
 
         s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
@@ -163,7 +184,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             }
         });
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
         //d.unsubscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
 
         s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -179,7 +200,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             }
         });
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
         //d.unsubscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
     }
 

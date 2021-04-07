@@ -2,12 +2,12 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
+import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 
 public class TransferTaskUpdateListener extends AbstractNatsListener {
     private final static Logger logger = LoggerFactory.getLogger(org.agaveplatform.service.transfers.listener.TransferTaskUpdateListener.class);
@@ -31,23 +30,37 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
 
     private TransferTaskDatabaseService dbService;
     protected List<String> parentList = new ArrayList();
-    public final Connection nc = _connect();
+    public Connection nc;
 
     public TransferTaskUpdateListener() throws IOException, InterruptedException {
         super();
+        setConnection();
     }
 
     public TransferTaskUpdateListener(Vertx vertx) throws IOException, InterruptedException {
         super();
         setVertx(vertx);
+        setConnection();
     }
 
     public TransferTaskUpdateListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
+        setConnection();
     }
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
+    }
+
+    public Connection getConnection(){return nc;}
+
+    public void setConnection() throws IOException, InterruptedException {
+        try {
+            nc = _connect(CONNECTION_URL);
+        } catch (IOException e) {
+            //use default URL
+            nc = _connect(Options.DEFAULT_URL);
+        }
     }
 
     @Override
@@ -59,7 +72,7 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
         //EventBus bus = vertx.eventBus();
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         //Connection nc = _connect();
-        Dispatcher d = nc.createDispatcher((msg) -> {});
+        Dispatcher d = getConnection().createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         Subscription s = d.subscribe(MessageType.TRANSFERTASK_UPDATED, msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -90,7 +103,7 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
             });
         });
         d.subscribe(MessageType.TRANSFERTASK_UPDATED);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
 
     }
 

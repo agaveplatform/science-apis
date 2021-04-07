@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.nats.client.Connection;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -58,16 +59,14 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
         doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
-//		when(listener.getRetryRequestManager()).thenCallRealMethod();
         doNothing().when(listener)._doPublishEvent(any(), any());
         doCallRealMethod().when(listener).processEvent(any(JsonObject.class), any());
-
         RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
-//		when(mockRetryRequestManager.getVertx()).thenReturn(vertx);
         doNothing().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
-
         when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
-
+        Connection connection = listener._connect();
+        when(listener.getConnection()).thenReturn(connection);
+        doNothing().when(listener).setConnection();
         return listener;
     }
 

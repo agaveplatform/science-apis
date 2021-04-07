@@ -1,7 +1,5 @@
 package org.agaveplatform.service.transfers.listener;
 
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
 import io.vertx.core.*;
 import io.vertx.core.impl.ConcurrentHashSet;
 import io.vertx.core.json.JsonObject;
@@ -12,15 +10,9 @@ import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
-
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.Channel;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
@@ -47,6 +39,9 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
         setVertx(vertx);
         setEventChannel(eventChannel);
     }
+
+    public ConcurrentHashSet<String> getCancelledTasks() {return cancelledTasks;}
+    public ConcurrentHashSet<String> getPausedTasks() {return pausedTasks;}
 
     /**
      * Overriding the parent with a null safe check for the verticle context
@@ -154,8 +149,8 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param uuid the cancelled task uuid
      */
     public synchronized void addCancelledTask(String uuid) {
-        cancelledTasks.add(uuid);
-        cancelledTasks.contains(uuid);
+        getCancelledTasks().add(uuid);
+        getCancelledTasks().contains(uuid);
     }
 
     /**
@@ -164,7 +159,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @return true if the uuid existed and was removed, false otherwise
      */
     public synchronized boolean removeCancelledTask(String uuid) {
-        return cancelledTasks.remove(uuid);
+        return getCancelledTasks().remove(uuid);
     }
 
     /**
@@ -172,7 +167,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param uuid the cancelled task uuid
      */
     public synchronized void addPausedTask(String uuid) {
-        pausedTasks.add(uuid);
+        getPausedTasks().add(uuid);
     }
 
     /**
@@ -180,7 +175,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @param uuid then
     */
     public synchronized boolean checkPausedTask(String uuid) {
-       return pausedTasks.contains(uuid);
+       return getPausedTasks().contains(uuid);
     }
 
     /**
@@ -189,7 +184,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
      * @return true if the uuid existed and was removed, false otherwise
      */
     public synchronized boolean removePausedTask(String uuid) {
-        return pausedTasks.remove(uuid);
+        return getPausedTasks().remove(uuid);
     }
 
 
@@ -246,7 +241,7 @@ public abstract class AbstractTransferTaskListener extends AbstractVerticle {
         try {
             if (transferTask.getParentTaskId() != null && transferTask.getRootTaskId() != null) {
                 final List<String> uuids = List.of(transferTask.getUuid(), transferTask.getParentTaskId(), transferTask.getRootTaskId());
-                if (cancelledTasks.stream().anyMatch(uuids::contains) || pausedTasks.stream().anyMatch(uuids::contains)) {
+                if (getCancelledTasks().stream().anyMatch(uuids::contains) || getPausedTasks().stream().anyMatch(uuids::contains)) {
 
                     String msg = "Transfer was Canceled or Paused";
                     logger.info("Transfer task {} interrupted due to cancel event", transferTask.getUuid());

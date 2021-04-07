@@ -11,20 +11,17 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.globus.ftp.app.Transfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.CANCELED_ERROR;
 
@@ -33,26 +30,38 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
 
     private TransferTaskDatabaseService dbService;
     protected List<String> parentList = new ArrayList<String>();
-    public final Connection nc = _connect();
+    public Connection nc;
     protected static final String EVENT_CHANNEL = TRANSFERTASK_HEALTHCHECK_PARENT;
 
     public TransferTaskHealthcheckParentListener() throws IOException, InterruptedException {
         super();
+        setConnection();
     }
 
     public TransferTaskHealthcheckParentListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
+        setConnection();
     }
 
     public TransferTaskHealthcheckParentListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
+        setConnection();
     }
 
     public String getDefaultEventChannel() {
         return this.EVENT_CHANNEL;
     }
 
+    public Connection getConnection(){return nc;}
 
+    public void setConnection() throws IOException, InterruptedException {
+        try {
+            nc = _connect(CONNECTION_URL);
+        } catch (IOException e) {
+            //use default URL
+            nc = _connect();
+        }
+    }
 
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
@@ -65,7 +74,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
         // before its transfertask_completed event was received.
         //getVertx().eventBus().<JsonObject>consumer(TRANSFERTASK_HEALTHCHECK_PARENT, msg -> {
         //Connection nc = _connect();
-        Dispatcher d = nc.createDispatcher((msg) -> {});
+        Dispatcher d = getConnection().createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         Subscription s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -76,7 +85,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
             String dest = body.getString("dest");
            // msg.reply(TransferTaskHealthcheckParentListener.class.getName() + " received.");
 
-            String id = body.getString("id");
+            String id = body.getValue("id").toString();
             logger.info("Performing healthcheck parent on transfer tasks ");
 
             processChildrenActiveAndExceedTimeEvent(body, resp -> {
@@ -88,7 +97,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
             });
         });
         d.subscribe(MessageType.TRANSFERTASK_ASSIGNED);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
 
     }
 
@@ -105,39 +114,46 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
 
         logger.info("getDbService.getAllParentsCanceledOrCompleted result: {} , id:{}", body, id);
 
-        getDbService().updateById(id, CANCELED_ERROR.name(), updateStatus -> {
-            logger.trace("Got into getDBService.updateStatus(complete) ");
-            if (updateStatus.succeeded()) {
-                TransferTask transferTask = new TransferTask(updateStatus.result());
-                logger.info("[{}] Transfer task {} updated to completed.", transferTask.getTenantId(), transferTask.getUuid());
-                //parentList.remove(uuid);
-                try {
-                    _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
-                    //promise.handle(Future.succeededFuture(Boolean.TRUE));
-                } catch (IOException e) {
-                    logger.debug(e.getMessage());
-                } catch (InterruptedException e) {
-                    logger.debug(e.getMessage());
-                }
-            } else {
-                logger.error("[{}] Task completed, but unable to update status: {}",
-                        id, updateStatus.cause());
+        TransferTask parentTransferTask = new TransferTask(body);
+        if (parentTransferTask.getRootTaskId() == null && parentTransferTask.getParentTaskId() == null){
+            //this is the root task - don't cancel yet
+            logger.debug("Do not timeout the root task, individual transfers shouldn't take as long but the root task " +
+                    "has to wait for all children to finish which may take longer");
+        } else {
+            getDbService().updateById(id, CANCELED_ERROR.name(), updateStatus -> {
+                logger.trace("Got into getDBService.updateStatus(complete) ");
+                if (updateStatus.succeeded()) {
+                    TransferTask transferTask = new TransferTask(updateStatus.result());
+                    logger.info("[{}] Transfer task {} updated to completed.", transferTask.getTenantId(), transferTask.getUuid());
+                    //parentList.remove(uuid);
+                    try {
+                        _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
+                        //promise.handle(Future.succeededFuture(Boolean.TRUE));
+                    } catch (IOException e) {
+                        logger.debug(e.getMessage());
+                    } catch (InterruptedException e) {
+                        logger.debug(e.getMessage());
+                    }
+                } else {
+                    logger.error("[{}] Task completed, but unable to update status: {}",
+                            id, updateStatus.cause());
 //                            logger.error("[{}] Task {} completed, but unable to update status: {}",
 //                                    tenantId, uuid, reply.cause());
-                JsonObject json = new JsonObject()
-                        .put("cause", updateStatus.cause().getClass().getName())
-                        .put("message", updateStatus.cause().getMessage())
-                        .mergeIn(body);
-                try {
-                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                    //promise.handle(Future.failedFuture(updateStatus.cause()));
-                } catch (IOException e) {
-                    logger.debug(e.getMessage());
-                } catch (InterruptedException e) {
-                    logger.debug(e.getMessage());
+                    JsonObject json = new JsonObject()
+                            .put("cause", updateStatus.cause().getClass().getName())
+                            .put("message", updateStatus.cause().getMessage())
+                            .mergeIn(body);
+                    try {
+                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+                        //promise.handle(Future.failedFuture(updateStatus.cause()));
+                    } catch (IOException e) {
+                        logger.debug(e.getMessage());
+                    } catch (InterruptedException e) {
+                        logger.debug(e.getMessage());
+                    }
                 }
-            }
-        });
+            });
+        }
 
         handler.handle(Future.succeededFuture(true));
     }

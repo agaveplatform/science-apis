@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.nats.client.Connection;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -49,7 +50,11 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).processEvent(any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
-
+		Connection connection = listener._connect();
+		when(listener.getConnection()).thenReturn(connection);
+		doNothing().when(listener).setConnection();
+		doCallRealMethod().when(listener).addCancelledTask(anyString());
+		doCallRealMethod().when(listener).addPausedTask(anyString());
 		return listener;
 	}
 
@@ -172,7 +177,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
-		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
+		TransferTaskCreatedListener ta = new TransferTaskCreatedListener(vertx);
 
 		ctx.verify(() -> {
 			ta.addCancelledTask(tt.getUuid());

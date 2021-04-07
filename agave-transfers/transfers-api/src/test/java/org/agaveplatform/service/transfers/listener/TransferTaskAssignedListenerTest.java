@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
+import io.nats.client.Connection;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -74,6 +75,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		doNothing().when(mockRetryRequestManager).request(anyString(),any(JsonObject.class),anyInt());
 
 		when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
+		Connection connection = listener._connect();
+		when(listener.getConnection()).thenReturn(connection);
+		doNothing().when(listener).setConnection();
 
 		return listener;
 	}

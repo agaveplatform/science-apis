@@ -3,8 +3,10 @@ package org.agaveplatform.service.transfers.listener;
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import io.nats.client.Subscription;
-import io.vertx.core.*;
-import io.vertx.core.eventbus.EventBus;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
@@ -20,26 +22,41 @@ import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 
 public class TransferTaskErrorFailureHandler extends AbstractNatsListener implements Handler<RoutingContext> {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskErrorFailureHandler.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_FAILED;
 
 	private TransferTaskDatabaseService dbService;
-	public final Connection nc = _connect();
-	public TransferTaskErrorFailureHandler() throws IOException, InterruptedException { super(); }
+	public Connection nc;
+	public TransferTaskErrorFailureHandler() throws IOException, InterruptedException {
+		super();
+		setConnection();
+	}
 
 	public TransferTaskErrorFailureHandler(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
+		setConnection();
 	}
 
 	public TransferTaskErrorFailureHandler(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
+		setConnection();
 	}
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
+	}
+
+	public Connection getConnection(){return nc;}
+
+	public void setConnection() throws IOException, InterruptedException {
+		try {
+			nc = _connect(CONNECTION_URL);
+		} catch (IOException e) {
+			//use default URL
+			nc = _connect();
+		}
 	}
 
 	public void handle(RoutingContext context){
@@ -63,7 +80,7 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 		//final String err ;
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		//Connection nc = _connect();
-		Dispatcher d = nc.createDispatcher((msg) -> {});
+		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		Subscription s = d.subscribe(MessageType.TRANSFER_FAILED, msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -91,7 +108,7 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 			});
 		});
 		d.subscribe(MessageType.TRANSFER_FAILED);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 		//d.unsubscribe(EVENT_CHANNEL);
 	}
 

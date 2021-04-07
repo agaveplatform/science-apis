@@ -15,10 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.MAX_TIME_FOR_HEALTHCHECK;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.MAX_TIME_FOR_HEALTHCHECK_PARENT;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
 
@@ -40,9 +37,19 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 	public TransferTaskWatchListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
 	}
-	public final Connection nc = _connect();
+	public Connection nc;
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
+	}
+	public Connection getConnection(){return nc;}
+
+	public void setConnection() throws IOException, InterruptedException {
+		try {
+			nc = _connect(CONNECTION_URL);
+		} catch (IOException e) {
+			//use default URL
+			nc = _connect();
+		}
 	}
 
 	@Override

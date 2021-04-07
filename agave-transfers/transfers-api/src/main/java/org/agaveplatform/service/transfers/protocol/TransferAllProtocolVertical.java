@@ -45,18 +45,32 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 
 	public TransferAllProtocolVertical() throws IOException, InterruptedException {
 		super();
+		setConnection();
 	}
 	public TransferAllProtocolVertical(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
+		setConnection();
 	}
 	public TransferAllProtocolVertical(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
+		setConnection();
 	}
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
 	}
-	public Connection nc = _connect();
+	public Connection nc;
+
+	public Connection getConnection(){return nc;}
+
+	public void setConnection() throws IOException, InterruptedException {
+		try {
+			nc = _connect();
+		} catch (IOException e) {
+			//use default URL
+			nc = _connect(CONNECTION_URL);
+		}
+	}
 
 	@Override
 	public void start() throws IOException, InterruptedException, TimeoutException {
@@ -73,7 +87,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		//Connection nc = _connect();
-		Dispatcher d = nc.createDispatcher((msg) -> {});
+		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		Subscription s = d.subscribe(MessageType.TRANSFER_ALL, msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -94,7 +108,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			});
 		});
 		d.subscribe(MessageType.TRANSFER_ALL);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 
 		// cancel tasks
@@ -112,7 +126,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 
 
@@ -130,7 +144,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 
         // paused tasks
@@ -148,7 +162,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 
 
@@ -166,7 +180,7 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 
 	}

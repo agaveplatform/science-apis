@@ -32,6 +32,8 @@ import org.iplantc.service.common.Settings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.HashMap;
 
 /**
@@ -126,6 +128,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     JsonArray data = new JsonArray()
             .add(tenantId)
             .add(uuid);
+    Instant currentTime = Instant.now();
 
     dbClient.updateWithParams(sqlQueries.get(SqlQuery.SET_TRANSFERTASK_CANCELLED_WHERE_NOT_COMPLETED), data, res -> {
       if (res.succeeded()) {
@@ -401,16 +404,19 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
         final JsonArray data = new JsonArray()
                 .add(transferTask.getAttempts())
                 .add(transferTask.getBytesTransferred())
-                .add(transferTask.getCreated())
+//                .add(transferTask.getCreated())
+                .add((transferTask.getCreated() != null) ? Timestamp.from(transferTask.getCreated()).toString(): transferTask.getCreated())
                 .add(transferTask.getDest())
-                .add(transferTask.getEndTime())
+//                .add(transferTask.getEndTime())
+                .add((transferTask.getEndTime() != null) ? Timestamp.from(transferTask.getEndTime()).toString() : transferTask.getEndTime())
                 .add(transferTask.getEventId())
                 .add(transferTask.getLastUpdated())
                 .add(transferTask.getLastAttempt())
                 .add(transferTask.getNextAttempt())
                 .add(transferTask.getOwner())
                 .add(transferTask.getSource())
-                .add(transferTask.getStartTime())
+//                .add(transferTask.getStartTime())
+                .add((transferTask.getStartTime() != null) ? Timestamp.from(transferTask.getStartTime()).toString() : transferTask.getStartTime())
                 .add(transferTask.getStatus().name())
                 .add(tenantId)
                 .add(transferTask.getTotalSize())
@@ -420,14 +426,14 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
                 .add(transferTask.getUuid())
                 .add(transferTask.getTotalFiles())
                 .add(transferTask.getTotalSkippedFiles());
-        dbClient.updateWithParams(sqlQueries.get(SqlQuery.CREATE_TRANSFERTASK), data, res -> {
+      dbClient.updateWithParams(sqlQueries.get(SqlQuery.CREATE_TRANSFERTASK), data, res -> {
             if (res.succeeded()) {
                 JsonArray params = new JsonArray()
                         .add(transferTask.getUuid())
                         .add(tenantId);
                 dbClient.queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
                     if (ar.succeeded()) {
-                        if (ar.result().getRows().size() > 0) {
+                      if (ar.result().getRows().size() > 0) {
                             resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
                         } else {
                             LOGGER.error("Failed to fetch new transfer task record after insert, no matching transfer task {} found", transferTask.getUuid());
@@ -461,11 +467,20 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     JsonArray data = new JsonArray()
             .add(statusChangeTo)
             .add(id);
-    dbClient.getConnection(conn -> {
+      dbClient.getConnection(conn -> {
       conn.result().setAutoCommit(false, res -> {
         if (res.failed()) {
-          conn.result().close();
-          throw new RuntimeException(res.cause());
+          conn.result().rollback(rollback -> {
+            if (rollback.failed()) {
+              LOGGER.error("Failed to set autocommit to false before updating transfer task record {}. Database rollback failed. Data may be corrupted.", id, rollback.cause());
+              throw new RuntimeException(rollback.cause());
+            } else {
+              LOGGER.error("Failed to set autocommit to false before updating transfer task record {}. Database rollback succeeded.", id, res.cause());
+              throw new RuntimeException(res.cause());
+            }
+          });
+//          conn.result().close();
+//          throw new RuntimeException(res.cause());
         }
 
         conn.result().updateWithParams(sqlQueries.get(SqlQuery.CANCEL_TRANSFERTASK_BY_ID), data, update -> {
@@ -518,8 +533,10 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
     JsonArray data = new JsonArray()
             .add(transferTask.getAttempts())
             .add(transferTask.getBytesTransferred())
-            .add(transferTask.getEndTime())
-            .add(transferTask.getStartTime())
+//            .add(transferTask.getEndTime())
+            .add((transferTask.getEndTime() != null) ? Timestamp.from(transferTask.getEndTime()).toString() : transferTask.getEndTime())
+//            .add(transferTask.getStartTime())
+            .add((transferTask.getStartTime() != null) ? Timestamp.from(transferTask.getStartTime()).toString() : transferTask.getStartTime())
             .add(transferTask.getLastAttempt())
             .add(transferTask.getNextAttempt())
             .add(transferTask.getStatus())
@@ -529,48 +546,48 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(transferTask.getTotalSkippedFiles())
             .add(uuid)
             .add(tenantId);
-    dbClient.getConnection(conn -> {
+      dbClient.getConnection(conn -> {
       conn.result().setAutoCommit(false, res -> {
         if (res.failed()) {
           conn.result().close();
           throw new RuntimeException(res.cause());
         }
 
-        conn.result().updateWithParams(sqlQueries.get(SqlQuery.SAVE_TRANSFERTASK), data, update -> {
-          if (update.succeeded()) {
-            conn.result().commit(commit -> {
-              if (commit.failed()) {
-                conn.result().rollback(rollback -> {
-                  if (res.failed()) {
-                    LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", uuid, rollback.cause());
-                    resultHandler.handle(Future.failedFuture(rollback.cause()));
-                    conn.result().close();
-                  } else {
-                    LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", uuid, commit.cause());
-                    resultHandler.handle(Future.failedFuture(commit.cause()));
-                    conn.result().close();
-                  }
-                });
-              } else {
-                JsonArray params = new JsonArray().add(uuid).add(tenantId);
-                conn.result().queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
-                  if (ar.succeeded()) {
-                    resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
-                    conn.result().close();
-                  } else {
-                    LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", uuid, ar.cause());
-                    resultHandler.handle(Future.failedFuture(ar.cause()));
-                    conn.result().close();
-                  }
-                });
-              }
-            });
-          } else {
-            LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
-            resultHandler.handle(Future.failedFuture(update.cause()));
-            conn.result().close();
-          }
-        });
+          conn.result().updateWithParams(sqlQueries.get(SqlQuery.SAVE_TRANSFERTASK), data, update -> {
+            if (update.succeeded()) {
+              conn.result().commit(commit -> {
+                if (commit.failed()) {
+                  conn.result().rollback(rollback -> {
+                    if (res.failed()) {
+                      LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", uuid, rollback.cause());
+                      resultHandler.handle(Future.failedFuture(rollback.cause()));
+                      conn.result().close();
+                    } else {
+                      LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", uuid, commit.cause());
+                      resultHandler.handle(Future.failedFuture(commit.cause()));
+                      conn.result().close();
+                    }
+                  });
+                } else {
+                  JsonArray params = new JsonArray().add(uuid).add(tenantId);
+                    conn.result().queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK), params, ar -> {
+                    if (ar.succeeded()) {
+                      resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                      conn.result().close();
+                    } else {
+                      LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", uuid, ar.cause());
+                      resultHandler.handle(Future.failedFuture(ar.cause()));
+                      conn.result().close();
+                    }
+                  });
+                }
+              });
+            } else {
+              LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
+              resultHandler.handle(Future.failedFuture(update.cause()));
+              conn.result().close();
+            }
+          });
       });
     });
     return this;
@@ -593,7 +610,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
             .add(src)
             .add(dest)
             .add(tenantId);
-    dbClient.queryWithParams(sqlQueries.get(SqlQuery.FIND_TRANSFERTASK_BY_ROOT_TASK_ID_SRC_DEST), data, fetch -> {
+      dbClient.queryWithParams(sqlQueries.get(SqlQuery.FIND_TRANSFERTASK_BY_ROOT_TASK_ID_SRC_DEST), data, fetch -> {
       if (fetch.succeeded()) {
         ResultSet resultSet = fetch.result();
         if (resultSet.getNumRows() == 0) {
@@ -620,7 +637,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
    */
   @Override
   public TransferTaskDatabaseService createOrUpdateChildTransferTask(String tenantId, TransferTask childTransferTask, Handler<AsyncResult<JsonObject>> resultHandler) {
-    findChildTransferTask(tenantId, childTransferTask.getRootTaskId(), childTransferTask.getSource(), childTransferTask.getDest(), fetch -> {
+      findChildTransferTask(tenantId, childTransferTask.getRootTaskId(), childTransferTask.getSource(), childTransferTask.getDest(), fetch -> {
       if (fetch.succeeded()) {
         // no match. we need to create a new TransferTask
         if (fetch.result() == null) {
@@ -734,7 +751,7 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
   public TransferTaskDatabaseService cancelAll(String tenantId, Handler<AsyncResult<Void>> resultHandler) {
     JsonArray data = new JsonArray()
             .add(tenantId);
-    dbClient.updateWithParams(sqlQueries.get(SqlQuery.CANCEL_ALL_TRANSFERTASKS), data, res -> {
+      dbClient.updateWithParams(sqlQueries.get(SqlQuery.CANCEL_ALL_TRANSFERTASKS), data, res -> {
       if (res.succeeded()) {
         resultHandler.handle(Future.succeededFuture());
       } else {

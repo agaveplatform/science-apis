@@ -5,11 +5,8 @@ import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import io.nats.client.Subscription;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageContext;
@@ -21,27 +18,43 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
-
 
 public class TransferTaskNotificationListener extends AbstractNatsListener {
 	private static final Logger logger = LoggerFactory.getLogger(TransferTaskNotificationListener.class);
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_NOTIFICATION ;
 
 	protected String eventChannel;
+    public Connection nc;
 
-	public TransferTaskNotificationListener() throws IOException, InterruptedException { super(); }
+	public TransferTaskNotificationListener() throws IOException, InterruptedException {
+	    super();
+        setConnection();
+	}
+
 	public TransferTaskNotificationListener(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
-	}
+        setConnection();
+    }
+
 	public TransferTaskNotificationListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
-	}
-    public final Connection nc = _connect();
+        setConnection();
+    }
+
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
 	}
+
+    public Connection getConnection(){return nc;}
+
+    public void setConnection() throws IOException, InterruptedException {
+        try {
+            nc = _connect(CONNECTION_URL);
+        } catch (IOException e) {
+            //use default URL
+            nc = _connect();
+        }
+    }
 
 	@Override
 	public void start() throws IOException, InterruptedException, TimeoutException {
@@ -50,7 +63,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 		// poc listener to show propagated notifications that woudl be sent to users
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
         //Connection nc = _connect();
-        Dispatcher d = nc.createDispatcher((msg) -> {});
+        Dispatcher d = getConnection().createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         Subscription s = d.subscribe(MessageType.TRANSFERTASK_NOTIFICATION, msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -90,7 +103,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 			}
 		});
         d.subscribe(MessageType.TRANSFERTASK_NOTIFICATION);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
         s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -115,7 +128,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             }
 		});
         d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
 
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_FINISHED, msg -> {
@@ -140,7 +153,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             }
 		});
         d.subscribe(MessageType.TRANSFERTASK_FINISHED);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
 
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -158,7 +171,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             logger.info("Transfer task {} created.", body.getString("uuid"));
         });
         d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
 
 
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
@@ -176,7 +189,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             logger.info("Transfer task {} created.", body.getString("uuid"));
         });
         d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
 
     }
 

@@ -7,7 +7,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
@@ -24,7 +23,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 
 public class TransferTaskErrorListener extends AbstractNatsListener {
@@ -32,6 +32,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ERROR;
 
 	protected String eventChannel = MessageType.TRANSFERTASK_ERROR;
+	private Connection nc;
 
 	protected static final List<String> RECOVERABLE_EXCEPTION_CLASS_NAMES = List.of(
 			RemoteDataException.class.getName(), // failure to connect to remote system warrants a retry
@@ -39,20 +40,37 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 			InterruptedException.class.getName() // interrupted tasks warrant a retry as it may have been due to a worker shutdown.
 	);
 
-	public TransferTaskErrorListener() throws IOException, InterruptedException { super(); }
+	public TransferTaskErrorListener() throws IOException, InterruptedException {
+		super();
+		setConnection();
+	}
+
 	public TransferTaskErrorListener(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
+		setConnection();
 	}
+
 	public TransferTaskErrorListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
+		setConnection();
 	}
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
 	}
 
+	public Connection getConnection(){return nc;}
+
+	public void setConnection() throws IOException, InterruptedException {
+		try {
+			nc = _connect(CONNECTION_URL);
+		} catch (IOException e) {
+			//use default URL
+			nc = _connect();
+		}
+	}
+
 	private TransferTaskDatabaseService dbService;
-	private Connection nc = _connect();
 	@Override
 	public void start() throws IOException, InterruptedException, TimeoutException {
 		//EventBus bus = vertx.eventBus();
@@ -60,7 +78,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 		//final String err ;
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		//Connection nc = _connect();
-		Dispatcher d = nc.createDispatcher((msg) -> {});
+		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		Subscription s = d.subscribe(MessageType.TRANSFERTASK_ERROR, msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -107,7 +125,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
             }
         });
 		d.subscribe(MessageType.TRANSFERTASK_ERROR);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
 		s = d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
@@ -119,7 +137,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 					body.getString("uuid"), body.getString("parentTaskId"), body.getString("cause"), body.getString("message"));
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 		//d.unsubscribe(MessageType.TRANSFERTASK_PARENT_ERROR);
 	}
 

@@ -2,12 +2,12 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
+import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.RETRYING;
 
@@ -47,22 +46,36 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFER_RETRY;
 
 	private TransferTaskDatabaseService dbService;
-	public final Connection nc = _connect();
+	public Connection nc;
 
 	public TransferTaskRetryListener() throws IOException, InterruptedException {
 		super();
+		setConnection();
 	}
 
 	public TransferTaskRetryListener(Vertx vertx) throws IOException, InterruptedException {
 		super(vertx);
+		setConnection();
 	}
 
 	public TransferTaskRetryListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
 		super(vertx, eventChannel);
+		setConnection();
 	}
 
 	public String getDefaultEventChannel() {
 		return EVENT_CHANNEL;
+	}
+
+	public Connection getConnection(){return nc;}
+
+	public void setConnection() throws IOException, InterruptedException {
+		try {
+			nc = _connect(CONNECTION_URL);
+		} catch (IOException e) {
+			//use default URL
+			nc = _connect(Options.DEFAULT_URL);
+		}
 	}
 
 	@Override
@@ -75,7 +88,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 		//EventBus bus = vertx.eventBus();
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		//Connection nc = _connect();
-		Dispatcher d = nc.createDispatcher((msg) -> {});
+		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		Subscription s = d.subscribe(MessageType.TRANSFER_RETRY, msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -126,7 +139,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFER_RETRY);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 
 		// cancel tasks
@@ -146,7 +159,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
 		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
@@ -162,7 +175,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 		// paused tasks
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
@@ -179,7 +192,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
@@ -195,7 +208,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 			}
 		});
 		d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-		nc.flush(Duration.ofMillis(500));
+		getConnection().flush(Duration.ofMillis(500));
 
 
 	}

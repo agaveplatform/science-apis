@@ -267,6 +267,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
         // request body was validated prior to this method being called
 //        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
         TransferTask transferTask = new TransferTask();
+        transferTask.setCreated(Instant.now());
         transferTask.setTenantId(tenantId);
         transferTask.setOwner(username);
 

@@ -4,7 +4,6 @@ import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import io.nats.client.Subscription;
 import io.vertx.core.*;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
@@ -23,10 +22,9 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_SYNC;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_DELETED;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
-import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.FAILED;
 
 public class TransferTaskDeletedListener extends AbstractNatsListener {
     private static final Logger logger = LoggerFactory.getLogger(TransferTaskDeletedListener.class);
@@ -34,19 +32,33 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
 
     private TransferTaskDatabaseService dbService;
     private List<TransferTask> ttTree = new ArrayList<TransferTask>();
-    public final Connection nc = _connect();
+    public Connection nc;
     public TransferTaskDeletedListener() throws IOException, InterruptedException {
         super();
+        setConnection();
     }
     public TransferTaskDeletedListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
+        setConnection();
     }
     public TransferTaskDeletedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
+        setConnection();
     }
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
+    }
+
+    public Connection getConnection(){return nc;}
+
+    public void setConnection() throws IOException, InterruptedException {
+        try {
+            nc = _connect(CONNECTION_URL);
+        } catch (IOException e) {
+            //use default URL
+            nc = _connect();
+        }
     }
 
     @Override
@@ -56,7 +68,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         //Connection nc = _connect();
-        Dispatcher d = nc.createDispatcher((msg) -> {});
+        Dispatcher d = getConnection().createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
         Subscription s = d.subscribe(getEventChannel(), msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
@@ -72,7 +84,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
             });
         });
         d.subscribe(getEventChannel());
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
 
 
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
@@ -86,7 +98,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
             this.processDeletedAck(body, result -> {});
         });
         d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK);
-        nc.flush(Duration.ofMillis(500));
+        getConnection().flush(Duration.ofMillis(500));
 
 
     }

@@ -3,7 +3,6 @@ package org.agaveplatform.service.transfers.listener;
 import io.nats.client.*;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,11 +11,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
-
 public class AbstractNatsListener extends AbstractTransferTaskListener {
     private static final Logger log = LoggerFactory.getLogger(AbstractNatsListener.class);
     //public final Connection nc = _connect();
+    public String CONNECTION_URL = "nats://nats:4222";
 
     public AbstractNatsListener(Vertx vertx) throws IOException, InterruptedException {
         this(vertx, null);
@@ -36,7 +34,12 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
     public void _doPublishNatsEvent(String eventName, JsonObject body) throws IOException, InterruptedException, TimeoutException {
         log.info(super.getClass().getName() + ": _doPublishNatsEvent({}, {})", eventName, body);
-        Connection nc = _connect();
+        Connection nc;
+        try{
+            nc = _connect(CONNECTION_URL);
+        } catch (IOException e) {
+            nc = _connect();
+        }
         nc.publish(eventName, body.toString().getBytes(StandardCharsets.UTF_8));
         nc.flush(Duration.ofMillis(1000));
         _closeConnection(nc);
@@ -52,8 +55,12 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     }
 
     public Connection _connect() throws IOException, InterruptedException {
+        return _connect(CONNECTION_URL);
+    }
+
+    public Connection _connect(String url) throws IOException, InterruptedException {
         Options.Builder builder = new Options.Builder()
-                .server(Options.DEFAULT_URL)
+                .server(url)
                 .connectionTimeout(Duration.ofSeconds(5))
                 .pingInterval(Duration.ofSeconds(10))
                 .reconnectWait(Duration.ofSeconds(1))

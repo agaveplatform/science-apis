@@ -18,6 +18,17 @@ networks:
 
 services:
 
+  nats:
+    hostname: nats
+    image: synadia/jsm:latest
+    entrypoint: /nats-server
+    networks:
+      - services
+    ports:
+      - 4222:4222
+    volumes:
+      - './jetstream/nats1:/data'
+
   traefik:
     image: traefik:v2.1
     command:
@@ -41,33 +52,6 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     labels:
       - "traefik.enable=true"
-
-
-  nats:
-    image: nats:latest
-    hostname: nats-server
-    networks:
-      - services
-    ports:
-      - 4222:4222
-      - 6222:6222
-      - 8222:8222
-    restart: on-failure
-
-#  sftp-relay:
-#    image: agaveplatform/sftp-relay:develop
-#    ports:
-#      - 50051:50051
-#      - 9092
-#    restart: on-failure
-#    volumes:
-#      - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
-#    labels:
-#      - "traefik.enable=true"
-#      - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
-#      - "traefik.http.routers.sftp-relay.entrypoints=grpc"
-#      - "traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c"
-#      - "traefik.http.services.sftp-relay.loadbalancer.server.port=50051"
 
   sftp:
     image: agaveplatform/sshd:latest

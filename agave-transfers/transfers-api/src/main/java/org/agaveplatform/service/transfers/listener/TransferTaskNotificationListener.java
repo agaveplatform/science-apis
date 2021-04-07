@@ -5,6 +5,8 @@ import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
 import io.nats.client.Subscription;
 import io.vertx.core.Vertx;
+import io.vertx.core.WorkerExecutor;
+import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.iplantc.service.notification.managers.NotificationManager;
@@ -245,9 +247,20 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
      * @return true if a message was written
      */
     protected boolean notificationEventProcess(JsonObject body) {
-        logger.info("Sending legacy notification message for transfer task {}", body.getString("uuid"));
-        logger.debug("tenantId = {}", body.getString("tenant_id"));
-        return NotificationManager.process(body.getString("uuid"), body.encode(), body.getString("owner")) > 0;
+        WorkerExecutor executor = getVertx().createSharedWorkerExecutor("send-notification-task-worker-pool");
+        executor.executeBlocking(promise -> {
+            logger.info("Sending legacy notification message for transfer task {}", body.getString("uuid"));
+            logger.debug("tenantId = {}", body.getString("tenant_id"));
+
+            int x = NotificationManager.process(body.getString("uuid"), body.encode(), body.getString("owner")) ;
+            if (x == 0) {
+                promise.complete();
+            } else {
+                promise.fail("Message failed for " + body );
+            }
+        }, res -> {
+        });
+        return true;
     }
 
 }

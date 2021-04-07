@@ -60,12 +60,12 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
     public Connection _connect(String url) throws IOException, InterruptedException {
         Options.Builder builder = new Options.Builder()
+                .server("nats://nats:4222")
                 .server(url)
                 .connectionTimeout(Duration.ofSeconds(5))
                 .pingInterval(Duration.ofSeconds(10))
                 .reconnectWait(Duration.ofSeconds(1))
                 .maxReconnects(-1)
-                .verbose()
                 ;
         builder = builder.connectionListener((conn, type) -> log.info("Status change {}", type));
         builder = builder.errorListener(new ErrorListener() {
@@ -85,7 +85,6 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         });
 
         log.debug("_connect");
-        //return builder.build();
         Connection nc = Nats.connect(builder.build());
         return nc;
     }

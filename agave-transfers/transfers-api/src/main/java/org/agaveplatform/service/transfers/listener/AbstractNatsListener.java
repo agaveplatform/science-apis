@@ -3,7 +3,7 @@ package org.agaveplatform.service.transfers.listener;
 import io.nats.client.*;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,11 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
-
 public class AbstractNatsListener extends AbstractTransferTaskListener {
     private static final Logger log = LoggerFactory.getLogger(AbstractNatsListener.class);
-    //public final Connection nc = _connect();
 
     public AbstractNatsListener(Vertx vertx) throws IOException, InterruptedException {
         this(vertx, null);
@@ -53,12 +50,11 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
     public Connection _connect() throws IOException, InterruptedException {
         Options.Builder builder = new Options.Builder()
-                .server(Options.DEFAULT_URL)
+                .server("nats://nats:4222")
                 .connectionTimeout(Duration.ofSeconds(5))
                 .pingInterval(Duration.ofSeconds(10))
                 .reconnectWait(Duration.ofSeconds(1))
                 .maxReconnects(-1)
-                .verbose()
                 ;
         builder = builder.connectionListener((conn, type) -> log.info("Status change {}", type));
         builder = builder.errorListener(new ErrorListener() {
@@ -78,7 +74,6 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         });
 
         log.debug("_connect");
-        //return builder.build();
         Connection nc = Nats.connect(builder.build());
         return nc;
     }

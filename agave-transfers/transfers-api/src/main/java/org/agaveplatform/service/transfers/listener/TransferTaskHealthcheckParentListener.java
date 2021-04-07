@@ -8,11 +8,9 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.model.TransferTask;
-import org.globus.ftp.app.Transfer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -84,29 +82,34 @@ public class TransferTaskHealthcheckParentListener extends AbstractTransferTaskL
         String id = body.getLong("id").toString();
 
         logger.info("getDbService.getAllParentsCanceledOrCompleted result: {} , id:{}", body, id);
-
-        getDbService().updateById(id, CANCELED_ERROR.name(), updateStatus -> {
-            logger.trace("Got into getDBService.updateStatus(complete) ");
-            if (updateStatus.succeeded()) {
-                TransferTask transferTask = new TransferTask(updateStatus.result());
-                logger.info("[{}] Transfer task {} updated to completed.", transferTask.getTenantId(), transferTask.getUuid());
-                //parentList.remove(uuid);
-                _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
-                //promise.handle(Future.succeededFuture(Boolean.TRUE));
-            } else {
-                logger.error("[{}] Task completed, but unable to update status: {}",
-                        id, updateStatus.cause());
+        TransferTask parentTransferTask = new TransferTask(body);
+        if (parentTransferTask.getRootTaskId() == null && parentTransferTask.getParentTaskId() == null){
+            //this is the root task - don't cancel yet
+            logger.debug("Do not timeout the root task, individual transfers shouldn't take as long but the root task " +
+                    "has to wait for all children to finish which may take longer");
+        } else {
+            getDbService().updateById(id, CANCELED_ERROR.name(), updateStatus -> {
+                logger.trace("Got into getDBService.updateStatus(complete) ");
+                if (updateStatus.succeeded()) {
+                    TransferTask transferTask = new TransferTask(updateStatus.result());
+                    logger.info("[{}] Transfer task {} updated to completed.", transferTask.getTenantId(), transferTask.getUuid());
+                    //parentList.remove(uuid);
+                    _doPublishEvent(MessageType.TRANSFERTASK_FINISHED, updateStatus.result());
+                    //promise.handle(Future.succeededFuture(Boolean.TRUE));
+                } else {
+                    logger.error("[{}] Task completed, but unable to update status: {}",
+                            id, updateStatus.cause());
 //                            logger.error("[{}] Task {} completed, but unable to update status: {}",
 //                                    tenantId, uuid, reply.cause());
-                JsonObject json = new JsonObject()
-                        .put("cause", updateStatus.cause().getClass().getName())
-                        .put("message", updateStatus.cause().getMessage())
-                        .mergeIn(body);
-                _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
-                //promise.handle(Future.failedFuture(updateStatus.cause()));
-            }
-        });
-
+                    JsonObject json = new JsonObject()
+                            .put("cause", updateStatus.cause().getClass().getName())
+                            .put("message", updateStatus.cause().getMessage())
+                            .mergeIn(body);
+                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, json);
+                    //promise.handle(Future.failedFuture(updateStatus.cause()));
+                }
+            });
+        }
         handler.handle(Future.succeededFuture(true));
     }
 

@@ -23,7 +23,8 @@ public class TransferApplication {
         Vertx vertx = Vertx.vertx();
 
         int poolSize = 10;
-        int instanceSize = 3;
+        int instanceSize = 50;
+        int dbInstanceSize = 10;
 
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
                 .setType("file")
@@ -47,7 +48,7 @@ public class TransferApplication {
                         .setConfig(config)
                         .setMaxWorkerExecuteTimeUnit(TimeUnit.MILLISECONDS)
                         .setMaxWorkerExecuteTime(500)
-                        .setInstances(instanceSize);
+                        .setInstances(dbInstanceSize);
 
                 Promise<String> dbVerticleDeployment = Promise.promise();
                 log.info("org.agaveplatform.service.transfers.database.TransferTaskDatabaseVerticle");
@@ -87,6 +88,7 @@ public class TransferApplication {
                                             log.error("TransferTaskCreatedListener Deployment failed !");
                                         }
                                     });
+
 
                             //Deploy the TransferTaskAssignedListener vertical
                             vertx.deployVerticle(TransferTaskAssignedListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskAssignedListener",

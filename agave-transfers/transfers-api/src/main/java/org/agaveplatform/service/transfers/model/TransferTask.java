@@ -395,7 +395,9 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the startTime
 	 */
-	@Column(name = "start_time", length = 16)
+//	@Temporal(TemporalType.TIMESTAMP)
+	@Basic
+	@Column(name = "start_time", length = 19)
 	public Instant getStartTime()
 	{
 		return startTime;
@@ -412,8 +414,9 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the endTime
 	 */
-	@Enumerated(EnumType.STRING)
-	@Column(name = "end_time", length = 16)
+//	@Temporal(TemporalType.TIMESTAMP)
+	@Basic
+	@Column(name = "end_time", length = 19)
 	public Instant getEndTime()
 	{
 		return endTime;
@@ -479,7 +482,8 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the created
 	 */
-	@Temporal(TemporalType.TIMESTAMP)
+//	@Temporal(TemporalType.TIMESTAMP)
+	@Basic
 	@Column(name = "created", nullable = false, length = 19)
 	public Instant getCreated()
 	{
@@ -497,7 +501,8 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the lastUpdated
 	 */
-	@Temporal(TemporalType.TIMESTAMP)
+//	@Temporal(TemporalType.TIMESTAMP)
+	@Basic
 	@Column(name = "last_Updated", nullable = false, length = 19)
 	public Instant getLastUpdated()
 	{

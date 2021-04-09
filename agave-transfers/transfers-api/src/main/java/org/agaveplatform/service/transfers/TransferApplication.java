@@ -24,7 +24,7 @@ public class TransferApplication {
         Vertx vertx = Vertx.vertx();
 
         int poolSize = 10;
-        int instanceSize = 50;
+        int instanceSize = 30;
         int dbInstanceSize = 10;
 
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
@@ -134,7 +134,7 @@ public class TransferApplication {
                                     });
 
 
-                            // Deploy the TransferErrorTaskListener vertical
+                            // Deploy the TransferTaskErrorListener vertical
                             vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorTaskListener",
                                     localOptions, res6 -> {
                                         if (res6.succeeded()) {
@@ -184,15 +184,15 @@ public class TransferApplication {
                                         }
                                     });
 
-                            // Deploy the TransferErrorListener vertical
-                            vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorListener"
-                                    localOptions, res11 -> {
-                                        if (res11.succeeded()){
-                                            System.out.println("TransferErrorListener Deployment id is " + res.result());
-                                        }else{
-                                            System.out.println("TransferErrorListener Deployment failed !"+ res.result());
-                                        }
-                                    });
+//                            // Deploy the TransferErrorListener vertical
+//                            vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorListener"
+//                                    localOptions, res11 -> {
+//                                        if (res11.succeeded()){
+//                                            log.info("TransferErrorListener Deployment id is " + res.result());
+//                                        }else{
+//                                            log.error("TransferErrorListener Deployment failed !"+ res.result());
+//                                        }
+//                                    });
 
                             // Deploy the TransferHealthcheckListener vertical
                             vertx.deployVerticle(TransferTaskHealthcheckListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",

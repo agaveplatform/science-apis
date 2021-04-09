@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.protocol;
 
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
+import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.EventBus;
@@ -65,10 +66,10 @@ public class TransferAllProtocolVertical extends AbstractNatsListener {
 
 	public void setConnection() throws IOException, InterruptedException {
 		try {
-			nc = _connect();
+			nc = _connect(CONNECTION_URL);
 		} catch (IOException e) {
 			//use default URL
-			nc = _connect(CONNECTION_URL);
+			nc = _connect(Options.DEFAULT_URL);
 		}
 	}
 

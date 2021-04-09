@@ -235,6 +235,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("TransferTaskUpdateListener - taskIsNotInterrupted")
+    @Disabled
     void taskIsNotInterruptedTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
         TransferTask tt = _createTestTransferTask();
         tt.setParentTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());

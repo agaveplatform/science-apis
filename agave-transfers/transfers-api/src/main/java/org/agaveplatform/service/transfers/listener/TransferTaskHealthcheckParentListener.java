@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
+import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -59,7 +60,7 @@ public class TransferTaskHealthcheckParentListener extends AbstractNatsListener 
             nc = _connect(CONNECTION_URL);
         } catch (IOException e) {
             //use default URL
-            nc = _connect();
+            nc = _connect(Options.DEFAULT_URL);
         }
     }
 

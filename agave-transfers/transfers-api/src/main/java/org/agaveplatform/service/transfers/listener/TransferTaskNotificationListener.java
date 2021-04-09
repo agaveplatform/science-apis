@@ -3,10 +3,10 @@ package org.agaveplatform.service.transfers.listener;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
+import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.iplantc.service.notification.managers.NotificationManager;
@@ -54,7 +54,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
             nc = _connect(CONNECTION_URL);
         } catch (IOException e) {
             //use default URL
-            nc = _connect();
+            nc = _connect(Options.DEFAULT_URL);
         }
     }
 

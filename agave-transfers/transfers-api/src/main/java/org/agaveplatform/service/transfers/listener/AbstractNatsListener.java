@@ -61,7 +61,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     public Connection _connect(String url) throws IOException, InterruptedException {
         Options.Builder builder = new Options.Builder()
                 .server("nats://nats:4222")
-                .server(url)
+//                .server(Options.DEFAULT_URL)
                 .connectionTimeout(Duration.ofSeconds(5))
                 .pingInterval(Duration.ofSeconds(10))
                 .reconnectWait(Duration.ofSeconds(1))

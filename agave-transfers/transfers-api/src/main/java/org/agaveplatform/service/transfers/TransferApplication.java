@@ -174,9 +174,19 @@ public class TransferApplication {
                                         }
                                     });
 
+
+                            DeploymentOptions notificationWorkerOptions = new DeploymentOptions()
+                                    .setWorkerPoolName("notification-task-worker-pool")
+                                    .setWorkerPoolSize(5)
+                                    .setInstances(1)
+                                    .setConfig(config)
+                                    .setWorker(true)
+                                    .setMaxWorkerExecuteTimeUnit(TimeUnit.HOURS)
+                                    .setMaxWorkerExecuteTime(1);
+
                             // Deploy the NotificationListener vertical
                             vertx.deployVerticle(TransferTaskNotificationListener.class.getName(), //"org.agaveplatform.service.transfers.listener.NotificationListener",
-                                    localOptions, res10 -> {
+                                    notificationWorkerOptions, res10 -> {
                                         if (res10.succeeded()) {
                                             log.info("NotificationListener Deployment id is " + res.result());
                                         } else {

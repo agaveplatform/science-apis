@@ -22,6 +22,7 @@ services:
     hostname: nats
     image: synadia/jsm:latest
     entrypoint: /nats-server
+    command: '--js --sd /data '
     networks:
       - services
     ports:

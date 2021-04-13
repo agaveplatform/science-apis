@@ -25,7 +25,7 @@ You will need to have the Docker Engine installed to run the API containers and 
 If you intend on building the APIs from scratch, you will also need the following: 
 
 * [Java 9]
-* [PHP 5.5+]
+* [Go 1.14]
 * [Maven 3.6+]
 
 ### Port ranges
@@ -56,49 +56,48 @@ The Agave Developer APIs require three external services in order to function:
 
 Each of these services is available as a Docker image. We primarily include them here to make you aware of the dependencies. In practice, these services will be deployed in Docker containers along with the core services, so you don't need to worry about them.
 
-> If you plan on testing out email notifications, you will need to edit the `docker-compose.yml` file to include your email configuration settings. By default, email notifications are serialized to JSON and writting to the service logs.  
+> If you plan on testing out email notifications locally, you will need to edit the `compose/docker-compose.persistence.yml` file to uncomment the local maildev container. To use your own email server, leave the maildev container commented out, and edit the `compose/configs/common.conf` file with the proper values for the `MAIL_SMTPS_*` variables to match your smtp relay server. By default, email notifications are serialized to JSON and writting to the service logs.  
  
 
 ## Building
 
 > ***The Agave Core APIs are automatically built and tested as part of our CI/CD workflow on every commit. Docker images for successful builds are automatically created and pushed into the [Docker public registry](http://hub.docker.com/u/agaveplatform). Unless you are actively developing against the code base, you do not need to build the images yourself. The `docker-compose.yml` file will guarantee you have the latest version of the APIs running.***  
   
-To create a development build of the APIs, you will need to check out this project and its submodules, then kick off the maven build. The following commands will build and package each API, build its Docker image, and tag it with the current version and project commit hash. 
+To create a development build of the APIs, you will need to check out this project, and run the Maven build. The following commands will build and package each API, build its Docker image, and tag it with the current version and project commit hash. 
 
 ```  
-$ git clone http://bitbucket.org/agaveapi/science-apis.git agave-science-apis
-$ cd agave-science-apis
+$ git clone http://github.com/agaveplatform/science-apis.git science-apis -b develop
+$ cd science-apis
 $ mvn -P agave,dev clean install
-$ cp docker-compose.yml.SAMPLE docker-compose.yml
+$ ./dockerbuild.sh -b agaveplatform
 ``` 
 
-If you are not actively developing the APIs, skip the checkout and build and simply download the `docker-compose.yml` file. 
+## Running the APIs
 
-``` 
-$ mkdir agave-science-apis
-$ cd agave-science-apis
-$ curl -sk -o docker-compose.yml https://git.org/agaveapi/agave/raw/master/docker-compose.yml.SAMPLE  
-``` 
+The `compose` directory contains Docker Compose files to launch the core services and its dependencies. The provided configuration is appropriate for a local development stack only. This should not be used in production environments.
 
-## Running
-
-The `docker-compose.yml` file from the previous step will be used to stop, start, and scale the APIs and their dependencies.
-
-
-### Starting
-
-The APIs can be started using the following command. Once the containers start (this may take a minute or two), they will be available at: [http://<docker_host>/docs](http://<docker_host>/docs).
-
+To start up the science api stack run the following
 ```
-$ docker-compose agave up -d 
+$ cd compose 
+$ docker-compose -f docker-compose.persistence.yml -f docker-compose.core.yml down
 ```
 
-### Stopping
+### Accessing the APIs
+
+Once the containers start (this may take a minute or two), they will be available at: [http://<docker_host>:8080/](http://<docker_host>:8080/). The tenants API will be available at `http://<docker_host>:8080/tenants` if you would like to configure your client to point to the development interfaces.
+
+```
+$ cd compose
+$ docker-compose -f docker-compose.persistence.yml -f docker-compose.core.yml up -d
+```
+
+### Stopping the APIs
 
 The APIs can be started using the following command. This will halt all containers while maintaining their data and runtime configuration.
 
 ```
-$ docker-compose stop  
+$ cd compose
+$ docker-compose -f docker-compose.persistence.yml -f docker-compose.core.yml down
 ```
 
 ### Updating
@@ -106,27 +105,12 @@ $ docker-compose stop
 The Agave Science APIs are under active development, so it's a good idea to update your images regularly. You can update all images and restart your container with the following commands.
 
 ```
-$ docker-compose pull
-$ docker-compose kill
-$ docker-compose rm -f
-$ docker-compose up -d
+$ cd compose
+$ docker-compose -f docker-compose.persistence.yml -f docker-compose.core.yml pull
+$ docker-compose -f docker-compose.persistence.yml -f docker-compose.core.yml down
+$ docker-compose -f docker-compose.persistence.yml -f docker-compose.core.yml up -d
 ```
 
-## Getting started
-
-Once you have the APIs running, you should initialize them with some sample data. You can do this using the initialization scripts included in the repository:
-
-``` 
-$ curl -sk -o agave-init.sql https://bitbucket.org/agaveapi/agave/raw/master/agave-db-migrations/src/main/resources/db/migration/V2.1.3__Base_version.sql
-$ docker run -it --rm \
-			 -v $(pwd)/agave-init.sql:/data/agave-init.sql \
-			 -link agavescienceapis_mysql_1:mysql
-			 mysql:latest \
-			 mysql -u agaveuser -Ppassword -p 3301 -h docker.example.com << /data/agave-init.sql
-``` 
-
-This will create a default tenant and add some sample data to get you started.  
- 
 ### Interactive docs
 
 The APIs ship with a working instance of the Agave Live Docs. The Live Docs are a preconfigured version of Swagger UI, customized for use with Agave. You can visit the Live Docs for the APIs you just started at [https://<docker_host>/docs](https://<docker_host>/docs).  
@@ -135,16 +119,16 @@ The APIs ship with a working instance of the Agave Live Docs. The Live Docs are 
 
 Several options are available to you to explore your instance of the Agave Core Science APIs:
 
-* [Agave CLI](https://bitbucket.org/agaveapi/cli/src/master/docker/): a command line interface to the Agave Platform.  
+* [Agave CLI](https://github.com/agaveplatform/agave-cli): a command line interface to the Agave Platform.  
 
-    ``` $ docker run -i -t --rm -v $HOME/.agave:/root/.agave --name agave-cli agaveapi/agave-cli bash  ```
+    ``` $ docker run -itt --rm -v $HOME/.agave:/root/.agave --name agave-cli agaveplatform/agave-cli:master bash  ```
   
-* [Agave ToGo](https://bitbucket.org/agaveapi/agave-togo): a lightweight client-side, web application for interacting with Agave.  
+* [Agave ToGo](https://ithub.com/agaveplatform/agave-togo): a lightweight client-side, web application for interacting with Agave.  
 
-    ``` $ docker run -d -t -p 9000:9000 --name agave-togo agaveapi/agave-togo  ```
+    ``` $ docker run -d -t -p 9000:9000 --name agave-togo agaveplatform/agave-togo:latest  ```
   
 ### Documentation
 
-Full documentation about the use cases satisfied by the APIs as well as functional documentation about their design, use, and performance, please see the [Agave Developer’s Website](https://agaveplatform.org).  
+Full documentation about the use cases satisfied by the APIs as well as functional documentation about their design, use, and performance, please see the [Agave Website](https://agaveplatform.org).  
  
 * [Agave Developer Portal](https://docs.agaveplatform.org): the official developer portal for the Agave Platform.

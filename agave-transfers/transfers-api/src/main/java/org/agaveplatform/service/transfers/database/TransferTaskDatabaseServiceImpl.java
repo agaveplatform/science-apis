@@ -473,9 +473,11 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
           conn.result().rollback(rollback -> {
             if (rollback.failed()) {
               LOGGER.error("Failed to set autocommit to false before updating transfer task record {}. Database rollback failed. Data may be corrupted.", id, rollback.cause());
+              conn.result().close();
               throw new RuntimeException(rollback.cause());
             } else {
               LOGGER.error("Failed to set autocommit to false before updating transfer task record {}. Database rollback succeeded.", id, res.cause());
+              conn.result().close();
               throw new RuntimeException(res.cause());
             }
           });
@@ -491,9 +493,11 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
                   if (res.failed()) {
                     LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback failed. Data may be corrupted.", id, rollback.cause());
                     resultHandler.handle(Future.failedFuture(rollback.cause()));
+                    conn.result().close();
                   } else {
                     LOGGER.error("Failed to commit transaction after updating transfer task record {}. Database rollback succeeded.", id, commit.cause());
                     resultHandler.handle(Future.failedFuture(commit.cause()));
+                    conn.result().close();
                   }
                 });
               } else {
@@ -501,9 +505,11 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
                 conn.result().queryWithParams(sqlQueries.get(SqlQuery.GET_TRANSFERTASK_BY_ID), params, ar -> {
                   if (ar.succeeded()) {
                     resultHandler.handle(Future.succeededFuture(ar.result().getRows().get(0)));
+                    conn.result().close();
                   } else {
                     LOGGER.error("Failed to fetch updated transfer task record for {} after insert. Database query error", id, ar.cause());
                     resultHandler.handle(Future.failedFuture(ar.cause()));
+                    conn.result().close();
                   }
                 });
               }
@@ -511,10 +517,10 @@ class TransferTaskDatabaseServiceImpl implements TransferTaskDatabaseService {
           } else {
             LOGGER.error("Failed to fetch new transfer task record after insert. Database query error", update.cause());
             resultHandler.handle(Future.failedFuture(update.cause()));
+            conn.result().close();
           }
         });
       });
-      conn.result().close();
     });
     return this;
   }

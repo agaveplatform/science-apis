@@ -100,13 +100,14 @@ public class TransferTaskCompleteTaskListener extends AbstractNatsListener {
 						logger.info("Succeeded with the processing transfer completed event for transfer task {}", uuid);
 					} else {
 						logger.error("Error with return from complete event {} and body {}", uuid, body);
-						try {
-							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-						} catch (IOException e) {
-							logger.debug(e.getMessage());
-						} catch (InterruptedException e) {
-							logger.debug(e.getMessage());
-						}
+						//error is handled in processEvent
+//						try {
+//							_doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
+//						} catch (IOException e) {
+//							logger.debug(e.getMessage());
+//						} catch (InterruptedException e) {
+//							logger.debug(e.getMessage());
+//						}
 					}
 				});
 			} catch (IOException e) {

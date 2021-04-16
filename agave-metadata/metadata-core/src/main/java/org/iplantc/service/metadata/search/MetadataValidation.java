@@ -86,12 +86,10 @@ public class MetadataValidation {
         MetadataItem item;
         JsonHandler handler = new JsonHandler();
 
-
         try {
             item = handler.parseJsonMetadata(node);
             item.setOwner(username);
             item.setInternalUsername(username);
-
 
             //validator
             Validator validator;
@@ -101,11 +99,14 @@ public class MetadataValidation {
 
             Set<ConstraintViolation<MetadataItem>> constraintViolations = validator.validate(item);
 
-            if (constraintViolations.size() != 0)
-                throw new MetadataValidationException(constraintViolations.iterator().next().getMessage());
+            if (constraintViolations.size() != 0) {
+                ConstraintViolation<MetadataItem> cv = constraintViolations.iterator().next();
+                String violationMessage = cv.getPropertyPath() + " " + cv.getMessage();
+                throw new MetadataValidationException(violationMessage);
+            }
             return item;
         } catch (Exception e) {
-            throw new MetadataValidationException(e.getMessage());
+            throw new MetadataValidationException(e);
         }
     }
 

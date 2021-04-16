@@ -46,7 +46,7 @@ public class MetadataItem {
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String name;
 
-//    @Length(max = 16384, message = "Metadata value must be less than 16385")
+    //    @Length(max = 16384, message = "Metadata value must be less than 16385")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private JsonNode value;
 
@@ -73,7 +73,6 @@ public class MetadataItem {
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String uuid;
 
-    @Past
     @NotNull
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private Date created;

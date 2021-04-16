@@ -5,6 +5,7 @@ package org.iplantc.service.metadata.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
@@ -25,6 +26,7 @@ import org.iplantc.service.common.resource.AgaveResource;
 import org.iplantc.service.common.search.AgaveResourceResultOrdering;
 import org.iplantc.service.common.util.SimpleTimer;
 import org.iplantc.service.common.uuid.AgaveUUID;
+import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.events.MetadataEventProcessor;
@@ -50,6 +52,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MetaCreate;
@@ -259,13 +262,10 @@ public class MetadataCollection extends AgaveResource {
             try {
                 JsonNode jsonMetadata = super.getPostedEntityAsObjectNode(false);
                 jsonHandler = new JsonHandler();
-//                metadataItem = jsonHandler.parseJsonMetadata(jsonMetadata);
 
                 //validate
                 MetadataValidation validation = new MetadataValidation();
                 metadataItem = validation.validateMetadataNodeFields(jsonMetadata, username);
-
-
                 //process permissions
                 MetadataRequestPermissionProcessor permissionProcessor = new MetadataRequestPermissionProcessor(metadataItem);
                 permissionProcessor.process(jsonHandler.getPermissions());
@@ -275,12 +275,16 @@ public class MetadataCollection extends AgaveResource {
                 throw e;
             } catch (Exception e) {
                 throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                        "Unable to parse form. " + e.getMessage());
+                        "Unable to parse form. " + e.getMessage(), e);
             }
             MetadataItem addedMetadataItem;
 
             try {
                 metadataItem.setInternalUsername(internalUsername);
+                // ensure the uuid is not able to be set by the user
+                metadataItem.setUuid(new AgaveUUID(UUIDType.METADATA).toString());
+                metadataItem.setCreated(new Date());
+                metadataItem.setLastUpdated(metadataItem.getCreated());
                 metadataItem.setOwner(this.username);
 
                 addedMetadataItem = search.insertMetadataItem(metadataItem);

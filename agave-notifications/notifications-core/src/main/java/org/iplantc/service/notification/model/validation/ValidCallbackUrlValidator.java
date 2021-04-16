@@ -29,7 +29,7 @@ public class ValidCallbackUrlValidator implements ConstraintValidator<ValidCallb
         
 		try
 		{
-			NotificationCallbackProviderType.getInstanceForUri(callbackUrl);
+			NotificationCallbackProviderType.getInstanceForUri(callbackUrl, null);
 		}
 		catch (BadCallbackException e) {
 			isValid = false;

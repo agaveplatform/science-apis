@@ -67,14 +67,6 @@ public class HTTPSClient {
 			}
 
 		}
-		catch (MalformedURLException mue)
-		{
-			throw mue;
-		}
-		catch (IOException ioe)
-		{
-			throw ioe;
-		}
 		catch (Exception e)
 		{
 			throw e;

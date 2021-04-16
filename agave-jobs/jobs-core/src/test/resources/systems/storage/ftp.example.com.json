@@ -6,8 +6,8 @@
 	"description": "My example system using ftp to move data.",
 	"site": "example.com",
 	"storage": {
-		"host": "ftp",
-		"port": 10021,
+		"host": "${ftp.host}",
+		"port": ${ftp.port},
 		"protocol": "FTP",
 		"rootDir": "/home/testuser",
 		"homeDir": "/",

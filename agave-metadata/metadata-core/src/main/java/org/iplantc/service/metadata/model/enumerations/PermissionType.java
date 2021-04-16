@@ -135,5 +135,5 @@ public enum PermissionType
 	public static PermissionType getIfPresent(String name){
 		return Enums.getIfPresent(PermissionType.class, name).or(PermissionType.UNKNOWN);
 	}
-		 
+
 }

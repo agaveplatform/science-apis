@@ -88,8 +88,8 @@ public interface SubmitScript {
 	public abstract ParallelismType getParallelismType();
 
 	/**
-	 * @param parallel
-	 *            the parallel to set
+	 * @param parallelismType
+	 *            the parallelismType to set
 	 */
 	public abstract void setParallelismType(ParallelismType parallelismType);
 

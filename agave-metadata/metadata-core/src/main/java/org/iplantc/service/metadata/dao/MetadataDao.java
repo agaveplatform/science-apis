@@ -200,8 +200,7 @@ public class MetadataDao {
         List<Document> resultList = new ArrayList<>();
 
         //Don't use custom codecs for faster processing with filters/projections
-        MongoCollection mongoCollection;
-        mongoCollection = getDefaultCollection();
+        MongoCollection mongoCollection = getDefaultCollection();
 
         if (query == null) {
             query = new Document();
@@ -220,8 +219,8 @@ public class MetadataDao {
                 resultList.add(foundDocuments);
             }
 
-        } catch (Exception e) {
-        }
+        } catch (Exception ignored) {}
+
         return resultList;
     }
 
@@ -615,35 +614,35 @@ public class MetadataDao {
 //    public JacksonDBCollection<MetadataItem, String> getDefaultCollection() throws UnknownHostException {
 //        return getCollection(Settings.METADATA_DB_SCHEME, Settings.METADATA_DB_COLLECTION);
 //    }
-//    
+//
 //    public JacksonDBCollection<MetadataItem, String> getCollection(String dbName, String collectionName) throws UnknownHostException {
-//        
+//
 //        db = getClient().getDB(dbName);
 //        // Gets a collection, if it does not exist creates it
 //        return JacksonDBCollection.wrap(db.getCollection(collectionName), MetadataItem.class,
 //                String.class);
 //    }
-//    
+//
 //    @SuppressWarnings("deprecation")
 //    private MongoClient getClient() throws UnknownHostException {
 //        if (mongoClient == null) {
-//            
-//            mongoClient = new MongoClient(new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT), 
-//                    Arrays.asList(MongoCredential.createMongoCRCredential(
-//                            Settings.METADATA_DB_USER, "api", Settings.METADATA_DB_PWD.toCharArray())));
-//        } 
-//        else if (!mongoClient.getConnector().isOpen()) 
-//        {
-//            try { mongoClient.close(); } catch (Exception e) { log.error("Failed to close mongo client.", e); }
-//            mongoClient = null;
-//            mongoClient = new MongoClient(new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT), 
+//
+//            mongoClient = new MongoClient(new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT),
 //                    Arrays.asList(MongoCredential.createMongoCRCredential(
 //                            Settings.METADATA_DB_USER, "api", Settings.METADATA_DB_PWD.toCharArray())));
 //        }
-//            
+//        else if (!mongoClient.getConnector().isOpen())
+//        {
+//            try { mongoClient.close(); } catch (Exception e) { log.error("Failed to close mongo client.", e); }
+//            mongoClient = null;
+//            mongoClient = new MongoClient(new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT),
+//                    Arrays.asList(MongoCredential.createMongoCRCredential(
+//                            Settings.METADATA_DB_USER, "api", Settings.METADATA_DB_PWD.toCharArray())));
+//        }
+//
 //        return mongoClient;
 //    }
-//    
+//
 //    /**
 //     * Generates a {@link Query} from the given {@code uuid} and {@link TenancyHelper#getCurrentTenantId()}
 //     * @param uuid
@@ -652,7 +651,7 @@ public class MetadataDao {
 //    private Query _getDBQueryForUuidAndTenant(String uuid) {
 //        return _getDBQueryForUuidAndTenant(uuid, TenancyHelper.getCurrentTenantId());
 //    }
-//    
+//
 //    /**
 //     * Generates a {@link Query} from the given {@code uuid} and {code tenantId}
 //     * @param uuid
@@ -661,7 +660,7 @@ public class MetadataDao {
 //     */
 //    private Query _getDBQueryForUuidAndTenant(String uuid, String tenantId) {
 //        return DBQuery.and(
-//                DBQuery.is("uuid", uuid), 
+//                DBQuery.is("uuid", uuid),
 //                DBQuery.is("tenantId", tenantId));
 //    }
 //
@@ -672,20 +671,20 @@ public class MetadataDao {
 //     * @return
 //     * @throws MetadataQueryException
 //     */
-//    public MetadataItem findByUuidAndTenant(String uuid, String tenantId) 
-//    throws MetadataQueryException 
-//    {   
+//    public MetadataItem findByUuidAndTenant(String uuid, String tenantId)
+//    throws MetadataQueryException
+//    {
 //        try {
 //            return (MetadataItem)getDefaultCollection().findOne(_getDBQueryForUuidAndTenant(uuid, tenantId));
 //        } catch (Exception e) {
 //            throw new MetadataQueryException("Unable to find metadata by UUID", e);
-//        }        
+//        }
 //    }
-//    
-//    
+//
+//
 //    /**
 //     * Implements search for metadata items.
-//     * 
+//     *
 //     * @param username
 //     * @param tenantId
 //     * @param userSearchTermMap
@@ -695,119 +694,119 @@ public class MetadataDao {
 //     * @throws MetadataQueryException
 //     */
 //    public DBCursor<MetadataItem> findMatching(String username, String tenantId, Map<SearchTerm, Object> userSearchTermMap, int offset, int limit)
-//    throws MetadataQueryException 
-//    {   
+//    throws MetadataQueryException
+//    {
 //        try {
-//            
+//
 //            DBObject userSearchCriteria = parseUserSearchCriteria(userSearchTermMap);
-//            
+//
 //            DBObject tenantCriteria = QueryBuilder.start("tenantId").is(tenantId).get();
-//            
-//            DBCursor<MetadataItem> cursor = null; 
-//                    
+//
+//            DBCursor<MetadataItem> cursor = null;
+//
 //            // skip permission queries if user is admin
 //            if (AuthorizationHelper.isTenantAdmin(username)) {
-//                
+//
 //                cursor = getDefaultCollection().find(QueryBuilder.start().and(
 //                                    userSearchCriteria,
 //                                    tenantCriteria).get())
 //                                .skip(offset)
 //                                .limit(limit);
-//            } 
+//            }
 //            // non admins must check permissions for ownership or read grants
 //            else {
 //                DBObject authCriteria = createAuthCriteria(username, READ);
-//                
+//
 //                cursor = getDefaultCollection().find(QueryBuilder.start().and(
 //                                    authCriteria,
 //                                    userSearchCriteria,
 //                                    tenantCriteria).get())
 //                                .skip(offset)
 //                                .limit(limit);
-//            }                
-//        
+//            }
+//
 //            return cursor;
 //        } catch (Exception e) {
 //            throw new MetadataQueryException("Failed to fetch metadata from db", e);
-//        }        
+//        }
 //    }
-//    
+//
 //    public DBCursor<MetadataItem> legacyFindMatching(String username, String tenantId, Map<SearchTerm, Object> userSearchTermMap, int offset, int limit)
-//    throws MetadataQueryException 
+//    throws MetadataQueryException
 //    {
 //        try {
 //            DBObject userSearchCriteria = parseUserSearchCriteria(userSearchTermMap);
-//            
+//
 //            DBObject tenantCriteria = QueryBuilder.start("tenantId").is(tenantId).get();
-//            
-//            DBCursor<MetadataItem> cursor = null; 
-//                    
+//
+//            DBCursor<MetadataItem> cursor = null;
+//
 //            // skip permission queries if user is admin
 //            if (AuthorizationHelper.isTenantAdmin(username)) {
-//                
+//
 //                cursor = getDefaultCollection().find(QueryBuilder.start().and(
 //                                    userSearchCriteria,
 //                                    tenantCriteria).get())
 //                                .skip(offset)
 //                                .limit(limit);
-//            } 
+//            }
 //            // non admins must check permissions for ownership or read grants
 //            else {
-//                
+//
 //                DBObject ownerCriteria = QueryBuilder.start("owner").in(
 //                        Arrays.asList(Settings.PUBLIC_USER_USERNAME,
 //                                      Settings.WORLD_USER_USERNAME,
 //                                      username)).get();
-//                
-//                List<String> relationalSharedMetadataUuid = 
+//
+//                List<String> relationalSharedMetadataUuid =
 //                        MetadataPermissionDao.getUuidOfAllSharedMetataItemReadableByUser(username);
-//                
+//
 //                DBObject sharedMetadataCriteria = QueryBuilder.start("uuid").in(
 //                        relationalSharedMetadataUuid).get();
-//                
+//
 //                DBObject authCriteria = QueryBuilder.start()
 //                            .or(
-//                                ownerCriteria, 
+//                                ownerCriteria,
 //                                sharedMetadataCriteria
 //                                )
 //                        .get();
-//                
+//
 //                cursor = getDefaultCollection().find(QueryBuilder.start().and(
-//                        authCriteria, 
+//                        authCriteria,
 //                        userSearchCriteria,
 //                        tenantCriteria).get())
 //                    .skip(offset)
 //                    .limit(limit);
 //            }
-//            
+//
 //            return cursor;
-//        } 
+//        }
 //        catch (Exception e) {
 //            throw new MetadataQueryException("Failed to fetch metadata from db", e);
-//        } 
+//        }
 //    }
-//    
+//
 //    /**
-//     * Delete one or more metadata value fields atomically 
+//     * Delete one or more metadata value fields atomically
 //     * @param uuid
 //     * @param tenantId
 //     * @param updates
 //     * @throws MetadataQueryException
 //     */
-//    public void delete(String uuid, String tenantId, List<String> uuids) 
-//    throws MetadataQueryException 
+//    public void delete(String uuid, String tenantId, List<String> uuids)
+//    throws MetadataQueryException
 //    {
 //        try {
 //            if (uuids == null || uuids.isEmpty()) {
 //                return;
 //             }
-//             else 
+//             else
 //             {
 //                 WriteResult<MetadataItem,String> result = getDefaultCollection().remove(
 //                         DBQuery.and(DBQuery.in("uuid", uuids), DBQuery.is("tenantId", TenancyHelper.getCurrentTenantId())));
 //                 // do we need to check for errors?
 //                 if (!result.getWriteResult().getLastError().isEmpty()) {
-//                     throw new MetadataQueryException("Failed to delete one or more items", 
+//                     throw new MetadataQueryException("Failed to delete one or more items",
 //                             result.getWriteResult().getLastError().getException());
 //                 }
 //             }
@@ -817,24 +816,24 @@ public class MetadataDao {
 //            throw new MetadataQueryException("Unable to insert new metadata item", e);
 //        }
 //    }
-//    
-//    
+//
+//
 //    /**
-//     * Unsets one or more metadata value fields atomically 
+//     * Unsets one or more metadata value fields atomically
 //     * @param uuid
 //     * @param tenantId
 //     * @param updates
 //     * @return
 //     * @throws MetadataQueryException
 //     */
-//    public List<MetadataItem> unset(String uuid, String tenantId, List<String> fields) 
-//    throws MetadataQueryException 
+//    public List<MetadataItem> unset(String uuid, String tenantId, List<String> fields)
+//    throws MetadataQueryException
 //    {
 //        try {
 //            if (fields == null || fields.isEmpty()) {
 //                return new ArrayList<MetadataItem>();
 //             }
-//             else 
+//             else
 //             {
 //                 Builder builder = null;
 //                 for (String key: fields) {
@@ -844,11 +843,11 @@ public class MetadataDao {
 //                         builder = builder.unset(key);
 //                     }
 //                 }
-//                 
+//
 //                 WriteResult<MetadataItem,String> result = getDefaultCollection().update(_getDBQueryForUuidAndTenant(uuid, tenantId), builder);
 //                 // do we need to check for errors?
 //                 if (!result.getWriteResult().getLastError().isEmpty()) {
-//                     throw new MetadataQueryException("Failed to unset one or more item fields", 
+//                     throw new MetadataQueryException("Failed to unset one or more item fields",
 //                             result.getWriteResult().getLastError().getException());
 //                 }
 //                 return result.getSavedObjects();
@@ -874,28 +873,28 @@ public class MetadataDao {
 //            throw new MetadataQueryException("Unable to insert new metadata item", e);
 //        }
 //    }
-//    
+//
 //    /**
-//     * Insert a new metadata item if another {@link MetadataItem} with the same {@code name}, 
-//     * {@code tenantId}, {@code owner}, {@code value}, {@code associatedIds}, and {@code internalUser} 
+//     * Insert a new metadata item if another {@link MetadataItem} with the same {@code name},
+//     * {@code tenantId}, {@code owner}, {@code value}, {@code associatedIds}, and {@code internalUser}
 //     * does not already exist.
-//     *  
+//     *
 //     * @param item
 //     * @return
 //     * @throws MetadataQueryException
 //     */
-//    public MetadataItem insertIfNotPresent(MetadataItem item) 
-//    throws MetadataQueryException 
+//    public MetadataItem insertIfNotPresent(MetadataItem item)
+//    throws MetadataQueryException
 //    {
 //        try {
 //            MetadataItem existingItem = getDefaultCollection().findOne(DBQuery.and(
-//                                                                    DBQuery.is("name", item.getUuid()), 
+//                                                                    DBQuery.is("name", item.getUuid()),
 //                                                                    DBQuery.is("tenantId", item.getTenantId()),
 //                                                                    DBQuery.is("owner",  item.getOwner()),
 //                                                                    DBQuery.is("value",  item.getValue()),
 //                                                                    DBQuery.all("associatedIds", item.getAssociations().getRawUuid()),
 //                                                                    DBQuery.is("internalUser",  item.getInternalUsername())));
-//            
+//
 //            if (existingItem == null) {
 //                return getDefaultCollection().insert(item).getSavedObject();
 //            } else {
@@ -905,23 +904,23 @@ public class MetadataDao {
 //            throw new MetadataQueryException("Unable to insert new metadata item", e);
 //        }
 //    }
-//    
+//
 //    /**
-//     * Update one or more metadata names or values in part or whole atomically 
+//     * Update one or more metadata names or values in part or whole atomically
 //     * @param uuid
 //     * @param tenantId
 //     * @param updates
 //     * @return
 //     * @throws MetadataQueryException
 //     */
-//    public List<MetadataItem> update(String uuid, String tenantId, Map<String, JsonNode> updates) 
-//    throws MetadataQueryException 
+//    public List<MetadataItem> update(String uuid, String tenantId, Map<String, JsonNode> updates)
+//    throws MetadataQueryException
 //    {
 //        try {
 //            if (updates == null || updates.isEmpty()) {
 //                return new ArrayList<MetadataItem>();
 //             }
-//             else 
+//             else
 //             {
 //                 Builder builder = null;
 //                 for (String key: updates.keySet()) {
@@ -931,11 +930,11 @@ public class MetadataDao {
 //                         builder = builder.set(key, updates.get(key));
 //                     }
 //                 }
-//                 
+//
 //                 WriteResult<MetadataItem,String> result = getDefaultCollection().update(_getDBQueryForUuidAndTenant(uuid, tenantId), builder);
 //                 // do we need to check for errors?
 //                 if (!result.getWriteResult().getLastError().isEmpty()) {
-//                     throw new MetadataQueryException("Failed to update one or more items", 
+//                     throw new MetadataQueryException("Failed to update one or more items",
 //                             result.getWriteResult().getLastError().getException());
 //                 }
 //                 return result.getSavedObjects();
@@ -946,7 +945,7 @@ public class MetadataDao {
 //            throw new MetadataQueryException("Unable to insert new metadata item", e);
 //        }
 //    }
-//    
+//
 //    /**
 //     * Add the given value to the array value if it doesn't already exist in the specified field atomically
 //     * @param uuid
@@ -955,14 +954,14 @@ public class MetadataDao {
 //     * @return
 //     * @throws MetadataQueryException
 //     */
-//    public List<MetadataItem> add(String uuid, String tenantId, Map<String, JsonNode> updates) 
-//    throws MetadataQueryException 
+//    public List<MetadataItem> add(String uuid, String tenantId, Map<String, JsonNode> updates)
+//    throws MetadataQueryException
 //    {
 //        try {
 //            if (updates == null || updates.isEmpty()) {
 //                return new ArrayList<MetadataItem>();
 //             }
-//             else 
+//             else
 //             {
 //                 Builder builder = null;
 //                 for (String key: updates.keySet()) {
@@ -972,11 +971,11 @@ public class MetadataDao {
 //                         builder = builder.addToSet(key, updates.get(key));
 //                     }
 //                 }
-//                 
+//
 //                 WriteResult<MetadataItem,String> result = getDefaultCollection().update(_getDBQueryForUuidAndTenant(uuid, tenantId), builder);
 //                 // do we need to check for errors?
 //                 if (!result.getWriteResult().getLastError().isEmpty()) {
-//                     throw new MetadataQueryException("Failed to add to one or more items", 
+//                     throw new MetadataQueryException("Failed to add to one or more items",
 //                             result.getWriteResult().getLastError().getException());
 //                 }
 //                 return result.getSavedObjects();
@@ -987,7 +986,7 @@ public class MetadataDao {
 //            throw new MetadataQueryException("Unable to insert new metadata item", e);
 //        }
 //    }
-//    
+//
 //    /**
 //     * Add one or ore values to the array value at each of the specified fields atomically
 //     * @param uuid
@@ -996,14 +995,14 @@ public class MetadataDao {
 //     * @return
 //     * @throws MetadataQueryException
 //     */
-//    public List<MetadataItem> append(String uuid, String tenantId, Map<String, JsonNode> additions) 
-//    throws MetadataQueryException 
+//    public List<MetadataItem> append(String uuid, String tenantId, Map<String, JsonNode> additions)
+//    throws MetadataQueryException
 //    {
 //        try {
 //            if (additions == null || additions.isEmpty()) {
 //                return new ArrayList<MetadataItem>();
 //             }
-//             else 
+//             else
 //             {
 //                 Builder builder = null;
 //                 for (String key: additions.keySet()) {
@@ -1024,7 +1023,7 @@ public class MetadataDao {
 //                 WriteResult<MetadataItem,String> result = getDefaultCollection().update(_getDBQueryForUuidAndTenant(uuid, tenantId), builder);
 //                 // do we need to check for errors?
 //                 if (!result.getWriteResult().getLastError().isEmpty()) {
-//                     throw new MetadataQueryException("Failed to append to one or more items", 
+//                     throw new MetadataQueryException("Failed to append to one or more items",
 //                             result.getWriteResult().getLastError().getException());
 //                 }
 //                 return result.getSavedObjects();
@@ -1035,7 +1034,7 @@ public class MetadataDao {
 //            throw new MetadataQueryException("Unable to insert new metadata item", e);
 //        }
 //    }
-//    
+//
 //    /**
 //     * Perform an atomic increment action of a user-defined amount on the given metadata values(s).
 //     * @param uuid
@@ -1044,14 +1043,14 @@ public class MetadataDao {
 //     * @return
 //     * @throws MetadataQueryException
 //     */
-//    public List<MetadataItem> increment(String uuid, String tenantId, Map<String, Integer> increments) 
-//    throws MetadataQueryException 
+//    public List<MetadataItem> increment(String uuid, String tenantId, Map<String, Integer> increments)
+//    throws MetadataQueryException
 //    {
 //        try {
 //            if (increments == null || increments.isEmpty()) {
 //               return new ArrayList<MetadataItem>();
 //            }
-//            else 
+//            else
 //            {
 //                Builder builder = null;
 //                for (String key: increments.keySet()) {
@@ -1064,7 +1063,7 @@ public class MetadataDao {
 //                WriteResult<MetadataItem,String> result = getDefaultCollection().update(_getDBQueryForUuidAndTenant(uuid, tenantId), builder);
 //                // do we need to check for errors?
 //                if (!result.getWriteResult().getLastError().isEmpty()) {
-//                    throw new MetadataQueryException("Failed to increment one or more items", 
+//                    throw new MetadataQueryException("Failed to increment one or more items",
 //                            result.getWriteResult().getLastError().getException());
 //                }
 //                return result.getSavedObjects();
@@ -1073,7 +1072,7 @@ public class MetadataDao {
 //            throw e;
 //        } catch (Exception e) {
 //            throw new MetadataQueryException("Unable to insert new metadata item", e);
-//        }       
+//        }
 //    }
 
 //    /**

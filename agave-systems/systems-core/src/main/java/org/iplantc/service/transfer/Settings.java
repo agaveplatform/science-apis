@@ -89,6 +89,9 @@ public class Settings {
 
 	public static boolean						ALLOW_RELAY_TRANSFERS;
 	public static int 							MAX_RELAY_TRANSFER_SIZE;
+
+	public static String						SFTP_RELAY_HOST;
+	public static int							SFTP_RELAY_PORT;
 	
 	// Set the logging level for the Maverick SSH library.
 	// The acceptable values are ERROR, INFO, DEBUG.
@@ -109,9 +112,7 @@ public class Settings {
 
 		String trustedUsers = (String)props.get("iplant.trusted.users");
 		if (trustedUsers != null && !trustedUsers.equals("")) {
-			for (String user: trustedUsers.split(",")) {
-				TRUSTED_USERS.add(user);
-			}
+			Collections.addAll(TRUSTED_USERS, trustedUsers.split(","));
 		}
 		
 		API_VERSION = (String)props.getProperty("iplant.api.version");
@@ -120,7 +121,7 @@ public class Settings {
 		
 		IPLANT_MYPROXY_SERVER = (String) props.get("iplant.myproxy.server");
 
-		try {IPLANT_MYPROXY_PORT = Integer.valueOf(props.getProperty("iplant.myproxy.port"));}
+		try {IPLANT_MYPROXY_PORT = Integer.parseInt(props.getProperty("iplant.myproxy.port"));}
         catch (Exception e) {
             log.error("Failure loading setting iplant.myproxy.port.", e);
             IPLANT_MYPROXY_PORT = 0;
@@ -225,6 +226,18 @@ public class Settings {
             log.error("Failure loading setting iplant.allow.relay.transfers.", e);
             ALLOW_RELAY_TRANSFERS = false;
         }
+
+		try {SFTP_RELAY_HOST = props.getProperty("iplant.sftp.relay.host", "sftp-relay");}
+		catch (Exception e) {
+			log.error("Failure loading setting iplant.sftp.relay.host.", e);
+			SFTP_RELAY_HOST = "sftp-relay";
+		}
+
+		try {SFTP_RELAY_PORT = Integer.valueOf(props.getProperty("iplant.sftp.relay.port", "50051"));}
+		catch (Exception e) {
+			log.error("Failure loading setting iplant.sftp.relay.port.", e);
+			SFTP_RELAY_PORT = 50051;
+		}
 		
 		String maxUserJobs = (String) props.get("iplant.max.user.jobs.per.system");
 		try {

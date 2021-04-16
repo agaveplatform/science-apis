@@ -1,10 +1,10 @@
 package org.teragrid.service.util;
 
-import java.util.Hashtable;
-import java.util.Set;
-
 import org.teragrid.service.tgcdb.dto.ComputeDTO;
 import org.teragrid.service.tgcdb.dto.Service;
+
+import java.util.Hashtable;
+import java.util.Set;
 
 @SuppressWarnings("unused")
 public class ServiceResolver {

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
 import org.hibernate.exception.ConstraintViolationException;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.Software;
@@ -38,6 +39,8 @@ import org.testng.annotations.Test;
 @Test(groups={"integration"})
 public class DomainSetup extends AbstractDaoTest
 {
+    private static final Logger log = Logger.getLogger(DomainSetup.class);
+
 	private static final String SOFTWARE_OWNER =       "api_sample_user";       // default software owner if none given
     private static final String SYSTEM_OWNER =         "sysowner";      // default system owner
     
@@ -111,7 +114,6 @@ public class DomainSetup extends AbstractDaoTest
             FileUtils.writeStringToFile(file,content);
         } catch (IOException e) {
             String name = file.getName();
-            System.out.println("failed writing "+name+" to file");
             e.printStackTrace();
             return false;
         }
@@ -219,7 +221,7 @@ public class DomainSetup extends AbstractDaoTest
             try {
                 String key = (String)json.get("id");
                 // must be able read remote system from db to create a software object.
-                System.out.println(key);
+//                System.out.println(key);
                 softwareMap.put(key, Software.fromJSON(json,SOFTWARE_OWNER));
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -243,7 +245,7 @@ public class DomainSetup extends AbstractDaoTest
         try {
             software = Software.fromJSON(json,SOFTWARE_OWNER);
         } catch (JSONException e) {
-            e.printStackTrace();
+            log.error("Unable to marshal software from json", e);
         }
         return software;
     }
@@ -258,7 +260,7 @@ public class DomainSetup extends AbstractDaoTest
         try {
             executionSystem = ExecutionSystem.fromJSON(json);
         } catch (SystemException | SystemArgumentException e) {
-            e.printStackTrace();
+            log.error("Unable to marshal execution system from json", e);
         }
         return executionSystem;
     }
@@ -273,7 +275,7 @@ public class DomainSetup extends AbstractDaoTest
         try{
             storageSystem = StorageSystem.fromJSON(json);
         } catch (SystemException e) {
-            e.printStackTrace();
+            log.error("Unable to marshal storage system from json", e);
         }
         return storageSystem;
     }
@@ -289,7 +291,7 @@ public class DomainSetup extends AbstractDaoTest
         try {
              software = Software.fromJSON(json,SOFTWARE_OWNER);
         } catch (JSONException e) {
-            e.printStackTrace();
+            log.error("Unable to marshal software from json", e);
         }
         return software;
     }
@@ -303,24 +305,24 @@ public class DomainSetup extends AbstractDaoTest
         for(JSONObject storageJson : jsonStorageList){
             try {
                 RemoteSystem system = (RemoteSystem)StorageSystem.fromJSON(storageJson);
-                System.out.println("Storage system "+system.getName());
+//                System.out.println("Storage system "+system.getName());
                 system.setOwner(SYSTEM_OWNER);         // default system owner
                 systemDao.persist(system);
             } catch (SystemException e) {
-                e.printStackTrace();
+                log.error("Unable to parse and safe default test storage system", e);
             }
         }
 
         for(JSONObject executionJson : jsonExecutionList){
             try {
                 RemoteSystem system = (RemoteSystem)ExecutionSystem.fromJSON(executionJson);
-                System.out.println("Execution system "+system.getName());
+//                System.out.println("Execution system "+system.getName());
                 system.setOwner(SYSTEM_OWNER);         // default system owner
                 systemDao.persist(system);
             } catch (SystemException | SystemArgumentException e) {
-                e.printStackTrace();
+                log.error("Unable to parse and save test execution system", e);
             }catch (ConstraintViolationException ce){
-                System.out.println("Continue with loading data if possible");
+//                System.out.println("Continue with loading data if possible");
             }
 
         }
@@ -335,12 +337,12 @@ public class DomainSetup extends AbstractDaoTest
                            // dependency on systems being available in the database.
         for(JSONObject softwareJson : jsonSoftwareList){
             try {
-                System.out.println(softwareJson.get("id"));
+//                System.out.println(softwareJson.get("id"));
                 Software software = Software.fromJSON(softwareJson,SOFTWARE_OWNER);
                 software.setOwner(SOFTWARE_OWNER);
                 SoftwareDao.persist(software);
             } catch (JSONException e) {
-                e.printStackTrace();
+                log.error("Unable to marshall software from json", e);
             }
         }
     }
@@ -356,7 +358,7 @@ public class DomainSetup extends AbstractDaoTest
                 software.setOwner(SYSTEM_OWNER);
                 SoftwareDao.persist(software);
             } catch (JSONException e) {
-                e.printStackTrace();
+                log.error("Unable to marshall software from json", e);
             }
         }
     }
@@ -372,7 +374,7 @@ public class DomainSetup extends AbstractDaoTest
             Software software = Software.fromJSON(softwareJson,SOFTWARE_OWNER);
             SoftwareDao.persist(software);
         } catch (JSONException e) {
-            e.printStackTrace();
+            log.error("Unable to marshall software from json", e);
         }
     }
 
@@ -400,8 +402,7 @@ public class DomainSetup extends AbstractDaoTest
             software.setOwner(SYSTEM_OWNER);
             SoftwareDao.persist(Software.fromJSON(softwareJson,SOFTWARE_OWNER));
         } catch (JSONException e) {
-            System.out.println("failed to persist json \n"+json);
-            e.printStackTrace();
+            log.error("failed to persist json \n"+json, e);
         }
     }
 
@@ -415,7 +416,7 @@ public class DomainSetup extends AbstractDaoTest
             software.setOwner(SYSTEM_OWNER);
             SoftwareDao.persist(software);
         } catch (JSONException e) {
-            e.printStackTrace();
+            log.error("Unable to marshall software from json", e);
         }
     }
 
@@ -435,7 +436,7 @@ public class DomainSetup extends AbstractDaoTest
             executionSystem = (RemoteSystem)ExecutionSystem.fromJSON(executeJ);
             executionSystem.setOwner(SYSTEM_OWNER);
         } catch (SystemException | SystemArgumentException e) {
-            e.printStackTrace();
+            log.error("Unable to marshall test system from json", e);
         }
     }
 
@@ -456,7 +457,7 @@ public class DomainSetup extends AbstractDaoTest
         iplantStorage.setGlobalDefault(true);
         iplantStorage.setPubliclyAvailable(true);
         idao.persist(iplantStorage);
-        System.out.println();
+//        System.out.println();
     }
 
     /**
@@ -471,10 +472,10 @@ public class DomainSetup extends AbstractDaoTest
         //System.out.println("Total records in all tables "+g.totalTableRecords());
         //g.lockAndWipeTables();
        // System.out.println("Total records in all tables " + g.totalTableRecords());
-        System.out.println("\n\n");
+//        System.out.println("\n\n");
         persistDefaultTestSystemsData();
         //System.out.println("Total records in all tables "+g.totalTableRecords());
-        System.out.println("\n\n");
+//        System.out.println("\n\n");
         //g.closeConnection("DomainSetup");
     }
 

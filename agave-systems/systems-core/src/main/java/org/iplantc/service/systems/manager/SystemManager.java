@@ -1,10 +1,5 @@
 package org.iplantc.service.systems.manager;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.cfg.NotYetImplementedException;
@@ -23,22 +18,15 @@ import org.iplantc.service.systems.events.SystemHistoryEventDao;
 import org.iplantc.service.systems.exceptions.EncryptionException;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.exceptions.SystemException;
-import org.iplantc.service.systems.model.AuthConfig;
-import org.iplantc.service.systems.model.CredentialServer;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.LoginConfig;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.StorageConfig;
-import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemRole;
-import org.iplantc.service.systems.model.enumerations.AuthConfigType;
-import org.iplantc.service.systems.model.enumerations.CredentialServerProtocolType;
-import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
-import org.iplantc.service.systems.model.enumerations.RoleType;
-import org.iplantc.service.systems.model.enumerations.SystemEventType;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
+import org.iplantc.service.systems.model.*;
+import org.iplantc.service.systems.model.enumerations.*;
 import org.iplantc.service.systems.util.ServiceUtils;
 import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 
 public class SystemManager {
 	
@@ -1666,14 +1654,14 @@ public class SystemManager {
         }
         else 
         {
-            if (system.isAvailable()) {
-                throw new SystemException(system.getSystemId() + " is already available.");
-            } else {
+//            if (system.isAvailable()) {
+//                throw new SystemException(system.getSystemId() + " is already available.");
+//            } else {
                 system.setAvailable(true);
                 getDao().persist(system);
                 getEventProcessor().processSystemUpdateEvent(system, SystemEventType.ENABLED, username);
                 return system;
-            }
+//            }
         }
     }
     

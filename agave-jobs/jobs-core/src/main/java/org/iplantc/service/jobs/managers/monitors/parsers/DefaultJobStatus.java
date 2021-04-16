@@ -178,7 +178,7 @@ public enum DefaultJobStatus implements RemoteSchedulerJobStatus<DefaultJobStatu
      * @see #getUnknownStatuses()
      */
     public boolean isDoneStatus() {
-        return !isActiveStatus() && !isUnknownStatus();
+        return !isActiveStatus() && !isUnknownStatus() && !isPausedStatus();
     }
 
     /**

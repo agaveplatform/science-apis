@@ -25,8 +25,8 @@
 		}
 	],
 	"login": {
-		"host": "sftp",
-		"port": 10022,
+		"host": "${ssh.host}",
+		"port": ${ssh.port},
 		"protocol": "SSH",
 		"auth": {
 			"username": "testuser",
@@ -35,8 +35,8 @@
 		}
 	},
 	"storage": {
-		"host": "sftp",
-		"port": 10022,
+		"host": "${ssh.host}",
+		"port": ${ssh.port},
 		"protocol": "SFTP",
 		"rootDir": "/",
 		"homeDir": "/home/testuser",
@@ -48,5 +48,5 @@
 	},
 	"scheduler": "FORK",
 	"environment": "",
-	"startupScript": "./bashrc"
+	"startupScript": null
 }

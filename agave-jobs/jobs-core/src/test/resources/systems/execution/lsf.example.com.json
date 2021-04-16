@@ -16,19 +16,19 @@
       "maxNodes": 1,
       "maxMemory": "5MB",
       "customDirectives": "-p 1",
-      "default": false
+      "default": true
     },
     {
-      "name": "normal",
+      "name": "default",
       "maxJobs": 100,
       "maxMemory": "2048GB",
       "customDirectives": "-p 1",
-      "default": true
+      "default": false
     }
   ],
   "login": {
-    "host": "openlava",
-    "port": 10177,
+    "host": "${lsf.host}",
+    "port": ${lsf.port},
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -37,8 +37,8 @@
     }
   },
   "storage": {
-    "host": "openlava",
-    "port": 10177,
+    "host": "${lsf.host}",
+    "port": ${lsf.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

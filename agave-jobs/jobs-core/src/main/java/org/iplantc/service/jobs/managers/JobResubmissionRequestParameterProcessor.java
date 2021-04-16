@@ -3,11 +3,8 @@
  */
 package org.iplantc.service.jobs.managers;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
 import org.iplantc.service.apps.exceptions.SoftwareException;
@@ -17,8 +14,10 @@ import org.iplantc.service.apps.model.enumerations.SoftwareParameterType;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.jobs.exceptions.JobProcessingException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author dooley
@@ -35,9 +34,8 @@ public class JobResubmissionRequestParameterProcessor extends JobRequestParamete
 	/**
 	 * Validates the {@link SoftwareParameter} values passed into
 	 * a job request.
-	 * @param software
-	 * @param jobRequestMap
-	 * @throws JobProcessingException
+	 * @param jobRequestMap the map of parameter values submitted with the job request
+	 * @throws JobProcessingException if an invalid value is provided
 	 */
 	public void process(Map<String, Object> jobRequestMap) 
 	throws JobProcessingException {
@@ -167,14 +165,13 @@ public class JobResubmissionRequestParameterProcessor extends JobRequestParamete
 					
 					String[] explodedParameters = null;
 					if (jobRequestMap.get(softwareParameter.getKey()) == null) {
-//						explodedParameters = new String[]{};
 						continue;
 					} else if (jobRequestMap.get(softwareParameter.getKey()) instanceof String[]) {
 						explodedParameters = (String[])jobRequestMap.get(softwareParameter.getKey());
-
-					} else {
+					} else if (jobRequestMap.get(softwareParameter.getKey()) instanceof String) {
 						explodedParameters = StringUtils.split((String)jobRequestMap.get(softwareParameter.getKey()), ";");
-//						explodedParameters = new String[]{(String)pTable.get(softwareParameter.getKey())};
+					} else {
+						explodedParameters = new String[] { String.valueOf(jobRequestMap.get(softwareParameter.getKey())) };
 					}
 
 					if (softwareParameter.getMinCardinality() > explodedParameters.length)

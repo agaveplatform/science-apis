@@ -1,7 +1,8 @@
 package org.iplantc.service.jobs.managers.monitors.parsers;
 
-import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.jobs.model.enumerations.JobStatusType;
+
 import java.util.List;
 
 public interface RemoteSchedulerJobStatus<T> {

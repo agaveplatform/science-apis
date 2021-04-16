@@ -1,8 +1,8 @@
-FROM agaveplatform/grpc-go:1.13
+FROM agaveplatform/grpc-go:1.14
 
 LABEL maintainer="Agave Platform<help@agaveplatform.org>"
 LABEL protoc_version="${PROTOC_VERSION}"
-LABEL language="golang:1.11"
+LABEL language="golang:1.14"
 LABEL agave_platform=2.0
 LABEL tooling=transfer,sftp,worker,put
 
@@ -12,9 +12,12 @@ COPY ./scripts/docker-entrypoint.sh /docker-entrypoint.sh
 
 WORKDIR $GOPATH/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
 
-RUN make genproto && make deps
+RUN make default && \
+	make install && \
+	make client && \
+	make install-client
 
-RUN make default && make install
+ENV AGAVE_GRPCSERVICE "localhost:50051"
 
 # Commenting out to avoid insanely long buid times every time
 #FROM alpine:latest
@@ -22,7 +25,7 @@ RUN make default && make install
 #
 #LABEL maintainer="Agave Platform<help@agaveplatform.org>"
 #LABEL protoc_version="${PROTOC_VERSION}"
-#LABEL language="golang:1.11"
+#LABEL language="golang:1.13"
 #LABEL agave_platform=2.0
 #LABEL tooling=transfer,sftp,worker,put
 #
@@ -32,6 +35,5 @@ RUN make default && make install
 #RUN \
 #    chmod +x /usr/local/bin/sftp-relay
 
-EXPOSE 50051
+EXPOSE 50051 9092
 ENTRYPOINT ["/docker-entrypoint.sh"]
-

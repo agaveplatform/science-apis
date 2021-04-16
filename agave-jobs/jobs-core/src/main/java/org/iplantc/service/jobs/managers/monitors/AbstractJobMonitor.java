@@ -3,13 +3,9 @@
  */
 package org.iplantc.service.jobs.managers.monitors;
 
-import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
-import java.util.Date;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
 import org.iplantc.service.jobs.managers.JobManager;
@@ -17,19 +13,22 @@ import org.iplantc.service.jobs.managers.launchers.AbstractJobLauncher;
 import org.iplantc.service.jobs.managers.launchers.StartupScriptJobMacroResolver;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.jobs.model.enumerations.StartupScriptJobVariableType;
 import org.iplantc.service.jobs.model.scripts.SubmitScript;
 import org.iplantc.service.jobs.model.scripts.SubmitScriptFactory;
 import org.iplantc.service.remote.RemoteSubmissionClient;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.enumerations.StartupScriptSystemVariableType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.AuthenticationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.DateTime;
+
+import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.Date;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Abstract class to handle the common actions needed for a {@link JobMonitor} to properly function. Most
@@ -48,11 +47,17 @@ public abstract class AbstractJobMonitor implements JobMonitor {
     private AtomicBoolean stopped = new AtomicBoolean(false);
     
     protected Job job;
-
+    final protected ExecutionSystem executionSystem;
     protected JobManager jobManager = null;
 
-	public AbstractJobMonitor(Job job) {
+    /**
+     * Default constructor for all child classes.
+     * @param job the job to monitor
+     * @param executionSystem the execution system on which the job is running
+     */
+	public AbstractJobMonitor(Job job, ExecutionSystem executionSystem) {
 		this.job = job;
+		this.executionSystem = executionSystem;
 	}
 	
 	/* (non-Javadoc)
@@ -77,6 +82,14 @@ public abstract class AbstractJobMonitor implements JobMonitor {
     @Override
     public synchronized Job getJob() {
         return this.job;
+    }
+
+    /* (non-Javadoc)
+     * @see org.iplantc.service.jobs.managers.monitors.JobMonitor#setJob()
+     */
+    @Override
+    public synchronized void setJob(Job job) {
+        this.job = job;
     }
 
     /* (non-Javadoc)
@@ -105,22 +118,22 @@ public abstract class AbstractJobMonitor implements JobMonitor {
 	 * @see org.iplantc.service.jobs.managers.monitors.JobMonitor#getRemoteSubmissionClient()
 	 */
 	@Override
-	public RemoteSubmissionClient getRemoteSubmissionClient() throws SystemUnavailableException, AuthenticationException
+	public RemoteSubmissionClient getRemoteSubmissionClient() throws AuthenticationException
     {
 		ExecutionSystem system = getExecutionSystem();
 		return system.getRemoteSubmissionClient(getJob().getInternalUsername());
 	}
 
-	public ExecutionSystem getExecutionSystem() throws SystemUnavailableException
+	public ExecutionSystem getExecutionSystem()
 	{
-		return getJobManager().getJobExecutionSystem(getJob());
+	    return this.executionSystem;
 	}
 
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.jobs.managers.monitors.JobMonitor#getRemoteDataClient()
 	 */
 	@Override
-	public RemoteDataClient getAuthenticatedRemoteDataClient() throws RemoteDataException, IOException, AuthenticationException, SystemUnavailableException, RemoteCredentialException
+	public RemoteDataClient getAuthenticatedRemoteDataClient() throws RemoteDataException, IOException, RemoteCredentialException
 	{
 		RemoteDataClient remoteDataClient = getExecutionSystem().getRemoteDataClient(getJob().getInternalUsername());
         remoteDataClient.authenticate();
@@ -148,7 +161,9 @@ public abstract class AbstractJobMonitor implements JobMonitor {
             remoteDataClient = getAuthenticatedRemoteDataClient();
 
             // get the output filenames from the SubmitScript for the job.
-            SubmitScript script = SubmitScriptFactory.getScript(job);
+            SubmitScript script = SubmitScriptFactory.getInstance(getJob(),
+                    SoftwareDao.getSoftwareByUniqueName(getJob().getSoftwareName()),
+                    getExecutionSystem());
             String stdOut = job.getWorkPath() + "/" + script.getStandardOutputFile();
             String stdErr = job.getWorkPath() + "/" + script.getStandardErrorFile();
 
@@ -208,11 +223,23 @@ public abstract class AbstractJobMonitor implements JobMonitor {
      * @see StartupScriptJobMacroResolver
 	 */
 	public String getStartupScriptCommand() throws JobMacroResolutionException {
-		String resolvedstartupScript = new StartupScriptJobMacroResolver(getJob()).resolve();
+		String resolvedstartupScript = new StartupScriptJobMacroResolver(getJob(), getExecutionSystem()).resolve();
 
 		return resolvedstartupScript == null ? "" :
                 String.format("echo $(source %s 2>&1) >> /dev/null ; ", resolvedstartupScript);
 	}
+
+    /**
+     * Filters the scheduler specific job query command replacing the {@code ${AGAVE_JOB_LOCALJOB_ID}} macro with the
+     * recorded {@link Job#getLocalJobId()} for the job under question.
+     * @return teh filtered job query command for the scheduler associated with the job.
+     * @throws SystemUnavailableException if the remote system is unavailable
+     */
+	public String getBatchQueryCommand() throws SystemUnavailableException {
+	    return StringUtils.replace(getExecutionSystem().getScheduler().getBatchQueryCommand(),
+                "${AGAVE_JOB_LOCALJOB_ID}",
+                getJob().getLocalJobId());
+    }
 
     /**
      * Updates the job record in the db and locally with the given status and logs any error that happens.
@@ -227,7 +254,7 @@ public abstract class AbstractJobMonitor implements JobMonitor {
 
         try {
             // update the job and the reference object here
-            this.job = getJobManager().updateStatus(this.job, status, errorMessage);
+            setJob(getJobManager().updateStatus(getJob(), status, errorMessage));
         } catch(Throwable e) {
             throw new JobException("Failed to updated job " + this.job.getUuid() + " status to " + this.job.getStatus(), e);
         }
@@ -241,13 +268,15 @@ public abstract class AbstractJobMonitor implements JobMonitor {
      */
     protected void updateStatusOfFinishedJob() throws JobException {
         Date logDate = new DateTime().toDate();
-        this.job.setEndTime(logDate);
+        getJob().setEndTime(logDate);
         updateJobStatus(JobStatusType.CLEANING_UP, "Job completion detected by job monitor.");
 
-        if (!this.job.isArchiveOutput()) {
-            log.debug("Job " + this.job.getUuid() + " will skip archiving at user request.");
+        if (!getJob().isArchiveOutput()) {
+            log.debug("Job " + getJob().getUuid() + " will skip archiving at user request.");
             updateJobStatus(JobStatusType.FINISHED, "Job completed. Skipping archiving at user request.");
-            log.debug("Job " + this.job.getUuid() + " finished.");
+            log.debug("Job " + getJob().getUuid() + " finished.");
         }
     }
+
+
 }

@@ -25,10 +25,10 @@ import java.util.List;
 @Test(groups= {"transfer","performance"})
 public class URLCopyTest extends BaseTransferTestCase
 {
-	protected static String LOCAL_DIR = "src/test/resources/transfer";
-	protected static String LOCAL_DOWNLOAD_DIR = "src/test/resources/download";
-	protected static String LOCAL_TXT_FILE = "src/test/resources/transfer/test_upload.txt";
-	protected static String LOCAL_BINARY_FILE = "src/test/resources/transfer/test_upload.bin";
+	protected static String LOCAL_DIR = "target/test-classes/transfer";
+	protected static String LOCAL_DOWNLOAD_DIR = "target/test-classes/download";
+	protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
+	protected static String LOCAL_BINARY_FILE = "target/test-classes/transfer/test_upload.bin";
 	
 	protected static String SOURCE_DIRNAME = "transfer";
 	protected static String DEST_DIRNAME = "transfer.copy";

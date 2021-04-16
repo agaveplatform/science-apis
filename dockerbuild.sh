@@ -53,6 +53,7 @@ clean()
  done 
 
  for gomodule in ${gomodules}; do
+   delete_docker_image_if_exists ${gomodule}:$2
    delete_docker_image_if_exists $1/${gomodule}:$2
  done
 
@@ -308,6 +309,9 @@ while getopts 'cbporgs:w:t:v:' OPTION; do
 done
 shift "$(($OPTIND -1))"
 
+# look up git branch for the default tag
+GIT_BRANCH=$(git branch | grep '^\*' | sed 's/^\* //g')
+version=${version:-"$GIT_BRANCH"}
 if [[ -z "${tag}" || -z "${version}" ]]; then
   echo "script usage: $(basename $0) [-c] [-o] -t imagetag -v imageversion" >&2
   exit 1

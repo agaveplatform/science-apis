@@ -1,22 +1,13 @@
 package org.iplantc.service.common.messaging;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
-import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.exceptions.MessageProcessingException;
-import org.iplantc.service.common.exceptions.MessagingException;
-import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
-
 import com.surftools.BeanstalkClient.Job;
 import com.surftools.BeanstalkClientImpl.ClientImpl;
+import org.iplantc.service.common.Settings;
+import org.testng.Assert;
+import org.testng.annotations.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Test(groups={"integration"})
 public class BeanstalkMessagingClientIT {

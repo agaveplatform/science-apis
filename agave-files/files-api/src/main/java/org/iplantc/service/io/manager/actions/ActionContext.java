@@ -1,11 +1,11 @@
 package org.iplantc.service.io.manager.actions;
 
-import java.io.File;
-import java.util.List;
-
 import org.apache.log4j.Logger;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.restlet.data.Range;
+
+import java.io.File;
+import java.util.List;
 
 /**
  * The ActionContext holds information about the context of a 

@@ -1,24 +1,7 @@
 package org.iplantc.service.systems.model;
 
-import java.math.BigDecimal;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.math.NumberUtils;
@@ -34,8 +17,13 @@ import org.iplantc.service.systems.util.ServiceUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Contains the bean to define a batch queue. Each queue
@@ -331,11 +319,9 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 	@Column(name = "`max_requested_time`", nullable = true, length = 19)
 	public void setMaxRequestedTime(String maxRequestedTime)
 	{
-        if(maxRequestedTime.equals("")){
+        if (StringUtils.isBlank(maxRequestedTime)){
             throw new SystemException("'system.queues.maxRequestedTime' must not be an empty string.");
-        }
-		if (!StringUtils.isEmpty(maxRequestedTime))
-		{
+        } else {
 			if (maxRequestedTime.length() > 19) {
 				throw new SystemException("'system.queues.maxRequestedTime' must be less than 19 characters.");
 			} else if (!TimeUtils.isValidRequestedJobTime(maxRequestedTime)) {
@@ -705,7 +691,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 
 	public static Double parseMaxMemoryPerNode(String memoryLimit) throws NumberFormatException
 	{
-		if (StringUtils.isEmpty(memoryLimit)) {
+		if (StringUtils.isBlank(memoryLimit)) {
 			throw new NumberFormatException("Memory limit cannot be null or empty.");
 		}
 
@@ -728,6 +714,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 	    powerMap.put("PB", 2);
 	    powerMap.put("TB", 1);
 	    powerMap.put("GB", 0);
+		powerMap.put("MB", -1);
 	    if (matcher.find()) {
 			String number = matcher.group(1);
 			int pow = powerMap.get(matcher.group(2).toUpperCase());
@@ -752,6 +739,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 		queue.maxProcessorsPerNode = getMaxProcessorsPerNode();
 		queue.maxMemoryPerNode = getMaxMemoryPerNode();
 		queue.customDirectives = getCustomDirectives();
+		queue.maxRequestedTime = getMaxRequestedTime();
 		queue.systemDefault = isSystemDefault();
 		return queue;
 	}
@@ -763,6 +751,7 @@ public class BatchQueue implements LastUpdatable, Comparable<BatchQueue> {
 		result = prime * result
 				+ ((executionSystem == null) ? 0 : executionSystem.hashCode());
 		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		result = prime * result + ((mappedName == null) ? 0 : mappedName.hashCode());
 		return result;
 	}
 

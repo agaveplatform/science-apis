@@ -61,7 +61,7 @@ public class IRODS4InputStream extends RemoteInputStream<IRODS4> {
 	{
 		try { input.close(); } catch (Exception e) {};
 		try { client.disconnect(); } catch (Exception e) {}
-		log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  
+		log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()
 				+ " aborting IRODS4 input stream connection for thread");
 	}
 
@@ -70,7 +70,7 @@ public class IRODS4InputStream extends RemoteInputStream<IRODS4> {
 	public void close() throws IOException
 	{
 		abort();
-		log.debug(Thread.currentThread().getName() + Thread.currentThread().getId()  
+		log.trace(Thread.currentThread().getName() + Thread.currentThread().getId()
 				+ " closing IRODS4 input stream connection for thread");
 	}
 

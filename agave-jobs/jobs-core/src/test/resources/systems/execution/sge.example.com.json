@@ -17,8 +17,8 @@
     }
   ],
   "login": {
-    "host": "gridengine",
-    "port": 10166,
+    "host": "${gridengine.host}",
+    "port": ${gridengine.port},
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -27,8 +27,8 @@
     }
   },
   "storage": {
-    "host": "gridengine",
-    "port": 10166,
+    "host": "${gridengine.host}",
+    "port": ${gridengine.data.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

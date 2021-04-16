@@ -195,7 +195,7 @@ public class FileEvent {
     }
 
     /**
-     * @param username
+     * @param createdBy
      *            the creator to set
      */
     public void setCreatedBy(String createdBy) {

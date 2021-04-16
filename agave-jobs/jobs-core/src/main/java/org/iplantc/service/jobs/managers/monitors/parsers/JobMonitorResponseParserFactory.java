@@ -4,16 +4,14 @@
 package org.iplantc.service.jobs.managers.monitors.parsers;
 
 import org.iplantc.service.apps.exceptions.SoftwareException;
-import org.iplantc.service.systems.dao.SystemDao;
+import org.iplantc.service.apps.exceptions.UnknownSoftwareException;
+import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.jobs.exceptions.SoftwareUnavailableException;
+import org.iplantc.service.jobs.managers.JobManager;
+import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.enumerations.ExecutionType;
-import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
-import org.iplantc.service.systems.model.enumerations.SchedulerType;
-import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.jobs.managers.JobManager;
-import org.iplantc.service.jobs.model.Job;
 
 /**
  * Factory class to get the appropraite {@link JobStatusResponseParser} for a given {@link Job}
@@ -51,12 +49,19 @@ public class JobMonitorResponseParserFactory {
 	 * Wrapper for call to {@link JobManager#getJobSoftware(Job)} for easier testing.
 	 * @param job the job for which to return the {@link ExecutionSystem}
 	 * @return the job software
-	 * @throws SoftwareException if unable to query for software
 	 */
-	protected Software getSoftware(Job job) throws SoftwareException {
-		return getJobManager().getJobSoftware(job);
+	protected Software getSoftware(Job job) throws SoftwareUnavailableException, UnknownSoftwareException {
+		return getJobManager().getJobSoftware(job.getSoftwareName());
 	}
 
+	/**
+	 * Factory method to instantiate an instance of {@link JobStatusResponseParser} for the given {@link Job}.
+	 *
+	 * @param job the job for which the {@link JobStatusResponseParser} should be created
+	 * @return an instance of {@link JobStatusResponseParser} capable of parsing status responses from the remote scheduler running the {@code job}
+	 * @throws SystemUnknownException when the system does not exist anymore.
+	 * @throws SystemUnavailableException when the system is not available due to downtime or being set unavailable.
+	 */
 	public JobStatusResponseParser getInstance(Job job) throws SystemUnknownException, SystemUnavailableException {
 //		ExecutionSystem executionSystem = getExecutionSystem(job);
 

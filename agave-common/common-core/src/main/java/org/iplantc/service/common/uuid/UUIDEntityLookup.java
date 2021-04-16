@@ -270,7 +270,7 @@ public class UUIDEntityLookup {
             		.setResultTransformer(Criteria.ALIAS_TO_ENTITY_MAP)
             		.uniqueResult();
             
-            HibernateUtil.commitTransaction();
+//            HibernateUtil.commitTransaction();
         }
         catch(Throwable e) 
         {
@@ -310,7 +310,7 @@ public class UUIDEntityLookup {
 		}
 		else 
 		{
-			String resolvedPath = getAgaveRelativePathFromAbsolutePath((String)map.get("absolutepath"), 
+			String resolvedPath = getAgaveAbsolutePathFromAbsolutePath((String)map.get("absolutepath"),
 																	(String)map.get("root_dir"), 
 																	(String)map.get("home_dir"));
 			
@@ -324,53 +324,108 @@ public class UUIDEntityLookup {
 	/**
 	 * Resolves an <code>absolutePath</code> relative to the <code>rootDir</code> and <code>homeDir</code>.
 	 *
-	 * @param absolutePath the absolute path on a <code>RemoteSystem</code>
-	 * @param rootDir the path by which to resolve the <code>absolutePath</code>
-	 * @param homeDir the home directory relative to the <code>rootDir</code>
+	 * @param remoteSystemAbsolutePath the absolute path on a <code>RemoteSystem</code>
+	 * @param agaveSystemRootDir the path by which to resolve the <code>absolutePath</code>
+	 * @param agaveSystemHomeDir the home directory relative to the <code>rootDir</code>
 	 * @return the relative path as it would be referenced by a user on a <code>RemoteSystem
 	 */
-	protected static String getAgaveRelativePathFromAbsolutePath(String absolutePath, String rootDir, String homeDir)
-	{	
-		rootDir = FilenameUtils.normalize(rootDir);
-		if (!StringUtils.isEmpty(rootDir)) {
-			if (!rootDir.endsWith("/")) {
-				rootDir += "/";
+	protected static String getAgaveAbsolutePathFromAbsolutePath(String remoteSystemAbsolutePath, String agaveSystemRootDir, String agaveSystemHomeDir)
+	{
+		agaveSystemRootDir = FilenameUtils.normalize(agaveSystemRootDir);
+		if (!StringUtils.isEmpty(agaveSystemRootDir)) {
+			if (!agaveSystemRootDir.endsWith("/")) {
+				agaveSystemRootDir += "/";
 			}
 		} else {
-			rootDir = "/";
+			agaveSystemRootDir = "/";
 		}
 
-		homeDir = FilenameUtils.normalize(homeDir);
-        if (!StringUtils.isEmpty(homeDir)) {
-            homeDir = rootDir +  homeDir;
-            if (!homeDir.endsWith("/")) {
-                homeDir += "/";
-            }
-        } else {
-            homeDir = rootDir;
-        }
-
-        homeDir = homeDir.replaceAll("/+", "/");
-        rootDir = rootDir.replaceAll("/+", "/");
-        
-		if (StringUtils.isEmpty(absolutePath)) {
-			return homeDir;
+		agaveSystemHomeDir = FilenameUtils.normalize(agaveSystemHomeDir);
+		if (!StringUtils.isEmpty(agaveSystemHomeDir)) {
+			agaveSystemHomeDir = "/" + agaveSystemHomeDir + "/";
+		} else {
+			agaveSystemHomeDir = agaveSystemRootDir;
 		}
-		
-		String adjustedPath = absolutePath;
+
+		// Strip double slashes.
+		agaveSystemHomeDir = agaveSystemHomeDir.replaceAll("/+", "/");
+		agaveSystemRootDir = agaveSystemRootDir.replaceAll("/+", "/");
+
+		// no value is the agave home directory
+		if (StringUtils.isEmpty(remoteSystemAbsolutePath)) {
+			return agaveSystemHomeDir;
+		}
+
+		// resolve trailing relative indicators as directories by adding a slash
+		// this enables normalization to work as expected
+		String adjustedPath = remoteSystemAbsolutePath;
 		if (adjustedPath.endsWith("/..") || adjustedPath.endsWith("/.")) {
 			adjustedPath += File.separator;
 		}
-		
-		if (adjustedPath.startsWith("/")) {
-			absolutePath = FileUtils.normalize(adjustedPath);
-		} else {
-			absolutePath = FilenameUtils.normalize(adjustedPath);
-		}
-		
-		absolutePath = absolutePath.replaceAll("/+", "/");
 
-		return "/" + StringUtils.substringAfter(absolutePath, rootDir);
+		// formally normalize the paths of relative paths
+		if (adjustedPath.startsWith("/")) {
+			adjustedPath = FileUtils.normalize(adjustedPath);
+		} else {
+			adjustedPath = FilenameUtils.normalize(adjustedPath);
+		}
+
+		// remove double slashes from the path
+		adjustedPath = adjustedPath.replaceAll("/+", "/");
+
+		//
+		if (StringUtils.startsWith(adjustedPath, agaveSystemHomeDir)) {
+			return adjustedPath;
+		} else {
+			return "/" + StringUtils.substringAfter(adjustedPath, agaveSystemRootDir);
+		}
+
+
+
+
+
+
+//
+//		rootDir = FilenameUtils.normalize(rootDir);
+//		if (!StringUtils.isEmpty(rootDir)) {
+//			if (!rootDir.endsWith("/")) {
+//				rootDir += "/";
+//			}
+//		} else {
+//			rootDir = "/";
+//		}
+//
+//		homeDir = FilenameUtils.normalize(homeDir);
+//        if (!StringUtils.isEmpty(homeDir)) {
+//            homeDir = rootDir +  homeDir;
+//            if (!homeDir.endsWith("/")) {
+//                homeDir += "/";
+//            }
+//        } else {
+//            homeDir = rootDir;
+//        }
+//
+//        homeDir = homeDir.replaceAll("/+", "/");
+//        rootDir = rootDir.replaceAll("/+", "/");
+//
+//		if (StringUtils.isEmpty(absolutePath)) {
+//			return homeDir;
+//		}
+//
+//		String adjustedPath = absolutePath;
+//		if (adjustedPath.endsWith("/..") || adjustedPath.endsWith("/.")) {
+//			adjustedPath += File.separator;
+//		}
+//
+//		if (adjustedPath.startsWith("/")) {
+//			absolutePath = FileUtils.normalize(adjustedPath);
+//		} else {
+//			absolutePath = FilenameUtils.normalize(adjustedPath);
+//		}
+//
+//		absolutePath = absolutePath.replaceAll("/+", "/");
+//
+//		return "/" + StringUtils.substringAfter(absolutePath, rootDir);
 	}
 
 	/**

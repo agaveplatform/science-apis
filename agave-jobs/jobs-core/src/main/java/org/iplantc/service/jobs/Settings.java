@@ -4,9 +4,7 @@
 package org.iplantc.service.jobs;
 
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -22,6 +20,7 @@ public class Settings {
 	
 	private static Properties					props			= new Properties();
 
+	public static String						AGAVE_SERIALIZED_LIST_DELIMITER;
 	/* Trusted user settings */
 	public static List<String> 					TRUSTED_USERS = new ArrayList<String>();
 	
@@ -93,7 +92,12 @@ public class Settings {
 	static
 	{
 		props = org.iplantc.service.common.Settings.loadRuntimeProperties();
-		
+
+		// we generate a random base64 encoded string to use to delimit job request input and parameter values
+		// so we can preserve semicolons in the individual values
+		AGAVE_SERIALIZED_LIST_DELIMITER =
+				Base64.getEncoder().withoutPadding().encodeToString(("[%%" + UUID.randomUUID().toString() + "&&]").getBytes());
+
 		HOSTNAME = org.iplantc.service.common.Settings.getLocalHostname();
 
 		AUTH_SOURCE = (String) props.get("iplant.auth.source");

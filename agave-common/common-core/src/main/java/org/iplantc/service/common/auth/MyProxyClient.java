@@ -1,12 +1,12 @@
 package org.iplantc.service.common.auth;
 
-import java.io.File;
-
 import org.apache.log4j.Logger;
 import org.globus.myproxy.GetParams;
 import org.globus.myproxy.MyProxyException;
 import org.ietf.jgss.GSSCredential;
 import org.iplantc.service.common.Settings;
+
+import java.io.File;
 
 public class MyProxyClient 
 {	

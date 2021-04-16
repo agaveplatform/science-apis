@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 FROM agaveplatform/tomcat:8.5
+=======
+FROM agaveplatform/tomcat:8.5-ubuntu
+>>>>>>> 2.2.27
 
 MAINTAINER Agave Platform <help@agaveplatform.org>
 

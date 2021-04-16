@@ -148,7 +148,7 @@ node('master') {
                 }
                 // update base images explicitly
 
-                sh "docker pull agaveplatform/tomcat:8.5"
+                sh "docker pull agaveplatform/tomcat:8.5-ubuntu"
                 sh "docker pull agaveplatform/maven:3.6-proto"
                 sh "docker pull agaveplatform/php-api-base:alpine"
                 sh "docker pull agaveplatform/golang:1.13"

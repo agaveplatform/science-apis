@@ -3,19 +3,9 @@
  */
 package org.iplantc.service.notification.model;
 
-import java.sql.Timestamp;
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Embedded;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -28,10 +18,8 @@ import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.enumerations.NotificationCallbackProviderType;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import org.joda.time.DateTime;
+import javax.persistence.*;
+import java.time.Instant;
 
 /**
  * A scheduled attempt to send a {@link Notification} message to a webhook 
@@ -59,14 +47,14 @@ public class NotificationAttempt {
 	private NotificationAttemptResponse response;
 	
 	@Column(name = "`start_time`", nullable = false)
-	private Date startTime = null;
+	private Instant startTime = null;
 	
 	@Column(name = "`end_time`", nullable = false)
-	private Date endTime = null;
+	private Instant endTime = null;
 	
 	@Column(name = "`scheduled_time`", nullable = false)
 	@JsonIgnore
-	private Date scheduledTime = null;
+	private Instant scheduledTime = null;
 	
 	@Column(name = "attempt_number", nullable = false)
 	private int attemptNumber = 0;
@@ -107,7 +95,7 @@ public class NotificationAttempt {
 	
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "created", nullable = false, length = 19)
-	private Date created;
+	private Instant created;
 	
 	/**
 	 * No-args constructor
@@ -115,7 +103,7 @@ public class NotificationAttempt {
 	public NotificationAttempt() {
 		this.uuid = new AgaveUUID(UUIDType.NOTIFICATION_DELIVERY).toString();
 		this.tenantId = TenancyHelper.getCurrentTenantId();
-		this.created = new Date();
+		this.created = Instant.now();
 		this.response = new NotificationAttemptResponse();
 	}
 	
@@ -126,7 +114,7 @@ public class NotificationAttempt {
 	 */
 	public NotificationAttempt(String notificationId, String callbackUrl, 
 			String owner, String associatedUuid, 
-			String eventName, String content, Timestamp scheduledTime) {
+			String eventName, String content, Instant scheduledTime) {
 		this();
 		setNotificationId(notificationId);
 		setCallbackUrl(callbackUrl);
@@ -172,42 +160,42 @@ public class NotificationAttempt {
 	/**
 	 * @return the fireTime
 	 */
-	public Date getStartTime() {
+	public Instant getStartTime() {
 		return startTime;
 	}
 
 	/**
 	 * @param startTime the fireTime to set
 	 */
-	public void setStartTime(Date startTime) {
+	public void setStartTime(Instant startTime) {
 		this.startTime = startTime;
 	}
 
 	/**
 	 * @return the endTime
 	 */
-	public Date getEndTime() {
+	public Instant getEndTime() {
 		return endTime;
 	}
 
 	/**
 	 * @param endTime the endTime to set
 	 */
-	public void setEndTime(Date endTime) {
+	public void setEndTime(Instant endTime) {
 		this.endTime = endTime;
 	}
 
 	/**
 	 * @return the scheduledTime
 	 */
-	public Date getScheduledTime() {
+	public Instant getScheduledTime() {
 		return scheduledTime;
 	}
 
 	/**
 	 * @param scheduledTime the scheduledTime to set
 	 */
-	public void setScheduledTime(Date scheduledTime) {
+	public void setScheduledTime(Instant scheduledTime) {
 		this.scheduledTime = scheduledTime;
 	}
 
@@ -354,14 +342,14 @@ public class NotificationAttempt {
 	/**
 	 * @return the created
 	 */
-	public Date getCreated() {
+	public Instant getCreated() {
 		return created;
 	}
 
 	/**
 	 * @param created the created to set
 	 */
-	public void setCreated(Date created) {
+	public void setCreated(Instant created) {
 		this.created = created;
 	}
 	
@@ -385,8 +373,8 @@ public class NotificationAttempt {
 					.put("event", this.getEventName())
 					.put("associatedUuid", this.getAssociatedUuid())
 					.put("notificationId", this.getNotificationId())
-					.put("startTime", this.getStartTime() == null ? null : new DateTime(this.getStartTime()).toString())
-					.put("endTime", this.getEndTime() == null ? null : new DateTime(this.getEndTime()).toString());
+					.put("startTime", this.getStartTime() == null ? null : this.getStartTime().toString())
+					.put("endTime", this.getEndTime() == null ? null : this.getEndTime().toString());
 			json.set("response", mapper.valueToTree(this.getResponse()));
 
 

@@ -125,7 +125,7 @@ public class MetadataSchemaDao {
     }
 
 
-//    
+//
 //    /**
 //     * Generates a {@link Query} from the given {@code uuid} and {@link TenancyHelper#getCurrentTenantId()}
 //     * @param uuid

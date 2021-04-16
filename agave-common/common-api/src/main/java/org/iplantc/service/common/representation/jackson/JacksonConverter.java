@@ -1,8 +1,5 @@
 package org.iplantc.service.common.representation.jackson;
 
-import java.io.IOException;
-import java.util.List;
-
 import org.restlet.data.MediaType;
 import org.restlet.data.Preference;
 import org.restlet.engine.converter.ConverterHelper;
@@ -10,6 +7,9 @@ import org.restlet.engine.resource.VariantInfo;
 import org.restlet.representation.Representation;
 import org.restlet.representation.Variant;
 import org.restlet.resource.Resource;
+
+import java.io.IOException;
+import java.util.List;
 
 /**
  * Converter between the JSON and Representation classes based on Jackson.

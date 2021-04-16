@@ -3,36 +3,19 @@
  */
 package org.iplantc.service.common.discovery.providers.sql;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Inheritance;
-import javax.persistence.InheritanceType;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
-import org.iplantc.service.common.discovery.PlatformService;
-import org.iplantc.service.common.discovery.ServiceCapability;
-import org.iplantc.service.common.uuid.AgaveUUID;
-/**
- * @author dooley
- *
- */
-import org.iplantc.service.common.uuid.UUIDType;
-import org.joda.time.DateTime;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.iplantc.service.common.discovery.PlatformService;
+import org.iplantc.service.common.discovery.ServiceCapability;
+import org.iplantc.service.common.uuid.AgaveUUID;
+import org.iplantc.service.common.uuid.UUIDType;
+import org.joda.time.DateTime;
+
+import javax.persistence.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 /**
  * @author dooley

@@ -171,7 +171,7 @@ public enum ForkJobStatus implements RemoteSchedulerJobStatus<ForkJobStatus> {
      * @see #getUnknownStatuses()
      */
     public boolean isDoneStatus() {
-        return !isActiveStatus() && !isUnknownStatus();
+        return !isActiveStatus() && !isUnknownStatus() && !isPausedStatus();
     }
 
     /**

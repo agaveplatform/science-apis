@@ -38,305 +38,305 @@ import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKe
  */
 @SuppressWarnings("deprecation")
 public class MetadataShareResource extends AgaveResource {
-    private static final Logger log = Logger.getLogger(MetadataShareResource.class);
+	private static final Logger log = Logger.getLogger(MetadataShareResource.class);
 
-    private String username; // authenticated user
-    private String uuid;  // object id
-    private String sharedUsername; // user receiving permissions
-
-
-    /**
-     * @param context  the request context
-     * @param request  the request object
-     * @param response the response object
-     */
-    public MetadataShareResource(Context context, Request request, Response response) {
-        super(context, request, response);
-
-        this.username = getAuthenticatedUsername();
-
-        this.uuid = (String) request.getAttributes().get("uuid");
-
-        this.sharedUsername = (String) request.getAttributes().get("user");
-
-        getVariants().add(new Variant(MediaType.APPLICATION_JSON));
-    }
-
-    /**
-     * Convenience method to get the metadat item for this request. Access is determined in each method.
-     *
-     * @return metadata item with the uuid from the path
-     * @throws ResourceException if no matching uuid found
-     */
-    public MetadataItem getRequestedMetadataItem() throws ResourceException, MetadataException {
-        MetadataSearch search = new MetadataSearch(this.username);
-        search.setAccessibleOwnersExplicit();
-
-        MetadataItem metadataItem = search.findById(uuid, TenancyHelper.getCurrentTenantId());
-        // clear all permissions
-        if (metadataItem == null) {
-            throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-                    "No metadata item found for user with id " + uuid);
-        }
-
-        return metadataItem;
-    }
-
-    /**
-     * This method represents the HTTP GET action. Gets Perms on specified iod.
-     */
-    @Override
-    public Representation represent(Variant variant) {
-        AgaveLogServiceClient.log(METADATA02.name(), MetaPemsList.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
-
-        if (!ServiceUtils.isValid(uuid)) {
-            getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-            return new IplantErrorRepresentation("No metadata id provided");
-        }
-
-        try {
-
-            MetadataItem metadataItem = getRequestedMetadataItem();
-
-            MetadataPermissionManager metadataItemPermissionManager = new MetadataPermissionManager(metadataItem, username);
-
-            if (metadataItemPermissionManager.canRead(username)) {
-                if (StringUtils.isBlank(sharedUsername)) {
-                    //get all permissions
-                    List<MetadataPermission> foundPermissions = metadataItem.getPermissions();
-                    StringBuilder jsonPems = new StringBuilder(new MetadataPermission(metadataItem.getOwner(), PermissionType.ALL).toJSON(uuid));
-
-                    if (foundPermissions.size() > 0) {
-                        for (MetadataPermission foundPermission : foundPermissions) {
-                            if (!StringUtils.equals(foundPermission.getUsername(), metadataItem.getOwner())) {
-                                jsonPems.append(",").append(foundPermission.toJSON(uuid));
-                            }
-                        }
-                    }
-
-                    return new IplantSuccessRepresentation("[" + jsonPems + "]");
-                } else {
-                    //get single permission
-                    MetadataPermission foundPermission;
-
-                    if (ServiceUtils.isAdmin(sharedUsername) || StringUtils.equals(metadataItem.getOwner(), sharedUsername)) {
-                        foundPermission = new MetadataPermission(sharedUsername, PermissionType.ALL);
-                    } else {
-                        foundPermission = metadataItemPermissionManager.getPermission(sharedUsername);
-
-                        if (PermissionType.NONE == foundPermission.getPermission()) {
-                            throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-                                    "No permissions found for user " + sharedUsername);
-                        }
-                    }
-
-                    return new IplantSuccessRepresentation(foundPermission.toJSON(uuid));
-                }
-            } else {
-                throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
-                        "User does not have permission to view this resource.");
-            }
+	private String username; // authenticated user
+	private String uuid;  // object id
+	private String sharedUsername; // user receiving permissions
 
 
-        } catch (ResourceException e) {
-            log.error("Unable to retrieve metadata permission", e);
-            getResponse().setStatus(e.getStatus());
-            return new IplantErrorRepresentation(e.getMessage());
-        } catch (Throwable e) {
-            log.error("Failed to retrieve metadata permission", e);
-            getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-            return new IplantErrorRepresentation(e.getMessage());
-        }
+	/**
+	 * @param context  the request context
+	 * @param request  the request object
+	 * @param response the response object
+	 */
+	public MetadataShareResource(Context context, Request request, Response response) {
+		super(context, request, response);
 
-    }
+		this.username = getAuthenticatedUsername();
 
-    /**
-     * Post action for adding (and overwriting) permissions on a metadata iod
-     */
-    @Override
-    public void acceptRepresentation(Representation entity) {
-        try {
-            if (StringUtils.isEmpty(uuid)) {
-                throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                        "No metadata id provided.");
-            }
+		this.uuid = (String) request.getAttributes().get("uuid");
 
-            MetadataItem metadataItem = getRequestedMetadataItem();
-            MetadataPermissionManager metadataItemPermissionManager = new MetadataPermissionManager(metadataItem, username);
+		this.sharedUsername = (String) request.getAttributes().get("user");
 
-            if (!metadataItemPermissionManager.canWrite(username)) {
-                throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
-                        "User does not have permission to modify this resource.");
-            }
+		getVariants().add(new Variant(MediaType.APPLICATION_JSON));
+	}
 
-            JSONObject postPermissionData = super.getPostedEntityAsJsonObject(true);
+	/**
+	 * Convenience method to get the metadat item for this request. Access is determined in each method.
+	 *
+	 * @return metadata item with the uuid from the path
+	 * @throws ResourceException if no matching uuid found
+	 */
+	public MetadataItem getRequestedMetadataItem() throws ResourceException, MetadataException {
+		MetadataSearch search = new MetadataSearch(this.username);
+		search.setAccessibleOwnersExplicit();
 
-            String pemUsername;
-            String sPermission;
+		MetadataItem metadataItem = search.findById(uuid, TenancyHelper.getCurrentTenantId());
+		// clear all permissions
+		if (metadataItem == null) {
+			throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+					"No metadata item found for user with id " + uuid);
+		}
 
-            if (StringUtils.isEmpty(sharedUsername)) {
-                AgaveLogServiceClient.log(METADATA02.name(), MetaPemsCreate.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
+		return metadataItem;
+	}
 
-                if (postPermissionData.has("username")) {
-                    pemUsername = postPermissionData.getString("username");
-                } else {
-                    // a username must be provided either in the form or the body
-                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                            "No username specified. Please specify a valid user to whom the permission will apply.");
-                }
-            } else {
-                AgaveLogServiceClient.log(METADATA02.name(), MetaPemsUpdate.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
+	/**
+	 * This method represents the HTTP GET action. Gets Perms on specified iod.
+	 */
+	@Override
+	public Representation represent(Variant variant) {
+		AgaveLogServiceClient.log(METADATA02.name(), MetaPemsList.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 
-                // name in url and json, if provided, should match
-                if (postPermissionData.has("username") &&
-                        !StringUtils.equalsIgnoreCase(postPermissionData.getString("username"), sharedUsername)) {
-                    throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                            "The username value in the POST body, " + postPermissionData.getString("username") +
-                                    ", does not match the username in the URL, " + sharedUsername);
-                } else {
-                    pemUsername = sharedUsername;
-                }
-            }
+		if (!ServiceUtils.isValid(uuid)) {
+			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+			return new IplantErrorRepresentation("No metadata id provided");
+		}
 
-            if (postPermissionData.has("permission")) {
-                sPermission = postPermissionData.getString("permission");
-                if (StringUtils.equalsIgnoreCase(sPermission, "none") ||
-                        StringUtils.equalsIgnoreCase(sPermission, "null")) {
-                    sPermission = null;
-                }
-            } else {
-                throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-                        "Missing permission field. Please specify a valid permission of READ, WRITE, or READ_WRITE.");
-            }
+		try {
 
-            try {
+			MetadataItem metadataItem = getRequestedMetadataItem();
 
-                if (StringUtils.isEmpty(sPermission)) {
-                    getResponse().setStatus(Status.SUCCESS_OK);
-                } else {
-                    getResponse().setStatus(Status.SUCCESS_CREATED);
-                }
+			MetadataPermissionManager metadataItemPermissionManager = new MetadataPermissionManager(metadataItem, username);
 
-                metadataItemPermissionManager.setPermission(pemUsername, sPermission);
+			if (metadataItemPermissionManager.canRead(username)) {
+				if (StringUtils.isBlank(sharedUsername)) {
+					//get all permissions
+					List<MetadataPermission> foundPermissions = metadataItem.getPermissions();
+					StringBuilder jsonPems = new StringBuilder(new MetadataPermission(metadataItem.getOwner(), PermissionType.ALL).toJSON(uuid));
 
-                getResponse().setEntity(new IplantSuccessRepresentation(metadataItemPermissionManager.getPermission(pemUsername).toJSON(uuid)));
+					if (foundPermissions.size() > 0) {
+						for (MetadataPermission foundPermission : foundPermissions) {
+							if (!StringUtils.equals(foundPermission.getUsername(), metadataItem.getOwner())) {
+								jsonPems.append(",").append(foundPermission.toJSON(uuid));
+							}
+						}
+					}
 
-            } catch (IllegalArgumentException iae) {
-                throw new ResourceException(
-                        Status.CLIENT_ERROR_BAD_REQUEST,
-                        "Invalid permission value. Valid values are: " + PermissionType.supportedValuesAsString());
-            }
+					return new IplantSuccessRepresentation("[" + jsonPems + "]");
+				} else {
+					//get single permission
+					MetadataPermission foundPermission;
 
-        } catch (ResourceException e) {
-            getResponse().setEntity(
-                    new IplantErrorRepresentation(e.getMessage()));
-            getResponse().setStatus(e.getStatus());
-        } catch (Exception e) {
-            getResponse().setEntity(
-                    new IplantErrorRepresentation("Failed to update metadata permissions: " + e.getMessage()));
-            getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-        }
-    }
+					if (ServiceUtils.isAdmin(sharedUsername) || StringUtils.equals(metadataItem.getOwner(), sharedUsername)) {
+						foundPermission = new MetadataPermission(sharedUsername, PermissionType.ALL);
+					} else {
+						foundPermission = metadataItemPermissionManager.getPermission(sharedUsername);
 
-    /* (non-Javadoc)
-     * @see org.restlet.resource.Resource#removeRepresentations()
-     */
-    @Override
-    public void removeRepresentations() throws ResourceException {
-        AgaveLogServiceClient.log(METADATA02.name(), MetaPemsDelete.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
+						if (PermissionType.NONE == foundPermission.getPermission()) {
+							throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+									"No permissions found for user " + sharedUsername);
+						}
+					}
 
-        if (!ServiceUtils.isValid(uuid)) {
-            getResponse().setEntity(
-                    new IplantErrorRepresentation("No metadata id provided"));
-            getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-            return;
-        }
+					return new IplantSuccessRepresentation(foundPermission.toJSON(uuid));
+				}
+			} else {
+				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
+						"User does not have permission to view this resource.");
+			}
 
-       try {
-           MetadataItem metadataItem = getRequestedMetadataItem();
-           MetadataPermissionManager metadataItemPermissionManager = new MetadataPermissionManager(metadataItem, username);
 
-            if (!metadataItemPermissionManager.canWrite(username)) {
-                throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
-                        "User does not have permission to modify this resource.");
-            }
+		} catch (ResourceException e) {
+			log.error("Unable to retrieve metadata permission", e);
+			getResponse().setStatus(e.getStatus());
+			return new IplantErrorRepresentation(e.getMessage());
+		} catch (Throwable e) {
+			log.error("Failed to retrieve metadata permission", e);
+			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+			return new IplantErrorRepresentation(e.getMessage());
+		}
 
-            if (StringUtils.isBlank(sharedUsername)) {
-                metadataItemPermissionManager.clearPermissions();
-            } else {
-                //clear user's permission
-                metadataItemPermissionManager.setPermission(sharedUsername, PermissionType.NONE.name());
-            }
+	}
 
-            getResponse().setEntity(new IplantSuccessRepresentation());
-        } catch (PermissionException e) {
-            throw new ResourceException(
-                    Status.CLIENT_ERROR_FORBIDDEN,
-                    "User does not have permission to modify this resource.");
-        } catch (ResourceException e) {
-            throw e;
+	/**
+	 * Post action for adding (and overwriting) permissions on a metadata iod
+	 */
+	@Override
+	public void acceptRepresentation(Representation entity) {
+		try {
+			if (StringUtils.isEmpty(uuid)) {
+				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
+						"No metadata id provided.");
+			}
 
-        } catch (Throwable e) {
-            throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-                    "Failed to remove metadata permissions: " + e.getMessage());
-        }
-    }
+			MetadataItem metadataItem = getRequestedMetadataItem();
+			MetadataPermissionManager metadataItemPermissionManager = new MetadataPermissionManager(metadataItem, username);
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.restlet.resource.Resource#allowDelete()
-     */
-    @Override
-    public boolean allowDelete() {
-        return true;
-    }
+			if (!metadataItemPermissionManager.canWrite(username)) {
+				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
+						"User does not have permission to modify this resource.");
+			}
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.restlet.resource.Resource#allowGet()
-     */
-    @Override
-    public boolean allowGet() {
-        return true;
-    }
+			JSONObject postPermissionData = super.getPostedEntityAsJsonObject(true);
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.restlet.resource.Resource#allowPost()
-     */
-    @Override
-    public boolean allowPost() {
-        return true;
-    }
+			String pemUsername;
+			String sPermission;
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see org.restlet.resource.Resource#allowPut()
-     */
-    @Override
-    public boolean allowPut() {
-        return false;
-    }
+			if (StringUtils.isEmpty(sharedUsername)) {
+				AgaveLogServiceClient.log(METADATA02.name(), MetaPemsCreate.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 
-    /**
-     * Allow the resource to be modified
-     *
-     * @return true
-     */
-    public boolean setModifiable() {
-        return true;
-    }
+				if (postPermissionData.has("username")) {
+					pemUsername = postPermissionData.getString("username");
+				} else {
+					// a username must be provided either in the form or the body
+					throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
+							"No username specified. Please specify a valid user to whom the permission will apply.");
+				}
+			} else {
+				AgaveLogServiceClient.log(METADATA02.name(), MetaPemsUpdate.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 
-    /**
-     * Allow the resource to be read
-     *
-     * @return true
-     */
-    public boolean setReadable() {
-        return true;
-    }
+				// name in url and json, if provided, should match
+				if (postPermissionData.has("username") &&
+						!StringUtils.equalsIgnoreCase(postPermissionData.getString("username"), sharedUsername)) {
+					throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
+							"The username value in the POST body, " + postPermissionData.getString("username") +
+									", does not match the username in the URL, " + sharedUsername);
+				} else {
+					pemUsername = sharedUsername;
+				}
+			}
+
+			if (postPermissionData.has("permission")) {
+				sPermission = postPermissionData.getString("permission");
+				if (StringUtils.equalsIgnoreCase(sPermission, "none") ||
+						StringUtils.equalsIgnoreCase(sPermission, "null")) {
+					sPermission = null;
+				}
+			} else {
+				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
+						"Missing permission field. Please specify a valid permission of READ, WRITE, or READ_WRITE.");
+			}
+
+			try {
+
+				if (StringUtils.isEmpty(sPermission)) {
+					getResponse().setStatus(Status.SUCCESS_OK);
+				} else {
+					getResponse().setStatus(Status.SUCCESS_CREATED);
+				}
+
+				metadataItemPermissionManager.setPermission(pemUsername, sPermission);
+
+				getResponse().setEntity(new IplantSuccessRepresentation(metadataItemPermissionManager.getPermission(pemUsername).toJSON(uuid)));
+
+			} catch (IllegalArgumentException iae) {
+				throw new ResourceException(
+						Status.CLIENT_ERROR_BAD_REQUEST,
+						"Invalid permission value. Valid values are: " + PermissionType.supportedValuesAsString());
+			}
+
+		} catch (ResourceException e) {
+			getResponse().setEntity(
+					new IplantErrorRepresentation(e.getMessage()));
+			getResponse().setStatus(e.getStatus());
+		} catch (Exception e) {
+			getResponse().setEntity(
+					new IplantErrorRepresentation("Failed to update metadata permissions: " + e.getMessage()));
+			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see org.restlet.resource.Resource#removeRepresentations()
+	 */
+	@Override
+	public void removeRepresentations() throws ResourceException {
+		AgaveLogServiceClient.log(METADATA02.name(), MetaPemsDelete.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
+
+		if (!ServiceUtils.isValid(uuid)) {
+			getResponse().setEntity(
+					new IplantErrorRepresentation("No metadata id provided"));
+			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+			return;
+		}
+
+		try {
+			MetadataItem metadataItem = getRequestedMetadataItem();
+			MetadataPermissionManager metadataItemPermissionManager = new MetadataPermissionManager(metadataItem, username);
+
+			if (!metadataItemPermissionManager.canWrite(username)) {
+				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
+						"User does not have permission to modify this resource.");
+			}
+
+			if (StringUtils.isBlank(sharedUsername)) {
+				metadataItemPermissionManager.clearPermissions();
+			} else {
+				//clear user's permission
+				metadataItemPermissionManager.setPermission(sharedUsername, PermissionType.NONE.name());
+			}
+
+			getResponse().setEntity(new IplantSuccessRepresentation());
+		} catch (PermissionException e) {
+			throw new ResourceException(
+					Status.CLIENT_ERROR_FORBIDDEN,
+					"User does not have permission to modify this resource.");
+		} catch (ResourceException e) {
+			throw e;
+
+		} catch (Throwable e) {
+			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
+					"Failed to remove metadata permissions: " + e.getMessage());
+		}
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see org.restlet.resource.Resource#allowDelete()
+	 */
+	@Override
+	public boolean allowDelete() {
+		return true;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see org.restlet.resource.Resource#allowGet()
+	 */
+	@Override
+	public boolean allowGet() {
+		return true;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see org.restlet.resource.Resource#allowPost()
+	 */
+	@Override
+	public boolean allowPost() {
+		return true;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see org.restlet.resource.Resource#allowPut()
+	 */
+	@Override
+	public boolean allowPut() {
+		return false;
+	}
+
+	/**
+	 * Allow the resource to be modified
+	 *
+	 * @return true
+	 */
+	public boolean setModifiable() {
+		return true;
+	}
+
+	/**
+	 * Allow the resource to be read
+	 *
+	 * @return true
+	 */
+	public boolean setReadable() {
+		return true;
+	}
 }

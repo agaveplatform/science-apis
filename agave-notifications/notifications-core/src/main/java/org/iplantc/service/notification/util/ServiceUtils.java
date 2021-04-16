@@ -442,8 +442,7 @@ public class ServiceUtils {
 	 * when no network connection is up.
 	 * <p>
 	 * The current machine could have more than one local IP address so might
-	 * prefer to use {@link #getAllLocalIPs() } or
-	 * {@link #getAllLocalIPs(java.lang.String) }.
+	 * prefer to use {@link ServiceUtils#getLocalIP()}.
 	 * <p>
 	 * If you want just one IP, this is the right method and it tries to find
 	 * out the most accurate (primary) IP address. It prefers addresses that
@@ -527,6 +526,9 @@ public class ServiceUtils {
         }
         // agave pushpin server
         else {
+        	if (tenantId == null) {
+        		tenantId = TenancyHelper.getCurrentTenantId();
+			}
         	String tenantRealtimeUrl = TenancyHelper.resolveURLToCurrentTenant("https://realtime.docker.example.com", tenantId);
 			return StringUtils.startsWith(callbackUrl, tenantRealtimeUrl)
 					|| StringUtils.startsWith(callbackUrl, tenantRealtimeUrl.replaceFirst("https", "http"));

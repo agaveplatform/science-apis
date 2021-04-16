@@ -21,8 +21,8 @@
     }
   ],
   "login": {
-    "host": "sftp",
-    "port": 22,
+    "host": "${ssh.host}",
+    "port": ${ssh.port},
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -32,8 +32,8 @@
     }
   },
   "storage": {
-    "host": "sftp",
-    "port": 22,
+    "host": "${ssh.host}",
+    "port": ${ssh.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/${iplant.test.username}",

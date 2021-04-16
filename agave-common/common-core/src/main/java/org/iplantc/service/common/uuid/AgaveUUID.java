@@ -36,7 +36,7 @@ public class AgaveUUID {
 	}
 
 	/**
-	 * @param type
+	 * @param resourceType
 	 * @throws UUIDException
 	 */
 	public void setResourceType(String resourceType) throws UUIDException

@@ -3,36 +3,29 @@
  */
 package org.iplantc.service.apps.dao;
 
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_OWNER;
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_SOFTWARE_SYSTEM_FILE;
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.Session;
 import org.iplantc.service.apps.model.JSONTestDataUtil;
 import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.apps.model.SoftwareParameterEnumeratedValue;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
-import org.iplantc.service.systems.model.CredentialServer;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemRole;
-import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.IOException;
 import java.util.Random;
 import java.util.UUID;
+
+import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
+import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE;
 
 /**
  * @author dooley
@@ -50,12 +43,12 @@ public class AbstractDaoTest
 	public static final String SYSTEM_PUBLIC_USER = "public";
 	public static final String SYSTEM_UNSHARED_USER = "testother";
 	public static final String SYSTEM_INTERNAL_USERNAME = "test_user";
-	public static final String EXECUTION_SYSTEM_TEMPLATE_DIR = "src/test/resources/systems/execution";
+	public static final String EXECUTION_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/execution";
 	public static final String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage";
-	public static final String SOFTWARE_SYSTEM_TEMPLATE_DIR = "src/test/resources/software";
+	public static final String SOFTWARE_SYSTEM_TEMPLATE_DIR = "target/test-classes/software";
 	public static final String FORK_SOFTWARE_TEMPLATE_FILE = SOFTWARE_SYSTEM_TEMPLATE_DIR + "/fork-1.0.0/app.json";
-	public static final String INTERNAL_USER_TEMPLATE_DIR = "src/test/resources/internal_users";
-	public static final String CREDENTIALS_TEMPLATE_DIR = "src/test/resources/credentials";
+	public static final String INTERNAL_USER_TEMPLATE_DIR = "target/test-classes/internal_users";
+	public static final String CREDENTIALS_TEMPLATE_DIR = "target/test-classes/credentials";
 
 	protected JSONTestDataUtil jtd;
 	protected SystemDao systemDao;

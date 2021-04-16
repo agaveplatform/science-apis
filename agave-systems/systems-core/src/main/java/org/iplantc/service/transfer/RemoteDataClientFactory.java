@@ -26,6 +26,7 @@ import org.iplantc.service.transfer.irods4.IRODS4;
 import org.iplantc.service.transfer.local.Local;
 import org.iplantc.service.transfer.s3.S3Jcloud;
 import org.iplantc.service.transfer.sftp.MaverickSFTP;
+import org.iplantc.service.transfer.sftp.SftpRelay;
 import org.irods.jargon.core.connection.AuthScheme;
 
 import java.io.FileNotFoundException;
@@ -98,29 +99,63 @@ public class RemoteDataClientFactory {
 						if (system.getStorageConfig().getProxyServer() == null) 
 						{
 							if (userAuthConfig.getType().equals(AuthConfigType.SSHKEYS)) {
-								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+								return new SftpRelay(host, port, username, password, rootDir, homeDir,
+										null, 0,
 										userAuthConfig.getClearTextPublicKey(salt),
-										userAuthConfig.getClearTextPrivateKey(salt));
+										userAuthConfig.getClearTextPrivateKey(salt),
+										Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
 							} else {
-								return new MaverickSFTP(host, port, username, password, rootDir, homeDir);
+								return new SftpRelay(host, port, username, password, rootDir, homeDir,
+										null, 0, null, null,
+										Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
 							}
 						} 
 						else 
 						{
 							if (userAuthConfig.getType().equals(AuthConfigType.SSHKEYS)) {
-								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
-									system.getStorageConfig().getProxyServer().getHost(),
-									system.getStorageConfig().getProxyServer().getPort(),
-									userAuthConfig.getClearTextPublicKey(salt),
-									userAuthConfig.getClearTextPrivateKey(salt));
+								return new SftpRelay(host, port, username, password, rootDir, homeDir,
+										system.getStorageConfig().getProxyServer().getHost(),
+										system.getStorageConfig().getProxyServer().getPort(),
+										userAuthConfig.getClearTextPublicKey(salt),
+										userAuthConfig.getClearTextPrivateKey(salt),
+										Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
 							} 
 							else
 							{
-								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+								return new SftpRelay(host, port, username, password, rootDir, homeDir,
 										system.getStorageConfig().getProxyServer().getHost(),
-										system.getStorageConfig().getProxyServer().getPort());
+										system.getStorageConfig().getProxyServer().getPort(),
+										null, null,
+										Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
 							}
 						}
+//					case SFTP:
+//						if (system.getStorageConfig().getProxyServer() == null)
+//						{
+//							if (userAuthConfig.getType().equals(AuthConfigType.SSHKEYS)) {
+//								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+//										userAuthConfig.getClearTextPublicKey(salt),
+//										userAuthConfig.getClearTextPrivateKey(salt));
+//							} else {
+//								return new MaverickSFTP(host, port, username, password, rootDir, homeDir);
+//							}
+//						}
+//						else
+//						{
+//							if (userAuthConfig.getType().equals(AuthConfigType.SSHKEYS)) {
+//								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+//										system.getStorageConfig().getProxyServer().getHost(),
+//										system.getStorageConfig().getProxyServer().getPort(),
+//										userAuthConfig.getClearTextPublicKey(salt),
+//										userAuthConfig.getClearTextPrivateKey(salt));
+//							}
+//							else
+//							{
+//								return new MaverickSFTP(host, port, username, password, rootDir, homeDir,
+//										system.getStorageConfig().getProxyServer().getHost(),
+//										system.getStorageConfig().getProxyServer().getPort());
+//							}
+//						}
 					case GRIDFTP: 
 						GSSCredential credential = (GSSCredential)userAuthConfig.retrieveCredential(salt);
 						
@@ -210,7 +245,7 @@ public class RemoteDataClientFactory {
 			{
 				throw new RemoteCredentialException("No credentials associated with " + system.getSystemId() + ". " +
 						"Please set a default credential" + 
-						(!StringUtils.isEmpty(internalUsername) ? " or a credential for " + internalUsername : "") + 
+						(StringUtils.isNotEmpty(internalUsername) ? " or a credential for " + internalUsername : "") +
 						" in order to access data on this system.");
 			}
 		}
@@ -244,7 +279,8 @@ public class RemoteDataClientFactory {
 	 * </ol> 
 	 * 
 	 * Standard URL are also supported which provide both public and authenticated access to
-	 * resources. See {@link #isSchemeSupported(URI)} for more information on supported schema.
+	 * resources. See {@link #isSchemeSupported(URI)} for more information on supported schema. No authentication
+	 * checks will be made for standard URL, thus
 	 * 
 	 * @see #isSchemeSupported(URI)
 	 * @param apiUsername the user making the requet
@@ -260,10 +296,10 @@ public class RemoteDataClientFactory {
 	 * @throws NotImplementedException when the schema is not supported
 	 */
 	public RemoteDataClient getInstance(String apiUsername, String internalUsername, URI uri) 
-	throws RemoteDataException, RemoteCredentialException, PermissionException, 
+	throws RemoteDataException, RemoteCredentialException, PermissionException,
 		   SystemUnknownException, AgaveNamespaceException, FileNotFoundException
 	{
-	    // first look for internal URI
+		// first look for internal URI
 	    if (ApiUriUtil.isInternalURI(uri)) 
 	    {
 	        RemoteSystem system = ApiUriUtil.getRemoteSystem(apiUsername, uri);
@@ -293,7 +329,7 @@ public class RemoteDataClientFactory {
 	    else if (!RemoteDataClientFactory.isSchemeSupported(uri))
 	    {
 	        String msg = "Schema not supported: " + uri.toString();
-	        log.error(msg);
+//	        log.error(msg);
 	        throw new NotImplementedException(msg);
 	    }
 	    else 
@@ -326,12 +362,23 @@ public class RemoteDataClientFactory {
     			return new FTP(host, port, username, password, null, null);
     		} 
     		else if (StringUtils.equalsIgnoreCase(scheme,"sftp")) {
-    			return new MaverickSFTP(host, port, username, password, null, null);
+    			if (StringUtils.isEmpty(username) || StringUtils.isEmpty(password)) {
+					throw new RemoteCredentialException("Invalid credentials provided for URI, " + uri.toString() +
+							". SFTP URL  must have valid username and password provided in the user info section of " +
+							"the URI in order to authenticate. Please consider registering your SFTP server as a system " +
+							"with Agave to avoid unintentionally exposing your credentials.");
+				} else if (StringUtils.isEmpty(host)) {
+					throw new RemoteDataException("Invalid hostname provided for URI, " + uri.toString());
+				}
+
+//    			return new MaverickSFTP(host, port, username, password, null, null);
+				return new SftpRelay(host, port, username, password, null, null,
+						Settings.SFTP_RELAY_HOST, Settings.SFTP_RELAY_PORT);
     		}
     		else {
     		    // should not ever happen;
                 String msg = "Invalid URI: " + uri.toString();
-                log.error(msg);
+//                log.error(msg);
     		    throw new NotImplementedException(msg);
     		}
 	    }
@@ -343,7 +390,7 @@ public class RemoteDataClientFactory {
 	 * {@link RemoteSystem}. URI with {@code http} and {@code https} schema are checked against known resource URI
 	 * within the current tenant and accepted if a match is found. For all other schemas, the response is based upon
 	 * agave's ability to authenticate to the remote system using basic username and password found in the standard
-	 * {@link URI#getAuthority()} content.
+	 * {@link URI#getAuthority()} content. Empty and null schema are rejected.
 	 * 
 	 * @param uri the {@link URI} for which to check the schema
 	 * @return true if the schema is supported directly or through reference to an internal api URI

@@ -72,7 +72,7 @@ public final class MaverickSFTP implements RemoteDataClient {
 
     // Socket timeouts
     public static final int CONNECT_TIMEOUT_MS = 20000;  // 20 seconds
-    public static final int READ_TIMEOUT_MS    = 120000; // 2 minutes
+    public static final int READ_TIMEOUT_MS    = 60000; // 2 minutes
 
     public static final int TEST_CONNECT_TIMEOUT_MS = 8000; // 8 seconds
     public static final int TEST_READ_TIMEOUT_MS    = 100;  // .1 seconds
@@ -190,7 +190,7 @@ public final class MaverickSFTP implements RemoteDataClient {
         // Get a new authenticated session.
         try {
             // Make initial socket connection
-            // This call can throw a recoverable exception AloeSSHConnection
+            // This call can throw a recoverable exception
             sock = connect(CONNECT_TIMEOUT_MS, READ_TIMEOUT_MS,
                     username, host, port, proxyHost, proxyPort, getMsgPrefix());
             // Create an SSH connector
@@ -1611,6 +1611,7 @@ public final class MaverickSFTP implements RemoteDataClient {
                 String copyCommand = String.format("cp -rLf \"%s\" \"%s\"", resolvedSrc, resolvedDest);
                 log.debug("Performing remote copy on " + host + ": " + copyCommand);
 
+
                 MaverickSSHSubmissionClient proxySubmissionClient = null;
                 String proxyResponse = null;
                 try {
@@ -2058,11 +2059,11 @@ public final class MaverickSFTP implements RemoteDataClient {
     @Override
     public String resolvePath(String path) throws FileNotFoundException {
         if (StringUtils.isEmpty(path)) {
-            return StringUtils.stripEnd(homeDir, " ");
+            return StringUtils.stripEnd(getHomeDir(), " ");
         } else if (path.startsWith("/")) {
-            path = rootDir + path.replaceFirst("/", "");
+            path = getRootDir() + path.replaceFirst("/", "");
         } else {
-            path = homeDir + path;
+            path = getHomeDir() + path;
         }
 
         String adjustedPath = path;
@@ -2079,8 +2080,8 @@ public final class MaverickSFTP implements RemoteDataClient {
         if (path == null) {
             throw new FileNotFoundException("The specified path " + path +
                     " does not exist or the user does not have permission to view it.");
-        } else if (!path.startsWith(rootDir)) {
-            if (!path.equals(StringUtils.removeEnd(rootDir, "/"))) {
+        } else if (!path.startsWith(getRootDir())) {
+            if (!path.equals(StringUtils.removeEnd(getRootDir(), "/"))) {
                 throw new FileNotFoundException("The specified path " + path +
                         " does not exist or the user does not have permission to view it.");
             }

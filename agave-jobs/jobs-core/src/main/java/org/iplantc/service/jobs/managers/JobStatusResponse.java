@@ -1,5 +1,6 @@
 package org.iplantc.service.jobs.managers;
 
+import org.iplantc.service.jobs.managers.monitors.JobMonitor;
 import org.iplantc.service.jobs.managers.monitors.parsers.JobStatusResponseParser;
 import org.iplantc.service.jobs.managers.monitors.parsers.RemoteSchedulerJobStatus;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
@@ -43,7 +44,7 @@ public class JobStatusResponse<T extends RemoteSchedulerJobStatus> {
 	 * @see #getStatus()
 	 */
 	public JobStatusType getStatus() {
-		return this.remoteSchedulerJobStatus.getMappedJobStatusType();
+		return getRemoteSchedulerJobStatus().getMappedJobStatusType();
 	}
 
 	/**
@@ -84,7 +85,7 @@ public class JobStatusResponse<T extends RemoteSchedulerJobStatus> {
 
 	/**
 	 * Fetches the remote job status parsed from the remote scheduler response. This should primarily be used for
-	 * detailed debugging and scheduler specific retry and cleanup behavior in the individual {@link IJobMonitor}
+	 * detailed debugging and scheduler specific retry and cleanup behavior in the individual {@link JobMonitor}
 	 * implementations. All status decisions should be made using the native {@link JobStatusType} returned by the
 	 * {@link #getStatus()} method.
 	 *

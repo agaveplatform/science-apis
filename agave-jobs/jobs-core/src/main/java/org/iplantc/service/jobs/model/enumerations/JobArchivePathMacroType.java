@@ -2,10 +2,7 @@ package org.iplantc.service.jobs.model.enumerations;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.lang.StringUtils;
-import org.hibernate.cfg.NotYetImplementedException;
 import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.util.Slug;
 import org.iplantc.service.systems.model.BatchQueue;

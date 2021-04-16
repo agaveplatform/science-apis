@@ -1,9 +1,9 @@
 package org.iplantc.service.apps.model;
 
-import org.iplantc.service.apps.model.JSONTestDataUtil;
-import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.testng.Assert;
+
 import java.lang.reflect.Method;
 import java.util.Collection;
 
@@ -23,10 +23,10 @@ public class GModelTestCommon {
 
 
     public void setUp() throws Exception {
-        jsonTreeInputs = jtd.getTestDataObject("src/test/resources/software/test_specific/baseInputsTestFragment.json");
-        jsonTreeOutputs = jtd.getTestDataObject("src/test/resources/software/test_specific/baseOutputsTestFragment.json");
-        jsonTreeParameters = jtd.getTestDataObject("src/test/resources/software/test_specific/baseParametersTestFragment.json");
-        jsonTreeSoftwareBase =  jtd.getTestDataObject("src/test/resources/software/wca-iplant-condor.tacc.utexas.edu.json");
+        jsonTreeInputs = jtd.getTestDataObject("target/test-classes/software/test_specific/baseInputsTestFragment.json");
+        jsonTreeOutputs = jtd.getTestDataObject("target/test-classes/software/test_specific/baseOutputsTestFragment.json");
+        jsonTreeParameters = jtd.getTestDataObject("target/test-classes/software/test_specific/baseParametersTestFragment.json");
+        jsonTreeSoftwareBase =  jtd.getTestDataObject("target/test-classes/software/wca-iplant-condor.tacc.utexas.edu.json");
 
     }
 

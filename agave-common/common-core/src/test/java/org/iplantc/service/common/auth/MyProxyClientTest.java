@@ -1,8 +1,6 @@
 package org.iplantc.service.common.auth;
 
-import java.io.File;
-import java.util.Collection;
-
+import com.google.common.io.Files;
 import org.apache.commons.io.FileUtils;
 import org.globus.gsi.gssapi.GlobusGSSCredentialImpl;
 import org.ietf.jgss.GSSCredential;
@@ -11,7 +9,8 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.google.common.io.Files;
+import java.io.File;
+import java.util.Collection;
 
 /**
  * @deprecated

@@ -1,19 +1,5 @@
 package org.iplantc.service.jobs.dao;
 
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_OWNER;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_SOFTWARE_SYSTEM_FILE;
-import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.PAUSED;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.QUEUED;
-import static org.iplantc.service.jobs.model.enumerations.JobStatusType.RUNNING;
-
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Transformer;
 import org.apache.commons.lang.StringUtils;
@@ -29,22 +15,27 @@ import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.google.common.collect.Collections2;
+import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-@Test(groups={"broken", "integration"})
+import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
+import static org.iplantc.service.jobs.model.JSONTestDataUtil.TEST_OWNER;
+import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
+
+
+@Test(enabled=false, groups={"broken", "integration"})
 public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest 
 {
 	public static final Logger log = Logger.getLogger(ProgressiveMonitoringBackoffTest.class); 
@@ -94,14 +85,14 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
         StorageSystem privateStorageSystem = createStorageSystem();
         privateStorageSystem.setGlobalDefault(true);
         privateStorageSystem.setPubliclyAvailable(true);
-        log.debug("Inserting public storage system " + privateStorageSystem.getSystemId());
+//        log.debug("Inserting public storage system " + privateStorageSystem.getSystemId());
         systemDao.persist(privateStorageSystem);
 
         ExecutionSystem privateExecutionSystem = createExecutionSystem();
         privateExecutionSystem.setOwner(TEST_OWNER);
         privateExecutionSystem.setType(RemoteSystemType.EXECUTION);
         privateExecutionSystem.getBatchQueues().clear();
-        log.debug("Inserting private execution system " + privateExecutionSystem.getSystemId());
+//        log.debug("Inserting private execution system " + privateExecutionSystem.getSystemId());
         systemDao.persist(privateExecutionSystem);
         privateExecutionSystem.addBatchQueue(UNLIMITED_QUEUE.clone());
         privateExecutionSystem.addBatchQueue(MEDIUM_QUEUE.clone());
@@ -134,7 +125,7 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
                 execSystem.setType(RemoteSystemType.EXECUTION);
                 execSystem.setTenantId(tenantId);
                 execSystem.setSystemId(createNonce() + tenantId + "-" + systemId);
-                log.debug("Inserting execution system " + privateExecutionSystem.getSystemId());
+//                log.debug("Inserting execution system " + privateExecutionSystem.getSystemId());
                 systemDao.persist(execSystem);
 
                 for(BatchQueue q: execSystem.getBatchQueues())
@@ -146,7 +137,7 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
                     testSoftware.setDefaultMemoryPerNode(q.getMaxMemoryPerNode());
                     testSoftware.setDefaultNodes(q.getMaxNodes());
                     testSoftware.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode());
-                    log.debug("Adding software " + testSoftware.getUniqueName());
+//                    log.debug("Adding software " + testSoftware.getUniqueName());
                     SoftwareDao.persist(testSoftware);
                 }
             }
@@ -460,7 +451,7 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
             
             StandardDeviation stdev = new StandardDeviation();
             double sd = stdev.evaluate(doubles, mean);
-            System.out.println("{standardDeviation: " + sd + ", mean: " + mean + "}");
+//            System.out.println("{standardDeviation: " + sd + ", mean: " + mean + "}");
             Assert.assertTrue(mean > ((TEST_COUNT / uuidSelections.size() ) - 0.5) 
                     && mean < ((TEST_COUNT / uuidSelections.size() ) + 0.5), 
                     "Average should be roughly equaly to " + TEST_COUNT + " / " + uuidSelections.size());
@@ -693,12 +684,15 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
                 Assert.assertTrue(nextJob.getStatus() == QUEUED || nextJob.getStatus() == RUNNING || nextJob.getStatus() == PAUSED, "Job with invalid status was returned");
                 
                 @SuppressWarnings("unchecked")
-                Collection<List<String>> userPermutations = Collections2.permutations(
+
+                Collection<List<String>> userPermutations = //Collections2.permutations(
                         CollectionUtils.collect(Arrays.asList(usernames), new Transformer() {
                             public String transform(Object val) {
                                 return tenantId + "@" + val;
                             }
-                        }));
+                        });
+                //);
+
                 for (final List<String> userPermutation: userPermutations) {
                     
                     nextJobUuid = JobDao.getNextExecutingJobUuid(tenantId, userPermutation.toArray(new String[]{}), null);
@@ -714,12 +708,13 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
                     Assert.assertTrue(userPermutation.contains(nextJob.getOwner()), "getNextExecutingJobUuid with specified tenant and user list should never return a job from another user.");
                     Assert.assertTrue(nextJob.getStatus() == QUEUED || nextJob.getStatus() == RUNNING || nextJob.getStatus() == PAUSED, "Job with invalid status was returned");
                     
-                    Collection<List<String>> systemPermutations = Collections2.permutations(
+                    Collection<List<String>> systemPermutations = //Collections2.permutations(
                             CollectionUtils.collect(Arrays.asList(systemsIds), new Transformer() {
                                 public String transform(Object val) {
                                     return tenantId + "-" + val;
                                 }
-                            }));
+                            });
+                    //);
                     
 //                        Collection<List<String>> systemPermutations = Collections2.permutations(Arrays.asList(systemsIds));
                     
@@ -764,7 +759,7 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
                     systemQueueFQNs.add(tenantId + "-" + systemsIds[2] + "#" + queues[1]);
                     
                     // iterate over all 
-                    Collection<List<String>> systemAndQueuePermutations = Collections2.permutations(systemQueueFQNs);
+                    Collection<List<String>> systemAndQueuePermutations = Collections.singletonList(systemQueueFQNs);//Collections2.permutations(systemQueueFQNs);
                         
                     for (final List<String> systemAndQueuePermutation: systemAndQueuePermutations) 
                     {
@@ -898,12 +893,13 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
                 Assert.assertTrue(nextJob.getStatus() == QUEUED || nextJob.getStatus() == RUNNING || nextJob.getStatus() == PAUSED, "Job with invalid status was returned");
                 
                 @SuppressWarnings("unchecked")
-                Collection<List<String>> userPermutations = Collections2.permutations(
+                Collection<List<String>> userPermutations = //Collections2.permutations(
                         CollectionUtils.collect(Arrays.asList(usernames), new Transformer() {
                             public String transform(Object val) {
                                 return "!" + tenantId + "@" + val;
                             }
-                        }));
+                        });
+//                );
                 for (final List<String> userPermutation: userPermutations) {
                     
                     nextJobUuid = JobDao.getNextExecutingJobUuid(tenantId, userPermutation.toArray(new String[]{}), null);
@@ -923,12 +919,13 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
                     Assert.assertFalse(userPermutation.contains(nextJob.getOwner()), "getNextExecutingJobUuid with specified tenant and negated user list should never return a job from the negated user.");
                     Assert.assertTrue(nextJob.getStatus() == QUEUED || nextJob.getStatus() == RUNNING || nextJob.getStatus() == PAUSED, "Job with invalid status was returned");
                     
-                    Collection<List<String>> systemPermutations = Collections2.permutations(
+                    Collection<List<String>> systemPermutations = //Collections2.permutations(
                             CollectionUtils.collect(Arrays.asList(systemsIds), new Transformer() {
                                 public String transform(Object val) {
                                     return "!" + tenantId + "-" + val;
                                 }
-                            }));
+                            });
+//                    );
                     
 //                        Collection<List<String>> systemPermutations = Collections2.permutations(Arrays.asList(systemsIds));
                     
@@ -969,7 +966,7 @@ public class ProgressiveMonitoringBackoffTest extends AbstractDaoTest
                     systemQueueFQNs.add("!" + tenantId + "-" + systemsIds[2] + "#" + queues[1]);
                     
                     // iterate over all 
-                    Collection<List<String>> systemAndQueuePermutations = Collections2.permutations(systemQueueFQNs);
+                    Collection<List<String>> systemAndQueuePermutations = Collections.singletonList(systemQueueFQNs);//Collections2.permutations(systemQueueFQNs);
                         
                     for (final List<String> systemAndQueuePermutation: systemAndQueuePermutations) 
                     {

@@ -71,16 +71,16 @@ var rootCmd = &cobra.Command{
 	Long:  `CLI client written in Go for the Agave sftp-server application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	Run: func(cmd *cobra.Command, args []string) {
-
-	},
+	//Run: func(cmd *cobra.Command, args []string) {
+	//
+	//},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		fmt.Errorf("%v", err)
 		os.Exit(1)
 	}
 }
@@ -146,7 +146,9 @@ func initConfig() {
 		viper.SetConfigName(".sftp-client")
 	}
 
+	viper.SetEnvPrefix("AGAVE")
 	viper.AutomaticEnv() // read in environment variables that match
+
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {

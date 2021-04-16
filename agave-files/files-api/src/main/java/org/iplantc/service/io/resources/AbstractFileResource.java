@@ -1,22 +1,15 @@
 package org.iplantc.service.io.resources;
 
-import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.restlet.resource.AbstractAgaveServerResource;
 import org.iplantc.service.common.uri.UrlPathEscaper;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.systems.model.RemoteSystem;
+import org.iplantc.service.systems.model.StorageConfig;
 
-import com.google.common.escape.Escaper;
-import com.google.common.net.UrlEscapers;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 
 /**
  * @author dooley

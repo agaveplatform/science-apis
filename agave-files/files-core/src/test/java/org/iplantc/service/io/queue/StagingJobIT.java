@@ -1,12 +1,5 @@
 package org.iplantc.service.io.queue;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.net.URI;
-import java.util.*;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -27,11 +20,14 @@ import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.json.JSONObject;
-import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.ITestContext;
 import org.testng.annotations.*;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.util.*;
 
 /**
  * Tests the behavior of the StagingJob. URL Copy should be tested independently
@@ -40,17 +36,13 @@ import org.testng.annotations.*;
 public class StagingJobIT extends BaseTestCase {
 	private static final Logger log = Logger.getLogger(StagingJobIT.class);
 
-//	private StagingJob stagingJob;
-//	private LogicalFile file;
-//	private StagingTask task;
-//	private RemoteDataClient remoteClient;
 	private StorageSystem defaultStorageSystem;
 	private StorageSystem sftpSystem;
-	private StorageSystem gridftpSystem;
-	private StorageSystem irodsSystem;
+//	private StorageSystem irodsSystem;
 	private StorageSystem irods4System;
-	private StorageSystem ftpSystem;
-	private StorageSystem s3System;
+	//	private StorageSystem ftpSystem;
+	//	private StorageSystem s3System;
+	//	private StorageSystem gridftpSystem;
 	private ThreadLocal<HashMap<String, RemoteDataClient>> threadClientMap = new ThreadLocal<HashMap<String, RemoteDataClient>>();
 	private ThreadLocal<String> uniqueSrcTestDir = new ThreadLocal<String>();
 	private ThreadLocal<String> uniqueDestTestDir = new ThreadLocal<String>();
@@ -66,13 +58,13 @@ public class StagingJobIT extends BaseTestCase {
 
 		defaultStorageSystem = initSystem("sftp", true, true);
 		sftpSystem = initSystem("sftp", false, false);
-		gridftpSystem = initSystem("gridftp", false, false);
-		ftpSystem = initSystem("ftp", false, false);
-		s3System = initSystem("s3", false, false);
-		irodsSystem = initSystem("irods", false, false);
 		irods4System = initSystem("irods4", false, false);
+//		irodsSystem = initSystem("irods", false, false);
+//		gridftpSystem = initSystem("gridftp", false, false);
+//		ftpSystem = initSystem("ftp", false, false);
+//		s3System = initSystem("s3", false, false);
 
-		testSystems = Arrays.asList(sftpSystem, irods4System);//defaultStorageSystem, sftpSystem, s3System, irodsSystem, );
+		testSystems = List.of(sftpSystem, irods4System);//defaultStorageSystem, sftpSystem, s3System, irodsSystem, );
 	}
 	
 	private StorageSystem initSystem(String protocol, boolean setDefault, boolean setPublic) 
@@ -152,7 +144,21 @@ public class StagingJobIT extends BaseTestCase {
 	}
 	
 	@AfterMethod
-	protected void afterMethod() throws Exception {
+	protected void afterMethod(Method m, Object[] args) throws Exception {
+
+		// disconnect client
+		for (Object arg : args) {
+			if (arg == RemoteSystem.class) {
+				RemoteSystem system = (RemoteSystem) arg;
+				try {
+
+					RemoteDataClient client = getClient(system);
+					client.disconnect();
+				} catch (Exception e) {
+					log.error("Failed to disconnect client for system " + system.getSystemId(), e);
+				}
+			}
+		}
 
 	}
 
@@ -211,7 +217,8 @@ public class StagingJobIT extends BaseTestCase {
 	 */
 	protected String createRemoteTestDir(RemoteSystem system) throws IOException, RemoteDataException {
 		String remoteBaseDir = getRemoteTestDirPath();
-		getClient(system).mkdirs(remoteBaseDir);
+		RemoteDataClient client = getClient(system);
+		client.mkdirs(remoteBaseDir);
 
 		return remoteBaseDir;
 	}
@@ -219,7 +226,6 @@ public class StagingJobIT extends BaseTestCase {
 	private StagingTask createStagingTaskForUrl(URI sourceUri, RemoteSystem destSystem, String destPath)
 	throws FileNotFoundException, Exception 
 	{
-
 		LogicalFile file = new LogicalFile(SYSTEM_OWNER, destSystem, sourceUri, destSystem.getRemoteDataClient().resolvePath(destPath));
 		file.setStatus(StagingTaskStatus.STAGING_QUEUED);
 		file.setOwner(SYSTEM_OWNER);
@@ -248,17 +254,17 @@ public class StagingJobIT extends BaseTestCase {
 	@DataProvider(parallel = false)
 	private Object[][] testStageNextURIProvider(Method m) throws Exception
 	{
-		URI httpUri = new URI("http://httpbin:8000/stream-bytes/32768");
-		URI httpPortUri = new URI("http://httpd:8000/public/test_upload.bin");
-		URI httpsPortUri = new URI("https://httpd:8443/public/test_upload.bin");
-		URI httpsQueryUri = new URI("https://httpd:8443/public/test_upload.bin?t=now");
-		URI httpNoPathUri = new URI("http://httpd:8000");
-		URI httpEmptyPathUri = new URI("http://httpd:8000/");
-		URI httpBasicUri = new URI("http://testuser:testuser@httpd:8000/private/test_upload.bin");
+		URI httpUri = new URI("http://httpbin:8200/stream-bytes/32768");
+		URI httpPortUri = new URI("http://httpd:10080/public/test_upload.bin");
+		URI httpsPortUri = new URI("https://httpd:10443/public/test_upload.bin");
+		URI httpsQueryUri = new URI("https://httpd:10443/public/test_upload.bin?t=now");
+		URI httpNoPathUri = new URI("http://httpd:10080");
+		URI httpEmptyPathUri = new URI("http://httpd:10080/");
+		URI httpBasicUri = new URI("http://testuser:testuser@httpd:10080/private/test_upload.bin");
 
-		URI fileNotFoundUri = new URI("http://httpd:8000/" + MISSING_FILE);
-		URI httpMissingPasswordBasicUri = new URI("http://testuser@httpd:8000/private/test_upload.bin");
-		URI httpInvalidPasswordBasicUri = new URI("http://testuser:testotheruser@httpd:8000/private/test_upload.bin");
+		URI fileNotFoundUri = new URI("http://httpd:10080/" + MISSING_FILE);
+		URI httpMissingPasswordBasicUri = new URI("http://testuser@httpd:10080/private/test_upload.bin");
+		URI httpInvalidPasswordBasicUri = new URI("http://testuser:testotheruser@httpd:10080/private/test_upload.bin");
 
 		List<Object[]> testCases = new ArrayList<Object[]>();
 
@@ -320,7 +326,7 @@ public class StagingJobIT extends BaseTestCase {
 		return testCases.toArray(new Object[][] {});
 	}
 	
-	@Test(dataProvider="testStageNextURIProvider")//, dependsOnMethods={"testStageNextFileQueueEmpty"})
+	@Test(dataProvider="testStageNextURIProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)//, dependsOnMethods={"testStageNextFileQueueEmpty"})
 	public void testStageNextURIFromUrlToSystem(URI sourceUri, RemoteSystem destSystem, String destPath, boolean shouldSucceed, String expectedPath, String message)
 	{
 		RemoteDataClient destClient = null;
@@ -388,9 +394,9 @@ public class StagingJobIT extends BaseTestCase {
 	{
 		List<Object[]> testCases = new ArrayList<Object[]>();
         
-        for (StorageSystem srcSystem: testSystems) {//,ftpSystem, gridftpSystem)) {
+        for (StorageSystem srcSystem: testSystems) {
                 
-            for (StorageSystem destSystem: testSystems) {//,ftpSystem, gridftpSystem)) {
+            for (StorageSystem destSystem: testSystems) {
                 
                 if (!srcSystem.equals(destSystem)) {
                     // copy file to home directory
@@ -402,7 +408,7 @@ public class StagingJobIT extends BaseTestCase {
         return testCases.toArray(new Object[][] {});
 	}
 	
-	@Test(dataProvider="testStageNextFileFromSystemToSystemProvider")//, dependsOnMethods={"testStageNextURI"})
+	@Test(dataProvider="testStageNextFileFromSystemToSystemProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)//, dependsOnMethods={"testStageNextURI"})
 	public void testStageNextFileFromSystemToSystem(RemoteSystem sourceSystem, RemoteSystem destSystem, String destPath, String expectedPath)
 	{
 		String remoteSrcBaseDir = null;
@@ -410,12 +416,17 @@ public class StagingJobIT extends BaseTestCase {
 		String remoteDestBaseDir = null;
 		String remoteDestPath = null;
 		String remoteExpectedPath = null;
+		RemoteDataClient srcClient = null;
+		RemoteDataClient destClient = null;
 		try
 		{
+			srcClient = getClient(sourceSystem);
+			destClient = getClient(destSystem);
+
 			// create a test src directory to stage source data
 			remoteSrcBaseDir = createRemoteTestDir(sourceSystem);
 			remoteSrcPath = remoteSrcBaseDir + "/" + LOCAL_BINARY_FILE_NAME;
-			getClient(sourceSystem).put(LOCAL_BINARY_FILE, remoteSrcPath);
+			srcClient.put(LOCAL_BINARY_FILE, remoteSrcPath);
 
 			// create a test directory and adjust expectedPath to show up there.
 			remoteDestBaseDir = createRemoteTestDir(destSystem);
@@ -424,7 +435,7 @@ public class StagingJobIT extends BaseTestCase {
 				remoteDestPath += "/" + destPath;
 			}
 			// adjust the expected path for the remote directory
-			remoteExpectedPath = remoteDestBaseDir + "/" + expectedPath;
+			remoteExpectedPath = destSystem.getStorageConfig().getHomeDir() + "/" + remoteDestBaseDir + "/" + expectedPath;
 
 			StagingTask task = createStagingTaskForUrl(new URI("agave://" + sourceSystem.getSystemId() + "/" + remoteSrcPath), destSystem, remoteDestPath);
 
@@ -435,17 +446,20 @@ public class StagingJobIT extends BaseTestCase {
             stagingJob.doExecute();
 
 			LogicalFile file = LogicalFileDao.findById(task.getLogicalFile().getId());
-			
+
+			Assert.assertNotNull(file, "Logical file for staged file should exist after staging job");
+
 			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_COMPLETED.name(),
 					"Logical file status was not STAGING_COMPLETED" );
 			
-			Assert.assertTrue(getClient(destSystem).doesExist(remoteExpectedPath),
+			Assert.assertTrue(destClient.doesExist(remoteExpectedPath),
 					"Staged file is not present on the remote system.");
+
+			String stagedFileAgavePath = file.getAgaveRelativePathFromAbsolutePath();
+			Assert.assertEquals(stagedFileAgavePath, remoteExpectedPath,
+					"Expected path of " + remoteExpectedPath + " differed from the relative logical file path of " + stagedFileAgavePath);
 			
-			Assert.assertEquals(remoteExpectedPath, file.getAgaveRelativePathFromAbsolutePath(),
-					"Expected path of " + remoteExpectedPath + " differed from the relative logical file path of " + file.getAgaveRelativePathFromAbsolutePath());
-			
-			Assert.assertTrue(getClient(destSystem).isFile(remoteExpectedPath),
+			Assert.assertTrue(destClient.isFile(remoteExpectedPath),
 					"Staged file is present, but not a file on the remote system.");
 		} 
 		catch (Exception e) {
@@ -478,7 +492,7 @@ public class StagingJobIT extends BaseTestCase {
         return testCases.toArray(new Object[][] {});
 	}
 	
-	@Test(dataProvider="testStageNextAgaveSourceDirectoryToDestFileFailsProvider")//, dependsOnMethods={"testStageNextFile"})
+	@Test(dataProvider="testStageNextAgaveSourceDirectoryToDestFileFailsProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)//, dependsOnMethods={"testStageNextFile"})
 	public void testStageNextAgaveSourceFolderToDestFileFails(RemoteSystem sourceSystem, RemoteSystem destSystem)
 	{
 		String remoteSrcBaseDir = null;
@@ -516,10 +530,6 @@ public class StagingJobIT extends BaseTestCase {
 		}
 	}
 
-
-
-
-
 	@DataProvider(parallel = false)
 	private Object[][] testStageNextAgaveFolderProvider(Method m) throws Exception
 	{
@@ -543,7 +553,7 @@ public class StagingJobIT extends BaseTestCase {
         return testCases.toArray(new Object[][] {});
 	}
 	
-	@Test(dataProvider="testStageNextAgaveFolderProvider")//, dependsOnMethods={"testStageNextAgaveSourceFolderToDestFileFails"})
+	@Test(dataProvider="testStageNextAgaveFolderProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)//, dependsOnMethods={"testStageNextAgaveSourceFolderToDestFileFails"})
 	public void testStageNextFolder(RemoteSystem sourceSystem, RemoteSystem destSystem, String destPath, String expectedPath)
 	{
         org.iplantc.service.transfer.Settings.ALLOW_RELAY_TRANSFERS = true;
@@ -567,7 +577,7 @@ public class StagingJobIT extends BaseTestCase {
 				remoteDestPath += "/" + destPath;
 			}
 			// adjust the expected path for the remote directory
-            remoteExpectedPath = remoteDestBaseDir;
+            remoteExpectedPath = destSystem.getStorageConfig().getHomeDir() + "/" + remoteDestBaseDir;
             if (StringUtils.isNotEmpty(expectedPath)) {
                 remoteExpectedPath +=  "/" + expectedPath;
             }
@@ -581,6 +591,8 @@ public class StagingJobIT extends BaseTestCase {
 			stagingJob.doExecute();
 
 			LogicalFile file = LogicalFileDao.findById(task.getLogicalFile().getId());
+
+			Assert.assertNotNull(file, "Logical file for staged directory should exist after staging job");
 
 			Assert.assertEquals(file.getStatus(), StagingTaskStatus.STAGING_COMPLETED.name(),
 					"Logical file status was not STAGING_COMPLETED" );
@@ -622,7 +634,7 @@ public class StagingJobIT extends BaseTestCase {
         return testCases.toArray(new Object[][] {});
 	}
 	
-	@Test(dataProvider="testStageNextAgaveFileSourcePathDoesNotExistProvider")//, dependsOnMethods={"testStageNextFolder"})
+	@Test(dataProvider="testStageNextAgaveFileSourcePathDoesNotExistProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)//, dependsOnMethods={"testStageNextFolder"})
 	public void testStageNextAgaveFileSourcePathDoesNotExist(RemoteSystem sourceSystem, RemoteSystem destSystem, String srcPath, String destPath, String message) 
 	{
 		RemoteDataClient srcClient = null;
@@ -682,7 +694,7 @@ public class StagingJobIT extends BaseTestCase {
         return testCases.toArray(new Object[][] {});
 	}
 		
-	@Test(dataProvider="testStageNextAgaveFileDestPathDoesNotExistProvider")//, dependsOnMethods={"testStageNextAgaveFileSourcePathDoesNotExist"})
+	@Test(dataProvider="testStageNextAgaveFileDestPathDoesNotExistProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)//, dependsOnMethods={"testStageNextAgaveFileSourcePathDoesNotExist"})
 	public void testStageNextAgaveFileDestPathDoesNotExist(RemoteSystem sourceSystem, RemoteSystem destSystem, String srcPath, String destPath, String message) 
 	{
 		RemoteDataClient srcClient = null;
@@ -727,15 +739,16 @@ public class StagingJobIT extends BaseTestCase {
 	private Object[][] testStageNextAgaveFileSourceNoPermissionProvider(Method m) throws Exception
 	{
 		return new Object[][] {		
-				{ gridftpSystem, defaultStorageSystem, "/root", "", "Staging should fail when user does not have permission on source path" },
-				{ irodsSystem, defaultStorageSystem, "/testotheruser", "", "Staging should fail when user does not have permission on source path" },
+//				{ irodsSystem, defaultStorageSystem, "/testotheruser", "", "Staging should fail when user does not have permission on source path" },
+				{ irods4System, defaultStorageSystem, "/testotheruser", "", "Staging should fail when user does not have permission on source path" },
 				{ sftpSystem, defaultStorageSystem, "/root", "", "Staging should fail when user does not have permission on source path" },
-				{ ftpSystem, defaultStorageSystem, "/root", "", "Staging should fail when user does not have permission on source path" },
-				{ s3System, defaultStorageSystem, "/", "", "Staging should fail when user does not have permission on source path" },
+//				{ gridftpSystem, defaultStorageSystem, "/root", "", "Staging should fail when user does not have permission on source path" },
+//				{ ftpSystem, defaultStorageSystem, "/root", "", "Staging should fail when user does not have permission on source path" },
+//				{ s3System, defaultStorageSystem, "/", "", "Staging should fail when user does not have permission on source path" },
 		};
 	}	
 	
-	@Test(dataProvider="testStageNextAgaveFileSourceNoPermissionProvider")//, dependsOnMethods={"testStageNextAgaveFileDestPathDoesNotExist"})
+	@Test(dataProvider="testStageNextAgaveFileSourceNoPermissionProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)//, dependsOnMethods={"testStageNextAgaveFileDestPathDoesNotExist"})
 	public void testStageNextAgaveFileSourceNoPermission(RemoteSystem sourceSystem, RemoteSystem destSystem, String srcPath, String destPath, String message) 
 	{
 		RemoteDataClient destClient = null;
@@ -785,7 +798,7 @@ public class StagingJobIT extends BaseTestCase {
         return testCases.toArray(new Object[][] {});
 	}
 	
-	@Test(dataProvider="testStageNextAgaveFileDestNoPermissionProvider")//, dependsOnMethods={"testStageNextAgaveFileSourceNoPermission"})
+	@Test(dataProvider="testStageNextAgaveFileDestNoPermissionProvider", retryAnalyzer = StagingJobITRetryAnalyzer.class)//, dependsOnMethods={"testStageNextAgaveFileSourceNoPermission"})
 	public void testStageNextAgaveFileDestNoPermission(RemoteSystem sourceSystem, RemoteSystem destSystem, String srcPath, String destPath, String message) 
 	{
 		RemoteDataClient srcClient = null;

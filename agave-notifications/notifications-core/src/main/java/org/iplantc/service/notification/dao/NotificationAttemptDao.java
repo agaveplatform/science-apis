@@ -19,6 +19,11 @@ import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.notification.model.NotificationAttempt;
 
+/**
+ * DAO to manage MySQL-based notification attempts.
+ * @deprecated
+ */
+@Deprecated(since = "2.2.27")
 public class NotificationAttemptDao extends AbstractDao {
 
 	private static final Logger log = Logger.getLogger(NotificationAttemptDao.class);
@@ -208,7 +213,7 @@ public class NotificationAttemptDao extends AbstractDao {
 	/**
 	 * Deletes a notification
 	 * 
-	 * @param profile
+	 * @param attempt
 	 * @throws NotificationException
 	 */
 	public void delete(NotificationAttempt attempt) throws NotificationException

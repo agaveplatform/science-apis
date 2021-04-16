@@ -6,6 +6,7 @@ import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 
 import java.util.ArrayList;
 import java.util.List;
+
 import static org.iplantc.service.jobs.model.enumerations.JobStatusType.*;
 
 public enum CondorJobStatus implements RemoteSchedulerJobStatus<CondorJobStatus> {

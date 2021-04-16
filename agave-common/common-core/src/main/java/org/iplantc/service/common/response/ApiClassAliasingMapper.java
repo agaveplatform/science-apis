@@ -1,9 +1,8 @@
 package org.iplantc.service.common.response;
 
-import org.apache.commons.lang.StringUtils;
-
 import com.thoughtworks.xstream.mapper.ClassAliasingMapper;
 import com.thoughtworks.xstream.mapper.Mapper;
+import org.apache.commons.lang.StringUtils;
 
 /**
  * Forces a one-way, lowercase shortname serialization of class names by XStream.

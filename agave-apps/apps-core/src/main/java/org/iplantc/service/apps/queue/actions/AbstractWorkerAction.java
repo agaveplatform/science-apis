@@ -1,10 +1,10 @@
 package org.iplantc.service.apps.queue.actions;
 
-import java.nio.channels.ClosedByInterruptException;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.model.TransferTask;
+
+import java.nio.channels.ClosedByInterruptException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class AbstractWorkerAction<T> implements WorkerAction<T> {
 

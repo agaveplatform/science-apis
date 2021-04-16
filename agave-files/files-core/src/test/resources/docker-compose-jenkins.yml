@@ -1,0 +1,254 @@
+version: '2'
+
+services:
+
+  test-proxy:
+    image: traefik:v2.4
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--entryPoints.grpc.address=:50051"
+      - "--entryPoints.sftp.address=:10022"
+      - "--entryPoints.sftptunnel.address=:10033"
+      - "--entryPoints.sftphidden.address=:10044"
+      - "--entryPoints.irods3.address=:1247"
+#      - "--entryPoints.irods3ssh.address=:10055"
+      - "--entryPoints.irods3pam.address=:1248"
+#      - "--entryPoints.irods3pamssh.address=:10066"
+      - "--entryPoints.irods4.address=:1257"
+      - "--entryPoints.mysql.address=:3306"
+      - "--entryPoints.mongodb.address=:27017"
+      - "--entryPoints.beanstalkd.address=:11300"
+    ports:
+      - 8000:80
+      - 8443:443
+      - 50052:50052
+      - 28443:8080
+      - 10022:10022
+      - 10033:10033
+      - 10044:10044
+      - 1247:1247
+      - 1248:1248
+      - 1257:1257
+      - 3306:3306
+      - 27017:27017
+      - 11300:11300
+    restart: on-failure
+    cpu_shares: 128
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    labels:
+      - "traefik.enable=true"
+
+  sftp-relay:
+    image: sftp-relay:develop
+    container_name: sftp-relay
+    ports:
+      - 50051
+#      - 50051:50051
+#      - 9092
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
+    volumes:
+      - ./transfer:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/target/test-classes/transfer
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sftp-relay.rule=Host(`sftp-relay`)"
+      - "traefik.http.routers.sftp-relay.entrypoints=grpc"
+      - "traefik.http.services.sftp-relay.loadbalancer.server.scheme=h2c"
+      - "traefik.http.services.sftp-relay.loadbalancer.server.port=50051"
+
+  sftp:
+    image: agaveplatform/sshd:latest
+    container_name: sftp
+    command: "-p 10022"
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
+    ports:
+      - 10022
+#      - '10022:10022'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.sftp.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.sftp.entrypoints=sftp"
+      - "traefik.tcp.routers.sftp.service=sftp-svc"
+      - "traefik.tcp.services.sftp-svc.loadbalancer.server.port=10022"
+
+  sftptunnel:
+    image: agaveplatform/sshd:latest
+    container_name: sftptunnel
+    command: "-p 10033"
+    restart: on-failure
+    cpu_shares: 128
+    links:
+      - sftphidden
+    ports:
+      - 10033
+#      - '10033:10033'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.sftptunnel.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.sftptunnel.entrypoints=sftptunnel"
+      - "traefik.tcp.routers.sftptunnel.service=sftptunnel"
+      - "traefik.tcp.services.sftptunnel-svc.loadbalancer.server.port=10033"
+      
+  sftphidden:
+    image: agaveplatform/sshd:latest
+    container_name: sftphidden
+    command: "-p 10044"
+    restart: on-failure
+    cpu_shares: 128
+    mem_reservation: 128M
+    ports:
+      - 10044
+#      - '10044:10044'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.sftphidden.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.sftphidden.entrypoints=sftphidden"
+      - "traefik.tcp.routers.sftphidden.service=sftphidden-svc"
+      - "traefik.tcp.services.sftphidden-svc.loadbalancer.server.port=10044"
+      
+  irods4:
+    image: agaveapi/irods:4.0.3
+    container_name: irods4
+    command: changeit
+    hostname: docker.example.com
+    restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
+    environment:
+      - 'DOCKER_HOSTNAME=docker.example.com'
+      - 'IRODS_ZONE=iplant'
+    ports:
+      - 1247
+#      - '1257:1247'
+#      - '5442:5432'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.irods4.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.irods4.entrypoints=irods4"
+      - "traefik.tcp.routers.irods4.service=irods4-svc"
+      - "traefik.tcp.services.irods4-svc.loadbalancer.server.port=1247"
+#      - "traefik.tcp.routers.irods4ssh.rule=HostSNI(`*`)"
+#      - "traefik.tcp.routers.irods4ssh.entrypoints=irods4ssh"
+#      - "traefik.tcp.routers.irods4ssh.service=irods4ssh-svc"
+#      - "traefik.tcp.services.irods4ssh-svc.loadbalancer.server.port=22"
+
+  irods3:
+    image: agaveapi/irods:3.3.1
+    container_name: irods3
+    hostname: docker.example.com
+    restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
+    ports:
+      - 1247
+#      - '10055:22'
+#      - '1247:1247'
+#      - '5432:5432'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.irods3.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.irods3.entrypoints=irods3"
+      - "traefik.tcp.routers.irods3.service=irods3-svc"
+      - "traefik.tcp.services.irods3-svc.loadbalancer.server.port=1247"
+#      - "traefik.tcp.routers.irods3ssh.rule=HostSNI(`*`)"
+#      - "traefik.tcp.routers.irods3ssh.entrypoints=irods3ssh"
+#      - "traefik.tcp.routers.irods3ssh.service=irods3ssh-svc"
+#      - "traefik.tcp.services.irods3ssh-svc.loadbalancer.server.port=22"
+      
+  irods3-pam:
+    image: agaveapi/irods-pam:latest
+    container_name: irods3-pam
+    hostname: docker.example.com
+    restart: on-failure
+    mem_reservation: 1G
+    cpus: 1.0
+    cpu_shares: 1024
+    ports:
+      - 1247
+#      - '10066:22'
+#      - '1248:1247'
+#      - '5432:5432'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.irods3pam.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.irods3pam.entrypoints=irods3pam"
+      - "traefik.tcp.routers.irods3pam.service=irods3pam-svc"
+      - "traefik.tcp.services.irods3pam-svc.loadbalancer.server.port=1247"
+#      - "traefik.tcp.routers.irods3pamssh.rule=HostSNI(`*`)"
+#      - "traefik.tcp.routers.irods3pamssh.entrypoints=irods3pamssh"
+#      - "traefik.tcp.routers.irods3pamssh.service=irods3pamssh-svc"
+#      - "traefik.tcp.services.irods3pamssh-svc.loadbalancer.server.port=22"
+      
+  requestbin:
+    image: agaveplatform/requestbin:2.0.0
+    container_name: requestbin
+    hostname: requestbin
+    restart: on-failure
+    mem_reservation: 256M
+    cpu_shares: 128
+    ports:
+      - 5000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.requestbin.rule=Host(`requestbin`)"
+      - "traefik.http.routers.requestbin.entrypoints=web"
+      - "traefik.http.routers.requestbin.tls=false"
+      - "traefik.http.routers.requestbin-secure.rule=Host(`requestbin`)"
+      - "traefik.http.routers.requestbin-secure.entrypoints=websecure"
+      - "traefik.http.routers.requestbin-secure.tls=true"
+
+  httpbin:
+    image: agaveplatform/httpbin:latest
+    container_name: httpbin
+    hostname: httpbin
+    restart: on-failure
+    mem_reservation: 256M
+    cpu_shares: 256
+    ports:
+      - 8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpbin.rule=Host(`httpbin`)"
+      - "traefik.http.routers.httpbin.entrypoints=web"
+      - "traefik.http.routers.httpbin.tls=false"
+      - "traefik.http.routers.httpbin-secure.rule=Host(`httpbin`)"
+      - "traefik.http.routers.httpbin-secure.entrypoints=websecure"
+      - "traefik.http.routers.httpbin-secure.tls=true"
+
+  httpd:
+    image: agaveplatform/apache-dev:latest
+    container_name: httpd
+    hostname: docker.example.com
+    restart: on-failure
+    mem_reservation: 256M
+    cpu_shares: 256
+    ports:
+      - 80
+      - 443
+    volumes:
+      - type: bind
+        source: ./transfer
+        target: /var/www/html/public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.httpd.rule=Host(`httpd`)"
+      - "traefik.http.routers.httpd.entrypoints=web"
+      - "traefik.http.routers.httpd.tls=false"
+      - "traefik.http.routers.httpd.service=httpd"
+      - "traefik.http.routers.httpd-secure.rule=Host(`httpd`)"
+      - "traefik.http.routers.httpd-secure.entrypoints=websecure"
+      - "traefik.http.routers.httpd-secure.service=httpd"
+      - "traefik.http.routers.httpd-secure.tls=true"
+      - "traefik.http.services.httpd.loadbalancer.server.port=80"

@@ -80,14 +80,14 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 		StorageSystem privateStorageSystem = createStorageSystem();
 		privateStorageSystem.setGlobalDefault(true);
 		privateStorageSystem.setPubliclyAvailable(true);
-		log.debug("Inserting public storage system " + privateStorageSystem.getSystemId());
+//		log.debug("Inserting public storage system " + privateStorageSystem.getSystemId());
 		systemDao.persist(privateStorageSystem);
 
 		ExecutionSystem privateExecutionSystem = createExecutionSystem();
 		privateExecutionSystem.setOwner(TEST_OWNER);
 		privateExecutionSystem.setType(RemoteSystemType.EXECUTION);
 		privateExecutionSystem.getBatchQueues().clear();
-		log.debug("Inserting private execution system " + privateExecutionSystem.getSystemId());
+//		log.debug("Inserting private execution system " + privateExecutionSystem.getSystemId());
 		systemDao.persist(privateExecutionSystem);
 		privateExecutionSystem.addBatchQueue(UNLIMITED_QUEUE.clone());
 		privateExecutionSystem.addBatchQueue(MEDIUM_QUEUE.clone());
@@ -115,7 +115,7 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 			execSystem.addBatchQueue(SHORT_QUEUE.clone());
 			execSystem.setPubliclyAvailable(true);
 			systemDao.persist(execSystem);
-			log.debug("Inserting execution system " + privateExecutionSystem.getSystemId());
+//			log.debug("Inserting execution system " + privateExecutionSystem.getSystemId());
 			systemDao.persist(execSystem);
 
 			for(BatchQueue q: execSystem.getBatchQueues())
@@ -127,7 +127,7 @@ public class AbstractJobSchedulingTest extends AbstractDaoTest
 				testSoftware.setDefaultMemoryPerNode(q.getMaxMemoryPerNode());
 				testSoftware.setDefaultNodes(q.getMaxNodes());
 				testSoftware.setDefaultProcessorsPerNode(q.getMaxProcessorsPerNode());
-				log.debug("Adding software " + testSoftware.getUniqueName());
+//				log.debug("Adding software " + testSoftware.getUniqueName());
 				SoftwareDao.persist(testSoftware);
 			}
 		}

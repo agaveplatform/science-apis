@@ -3,9 +3,9 @@
  */
 package org.iplantc.service.apps.model;
 
-import java.util.Comparator;
-
 import org.apache.commons.lang.StringUtils;
+
+import java.util.Comparator;
 
 /**
  * Interface to support consistent ordering of software attribute

@@ -1,43 +1,11 @@
 package org.iplantc.service.apps.model;
 
-import java.net.URL;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OrderBy;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.persistence.UniqueConstraint;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.lang.StringUtils;
-import org.hibernate.annotations.Cascade;
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.Filters;
-import org.hibernate.annotations.LazyCollection;
-import org.hibernate.annotations.LazyCollectionOption;
-import org.hibernate.annotations.ParamDef;
+import org.hibernate.annotations.*;
 import org.iplantc.service.apps.Settings;
 import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.iplantc.service.apps.model.enumerations.ParallelismType;
@@ -46,7 +14,6 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.util.TimeUtils;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.BatchQueue;
 import org.iplantc.service.systems.model.ExecutionSystem;
@@ -54,17 +21,22 @@ import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
-import org.iplantc.service.transfer.RemoteDataClient;
 import org.joda.time.DateTime;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
+import javax.persistence.OrderBy;
+import javax.persistence.Table;
+import javax.persistence.*;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * A SoftwareResources is any software available to the user.
@@ -93,7 +65,7 @@ public class Software {
 	private String					ontology;					// comma separated list of ontological terms
 	private Long					defaultNodes;				// default nodes for this app if none specified
 	private Double					defaultMemoryPerNode;				// default memory per nodefor this app if none specified
-	private Long					defaultProcessorsPerNode = new Long(1);		// default processors per node for this app if none provided.
+	private Long					defaultProcessorsPerNode = 1L;		// default processors per node for this app if none provided.
 	private String					defaultQueue;				// default queue to use when running app.
 	private String					defaultMaxRunTime = "01:00:00";	// default time to run this app
 	//private String					executionHost;		    // system on which to run this software
@@ -976,8 +948,8 @@ public class Software {
 
 	/**
 	 * Returns the input with the given key
-	 * @param name
-	 * @return
+	 * @param name name of the {@link SoftwareInput} to return
+	 * @return the related {@link SoftwareInput} with the given name or null if not found
 	 */
 	@Transient
 	public SoftwareInput getInput(String name)
@@ -1007,8 +979,8 @@ public class Software {
 	}
 
 	/**
-	 * Sorts parameters by their `ordered` value.
-	 * @return
+	 * Sorts parameters by their {@link SoftwareParameter#getOrder()} value.
+	 * @return parameters in an ordered list, sorted by their {@link SoftwareParameter#getOrder()} value
 	 */
 	@Transient
 	public List<SoftwareParameter> getOrderedParameters()
@@ -1039,8 +1011,8 @@ public class Software {
 
 	/**
 	 * Returns the parameter with the given key
-	 * @param name
-	 * @return
+	 * @param name name of the parameter to return
+	 * @return the related parameter with the given name or null if not found
 	 */
 	@Transient
 	public SoftwareParameter getParameter(String name)
@@ -1206,9 +1178,7 @@ public class Software {
 		final Software sw = (Software) o;
 		if (!getUniqueName().equalsIgnoreCase(sw.getUniqueName()))
 			return false;
-		if (!owner.equalsIgnoreCase(sw.owner))
-			return false;
-		return true;
+		return owner.equalsIgnoreCase(sw.owner);
 	}
 
 	/* (non-Javadoc)
@@ -1228,10 +1198,9 @@ public class Software {
 	}
 
 	/**
-	 * Compares two software objects based on name, version, revision, and id.
-	 *
-	 * @param Software object
-	 * @return 1 if greater, 0 if equal, -1 if less.
+	 * Null and type safe comparison of this class to another.
+	 * @param o the object to compare
+	 * @return 1 if greater, 0 if same, -1 if less
 	 */
 	public int compareTo(Object o)
 	{
@@ -1320,7 +1289,7 @@ public class Software {
 	/**
 	 * Serializes the software object to json.
 	 * @return JSON string representation of an object.
-	 * @throws JSONException
+	 * @throws JSONException if unable to serialize a field to json
 	 */
 	public String toJSON() throws JSONException
 	{
@@ -1422,6 +1391,8 @@ public class Software {
 	public static Software fromJSON(JSONObject json2, String owner)
 	throws SoftwareException, JSONException
 	{
+		SystemManager systemManager = getSystemManager();
+
 		ObjectMapper mapper = new ObjectMapper();
 		JsonNode jsonNode;
 		try
@@ -1591,7 +1562,7 @@ public class Software {
 			{
 				String executionSystem = jsonNode.get("executionSystem").asText();
 
-				RemoteSystem system = new SystemDao().findBySystemId(executionSystem);
+				RemoteSystem system = systemManager.getDao().findBySystemId(executionSystem);
 
 				if (system == null)
 				{
@@ -1896,7 +1867,7 @@ public class Software {
 			{
 				String deploymentSystemId = jsonNode.get("deploymentSystem").asText();
 
-				deploymentSystem = new SystemDao().findBySystemId(deploymentSystemId);
+				deploymentSystem = systemManager.getDao().findBySystemId(deploymentSystemId);
 
 				if (deploymentSystem == null)
 				{
@@ -1926,7 +1897,7 @@ public class Software {
 		else
 		{
 			// apply user's default storage
-			deploymentSystem = new SystemManager().getUserDefaultStorageSystem(owner);
+			deploymentSystem = systemManager.getUserDefaultStorageSystem(owner);
 			software.setStorageSystem((StorageSystem)deploymentSystem);
 		}
 
@@ -1935,10 +1906,10 @@ public class Software {
 			if (jsonNode.get("deploymentPath").isTextual())
 			{
 				String deploymentPath = jsonNode.get("deploymentPath").asText();
-				RemoteDataClient rdc;
+//				RemoteDataClient rdc;
 				try
 				{
-					rdc = deploymentSystem.getRemoteDataClient();
+//					rdc = deploymentSystem.getRemoteDataClient();
 					software.setDeploymentPath(deploymentPath);
 				}
 				catch (Exception e)
@@ -2172,9 +2143,26 @@ public class Software {
 	}
 
 	/**
+	 * Mockable getter for {@link SystemManager}
+	 * @return new instance of {@link SystemManager}
+	 */
+	@Transient
+	public static SystemManager getSystemManager() {
+		return new SystemManager();
+	}
+//
+//	/**
+//	 * Mockable getter for {@link ApplicationManager}
+//	 * @return new instance of {@link ApplicationManager}
+//	 */
+//	protected static ApplicationManager getApplicationManager() {
+//		return new ApplicationManager();
+//	}
+
+	/**
 	 * Determines if an app is owned by the given username
-	 * @param username
-	 * @return
+	 * @param username the user for whome to check ownership
+	 * @return true if this {@link Software} is owned by the user, false otherwise.
 	 */
 	@Transient
 	public boolean isOwnedBy(String username)

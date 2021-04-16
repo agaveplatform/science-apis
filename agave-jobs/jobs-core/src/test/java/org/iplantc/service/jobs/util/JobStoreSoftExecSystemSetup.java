@@ -171,7 +171,7 @@ public class JobStoreSoftExecSystemSetup extends AbstractDaoTest {
 //            e.printStackTrace();
 //        }
 
-        System.out.println("system id "+remoteSystem.getId().toString());
+//        System.out.println("system id "+remoteSystem.getId().toString());
 
         return job;
     }

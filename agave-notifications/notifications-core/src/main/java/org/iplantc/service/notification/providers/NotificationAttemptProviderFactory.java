@@ -27,7 +27,8 @@ public class NotificationAttemptProviderFactory {
 	throws NotImplementedException, NotificationException 
 	{
 		try {
-			NotificationCallbackProviderType providerType = NotificationCallbackProviderType.getInstanceForUri(attempt.getCallbackUrl());
+			NotificationCallbackProviderType providerType = NotificationCallbackProviderType.getInstanceForUri(
+					attempt.getCallbackUrl(), attempt.getTenantId());
 			NotificationAttemptProvider provider = null;
 			
 			if (providerType == EMAIL) {

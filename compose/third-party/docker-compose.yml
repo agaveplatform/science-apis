@@ -1,26 +1,16 @@
 ##############################################################
-#  Development Stack of Dependent Services
+#  Core Services Persistence Stack
 #############################################################
-
-##############################################################
-# MySQL
-##############################################################
-version: '3.7'
-
-volumes:
-  mysql_data:
-  mongo_data:
-
-networks:
-  services:
+version: '2'
 
 services:
+  ##############################################################
+  # MySQL 5.7 / MariaDB 10.3
+  ##############################################################
   mysql:
     image: agave-mariadb:2.2.27
     ports:
       - '3306:3306'
-    volumes:
-      - mysql_data:/var/lib/mysql
     environment:
       MARIADB_ROOT_PASSWORD: changeit
       MARIADB_DATABASE: agavecore
@@ -28,99 +18,29 @@ services:
       MARIADB_PASSWORD: password
     labels:
       - "traefik.enable=false"
-    networks:
-      - services
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
-
-  redis:
-    image: redis:latest
     restart: on-failure
-    ports:
-      - 6379:6379
-
-  nats:
-    image: nats:latest
-    restart: on-failure
-    ports:
-      - 4222:4222
-      - 8222:8222
-
-  #  migrate:
-#    image: agaveplatform/agave-migrations:2.2.6
-#    depends_on:
-#     - mysql
-#    environment:
-#      - 'MYSQL_HOST=mysql'
-#      - 'MYSQL_USER=agaveuser'
-#      - 'MYSQL_PASSWORD=password'
-#      - 'MYSQL_DATABASE=agavecore'
-#    command: "./flyway migrate"
-
-#  ##############################################################
-#  # MongoDB 3.0
-#  ##############################################################
-#  mongodb:
-#    image: agaveplatform/mongodb:3.0
-#    hostname: mongodb
-#    environment:
-#      - MONGODB_ADMIN_PASS=changeit
-#      - MONGODB_PASSWORD=password
-#      - MONGODB_USERNAME=agaveuser
-#      - MONGODB_DATABASE=api
-#      - JOURNALING=no
-#    volumes:
-#      - mongo_data:/data
-#    ports:
-#      - '27017:27017'
-#    labels:
-#      - "traefik.enable=false"
-#    networks:
-#      - services
-#    deploy:
-#      restart_policy:
-#        condition: on-failure
-#      resources:
-#        limits:
-#          memory: 512M
-#        reservations:
-#          memory: 256M
+    mem_limit: 512M
+    mem_reservation: 256M
 
 
   ##############################################################
-  # MongoDB 3.0
+  # MongoDB 4.2.8
   ##############################################################
   mongodb:
-    image: agaveplatform/mongodb:3.0
-    hostname: mongodb
+    image: agaveplatform/mongodb:4.2.8
     environment:
       - MONGODB_ADMIN_PASS=changeit
       - MONGODB_PASSWORD=password
       - MONGODB_USERNAME=agaveuser
       - MONGODB_DATABASE=api
       - JOURNALING=no
-    volumes:
-      - mongo_data:/data
     ports:
       - '27017:27017'
     labels:
       - "traefik.enable=false"
-    networks:
-      - services
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
+    restart: on-failure
+    mem_limit: 512M
+    mem_reservation: 256M
 
   ##############################################################
   # Beanstalkd
@@ -128,39 +48,30 @@ services:
   beanstalkd:
     image: agaveplatform/beanstalkd:latest
     command: /usr/bin/beanstalkd -b /var/lib/beanstalkd/binlog
-    hostname: beanstalkd
     ports:
       - '11300:11300'
     labels:
       - "traefik.enable=false"
-    networks:
-      - services
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 128M
+    restart: on-failure
+    mem_limit: 512M
+    mem_reservation: 128M
 
-
-  beanstalkd-console:
-      image: kusmierz/beanstalk-console:latest
-      ports:
-        - '9999:80'
-      labels:
-        - "traefik.enable=false"
-      networks:
-        - services
-      deploy:
-        restart_policy:
-          condition: on-failure
-        resources:
-          limits:
-            memory: 512M
-          reservations:
-            memory: 128M
+#  beanstalkd-console:
+#      image: kusmierz/beanstalk-console:latest
+#      ports:
+#        - '9999:80'
+#      labels:
+#        - "traefik.enable=false"
+#      networks:
+#        - core_persistence
+#      deploy:
+#        restart_policy:
+#          condition: on-failure
+#        resources:
+#          limits:
+#            memory: 512M
+#          reservations:
+#            memory: 128M
 
   ##############################################################
   # Pushpin
@@ -183,8 +94,4 @@ services:
 #          memory: 512M
 #        reservations:
 #          memory: 256M
-
-networks:
-  services:
-  realtime:
 

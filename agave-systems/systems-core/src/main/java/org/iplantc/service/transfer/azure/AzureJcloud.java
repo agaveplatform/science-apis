@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-public class AzureJcloud implements RemoteDataClient 
+public class AzureJcloud implements RemoteDataClient
 {
 	public static final String AZURE_STORAGE_PROVIDER = "azureblob";
 	public static final String AMAZON_STORAGE_PROVIDER = "aws-s3";
@@ -82,26 +82,25 @@ public class AzureJcloud implements RemoteDataClient
 	{
 		rootDir = FilenameUtils.normalize(rootDir);
         if (!StringUtils.isEmpty(rootDir)) {
-			this.rootDir = rootDir;
-			if (!this.rootDir.endsWith("/")) {
-				this.rootDir += "/";
+			if (!rootDir.endsWith("/")) {
+				rootDir += "/";
 			}
 		} else {
-			this.rootDir = "/";
+			rootDir = "/";
 		}
 
         homeDir = FilenameUtils.normalize(homeDir);
         if (!StringUtils.isEmpty(homeDir)) {
-            this.homeDir = this.rootDir +  homeDir;
-            if (!this.homeDir.endsWith("/")) {
-                this.homeDir += "/";
+            homeDir = rootDir +  homeDir;
+            if (!homeDir.endsWith("/")) {
+                homeDir += "/";
             }
         } else {
-            this.homeDir = this.rootDir;
+            homeDir = rootDir;
         }
 
-        this.homeDir = this.homeDir.replaceAll("/+", "/");
-        this.rootDir = this.rootDir.replaceAll("/+", "/");
+        this.homeDir = homeDir.replaceAll("/+", "/");
+        this.rootDir = rootDir.replaceAll("/+", "/");
 	}
 
 	@Override
@@ -209,13 +208,9 @@ public class AzureJcloud implements RemoteDataClient
 				throw new RemoteDataException("Cannot open input stream for directory " + remotePath);
 			}
 		} 
-		catch (RemoteDataException e) {
+		catch (RemoteDataException | FileNotFoundException e) {
 			throw e;
-		}
-		catch (FileNotFoundException e) {
-			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteDataException("Failed to open input stream to " + remotePath, e);
 		}	
 	}
@@ -246,13 +241,9 @@ public class AzureJcloud implements RemoteDataClient
 				return new AzureOutputStream(this, resolvePath(remotePath));
 			}
 		} 
-		catch (RemoteDataException e) {
+		catch (RemoteDataException | FileNotFoundException e) {
 			throw e;
-		}
-		catch (FileNotFoundException e) {
-			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteDataException("Failed to open input stream to " + remotePath, e);
 		}	
 	}
@@ -391,13 +382,11 @@ public class AzureJcloud implements RemoteDataClient
 				}
 			}
 		} 
-		catch (ContainerNotFoundException | FileNotFoundException e) {
+		catch (FileNotFoundException | ContainerNotFoundException e) {
 			throw new java.io.FileNotFoundException("No such file or directory");
-		}
-		catch (RemoteDataException|IOException e) {
+		} catch (IOException | RemoteDataException e) {
 			throw e;
-		}
-		catch (Exception e) {
+		} catch (Exception e) {
 			throw new RemoteDataException("Failed to copy file to irods.", e);
 		}
 	}
@@ -434,13 +423,9 @@ public class AzureJcloud implements RemoteDataClient
                 throw new NotImplementedException();
             }
         } 
-        catch (IOException e) {
+        catch (IOException | RemoteDataException e) {
             throw e;
-        }
-        catch (RemoteDataException e) {
-            throw e;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new RemoteDataException("Failed to append data to " + remotepath, e);
         }
     }
@@ -529,13 +514,7 @@ public class AzureJcloud implements RemoteDataClient
 				throw new NotImplementedException();
 			}
 		}
-		catch (IOException e) {
-			throw e;
-		}
-		catch (RemoteDataException e) {
-			throw e;
-		}
-		catch (NotImplementedException e) {
+		catch (IOException | NotImplementedException | RemoteDataException e) {
 			throw e;
 		}
 	}
@@ -706,15 +685,15 @@ public class AzureJcloud implements RemoteDataClient
 	@Override
 	public String resolvePath(String path) throws FileNotFoundException {
 		if (StringUtils.isEmpty(path)) {
-			return homeDir;
+			return getHomeDir();
 		}
 		else if (path.startsWith("/")) 
 		{
-			path = rootDir + path.replaceFirst("/", "");
+			path = getRootDir() + path.replaceFirst("/", "");
 		}
 		else
 		{
-			path = homeDir + path;
+			path = getHomeDir() + path;
 		}
 		
 		String adjustedPath = path;
@@ -731,8 +710,8 @@ public class AzureJcloud implements RemoteDataClient
 		if (path == null) {
 			throw new FileNotFoundException("The specified path " + path + 
 					" does not exist or the user does not have permission to view it.");
-		} else if (!path.startsWith(rootDir)) {
-			if (path.equals(StringUtils.removeEnd(rootDir, "/"))) {
+		} else if (!path.startsWith(getRootDir())) {
+			if (path.equals(StringUtils.removeEnd(getRootDir(), "/"))) {
 				return path;
 			} else {
 				throw new FileNotFoundException("The specified path " + path + 

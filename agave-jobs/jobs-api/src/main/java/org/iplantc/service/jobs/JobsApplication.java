@@ -5,18 +5,7 @@ package org.iplantc.service.jobs;
 
 import org.iplantc.service.common.representation.QuartzUtilityResource;
 import org.iplantc.service.common.restlet.AgaveApplication;
-import org.iplantc.service.jobs.resources.JobDocumentationResource;
-import org.iplantc.service.jobs.resources.JobHistoryResource;
-import org.iplantc.service.jobs.resources.JobListAttributeResource;
-import org.iplantc.service.jobs.resources.JobManageResource;
-import org.iplantc.service.jobs.resources.JobPermissionsResource;
-import org.iplantc.service.jobs.resources.JobSearchResource;
-import org.iplantc.service.jobs.resources.JobStatusResource;
-import org.iplantc.service.jobs.resources.JobUpdateResource;
-import org.iplantc.service.jobs.resources.JobsResource;
-import org.iplantc.service.jobs.resources.OutputFileDownloadResource;
-import org.iplantc.service.jobs.resources.OutputFileListingResource;
-import org.iplantc.service.jobs.resources.QuartzResource;
+import org.iplantc.service.jobs.resources.*;
 import org.restlet.Router;
 
 /**

@@ -17,11 +17,11 @@ import java.util.List;
  */
 public class MetadataRequestPermissionProcessor {
 
-//	private List<MetadataPermission> permissions;
+	//	private List<MetadataPermission> permissions;
 	private String owner;
 	private String uuid;
 	private MetadataItem metadataItem;
-	
+
 	public MetadataRequestPermissionProcessor() {
 //		this.setPermissions(new ArrayList<MetadataPermission>());
 		this.metadataItem = new MetadataItem();
@@ -33,19 +33,19 @@ public class MetadataRequestPermissionProcessor {
 		}
 		this.metadataItem = metadataItem;
 	}
-	
+
 	/**
-	 * Processes a {@link JsonNode} passed in with a job request as a 
-	 * permission configuration. Accepts an array of {@link MetadataPermission} 
+	 * Processes a {@link JsonNode} passed in with a job request as a
+	 * permission configuration. Accepts an array of {@link MetadataPermission}
 	 * request objects or a simple string;
-	 *  
+	 *
 	 * @param json
 	 * @throws MetadataException
 	 */
 	public void process(ArrayNode json) throws MetadataException {
-		
+
 		getMetadataItem().getPermissions().clear();
-		
+
 		if (json == null || json.isNull()) {
 			// ignore the null value
 			return;
@@ -58,8 +58,8 @@ public class MetadataRequestPermissionProcessor {
 				if (!jsonPermission.isObject())
 				{
 					throw new MetadataException("Invalid permissions["+i+"] value given. "
-						+ "Each permission objects should specify a "
-						+ "valid username and permission.");
+							+ "Each permission objects should specify a "
+							+ "valid username and permission.");
 				}
 				else
 				{
@@ -69,7 +69,7 @@ public class MetadataRequestPermissionProcessor {
 //						MetadataPermissionManager pm = new MetadataPermissionManager(getUuid(), getOwner());
 
 
-						// extract the username and permission from the json node. we leave validation up 
+						// extract the username and permission from the json node. we leave validation up
 						// to the manager class.
 						String pemUsername = jsonPermission.hasNonNull("username") ? jsonPermission.get("username").asText() : null;
 						String pemName = jsonPermission.hasNonNull("permission") ? jsonPermission.get("permission").asText().toUpperCase() : null;
@@ -81,21 +81,21 @@ public class MetadataRequestPermissionProcessor {
 						PermissionType permissionType = PermissionType.getIfPresent(pemName);
 						if (permissionType == PermissionType.UNKNOWN)
 							throw new MetadataException("Unable to process metadata permission["+i+"]. " +
-									 pemName + " is not a valid permission.");
+									pemName + " is not a valid permission.");
 
 						if (permissionType != PermissionType.NONE)
 							getMetadataItem().getPermissions().add(new MetadataPermission(pemUsername, permissionType));
-					} 
+					}
 					catch (MetadataException e) {
 						throw e;
-					} 
+					}
 					catch (Throwable e) {
 						throw new MetadataException("Unable to process metadata permission["+i+"].", e);
 					}
 				}
 			}
 		}
-		
+
 	}
 
 	/**

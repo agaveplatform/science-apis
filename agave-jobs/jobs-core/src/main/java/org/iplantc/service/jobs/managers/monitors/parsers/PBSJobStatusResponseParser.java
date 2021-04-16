@@ -8,11 +8,11 @@ import org.iplantc.service.jobs.managers.JobStatusResponse;
 import org.iplantc.service.systems.model.enumerations.SchedulerType;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 
 /**
  * Handles parsing of PBS Professional and PBS Professional Community Edition qstat output. The expected

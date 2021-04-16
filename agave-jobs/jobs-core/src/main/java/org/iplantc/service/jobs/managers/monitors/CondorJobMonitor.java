@@ -3,46 +3,16 @@
  */
 package org.iplantc.service.jobs.managers.monitors;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import org.apache.log4j.Logger;
+import org.iplantc.service.jobs.exceptions.RemoteJobMonitoringException;
+import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.systems.model.ExecutionSystem;
+import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
+
 import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileAttribute;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.hibernate.StaleObjectStateException;
-import org.hibernate.UnresolvableObjectException;
-import org.iplantc.service.common.persistence.HibernateUtil;
-import org.iplantc.service.jobs.Settings;
-import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.dao.JobEventDao;
-import org.iplantc.service.jobs.exceptions.JobException;
-import org.iplantc.service.jobs.exceptions.JobTerminationException;
-import org.iplantc.service.jobs.exceptions.RemoteJobMonitoringException;
-import org.iplantc.service.jobs.managers.JobManager;
-import org.iplantc.service.jobs.managers.JobStatusResponse;
-import org.iplantc.service.jobs.managers.killers.JobKiller;
-import org.iplantc.service.jobs.managers.killers.JobKillerFactory;
-import org.iplantc.service.jobs.managers.monitors.parsers.*;
-import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.jobs.model.JobEvent;
-import org.iplantc.service.jobs.model.enumerations.JobStatusType;
-import org.iplantc.service.notification.managers.NotificationManager;
-import org.iplantc.service.remote.RemoteSubmissionClient;
-import org.iplantc.service.remote.exceptions.RemoteExecutionException;
-import org.iplantc.service.systems.exceptions.SystemUnavailableException;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.exceptions.AuthenticationException;
-import org.iplantc.service.transfer.exceptions.RemoteConnectionException;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.joda.time.DateTime;
 
 /**
  * @author dooley
@@ -51,19 +21,24 @@ import org.joda.time.DateTime;
 public class CondorJobMonitor extends DefaultJobMonitor {
     private static final Logger log = Logger.getLogger(CondorJobMonitor.class);
 
-    public CondorJobMonitor(Job job) {
-        super(job);
+    /**
+     * Default constructor for all child classes.
+     * @param job the job to monitor
+     * @param executionSystem the execution system on which the job is running
+     */
+    public CondorJobMonitor(Job job, ExecutionSystem executionSystem) {
+        super(job, executionSystem);
     }
 
     /**
      * Fetches the condor job log file from the remote host. For CondorHT systems, this is a more reliable approach
      * than trying to query status values, which may be less descriptive and updated less frequently.
      *
-     * @param command the command to run on the {@link ExecutionSystem}. This is ignored in favor of fetching the job log file
+     * @param queryCommand the command to run on the {@link ExecutionSystem}. This is ignored in favor of fetching the job log file
      * @return contents of the condor job's log file
      * @throws RemoteJobMonitoringException if unable to fetch the condor log file content for any reason.
      */
-    public String getJobStatusResponse(String command) throws RemoteJobMonitoringException {
+    protected String queryRemoteJobStatus(String queryCommand) throws RemoteJobMonitoringException {
         String remoteLogFilePath = job.getWorkPath() + "/runtime.log";
         RemoteDataClient remoteDataClient = null;
         try {

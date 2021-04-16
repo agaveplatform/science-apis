@@ -54,8 +54,6 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 	public void beforeClass() throws Exception
 	{
 		super.beforeClass();
-		
-		
 	}
 	
 	@AfterClass
@@ -79,7 +77,7 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 //	public void beforeClass() throws Exception
 //	{
 //		jtd = JSONTestDataUtil.getInstance();
-////	    File file = new File("src/test/resources/hibernate.cfg.xml");
+////	    File file = new File("target/test-classes/hibernate.cfg.xml");
 ////		Configuration configuration = new Configuration().configure(file);
 ////		HibernateUtil.rebuildSessionFactory(configuration);
 //		systemsDao = new SystemDao();
@@ -132,6 +130,8 @@ public class JobSubmissionQuotaTest extends AbstractJobSubmissionTest {
 		job.setBatchQueue(longQueue.getEffectiveMappedName());
 		job.setArchivePath("/iplant-test/archive/test-job-999");
 		job.setCreated(new Date());
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		job.setInputsAsJsonObject(mapper.createObjectNode());
 		job.setMemoryPerNode((double)512);
 		job.setOwner(SYSTEM_OWNER);

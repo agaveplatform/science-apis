@@ -1,5 +1,11 @@
 package org.iplantc.service.common.auth;
 
+import org.apache.log4j.Logger;
+import org.bouncycastle.util.encoders.Base64;
+import org.bouncycastle.util.io.pem.PemReader;
+import org.iplantc.service.common.Settings;
+
+import javax.crypto.Cipher;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -8,13 +14,6 @@ import java.security.GeneralSecurityException;
 import java.security.PublicKey;
 import java.security.Security;
 import java.security.cert.X509Certificate;
-
-import javax.crypto.Cipher;
-
-import org.apache.log4j.Logger;
-import org.bouncycastle.util.encoders.Base64;
-import org.bouncycastle.util.io.pem.PemReader;
-import org.iplantc.service.common.Settings;
 
 /**
  * Used to verify user proxy tokens.

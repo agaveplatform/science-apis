@@ -1,14 +1,13 @@
 package org.iplantc.service.notification.model.enumerations;
 
-import java.net.URI;
-
-import org.apache.commons.lang.math.NumberUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.uri.AgaveUriUtil;
 import org.iplantc.service.notification.exceptions.BadCallbackException;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.notification.util.ServiceUtils;
+
+import java.net.URI;
 
 /**
  * A {@link Notification} can be sent to destinations accessible through multiple
@@ -22,7 +21,7 @@ import org.iplantc.service.notification.util.ServiceUtils;
 public enum NotificationCallbackProviderType {
 	EMAIL, WEBHOOK, SMS, REALTIME, SLACK, AGAVE, NONE;
 	
-	public static NotificationCallbackProviderType getInstanceForUri(String callbackUrl) 
+	public static NotificationCallbackProviderType getInstanceForUri(String callbackUrl, String tenantId)
 	throws BadCallbackException
 	{
 		if (StringUtils.isEmpty(callbackUrl)) {
@@ -48,7 +47,7 @@ public enum NotificationCallbackProviderType {
 			}
 			
 		// realtime push messages are detected based on a prefix match of <pre>{@link Tenant#baseUrl()}/realtime</pre>
-		} else if (ServiceUtils.isValidRealtimeChannel(callbackUrl, callbackUrl)) {
+		} else if (ServiceUtils.isValidRealtimeChannel(callbackUrl, tenantId)) {
 		    return REALTIME;
 		
 		// is it a slack webhook url?
@@ -66,7 +65,7 @@ public enum NotificationCallbackProviderType {
 						StringUtils.startsWith(callbackURI.getHost(), "127.") ||
 						StringUtils.startsWith(callbackURI.getHost(), "255.") || 
 						StringUtils.startsWith(callbackURI.getHost(), "172.") || 
-						StringUtils.startsWith(callbackURI.getHost(), "192.") || 
+						StringUtils.startsWith(callbackURI.getHost(), "192.") ||
 						StringUtils.equals(callbackURI.getHost(), Settings.getLocalHostname()) ||
 						Settings.getIpAddressesFromNetInterface().contains(callbackURI.getHost())) {
 					throw new BadCallbackException("Invalid callback url.");

@@ -1,20 +1,5 @@
 package org.iplantc.service.io.model;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-
 import org.apache.log4j.Logger;
 import org.iplantc.service.io.exceptions.LogicalFileException;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
@@ -22,6 +7,11 @@ import org.iplantc.service.systems.util.ServiceUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONStringer;
+
+import javax.persistence.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Date;
 
 @Entity
 @Table(name = "logicalfilenotifications")

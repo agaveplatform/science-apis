@@ -14,11 +14,18 @@
       "maxMemory": "2048GB",
       "customDirectives": "",
       "default": true
+    },
+    {
+      "name": "workq",
+      "maxJobs": 100,
+      "maxMemory": "2048GB",
+      "customDirectives": "",
+      "default": false
     }
   ],
   "login": {
-    "host": "pbs",
-    "port": 10188,
+    "host": "${pbs.host}",
+    "port": ${pbs.port},
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -27,8 +34,8 @@
     }
   },
   "storage": {
-    "host": "pbs",
-    "port": 10188,
+    "host": "${pbs.host}",
+    "port": ${pbs.data.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

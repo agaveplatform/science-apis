@@ -1,15 +1,5 @@
 package org.iplantc.service.apps.search;
 
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_OWNER;
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_SOFTWARE_SYSTEM_FILE;
-
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonPrimitive;
 import org.apache.commons.lang3.StringUtils;
@@ -19,15 +9,17 @@ import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.search.SearchTerm;
 import org.joda.time.DateTime;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.text.SimpleDateFormat;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 @Test(groups={"integration"}, singleThreaded = true)
 public class SoftwareSearchIT extends AbstractDaoTest {

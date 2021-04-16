@@ -3,14 +3,14 @@
  */
 package org.iplantc.service.jobs.queue.actions;
 
-import java.nio.channels.ClosedByInterruptException;
-
 import org.iplantc.service.jobs.exceptions.JobDependencyException;
 import org.iplantc.service.jobs.exceptions.JobException;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.transfer.URLCopy;
+
+import java.nio.channels.ClosedByInterruptException;
 
 /**
  * @author dooley

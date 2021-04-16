@@ -136,20 +136,20 @@ public class UploadJob implements InterruptableJob
 	    		
 	    		log.info("Completed staging file " + logicalFile.getAgaveRelativePathFromAbsolutePath() + " for user " + owner);
 	            
-                    // file will be untouched after staging, so just mark as completed
-                    // update the file task
-	                logicalFile.setStatus(StagingTaskStatus.STAGING_COMPLETED.name());
-                    //Agave will treat all files as "raw". The functionality to transform (encode) files has been decommissioned.
-                    logicalFile.setNativeFormat("raw");
-	                
-	                logicalFile.addContentEvent(new FileEvent(FileEventType.STAGING_COMPLETED,
-	                        "Your scheduled transfer of " + uploadSource +
-	                        " completed staging. You can access the raw file on " + logicalFile.getSystem().getName() + " at " + 
-	                        logicalFile.getPath() + " or via the API at " + 
-	                        logicalFile.getPublicLink() + ".",
-	                        createdBy));
-	                
-	                LogicalFileDao.persist(logicalFile);
+				// file will be untouched after staging, so just mark as completed
+				// update the file task
+				logicalFile.setStatus(StagingTaskStatus.STAGING_COMPLETED.name());
+				//Agave will treat all files as "raw". The functionality to transform (encode) files has been decommissioned.
+				logicalFile.setNativeFormat("raw");
+
+				logicalFile.addContentEvent(new FileEvent(FileEventType.STAGING_COMPLETED,
+						"Your scheduled transfer of " + uploadSource +
+						" completed staging. You can access the raw file on " + logicalFile.getSystem().getName() + " at " +
+						logicalFile.getPath() + " or via the API at " +
+						logicalFile.getPublicLink() + ".",
+						createdBy));
+
+				LogicalFileDao.persist(logicalFile);
 			}
 			catch (ClosedByInterruptException e) {
 				if (logicalFile != null) {
@@ -180,7 +180,7 @@ public class UploadJob implements InterruptableJob
 			            	remoteDataClient.setOwnerPermission(remoteDataClient.getUsername(), logicalFile.getAgaveRelativePathFromAbsolutePath(), true);
 			            	remoteDataClient.setOwnerPermission(owner, logicalFile.getAgaveRelativePathFromAbsolutePath(), true);
 			            }
-					} catch (Exception e1) {}
+					} catch (Exception ignored) {}
 				}
 				log.error("File upload worker failed to transfer the cached file " + 
 						dataMap.getString("cachedFile") + " to remote destination.", e); 
@@ -194,7 +194,7 @@ public class UploadJob implements InterruptableJob
 			            	remoteDataClient.setOwnerPermission(remoteDataClient.getUsername(), logicalFile.getAgaveRelativePathFromAbsolutePath(), true);
 			            	remoteDataClient.setOwnerPermission(owner, logicalFile.getAgaveRelativePathFromAbsolutePath(), true);
 			            }
-					} catch (Exception e1) {}
+					} catch (Exception ignored) {}
 				}
 				log.error("File upload worker failed unexpectedly while attempting to transfer cached file " + 
 						dataMap.getString("cachedFile") + " to remote destination.", e);
@@ -204,7 +204,7 @@ public class UploadJob implements InterruptableJob
 				+ "file to remote destination.", e);
 		}
 		finally {
-			try { remoteDataClient.disconnect(); } catch (Exception e) {}
+			try { if (remoteDataClient != null) remoteDataClient.disconnect(); } catch (Exception ignored) {}
 			if (StringUtils.isNotEmpty(cachedFile)) {
 				FileUtils.deleteQuietly(new File(cachedFile).getParentFile());
 			}

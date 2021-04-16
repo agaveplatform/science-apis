@@ -571,7 +571,7 @@ CREATE TABLE `postits` (
   `token` varchar(64) NOT NULL,
   `ip_address` varchar(15) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `expires_at` timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  `expires_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `remaining_uses` int(7) NOT NULL DEFAULT '-1',
   `internal_username` varchar(32) DEFAULT NULL,
   `tenant_id` varchar(128) NOT NULL DEFAULT 'iplantc.org',

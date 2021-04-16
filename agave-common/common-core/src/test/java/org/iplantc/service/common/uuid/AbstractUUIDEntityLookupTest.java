@@ -1,12 +1,11 @@
 package org.iplantc.service.common.uuid;
 
-import java.io.IOException;
-
-import org.iplantc.service.common.exceptions.UUIDException;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.iplantc.service.common.exceptions.UUIDException;
 import org.testng.Assert;
+
+import java.io.IOException;
 
 /**
  * Should be implemented for every entity.

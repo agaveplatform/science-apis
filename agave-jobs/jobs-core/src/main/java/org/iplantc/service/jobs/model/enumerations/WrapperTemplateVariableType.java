@@ -1,11 +1,5 @@
 package org.iplantc.service.jobs.model.enumerations;
 
-import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
-import org.iplantc.service.jobs.managers.JobManager;
-import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.systems.exceptions.SystemUnavailableException;
-import org.iplantc.service.systems.model.ExecutionSystem;
-
 public interface WrapperTemplateVariableType
 {
 

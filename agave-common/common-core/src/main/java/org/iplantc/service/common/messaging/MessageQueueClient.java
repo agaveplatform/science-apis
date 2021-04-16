@@ -1,10 +1,10 @@
 package org.iplantc.service.common.messaging;
 
-import java.util.List;
-
 import org.apache.commons.lang.NotImplementedException;
 import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.exceptions.MessagingException;
+
+import java.util.List;
 
 /**
  * Interface used to provide an abstraction layer over a pluggable messaging service. This exposes the minimal

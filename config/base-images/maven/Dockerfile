@@ -1,6 +1,6 @@
 #############################################################
 #
-# Maven 3.6 base image
+# Maven 3.6 Protocol Buffer base image
 # Tag: agaveplatform/maven:3.6-proto
 #
 # Build image for java 9 target runtime.
@@ -10,7 +10,17 @@
 #
 #   docker build -t agaveplatform/maven:3.6 .
 #
-# https://github.com/agaveplatform/docker-maven
+# Example usage:
+#
+# docker run -i --rm -w $(pwd) \
+#            -v $(pwd):$(pwd) \
+#            -v $HOME/.m2:$(pwd)/.m2 \
+#            -v /var/run/docker.sock:/var/run/docker.sock
+#            --net apps-core_services \
+#            agaveplatform/maven:3.6.3-proto \
+#                mvn -P agave,integration-test install
+#
+# https://github.com/agaveplatform/science-apis
 # https://agaveplatform.org
 #
 #############################################################
@@ -41,7 +51,8 @@ RUN set -ex && apt-get update && \
     				   	bzip2 \
     				   	git \
     				   	netcat \
-    				   	python3
+    				   	python3 \
+    				   	make
 	# Download Protobuf
 RUN wget -O "/tmp/protoc-${PROTOBUF_VERSION}.zip" "https://github.com/google/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip" \
 	# Unpackage the zip

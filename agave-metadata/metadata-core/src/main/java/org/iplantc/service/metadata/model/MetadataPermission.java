@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package org.iplantc.service.metadata.model;
 
@@ -17,9 +17,9 @@ import java.util.Date;
 
 /**
  * Class to represent individual shared permissions for jobs
- * 
+ *
  * @author dooley
- * 
+ *
  */
 public class MetadataPermission {
 
@@ -28,7 +28,7 @@ public class MetadataPermission {
 	private Date				lastUpdated = new Date();
 	private String 				tenantId;
 	private String				group;
-	
+
 	public MetadataPermission() {
 		this.setTenantId(TenancyHelper.getCurrentTenantId());
 	}
@@ -52,14 +52,14 @@ public class MetadataPermission {
 	/**
 	 * @param username
 	 *            the username to set
-     * @throws MetadataException if username is too long
+	 * @throws MetadataException if username is too long
 	 */
 	public void setUsername(String username) throws MetadataException
 	{
 		if (!StringUtils.isEmpty(username) && username.length() > 32) {
 			throw new MetadataException("'permission.username' must be less than 32 characters");
 		}
-		
+
 		this.username = username;
 	}
 
@@ -118,7 +118,7 @@ public class MetadataPermission {
 	{
 		return permission.canWrite();
 	}
-	
+
 	public boolean canExecute()
 	{
 		return permission.canExecute();
@@ -132,27 +132,27 @@ public class MetadataPermission {
 	{
 		JSONWriter writer = new JSONStringer();
 		writer.object()
-			.key("username").value(username)
-			.key("permission").object()
+				.key("username").value(username)
+				.key("permission").object()
 				.key("read").value(canRead())
 				.key("write").value(canWrite())
-			.endObject()
-			.key("_links").object()
-	        	.key("self").object()
-	        		.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + uuid + "/pems/" + username)
-	        	.endObject()
-	        	.key("parent").object()
-	        		.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + uuid)
-	        	.endObject()
-	        	.key("profile").object()
-	        		.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + username)
-	        	.endObject()
-	        .endObject()
-        .endObject();
-			
+				.endObject()
+				.key("_links").object()
+				.key("self").object()
+				.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + uuid + "/pems/" + username)
+				.endObject()
+				.key("parent").object()
+				.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + uuid)
+				.endObject()
+				.key("profile").object()
+				.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + username)
+				.endObject()
+				.endObject()
+				.endObject();
+
 		return writer.toString();
 	}
-	
+
 	public String toString()
 	{
 		return username + " " + permission;
@@ -161,9 +161,9 @@ public class MetadataPermission {
 	public boolean equals(Object o)
 	{
 		if (o instanceof MetadataPermission) {
-			return ( 
-				( (MetadataPermission) o ).username.equals(username) &&
-				( (MetadataPermission) o ).permission.equals(permission) );
+			return (
+					( (MetadataPermission) o ).username.equals(username) &&
+							( (MetadataPermission) o ).permission.equals(permission) );
 		}
 		return false;
 	}

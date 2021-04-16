@@ -3,10 +3,10 @@
  */
 package org.teragrid.service.tgcdb.dto;
 
+import org.json.JSONStringer;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import org.json.JSONStringer;
 
 /**
  * @author dooley

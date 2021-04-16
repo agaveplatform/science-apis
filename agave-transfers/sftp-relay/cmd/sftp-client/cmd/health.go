@@ -18,8 +18,8 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/cmd/sftp-client/cmd/helper"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 	hpb "google.golang.org/grpc/health/grpc_health_v1"
 	"os"
 )
@@ -38,11 +38,11 @@ by calling its "Check" method.`,
 
 		//log.Tracef("Connecting to %v...", grpcservice)
 
-		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
+		conn, err := helper.NewGrpcServiceConn()
 		if err != nil {
-			//log.Fatalf("could not connect: %v", err)
+			fmt.Printf("Unable to establish a connection to service at %s: %v", grpcservice, err.Error())
+			os.Exit(1)
 		}
-		//log.Tracef("Connected to %s", conn.Target())
 		defer conn.Close()
 
 		hclient := hpb.NewHealthClient(conn)

@@ -45,6 +45,8 @@ env
 # copy to file for usage later on
 env > ./environment.out
 
+JOB_INFILE=${inputfile}
+
 CALLBACK=$(${command})
 
 ${AGAVE_JOB_CALLBACK_NOTIFICATION|CALLBACK}

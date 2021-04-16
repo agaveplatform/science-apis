@@ -3,9 +3,6 @@
  */
 package org.iplantc.service.io.dao;
 
-import java.util.Date;
-import java.util.List;
-
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -17,6 +14,9 @@ import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.exceptions.LogicalFileException;
 import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.util.ServiceUtils;
+
+import java.util.Date;
+import java.util.List;
 
 /**
  * Model class for interacting with job events. FileEvents are

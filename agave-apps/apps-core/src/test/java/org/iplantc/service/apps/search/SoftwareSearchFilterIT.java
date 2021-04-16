@@ -1,11 +1,5 @@
 package org.iplantc.service.apps.search;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.dao.AbstractDaoTest;
 import org.iplantc.service.apps.model.enumerations.ParallelismType;
@@ -15,6 +9,8 @@ import org.iplantc.service.systems.model.enumerations.ExecutionType;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.util.*;
 
 @Test(groups={"integration"})
 public class SoftwareSearchFilterIT extends AbstractDaoTest

@@ -17,8 +17,8 @@
 		}
 	],
 	"login": {
-		"host": "iplant-ssh.tacc.utexas.edu",
-		"port": 22,
+		"host": "${ssh.host}",
+		"port": ${ssh.port},
 		"protocol": "SSH",
 		"scratchDir": "scratch",
 		"workDir": "workdir",
@@ -30,8 +30,8 @@
 		}
 	},
 	"storage": {
-		"host": "iplant-ssh.tacc.utexas.edu",
-		"port": 22,
+		"host": "${ssh.host}",
+		"port": ${ssh.port},
 		"protocol": "SFTP",
 		"rootDir": "/home/testuser",
 		"auth": {
@@ -42,5 +42,5 @@
 	},
 	"scheduler": "FORK",
 	"environment": "",
-	"startupScript": "./bashrc"
+	"startupScript": null
 }

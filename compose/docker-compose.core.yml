@@ -54,7 +54,7 @@ services:
       - configs/jobs-api.conf
     volumes:
       - ./logs/jobs:/opt/tomcat/logs
-      - ./scratch/jobs:/scratch
+      - ./scratch:/scratch
     labels:
       agave.tenant: sandbox
       agave.ops.component: core
@@ -86,7 +86,7 @@ services:
       - configs/files-api.conf
     volumes:
       - ./logs/files:/opt/tomcat/logs
-      - ./scratch/files:/scratch
+      - ./scratch:/scratch
     labels:
       agave.core.service:  files
       agave.tenant: sandbox
@@ -108,17 +108,15 @@ services:
           memory: 8g
 
   sftp-relay:
-    image: agaveplatform/sftp-relay:${AGAVE_VERSION}
+    image: sftp-relay:develop
     ports:
-      - 80
-      - 52911
+      - 50051
+      - 9092
     env_file:
       - configs/common.conf
-      - configs/mysql-core.conf
-      - configs/apps-api.conf
     volumes:
       - ./logs/apps:/opt/tomcat/logs
-      - ./scratch/apps:/scratch
+      - ./scratch:/scratch
     labels:
       agave.core.service: apps
       agave.tenant: sandbox
@@ -129,7 +127,6 @@ services:
       traefik.enable: true
       traefik.http.routers.sftprelay.rule: Host(`sftprelay`) || PathPrefix(`/sftprelay`)
       traefik.http.routers.sftprelay.entrypoints: grpc
-      traefik.http.middlewares.stripsftprelay.stripprefix.prefixes: /sftprelay
     #mem_limit: 2g
     deploy:
       resources:
@@ -147,7 +144,7 @@ services:
       - configs/apps-api.conf
     volumes:
       - ./logs/apps:/opt/tomcat/logs
-      - ./scratch/apps:/scratch
+      - ./scratch:/scratch
     labels:
       agave.core.service: apps
       agave.tenant: sandbox
@@ -479,41 +476,3 @@ services:
       resources:
         limits:
           memory: 1g
-
-  transfers:
-    image: agaveplatform/transfers-api:${AGAVE_VERSION}
-    ports:
-      - 8085:8085
-      - 80
-    env_file:
-      - configs/common.conf
-      - configs/mysql-core.conf
-      - configs/transfers-api.conf
-    volumes:
-      - ./logs/transfers:/var/log/apache2
-      - ./scratch/transfers:/scratch
-    labels:
-      agave.core.service: transfers
-      agave.tenant: sandbox
-      agave.ops.component: core
-      agave.core.api: True
-      agave.ops.groups: "core,all,postman,core_api,db,auth,ungrouped,core_workers,agave,local"
-      kompose.service.type: ClusterIP
-      traefik.enable: true
-      traefik.http.routers.transfers.rule: Host(`transfers`) || PathPrefix(`/transfers`)
-      traefik.http.routers.transfers.entrypoints: web
-      traefik.http.routers.transfers.middlewares: addtransfers, redirecttransfers
-      traefik.http.routers.transfers_ssl.rule: Host(`transfers`) || PathPrefix(`/transfers`)
-      traefik.http.routers.transfers_ssl.entrypoints: websecure
-      traefik.http.routers.transfers_ssl.middlewares: addtransfers, redirecttransfers
-      traefik.http.routers.transfers_ssl.tls: true
-      traefik.http.middlewares.redirecttransfers.redirectscheme.scheme: http
-      traefik.http.middlewares.redirecttransfers.redirectscheme.port: 8085
-      traefik.http.middlewares.addtransfers.addprefix.prefix: /api
-
-    #mem_limit: 1g
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-

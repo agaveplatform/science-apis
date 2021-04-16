@@ -97,7 +97,7 @@ public class HttpTestHelper{
 
     @SuppressWarnings("unused")
 	private void loadSoftwareFileList(){
-        String root = "src/test/resources/software/";
+        String root = "target/test-classes/software/";
         fileList.put("head-lonestar",root + "head-lonestar.tacc.teragrid.org.json");
         fileList.put("head-stampede",root + "head-stampede.tacc.utexas.edu.json");
         fileList.put("head-trestles",root + "head-trestles.sdsc.teragrid.org.json");

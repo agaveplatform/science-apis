@@ -3,25 +3,11 @@
  */
 package org.iplantc.service.io.model;
 
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.persistence.Version;
-
 import org.apache.commons.lang3.StringUtils;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
+
+import javax.persistence.*;
+import java.util.Date;
 
 /**
  * Represents a persistent record of a file transfer. For recursive transfers,

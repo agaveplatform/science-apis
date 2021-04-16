@@ -457,9 +457,9 @@ public class NotificationDao extends AbstractDao
 	}
 
 	/**
-	 * Saves or updates the InternalUser
-	 * @param notification
-	 * @throws NotificationException
+	 * Saves or updates the {@link Notification}
+	 * @param notification the notification to persist
+	 * @throws NotificationException when an exception occurs
 	 */
 	public void persist(Notification notification) throws NotificationException
 	{
@@ -853,7 +853,9 @@ public class NotificationDao extends AbstractDao
 			session.disableFilter("notificationTenantFilter");
 			
 			String sql = "UPDATE notifications n "
-					+ "SET n.status = :status, n.is_visible = :visible, n.last_updated = CURRENT_TIMESTAMP "
+					+ "SET n.status = :status, "
+					+ "n.is_visible = :visible, "
+					+ "n.last_updated = CURRENT_TIMESTAMP "
 					+ "WHERE n.uuid = :uuid ";
 			
 			int rowsAffected = session.createSQLQuery(sql)

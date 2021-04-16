@@ -38,7 +38,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @Test(groups={"broken", "integration"})
 public class ZombieJobWatchTest extends AbstractJobSubmissionTest {
 
-	protected static String LOCAL_TXT_FILE = "src/test/resources/transfer/test_upload.txt";
+	protected static String LOCAL_TXT_FILE = "target/test-classes/transfer/test_upload.txt";
 
 	private JSONTestDataUtil jtd;
 	private SystemDao systemDao = new SystemDao();
@@ -141,6 +141,8 @@ public class ZombieJobWatchTest extends AbstractJobSubmissionTest {
 		job.setArchivePath("/");
 		job.setArchiveSystem(software.getStorageSystem());
 		job.setCreated(new Date());
+		job.setExecutionType(software.getExecutionType());
+		job.setSchedulerType(software.getExecutionSystem().getScheduler());
 		job.setMemoryPerNode((double) 512);
 		job.setOwner(software.getExecutionSystem().getOwner());
 		job.setProcessorsPerNode((long) 1);

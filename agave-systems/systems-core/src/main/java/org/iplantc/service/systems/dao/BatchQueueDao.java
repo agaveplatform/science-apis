@@ -348,7 +348,66 @@ public class BatchQueueDao extends AbstractDao {
             throw ex;
         }
     }
-    
+
+	/**
+	 * Generates a summary of all activity on the named {@code queueName} for the given {@code username} by querying the jobs table.
+	 *
+	 * @param systemId the {@link ExecutionSystem} containing the {@code queueName}
+	 * @param queueName name of the queue
+	 * @param username the user for whom the activity summary will be generated
+	 * @return summary info on the jobs currently running for the given {@code username} in the given {@code queueName}
+	 */
+	public BatchQueueLoad getCurrentLoadForUser(String systemId, String queueName, String username) {
+		try
+		{
+			Session session = getSession();
+
+			String sql =  "select queue_request as name, " +
+					"       MAX(j.last_updated) as created, " +
+					"       COUNT(CASE WHEN j.status in ('PENDING','QUEUED','PAUSED','CLEANING_UP','RUNNING','STAGED','PROCESSING_INPUTS','STAGING_INPUTS','STAGING_JOB','SUBMITTING','ARCHIVING') THEN j.status ELSE NULL END) active, " +
+					"       COUNT(CASE WHEN j.status in ('PENDING','PAUSED','CLEANING_UP','STAGED','PROCESSING_INPUTS') THEN j.status ELSE NULL END) backlogged, " +
+					"       COUNT(CASE WHEN j.status = 'PENDING' THEN j.id ELSE NULL END) pending, " +
+					"       COUNT(CASE WHEN j.status in ('PAUSED') THEN j.id ELSE NULL END) paused, " +
+					"       COUNT(CASE WHEN j.status in ('PROCESSING_INPUTS') THEN j.id ELSE NULL END) processingInputs, " +
+					"       COUNT(CASE WHEN j.status in ('STAGING_INPUTS') THEN j.id ELSE NULL END) stagingInputs, " +
+					"       COUNT(CASE WHEN j.status in ('STAGED') THEN j.id ELSE NULL END) staged, " +
+					"       COUNT(CASE WHEN j.status in ('STAGING_JOB', 'SUBMITTING') THEN j.id ELSE NULL END) submitting, " +
+					"       COUNT(CASE WHEN j.status = 'QUEUED' THEN j.id ELSE NULL END) queued, " +
+					"       COUNT(CASE WHEN j.status in ('RUNNING') THEN j.id ELSE NULL END) running, " +
+					"       COUNT(CASE WHEN j.status in ('CLEANING_UP') THEN j.id ELSE NULL END) cleaningUp, " +
+					"       COUNT(CASE WHEN j.status = 'ARCHIVING' THEN j.id ELSE NULL END) archiving " +
+					"from jobs j " +
+					"where j.execution_system = :systemId  " +
+					"     and j.queue_request = :queueName " +
+					"     and j.tenant_id = :tenantId " +
+					"     and j.owner = :username " +
+					"group by j.queue_request ";
+			BatchQueueLoad batchQueueLoad = (BatchQueueLoad)session.createSQLQuery(sql)
+					.addScalar("name",StandardBasicTypes.STRING)
+					.addScalar("created",StandardBasicTypes.DATE)
+					.addScalar("active",StandardBasicTypes.LONG)
+					.setString("queueName", queueName)
+					.setString("systemId", systemId)
+					.setString("username", username)
+					.setString("tenantId", TenancyHelper.getCurrentTenantId())
+					.uniqueResult();
+
+			if (batchQueueLoad == null) {
+				batchQueueLoad = new BatchQueueLoad(queueName);
+			}
+
+			return batchQueueLoad;
+		}
+		catch (ObjectNotFoundException ex)
+		{
+			return null;
+		}
+		catch (HibernateException ex)
+		{
+			throw ex;
+		}
+	}
+
     /**
      * Searches for {@link BatchQueue}s by the given system who matches the
      * given set of parameters. Permissions are honored in this query.

@@ -3,22 +3,11 @@
  */
 package org.iplantc.service.io;
 
-import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.*;
-import java.io.File;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.util.List;
-import java.util.Properties;
-
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.io.model.JSONTestDataUtil;
-import org.iplantc.service.common.dao.TenantDao;
-import org.iplantc.service.common.model.Tenant;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.manager.SystemManager;
@@ -30,9 +19,15 @@ import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.json.JSONObject;
-import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
+
+import java.io.File;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+
+import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.AZURE;
+import static org.iplantc.service.systems.model.enumerations.StorageProtocolType.SWIFT;
 
 /**
  * @author dooley
@@ -186,8 +181,8 @@ public class BaseTestCase {
      * a larger permutation matrix of test cases.
      *
      * Templates used for these systems are taken from the
-     * {@code src/test/resources/systems/execution/execute.example.com.json} and
-     * {@code src/test/resources/systems/storage/storage.example.com.json} files.
+     * {@code target/test-classes/systems/execution/execute.example.com.json} and
+     * {@code target/test-classes/systems/storage/storage.example.com.json} files.
      *
      * @throws Exception
      */
@@ -215,7 +210,7 @@ public class BaseTestCase {
     /**
      * Creates and persists an {@link StorageSystem} for every template
      * with file name matching {@link StorageProtocolType}.example.com.json
-     * in the {@code src/test/resources/systems/storage} folder.
+     * in the {@code target/test-classes/systems/storage} folder.
      * @throws Exception
      */
     protected void initAllStorageSystems() throws Exception {
@@ -235,7 +230,7 @@ public class BaseTestCase {
     /**
      * Creates and persists an {@link ExecutionSystem} for every template
      * with file name matching {@link LoginProtocolType}.example.com.json
-     * in the {@code src/test/resources/systems/execution} folder.
+     * in the {@code target/test-classes/systems/execution} folder.
      * @throws Exception
      */
     protected void initAllExecutionSystems() throws Exception

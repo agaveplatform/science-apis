@@ -2,22 +2,9 @@ package org.iplantc.service.systems.dao;
 
 // Generated Feb 1, 2013 6:15:53 PM by Hibernate Tools 3.4.0.CR1
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.CacheMode;
-import org.hibernate.Criteria;
-import org.hibernate.HibernateException;
-import org.hibernate.ObjectNotFoundException;
-import org.hibernate.Query;
-import org.hibernate.Session;
+import org.hibernate.*;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.transform.AliasToEntityMapResultTransformer;
 import org.hibernate.transform.DistinctRootEntityResultTransformer;
@@ -33,23 +20,21 @@ import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.metadata.util.ServiceUtils;
 import org.iplantc.service.systems.exceptions.SystemException;
 import org.iplantc.service.systems.manager.SystemManager;
-import org.iplantc.service.systems.model.AuthConfig;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.systems.model.RemoteConfig;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.StorageSystem;
-import org.iplantc.service.systems.model.SystemRole;
+import org.iplantc.service.systems.model.*;
 import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
 import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.systems.search.SystemSearchFilter;
 import org.iplantc.service.systems.search.SystemSearchResult;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 
+import java.util.*;
+import java.util.regex.Pattern;
+
 /**
  * Home object for domain model class RemoteSystem.
- * 
- * @see org.iplantc.service.systems.model.RemoteSystem
+ *
  * @author Hibernate Tools
+ * @see org.iplantc.service.systems.model.RemoteSystem
  */
 public class SystemDao extends AbstractDao {
 
@@ -57,7 +42,7 @@ public class SystemDao extends AbstractDao {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.iplantc.service.common.persistence.AbstractDao#getSession()
      */
     @Override
@@ -74,6 +59,40 @@ public class SystemDao extends AbstractDao {
         try {
             Session session = getSession();
             session.saveOrUpdate(system);
+
+        } catch (HibernateException ex) {
+            try {
+                if (HibernateUtil.getSession().isOpen()) {
+                    HibernateUtil.rollbackTransaction();
+                }
+            } catch (Exception ignored) {
+            }
+            throw ex;
+        } finally {
+            try {
+                HibernateUtil.commitTransaction();
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    /**
+     * Performs an atomic update of the {@link RemoteSystem} status and
+     * {@link RemoteSystem#getLastUpdated()} timestamp.
+     *
+     * @param system
+     * @param newStatus
+     */
+    public void updateStatus(RemoteSystem system, SystemStatusType newStatus) {
+        try {
+            Session session = getSession();
+            String sql = "update systems set `status` = :newstatus, `last_updated` = :rightnow where uuid = :uuid";
+            session.createSQLQuery(sql)
+                    .setString("newstatus", newStatus.name())
+                    .setDate("rightnow", new Date())
+                    .setString("uuid", system.getUuid())
+                    .executeUpdate();
+
             session.flush();
         } catch (HibernateException ex) {
             try {
@@ -90,38 +109,15 @@ public class SystemDao extends AbstractDao {
             }
         }
     }
-    
-    /**
-     * Performs an atomic update of the {@link RemoteSystem} status and 
-     * {@link RemoteSystem#getLastUpdated()} timestamp.
-     * 
-     * @param system
-     * @param newStatus
-     */
-    public void updateStatus(RemoteSystem system, SystemStatusType newStatus) {
+
+    public RemoteSystem refresh(RemoteSystem system) {
         try {
-            Session session = getSession();
-            String sql = "update systems set `status` = :newstatus, `last_updated` = :rightnow where uuid = :uuid";
-    		session.createSQLQuery(sql)
-    			.setString("newstatus", newStatus.name())
-    			.setDate("rightnow", new Date())
-    			.setString("uuid", system.getUuid())
-    			.executeUpdate();
-            
-            session.flush();
+            Session session = HibernateUtil.getSession();
+            session.refresh(system);
+
+            return system;
         } catch (HibernateException ex) {
-            try {
-                if (HibernateUtil.getSession().isOpen()) {
-                    HibernateUtil.rollbackTransaction();
-                }
-            } catch (Exception ignored) {
-            }
             throw ex;
-        } finally {
-            try {
-                HibernateUtil.commitTransaction();
-            } catch (Throwable ignored) {
-            }
         }
     }
 
@@ -159,7 +155,7 @@ public class SystemDao extends AbstractDao {
         try {
             Session session = getSession();
             session.setCacheMode(CacheMode.IGNORE);
-            
+
             for (SystemRole role : system.getRoles()) {
                 session.delete(role);
             }
@@ -209,44 +205,7 @@ public class SystemDao extends AbstractDao {
             session.flush();
 
             return system;
-        } 
-        catch (ObjectNotFoundException e) {
-            return null;
-        } 
-        catch (HibernateException ex) {
-            throw ex;
-        } 
-        finally {
-            try {
-                HibernateUtil.commitTransaction();
-            } 
-            catch (Throwable ignored) {}
-        }
-    }
-    
-    /**
-     * Finds system by systemId regardless of avaialbility and ownership.
-     * @param systemId
-     * @return
-     */
-    public RemoteSystem findActiveAndInactiveSystemBySystemId(String systemId) {
-        try {
-            Session session = getSession();
-            
-            String hql = "from RemoteSystem " + "where systemId = :systemId "
-                    + "		and tenantId = :tenantId ";
-            
-            RemoteSystem system = (RemoteSystem) session.createQuery(hql)
-                    .setString("systemId", systemId)
-                    .setString("tenantId", TenancyHelper.getCurrentTenantId())
-                    .setCacheable(false)
-                    .setCacheMode(CacheMode.IGNORE)
-                    .setMaxResults(1).uniqueResult();
-
-            session.flush();
-
-            return system;
-        } catch (ObjectNotFoundException ex) {
+        } catch (ObjectNotFoundException e) {
             return null;
         } catch (HibernateException ex) {
             throw ex;
@@ -258,14 +217,55 @@ public class SystemDao extends AbstractDao {
         }
     }
 
+    /**
+     * Finds system by systemId regardless of avaialbility and ownership.
+     * Note: the tenant id will be pulled from the current context.
+     *
+     * @param systemId id of the system to fetch.
+     * @return the system with the given {@code systemId} or null if no match is found.
+     */
+    public RemoteSystem findActiveAndInactiveSystemBySystemId(String systemId) {
+        RemoteSystem system = null;
+        try {
+            Session session = getSession();
+            session.clear();
+
+            String hql = "from RemoteSystem " + "where systemId = :systemId "
+                    + "		and tenantId = :tenantId ";
+
+            system = (RemoteSystem) session.createQuery(hql)
+                    .setString("systemId", systemId)
+                    .setString("tenantId", TenancyHelper.getCurrentTenantId())
+                    .setCacheable(false)
+                    .setCacheMode(CacheMode.IGNORE)
+                    .setMaxResults(1)
+                    .uniqueResult();
+
+
+        } catch (ObjectNotFoundException ex) {
+            return null;
+        } catch (StaleStateException ex) {
+            // skip due to unrelated issue
+        } catch (HibernateException ex) {
+            throw ex;
+        } finally {
+            try {
+                HibernateUtil.commitTransaction();
+            } catch (Throwable ignored) {
+            }
+        }
+
+        return system;
+    }
+
     public RemoteSystem findBySystemId(String systemId) {
         try {
             Session session = getSession();
-            
+            session.clear();
             String hql = "from RemoteSystem " + "where systemId = :systemId "
-                    + "		and tenantId = :tenantId " 
+                    + "		and tenantId = :tenantId "
                     + "		and available = :available";
-            
+
             RemoteSystem system = (RemoteSystem) session.createQuery(hql)
                     .setString("systemId", systemId)
                     .setString("tenantId", TenancyHelper.getCurrentTenantId())
@@ -321,7 +321,7 @@ public class SystemDao extends AbstractDao {
 
     /**
      * Returns the default storage system
-     * 
+     *
      * @return
      */
     public RemoteSystem getPlatformStorageSystem() {
@@ -456,24 +456,23 @@ public class SystemDao extends AbstractDao {
     /**
      * Returns the system of the specified type that has been globally
      * set as a default.
-     * 
+     *
      * @param remoteSystemType
      * @param tenantId
      * @return
      */
-    public RemoteSystem getGlobalDefaultSystemForTenant(RemoteSystemType remoteSystemType, String tenantId) 
-    {
-        String hql = "FROM RemoteSystem AS sys " 
-        		   + "WHERE sys.available = :available "
-                   + "		AND sys.publiclyAvailable = :publiclyAvailable "
-                   + "		AND sys.globalDefault = :globalDefault "
-                   + "		AND sys.tenantId = :tenantId ";
+    public RemoteSystem getGlobalDefaultSystemForTenant(RemoteSystemType remoteSystemType, String tenantId) {
+        String hql = "FROM RemoteSystem AS sys "
+                + "WHERE sys.available = :available "
+                + "		AND sys.publiclyAvailable = :publiclyAvailable "
+                + "		AND sys.globalDefault = :globalDefault "
+                + "		AND sys.tenantId = :tenantId ";
 
         if (remoteSystemType != null) {
-            hql   += "		AND sys.type = :sysType ";
+            hql += "		AND sys.type = :sysType ";
         }
 
-        hql 	  += "ORDER BY sys.tenantId, sys.name DESC ";
+        hql += "ORDER BY sys.tenantId, sys.name DESC ";
 
         try {
             Session session = getSession();
@@ -515,7 +514,7 @@ public class SystemDao extends AbstractDao {
      * Returns all systems the user has set as their defaults. This will not
      * include public systems that are global defaults. These need to be
      * manually added if missing.
-     * 
+     *
      * @param apiUsername
      * @return List of RemoteSystem objects represeting the user default systems
      */
@@ -555,7 +554,7 @@ public class SystemDao extends AbstractDao {
      * Returns the system of the specified type that the user set as
      * their default. This will not include public systems that are
      * global defaults. These need to be manually added if missing.
-     * 
+     *
      * @param type
      * @return RemoteSystem
      */
@@ -563,12 +562,12 @@ public class SystemDao extends AbstractDao {
         try {
             Session session = getSession();
             session.clear();
-            String hql = "SELECT s " 
-            		+ "FROM RemoteSystem s " 
-            		+ "WHERE s.type = :type "
-            		+ "AND s.available = :available "
+            String hql = "SELECT s "
+                    + "FROM RemoteSystem s "
+                    + "WHERE s.type = :type "
+                    + "AND s.available = :available "
                     + "AND s.publiclyAvailable = :publiclyAvail "
-                    + "AND s.globalDefault = :globalDefault " 
+                    + "AND s.globalDefault = :globalDefault "
                     + "AND :username in elements( s.usersUsingAsDefault) ";
 
             RemoteSystem defaultSystem = (RemoteSystem) session.createQuery(hql)
@@ -732,24 +731,20 @@ public class SystemDao extends AbstractDao {
     public RemoteSystem findUserSystemBySystemId(String username, String systemId, RemoteSystemType systemType) {
         if (StringUtils.isEmpty(systemId)) {
             return null;
-        } 
-        else 
-        {
+        } else {
             if (ServiceUtils.isAdmin(username)) {
                 RemoteSystem system = findBySystemId(systemId);
                 if (system != null) {
                     if (systemType == null || system.getType() == systemType) {
                         return system;
                     }
-                } 
-                
+                }
+
                 return null;
-            } 
-            else 
-            {
-                String hql = "SELECT sys FROM RemoteSystem AS sys " 
+            } else {
+                String hql = "SELECT sys FROM RemoteSystem AS sys "
                         + "left JOIN sys.roles AS r "
-                        + "WHERE sys.available = :available " 
+                        + "WHERE sys.available = :available "
                         + "	AND sys.systemId = :systemId "
                         + "	AND ( sys.owner = :pemUser "
                         + "		OR (r.username = :pemUser AND r.role != 'NONE') "
@@ -758,7 +753,7 @@ public class SystemDao extends AbstractDao {
                 if (systemType != null) {
                     hql += "AND sys.type = :systemType ";
                 }
-                
+
                 hql += "ORDER BY sys.name DESC";
 
                 try {
@@ -769,12 +764,12 @@ public class SystemDao extends AbstractDao {
                             .setBoolean("publiclyAvailable", true)
                             .setString("pemUser", username)
                             .setString("systemId", systemId);
-                    
+
                     if (systemType != null) {
                         query.setString("systemType", systemType.name());
                     }
-                    
-                    RemoteSystem system = (RemoteSystem) query 
+
+                    RemoteSystem system = (RemoteSystem) query
                             .setResultTransformer(DistinctRootEntityResultTransformer.INSTANCE)
                             .setMaxResults(1)
                             .uniqueResult();
@@ -787,7 +782,8 @@ public class SystemDao extends AbstractDao {
                 } finally {
                     try {
                         HibernateUtil.commitTransaction();
-                    } catch (Throwable ignored) {}
+                    } catch (Throwable ignored) {
+                    }
                 }
             }
         }
@@ -822,7 +818,7 @@ public class SystemDao extends AbstractDao {
      * Returns the {@link RemoteSystem} capable of accessing the job output
      * data.
      * Depending on the job status, the returned system may change over time.
-     * 
+     *
      * @param jobUuid
      * @return
      * @throws PermissionException
@@ -912,10 +908,10 @@ public class SystemDao extends AbstractDao {
     }
 
     /**
-     * Returns the current path to the {@link org.iplantc.service.jobs.model.Job} output data on a
+     * Returns the current path to the {@code org.iplantc.service.jobs.model.Job} output data on a
      * {@link RemoteSystem}.
      * Depending on the job status, the returned system may change over time.
-     * 
+     *
      * @param jobUuid
      * @return
      * @throws PermissionException
@@ -1003,7 +999,7 @@ public class SystemDao extends AbstractDao {
             throw ex;
         }
     }
-    
+
     /**
      * Searches for {@link RemoteSystem}s by the given user who matches the
      * given set of parameters. Permissions are honored in this query. Results
@@ -1015,7 +1011,7 @@ public class SystemDao extends AbstractDao {
      * @throws SystemException
      */
     public List findMatching(String username, Map<SearchTerm, Object> searchCriteria)
-    throws SystemException {
+            throws SystemException {
         return findMatching(username, searchCriteria, Settings.DEFAULT_PAGE_SIZE, 0, false);
     }
 
@@ -1032,8 +1028,8 @@ public class SystemDao extends AbstractDao {
      */
     @SuppressWarnings("unchecked")
     public List findMatching(String username, Map<SearchTerm, Object> searchCriteria, int limit, int offset, boolean fullResponse)
-    throws SystemException {
-        
+            throws SystemException {
+
         try {
             Class<?> transformClass = SystemSearchResult.class;
             Map<String, Class> searchTypeMappings = new SystemSearchFilter().getSearchTypeMappings();
@@ -1041,25 +1037,24 @@ public class SystemDao extends AbstractDao {
             session.clear();
             String hql = "";
             if (fullResponse) {
-            	hql = "SELECT distinct s \n "; 
-            }
-            else {
-            	hql = "SELECT distinct s.id as id, \n"
-                    + "     s.name as name, \n"
-                    + "     s.type as type, \n"
-                    + "     s.description as description, \n"
-                    + "     s.status as status, \n"
-                    + "     s.publiclyAvailable as publiclyAvailable, \n"
-                    + "     s.lastUpdated as lastUpdated, \n"
-                    + "     s.systemId as systemId \n";
+                hql = "SELECT distinct s \n ";
+            } else {
+                hql = "SELECT distinct s.id as id, \n"
+                        + "     s.name as name, \n"
+                        + "     s.type as type, \n"
+                        + "     s.description as description, \n"
+                        + "     s.status as status, \n"
+                        + "     s.publiclyAvailable as publiclyAvailable, \n"
+                        + "     s.lastUpdated as lastUpdated, \n"
+                        + "     s.systemId as systemId \n";
             }
             // this polymorphic relationship is not handled by Hibernate, so 
             // we determine the system type prior to match. We essentially
             // just need to know whether it's an ExecutionSystem (ie. has a
             // LoginConfig) or anything else. 
             String from = null;
-            for (SearchTerm searchTerm: searchCriteria.keySet()) {
-                if (searchTerm.getMappedField().startsWith("login") 
+            for (SearchTerm searchTerm : searchCriteria.keySet()) {
+                if (searchTerm.getMappedField().startsWith("login")
                         || searchTerm.getMappedField().startsWith("queue")
                         || searchTerm.getMappedField().startsWith("workDir")
                         || searchTerm.getMappedField().startsWith("scratchDir")
@@ -1069,28 +1064,27 @@ public class SystemDao extends AbstractDao {
                         || searchTerm.getMappedField().startsWith("startupScript")
                         || searchTerm.getMappedField().startsWith("executionType")
                         || searchTerm.getMappedField().startsWith("environment")
-                        || searchTerm.getMappedField().startsWith("scheduler")
-                        || searchTerm.getMappedField().startsWith("executionType")) {
+                        || searchTerm.getMappedField().startsWith("scheduler")) {
                     from = "FROM ExecutionSystem s \n"
-                        +  "    left join s.loginConfig loginConfig \n"
-                        +  "    left join s.batchQueues queue \n";
+                            + "    left join s.loginConfig loginConfig \n"
+                            + "    left join s.batchQueues queue \n";
                     break;
                 } else if (searchTerm.getMappedField().startsWith("type")) {
                     if (searchCriteria.get(searchTerm) == RemoteSystemType.EXECUTION) {
                         from = "FROM ExecutionSystem s \n"
-                             + "    left join s.loginConfig loginConfig \n";
+                                + "    left join s.loginConfig loginConfig \n";
                         break;
                     }
-                }       
+                }
             }
             if (from == null) {
                 from = "FROM RemoteSystem s \n";
             }
-            
+
             hql += from + "    left join s.storageConfig storageConfig \n";
-            
+
             SearchTerm publicSearchTerm = null;
-            for (SearchTerm searchTerm: searchCriteria.keySet()) {
+            for (SearchTerm searchTerm : searchCriteria.keySet()) {
                 if (searchTerm.getMappedField().startsWith("public")) {
                     publicSearchTerm = searchTerm;
                 }
@@ -1099,30 +1093,30 @@ public class SystemDao extends AbstractDao {
                 // no public search term specified. return public and private
                 if (publicSearchTerm == null) {
                     hql += "    left join s.roles r \n"
-                         + "WHERE ( \n" 
-                         + "        s.owner = :owner \n"
-                         + "        OR s.publiclyAvailable = true \n"
-                         + "        OR ( \n " 
-                         + "            r.username = :owner and r.role <> :none \n" 
-                         + "        ) \n"
-                         + "    ) AND ";
-                } 
-                // public = false || public.eq = false || public.neq = true, return only private
-                else if ((publicSearchTerm.getOperator() == SearchTerm.Operator.EQ && 
-                            !(Boolean)searchCriteria.get(publicSearchTerm)) || 
-                        (publicSearchTerm.getOperator() == SearchTerm.Operator.NEQ && 
-                            (Boolean)searchCriteria.get(publicSearchTerm))) {
-                    hql += "    left join s.roles r \n"
-                            + "WHERE ( \n" 
+                            + "WHERE ( \n"
                             + "        s.owner = :owner \n"
-                            + "        OR ( \n " 
-                            + "            r.username = :owner and r.role <> :none \n" 
+                            + "        OR s.publiclyAvailable = true \n"
+                            + "        OR ( \n "
+                            + "            r.username = :owner and r.role <> :none \n"
                             + "        ) \n"
                             + "    ) AND ";
-                } 
+                }
+                // public = false || public.eq = false || public.neq = true, return only private
+                else if ((publicSearchTerm.getOperator() == SearchTerm.Operator.EQ &&
+                        !(Boolean) searchCriteria.get(publicSearchTerm)) ||
+                        (publicSearchTerm.getOperator() == SearchTerm.Operator.NEQ &&
+                                (Boolean) searchCriteria.get(publicSearchTerm))) {
+                    hql += "    left join s.roles r \n"
+                            + "WHERE ( \n"
+                            + "        s.owner = :owner \n"
+                            + "        OR ( \n "
+                            + "            r.username = :owner and r.role <> :none \n"
+                            + "        ) \n"
+                            + "    ) AND ";
+                }
                 // else return public apps. they will be included in the general where clause
                 else {
-                    
+
                 }
             } else {
                 hql += "WHERE ";
@@ -1132,26 +1126,24 @@ public class SystemDao extends AbstractDao {
 
             for (SearchTerm searchTerm : searchCriteria.keySet()) {
                 if (searchTerm.getSearchField().startsWith("default")) {
-                	SystemManager systemManager = new SystemManager();
-            		List<String> defaultSystemList = new ArrayList<String>();
-            	    for (RemoteSystem system: systemManager.getUserDefaultSystems(username)) {
-            	    	if (system != null) {
-            	    		defaultSystemList.add(system.getSystemId());
-            	    	}
-            	    }
-                	String defaultCriteria = String.format("%s %sin ('%s') ",
-                							searchTerm.getMappedField().replaceAll("%s", searchTerm.getPrefix()),
-                							searchTerm.getOperator() == SearchTerm.Operator.NEQ || !((Boolean)searchCriteria.get(searchTerm)) ? "not " : "",
-                							StringUtils.join(defaultSystemList, "','"));
-                	
+                    SystemManager systemManager = new SystemManager();
+                    List<String> defaultSystemList = new ArrayList<String>();
+                    for (RemoteSystem system : systemManager.getUserDefaultSystems(username)) {
+                        if (system != null) {
+                            defaultSystemList.add(system.getSystemId());
+                        }
+                    }
+                    String defaultCriteria = String.format("%s %sin ('%s') ",
+                            searchTerm.getMappedField().replaceAll("%s", searchTerm.getPrefix()),
+                            searchTerm.getOperator() == SearchTerm.Operator.NEQ || !((Boolean) searchCriteria.get(searchTerm)) ? "not " : "",
+                            StringUtils.join(defaultSystemList, "','"));
+
                     hql += "\n       AND       " + defaultCriteria;
-                }
-                else if (searchCriteria.get(searchTerm) == null 
-                        || StringUtils.equalsIgnoreCase(searchCriteria.get(searchTerm).toString(), "null")) 
-                {
-                    if (searchTerm.getOperator() == SearchTerm.Operator.NEQ ) {
+                } else if (searchCriteria.get(searchTerm) == null
+                        || StringUtils.equalsIgnoreCase(searchCriteria.get(searchTerm).toString(), "null")) {
+                    if (searchTerm.getOperator() == SearchTerm.Operator.NEQ) {
                         hql += "\n       AND       " + String.format(searchTerm.getMappedField(), searchTerm.getPrefix()) + " is not null ";
-                    } else if (searchTerm.getOperator() == SearchTerm.Operator.EQ ) {
+                    } else if (searchTerm.getOperator() == SearchTerm.Operator.EQ) {
                         hql += "\n       AND       " + String.format(searchTerm.getMappedField(), searchTerm.getPrefix()) + " is null ";
                     } else {
                         hql += "\n       AND       " + searchTerm.getExpression();
@@ -1171,8 +1163,8 @@ public class SystemDao extends AbstractDao {
 
             Query query = session.createQuery(hql);
             if (!fullResponse) {
-            	query.setResultTransformer(Transformers.aliasToBean(transformClass));
-            } 
+                query.setResultTransformer(Transformers.aliasToBean(transformClass));
+            }
             query.setString("tenantid", TenancyHelper.getCurrentTenantId());
 
             q = q.replaceAll(":tenantid", "'" + TenancyHelper.getCurrentTenantId() + "'");
@@ -1187,50 +1179,42 @@ public class SystemDao extends AbstractDao {
                 query.setString("owner", username);
                 q = q.replaceAll(":owner", "'" + username + "'");
             }
-            
+
             if (hql.contains(":none")) {
                 query.setString("none", PermissionType.NONE.name());
                 q = q.replaceAll(":none", "'NONE'");
             }
 
             for (SearchTerm searchTerm : searchCriteria.keySet()) {
-            	if (searchTerm.getSearchField().startsWith("default")) {
-            		// this has already been set.
-            	}
-            	else if (searchTerm.getOperator() == SearchTerm.Operator.BETWEEN || searchTerm.getOperator() == SearchTerm.Operator.ON) {
-                    List<String> formattedDates = (List<String>)searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm));
-                    for(int i=0;i<formattedDates.size(); i++) {
-                        query.setString(searchTerm.getSafeSearchField()+i, formattedDates.get(i));
+                if (searchTerm.getSearchField().startsWith("default")) {
+                    // this has already been set.
+                } else if (searchTerm.getOperator() == SearchTerm.Operator.BETWEEN || searchTerm.getOperator() == SearchTerm.Operator.ON) {
+                    List<String> formattedDates = (List<String>) searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm));
+                    for (int i = 0; i < formattedDates.size(); i++) {
+                        query.setString(searchTerm.getSafeSearchField() + i, formattedDates.get(i));
                         q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "'" + formattedDates.get(i) + "'");
                     }
-                }
-            	else if (searchTerm.getOperator().isSetOperator()) 
-                {
-                    query.setParameterList(searchTerm.getSafeSearchField(), (List<Object>)searchCriteria.get(searchTerm));
-                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "('" + StringUtils.join((List<String>)searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)), "','") + "')" );
-                }
-                else if (searchCriteria.get(searchTerm) == null 
+                } else if (searchTerm.getOperator().isSetOperator()) {
+                    query.setParameterList(searchTerm.getSafeSearchField(), (List<Object>) searchCriteria.get(searchTerm));
+                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "('" + StringUtils.join((List<String>) searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)), "','") + "')");
+                } else if (searchCriteria.get(searchTerm) == null
                         || StringUtils.equalsIgnoreCase(searchCriteria.get(searchTerm).toString(), "null")
-                        && (searchTerm.getOperator() == SearchTerm.Operator.NEQ || searchTerm.getOperator() == SearchTerm.Operator.EQ )) {
+                        && (searchTerm.getOperator() == SearchTerm.Operator.NEQ || searchTerm.getOperator() == SearchTerm.Operator.EQ)) {
                     // this was explicitly set to 'is null' or 'is not null'
-                }
-                else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Date.class ) {
-                    query.setDate(searchTerm.getSafeSearchField(), (java.util.Date)searchCriteria.get(searchTerm));
+                } else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Date.class) {
+                    query.setDate(searchTerm.getSafeSearchField(), (java.util.Date) searchCriteria.get(searchTerm));
 
                     q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
                             "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
-                }
-                else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Integer.class) {
-                    query.setInteger(searchTerm.getSafeSearchField(), (Integer)searchCriteria.get(searchTerm));
+                } else if (searchTypeMappings.get(searchTerm.getSafeSearchField()) == Integer.class) {
+                    query.setInteger(searchTerm.getSafeSearchField(), (Integer) searchCriteria.get(searchTerm));
 
                     q = q.replaceAll(":" + searchTerm.getSafeSearchField(),
                             "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
-                }
-                else 
-                {
-                    query.setParameter(searchTerm.getSafeSearchField(), 
+                } else {
+                    query.setParameter(searchTerm.getSafeSearchField(),
                             searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)));
-                    q = StringUtils.replace(q, ":" + searchTerm.getSafeSearchField(), 
+                    q = StringUtils.replace(q, ":" + searchTerm.getSafeSearchField(),
                             Pattern.quote("'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'"));
                 }
             }
@@ -1255,7 +1239,7 @@ public class SystemDao extends AbstractDao {
 
     /**
      * Gets @link ExecutionSystem} with the given id and available to the user.
-     * 
+     *
      * @param username
      * @param systemId
      * @return {@link ExecutionSystem} with the given id or null if no match.
@@ -1267,7 +1251,7 @@ public class SystemDao extends AbstractDao {
 
     /**
      * Gets @link StorageSystem} with the given id and available to the user.
-     * 
+     *
      * @param username
      * @param systemId
      * @return {@link StorageSystem} with the given id or null if no match.
@@ -1277,14 +1261,14 @@ public class SystemDao extends AbstractDao {
                 RemoteSystemType.STORAGE);
     }
 
-	@SuppressWarnings("unchecked")
-	public List<String> getUserOwnedAppsForSystemId(String username, Long systemId) {
-		
-		if (StringUtils.isEmpty(username)) {
+    @SuppressWarnings("unchecked")
+    public List<String> getUserOwnedAppsForSystemId(String username, Long systemId) {
+
+        if (StringUtils.isEmpty(username)) {
             throw new HibernateException("Invalid app owner username");
         }
-		
-		if (systemId < 1) {
+
+        if (systemId < 1) {
             throw new HibernateException("Invalid systemId");
         }
 
@@ -1293,21 +1277,21 @@ public class SystemDao extends AbstractDao {
             session = HibernateUtil.getSession();
 
             String sql = "select s.uuid "
-            		+ "from softwares s "
-            		+ "where s.owner = :owner "
-            		+ "		and (s.system_id = :systemid or s.storage_system_id = :systemid) "
+                    + "from softwares s "
+                    + "where s.owner = :owner "
+                    + "		and (s.system_id = :systemid or s.storage_system_id = :systemid) "
                     + "     and s.`available` = :available "
                     + "     and s.tenant_id = :tenantid "
                     + "order by s.name asc";
 
-            return (List<String>)session.createSQLQuery(sql)
-            		.setString("tenantid", TenancyHelper.getCurrentTenantId())
+            return (List<String>) session.createSQLQuery(sql)
+                    .setString("tenantid", TenancyHelper.getCurrentTenantId())
                     .setString("owner", username)
                     .setLong("systemid", systemId)
                     .setBoolean("available", true)
                     .list();
-            
-            
+
+
         } catch (Throwable ex) {
             throw new SystemException(ex);
         } finally {
@@ -1316,5 +1300,5 @@ public class SystemDao extends AbstractDao {
             } catch (Exception ignored) {
             }
         }
-	}	
+    }
 }

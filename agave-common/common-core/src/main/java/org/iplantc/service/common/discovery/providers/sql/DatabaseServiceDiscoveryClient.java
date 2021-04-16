@@ -3,12 +3,12 @@
  */
 package org.iplantc.service.common.discovery.providers.sql;
 
-import java.util.List;
-
 import org.iplantc.service.common.dao.DiscoveryServiceDao;
 import org.iplantc.service.common.discovery.ServiceCapability;
 import org.iplantc.service.common.discovery.ServiceDiscoveryClient;
 import org.iplantc.service.common.exceptions.ServiceDiscoveryException;
+
+import java.util.List;
 
 /**
  * Class to implement service discovery through the existing application

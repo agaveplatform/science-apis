@@ -40,7 +40,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(singleThreaded=true, groups= {"transfer", "irods.filesystem.init", "sftp", "s3"})
 public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase 
 {
     protected File tmpFile = null;
@@ -115,7 +114,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
 //            clearSystems();
         }
         finally {
-            try { getClient().disconnect(); } catch (Exception e) {}
+            try { getClient().disconnect(); } catch (Exception ignored) {}
         }   
         
         try
@@ -129,7 +128,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
             Assert.fail("Failed to clean up test home directory " + getClient().resolvePath("") + " after test method.", e);
         }
         finally {
-            try { getClient().disconnect(); } catch (Exception e) {}
+            try { getClient().disconnect(); } catch (Exception ignored) {}
         }
     }
 
@@ -160,24 +159,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
     }
 
     @AfterMethod(alwaysRun=true)
-    protected void afterMethod() throws Exception
-    {   
-//      FileUtils.deleteQuietly(new File(getLocalDownloadDir()));
-//      FileUtils.deleteQuietly(tmpFile);
-//        
-//      try
-//      {
-//          // remove test directory
-//          getClient().delete("");
-//          Assert.assertFalse(getClient().doesExist(""), "Failed to clean up home directory after test.");
-//      } 
-//      catch (Exception e) {
-//          Assert.fail("Failed to clean up test home directory " + getClient().resolvePath("") + " after test method.", e);
-//      }
-//      finally {
-////            try { getClient().disconnect(); } catch (Exception e) {}
-//      }
-    }
+    protected void afterMethod() throws Exception {}
 
     /**
      * Since there won't be a universally forbidden path, we delegate
@@ -340,7 +322,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
                 Assert.fail(message, e);
         }  
         finally {
-            try { client.disconnect(); } catch (Exception e) {}
+            try { client.disconnect(); } catch (Exception ignored) {}
         }
         
         Assert.assertEquals(actuallyThrewException, shouldThrowException, message);
@@ -673,7 +655,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
             Assert.fail("Overwriting file should not throw exception.", e);
         }
         finally {
-            try {getClient().delete(remoteName);} catch (Exception e) {}
+            try {getClient().delete(remoteName);} catch (Exception ignored) {}
         }
     }
 
@@ -1370,8 +1352,8 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
             Assert.fail("Writing to output stream threw unexpected exception", e);
         }
         finally {
-            try { in.close(); } catch (Exception e) {}
-            try { out.close(); } catch (Exception e) {}
+            try { in.close(); } catch (Exception ignored) {}
+            try { out.close(); } catch (Exception ignored) {}
         }
     }
 
@@ -1393,7 +1375,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
             Assert.assertTrue(true);
         }
         finally {
-            try { out.close(); } catch (Exception e) {}
+            try { out.close(); } catch (Exception ignored) {}
         }
 
         try
@@ -1405,7 +1387,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
             Assert.assertTrue(true);
         }
         finally {
-            try { out.close(); } catch (Exception e) {}
+            try { out.close(); } catch (Exception ignored) {}
         }
     }
 
@@ -1428,7 +1410,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
             Assert.assertTrue(true);
         }
         finally {
-            try { out.close(); } catch (Exception e) {}
+            try { out.close(); } catch (Exception ignored) {}
         }
 
         try
@@ -1440,7 +1422,7 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
             Assert.assertTrue(true);
         }
         finally {
-            try { out.close(); } catch (Exception e) {}
+            try { out.close(); } catch (Exception ignored) {}
         }
     }
 
@@ -1546,8 +1528,8 @@ public abstract class AbstractRemoteDataClientTest extends BaseTransferTestCase
             if (!shouldThrowException) e.printStackTrace();
         }
         finally {
-            try { in.close(); } catch (Exception e) {}
-            try { bout.close(); } catch (Exception e) {}
+            try { in.close(); } catch (Exception ignored) {}
+            try { bout.close(); } catch (Exception ignored) {}
         }
 
         Assert.assertEquals(actuallyThrewException, shouldThrowException, message);

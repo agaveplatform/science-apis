@@ -2,14 +2,14 @@
   * 
   */
  package org.iplantc.service.common.auth;
- 
- import java.io.IOException;
- import java.io.InputStream;
- 
+
  import org.apache.commons.io.IOUtils;
  import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
-import org.iplantc.service.common.persistence.TenancyHelper;
+ import org.apache.log4j.Logger;
+ import org.iplantc.service.common.persistence.TenancyHelper;
+
+ import java.io.IOException;
+ import java.io.InputStream;
  
  /**
   * Utility class to check for admin status of a given user.

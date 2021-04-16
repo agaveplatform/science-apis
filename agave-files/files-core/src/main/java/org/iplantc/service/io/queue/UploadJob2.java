@@ -66,8 +66,8 @@ public class UploadJob2 implements InterruptableJob
 	/**
 	 * Perform the actual upload.
 	 *
-	 * @param dataMap
-	 * @throws JobExecutionException
+	 * @param dataMap the file upload request form body as a map
+	 * @throws JobExecutionException if unable to upload
 	 */
 	public void doUpload(JobDataMap dataMap) throws JobExecutionException
 	{

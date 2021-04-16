@@ -24,7 +24,7 @@ public class HelloJob implements InterruptableJob {
 	@Override
 	public void execute(JobExecutionContext context)
 			throws JobExecutionException {
-		System.out.println("Hello job " + (new Date()).toString());
+//		System.out.println("Hello job " + (new Date()).toString());
 	}
 
 	@Override

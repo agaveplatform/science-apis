@@ -221,10 +221,10 @@ public enum SchedulerType
 		{
 			case LSF:
 			case CUSTOM_LSF:
-				return "bkill ";
+				return "bkill ${AGAVE_JOB_LOCALJOB_ID}";
 			case LOADLEVELER:
 			case CUSTOM_LOADLEVELER:
-				return "llcancel ";
+				return "llcancel ${AGAVE_JOB_LOCALJOB_ID}";
 			case TORQUE:
 			case CUSTOM_TORQUE:
 			case MOAB:
@@ -233,18 +233,18 @@ public enum SchedulerType
             case CUSTOM_PBS:
             case SGE:
 			case CUSTOM_GRIDENGINE:
-				return "qdel ";
+				return "qdel ${AGAVE_JOB_LOCALJOB_ID}";
 			case CONDOR:
             case CUSTOM_CONDOR:
-                return "condor_rm ";
+                return "condor_rm ${AGAVE_JOB_LOCALJOB_ID}";
 			case UNKNOWN:
 			case FORK:
-				return "kill -9 ";
+				return "kill -9 ${AGAVE_JOB_LOCALJOB_ID}";
 			case SLURM:
 			case CUSTOM_SLURM:
-				return "scancel ";
+				return "scancel ${AGAVE_JOB_LOCALJOB_ID}";
 			default:
-				return "qdel ";
+				return "qdel ${AGAVE_JOB_LOCALJOB_ID}";
 		}
 	}
 	
@@ -267,33 +267,33 @@ public enum SchedulerType
 		{
 			case LSF:
 			case CUSTOM_LSF:
-				return "bjobs -w -noheader ";
+				return "bjobs -w -noheader ${AGAVE_JOB_LOCALJOB_ID}";
 			case LOADLEVELER:
 			case CUSTOM_LOADLEVELER:
-				return "llq -l ";
+				return "llq -l ${AGAVE_JOB_LOCALJOB_ID}";
 			case SGE:
 			case CUSTOM_GRIDENGINE:
-				return "qstat -ext -urg -xml ";
+				return "qstat -ext -urg -xml ${AGAVE_JOB_LOCALJOB_ID}";
 			case TORQUE:
 			case CUSTOM_TORQUE:
 			case MOAB:
 			case CUSTOM_MOAB:
 //				return "qstat -f -1 ";
-				return "qstat -a | grep ^";
+				return "qstat -a | grep ^${AGAVE_JOB_LOCALJOB_ID}";
 			case PBS:
 			case CUSTOM_PBS:
-				return "qstat -x -f ";
+				return "qstat -x -f ${AGAVE_JOB_LOCALJOB_ID}";
 			case CONDOR:
 			case CUSTOM_CONDOR:
-				return "condor_q -format '%d'  JobStatus";
+				return "condor_q -format '%d'  JobStatus ${AGAVE_JOB_LOCALJOB_ID}";
 			case UNKNOWN:
 			case FORK:
-				return "ps -o pid= -o user= -o stat= -o time= -o comm= -p ";
+				return "ps -o pid= -o user= -o stat= -o time= -o comm= | grep '^\\s*${AGAVE_JOB_LOCALJOB_ID}'";
 			case SLURM:
 			case CUSTOM_SLURM:
-				return "sacct -p -o 'JOBID,State,ExitCode' -n -j ";
+				return "sacct -p -o 'JOBID,State,ExitCode' -n -j ${AGAVE_JOB_LOCALJOB_ID}";
 			default:
-				return "qstat";
+				return "qstat -a ";
 		}
 	}
 }

@@ -7,9 +7,11 @@ PROJECT_PROTO_SRC_DIR := $(abspath $(PROJECT_DIR)/../../agave-protos)/proto/
 PROJECT_PROTO_OUT_DIR := pkg/sftpproto
 PROJECT_NAME := "sftp-relay"
 CLIENT_NAME := "sftp-client"
-
+GIT_BRANCH := $(shell (git branch | grep '^\*' | sed 's/^\* //g') 2>/dev/null || echo 'default')
+PROTOC_VERSION := $(filter-out libprotoc,$(shell protoc --version))
 #PROJECT_PROTOS := $(wildcard $(PROJECT_PROTO_SRC_DIR)/*.proto)
 #PROJECT_GEN_PB := $(addprefix pkg/sftprelay/,$(notdir $(patsubst %.proto,%.pb.go,$(PROJECT_PROTOS))))
+
 
 .DEFAULT_GOAL := default
 
@@ -35,6 +37,7 @@ help: ## Print help for targets with comments.
 	"make test" "Run all unit tests." \
 	"make genproto" "Re-build protobuf libraries" \
 	"make build" "Build $(PROJECT_NAME) binaries" \
+	"make cli" "Build $(PROJECT_NAME) cli binaries" \
 	"make validate" "Run linter and code quality tool against Go source." \
 	"make install" "Install $(PROJECT_NAME) binary to local GOBIN directory" \
 	"make image" "Build Docker images for the $(PROJECT_NAME)" \
@@ -45,8 +48,15 @@ PROJECT_PROTOS := $(wildcard $(PROJECT_PROTO_SRC_DIR)*.proto)
 PROJECT_GEN_PB := $(addprefix pkg/sftprelay/,$(notdir $(patsubst %.proto,%.pb.go,$(PROJECT_PROTOS))))
 
 $(PROJECT_GEN_PB):
+ifneq ("3.10.0","$(PROTOC_VERSION)")
+	@-echo protoc version is newer $(PROTOC_VERSION)
+	@mkdir -p $(PROJECT_PROTO_OUT_DIR)
+	protoc -I $(PROJECT_PROTO_SRC_DIR) --go_out=$(PROJECT_PROTO_OUT_DIR) --go-grpc_out=require_unimplemented_servers=false:$(PROJECT_PROTO_OUT_DIR) $(PROJECT_PROTOS)
+else
+	@-echo protoc version in container is $(PROTOC_VERSION)
 	@mkdir -p $(PROJECT_PROTO_OUT_DIR)
 	protoc -I $(PROJECT_PROTO_SRC_DIR) --go_out=plugins=grpc:$(PROJECT_PROTO_OUT_DIR) $(PROJECT_PROTOS)
+endif
 
 .PHONY: all
 all: genproto test build image
@@ -63,13 +73,18 @@ test:
 install:
 	cp release/$(PROJECT_NAME)-$(PLATFORM)-$(ARCH) $(firstGOPATH)/bin/$(PROJECT_NAME)
 
+# Install the application binary into $GOBIN
+.PHONY: install-client
+install-client:
+	cp release/$(CLIENT_NAME) $(firstGOPATH)/bin/$(CLIENT_NAME)
+
 # Build the application into a Docker image
 .PHONY: image
 image:
 	@# Copying protobuf file locally to avoid import of entire project repo and speed up build
 	@ mkdir -p tmp
 	@ cp -rf $(PROJECT_PROTO_SRC_DIR) tmp
-	-docker build -t $(PROJECT_NAME):develop .
+	-docker build --rm -t $(PROJECT_NAME):develop .
 	@- rm -rf tmp
 
 # Build protobuf
@@ -86,8 +101,8 @@ deps: genproto
 build:
 	BASE_CMD_NAME=$(PROJECT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
 
-.PHONY: cli
-cli:
+.PHONY: client
+client:
 	BASE_CMD_NAME=$(CLIENT_NAME) BUILD_PLATFORMS=$(PLATFORM) ./scripts/build.sh
 	@ mv release/$(CLIENT_NAME)-$(PLATFORM)-$(ARCH) release/$(CLIENT_NAME)
 

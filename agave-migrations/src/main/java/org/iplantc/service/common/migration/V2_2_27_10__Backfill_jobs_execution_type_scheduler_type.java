@@ -1,14 +1,8 @@
-/**
- *
- */
 package org.iplantc.service.common.migration;
 
 import org.flywaydb.core.api.FlywayException;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
-import org.iplantc.service.common.migration.utils.BackfillUtil;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -100,7 +94,7 @@ public class V2_2_27_10__Backfill_jobs_execution_type_scheduler_type extends Bas
                 if (i % fetchSize == 0) {
                     updateStmt.executeBatch();
                     // progress report just so we have it
-                    System.out.println(String.format("[%d/%d] Migrating jobs table...", i, softwareTableSize));
+                    System.out.printf("[%d/%d] Migrating jobs table...%n", i, softwareTableSize);
                 }
             }
             // Execute any remaining queries in case the number of software records was not a multiple of the

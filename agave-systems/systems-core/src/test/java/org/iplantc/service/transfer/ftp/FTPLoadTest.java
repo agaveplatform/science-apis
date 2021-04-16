@@ -1,14 +1,5 @@
 package org.iplantc.service.transfer.ftp;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.plexus.util.FileUtils;
@@ -25,7 +16,9 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-@Test(enabled = false, groups= {"gridftp","performance","broken"})
+import java.io.*;
+
+@Test(enabled = false, groups= {"ftp","performance","broken"})
 public class FTPLoadTest extends BaseTransferTestCase 
 {
 	private static final Logger log = Logger.getLogger(FTPLoadTest.class);

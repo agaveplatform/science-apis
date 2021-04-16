@@ -3,14 +3,8 @@
  */
 package org.iplantc.service.common.restlet;
 
-import java.util.List;
-
 import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.auth.GuardFactory;
-import org.iplantc.service.common.auth.JWTGuardFactory;
-import org.iplantc.service.common.auth.LdapGuardFactory;
-import org.iplantc.service.common.auth.MyProxyGuardFactory;
-import org.iplantc.service.common.auth.NullGuardFactory;
+import org.iplantc.service.common.auth.*;
 import org.iplantc.service.common.resource.RuntimeConfigurationResource;
 import org.restlet.Application;
 import org.restlet.Guard;
@@ -20,6 +14,8 @@ import org.restlet.data.ChallengeScheme;
 import org.restlet.data.MediaType;
 import org.restlet.data.Method;
 import org.restlet.resource.Resource;
+
+import java.util.List;
 
 /**
  * Parent class for all Agave legacy services

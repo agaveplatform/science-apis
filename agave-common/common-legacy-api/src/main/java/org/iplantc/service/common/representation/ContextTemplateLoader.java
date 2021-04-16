@@ -1,19 +1,18 @@
 package org.iplantc.service.common.representation;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.util.Date;
-
+import freemarker.cache.TemplateLoader;
+import freemarker.template.Configuration;
 import org.apache.commons.io.IOUtils;
 import org.restlet.Context;
 import org.restlet.data.Reference;
 import org.restlet.resource.Representation;
 import org.restlet.resource.StringRepresentation;
 
-import freemarker.cache.TemplateLoader;
-import freemarker.template.Configuration;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.io.StringWriter;
+import java.util.Date;
 
 /**
 * FreeMarker template loader based on a Context's client dispatcher. You can

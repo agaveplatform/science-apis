@@ -25,7 +25,6 @@ import org.testng.annotations.Test;
  * @author dooley
  *
  */
-@Test(groups={"integration"})
 public abstract class BaseTransferTestCase {
 
 	public static final String SYSTEM_USER = "testuser";

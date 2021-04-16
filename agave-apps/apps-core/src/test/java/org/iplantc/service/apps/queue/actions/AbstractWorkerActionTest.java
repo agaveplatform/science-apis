@@ -3,32 +3,21 @@
  */
 package org.iplantc.service.apps.queue.actions;
 
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_OWNER;
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_SOFTWARE_SYSTEM_FILE;
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_STORAGE_SYSTEM_FILE;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.dao.AbstractDaoTest;
 import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.apps.queue.actions.WorkerAction;
 import org.iplantc.service.systems.model.ExecutionSystem;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.systems.model.SystemRole;
 import org.iplantc.service.systems.model.enumerations.RoleType;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteDataClientFactory;
-import org.json.JSONException;
-import org.json.JSONObject;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
 
 /**
  * Catchall setup class for {@link WorkerAction} test classes
@@ -130,7 +119,7 @@ public abstract class AbstractWorkerActionTest extends AbstractDaoTest {
 
             String parentPath = FilenameUtils.getPath(software.getDeploymentPath());
             storageDataClient.mkdirs(parentPath);
-            storageDataClient.put(localSoftwareDeploymentDir.toAbsolutePath().toString(), parentPath);
+            storageDataClient.put(localSoftwareDeploymentDir.toString(), parentPath);
 
 //            if (!storageDataClient.doesExist(software.getDeploymentPath())) {
 //                String parentPath = FilenameUtils.getPath(software.getDeploymentPath());

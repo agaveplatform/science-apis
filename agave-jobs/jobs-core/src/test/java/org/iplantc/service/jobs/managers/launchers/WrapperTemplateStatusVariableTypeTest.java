@@ -1,24 +1,23 @@
 package org.iplantc.service.jobs.managers.launchers;
 
-import java.util.Arrays;
-import java.util.HashSet;
-
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.jobs.Settings;
-import org.iplantc.service.jobs.managers.launchers.WrapperTemplateMacroResolver;
 import org.iplantc.service.jobs.model.Job;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.Arrays;
+import java.util.HashSet;
+
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@Test(groups={"unit", "broken"})
+@Test(groups={"unit"})
 public class WrapperTemplateStatusVariableTypeTest {
 
-	@DataProvider 
+	@DataProvider
 	protected Object[][] resolveNotificationEventMacroAddsCustomEventToCallbackDataProvider() {
 		return new Object[][] {
 				{ "my_custom_event", "my_custom_event", "Custom user event name should be written into the callback data" },
@@ -27,9 +26,10 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(dataProvider="resolveNotificationEventMacroAddsCustomEventToCallbackDataProvider")
+	@Test(enabled=true, dataProvider="resolveNotificationEventMacroAddsCustomEventToCallbackDataProvider")
 	public void resolveNotificationEventMacroAddsCustomEventToCallbackData(String providedEventName, String expectedCallbackEventName, String message) {
-		Job job = new Job();WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
+		Job job = new Job();
+		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
 		when(resolver.getJob()).thenReturn(job);
 		when(resolver.resolveNotificationEventMacro(any(),any())).thenCallRealMethod();
 		when(resolver.resolveTenantJobUrl(any())).thenReturn(Settings.IPLANT_JOB_SERVICE);
@@ -51,7 +51,7 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(dataProvider="resolveNotificationEventMacroAddsCustomDataToCallbackDataProvider")
+	@Test(enabled=true, dataProvider="resolveNotificationEventMacroAddsCustomDataToCallbackDataProvider")
 	public void resolveNotificationEventMacroAddsCustomDataToCallbackData(String[] customVariableNames, String message ) {
 		Job job = new Job();
 		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
@@ -60,9 +60,8 @@ public class WrapperTemplateStatusVariableTypeTest {
 		when(resolver.resolveTenantJobUrl(any())).thenReturn(Settings.IPLANT_JOB_SERVICE);
 
 		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
-//		System.out.println(resolvedWrapperCode);
 		for (String uniqueName: new HashSet<String>(Arrays.asList(customVariableNames))) {
-			String expectedString = String.format("echo '  \"%s\": '$(printf %%q \"$%s\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n", uniqueName, uniqueName);
+			String expectedString = String.format("echo '  \"%s\": \"'$(printf %%q \"$%s\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n", uniqueName, uniqueName);
 			Assert.assertTrue(resolvedWrapperCode.contains(expectedString), "User custom data should be written into the output data");
 			resolvedWrapperCode = StringUtils.replaceOnce(resolvedWrapperCode,expectedString, "");
 			Assert.assertFalse(resolvedWrapperCode.contains(expectedString), "Duplicate user variable names should be filtered out prior to writing the callback output");
@@ -82,7 +81,7 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(dataProvider="resolveNotificationEventMacroTrimsVariableNamesProvider")
+	@Test(enabled=true, dataProvider="resolveNotificationEventMacroTrimsVariableNamesProvider")
 	public void resolveNotificationEventMacroTrimsVariableNames(String[] customVariableNames, String message ) {
 		Job job = new Job();
 		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
@@ -93,7 +92,7 @@ public class WrapperTemplateStatusVariableTypeTest {
 		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
 		
 		for (String uniqueName: new HashSet<String>(Arrays.asList(customVariableNames))) {
-			String expectedString = String.format("echo '  \"%s\": '$(printf %%q \"$%s\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n", StringUtils.trim(uniqueName), StringUtils.trim(uniqueName));
+			String expectedString = String.format("echo '  \"%s\": \"'$(printf %%q \"$%s\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n", StringUtils.trim(uniqueName), StringUtils.trim(uniqueName));
 			Assert.assertTrue(resolvedWrapperCode.contains(expectedString), "User custom data should be written into the output data");
 			resolvedWrapperCode = StringUtils.replaceOnce(resolvedWrapperCode,expectedString, "");
 			Assert.assertFalse(resolvedWrapperCode.contains(expectedString), "Duplicate user variable names should be filtered out prior to writing the callback output");
@@ -123,7 +122,7 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(dataProvider="resolveNotificationEventMacroStripsEmptyVariableNamesProvider")
+	@Test(enabled=true, dataProvider="resolveNotificationEventMacroStripsEmptyVariableNamesProvider")
 	public void resolveNotificationEventMacroStripsEmptyVariableNames(String[] customVariableNames, String message ) {
 		Job job = new Job();
 		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
@@ -133,15 +132,15 @@ public class WrapperTemplateStatusVariableTypeTest {
 
 		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
 		
-		String expectedString = "echo '  \"null\": '$(printf %%q \"$null\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n";
+		String expectedString = "echo '  \"null\": \"'$(printf %%q \"$null\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n";
 		Assert.assertFalse(resolvedWrapperCode.contains(expectedString), message);
 		
-		expectedString = "echo '  \"\": '$(printf %%q \"$\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n";
+		expectedString = "echo '  \"\": \"'$(printf %%q \"$\")'\"' >> \"$AGAVE_CALLBACK_FILE\"\n";
 		Assert.assertFalse(resolvedWrapperCode.contains(expectedString), message);
 		
 		for (String uniqueName: new HashSet<String>(Arrays.asList(customVariableNames))) {
 			if (StringUtils.trimToNull(uniqueName) == null) continue; 
-			expectedString = String.format("echo '  \"%s\": '$(printf %%q \"$%s\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n", StringUtils.trim(uniqueName), StringUtils.trim(uniqueName));
+			expectedString = String.format("echo '  \"%s\": \"'$(printf %%q \"$%s\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n", StringUtils.trim(uniqueName), StringUtils.trim(uniqueName));
 			Assert.assertTrue(resolvedWrapperCode.contains(expectedString), "User custom data should be written into the output data");
 			resolvedWrapperCode = StringUtils.replaceOnce(resolvedWrapperCode,expectedString, "");
 			Assert.assertFalse(resolvedWrapperCode.contains(expectedString), "Duplicate user variable names should be filtered out prior to writing the callback output");
@@ -172,7 +171,7 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(dataProvider="resolveNotificationEventMacroStripsBlankVariableNamesProvider")
+	@Test(enabled=true, dataProvider="resolveNotificationEventMacroStripsBlankVariableNamesProvider")
 	public void resolveNotificationEventMacroStripsBlankVariableNames(String[] customVariableNames, String message ) {
 		Job job = new Job();
 		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
@@ -182,15 +181,15 @@ public class WrapperTemplateStatusVariableTypeTest {
 
 		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
 		
-		String expectedString = "echo '  \"null\": '$(printf %%q \"$null\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n";
+		String expectedString = "echo '  \"null\": \"'$(printf %%q \"$null\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n";
 		Assert.assertFalse(resolvedWrapperCode.contains(expectedString), message);
 		
-		expectedString = "echo '  \"\": '$(printf %%q \"$\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n";
+		expectedString = "echo '  \"\": \"'$(printf %%q \"$\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n";
 		Assert.assertFalse(resolvedWrapperCode.contains(expectedString), message);
 		
 		for (String uniqueName: new HashSet<String>(Arrays.asList(customVariableNames))) {
 			if (StringUtils.trimToNull(uniqueName) == null) continue; 
-			expectedString = String.format("echo '  \"%s\": '$(printf %%q \"$%s\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n", StringUtils.trim(uniqueName), StringUtils.trim(uniqueName));
+			expectedString = String.format("echo '  \"%s\": \"'$(printf %%q \"$%s\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n", StringUtils.trim(uniqueName), StringUtils.trim(uniqueName));
 			Assert.assertTrue(resolvedWrapperCode.contains(expectedString), "User custom data should be written into the output data");
 			resolvedWrapperCode = StringUtils.replaceOnce(resolvedWrapperCode,expectedString, "");
 			Assert.assertFalse(resolvedWrapperCode.contains(expectedString), "Duplicate user variable names should be filtered out prior to writing the callback output");
@@ -219,7 +218,7 @@ public class WrapperTemplateStatusVariableTypeTest {
 		};
 	}
 	
-	@Test(dataProvider="resolveNotificationEventMacroStripsNullVariableNamesProvider")
+	@Test(enabled=true, dataProvider="resolveNotificationEventMacroStripsNullVariableNamesProvider")
 	public void resolveNotificationEventMacroStripsNullVariableNames(String[] customVariableNames, String message ) {
 		Job job = new Job();
 		WrapperTemplateMacroResolver resolver = mock(WrapperTemplateMacroResolver.class);
@@ -229,15 +228,15 @@ public class WrapperTemplateStatusVariableTypeTest {
 
 		String resolvedWrapperCode = resolver.resolveNotificationEventMacro("", customVariableNames);
 		
-		String expectedString = "echo '  \"null\": '$(printf %%q \"$null\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n";
+		String expectedString = "echo '  \"null\": \"'$(printf %%q \"$null\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n";
 		Assert.assertFalse(resolvedWrapperCode.contains(expectedString), message);
 		
-		expectedString = "echo '  \"\": '$(printf %%q \"$\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n";
+		expectedString = "echo '  \"\": \"'$(printf %%q \"$\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n";
 		Assert.assertFalse(resolvedWrapperCode.contains(expectedString), message);
 		
 		for (String uniqueName: new HashSet<String>(Arrays.asList(customVariableNames))) {
 			if (StringUtils.trimToNull(uniqueName) == null) continue; 
-			expectedString = String.format("echo '  \"%s\": '$(printf %%q \"$%s\")'\",\\\n' >> \"$AGAVE_CALLBACK_FILE\"\n", StringUtils.trim(uniqueName), StringUtils.trim(uniqueName));
+			expectedString = String.format("echo '  \"%s\": \"'$(printf %%q \"$%s\")'\",' >> \"$AGAVE_CALLBACK_FILE\"\n", StringUtils.trim(uniqueName), StringUtils.trim(uniqueName));
 			Assert.assertTrue(resolvedWrapperCode.contains(expectedString), "User custom data should be written into the output data");
 			resolvedWrapperCode = StringUtils.replaceOnce(resolvedWrapperCode,expectedString, "");
 			Assert.assertFalse(resolvedWrapperCode.contains(expectedString), "Duplicate user variable names should be filtered out prior to writing the callback output");

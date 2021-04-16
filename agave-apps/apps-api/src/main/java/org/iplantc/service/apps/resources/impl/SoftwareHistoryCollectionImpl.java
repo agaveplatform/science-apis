@@ -3,13 +3,8 @@
  */
 package org.iplantc.service.apps.resources.impl;
 
-import java.util.List;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareEventDao;
 import org.iplantc.service.apps.exceptions.SoftwareException;
@@ -22,8 +17,11 @@ import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
+import java.util.List;
 
 /**
  * Returns a collection of history records for a {@link SoftwareEvent}. Search

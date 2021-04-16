@@ -1,11 +1,5 @@
 package org.iplantc.service.apps.managers;
 
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_OWNER;
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_SOFTWARE_SYSTEM_FILE;
-
-import java.io.IOException;
-import java.util.List;
-
 import org.iplantc.service.apps.dao.AbstractDaoTest;
 import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.model.JSONTestDataUtil;
@@ -15,11 +9,15 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+
+import java.io.IOException;
+import java.util.List;
+
+import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_SOFTWARE_SYSTEM_FILE;
 
 @Test(groups={"integration"})
 public class ApplicationManagerIT extends AbstractDaoTest

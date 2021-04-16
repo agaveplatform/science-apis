@@ -17,12 +17,12 @@
 			"password": "testuser",
 			"credential": null,
 			"type": "X509",
+			"caCerts": null,
 			"server": {
-				"id": "myproxy.teragrid.org",
-				"name": "XSEDE MyProxy Server",
-				"site": "ncsa.uiuc.edu",
-				"endpoint": "myproxy.teragrid.org",
-				"port": 7512,
+				"id": "myproxy",
+				"name": "Agave Dev myproxy Docker container",
+				"endpoint": "${myproxy.host}",
+				"port": ${myproxy.port},
 				"protocol": "MYPROXY"
 			}
 		}

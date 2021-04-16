@@ -102,7 +102,7 @@ public class ApiUriUtil {
         
 		// let's check for an internal URI
         if (matcher == null) {
-            throw new AgaveNamespaceException("URI does conform to the API URL structure.");
+            throw new AgaveNamespaceException("URI " + inputUri + " does conform to the API URL structure.");
         } 
         // Is it a job output uri?
         else if (AgaveUriRegex.JOBS_URI.matches(inputUri)) 

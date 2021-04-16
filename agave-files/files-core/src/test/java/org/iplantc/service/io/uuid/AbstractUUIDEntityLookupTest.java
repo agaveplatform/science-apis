@@ -1,7 +1,7 @@
 package org.iplantc.service.io.uuid;
 
-import java.io.IOException;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.NotImplementedException;
 import org.hibernate.Session;
 import org.iplantc.service.common.dao.TenantDao;
@@ -20,14 +20,9 @@ import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.json.JSONException;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 
 /**
  * Should be implemented for every entity.
@@ -36,7 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *
  */
 public abstract class AbstractUUIDEntityLookupTest<T> implements AbstractUUIDTest<T> {
-	protected String destPath;
+	protected final String destPath = "testparentparentparent/testparentparent/testparent/test.dat";
 	protected StorageSystem system;
 	
 	@BeforeClass
@@ -48,8 +43,6 @@ public abstract class AbstractUUIDEntityLookupTest<T> implements AbstractUUIDTes
 		
 		setUpSystems();
 		setUpTenants();
-		
-		this.destPath = "testparentparentparent/testparentparent/testparent/test.dat";
 	}
 	
 	@AfterMethod

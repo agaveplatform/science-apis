@@ -4,18 +4,18 @@
  */
 package org.iplantc.service.apps.model.enumerations;
 
+import org.hibernate.HibernateException;
+import org.hibernate.type.IntegerType;
+import org.hibernate.type.TypeResolver;
+import org.hibernate.usertype.ParameterizedType;
+import org.hibernate.usertype.UserType;
+
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Properties;
-
-import org.hibernate.HibernateException;
-import org.hibernate.type.IntegerType;
-import org.hibernate.type.TypeResolver;
-import org.hibernate.usertype.ParameterizedType;
-import org.hibernate.usertype.UserType;
 
 public class GenericEnumUserType implements UserType, ParameterizedType {
 

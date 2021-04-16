@@ -1,0 +1,16 @@
+##############################################################
+#  Core Services Persistence Stack
+#############################################################
+version: '3.3'
+
+services:
+
+  pause:
+    image: busybox
+    container_name: pause
+    command:
+      - sh
+      - -c
+      - |
+        if [ -n "${sleepMessage}" ]; then echo "${sleepMessage}"; else echo "Sleeping for ${sleepSeconds} seconds..."; fi
+        sleep ${sleepSeconds}

@@ -3,13 +3,11 @@
  */
 package org.iplantc.service.jobs.queue.actions;
 
-import java.net.ConnectException;
-import java.nio.channels.ClosedByInterruptException;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.ObjectNotFoundException;
 import org.hibernate.UnresolvableObjectException;
+import org.iplantc.service.apps.exceptions.UnknownSoftwareException;
 import org.iplantc.service.jobs.Settings;
 import org.iplantc.service.jobs.exceptions.JobDependencyException;
 import org.iplantc.service.jobs.exceptions.JobException;
@@ -22,8 +20,19 @@ import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.enumerations.JobStatusType;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.systems.model.ExecutionSystem;
+import org.quartz.JobExecutionException;
+
+import java.io.IOException;
+import java.net.ConnectException;
+import java.nio.channels.ClosedByInterruptException;
 
 /**
+ * Handles launching of job on an {@link org.iplantc.service.systems.model.ExecutionSystem}. The general process is:
+ * <ol>
+ *     <li></li>
+ * </ol>
+ *
  * @author dooley
  *
  */
@@ -61,10 +70,8 @@ public class SubmissionAction extends AbstractWorkerAction {
     }
     
     /**
-     * This method attempts to archive a job's output by retirieving the
-     * .agave.archive shadow file from the remote job directory and staging
-     * everything not in there to the user-supplied Job.archivePath on the 
-     * Job.archiveSystem
+     * This method attempts to stage application assets and launch a job on the remote {@link ExecutionSystem}.
+     * If submission is not possible, the job is failed and the remote job work directory is removed.
      *
      * @throws SystemUnavailableException
      * @throws SystemUnknownException
@@ -76,7 +83,7 @@ public class SubmissionAction extends AbstractWorkerAction {
     {
         boolean submitted = false;
         
-        int attempts = this.job.getRetries();
+        int attempts = getJob().getRetries();
         
         try 
         {
@@ -84,18 +91,18 @@ public class SubmissionAction extends AbstractWorkerAction {
             {
                 checkStopped();
                 
-                this.job.setRetries(attempts);
+                getJob().setRetries(attempts);
                 
                 attempts++;
                 
-                log.debug("Attempt " + attempts + " to submit job " + job.getUuid() +
+                log.debug("Attempt " + attempts + " to submit job " + getJob().getUuid() +
                           " (max retries = " + Settings.MAX_SUBMISSION_RETRIES + ").");
                 
-                this.job = getJobManager().updateStatus(this.job, JobStatusType.SUBMITTING, "Attempt " + attempts + " to submit job");
+                updateJobStatus(JobStatusType.SUBMITTING, "Attempt " + attempts + " to submit job");
                 
                 try 
                 {
-                    setJobLauncher(new JobLauncherFactory().getInstance(job));
+                    setJobLauncher(new JobLauncherFactory().getInstance(getJob()));
                     
                     getJobLauncher().launch();
                     
@@ -104,135 +111,92 @@ public class SubmissionAction extends AbstractWorkerAction {
                     log.info("Successfully submitted job " + getJob().getUuid() + " to " + getJob().getSystem());
                 }
                 catch (ClosedByInterruptException e) {
-                    log.debug("Interrupted: " + getJob().getUuid() + e.getMessage());
+                    log.debug("Job submission cancelled by outside process for job " + getJob().getUuid());
                     throw e;
                 } 
-                catch (ConnectException e) 
-                {
-                    try
-                    {
-                        log.debug("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() +
-                            ". Unable to connect to system.", e);
-                        this.job = getJobManager().updateStatus(getJob(), getJob().getStatus(), e.getMessage() +
+                catch (UnknownSoftwareException|SystemUnknownException e) {
+                    log.error("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() +
+                                    ". " + e.getMessage());
+                    updateJobStatus(JobStatusType.FAILED, "Unable to submit job " + getJob().getUuid() + ". " +
+                            e.getMessage() + " No further attempts will be made.");
+                    throw new JobDependencyException(e);
+                }
+                catch (SystemUnavailableException e) {
+                    log.debug("One or more dependent systems for job " + getJob().getUuid() + " is currently unavailable. " + e.getMessage());
+                    updateJobStatus(JobStatusType.STAGED,
+                        "Remote execution of  job " + getJob().getUuid() + " is currently paused waiting for " + getJob().getSystem() +
+                        " to become available. If the system becomes available again within 7 days, this job " +
+                        "will resume staging. After 7 days it will be killed. Original error message: " + e.getMessage());
+                    break;
+                }
+                catch (SoftwareUnavailableException e) {
+                    log.debug("Software for job " + getJob().getUuid() + " is currently unavailable. " + e.getMessage());
+                    updateJobStatus(JobStatusType.STAGED,
+                            "Remote execution of  job " + getJob().getUuid() + " is currently paused waiting for app " + getJob().getSoftwareName() +
+                                    " to become available. If the app becomes available again within 30 days of job creation, this job " +
+                                    "will resume staging. After that time, it will be killed.");
+                    break;
+                }
+                catch (SchedulerException e) {
+                    log.debug("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() +
+                            " due to scheduler exception: " + e.getMessage());
+                    updateJobStatus(JobStatusType.STAGED, "Attempt "
+                        + attempts + " failed to submit job due to scheduler exception. " + e.getMessage());
+                }
+                catch (IOException e) {
+                    log.error("Failed to submit job " + getJob().getUuid() +
+                            ". Unable to connect to remote system " + e.getMessage(),e);
+                    updateJobStatus(JobStatusType.STAGED, e.getMessage() +
                             " The service was unable to connect to the target execution system " +
                             "for this application, " + getJob().getSystem() + ". This job will " +
                             "remain in queue until the system becomes available. Original error message: " + e.getMessage());
-                    }
-                    catch (Exception e1) {
-                        log.error("Failed to update job " + getJob().getUuid() + " status to " + job.getStatus(), e1);
-                    }
                 }
-                catch (SystemUnavailableException e) 
-                {
-                    try
-                    {
-                        log.debug("One or more dependent systems for job " + getJob().getUuid() + " is currently unavailable. " + e.getMessage());
-                        this.job = getJobManager().updateStatus(getJob(), JobStatusType.STAGED,
-                            "Remote execution of  job " + getJob().getUuid() + " is currently paused waiting for " + getJob().getSystem() + 
-                            " to become available. If the system becomes available again within 7 days, this job " +
-                            "will resume staging. After 7 days it will be killed. Original error message: " + e.getMessage());
-                    }
-                    catch (Exception e1) {
-                        log.error("Failed to update job " + getJob().getUuid() + " status to STAGED", e1);
-                    }   
-                    break;
-                }
-                catch (SoftwareUnavailableException e) 
-                {
-                    try
-                    {
-                        log.debug("Software for job " + getJob().getUuid() + " is currently unavailable. " + e.getMessage());
-                        this.job = getJobManager().updateStatus(getJob(), JobStatusType.STAGED,
-                            "Remote execution of  job " + getJob().getUuid() + " is currently paused waiting for " + job.getSoftwareName() + 
-                            " to become available. If the app becomes available again within 7 days, this job " +
-                            "will resume staging. After 7 days it will be killed. Original error message: " + e.getMessage());
-                    }
-                    catch (Exception e1) {
-                        log.error("Failed to update job " + getJob().getUuid() + " status to STAGED", e1);
-                    }   
-                    break;
-                }
-                catch (SchedulerException e) 
-                {
-                    try
-                    {
-                        log.error("Failed to submit job " + getJob().getUuid() + " on " + getJob().getSystem() + 
-                                " due to scheduler exception.", e);
-                        this.job = getJobManager().updateStatus(getJob(), getJob().getStatus(), "Attempt "
-                            + attempts + " failed to submit job due to scheduler exception. " + e.getMessage());
-                    }
-                    catch (Exception e1) {
-                        log.error("Failed to update job " + getJob().getUuid() + " status to " + getJob().getStatus(), e1);
-                    }
-                } 
-                catch (Exception e) 
+                catch (Throwable e)
                 {   
-                    if (e.getCause() instanceof UnresolvableObjectException || 
+                    if (e.getCause() instanceof UnresolvableObjectException ||
                             e.getCause() instanceof ObjectNotFoundException) {
-                        log.error("Race condition was just avoided for job " + job.getUuid(), e);
-                        break;
+                        log.error("Race condition was just avoided for job " + getJob().getUuid(), e);
+
                     }
                     else if (attempts >= Settings.MAX_SUBMISSION_RETRIES ) 
                     {
-                        try
-                        {
-                            log.error("Failed to submit job " + job.getUuid() + 
-                                " after " + attempts + " attempts.", e);
-                            this.job = getJobManager().updateStatus(job, job.getStatus(), "Attempt "
-                                    + attempts + " failed to submit job. " + e.getCause().getMessage());
-                        }
-                        catch (Exception e1) {
-                            log.error("Failed to update job " + job.getUuid() + " status to " + job.getStatus(), e1);
-                        }
-                    
-                        try 
-                        {
-                            if (job.isArchived()) {
-                                this.job = getJobManager().deleteStagedData(job);
+                        log.error("Failed to submit job " + getJob().getUuid() +
+                            " after " + attempts + " attempts.", e);
+                        updateJobStatus(getJob().getStatus(), "Attempt "
+                                + attempts + " failed to submit job. " + e.getMessage());
+
+                        try {
+                            if (getJob().isArchived()) {
+                                setJob(getJobManager().deleteStagedData(job));
                             }
-                        } 
-                        catch (Exception e1)
-                        {
-                            try
-                            {
-                                log.error("Failed to remove remote work directory for job " + job.getUuid(), e1);
-                                this.job = getJobManager().updateStatus(job, job.getStatus(),
+                        } catch (Exception e1) {
+                            log.error("Failed to remove remote work directory for job " + getJob().getUuid(), e1);
+                            updateJobStatus(getJob().getStatus(),
                                     "Failed to remove remote work directory.");
-                            }
-                            catch (Exception e2) {
-                                log.error("Failed to update job " + job.getUuid() + " status to " + job.getStatus(), e2);
-                            }
                         }
                         
-                        try
-                        {
-                            log.error("Unable to submit job " + job.getUuid() + 
-                                    " after " + attempts + " attempts. Job cancelled.");
-                            this.job = getJobManager().updateStatus(job, JobStatusType.FAILED,
-                                    "Unable to submit job after " + attempts + " attempts. Job cancelled.");
-                        }
-                        catch (Exception e1) {
-                            log.error("Failed to update job " + job.getUuid() + " status to FAILED", e1);
-                        }
-                        
+                        log.error("Unable to submit job " + getJob().getUuid() +
+                                " after " + attempts + " attempts. Job cancelled.");
+                        updateJobStatus(JobStatusType.FAILED,
+                                "Unable to submit job after " + attempts + " attempts. Job cancelled.");
                         break;
                     } 
                     else 
                     {
                         try 
                         {
-                            String msg = "Attempt " + attempts + " failed to submit job. " + e.getCause().getMessage();
+                            String msg = "Attempt " + attempts + " failed to submit job. " + e.getMessage();
                             log.info(msg, e);
-                            this.job = getJobManager().updateStatus(job, job.getStatus(), msg);
+                            updateJobStatus(getJob().getStatus(), msg);
                         }
                         catch (Exception e1) {
-                            log.error("Failed to update job " + job.getUuid() + " status to " + job.getStatus(), e1);
+                            log.error("Failed to update job " + getJob().getUuid() + " status to " + getJob().getStatus(), e1);
                         }
                     }
                 }
             }
         }
-        finally 
+        finally
         {
             // clean up the job directory now that we're either done or failed
             if (getJobLauncher() != null) {

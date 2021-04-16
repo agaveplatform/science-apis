@@ -23,11 +23,11 @@ public class TestDataHelper {
 	
 	public static final String NOTIFICATION_CREATOR = "testuser";
 	public static final String NOTIFICATION_STRANGER = "bob";
-	public static final String TEST_EMAIL_NOTIFICATION = "src/test/resources/notifications/email_notif.json";
-	public static final String TEST_WEBHOOK_NOTIFICATION = "src/test/resources/notifications/webhook_notif.json";
-	public static final String TEST_MULTIPLE_EMAIL_NOTIFICATION = "src/test/resources/notifications/email_multi_notif.json";
-	public static final String TEST_MULTIPLE_WEBHOOK_NOTIFICATION = "src/test/resources/notifications/webhook_multi_notif.json";
-	public static final String TEST_REALTIME_NOTIFICATION = "src/test/resources/notifications/realtime_notif.json";
+	public static final String TEST_EMAIL_NOTIFICATION = "target/test-classes/notifications/email_notif.json";
+	public static final String TEST_WEBHOOK_NOTIFICATION = "target/test-classes/notifications/webhook_notif.json";
+	public static final String TEST_MULTIPLE_EMAIL_NOTIFICATION = "target/test-classes/notifications/email_multi_notif.json";
+	public static final String TEST_MULTIPLE_WEBHOOK_NOTIFICATION = "target/test-classes/notifications/webhook_multi_notif.json";
+	public static final String TEST_REALTIME_NOTIFICATION = "target/test-classes/notifications/realtime_notif.json";
 
 	public static TestDataHelper testDataHelper;
 

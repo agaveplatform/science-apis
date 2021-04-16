@@ -3,16 +3,18 @@
  */
 package org.iplantc.service.systems.dao;
 
-import java.util.List;
-
+import org.hibernate.CacheMode;
 import org.hibernate.HibernateException;
 import org.hibernate.ObjectNotFoundException;
 import org.hibernate.Session;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.systems.exceptions.RolePersistenceException;
+import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.SystemRole;
 import org.iplantc.service.systems.util.ServiceUtils;
+
+import java.util.List;
 
 /**
  * @author dooley
@@ -21,7 +23,7 @@ import org.iplantc.service.systems.util.ServiceUtils;
 public class SystemRoleDao 
 {
 	/**
-	 * Returns all roles for the given system, {@link Settings.DEFAULT_PAGE_SIZE} 
+	 * Returns all roles for the given system, {@link Settings#DEFAULT_PAGE_SIZE}
 	 * results at a time, starting at result 0.
 	 * @param remoteSystemId
 	 * @return
@@ -34,8 +36,8 @@ public class SystemRoleDao
 	}
 	
 	/**
-	 * Returns {@code limit} {@link SystemRoles} for the given {@code remoteSystemId}. 
-	 * At most {@link Settings.MAX_PAGE_SIZE} results will be returned regardless of 
+	 * Returns {@code limit} {@link SystemRole} for the given {@code remoteSystemId}.
+	 * At most {@link Settings#MAX_PAGE_SIZE} results will be returned regardless of
 	 * {@code limit}. 
 	 * 
 	 * @param remoteSystemId
@@ -69,6 +71,8 @@ public class SystemRoleDao
 			String hql = "from SystemRole where remoteSystem.id = :systemid order by username asc";
 			List<SystemRole> permissions = session.createQuery(hql)
 					.setLong("systemid", remoteSystemId)
+					.setCacheable(false)
+					.setCacheMode(CacheMode.IGNORE)
 					.setFirstResult(offset)
 					.setMaxResults(limit)
 					.list();
@@ -93,7 +97,7 @@ public class SystemRoleDao
 	}
 	
 	/**
-	 * Returns {@link SystemRoles} for the given {@code systemId}, {@link Settings.DEFAULT_PAGE_SIZE} 
+	 * Returns {@link SystemRole} for the given {@code systemId}, {@link Settings#DEFAULT_PAGE_SIZE}
 	 * results at a time, starting at result 0.
 	 * @param systemId
 	 * @return
@@ -106,8 +110,8 @@ public class SystemRoleDao
 	}
 
 	/**
-	 * Returns {@code limit} {@link SystemRoles} for the given {@code systemId}. 
-	 * At most {@link Settings.MAX_PAGE_SIZE} results will be returned regardless of 
+	 * Returns {@code limit} {@link SystemRole} for the given {@code systemId}.
+	 * At most {@link Settings#MAX_PAGE_SIZE} results will be returned regardless of
 	 * {@code limit}. 
 	 * 
 	 * @param systemId
@@ -140,6 +144,8 @@ public class SystemRoleDao
 			String hql = "from SystemRole where remoteSystem.systemId = :systemid order by username asc";
 			List<SystemRole> permissions = session.createQuery(hql)
 					.setString("systemid", systemId)
+					.setCacheable(false)
+					.setCacheMode(CacheMode.IGNORE)
 					.setFirstResult(offset)
 					.setMaxResults(limit)
 					.list();
@@ -165,7 +171,7 @@ public class SystemRoleDao
 
 	/**
 	 * Returns any {@link SystemRole} assigned to a particular user on the
-	 * given {@link RemoteSystem#getSystemId}
+	 * given {@link RemoteSystem#getSystemId()}
 	 * @param username the name of the user for whom to retrieve the permissions
 	 * @param systemId the {@link RemoteSystem#getSystemId()} of a system
 	 * @return
@@ -187,6 +193,8 @@ public class SystemRoleDao
 			SystemRole permission = (SystemRole)session.createQuery(hql)
 					.setString("username", username)
 					.setString("systemid", systemId)
+					.setCacheable(false)
+					.setCacheMode(CacheMode.IGNORE)
 					.setMaxResults(1)
 					.uniqueResult();
 
@@ -276,7 +284,7 @@ public class SystemRoleDao
 
 	
 	/**
-	 * Removes all {@link SystemRole} for a given {@link RemoteSytem} as a single sql update.
+	 * Removes all {@link SystemRole} for a given {@link RemoteSystem} as a single sql update.
 	 * @param remoteSystemId
 	 * @throws RolePersistenceException
 	 */
@@ -289,8 +297,8 @@ public class SystemRoleDao
 			HibernateUtil.beginTransaction();
 			Session session = HibernateUtil.getSession();
 			session.clear();
-			String sql = "DELETE systemroles WHERE remote_system_id = :systemid";
-			session.createSQLQuery(sql)
+			String hql = "DELETE SystemRole r WHERE r.remote_system.id = :systemid";
+			session.createQuery(hql)
 					.setLong("systemid", remoteSystemId)
 					.executeUpdate();
 		            

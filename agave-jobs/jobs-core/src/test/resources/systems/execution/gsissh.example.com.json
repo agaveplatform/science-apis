@@ -17,35 +17,44 @@
     }
   ],
   "login": {
-    "host": "gridftp",
-    "port": 2222,
+    "host": "${gridftp.host}",
+    "port": ${gridftp.port},
     "protocol": "GSISSH",
     "auth": {
       "username": "testuser",
       "password": "testuser",
       "credential": null,
       "type": "X509",
+      "caCerts": null,
       "server": {
         "id": "docker.example.com",
         "name": "Agave Dev myproxy Docker container",
-        "endpoint": "docker.example.com",
-        "port": 7514,
+        "endpoint": "${myproxy.host}",
+        "port": ${myproxy.port},
         "protocol": "MYPROXY"
       }
     }
   },
   "storage": {
-    "host": "gridftp",
-    "port": 2022,
-    "protocol": "SFTP",
-    "homeDir": "/home/testuser",
+    "host": "${gridftp.host}",
+    "port": ${gsissh.port},
+    "protocol": "GRIDFTP",
     "rootDir": "/",
+    "homeDir": "/home/testuser",
     "publicAppsDir": "/tmp",
     "auth": {
       "username": "testuser",
       "password": "testuser",
       "credential": null,
-      "type": "PASSWORD"
+      "type": "X509",
+      "caCerts": null,
+      "server": {
+        "id": "myproxy",
+        "name": "Agave Dev MyProxyServer",
+        "endpoint": "${myproxy.host}",
+        "port": ${myproxy.port},
+        "protocol": "MYPROXY"
+      }
     }
   },
   "scheduler": "FORK",

@@ -2,33 +2,20 @@ package org.iplantc.service.apps.uuid;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.hibernate.Session;
 import org.iplantc.service.apps.dao.AbstractDaoTest;
 import org.iplantc.service.apps.dao.SoftwareEventDao;
-import org.iplantc.service.apps.model.JSONTestDataUtil;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareEvent;
 import org.iplantc.service.apps.model.enumerations.SoftwareEventType;
 import org.iplantc.service.common.exceptions.UUIDException;
-import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AbstractUUIDTest;
 import org.iplantc.service.common.uuid.UUIDEntityLookup;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.systems.dao.SystemDao;
-import org.iplantc.service.systems.exceptions.SystemArgumentException;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.util.UUID;
-
-import static org.iplantc.service.apps.model.JSONTestDataUtil.TEST_EXECUTION_SYSTEM_FILE;
 
 @Test(groups={"integration"})
 public class SoftwareEventUUIDEntityLookupTest extends AbstractDaoTest implements AbstractUUIDTest<SoftwareEvent> {

@@ -1,7 +1,5 @@
 package org.iplantc.service.common.discovery;
 
-import org.codehaus.plexus.util.StringUtils;
-
 public interface ServiceCapability
 {
 	/**

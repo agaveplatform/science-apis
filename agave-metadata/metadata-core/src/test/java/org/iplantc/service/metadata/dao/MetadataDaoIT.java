@@ -311,6 +311,10 @@ public class MetadataDaoIT extends AbstractMetadataDaoIT {
                 fail("All permissions that exist in the original MetadataItem should be found since it was not included in the document for updating.");
         }
 
+        List<Document> allMatchingDocuments = dao.filterFind(and(eq("uuid", addedItem.getUuid()), eq("tenantId", addedItem.getTenantId())), new Document());
+        assertNotNull(allMatchingDocuments, "Updated metadata item should be returned in query by tenant and uuid");
+        assertEquals(allMatchingDocuments.size(), 1, "Updated metadata item should be only result in query by tenant and uuid.");
+
         MetadataItem updatedItem = dao.findSingleMetadataItem(and(eq("uuid", addedItem.getUuid()), eq("tenantId", addedItem.getTenantId())));
         assertEquals(updatedItem.getOwner(), addedItem.getOwner(),
                 "Retrieved MetadataItem owner should be the same as original MetadataItem");

@@ -14,16 +14,6 @@
  */
 package org.iplantc.service.common.auth;
 
-import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.security.Provider;
-import java.util.Iterator;
-import java.util.Set;
-
-import javax.security.auth.Subject;
-
 import org.apache.log4j.Logger;
 import org.globus.gsi.CredentialException;
 import org.globus.gsi.gssapi.GSSConstants;
@@ -32,11 +22,16 @@ import org.globus.gsi.gssapi.GlobusGSSName;
 import org.globus.gsi.gssapi.jaas.JaasSubject;
 import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
-import org.ietf.jgss.GSSContext;
-import org.ietf.jgss.GSSCredential;
-import org.ietf.jgss.GSSException;
-import org.ietf.jgss.GSSName;
-import org.ietf.jgss.Oid;
+import org.ietf.jgss.*;
+
+import javax.security.auth.Subject;
+import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.Provider;
+import java.util.Iterator;
+import java.util.Set;
 
 /**
  * An implementation of <code>GlobusGSSManager</code>.

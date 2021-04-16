@@ -1,0 +1,78 @@
+##############################################################
+#  Core Services Persistence Stack
+#############################################################
+version: '2'
+
+services:
+  ##############################################################
+  # MySQL 5.7 / MariaDB 10.3
+  ##############################################################
+  mysql:
+    image: agave-mariadb:2.2.27
+    container_name: mysql
+    environment:
+      MARIADB_ROOT_PASSWORD: changeit
+      MARIADB_DATABASE: agavecore
+      MARIADB_USER: agaveuser
+      MARIADB_PASSWORD: password
+    ports:
+      - 3306
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.mysql.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.mysql.entrypoints=mysql"
+      - "traefik.tcp.routers.mysql.service=mysql-svc"
+      - "traefik.tcp.services.mysql-svc.loadbalancer.server.port=3306"
+    restart: on-failure
+    cpus: 0.5
+    cpu_shares: 1024
+    mem_limit: 512M
+    mem_reservation: 256M
+
+
+  ##############################################################
+  # MongoDB 4.2.8
+  ##############################################################
+  mongodb:
+    image: agaveplatform/mongodb:4.2.8
+    container_name: mongodb
+    environment:
+      - MONGODB_ADMIN_PASS=changeit
+      - MONGODB_PASSWORD=password
+      - MONGODB_USERNAME=agaveuser
+      - MONGODB_DATABASE=api
+      - JOURNALING=no
+    ports:
+      - 27017
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.mongodb.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.mongodb.entrypoints=mongodb"
+      - "traefik.tcp.routers.mongodb.service=mongodb-svc"
+      - "traefik.tcp.services.mongodb-svc.loadbalancer.server.port=27017"
+    restart: on-failure
+    cpus: 0.5
+    cpu_shares: 512
+    mem_limit: 512M
+    mem_reservation: 256M
+
+  ##############################################################
+  # Beanstalkd
+  ##############################################################
+  beanstalkd:
+    image: agaveplatform/beanstalkd:latest
+    container_name: beanstalkd
+    command: /usr/bin/beanstalkd -b /var/lib/beanstalkd/binlog
+    ports:
+      - 11300
+    labels:
+      - "traefik.enable=true"
+      - "traefik.tcp.routers.beanstalkd.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.beanstalkd.entrypoints=beanstalkd"
+      - "traefik.tcp.routers.beanstalkd.service=beanstalkd-svc"
+      - "traefik.tcp.services.beanstalkd-svc.loadbalancer.server.port=11300"
+    restart: on-failure
+    cpus: 0.2
+    cpu_shares: 256
+    mem_limit: 512M
+    mem_reservation: 128M

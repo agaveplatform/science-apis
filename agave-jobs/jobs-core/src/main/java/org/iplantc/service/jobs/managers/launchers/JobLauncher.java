@@ -1,24 +1,21 @@
 package org.iplantc.service.jobs.managers.launchers;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import org.iplantc.service.apps.model.Software;
+import org.iplantc.service.apps.model.SoftwareInput;
+import org.iplantc.service.apps.model.SoftwareParameter;
+import org.iplantc.service.jobs.exceptions.*;
+import org.iplantc.service.jobs.model.Job;
+import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariableType;
+import org.iplantc.service.systems.exceptions.SystemUnavailableException;
+import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.systems.model.ExecutionSystem;
+import org.iplantc.service.transfer.URLCopy;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.channels.ClosedByInterruptException;
-
-import org.iplantc.service.apps.model.Software;
-import org.iplantc.service.apps.model.SoftwareInput;
-import org.iplantc.service.apps.model.SoftwareParameter;
-import org.iplantc.service.jobs.exceptions.JobException;
-import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
-import org.iplantc.service.jobs.exceptions.QuotaViolationException;
-import org.iplantc.service.jobs.exceptions.SchedulerException;
-import org.iplantc.service.jobs.model.Job;
-import org.iplantc.service.jobs.model.enumerations.WrapperTemplateStatusVariableType;
-import org.iplantc.service.systems.exceptions.SystemUnavailableException;
-import org.iplantc.service.systems.model.ExecutionSystem;
-import org.iplantc.service.transfer.URLCopy;
-
-import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * This interface defines the methods required of all job launching
@@ -41,20 +38,22 @@ public interface JobLauncher
     /**
      * Stops the submission task asynchronously.
      * 
-     * @param stopped
+     * @param stopped true if the launcher should be set to stopped, false otherwise
      */
     public void setStopped(boolean stopped);
     
 	/** 
 	 * Performs the tasks required to start a job on a remote execution system.
 	 *  
-	 * @throws JobException
-	 * @throws SchedulerException
-	 * @throws IOException
-	 * @throws QuotaViolationException
-	 * @throws SystemUnavailableException
+	 * @throws IOException when there is an issue parsing or locating the application template and deployment assets.
+	 * @throws JobException when an error occurs interacting with the remote system or updating the job details.
+	 * @throws SchedulerException when the scheduler on the {@link ExecutionSystem} rejects the job.
+	 * @throws SoftwareUnavailableException when the job software is disabled, or deployment assets are missing.
+	 * @throws SystemUnavailableException when one or more dependent systems is unavailable.
+	 * @throws SystemUnknownException when a dependent system (job execution, software deployment, etc) are no longer in the db.
+	 * @
 	 */
-	public void launch() throws JobException, SchedulerException, IOException, SystemUnavailableException;
+	public void launch() throws IOException, JobException, SchedulerException, SoftwareUnavailableException, SystemUnavailableException, SystemUnknownException;
 
 	/**
 	 * Resolves a parameter JSON value or JSON array of values into a serialized string of variables
@@ -71,9 +70,20 @@ public interface JobLauncher
 	 * callbacks, black and whitelist commands, etc. Resulting content is used to create the *.ipcexe file that will be staged
 	 * to the remote system and invoked to start the job.
 	 * @throws JobException
+     * @return
 	 */
-	public File processApplicationTemplate() throws JobException;
-	
+	public String processApplicationWrapperTemplate() throws JobException;
+
+	/**
+	 * Takes the content of the application wrapper and writes it to the remote system via an output stream to avoid
+	 * any platform-specific IO issues found during copy.
+	 *
+	 * @param filePathRelativeToRemoteJobDir the agave relative path where the app wrapper will be written
+	 * @param content the processed application wrapper template to be written
+	 * @throws JobException when unable to connect or write the content.
+	 */
+	public void writeToRemoteJobDir(String filePathRelativeToRemoteJobDir, String content) throws JobException;
+
 	/**
 	 * Resolves a input JSON value or JSON array of values into a serialized string of variables
 	 * adding in the appropriate argument value(s) and applying enquote as needed.

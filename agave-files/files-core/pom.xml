@@ -31,20 +31,40 @@
 		</testResources>
 
 		<plugins>
-			<!-- Starts and stops integration test containers with Docker Compose -->
-			<plugin>
-				<groupId>com.dkanejs.maven.plugins</groupId>
-				<artifactId>docker-compose-maven-plugin</artifactId>
-			</plugin>
-
-			<!-- iRODS containers take a while to startup, so we use a custom await config here
-			     to wait for them to start up completely. -->
 			<plugin>
 				<groupId>org.agaveplatform.ops</groupId>
 				<artifactId>await-maven-plugin</artifactId>
 			</plugin>
-		</plugins>
 
+			<!-- Starts and stops integration test containers with Docker Compose -->
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>${project.artifactId}sleep</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>up</goal>
+						</goals>
+						<configuration>
+							<detachedMode>false</detachedMode>
+							<skip>${skip.post-integration.pause}</skip>
+							<composeFiles>
+								<composeFile>${main.basedir}/compose/third-party/docker-compose-utils.yml</composeFile>
+							</composeFiles>
+							<envVars>
+								<sleepSeconds>${docker-compose-plugin.awaitDuration}</sleepSeconds>
+								<sleepMessage>Pausing for ${docker-compose-plugin.awaitDuration} seconds to allow previous stack to completely tear down...</sleepMessage>
+							</envVars>
+							<services>
+								<service>pause</service>
+							</services>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
 	</build>
 
 	<dependencies>

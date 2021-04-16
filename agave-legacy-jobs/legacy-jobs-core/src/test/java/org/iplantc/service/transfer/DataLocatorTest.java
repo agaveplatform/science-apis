@@ -51,9 +51,9 @@ public class DataLocatorTest
 	public static final String SYSTEM_UNSHARED_USER = "dan";
 	public static final String SYSTEM_INTERNAL_USERNAME = "test_user";
 
-	public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "src/test/resources/systems/execution";
-	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "src/test/resources/systems/storage";
-	public static String SOFTWARE_SYSTEM_TEMPLATE_DIR = "src/test/resources/software";
+	public static String EXECUTION_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/execution";
+	public static String STORAGE_SYSTEM_TEMPLATE_DIR = "target/test-classes/systems/storage";
+	public static String SOFTWARE_SYSTEM_TEMPLATE_DIR = "target/test-classes/software";
 
 	protected JSONTestDataUtil jtd;
 	protected JSONObject jsonTree;
@@ -108,13 +108,13 @@ public class DataLocatorTest
 		// stage data to execution system if it started running
 		if (job.isArchive())
 		{
-			stageData( systemDao.findBySystemId(job.getArchiveSystem()), "src/test/resources/data", job.getArchivePath());
+			stageData( systemDao.findBySystemId(job.getArchiveSystem()), "target/test-classes/data", job.getArchivePath());
 		}
 
 		// stage data to archive system if archived
 		if (!StringUtils.isEmpty(job.getWorkPath()))
 		{
-			stageData(exeSystem, "src/test/resources/data", job.getWorkPath());
+			stageData(exeSystem, "target/test-classes/data", job.getWorkPath());
 		}
 
 		try {
@@ -146,7 +146,7 @@ public class DataLocatorTest
 		RemoteDataClient dataClient = null;
 		try {
 			dataClient = system.getRemoteDataClient();
-			dataClient.put("src/test/resources/data", remotePath);
+			dataClient.put("target/test-classes/data", remotePath);
 		} finally {
 			try { dataClient.disconnect(); } catch (Exception e) {}
 		}

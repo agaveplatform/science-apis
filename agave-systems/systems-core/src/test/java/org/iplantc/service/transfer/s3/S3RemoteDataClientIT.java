@@ -3,20 +3,26 @@
  */
 package org.iplantc.service.transfer.s3;
 
-import java.io.*;
-import java.lang.reflect.Method;
-import java.nio.file.Path;
-
-import org.apache.commons.lang3.ArrayUtils;
-import org.iplantc.service.transfer.*;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.ArrayUtils;
+import org.iplantc.service.transfer.IRemoteDataClientIT;
+import org.iplantc.service.transfer.RemoteDataClientTestUtils;
+import org.iplantc.service.transfer.TransferTestRetryAnalyzer;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.jclouds.blobstore.domain.BlobMetadata;
 import org.jclouds.s3.blobstore.S3BlobStore;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;
-import org.testng.annotations.*;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.Test;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.nio.file.Path;
 
 /**
  * @author dooley

@@ -5,7 +5,7 @@
 ##############################################################
 # MySQL
 ##############################################################
-version: '3.7'
+version: '2'
 
 networks:
   ${project.artifactId}:
@@ -20,20 +20,11 @@ services:
       MARIADB_PASSWORD: ${foundation.db.password}
     labels:
       - "traefik.enable=false"
-    deploy:
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 256M
     networks:
       - ${project.artifactId}
 
   migrate:
     image: agave-migrations:${project.version}
-    #network_mode: host
     environment:
       MYSQL_HOST: mysql
       MYSQL_USER: ${foundation.db.username}

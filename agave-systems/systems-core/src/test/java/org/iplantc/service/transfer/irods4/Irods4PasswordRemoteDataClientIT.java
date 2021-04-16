@@ -8,11 +8,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.UUID;
 
-import org.iplantc.service.transfer.AbstractRemoteDataClientTest;
 import org.iplantc.service.transfer.IRemoteDataClientIT;
 import org.iplantc.service.transfer.RemoteDataClientTestUtils;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.s3.TransferTestRetryAnalyzer;
+import org.iplantc.service.transfer.TransferTestRetryAnalyzer;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.testng.Assert;

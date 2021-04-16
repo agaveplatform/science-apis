@@ -3,14 +3,14 @@ package org.iplantc.service.io.resources;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.AuthenticationStrategy;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.iplantc.service.common.auth.JWTClient;
+import org.iplantc.service.common.dao.TenantDao;
+import org.iplantc.service.common.exceptions.TenantException;
+import org.iplantc.service.common.model.Tenant;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.io.FilesApplication;
-import org.iplantc.service.notification.Settings;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -19,20 +19,16 @@ import org.iplantc.service.transfer.http.HTTP;
 import org.json.JSONException;
 import org.restlet.Component;
 import org.restlet.Server;
-import org.restlet.data.*;
-import org.restlet.engine.header.HeaderUtils;
-import org.restlet.ext.jaxrs.JaxRsApplication;
+import org.restlet.data.MediaType;
+import org.restlet.data.Protocol;
+import org.restlet.data.Reference;
+import org.restlet.ext.json.JsonRepresentation;
 import org.restlet.representation.Representation;
-import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.ClientResource;
-import org.restlet.util.Series;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -50,11 +46,13 @@ public class FileListingResourcelIT extends BaseTestCase {
 	private Component comp = new Component();
 	private NotificationDao dao = new NotificationDao();
 	private Notification referenceNotification;
-	
+	private static final int TEST_PORT = 8983;
+
 	private void initRestletServer() throws Exception
 	{
 		// create Component (as ever for Restlet)
-        Server server = comp.getServers().add(Protocol.HTTP, 8080);
+        Server server = comp.getServers().add(Protocol.HTTP, TEST_PORT);
+		server.getContext().getParameters().add("maxTotalConnections", "512");
 
         // create JAX-RS runtime environment
 		FilesApplication application = new FilesApplication();
@@ -72,15 +70,30 @@ public class FileListingResourcelIT extends BaseTestCase {
 		initSystems();
 	}
 
-//	@AfterClass
-//	public void afterClass() throws Exception
-//	{
-//		for(Notification n: dao.getAll()) {
-//			dao.delete(n);
-//		}
-//		comp.stop();
-//	}
-	
+	/**
+	 * Parses standard response stanza for the actual body and code
+	 *
+	 * @param representation the response from the service
+	 * @param shouldSucceed  true if the service should succed, false, otherwise
+	 * @return the json object in the "result" field of the response.
+	 * @throws IOException if the response could not be read.
+	 */
+	private JsonNode verifyResponse(Representation representation, boolean shouldSucceed) throws IOException {
+		String responseBody = representation.getText();
+
+		Assert.assertNotNull(responseBody, "Null body returned");
+
+		ObjectMapper mapper = new ObjectMapper();
+		JsonNode json = mapper.readTree(responseBody);
+		if (shouldSucceed) {
+			Assert.assertEquals(json.get("status").asText().toLowerCase(), "success", "Error when success should have occurred");
+		} else {
+			Assert.assertEquals(json.get("status").asText().toLowerCase(), "error", "Success when error should have occurred");
+		}
+
+		return json.get("result");
+	}
+
 	private JsonNode verifyResponse(HttpResponse response, boolean shouldSucceed)
 	throws JSONException, IOException 
 	{
@@ -100,40 +113,22 @@ public class FileListingResourcelIT extends BaseTestCase {
 		}
 	}
 
-	public void listRelativePathTest() {
-		RemoteSystem system = new SystemDao().findBySystemId("sftp.example.com");
+	@Test
+	public void listRelativePathTest() throws TenantException {
 
-		String baseUrl = "http://localhost:8080/files/listings/system/" + system.getSystemId() + "/";
-
-
-//		ClientResource resource = new ClientResource(baseUrl);
-//
-//		resource.setReferrerRef("http://test.example.com");
 		JsonNode json = null;
-		try
-		{
-			HTTP http = new HTTP(URI.create(baseUrl));
-			// get naked response for quicker parsing.
-//			resource.setQueryValue("naked", "true");
+		try {
+			final RemoteSystem system = new SystemDao().findBySystemId("sftp.example.com");
+			String testPath = "/listings/system/" + system.getSystemId() + "/";
+			ClientResource resource = getService("http://localhost:" + TEST_PORT + testPath);
+			String externalUrl = "http://localhost:" + TEST_PORT + "/files/v2" + testPath;
+			resource.getRequest().getHeaders().add("X-Forward-For", externalUrl);
 
-			String testJwt = JWTClient.createJwtForTenantUser(SYSTEM_OWNER, "agave.dev", false);
-			HttpResponse response = http.doGet(baseUrl, Map.of("X-JWT-ASSERTION-AGAVE_DEV", testJwt));
-//			Series<Header> headers = (Series<Header>)resource.getRequestAttributes().get(
-//					"org.restlet.http.headers");
-//			if (headers == null) {
-//				headers = new Series<Header>(Header.class);
-//
-//			}
-//			headers.set("X-JWT-ASSERTION-AGAVE_DEV", testJwt);
-//			HeaderUtils.addEntityHeaders(resource.getRequestEntity(), headers);
+			Representation response = resource.get();
 
-//			resource.setAttribute("org.restlet.http.headers", headers);
-//			Representation response = resource.get(MediaType.APPLICATION_ALL_JSON);
-			Assert.assertEquals(response.getStatusLine().getStatusCode(), 200,
-					"Listing home directory by empty path should succeed");
-			Assert.assertNotNull(response, "Expected json notification object, instead received null");
-			Assert.assertEquals(response.getEntity().getContentType().getValue(), MediaType.APPLICATION_JSON.toString(),
-					"Expected json media type returned, instead received " + response.getEntity().getContentType().getValue());
+			Assert.assertNotNull(response, "Expected json array of file item objects, instead received null");
+			Assert.assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON,
+					"Expected json media type returned, instead received " + response.getMediaType().getMainType());
 
 			json = verifyResponse(response, true);
 
@@ -144,14 +139,17 @@ public class FileListingResourcelIT extends BaseTestCase {
 					Path absoluteHomeDir = Paths.get(system.getStorageConfig().getRootDir()).resolve(system.getStorageConfig().getHomeDir());
 					Assert.assertTrue(path.startsWith(absoluteHomeDir.toString()),
 							"Relative path file listing responses should all have a path beginning with teh home directory.");
+					TenantDao tenantDao = new TenantDao();
+					Tenant tenant = tenantDao.findByTenantId("agave.dev");
 
 					String selfLink = jsonNode.get("_links").get("self").get("href").asText();
-					Assert.assertEquals(baseUrl + jsonNode.get("path").asText(), selfLink,
+					Assert.assertEquals(
+							tenant.getBaseUrl() + "files/v2/media/system/" + system.getSystemId() + "/" + jsonNode.get("path").asText(),
+							selfLink,
 							"Response self href should mach base url + path value in response");
 				} catch (Exception e) {
 					Assert.fail("Failed to process response json", e);
 				}
-
 			});
 		}
 		catch (Exception e) {
@@ -359,4 +357,20 @@ public class FileListingResourcelIT extends BaseTestCase {
 //			Assert.fail("Unexpected exception thrown", e);
 //		}
 //	}
+
+	/**
+	 * Creates a client to call the api given by the url. This will reuse the connection
+	 * multiple times rather than starting up a new client every time.
+	 *
+	 * @param url the url to point the client towards
+	 * @return an initialized API client
+	 */
+	private ClientResource getService(String url) throws TenantException {
+		String jwt = JWTClient.createJwtForTenantUser(SYSTEM_OWNER, "agave.dev", false);
+		ClientResource resource = new ClientResource(url);
+		resource.setReferrerRef("http://test.example.com");
+		resource.getRequest().getHeaders().add("X-JWT-ASSERTION-AGAVE_DEV", jwt);
+
+		return resource;
+	}
 }

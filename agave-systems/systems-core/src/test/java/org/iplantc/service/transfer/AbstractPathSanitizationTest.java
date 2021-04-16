@@ -1,29 +1,26 @@
 package org.iplantc.service.transfer;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.RemoteCredentialException;
 import org.iplantc.service.systems.model.StorageSystem;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.s3.S3Jcloud;
-import org.jclouds.blobstore.domain.BlobMetadata;
-import org.jclouds.blobstore.domain.PageSet;
-import org.jclouds.blobstore.domain.StorageMetadata;
-import org.jclouds.blobstore.options.ListContainerOptions;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.annotations.*;
-import org.testng.collections.Sets;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
+import org.testng.annotations.BeforeMethod;
+import org.testng.annotations.DataProvider;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase {
     
@@ -60,14 +57,14 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
         Mockito.when(dao.findBySystemId(Mockito.anyString()))
             .thenReturn(system);
         
-        getClient().authenticate();
-        if (getClient().doesExist("")) {
-            try {
-                getClient().delete("..");
-            } catch (FileNotFoundException ignore) {
-                // ignore if already gone
-            }
-        }
+//        getClient().authenticate();
+//        if (getClient().doesExist("")) {
+//            try {
+//                getClient().delete("..");
+//            } catch (FileNotFoundException ignore) {
+//                // ignore if already gone
+//            }
+//        }
     }
     
     @AfterClass(alwaysRun=true)
@@ -93,9 +90,30 @@ public abstract class AbstractPathSanitizationTest extends BaseTransferTestCase 
         }
     }
 
-    @BeforeMethod
-    protected void beforeTest() throws IOException, RemoteDataException {
-        getClient().mkdirs("");
+    @BeforeMethod(alwaysRun=true)
+    protected void beforeMethod(Method m) throws Exception
+    {
+        String resolvedHomeDir = "";
+        try {
+            // auth client and ensure test directory is present
+            getClient().authenticate();
+        } catch (RemoteDataException e) {
+            log.error(e.getMessage());
+        }
+
+        try {
+            resolvedHomeDir = getClient().resolvePath("");
+
+            if (!getClient().mkdirs("")) {
+                if (!getClient().isDirectory("")) {
+                    Assert.fail("System home directory " + resolvedHomeDir + " exists, but is not a directory.");
+                }
+            }
+        } catch (IOException | RemoteDataException | AssertionError e) {
+            throw e;
+        } catch (Exception e) {
+            Assert.fail("Failed to create home directory " + resolvedHomeDir + " before test method.", e);
+        }
     }
     
     /**

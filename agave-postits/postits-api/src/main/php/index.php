@@ -376,23 +376,19 @@ function forward_postit_request($url, $method = "GET", $username = '', $need_aut
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
-    // downgrading to HTTP 1.0 to avoid chunking response from the relay server
-//    curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, FALSE);
-//     curl_setopt($ch, CURLOPT_HEADER, TRUE);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
-//    curl_setopt($ch, CURLOPT_FORBID_REUSE, TRUE);
     $referring_url = resolve_tenant_url($config['iplant.foundation.services']['postit'], $tenant_id) . $_GET['postit_key'];
     curl_setopt($ch, CURLOPT_REFERER, $referring_url);
-//    curl_setopt($ch, CURLOPT_SSLVERSION, 3);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-    if (!$config['debug']) {
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 1);
-    }
+	curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
     curl_setopt($ch, CURLOPT_HEADERFUNCTION, "write_relay_header_content"); // handle received headers
     curl_setopt($ch, CURLOPT_WRITEFUNCTION, 'write_relay_content'); // callad every CURLOPT_BUFFERSIZE
+//     curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0); // downgrading to HTTP 1.0 to avoid chunking response from the relay server
+//     curl_setopt($ch, CURLOPT_HEADER, TRUE);
+//     curl_setopt($ch, CURLOPT_FORBID_REUSE, TRUE);
+//     curl_setopt($ch, CURLOPT_SSLVERSION, 3);
 
-//     curl_setopt($ch, CURLOPT_HEADER, 0);
     if ($config['debug']) error_log("auth [$need_auth] -> $username");
 
 
@@ -405,38 +401,38 @@ function forward_postit_request($url, $method = "GET", $username = '', $need_aut
 
         // forward the file in a multipart form upload if necessary
 
-				if (!empty($_FILES['fileToUpload'])) {
+		if (!empty($_FILES['fileToUpload'])) {
 
-						// check that they didn't try to push too much data through the service.
-						if (empty($_POST) && $_SERVER['CONTENT_LENGTH'] > 0) {
-								format_error_response('The server was unable to handle that much POST data (' . $_SERVER['CONTENT_LENGTH'] . ' bytes) due to its current configuration', ERROR_500);
-						} else {
-								//curl_setopt( $ch, CURLOPT_UPLOAD, 1);
-								//curl_setopt( $ch, CURLOPT_INFILESIZE, filesize($_FILES['fileToUpload']['tmp_name']));
-								error_log("post -> $url -> file ->" . $_FILES['fileToUpload']['tmp_name']);
+			// check that they didn't try to push too much data through the service.
+			if (empty($_POST) && $_SERVER['CONTENT_LENGTH'] > 0) {
+					format_error_response('The server was unable to handle that much POST data (' . $_SERVER['CONTENT_LENGTH'] . ' bytes) due to its current configuration', ERROR_500);
+			} else {
+					//curl_setopt( $ch, CURLOPT_UPLOAD, 1);
+					//curl_setopt( $ch, CURLOPT_INFILESIZE, filesize($_FILES['fileToUpload']['tmp_name']));
+					error_log("post -> $url -> file ->" . $_FILES['fileToUpload']['tmp_name']);
 
-								$fileinfo = pathinfo($_FILES['fileToUpload']['tmp_name']);
+					$fileinfo = pathinfo($_FILES['fileToUpload']['tmp_name']);
 
-								$_POST["fileToUpload"] = "@" . $fileinfo['basename'];
-								// change directory to the temp path so the filename won't
-								chdir($fileinfo['dirname']);
-						}
-						curl_setopt($ch, CURLOPT_POSTFIELDS, $_POST);
-				}
-				else {
+					$_POST["fileToUpload"] = "@" . $fileinfo['basename'];
+					// change directory to the temp path so the filename won't
+					chdir($fileinfo['dirname']);
+			}
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $_POST);
+		}
+		else {
 
-						$headers[] = 'Content-Type: '.$req_headers['Content-Type'];
-						if (strpos($req_headers['Content-Type'], 'application/json') !== FALSE ||
-								strpos($req_headers['Content-Type'], 'application/x-www-form-urlencoded') !== FALSE) {
-								$post_data = file_get_contents('php://input');
-								curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-						}
-						else {
-								$post_data = serialize_form_data($_POST);
-								curl_setopt($ch, CURLOPT_POSTFIELDS, $_POST);
-						}
-						if ($config['debug']) error_log("post -> $url -> $post_data");
-				}
+			$headers[] = 'Content-Type: '.$req_headers['Content-Type'];
+			if (strpos($req_headers['Content-Type'], 'application/json') !== FALSE ||
+					strpos($req_headers['Content-Type'], 'application/x-www-form-urlencoded') !== FALSE) {
+					$post_data = file_get_contents('php://input');
+					curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
+			}
+			else {
+					$post_data = serialize_form_data($_POST);
+					curl_setopt($ch, CURLOPT_POSTFIELDS, $_POST);
+			}
+			if ($config['debug']) error_log("post -> $url -> $post_data");
+		}
     } else if ($method == 'PUT') {
         $headers[] = 'Content-Type: '.$req_headers['Content-Type'];
 				if (strpos($req_headers['Content-Type'], 'application/json') !== FALSE ||
@@ -454,41 +450,18 @@ function forward_postit_request($url, $method = "GET", $username = '', $need_aut
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
 
         // try to guess the mimetype
-       $url_path = parse_url($url, PHP_URL_PATH);
-       $path_parts = pathinfo($url_path);
-       $urlquery = parse_url($url, PHP_URL_QUERY);
+        $url_path = parse_url($url, PHP_URL_PATH);
+        $path_parts = pathinfo($url_path);
+        $urlquery = parse_url($url, PHP_URL_QUERY);
 
-       parse_str($urlquery, $query_vars);
-//        if ($config['debug']) error_log("target url query parameters: \n" . print_r($query_vars, 1));
+        parse_str($urlquery, $query_vars);
 
-//        // look up the default mimetype based on url path
-//        if (!empty($path_parts['extension'])) {
-//            $mimetype = system_extension_mime_type($path_parts['basename']);
-//        }
-
-        // check to see whether this is a forced download and we need to override the mimetype
-//        $forced_download = false;
-//        if (empty($query_vars['force'])) {
-//            if ($config['debug']) error_log("Forced parameter is present in target url: " . $query_vars['force']);
-//            if (to_bool($query_vars['force'])) {
-//                if ($config['debug']) error_log("Forced parameter in target url evaluated to a truthy value");
-//                $forced_download = true;
-//
-//                // the postit creator is forcing download, so use application/octet-stream to ensure
-//                // happy browser experience
-//                $mimetype = "application/octect-stream";
-//            }
-//        } else
         if (empty($query_vars['force']) && !empty($_GET['force'])) {
             if ($config['debug']) error_log("Forced parameter is present in postit redemption query string: " . $_GET['force']);
             if (to_bool($_GET['force'])) {
                 if ($config['debug']) error_log("Forced parameter in postit query string evaluated to a truthy value");
                 $forced_download = true;
 
-                // the postit requestor is forcing download, so use application/octet-stream to ensure
-                // happy browser experience
-//                 $mimetype = "application/octect-stream";
-//                 header("Content-Type: $mimetype");
 				if (empty($query_vars)) {
 					if (strpos($url, '?') === FALSE) {
 						$url .= "?force=true";
@@ -502,39 +475,6 @@ function forward_postit_request($url, $method = "GET", $username = '', $need_aut
 
             curl_setopt($ch, CURLOPT_URL, $url );
         }
-
-        // in the event of a forced download reqeust, we set the filename
-//        if ($forced_download ||
-//            strpos($url_path, '/files/v2/media') !== FALSE ||
-//            strpos($url_path, '/v2/files/media') !== FALSE
-//        ) {
-//            if ($config['debug']) error_log("Content disposition value set");
-//            header("Content-Disposition: attachment; filename=" . $path_parts['basename']);
-//        }
-
-
-        // if we still don't have a mimetype from the url path or a forced download,
-        // then we default to application/octet-stream on all file media, jobs output media, and
-        // sync transform requests
-//        if (empty($mimetype)) {
-//            if (strpos($url_path, '/files/v2/media') !== FALSE ||
-//                strpos($url_path, '/v2/files/media') !== FALSE ||
-//                (strpos($url_path, '/v2/jobs/') !== FALSE && strpos($url_path, '/outputs/media') !== FALSE) ||
-//                (strpos($url_path, '/jobs/') !== FALSE && strpos($url_path, '/outputs/media') !== FALSE) ||
-//                (strpos($url_path, '/v2/transforms/') !== FALSE && strpos($url_path, '/sync/') !== FALSE) ||
-//                (strpos($url_path, '/transforms/') !== FALSE && strpos($url_path, '/sync/') !== FALSE)
-//            ) {
-////                $mimetype = "application/octect-stream";
-//            }
-//            // otherwise we default to application/json
-//            else {
-//                $mimetype = "application/json";
-//            }
-//        }
-
-//        if ($config['debug']) error_log($url_path . ' :: ' . $path_parts['basename'] . ' => ' . $mimetype);
-//        header("Content-Type: $mimetype");
-
     }
 
     // authenticate if necessary
@@ -566,9 +506,6 @@ function forward_postit_request($url, $method = "GET", $username = '', $need_aut
         );
         $jwt_body = base64_encode(json_encode($jwt_claims));
 
-//        $bearer_token =
-//        $oauth_header = 'Authorization: Bearer ' . $bearer_token;
-
         $header_field = 'x-jwt-assertion-' . str_replace('.', '-', $tenant_id);
         $header_value = sprintf("%s.%s.%s", $jwt_prefix, $jwt_body, $jwt_suffix);
         if ($config['debug']) error_log($header_field . ": " . $header_value);
@@ -577,21 +514,11 @@ function forward_postit_request($url, $method = "GET", $username = '', $need_aut
 
     // forward range headers
     $range = $_SERVER['HTTP_CONTENT_RANGE'];
-//     error_log(print_r($_SERVER, 1));
     if (isset($range)) {
 
         error_log("Content-Range header detected on request. Forwarding in call to remote service: 'Content-Range: " . $range);
-//         error_log(print_r($_SERVER, 1));
         $headers[] = "Range: bytes=" . $range;
     }
-
-//    if (!in_array('HTTP_UPGRADE_INSECURE_REQUESTS: 1', $headers)) {
-//        $headers[] = 'HTTP_UPGRADE_INSECURE_REQUESTS: 1';
-//    }
-//
-//    if (array_key_exists('HTTP_COOKIE', $headers)) {
-//        unset($headers['HTTP_COOKIE']);
-//    }
 
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     if ($config['debug']) error_log(json_encode($headers, JSON_PRETTY_PRINT));

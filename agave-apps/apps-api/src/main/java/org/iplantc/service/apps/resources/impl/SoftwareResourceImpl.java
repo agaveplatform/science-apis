@@ -1,23 +1,6 @@
 package org.iplantc.service.apps.resources.impl;
 
-import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.CLONE;
-import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.DISABLE;
-import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.ENABLE;
-import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.ERASE;
-import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.PUBLISH;
-
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.StatusType;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -46,7 +29,11 @@ import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import static org.iplantc.service.apps.model.enumerations.SoftwareActionType.*;
 
 @Path("/{softwareId}")
 @Produces("application/json")

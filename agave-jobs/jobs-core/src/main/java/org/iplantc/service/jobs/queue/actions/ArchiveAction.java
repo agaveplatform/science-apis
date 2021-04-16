@@ -23,8 +23,10 @@ import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.URLCopy;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
 import org.iplantc.service.transfer.exceptions.TransferException;
+import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
+import org.joda.time.DateTime;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -47,17 +49,6 @@ public class ArchiveAction extends AbstractWorkerAction {
         super(job);
     }
 
-    /**
-     * Basic getter for job manager instance. Useful for testing
-     * @return JobManager instance
-     */
-    protected JobManager getJobManager() {
-        if (jobManager == null) {
-            jobManager = new JobManager();
-        }
-
-        return jobManager;
-    }
 
     /**
      * This method attempts to archive a job's output by retrieving the
@@ -260,9 +251,7 @@ public class ArchiveAction extends AbstractWorkerAction {
                 
                 TransferTaskDao.persist(rootTask);
             }
-            catch (Exception ignored) {
-                
-            }
+            catch (Exception ignored) {}
             
             // if it all worked as expected, then delete the job work directory
             try 
@@ -279,10 +268,7 @@ public class ArchiveAction extends AbstractWorkerAction {
                     + getJob().getUuid(), e);
             }
         }
-        catch (StaleObjectStateException e) {
-            throw e;
-        }
-        catch (SystemUnavailableException | ClosedByInterruptException | SystemUnknownException | JobException e) 
+        catch (StaleObjectStateException | SystemUnavailableException | ClosedByInterruptException | SystemUnknownException | JobException e)
         {
             throw e;
         }
@@ -298,7 +284,11 @@ public class ArchiveAction extends AbstractWorkerAction {
                     archiveDataClient.setOwnerPermission(getJob().getOwner(), getJob().getArchivePath(), true);
                 }
             } catch (Exception ignored) {}
-            try { if (archiveDataClient != null) archiveDataClient.disconnect(); } catch (Exception ignored) {}
+            try {
+                if (archiveDataClient != null) {
+                    archiveDataClient.disconnect();
+                }
+            } catch (Exception ignored) {}
             try { executionDataClient.disconnect(); } catch (Exception ignored) {}
         }
     }

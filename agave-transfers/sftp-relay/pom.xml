@@ -15,6 +15,7 @@
 
 	<properties>
 		<force.check.version>false</force.check.version>
+		<main.basedir>${project.basedir}/../../</main.basedir>
 	</properties>
 
 	<build>

@@ -1,14 +1,13 @@
 package org.iplantc.service.apps.util;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.stevesoft.pat.Regex;
 import org.iplantc.service.apps.exceptions.SoftwareException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import com.stevesoft.pat.Regex;
+import java.util.ArrayList;
+import java.util.List;
 
 @Test(groups={"unit"})
 public class RegexValidatorTest

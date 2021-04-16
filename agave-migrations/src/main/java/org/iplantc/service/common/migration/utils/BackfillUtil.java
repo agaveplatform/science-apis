@@ -3,16 +3,12 @@
  */
 package org.iplantc.service.common.migration.utils;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-
-import org.apache.log4j.Logger;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 
-import java.sql.Statement;
+import java.sql.*;
+
+
 
 /**
  * Helper class to backfill various types of domain object fields.
@@ -22,16 +18,14 @@ import java.sql.Statement;
  */
 public class BackfillUtil {
     
-	private static final Logger log = Logger.getLogger(BackfillUtil.class);
-	
-    /**
+	/**
      * Fills the {@code uuid} field of the given table with a valid, unique
      * {@link AgaveUUID} if not already present.
      * 
      * @param connection the current database connectino passed in by Flyway
      * @param tableName the table to udpate
      * @param uuidType the type of UUID to place in the column
-     * @throws SQLException
+     * @throws SQLException when the sql update fails
      */
     public static void backfillAgaveUUID(Connection connection, String tableName, UUIDType uuidType) throws SQLException {
         PreparedStatement updateStmt = connection.prepareStatement("update " + tableName + " set uuid = ? where id = ?");

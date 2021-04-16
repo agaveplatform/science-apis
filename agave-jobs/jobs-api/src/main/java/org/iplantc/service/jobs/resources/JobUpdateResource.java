@@ -3,8 +3,7 @@
  */
 package org.iplantc.service.jobs.resources;
 
-import java.io.FileNotFoundException;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.log4j.Logger;
 import org.hibernate.ObjectNotFoundException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
@@ -14,8 +13,6 @@ import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.jobs.callbacks.JobCallback;
 import org.iplantc.service.jobs.callbacks.JobCallbackManager;
 import org.iplantc.service.jobs.exceptions.JobCallbackException;
-import org.iplantc.service.jobs.exceptions.JobProcessingException;
-import org.iplantc.service.jobs.managers.JobRequestProcessor;
 import org.iplantc.service.jobs.model.Job;
 import org.restlet.Context;
 import org.restlet.data.MediaType;
@@ -26,7 +23,7 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import java.io.FileNotFoundException;
 
 /**
  * Class to handle get and post requests for jobs

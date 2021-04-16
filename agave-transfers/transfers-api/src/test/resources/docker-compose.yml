@@ -1,4 +1,4 @@
-version: '3.7'
+version: '2'
 
 volumes: {}
 #  scratch:
@@ -11,13 +11,12 @@ volumes: {}
 #      driver: default
 #      config:
 #        - subnet: 172.41.0.0/16
-
-networks:
-  services:
-    external: true
+#
+#networks:
+#  services:
+#    external: true
 
 services:
-
   traefik:
     image: traefik:v2.1
     command:
@@ -29,8 +28,8 @@ services:
       - "--entryPoints.web.address=:80"
       - "--entryPoints.websecure.address=:443"
       - "--entryPoints.grpc.address=:50052"
-    networks:
-      - services
+#    networks:
+#      - services
     ports:
       - 8000:80
       - 8443:443
@@ -62,8 +61,8 @@ services:
     image: agaveplatform/sshd:latest
     command: "-p 10022"
     restart: on-failure
-    networks:
-      - services
+#    networks:
+#      - services
     ports:
       - '10022:10022'
 
@@ -73,8 +72,8 @@ services:
    restart: on-failure
    links:
      - sftphidden
-   networks:
-     - services
+#   networks:
+#     - services
    ports:
      - '10033:10033'
 
@@ -82,8 +81,8 @@ services:
     image: agaveplatform/sshd:latest
     command: "-p 10044"
     restart: on-failure
-    networks:
-      - services
+#    networks:
+#      - services
     ports:
       - '10044:10044'
 
@@ -138,8 +137,8 @@ services:
     image: agaveplatform/requestbin:2.0.0
     hostname: requestbin
     restart: on-failure
-    networks:
-      - services
+#    networks:
+#      - services
     ports:
       - '5101:5000'
     labels:
@@ -156,8 +155,8 @@ services:
       image: agaveplatform/httpbin:latest
       hostname: httpbin
       restart: on-failure
-      networks:
-        - services
+#      networks:
+#        - services
       ports:
         - '8200:8000'
       labels:
@@ -173,8 +172,8 @@ services:
     image: agaveplatform/apache-dev:latest
     hostname: docker.example.com
     restart: on-failure
-    networks:
-      - services
+#    networks:
+#      - services
     ports:
       - '10080:80'
       - '10443:443'

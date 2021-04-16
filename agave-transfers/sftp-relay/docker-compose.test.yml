@@ -1,4 +1,7 @@
-version: '3.7'
+version: '3.3'
+
+volumes:
+  scratch:
 
 services:
 
@@ -6,14 +9,17 @@ services:
     image: agaveplatform/sshd:latest
     command: "-p 10022"
     ports:
-      - 10022:10022
+      - 10022
     volumes:
-      - ./scratch:/scratch
+      - scratch:/scratch
+
+  # test container for the
   test:
     image: sftp-relay:develop
-    entrypoint: "make test"
+    entrypoint: "bash"
+    command: "-c 'chown -R 1000:1000 scratch && make test'"
     volumes:
-      - .:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
-      - ./scratch:/scratch
+      - scratch:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/scratch
+      - ./pkg/sftprelay:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftprelay
 
 

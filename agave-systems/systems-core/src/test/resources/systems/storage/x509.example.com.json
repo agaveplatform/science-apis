@@ -13,8 +13,8 @@
     "homeDir": "/home/testuser",
     "rootDir": "/",
     "protocol": "GRIDFTP",
-    "port": 2811,
-    "host": "docker.example.com"
+    "host": "${gridftp.host}",
+    "port": ${gridftp.port},
   },
   "default": false
 }

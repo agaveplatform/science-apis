@@ -171,11 +171,8 @@ public class SubmissionWatchTest extends AbstractJobSubmissionTest
             if (actuallyThrewException != shouldThrowException) e.printStackTrace();
             job = submissionWatch.getJob();
         }
-        finally {
-            
-        }
         
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
         Assert.assertTrue(actuallyThrewException == shouldThrowException, exceptionMsg);
         
         return job;

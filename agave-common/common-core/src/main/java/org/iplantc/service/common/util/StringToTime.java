@@ -1,5 +1,9 @@
 package org.iplantc.service.common.util;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.iplantc.service.common.exceptions.StringToTimeException;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -8,10 +12,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.iplantc.service.common.exceptions.StringToTimeException;
 
 /**
  * A Java implementation of the PHP function strtotime(String, int): accepts various expressions of time

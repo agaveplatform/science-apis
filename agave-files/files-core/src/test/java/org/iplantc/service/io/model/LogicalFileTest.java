@@ -1,8 +1,5 @@
 package org.iplantc.service.io.model;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import org.iplantc.service.io.BaseTestCase;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.StorageConfig;
@@ -13,68 +10,124 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-@Test(groups={"integration"})
+import java.util.UUID;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+@Test(groups={"unit"})
 public class LogicalFileTest extends BaseTestCase {
 
 	@BeforeClass
 	@Override
 	protected void beforeClass() throws Exception {
-		super.beforeClass();
 
-		clearLogicalFiles();
-		initSystems();
 	}
 
 	@AfterClass
 	@Override
 	protected void afterClass() throws Exception {
-		clearLogicalFiles();
-		clearSystems();
+
 	}
 
 	@DataProvider
 	public Object[][] getAgaveRelativePathFromAbsolutePathProvider() {
-		return new Object[][] { 
-			{ "/", "/", "/foo/bar/baz", "/foo/bar/baz" },
-			{ "/", "/foo", "/foo/bar/baz", "/foo/bar/baz" },
-			{ "/", "/foo/bar/baz", "/foo/bar/baz", "/foo/bar/baz" },
+		return new Object[][] {
+//				rootDir			absoluteFileItemPath	expectedAgaveRelativePath
+				{ "/", 			"/", 				"/" },
+				{ "/", 			"/.", 				"/" },
+				{ "/", 			"/./", 				"/" },
+				{ "/", 			"/./.",				"/" },
+
+				{ "/", 			"/..", 				"/" },
+				{ "/", 			"/../", 			"/" },
+				{ "/", 			"/../.", 			"/" },
+				{ "/", 			"/.././", 			"/" },
+				{ "/", 			"/../..", 			"/" },
+				{ "/", 			"/../../", 			"/" },
+
+				{ "/", 			"/foo", 			"/foo" },
+				{ "/", 			"/foo/////", 		"/foo/" },
+				{ "/", 			"/foo/.", 			"/foo/" },
+				{ "/", 			"/foo/./.", 		"/foo/" },
+				{ "/", 			"/foo/..",	 		"/" },
+				{ "/", 			"/foo/../.", 		"/" },
+
+				{ "/", 			"/./foo", 			"/foo" },
+				{ "/", 			"/./foo/.", 		"/foo/" },
+				{ "/", 			"/./foo/./.", 		"/foo/" },
+				{ "/", 			"/./foo/..",	 	"/" },
+				{ "/", 			"/./foo/../.", 		"/" },
+
+				{ "/", 			"/../foo/../.", 	"/" },
+				{ "/", 			"/../foo/..", 		"/" },
+				{ "/", 			"/../foo/../", 		"/" },
+
+				{ "/boo", 		"/boo", 				"/" },
+				{ "/boo", 		"/boo/.", 				"/" },
+				{ "/boo", 		"/boo/./", 				"/" },
+				{ "/boo", 		"/boo/./.",				"/" },
+
+				{ "/boo", 		"/boo/boo/..", 				"/" },
+				{ "/boo", 		"/boo/boo/../", 			"/" },
+				{ "/boo", 		"/boo/boo/../.", 			"/" },
+				{ "/boo", 		"/boo/boo/.././", 			"/" },
+				{ "/boo", 		"/boo/boo/boo/../..", 			"/" },
+				{ "/boo", 		"/boo/boo/boo/../../", 			"/" },
+
+				{ "/boo", 		"/boo/foo", 			"/foo" },
+				{ "/boo", 		"/boo/foo/////", 		"/foo/" },
+				{ "/boo", 		"/boo/foo/.", 			"/foo/" },
+				{ "/boo", 		"/boo/foo/./.", 		"/foo/" },
+				{ "/boo", 		"/boo/foo/..",	 		"/" },
+				{ "/boo", 		"/boo/foo/../.", 		"/" },
+
+				{ "/boo", 		"/boo/./foo", 			"/foo" },
+				{ "/boo", 		"/boo/./foo/.", 		"/foo/" },
+				{ "/boo", 		"/boo/./foo/./.", 		"/foo/" },
+				{ "/boo", 		"/boo/./foo/..",	 	"/" },
+				{ "/boo", 		"/boo/./foo/../.", 		"/" },
+
+				{ "/boo", 		"/boo/boo/../foo/../.", 	"/" },
+				{ "/boo", 		"/boo/boo/../foo/..", 		"/" },
+				{ "/boo", 		"/boo/boo/../foo/../", 		"/" },
 		};
 	}
 
-	@Test(dataProvider = "getAgaveRelativePathFromAbsolutePathProvider", groups={"broken"})
-	public void getAgaveRelativePathFromAbsolutePath(String rootDir,
-			String homeDir, String path, String expectedUrl) {
+	@Test(dataProvider = "getAgaveRelativePathFromAbsolutePathProvider")
+	public void getAgaveRelativePathFromAbsolutePath(String rootDir, String absoluteFileItemPath, String expectedPath) {
 		
 		StorageConfig config = new StorageConfig();
 		config.setRootDir(rootDir);
-		config.setHomeDir(homeDir);
+		config.setHomeDir("/");
 
 		RemoteSystem system = mock(StorageSystem.class);
-		when(system.getSystemId()).thenReturn("lftest.example.com");
+		when(system.getSystemId()).thenReturn(UUID.randomUUID().toString());
 		when(system.getStorageConfig()).thenReturn(config);
 
-		LogicalFile logicalFile = new LogicalFile(SYSTEM_OWNER, system, path);
-		Assert.assertEquals(logicalFile.getPublicLink(), expectedUrl,
-				"Expected URL path does not match expected url path.");
+		LogicalFile logicalFile = new LogicalFile(SYSTEM_OWNER, system, absoluteFileItemPath);
+		String actualPath = logicalFile.getAgaveRelativePathFromAbsolutePath();
+		Assert.assertEquals(actualPath, expectedPath,
+		"Logical file should resolve its remote absolute file path to a path relative to the system rootDir.");
 	}
 
-	@Test(groups={"notReady"})
-	public void getMetadataLink() {
-		throw new RuntimeException("Test not implemented");
-	}
-
-	@Test(groups={"notReady"})
-	public void getOwnerLink() {
-		throw new RuntimeException("Test not implemented");
-	}
-
-	@Test(groups={"notReady"})
-	public void getPublicLink() {
-		throw new RuntimeException("Test not implemented");
-	}
-
-	@Test(groups={"notReady"})
-	public void getSourceUri() {
-		throw new RuntimeException("Test not implemented");
-	}
+//	@Test(groups={"notReady"})
+//	public void getMetadataLink() {
+//		throw new RuntimeException("Test not implemented");
+//	}
+//
+//	@Test(groups={"notReady"})
+//	public void getOwnerLink() {
+//		throw new RuntimeException("Test not implemented");
+//	}
+//
+//	@Test(groups={"notReady"})
+//	public void getPublicLink() {
+//		throw new RuntimeException("Test not implemented");
+//	}
+//
+//	@Test(groups={"notReady"})
+//	public void getSourceUri() {
+//		throw new RuntimeException("Test not implemented");
+//	}
 }

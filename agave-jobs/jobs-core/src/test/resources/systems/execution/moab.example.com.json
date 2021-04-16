@@ -14,11 +14,18 @@
       "maxMemory": "2048GB",
       "customDirectives": "",
       "default": true
+    },
+    {
+      "name": "batch",
+      "maxJobs": 100,
+      "maxMemory": "2048GB",
+      "customDirectives": "",
+      "default": false
     }
   ],
   "login": {
-    "host": "torque",
-    "port": 10144,
+    "host": "${moab.host}",
+    "port": ${moab.port},
     "protocol": "SSH",
     "auth": {
       "username": "testuser",
@@ -27,8 +34,8 @@
     }
   },
   "storage": {
-    "host": "torque",
-    "port": 10144,
+    "host": "${moab.host}",
+    "port": ${moab.data.port},
     "protocol": "SFTP",
     "rootDir": "/",
     "homeDir": "/home/testuser",

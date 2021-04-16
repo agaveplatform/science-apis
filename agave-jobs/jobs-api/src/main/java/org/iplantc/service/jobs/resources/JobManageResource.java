@@ -3,9 +3,6 @@
  */
 package org.iplantc.service.jobs.resources;
 
-import java.util.Hashtable;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.util.ServiceUtils;
@@ -22,15 +19,13 @@ import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.managers.JobPermissionManager;
 import org.iplantc.service.jobs.model.Job;
 import org.restlet.Context;
-import org.restlet.data.Form;
-import org.restlet.data.MediaType;
-import org.restlet.data.Parameter;
-import org.restlet.data.Request;
-import org.restlet.data.Response;
-import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
+
+import java.util.Hashtable;
+import java.util.Map;
 
 /**
  * The JobManageResource is the job management interface for users. Through the

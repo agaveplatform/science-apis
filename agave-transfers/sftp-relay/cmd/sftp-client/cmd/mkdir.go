@@ -22,7 +22,6 @@ import (
 	sftppb "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"google.golang.org/grpc"
 	"os"
 )
 
@@ -38,9 +37,10 @@ command in linux.`,
 		//log.Infof("Mkdir Command =====================================")
 		//log.Infof("remotePath = %s", remotePath)
 
-		conn, err := grpc.Dial(grpcservice, grpc.WithInsecure())
+		conn, err := helper.NewGrpcServiceConn()
 		if err != nil {
-			//log.Fatalf("could not connect: %v", err)
+			fmt.Printf("Unable to establish a connection to service at %s: %v", grpcservice, err.Error())
+			os.Exit(1)
 		}
 		defer conn.Close()
 
@@ -80,7 +80,7 @@ command in linux.`,
 func init() {
 	rootCmd.AddCommand(mkdirCmd)
 
-	mkdirCmd.Flags().BoolVarP(&recursive, "recursive", "p", false, " Create intermediate directories as required.  If this option is not specified, the full path prefix of each operand must already exist.  On the other hand, with this option specified, no error will be reported if a directory given as an operand already exists.")
+	mkdirCmd.Flags().BoolVarP(&recursive, "recursive", "r", false, " Create intermediate directories as required.  If this option is not specified, the full path prefix of each operand must already exist.  On the other hand, with this option specified, no error will be reported if a directory given as an operand already exists.")
 
 	viper.BindPFlag("recursive", mkdirCmd.Flags().Lookup("recursive"))
 }

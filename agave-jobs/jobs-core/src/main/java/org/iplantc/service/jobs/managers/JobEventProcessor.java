@@ -3,8 +3,13 @@
  */
 package org.iplantc.service.jobs.managers;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.apps.dao.SoftwareDao;
 import org.iplantc.service.apps.exceptions.UnknownSoftwareException;
 import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.jobs.exceptions.JobEventProcessingException;
@@ -15,11 +20,6 @@ import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.ExecutionSystem;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Handles processing of all {@link JobEvent}s created in the service.
@@ -75,9 +75,7 @@ public class JobEventProcessor {
             	jsonJob = mapper.createObjectNode();
             }
         }
-
-        // Send the job event itself
-        NotificationManager.process(getEvent().getJob().getUuid(), getEvent().getStatus(), getEvent().getCreatedBy(), jsonJob.toString());
+        processSingleJobEvent(getEvent().getJob().getUuid(), getEvent().getStatus(), getEvent().getCreatedBy(), jsonJob.toString());
 
         // process job related events for systems and apps
         ObjectNode jsonContent = mapper.createObjectNode();
@@ -114,7 +112,12 @@ public class JobEventProcessor {
         	// NotificationManager.process(executionSystem.getQueue(getEvent().getJob().getBatchQueue()).getUuid(), "JOB_COMPLETED", getEvent().getCreatedBy(), jsonJob);
         }        
     }
-    
+
+    protected void processSingleJobEvent(String uuid, String status, String eventOwner, String customData) {
+        // Send the job event itself
+        NotificationManager.process(uuid, status, eventOwner, customData);
+    }
+
     /**
      * Processes a custom user-defined runtime job event by throwing the event onto the 
      * notification queue for the job, but replacing the standard serialized json content 
@@ -124,11 +127,8 @@ public class JobEventProcessor {
     public void processJobRuntimeCallbackEvent(JsonNode customRuntimeJsonBody) {    
     	// Send the job event itself
     	if (customRuntimeJsonBody == null) {
-    		NotificationManager.process(getEvent().getJob().getUuid(), 
-    									getEvent().getStatus(), 
-    									getEvent().getCreatedBy(), 
-    									"{}");
-    	}
+            processSingleJobEvent(getEvent().getJob().getUuid(), getEvent().getStatus(), getEvent().getCreatedBy(), "{}");
+        }
     	// else make sure payload is under 5k so we don't blow out our queue with
     	// user data
     	else if (StringUtils.length(customRuntimeJsonBody.toString()) > 5120) {
@@ -137,11 +137,8 @@ public class JobEventProcessor {
     				"job callback message size of 5k");
 	    }
     	else {
-    		NotificationManager.process(getEvent().getJob().getUuid(), 
-					    				getEvent().getStatus(), 
-					    				getEvent().getCreatedBy(), 
-					    				customRuntimeJsonBody.toString());
-    	}
+            processSingleJobEvent(getEvent().getJob().getUuid(), getEvent().getStatus(), getEvent().getCreatedBy(), customRuntimeJsonBody.toString());
+        }
     }
     
     /**
@@ -167,10 +164,10 @@ public class JobEventProcessor {
             
             jsonContent.set("job", jsonJob);
         	jsonContent.set("system", mapper.readTree(executionSystem.toJSON()));
-        
-    		NotificationManager.process(executionSystem.getUuid(), eventName, getEvent().getCreatedBy(), jsonContent.toString());
-    		
-    		return true;
+
+            processSingleJobEvent(executionSystem.getUuid(), eventName, getEvent().getCreatedBy(), jsonContent.toString());
+
+            return true;
         } 
         catch (JsonProcessingException e) {
         	log.error("Unable to serialize system " + getEvent().getJob().getSystem() 
@@ -181,9 +178,9 @@ public class JobEventProcessor {
         	}
         	
         	jsonContent.set("job", jsonJob);
-        	
-    		NotificationManager.process(executionSystem.getUuid(), eventName, getEvent().getCreatedBy(), jsonContent.toString());
-    		
+
+            processSingleJobEvent(executionSystem.getUuid(), eventName, getEvent().getCreatedBy(), jsonContent.toString());
+
         }
         catch (SystemUnknownException e) {
             log.error("Unable to process " + eventName + " event for system " + getEvent().getJob().getSystem()
@@ -212,15 +209,17 @@ public class JobEventProcessor {
     	ObjectNode jsonContent = mapper.createObjectNode();
         try 
     	{
-        	software = getJobManager().getJobSoftware(getEvent().getJob());
+    	    // use this vs the JobManager#getJobSoftware(String) because we don't care if it's available
+            // we just wnat to serialize it for the message.
+        	software = SoftwareDao.getSoftwareByUniqueName(getEvent().getJob().getSoftwareName());
             jsonContent.set("job", jsonJob);
             if (software == null) {
             	throw new UnknownSoftwareException("No software found for id " + getEvent().getJob().getSoftwareName());
             }
             else {
             	jsonContent.set("software", mapper.readTree(software.toJSON()));
-            	NotificationManager.process(software.getUuid(), eventName, getEvent().getCreatedBy(), jsonContent.toString());
-            	return true;
+                processSingleJobEvent(software.getUuid(), eventName, getEvent().getCreatedBy(), jsonContent.toString());
+                return true;
             }
         } 
         catch (JsonProcessingException e) {
@@ -229,9 +228,9 @@ public class JobEventProcessor {
         	
         	jsonContent.set("job", jsonJob);
         	jsonContent.set("software", mapper.createObjectNode().put("id", getEvent().getJob().getSoftwareName()));
-        	
-        	NotificationManager.process(software.getUuid(), eventName, getEvent().getCreatedBy(), jsonContent.toString());
-    		
+
+            processSingleJobEvent(software.getUuid(), eventName, getEvent().getCreatedBy(), jsonContent.toString());
+
         }
         // software has been deleted
         catch (UnknownSoftwareException e) {

@@ -6,8 +6,8 @@
   "description": "Example storage system accessible via ftp.",
   "site": "example.com",
   "storage": {
-    "host": "ftp",
-    "port": 10021,
+    "host": "${ftp.host}",
+    "port": ${ftp.port},
     "protocol": "FTP",
     "rootDir": "/",
     "homeDir": "/",

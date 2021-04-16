@@ -37,11 +37,6 @@ public class TaskDistributor
             }
         }
 
-        // print distribution
-        for(List<Integer> bucket : buckets) {
-            log.debug(StringUtils.join(bucket, " ") + "\n");
-        }
-        
         return buckets;
     }
 }

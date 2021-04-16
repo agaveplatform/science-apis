@@ -1,25 +1,19 @@
 package org.iplantc.service.common.queue;
 
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.util.Set;
-
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.discovery.ServiceCapability;
 import org.iplantc.service.common.discovery.ServiceCapabilityConfiguration;
 import org.iplantc.service.common.messaging.MessageQueueListener;
 import org.joda.time.DateTime;
-import org.quartz.InterruptableJob;
-import org.quartz.Job;
-import org.quartz.JobDetail;
-import org.quartz.JobExecutionContext;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.Trigger;
+import org.quartz.*;
 import org.quartz.spi.SchedulerPlugin;
+
+import java.util.Set;
+
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.SimpleScheduleBuilder.simpleSchedule;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * @author dooley
@@ -38,11 +32,9 @@ public abstract class GenericSchedulingPlugin implements SchedulerPlugin
 	public GenericSchedulingPlugin() {}
 
 	/**
-     * <p>
-     * Called during creation of the <code>Scheduler</code> in order to give
-     * the <code>SchedulerPlugin</code> a chance to initialize.
-     * </p>
-     * 
+     * Called during creation of the {@link Scheduler} in order to give
+     * the {@link SchedulerPlugin} a chance to initialize.
+     *
      * @throws org.quartz.SchedulerConfigException
      *           if there is an error initializing.
      */
@@ -84,7 +76,7 @@ public abstract class GenericSchedulingPlugin implements SchedulerPlugin
                         .withIdentity(getPluginGroup().toLowerCase() + "-job-"+i, getPluginGroup())
                         .requestRecovery(true)
                         .storeDurably()
-                        .build();
+						.build();
 	            
 	            Trigger trigger = newTrigger()
 	                    .withIdentity(getPluginGroup().toLowerCase() + "-trigger"+i, getPluginGroup())
@@ -109,11 +101,9 @@ public abstract class GenericSchedulingPlugin implements SchedulerPlugin
 	}	
 
     /**
-     * <p>
-     * Called in order to inform the <code>SchedulerPlugin</code> that it
+     * Called in order to inform the {@link SchedulerPlugin} that it
      * should free up all of it's resources because the scheduler is shutting
      * down.
-     * </p>
      */
 	@Override
 	public void shutdown()

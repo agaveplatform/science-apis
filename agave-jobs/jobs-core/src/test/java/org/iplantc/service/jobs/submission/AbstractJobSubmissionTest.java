@@ -1,8 +1,14 @@
 package org.iplantc.service.jobs.submission;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.File;
+import java.net.URI;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
@@ -40,19 +46,24 @@ import org.iplantc.service.systems.model.enumerations.StorageProtocolType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.dao.TransferTaskDao;
+import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.iplantc.service.transfer.model.enumerations.TransferStatusType;
 import org.joda.time.DateTime;
 import org.json.JSONObject;
+import org.mockito.ArgumentCaptor;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 
-import java.io.File;
-import java.net.URI;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 public class AbstractJobSubmissionTest {
 
@@ -115,8 +126,8 @@ public class AbstractJobSubmissionTest {
 	 * a larger permutation matrix of test cases. 
 	 * 
 	 * Templates used for these systems are taken from the 
-	 * {@code src/test/resources/systems/execution/execute.example.com.json} and 
-	 * {@code src/test/resources/systems/storage/storage.example.com.json} files.
+	 * {@code target/test-classes/systems/execution/execute.example.com.json} and
+	 * {@code target/test-classes/systems/storage/storage.example.com.json} files.
 	 * 
      * @throws Exception if things go sideways
      */
@@ -144,7 +155,7 @@ public class AbstractJobSubmissionTest {
 	/**
      * Creates and persists an {@link StorageSystem} for every template
      * with file name matching {@link StorageProtocolType}.example.com.json 
-     * in the {@code src/test/resources/systems/storage} folder.
+     * in the {@code target/test-classes/systems/storage} folder.
      * @throws Exception if things go sideways
      * @deprecated
      */
@@ -164,7 +175,7 @@ public class AbstractJobSubmissionTest {
 	/**
 	 * Creates and persists an {@link ExecutionSystem} for every template
 	 * with file name matching {@link LoginProtocolType}.example.com.json 
-	 * in the {@code src/test/resources/systems/execution} folder.
+	 * in the {@code target/test-classes/systems/execution} folder.
 	 * @throws Exception if things go sideways
      * @deprecated
 	 */
@@ -373,7 +384,7 @@ public class AbstractJobSubmissionTest {
    }
    
    /**
-    * Stages test data for the {@code job}'s {@link Software} to the remote {@link Software#getDeploymentPath()}.
+    * Stages test job inputs {@code job}'s {@link Software} to the remote {@link Software#getDeploymentPath()}.
     * value.
     * @param job the job whose software needs data staging.
     */
@@ -669,6 +680,8 @@ public class AbstractJobSubmissionTest {
         job.setArchiveOutput(true);
         job.setArchiveSystem(archiveSystem);
         job.setArchivePath(username + "/archive/test-job-999");
+        job.setExecutionType(software.getExecutionType());
+        job.setSchedulerType(software.getExecutionSystem().getScheduler());
         
         job.setSoftwareName(software.getUniqueName());
         job.setSystem(executionSystem.getSystemId());
@@ -694,8 +707,8 @@ public class AbstractJobSubmissionTest {
         }
         job.setParametersAsJsonObject(parameters);
         int minutesAgoJobWasCreated = RandomUtils.nextInt(360)+1;
-        DateTime created = new DateTime().minusMinutes(minutesAgoJobWasCreated+20);
-        job.setCreated(created.toDate());
+        Instant created = Instant.now().minus(minutesAgoJobWasCreated+20, ChronoUnit.MINUTES);
+        job.setCreated(Date.from(created));
         
         if (JobStatusType.isExecuting(status) || status == JobStatusType.CLEANING_UP) {
             job.setLocalJobId("q." + System.currentTimeMillis());
@@ -704,12 +717,12 @@ public class AbstractJobSubmissionTest {
             
             int minutesAgoJobWasSubmitted = RandomUtils.nextInt(minutesAgoJobWasCreated)+1;
             int minutesAgoJobWasStarted = minutesAgoJobWasSubmitted + RandomUtils.nextInt(minutesAgoJobWasSubmitted);
-            job.setSubmitTime(created.plusMinutes(minutesAgoJobWasSubmitted).toDate());
-            job.setStartTime(created.plusMinutes(minutesAgoJobWasStarted).toDate());
+            job.setSubmitTime(Date.from(created.plus(minutesAgoJobWasSubmitted, ChronoUnit.MINUTES)));
+            job.setStartTime(Date.from(created.plus(minutesAgoJobWasStarted, ChronoUnit.MINUTES)));
             
             if (status == JobStatusType.CLEANING_UP) {
                 int minutesAgoJobWasEnded =  minutesAgoJobWasStarted + RandomUtils.nextInt(minutesAgoJobWasStarted);
-                job.setEndTime(created.plusMinutes(minutesAgoJobWasEnded).toDate());
+                job.setEndTime(Date.from(created.plus(minutesAgoJobWasEnded, ChronoUnit.MINUTES)));
             }
         } else if (JobStatusType.isFinished(status) || JobStatusType.isArchived(status)) {
             job.setLocalJobId("q." + System.currentTimeMillis());
@@ -719,14 +732,14 @@ public class AbstractJobSubmissionTest {
             int minutesAgoJobWasSubmitted = RandomUtils.nextInt(minutesAgoJobWasCreated)+1;
             int minutesAgoJobWasStarted = minutesAgoJobWasSubmitted + RandomUtils.nextInt(minutesAgoJobWasSubmitted);
             int minutesAgoJobWasEnded = minutesAgoJobWasStarted + RandomUtils.nextInt(minutesAgoJobWasStarted);
-            job.setSubmitTime(created.plusMinutes(minutesAgoJobWasSubmitted).toDate());
-            job.setStartTime(created.plusMinutes(minutesAgoJobWasStarted).toDate());
-            job.setEndTime(created.plusMinutes(minutesAgoJobWasEnded).toDate());
+            job.setSubmitTime(Date.from(created.plus(minutesAgoJobWasSubmitted, ChronoUnit.MINUTES)));
+            job.setStartTime(Date.from(created.plus(minutesAgoJobWasStarted, ChronoUnit.MINUTES)));
+            job.setEndTime(Date.from(created.plus(minutesAgoJobWasEnded, ChronoUnit.MINUTES)));
             
         } else if (status == JobStatusType.STAGING_INPUTS) {
             
             int minutesAgoJobStartedStaging = RandomUtils.nextInt(minutesAgoJobWasCreated)+1;
-            DateTime stagingTime = created.plusMinutes(minutesAgoJobStartedStaging);
+            Instant stagingTime = created.plus(minutesAgoJobStartedStaging, ChronoUnit.MINUTES);
             
             for(SoftwareInput input: software.getInputs()) 
             {
@@ -740,8 +753,8 @@ public class AbstractJobSubmissionTest {
                             null,
                             null);
                     stagingTransferTask.setStatus(TransferStatusType.TRANSFERRING);
-                    stagingTransferTask.setCreated(stagingTime.toDate().toInstant());
-                    stagingTransferTask.setLastUpdated(stagingTime.toDate().toInstant());
+                    stagingTransferTask.setCreated(stagingTime);
+                    stagingTransferTask.setLastUpdated(Date.from(stagingTime));
 
                     TransferTaskDao.persist(stagingTransferTask);
 
@@ -750,20 +763,20 @@ public class AbstractJobSubmissionTest {
                             "Copy in progress",
                             stagingTransferTask,
                             job.getOwner());
-                    event.setCreated(stagingTime.toDate());
+                    event.setCreated(Date.from(stagingTime));
 
                     job.setStatus(JobStatusType.STAGING_INPUTS, event);
                 }
             }
-            job.setLastUpdated(stagingTime.toDate());
+            job.setLastUpdated(Date.from(stagingTime));
             
         } else if (status == JobStatusType.ARCHIVING) {
             
-            DateTime stagingTime = created.plusMinutes(5);
-            DateTime stagingEnded = stagingTime.plusMinutes(1);
-            DateTime startTime = stagingEnded.plusMinutes(1);
-            DateTime endTime = startTime.plusMinutes(1);
-            DateTime archiveTime = endTime.plusMinutes(1);
+            Instant stagingTime = created.plus(5, ChronoUnit.MINUTES);
+            Instant stagingEnded = stagingTime.plus(1, ChronoUnit.MINUTES);
+            Instant startTime = stagingEnded.plus(1, ChronoUnit.MINUTES);
+            Instant endTime = startTime.plus(1, ChronoUnit.MINUTES);
+            Instant archiveTime = endTime.plus(1, ChronoUnit.MINUTES);
             
             for(SoftwareInput input: software.getInputs()) 
             {
@@ -778,10 +791,10 @@ public class AbstractJobSubmissionTest {
                             null);
 
                     stagingTransferTask.setStatus(TransferStatusType.COMPLETED);
-                    stagingTransferTask.setCreated(stagingTime.toDate().toInstant());
-                    stagingTransferTask.setStartTime(stagingTime.toDate().toInstant());
-                    stagingTransferTask.setEndTime(stagingEnded.toDate().toInstant());
-                    stagingTransferTask.setLastUpdated(stagingEnded.toDate().toInstant());
+                    stagingTransferTask.setCreated(stagingTime);
+                    stagingTransferTask.setStartTime(stagingTime);
+                    stagingTransferTask.setEndTime(stagingEnded);
+                    stagingTransferTask.setLastUpdated(stagingEnded);
 
                     TransferTaskDao.persist(stagingTransferTask);
 
@@ -790,7 +803,7 @@ public class AbstractJobSubmissionTest {
                             "Staging completed",
                             stagingTransferTask,
                             job.getOwner());
-                    event.setCreated(stagingTime.toDate());
+                    event.setCreated(Date.from(stagingTime));
 
                     job.setStatus(JobStatusType.STAGING_INPUTS, event);
                 }
@@ -801,10 +814,10 @@ public class AbstractJobSubmissionTest {
             job.setSchedulerJobId(job.getUuid());
             job.setStatus(status, status.getDescription());
             
-            job.setSubmitTime(stagingEnded.toDate());
-            job.setStartTime(startTime.toDate());
-            job.setEndTime(endTime.toDate());
-            
+            job.setSubmitTime(Date.from(stagingEnded));
+            job.setStartTime(Date.from(startTime));
+            job.setEndTime(Date.from(endTime));
+
             TransferTaskImpl archivingTransferTask = new TransferTaskImpl(
                     "agave://" + job.getSystem() + "/" + job.getWorkPath(),
                     job.getArchiveCanonicalUrl(), 
@@ -812,8 +825,8 @@ public class AbstractJobSubmissionTest {
                     null, 
                     null);
             
-            archivingTransferTask.setCreated(archiveTime.toDate().toInstant());
-            archivingTransferTask.setStartTime(archiveTime.toDate().toInstant());
+            archivingTransferTask.setCreated(archiveTime);
+            archivingTransferTask.setStartTime(archiveTime);
             TransferTaskDao.persist(archivingTransferTask);
             
             JobEvent event = new JobEvent(
@@ -821,10 +834,10 @@ public class AbstractJobSubmissionTest {
                     JobStatusType.ARCHIVING.getDescription(), 
                     archivingTransferTask, 
                     job.getOwner());
-            event.setCreated(archiveTime.toDate());
+            event.setCreated(Date.from(archiveTime));
             job.setStatus(status, event);
             
-            job.setLastUpdated(archiveTime.toDate());
+            job.setLastUpdated(Date.from(archiveTime));
         }
         else {
             job.setStatus(status, status.getDescription());
@@ -860,7 +873,7 @@ public class AbstractJobSubmissionTest {
             if (actuallyThrewException != shouldThrowException) se.printStackTrace();
         }
 		
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
         Assert.assertEquals(shouldThrowException, actuallyThrewException, exceptionMsg);
 		
 	}
@@ -883,10 +896,6 @@ public class AbstractJobSubmissionTest {
 		
 		try
         {
-//		    job.setArchivePath(job.getOwner() + "/archive/jobs/job-" + job.getUuid() + "-" + Slug.toSlug(job.getName()));
-//		    
-//			JobDao.persist(job);
-//			
 			submissionAction.run();
             
             job = submissionAction.getJob();
@@ -917,7 +926,7 @@ public class AbstractJobSubmissionTest {
 		    job = submissionAction.getJob();
 		}
 		
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
         Assert.assertEquals(shouldThrowException, actuallyThrewException, exceptionMsg);
 		
 		return job;
@@ -976,7 +985,7 @@ public class AbstractJobSubmissionTest {
 		    job = submissionAction.getJob();
 		}
 		
-        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
+//        System.out.println(" exception thrown?  expected " + shouldThrowException + " actual " + actuallyThrewException);
         Assert.assertEquals(shouldThrowException, actuallyThrewException, exceptionMsg);
 		
 		return job;
@@ -1012,9 +1021,12 @@ public class AbstractJobSubmissionTest {
 	throws Exception 
 	{
 		JobLauncher launcher = new JobLauncherFactory().getInstance(job);
-		File ipcexeFile = launcher.processApplicationTemplate();
-		String contents = FileUtils.readFileToString(ipcexeFile);
-		
-		Assert.assertTrue(contents.contains(expectedString), message);
+		String applicationWrapperContent = launcher.processApplicationWrapperTemplate();
+
+        Assert.assertTrue(applicationWrapperContent.contains(expectedString), message);
+//        ArgumentCaptor<String> wrapperTemplateContentCaptor = ArgumentCaptor.forClass(String.class);
+//        verify(launcher).writeWrapperTemplateToRemoteJobDir(eq(anyString()), wrapperTemplateContentCaptor.capture());
+//
+//        Assert.assertTrue(wrapperTemplateContentCaptor.getValue().contains(expectedString), message);
 	}
 }

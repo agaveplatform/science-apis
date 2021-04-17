@@ -291,7 +291,7 @@ public class AbstractAgaveServerResource extends ServerResource {
 	
 	/**
 	 * Resolves a mimetype based on the filename.
-	 * @param filename
+	 * @param filename the name of the file to check
 	 * @return
 	 */
 	public String resolveMimeTime(String filename) {

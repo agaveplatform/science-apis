@@ -173,7 +173,7 @@ public class MetadataResource extends AgaveResource {
 				metadataDocument = jsonHandler.parseJsonMetadataToDocument(jsonMetadata);
 
 				String formUuid = metadataDocument.getString("uuid");
-				if (!uuid.equals(formUuid)) {
+				if (StringUtils.isNotBlank(formUuid) && !uuid.equals(formUuid)) {
 					throw new MetadataValidationException("Metadata uuid in the request body does not match the url");
 				}
 			} catch (ResourceException e) {

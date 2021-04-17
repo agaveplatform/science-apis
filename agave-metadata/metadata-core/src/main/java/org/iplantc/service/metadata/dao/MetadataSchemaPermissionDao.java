@@ -21,10 +21,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * DAO class for metadata schemata
+ * DAO class for metadata schemata. This needs moved into the mongodb with the schema records.
  * 
  * @author dooley
- * 
  */
 public class MetadataSchemaPermissionDao {
 
@@ -39,8 +38,8 @@ public class MetadataSchemaPermissionDao {
 	/**
 	 * Returns all metadata schema permissions for the given schemaId.
 	 *
-	 * @param schemaId
-	 * @return
+	 * @param schemaId the schema id for which we are fetching permissions
+	 * @return a list of permissions for the schema id
 	 * @throws org.iplantc.service.metadata.exceptions.MetadataException
 	 */
 	@SuppressWarnings("unchecked")
@@ -71,12 +70,12 @@ public class MetadataSchemaPermissionDao {
 			throw new MetadataException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
-     * Returns the {@link MetadataSchemaPermission#getUuid()} of {@link MetadataSchemaItem} to which 
+     * Returns the {@link MetadataSchemaPermission#getSchemaId()} of {@link MetadataSchemaItem} to which
      * the user has read permission. Delegates to {@link #getUuidOfAllSharedMetataSchemaItemReadableByUser(String, int, int)}
      * 
      * @param username the user for whom to look up permission grants
@@ -90,7 +89,7 @@ public class MetadataSchemaPermissionDao {
     }
 	
 	/**
-	 * Returns the {@link MetadataSchemaPermission#getUuid()} of {@link MetadataSchemaItem} to which 
+	 * Returns the {@link MetadataSchemaPermission#getSchemaId()} of {@link MetadataSchemaItem} to which
      * the user has read permission.
      * 
 	 * @param username the user for whom to look up permission grants
@@ -147,16 +146,16 @@ public class MetadataSchemaPermissionDao {
             throw new MetadataException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
     }
 
 	/**
 	 * Gets the metadata permissions for the specified username and iod
 	 *
-	 * @param username
-	 * @param schemaId
-	 * @return
+	 * @param username the users to whom the permission is assigned
+	 * @param schemaId the id to delete
+	 * @return a matching permission if present, false otherwise
 	 * @throws org.iplantc.service.metadata.exceptions.MetadataException
 	 */
 	@SuppressWarnings("unchecked")
@@ -186,13 +185,13 @@ public class MetadataSchemaPermissionDao {
 			throw new MetadataException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
 	/**
 	 * Saves a new metadata permission. Upates existing ones.
-	 * @param pem
+	 * @param pem the permission to delete
 	 * @throws org.iplantc.service.metadata.exceptions.MetadataException
 	 */
 	public static void persist(MetadataSchemaPermission pem) throws MetadataException
@@ -215,7 +214,7 @@ public class MetadataSchemaPermissionDao {
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 
 			throw new MetadataException("Failed to save metadata Schema permission.", ex);
 		}
@@ -227,7 +226,7 @@ public class MetadataSchemaPermissionDao {
 	/**
 	 * Deletes the given iod permission.
 	 *
-	 * @param pem
+	 * @param pem the permission to delete
 	 * @throws org.iplantc.service.metadata.exceptions.MetadataException
 	 */
 	public static void delete(MetadataSchemaPermission pem) throws MetadataException
@@ -250,19 +249,19 @@ public class MetadataSchemaPermissionDao {
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 
 			throw new MetadataException("Failed to delete metadata schema permission.", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
 	/**
 	 * Deletes all permissions for the metadata schema with given schemaId
 	 *
-	 * @param schemaId
+	 * @param schemaId the id to delete
 	 * @throws org.iplantc.service.metadata.exceptions.MetadataException
 	 */
 	public static void deleteBySchemaId(String schemaId) throws MetadataException
@@ -290,12 +289,12 @@ public class MetadataSchemaPermissionDao {
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new MetadataException("Failed to delete metadata schema permission", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 

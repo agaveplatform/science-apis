@@ -4,8 +4,6 @@
 package org.iplantc.service.metadata.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.mongodb.*;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -35,7 +33,6 @@ import org.restlet.resource.Representation;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.Variant;
 
-import javax.validation.Valid;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 
@@ -43,7 +40,7 @@ import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityK
 import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.METADATA02;
 
 /**
- * Class to handle CRUD operations on metadata entities.
+ * Class to handle CRUD operations on metadata item.
  *
  * @author dooley
  *
@@ -101,7 +98,6 @@ public class MetadataResource extends AgaveResource {
 	 */
 	@Override
 	public Representation represent(Variant variant) throws ResourceException {
-		DBCursor cursor = null;
 		try {
 			// Include user defined query clauses given within the URL as q=<clauses>
 			AgaveLogServiceClient.log(METADATA02.name(), MetaGetById.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
@@ -151,8 +147,6 @@ public class MetadataResource extends AgaveResource {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"An unexpected error occurred while fetching the metadata item. "
 							+ "If this continues, please contact your tenant administrator.", e);
-		} finally {
-			try { cursor.close(); } catch (Exception ignore) {}
 		}
 	}
 
@@ -223,8 +217,6 @@ public class MetadataResource extends AgaveResource {
 				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
 						"User does not have permission to update metadata");
 			}
-
-			return;
 		} catch (ResourceException e) {
 			log.error("Failed to update metadata item " + uuid + ". " + e.getMessage());
 
@@ -246,7 +238,6 @@ public class MetadataResource extends AgaveResource {
 	public void removeRepresentations() {
 		AgaveLogServiceClient.log(METADATA02.name(), MetaDelete.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 
-		DBCursor cursor = null;
 		MetadataItem deletedMetadataItem = null;
 		MetadataDao dao = MetadataDao.getInstance();
 		try {
@@ -286,7 +277,6 @@ public class MetadataResource extends AgaveResource {
 				getResponse().setStatus(Status.CLIENT_ERROR_FORBIDDEN);
 				getResponse().setEntity(new IplantErrorRepresentation(
 						"User does not have permission to update metadata"));
-				return;
 			}
 
 		} catch (ResourceException e) {
@@ -300,8 +290,6 @@ public class MetadataResource extends AgaveResource {
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			getResponse().setEntity(new IplantErrorRepresentation("Unable to delete the associated metadata. " +
 					"If this problem persists, please contact the system administrators."));
-		} finally {
-			try { cursor.close(); } catch (Exception ignore) {}
 		}
 	}
 
@@ -332,9 +320,7 @@ public class MetadataResource extends AgaveResource {
 					BasicDBObject assocResource = new BasicDBObject();
 					assocResource.put("rel", (String) associatedId);
 					assocResource.put("href", null);
-					if (agaveUUID != null) {
-						assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
-					}
+					assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
 					halAssociationIds.add(assocResource);
 				}
 			}

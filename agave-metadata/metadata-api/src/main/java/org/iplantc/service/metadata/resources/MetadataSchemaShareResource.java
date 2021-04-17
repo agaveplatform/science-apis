@@ -6,6 +6,7 @@ import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.clients.AgaveProfileServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.AgaveResource;
@@ -99,9 +100,9 @@ public class MetadataSchemaShareResource extends AgaveResource
             response.setStatus(Status.SERVER_ERROR_INTERNAL);
             response.setEntity(new IplantErrorRepresentation("Exception 6: Unable to connect to metadata store."));
         }
-//        finally {
-////        	try { mongoClient.close(); } catch (Throwable e) {}
-//        }
+        finally {
+        	try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+        }
 	}
 
 	/**
@@ -164,16 +165,17 @@ public class MetadataSchemaShareResource extends AgaveResource
 			}
 
 		}
-		catch (ResourceException e)
-		{
+		catch (ResourceException e) {
 			getResponse().setStatus(e.getStatus());
 			return new IplantErrorRepresentation(e.getMessage());
 		}
-		catch (Exception e)
-		{
+		catch (Exception e) {
 			// Bad request
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			return new IplantErrorRepresentation(e.getMessage());
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 
@@ -302,17 +304,18 @@ public class MetadataSchemaShareResource extends AgaveResource
 			}
 
 		}
-		catch (ResourceException e)
-		{
+		catch (ResourceException e) {
 			getResponse().setEntity(
 					new IplantErrorRepresentation(e.getMessage()));
 			getResponse().setStatus(e.getStatus());
 		}
-		catch (Throwable e)
-		{
+		catch (Throwable e) {
 			getResponse().setEntity(
 					new IplantErrorRepresentation("Failed to update metadata schema permissions: " + e.getMessage()));
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -355,10 +358,12 @@ public class MetadataSchemaShareResource extends AgaveResource
 		catch (ResourceException e) {
 			throw e;
 		}
-		catch (Throwable e)
-		{
+		catch (Throwable e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
 					"Failed to remove metadata schema permissions: " + e.getMessage());
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 

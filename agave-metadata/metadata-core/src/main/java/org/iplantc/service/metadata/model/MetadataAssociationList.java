@@ -66,7 +66,7 @@ public class MetadataAssociationList {
      * @param ref a valid {@link AssociatedReference}
      */
     public void add(AssociatedReference ref){
-        if (ref != null || !associatedIds.containsKey(ref.getUuid())) {
+        if (ref != null && !associatedIds.containsKey(ref.getUuid().toString())) {
             this.associatedIds.put(ref.getUuid().toString(), ref);
         }
     }
@@ -100,7 +100,6 @@ public class MetadataAssociationList {
     /**
      * Removes all the {@code uuids} from this {@link MetadataAssociationList}.
      * @param uuid the uuid to remove
-     * @return true if the item was present and removed, false otherwise
      */
     public void remove(String uuid) {
         this.associatedIds.remove(uuid);
@@ -110,10 +109,10 @@ public class MetadataAssociationList {
      * Validates that a given uuid is valid and that the current user has the
      * proper permissions to access it.
      * 
-     * @param uuid
-     * @return
-     * @throws MetadataAssociationException
-     * @throws PermissionException
+     * @param uuid the uuid to check
+     * @return a reference object to the uuid
+     * @throws MetadataAssociationException if unable to resolve the associatedId
+     * @throws PermissionException if user does not have permission to view the associatedId
      */
     @SuppressWarnings("unused")
     private AssociatedReference checkForValidAssociationUuid(String uuid) throws MetadataAssociationException, PermissionException {
@@ -124,43 +123,30 @@ public class MetadataAssociationList {
         else 
         {
             AgaveUUID associationUuid;
-            
             try {
-                
                 associationUuid = new AgaveUUID(uuid);
             
-                if (UUIDType.METADATA == associationUuid.getResourceType() || UUIDType.SCHEMA == associationUuid.getResourceType()) 
-                {
-//                    MetadataItem associationItem = MetadataDao.getInstance().findByUuidAndTenant(uuid, TenancyHelper.getCurrentTenantId());
-//                    
-//                    if (associationItem == null) {
-//                        throw new MetadataAssociationException("No associated object found with uuid " + uuid);
-//                    } 
-//                    else if (false) {
-//                        throw new PermissionException("User does not permission to reference this resource.");
-//                    }
-//                    else {
+                if (UUIDType.METADATA == associationUuid.getResourceType() || UUIDType.SCHEMA == associationUuid.getResourceType()) {
                         String url = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE + "data/" + uuid);
                         return new AssociatedReference(associationUuid, url);
-//                    }
-                } 
-                else 
-                {
+                } else {
                     // check that the object reference resolves
                     String url = associationUuid.getObjectReference();
-                    
-                    if (false) {
-                        throw new PermissionException("User does not permission to reference this resource.");
-                    }
-                    
+
+//                    if (false) {
+//                        throw new PermissionException("User does not permission to reference this resource.");
+//                    }
+
                     return new AssociatedReference(associationUuid, url);
-                            
                 }
-            } catch (PermissionException e) {
-                throw e;
-            } catch (UUIDException e1) {
+            }
+            catch (UUIDException e1) {
                 throw new MetadataAssociationException("No associated resource found with uuid " + uuid);
-            } catch (Exception e) {
+//            catch (PermissionException e) {
+//                throw e;
+//            }
+            }
+            catch (Exception e) {
                 throw new MetadataAssociationException("Unable to resolve associated resource uuid " + uuid, e);
             }
         }
@@ -168,7 +154,7 @@ public class MetadataAssociationList {
 
     /**
      * Returns map with url as keys and resolved referces as values
-     * @return
+     * @return the json object with associatedId group info
      */
     public ObjectNode getReferenceGroupMap() {
         ObjectNode json = mapper.createObjectNode();
@@ -203,11 +189,10 @@ public class MetadataAssociationList {
         
         return associations.toString();
     }
-    
-    
+
     /**
      * Returns a list of the UUID string values.
-     * @return
+     * @return the raw set of associatedId uuids
      */
     @JsonProperty("associatedIds")
     public Set<String> getRawUuid() {
@@ -216,7 +201,7 @@ public class MetadataAssociationList {
 
     /**
      * Returns count of UUIDs 
-     * @return 
+     * @return  the number of associatedIds
      */
     public int size() {
         return associatedIds.size();

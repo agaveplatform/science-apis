@@ -96,9 +96,9 @@ public class MetadataValidationIT {
 
     @Test(dataProvider = "validateMetadataDocumentFieldsTestThrowsMetadataValidationExceptionProvider", expectedExceptions = MetadataValidationException.class)
     public void validateMetadataDocumentFieldsTestThrowsMetadataValidationException(JsonNode node, boolean bolThrowException, String message) throws MetadataValidationException {
-            MetadataValidation validation = new MetadataValidation();
-            validation.validateMetadataNodeFields(node, username);
-            fail(message);
+        MetadataValidation validation = new MetadataValidation();
+        validation.validateMetadataNodeFields(node, username);
+        fail(message);
     }
 
 
@@ -148,8 +148,8 @@ public class MetadataValidationIT {
                             errorMessage.replaceAll(",", "\n"));
 
             assertTrue(Arrays.stream(individualErrorMessage).anyMatch(msg -> {
-                    return msg.contains("name") && msg.contains("Null name attribute specified. Please provide a valid name for this metadata item.");
-                }), "Error message should contain null name message.\n" +
+                return msg.contains("name") && msg.contains("Null name attribute specified. Please provide a valid name for this metadata item.");
+            }), "Error message should contain null name message.\n" +
                     errorMessage.replaceAll(",", "\n"));
 
             assertTrue(Arrays.stream(individualErrorMessage).anyMatch(msg -> {

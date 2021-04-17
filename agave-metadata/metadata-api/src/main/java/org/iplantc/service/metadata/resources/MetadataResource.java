@@ -272,15 +272,13 @@ public class MetadataResource extends AgaveResource {
 //                search.setUuid(uuid);
 				deletedMetadataItem = search.deleteMetadataItem(uuid, TenancyHelper.getCurrentTenantId());
 
-				if (deletedMetadataItem == null) {
-					throw new Exception();
-				}
-				for (String aid : deletedMetadataItem.getAssociations().getAssociatedIds().keySet()) {
-					NotificationManager.process((String) aid, "METADATA_DELETED", username);
-				}
+				if (deletedMetadataItem != null) {
+					for (String aid : deletedMetadataItem.getAssociations().getAssociatedIds().keySet()) {
+						NotificationManager.process((String) aid, "METADATA_DELETED", username);
+					}
 
-				NotificationManager.process(uuid, "DELETED", username);
-
+					NotificationManager.process(uuid, "DELETED", username);
+				}
 				getResponse().setStatus(Status.SUCCESS_OK);
 				getResponse().setEntity(new IplantSuccessRepresentation());
 

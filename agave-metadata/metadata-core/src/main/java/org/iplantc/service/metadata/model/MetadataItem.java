@@ -40,8 +40,9 @@ public class MetadataItem {
     @Id
     private String _id;
 
-    @NotNull(message = "Null name attribute specified. Please provide a valid name for this metadata item.")
-    @Length(min = 1, max = 256, message = "Metadata name must be non-empty and less than 256 characters.")
+    @NotNull(message = "No name attribute specified. Please provide a valid name for this metadata item.")
+    @NotEmpty(message = "Empty name attribute specified. Please provide a valid name for this metadata item.")
+    @Length(min = 1, max = 256)
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String name;
 

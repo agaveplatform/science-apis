@@ -173,16 +173,15 @@ public class MetadataResource extends AgaveResource {
 				metadataDocument = jsonHandler.parseJsonMetadataToDocument(jsonMetadata);
 
 				String formUuid = metadataDocument.getString("uuid");
-				if (uuid.equals(formUuid)) {
-					throw new MetadataValidationException("Document uuid, if provided, must match url.");
+				if (!uuid.equals(formUuid)) {
+					throw new MetadataValidationException("Metadata uuid in the request body does not match the url");
 				}
 			} catch (ResourceException e) {
 				log.error("Failed to parse request body. " + e.getMessage());
 				throw e;
 			} catch (Exception e) {
-				log.error("Failed to parse request body. " + e.getMessage());
 				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-						"Unable to parse request body. " + e.getMessage());
+						e.getMessage());
 			}
 
 			try {
@@ -217,7 +216,8 @@ public class MetadataResource extends AgaveResource {
 				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
 						"User does not have permission to update metadata");
 			}
-		} catch (ResourceException e) {
+		}
+		catch(ResourceException e) {
 			log.error("Failed to update metadata item " + uuid + ". " + e.getMessage());
 
 			getResponse().setStatus(e.getStatus());

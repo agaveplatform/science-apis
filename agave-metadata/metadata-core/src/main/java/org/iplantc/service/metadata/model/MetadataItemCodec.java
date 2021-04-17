@@ -1,13 +1,12 @@
 package org.iplantc.service.metadata.model;
 
-import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.lang.StringUtils;
-import org.bson.BsonReader;
-import org.bson.BsonWriter;
-import org.bson.Document;
+import org.apache.log4j.Logger;
+import org.bson.*;
 import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.DocumentCodec;
@@ -18,9 +17,9 @@ import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Date;
 
 /**
  * Custom Codec for processing MetadataItem to Bson
@@ -29,6 +28,8 @@ import java.util.Date;
  */
 
 public class MetadataItemCodec implements Codec<MetadataItem> {
+    private static final Logger log = Logger.getLogger(MetadataItemCodec.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private Codec<Document> documentCodec;
 
@@ -45,40 +46,50 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         MetadataItem metadataItem = new MetadataItem();
         Document document = documentCodec.decode(reader, decoderContext);
 
-        try {
-            Date createdDate = document.getDate("created");
-            if (createdDate != null)
-                metadataItem.setCreated(createdDate);
-
-            Date lastUpdatedDate = document.getDate("lastUpdated");
-            if (lastUpdatedDate != null)
-                metadataItem.setLastUpdated(lastUpdatedDate);
-        } catch (Exception e) {
-            e.printStackTrace();
+        String uuid = document.getString("uuid");
+        if (StringUtils.isNotEmpty(uuid)) {
+            metadataItem.setUuid(uuid);
         }
 
-        String uuid = document.getString("uuid");
-        if (StringUtils.isNotEmpty(uuid))
-            metadataItem.setUuid(uuid);
+        try {
+            Date createdDate = document.getDate("created");
+            if (createdDate != null) {
+                metadataItem.setCreated(createdDate);
+            }
+        } catch (Exception e) {
+            log.error("Failed to decode created dates for metadata item " + uuid);
+        }
+
+        try {
+            Date lastUpdatedDate = document.getDate("lastUpdated");
+            if (lastUpdatedDate != null) {
+                metadataItem.setLastUpdated(lastUpdatedDate);
+            }
+        } catch (Exception e) {
+            log.error("Failed to decode lastUpdated date for metadata item " + uuid);
+        }
 
         String owner = document.getString("owner");
-        if (StringUtils.isNotEmpty(owner))
+        if (StringUtils.isNotEmpty(owner)) {
             metadataItem.setOwner(owner);
+        }
 
         String tenantId = document.getString("tenantId");
-        if (StringUtils.isNotEmpty(tenantId))
+        if (StringUtils.isNotEmpty(tenantId)) {
             metadataItem.setTenantId(tenantId);
+        }
 
         String schemaId = document.getString("schemaId");
-        if (StringUtils.isNotEmpty(schemaId))
+        if (StringUtils.isNotEmpty(schemaId)) {
             metadataItem.setSchemaId(schemaId);
+        }
 
         String internalUsername = document.getString("internalUsername");
-        if (StringUtils.isNotEmpty(internalUsername))
+        if (StringUtils.isNotEmpty(internalUsername)) {
             metadataItem.setInternalUsername(internalUsername);
+        }
 
         List<String> associationList = document.getList("associationIds", String.class);
-
 
         MetadataAssociationList metadataAssociationList = metadataItem.getAssociations();
 
@@ -88,9 +99,7 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
             for (String associationId : associationList) {
                 try {
                     metadataAssociationList.add(associationId);
-                } catch (MetadataAssociationException e) {
-                } catch (PermissionException e) {
-                }
+                } catch (MetadataAssociationException | PermissionException ignored) {}
             }
         }
         metadataItem.setAssociations(metadataAssociationList);
@@ -99,30 +108,16 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         if (StringUtils.isNotEmpty(name))
             metadataItem.setName(name);
 
-        //value
-        ObjectMapper mapper = new ObjectMapper();
-        Document value;
+
+        // Metadata value can be anything, so we do a generic pojo deserialization. Primary types should be retained
+        JsonNode json = null;
         try {
-            value = (Document) document.get("value");
-        } catch (Exception e) {
-            value = new Document();
+            json = objectMapper.valueToTree(document.get("value"));
         }
-        ObjectNode json = mapper.createObjectNode();
-
-        if (value != null) {
-            for (String key : value.keySet()) {
-                Document doc = null;
-                try {
-                    doc = (Document) value.get(key);
-                    JsonFactory factory = new ObjectMapper().getFactory();
-                    JsonNode jsonMetadataNode = factory.createParser(doc.toJson()).readValueAsTree();
-                    json.replace(key, jsonMetadataNode);
-
-                } catch (Exception e) {
-                    json.put(key, String.valueOf(value.get(key)));
-                }
-            }
+        catch (Exception e) {
+            log.error("Failed to decode lastUpdated date for metadata item " + uuid);
         }
+
         metadataItem.setValue(json);
 
         //permissions
@@ -148,37 +143,38 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
     }
 
     @Override
-    public void encode(BsonWriter writer, MetadataItem value, EncoderContext encoderContext) {
+    public void encode(BsonWriter writer, MetadataItem metadataItem, EncoderContext encoderContext) {
 
         writer.writeStartDocument();
-        writer.writeDateTime("created", value.getCreated().getTime());
-        writer.writeDateTime("lastUpdated", value.getLastUpdated().getTime());
+        writer.writeDateTime("created", metadataItem.getCreated().getTime());
+        writer.writeDateTime("lastUpdated", metadataItem.getLastUpdated().getTime());
         writer.writeName("uuid");
-        writer.writeString(value.getUuid());
+        writer.writeString(metadataItem.getUuid());
         writer.writeName("owner");
-        writer.writeString(value.getOwner());
+        writer.writeString(metadataItem.getOwner());
         writer.writeName("tenantId");
-        writer.writeString(value.getTenantId());
+        writer.writeString(metadataItem.getTenantId());
         writer.writeName("associationIds");
         writer.writeStartArray();
-        for (String key : value.getAssociations().getAssociatedIds().keySet()) {
+        for (String key : metadataItem.getAssociations().getAssociatedIds().keySet()) {
             writer.writeString(key);
         }
 //        writer.writeString(value.getAssociations().toString());
         writer.writeEndArray();
         writer.writeName("schemaId");
         try {
-            writer.writeString(value.getSchemaId());
+            writer.writeString(metadataItem.getSchemaId());
         } catch (Exception e) {
             writer.writeNull();
         }
         writer.writeName("name");
-        writer.writeString(value.getName());
+        writer.writeString(metadataItem.getName());
+
         writer.writeName("value");
-        writer.writeStartDocument();
-        recursiveParseDocument(value.getValue(), writer);
+        encodeJsonNode(writer, metadataItem.getValue());
+
         writer.writeStartArray("permissions");
-        for (MetadataPermission pem : value.getPermissions()) {
+        for (MetadataPermission pem : metadataItem.getPermissions()) {
             writer.writeStartDocument();
             writer.writeName("username");
             writer.writeString(pem.getUsername());
@@ -191,6 +187,44 @@ public class MetadataItemCodec implements Codec<MetadataItem> {
         }
         writer.writeEndArray();
         writer.writeEndDocument();
+    }
+
+    /**
+     * Writes the given jsonNode to the BsonWriter. This method allows for recursion to
+     * support both primary types, ObjectNodes, and ArrayNodes.
+     *
+     * @param writer the active writer for the metadata item codec encoding.
+     * @param jsonNode the jsonNode to process
+     */
+    public void encodeJsonNode(BsonWriter writer, JsonNode jsonNode) {
+        if (jsonNode == null) {
+            writer.writeNull();
+        } else if (jsonNode.isValueNode()) {
+            if (jsonNode.isIntegralNumber()) {
+                writer.writeInt32(jsonNode.intValue());
+            } else if (jsonNode.isFloatingPointNumber()) {
+                writer.writeDouble(jsonNode.asDouble());
+            } else if (jsonNode.isBoolean()) {
+                writer.writeBoolean(jsonNode.asBoolean());
+            } else {
+                writer.writeString(jsonNode.textValue());
+            }
+        } else if (jsonNode.isArray()) {
+            writer.writeStartArray();
+            jsonNode.forEach(item -> encodeJsonNode(writer, item));
+            writer.writeEndArray();
+        } else {
+            try {
+                String jsonValueString = objectMapper.writeValueAsString(jsonNode);
+                BsonDocument bsonDocument = BsonDocument.parse(jsonValueString);
+                BsonReader bsonReader = new BsonDocumentReader(bsonDocument);
+                writer.pipe(bsonReader);
+            }
+            catch (JsonProcessingException e) {
+                log.error("Failed to serialize value for metadata value " + jsonNode.asText(), e);
+                writer.writeString(jsonNode.asText());
+            }
+        }
     }
 
     @Override

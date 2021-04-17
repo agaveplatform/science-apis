@@ -13,7 +13,7 @@ import org.iplantc.service.notification.managers.NotificationManager;
 public class MetadataEventProcessor {
 
 	private static final Logger log = Logger.getLogger(MetadataEventProcessor.class);
-	private final ObjectMapper mapper = new ObjectMapper();
+	private static final ObjectMapper mapper = new ObjectMapper();
 		
 	public MetadataEventProcessor() {}
 

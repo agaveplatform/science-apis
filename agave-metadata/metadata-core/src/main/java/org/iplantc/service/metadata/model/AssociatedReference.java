@@ -1,10 +1,6 @@
 package org.iplantc.service.metadata.model;
 
-import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
-
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class AssociatedReference {
     private AgaveUUID uuid;

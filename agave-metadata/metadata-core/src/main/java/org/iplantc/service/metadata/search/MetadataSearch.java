@@ -176,25 +176,37 @@ public class MetadataSearch {
     /**
      * Update collection using {@link Document} doc, merges with the existing item
      *
-     * @param doc {@link Document} to update Metadata Item with
+     * @param updatedDocumentFields {@link Document} to update Metadata Item with
      * @return updated {@link Document}
      * @throws MetadataException if no {@link Document} found matching the document
      *                           based on the uuid and tenantId
      */
-    public Document updateMetadataItem(Document doc, String uuid) throws MetadataException {
-        if (doc == null)
-            doc = new Document();
+    public Document updateMetadataItem(Document updatedDocumentFields, String uuid) throws MetadataException {
+        if (updatedDocumentFields == null) {
+            updatedDocumentFields = new Document();
+        }
+
+        updatedDocumentFields.putAll(Map.of(
+                "uuid", uuid,
+                "tenantId", TenancyHelper.getCurrentTenantId(),
+                "lastUpdated", new Date()));
+
+        // ensure immutable fields cannot be updated
+        updatedDocumentFields.remove("created");
+        updatedDocumentFields.remove("lastUpdated");
+        updatedDocumentFields.remove("owner");
+        updatedDocumentFields.remove("internalUsername");
 
         getMetadataDao().setAccessibleOwners(this.accessibleOwners);
+        return getMetadataDao().updateDocument(updatedDocumentFields);
 
 //        if (getMetadataDao().hasWrite(this.username, getMetadataItem().getUuid())) {
-            doc.append("uuid", uuid);
-            doc.append("tenantId", TenancyHelper.getCurrentTenantId());
-            return getMetadataDao().updateDocument(doc);
+//            doc.append("uuid", uuid);
+//            doc.append("tenantId", TenancyHelper.getCurrentTenantId());
+//            return getMetadataDao().updateDocument(doc);
 //        } else {
 //            throw new PermissionException("User does not have permission to modify this resource.");
 //        }
-
     }
 
     /**

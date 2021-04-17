@@ -2,28 +2,29 @@ package org.iplantc.service.metadata.dao;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.*;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
+import com.mongodb.MongoCredential;
+import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.apache.log4j.Logger;
-
-import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
-import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.MetadataSchemaItem;
 
 import java.net.UnknownHostException;
 
-import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
 
 public class MetadataSchemaDao {
     
     private static final Logger log = Logger.getLogger(MetadataSchemaDao.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     private MongoClient mongoClient;
     private MongoDatabase db;
@@ -97,7 +98,6 @@ public class MetadataSchemaDao {
      * @throws MetadataStoreException when the insertion failed
      */
     public MetadataSchemaItem insert(MetadataSchemaItem metadataSchema) throws MetadataStoreException {
-        ObjectMapper mapper = new ObjectMapper();
         MongoCollection collection;
         try {
             collection = getDefaultCollection();

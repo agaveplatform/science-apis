@@ -21,6 +21,7 @@ import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
+import org.iplantc.service.metadata.exceptions.MetadataValidationException;
 import org.iplantc.service.metadata.managers.MetadataPermissionManager;
 import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.metadata.model.serialization.MetadataItemSerializer;
@@ -142,7 +143,7 @@ public class MetadataResource extends AgaveResource {
 
 		}
 		catch (ResourceException e) {
-			log.error("Failed to fetch metadata " + uuid + " for user " + username, e);
+			log.error("Failed to fetch metadata " + uuid + " for user " + username);
 			throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, e.getMessage());
 		}
 		catch (Throwable e) {
@@ -177,16 +178,17 @@ public class MetadataResource extends AgaveResource {
 
 				metadataDocument = jsonHandler.parseJsonMetadataToDocument(jsonMetadata);
 
-
+				String formUuid = metadataDocument.getString("uuid");
+				if (uuid.equals(formUuid)) {
+					throw new MetadataValidationException("Document uuid, if provided, must match url.");
+				}
 			} catch (ResourceException e) {
-				log.error("Failed to parse form. " + e.getMessage());
-
+				log.error("Failed to parse request body. " + e.getMessage());
 				throw e;
 			} catch (Exception e) {
-				log.error("Failed to parse form. " + e.getMessage());
-
+				log.error("Failed to parse request body. " + e.getMessage());
 				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-						"Unable to parse form. " + e.getMessage());
+						"Unable to parse request body. " + e.getMessage());
 			}
 
 			try {

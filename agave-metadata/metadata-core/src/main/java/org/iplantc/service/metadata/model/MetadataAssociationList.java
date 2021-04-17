@@ -35,7 +35,8 @@ import com.mongodb.DBObject;
  *
  */
 public class MetadataAssociationList {
-   
+    private static final ObjectMapper mapper = new ObjectMapper();
+
     @JsonIgnore
     private LinkedHashMap<String, AssociatedReference> associatedIds = new LinkedHashMap<String, AssociatedReference>();
     
@@ -170,7 +171,6 @@ public class MetadataAssociationList {
      * @return
      */
     public ObjectNode getReferenceGroupMap() {
-        ObjectMapper mapper = new ObjectMapper();
         ObjectNode json = mapper.createObjectNode();
         for (String uuid: associatedIds.keySet()) {
             AssociatedReference ref = associatedIds.get(uuid);
@@ -196,7 +196,7 @@ public class MetadataAssociationList {
      */
     @JsonValue
     public String toString() {
-        ArrayNode associations = new ObjectMapper().createArrayNode();
+        ArrayNode associations = mapper.createArrayNode();
         for(String uuid: associatedIds.keySet()) {
             associations.add(uuid);
         }

@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 public class ServiceUtils {
 	
 	private static final Logger log = Logger.getLogger(ServiceUtils.class);
+	private static final ObjectMapper mapper = new ObjectMapper();
 
 	@SuppressWarnings("unused")
 	public static String exec(String command) throws IOException {
@@ -79,7 +80,7 @@ public class ServiceUtils {
 	}
 	
 	public static boolean isValid(Integer value) {
-		return value != null && value.intValue() >= 0;
+		return value != null && value >= 0;
 	}
 	
 	/**
@@ -90,8 +91,8 @@ public class ServiceUtils {
 	 * file naming rules. Second, we need to use non-alphanumeric characters to
 	 * delimit query terms for searching.
 	 * 
-	 * @param s
-	 * @return
+	 * @param s the string to check
+	 * @return true if alphanumeric, false otherwise
 	 */
 	public static boolean isAlphaNumeric(String s) {
 		if (!isValid(s)) return false;
@@ -212,13 +213,11 @@ public class ServiceUtils {
 	}
 	
 	public static boolean isValidString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
-		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
 		return (node instanceof TextNode) && ((TextNode)node).asText() != null;
 	}
 	
 	public static boolean isNonEmptyString(JSONObject json, String attribute) throws JSONException, JsonProcessingException, IOException {
-		ObjectMapper mapper = new ObjectMapper();
 		TreeNode node = mapper.readTree(json.toString()).get(attribute);
 		return (node instanceof TextNode) && !StringUtils.isEmpty(((TextNode)node).asText());
 	}

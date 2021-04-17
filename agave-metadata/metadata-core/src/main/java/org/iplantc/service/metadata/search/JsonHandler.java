@@ -10,12 +10,9 @@ import com.github.fge.jsonschema.report.ProcessingMessage;
 import com.github.fge.jsonschema.report.ProcessingReport;
 import org.apache.commons.lang.StringUtils;
 import org.bson.Document;
-import org.iplantc.service.common.exceptions.PermissionException;
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.metadata.exceptions.*;
-import org.iplantc.service.metadata.model.MetadataAssociationList;
+import org.iplantc.service.metadata.exceptions.MetadataQueryException;
+import org.iplantc.service.metadata.exceptions.MetadataSchemaValidationException;
+import org.iplantc.service.metadata.exceptions.MetadataValidationException;
 import org.iplantc.service.metadata.model.MetadataItem;
 
 import java.io.IOException;
@@ -29,11 +26,12 @@ import java.util.regex.Pattern;
  * Parse JsonNode and validate
  */
 public class JsonHandler {
+    private static final ObjectMapper mapper = new ObjectMapper();
     private ArrayNode permissions;
     private ArrayNode notifications;
     private MetadataValidation metadataValidation;
     private MetadataItem metadataItem = new MetadataItem();
-    ObjectMapper mapper = new ObjectMapper();
+
 
 
     public ArrayNode getPermissions() {
@@ -175,7 +173,6 @@ public class JsonHandler {
      */
     public Document parseJsonMetadataToDocument(JsonNode jsonMetadata) throws MetadataQueryException {
         Document doc = new Document();
-        ObjectMapper mapper = new ObjectMapper();
 
         if (jsonMetadata.has("uuid")) {
             String uuid = jsonMetadata.get("uuid").asText();
@@ -293,6 +290,7 @@ public class JsonHandler {
             setPermissions(this.mapper.createArrayNode());
             setNotifications(this.mapper.createArrayNode());
 
+
             if (jsonMetadata.has("uuid")) {
                 String muuid = jsonMetadata.get("uuid").asText();
                 if (StringUtils.isNotBlank(muuid)) {
@@ -300,17 +298,19 @@ public class JsonHandler {
                 }
             }
 
+            // why do we do this here rather than letting the validator handle it?
             String name = parseNameToString(jsonMetadata);
-            if (name == null)
-                throw new MetadataQueryException(
-                        "No name attribute specified. " +
-                                "Please associate a value with the metadata name.");
+//            if (name == null)
+//                throw new MetadataQueryException(
+//                        "No name attribute specified. " +
+//                                "Please associate a value with the metadata name.");
 
+            // why do we do this here rather than letting the validator handle it?
             JsonNode value = parseValueToJsonNode(jsonMetadata);
-            if (value == null)
-                throw new MetadataQueryException(
-                        "No value attribute specified. " +
-                                "Please associate a value with the metadata value.");
+//            if (value == null)
+//                throw new MetadataQueryException(
+//                        "No value attribute specified. " +
+//                                "Please associate a value with the metadata value.");
 
             metadataItem.setName(name);
             metadataItem.setValue(value);
@@ -327,7 +327,7 @@ public class JsonHandler {
 
         } catch (Exception e) {
             throw new MetadataValidationException(
-                    "Unable to parse form. " + e.getMessage());
+                    "Unable to parse metadata item. " + e.getMessage());
         }
     }
 

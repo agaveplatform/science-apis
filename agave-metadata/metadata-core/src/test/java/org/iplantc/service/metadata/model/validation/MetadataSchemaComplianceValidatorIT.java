@@ -21,26 +21,30 @@ import javax.validation.Validation;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.testng.Assert.assertTrue;
 
 public class MetadataSchemaComplianceValidatorIT {
     private String username = "TEST_USER";
 
     @Test
     public void validMetadataValueConstraintTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataStoreException {
-        String strSchemaJson = "" +
-                "{" +
+        String strSchemaJson = "{" +
                 "\"title\": \"Example Schema\", " +
                 "\"type\": \"object\", "+
                 "\"properties\": {" +
-                "\"species\": {" +
-                "\"type\": \"string\"" +
-                "}" +
+                    "\"species\": {" +
+                        "\"type\": \"string\"" +
+                    "}" +
                 "}," +
                 "\"required\": [" +
-                "\"species\"" +
+                    "\"species\"" +
                 "]" +
-                "}";
+            "}";
 
         String validSchemaId = new AgaveUUID(UUIDType.SCHEMA).toString();
         Assert.assertNotNull(createSchema(validSchemaId,strSchemaJson));
@@ -48,16 +52,16 @@ public class MetadataSchemaComplianceValidatorIT {
         String strValue = "{" +
                 "\"title\": \"Some Metadata\", " +
                 "\"species\": {" +
-                "\"type\": \"Some species type\"" +
+                    "\"type\": \"Some species type\"" +
                 "}, " +
                 "\"species\": \"required\"" +
-                "}";
+            "}";
 
         String strJson = "{" +
                 "\"name\": \"" + getClass().getName() + "\"," +
                 "\"value\": " + strValue + "," +
                 "\"schemaId\": " + "\"" + validSchemaId + "\"" +
-                "}";
+            "}";
 
         ObjectMapper mapper = new ObjectMapper();
         JsonFactory factory = mapper.getFactory();
@@ -85,20 +89,19 @@ public class MetadataSchemaComplianceValidatorIT {
     }
 
     @Test
-    public void InvalidMetadataValueConstraintTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataStoreException {
-        String strSchemaJson = "" +
-                "{" +
+    public void invalidMetadataValueConstraintTest() throws IOException, MetadataQueryException, MetadataSchemaValidationException, MetadataStoreException {
+        String strSchemaJson = "{" +
                 "\"title\": \"Example Schema\", " +
                 "\"type\": \"object\", "+
-                    "\"properties\": {" +
+                "\"properties\": {" +
                     "\"species\": {" +
                         "\"type\": \"string\"" +
-                        "}" +
-                    "}," +
+                    "}" +
+                "}," +
                 "\"required\": [" +
                     "\"species\"" +
-                    "]" +
-                "}";
+                "]" +
+            "}";
 
         String schemaId = new AgaveUUID(UUIDType.SCHEMA).toString();
         Assert.assertNotNull(createSchema(schemaId,strSchemaJson));
@@ -106,17 +109,17 @@ public class MetadataSchemaComplianceValidatorIT {
         String strValue = "{" +
                 "\"title\": \"Some Metadata\", " +
                 "\"properties\": {" +
-                "\"species\": {" +
-                "\"type\": \"Some species type\"" +
+                    "\"species\": {" +
+                        "\"type\": \"Some species type\"" +
+                    "}" +
                 "}" +
-                "}" +
-                "}";
+            "}";
 
         String strJson = "{" +
                 "\"name\": \"" + getClass().getName() + "\"," +
                 "\"value\": " + strValue + "," +
                 "\"schemaId\": " + "\"" + schemaId + "\"" +
-                "}";
+            "}";
 
         ObjectMapper mapper = new ObjectMapper();
         JsonFactory factory = mapper.getFactory();
@@ -142,7 +145,6 @@ public class MetadataSchemaComplianceValidatorIT {
 
         Assert.assertEquals(constraintViolations.size(), 1);
         Assert.assertTrue(constraintViolations.iterator().next().getMessage().contains("Metadata value does not conform to schema"));
-
     }
 
     @Test
@@ -152,21 +154,21 @@ public class MetadataSchemaComplianceValidatorIT {
         String strValue = "{" +
                 "\"title\": \"Some Metadata\", " +
                 "\"properties\": {" +
-                "\"species\": {" +
-                "\"type\": \"Some species type\"" +
-                "}" +
+                    "\"species\": {" +
+                        "\"type\": \"Some species type\"" +
+                    "}" +
                 "}, " +
                 "\"required\": [" +
-                "\"species\"" +
+                    "\"species\"" +
                 "]" +
-                "}";
+            "}";
 
         String strJson = "{" +
                 "\"name\": \"" + getClass().getName() + "\"," +
                 "\"value\": " + strValue + "," +
                 "\"species\": \"homo sapian\"," +
                 "\"schemaId\": " + "\"" + invalidSchemaId + "\"" +
-                "}";
+            "}";
 
         ObjectMapper mapper = new ObjectMapper();
         JsonFactory factory = mapper.getFactory();
@@ -192,7 +194,7 @@ public class MetadataSchemaComplianceValidatorIT {
         try {
             Assert.assertTrue(constraintViolations.stream()
                     .anyMatch(cv -> cv.getMessage().equals(
-                            "The given uuid " + invalidSchemaId + " does not match the expected type SCHEMA")));
+                            invalidSchemaId + " is not a valid schema id")));
         } catch (Throwable t) {
             System.out.println(constraintViolations.toString());
             throw t;

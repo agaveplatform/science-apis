@@ -40,10 +40,10 @@ import java.util.zip.DeflaterOutputStream;
  */
 public class MetadataItemSerializer {
     private static final Logger log = Logger.getLogger(MetadataItemSerializer.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     private MetadataItem metadataItem;
     String resourceURL;
-    ObjectMapper mapper = new ObjectMapper();
 
     public MetadataItemSerializer() {
         this.resourceURL = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE);
@@ -69,10 +69,10 @@ public class MetadataItemSerializer {
                 .append("schemaId", metadataItem.getSchemaId())
                 .append("internalUsername", metadataItem.getInternalUsername())
                 .append("associationIds", metadataItem.getAssociations().getAssociatedIds().keySet().toString())
-                .append("lastUpdated", formatter.format(metadataItem.getLastUpdated()))
+                .append("lastUpdated", metadataItem.getLastUpdated().toInstant().toString())
                 .append("name", metadataItem.getName())
                 .append("value", BasicDBObject.parse(String.valueOf(metadataItem.getValue())))
-                .append("created", formatter.format(metadataItem.getCreated()))
+                .append("created", metadataItem.getCreated().toInstant().toString())
                 .append("owner", metadataItem.getOwner());
 
         return result;
@@ -86,17 +86,13 @@ public class MetadataItemSerializer {
      */
     public ObjectNode formatMetadataItemToNode(MetadataItem metadataItem) {
         ObjectNode result = mapper.createObjectNode();
-
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:MM:SS'Z'-05:00");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-
         result.put("uuid", metadataItem.getUuid())
                 .put("schemaId", metadataItem.getSchemaId())
                 .put("internalUsername", metadataItem.getInternalUsername())
                 .put("associationIds", metadataItem.getAssociations().getAssociatedIds().keySet().toString())
-                .put("lastUpdated", formatter.format(metadataItem.getLastUpdated()))
+                .put("lastUpdated", metadataItem.getLastUpdated().toInstant().toString())
                 .put("name", metadataItem.getName())
-                .put("created", formatter.format(metadataItem.getCreated()))
+                .put("created", metadataItem.getCreated().toInstant().toString())
                 .put("owner", metadataItem.getOwner())
                 .replace("value", metadataItem.getValue());
 
@@ -216,6 +212,8 @@ public class MetadataItemSerializer {
         } else {
             document.put("schemaId", null); 
         }
+        document.put("created", document.getDate("created").toInstant().toString());
+        document.put("lastUpdated", document.getDate("lastUpdated").toInstant().toString());
         document.put("_links", hal);
         return document;
     }
@@ -228,22 +226,15 @@ public class MetadataItemSerializer {
      * @deprecated
      */
     public BasicDBObject formatMetadataItem() {
-        BasicDBObject result;
-
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:MM:SS'Z'-05:00");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-
-        result = new BasicDBObject("uuid", metadataItem.getUuid())
+        return new BasicDBObject("uuid", metadataItem.getUuid())
                 .append("schemaId", metadataItem.getSchemaId())
                 .append("internalUsername", metadataItem.getInternalUsername())
                 .append("associationIds", metadataItem.getAssociations().getAssociatedIds().keySet().toString())
-                .append("lastUpdated", formatter.format(metadataItem.getLastUpdated()))
+                .append("lastUpdated", metadataItem.getLastUpdated().toInstant().toString())
                 .append("name", metadataItem.getName())
                 .append("value", BasicDBObject.parse(String.valueOf(metadataItem.getValue())))
-                .append("created", formatter.format(metadataItem.getCreated()))
+                .append("created", metadataItem.getCreated().toInstant().toString())
                 .append("owner", metadataItem.getOwner());
-
-        return result;
     }
 
     /**
@@ -406,9 +397,6 @@ public class MetadataItemSerializer {
 
 
     public String toJson() throws JSONException, UUIDException {
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:SS'Z'-05:00");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-
         JSONWriter writer = new JSONStringer();
         //metadata item
         writer.object()
@@ -419,10 +407,10 @@ public class MetadataItemSerializer {
             writer.value(associatedId);
         }
         writer.endArray()
-                .key("lastUpdated").value(formatter.format(metadataItem.getLastUpdated()))
+                .key("lastUpdated").value(metadataItem.getLastUpdated().toInstant().toString())
                 .key("name").value(metadataItem.getName())
                 .key("value").value(metadataItem.getValue())
-                .key("created").value(formatter.format(metadataItem.getCreated()))
+                .key("created").value(metadataItem.getCreated().toInstant().toString())
                 .key("owner").value(metadataItem.getOwner());
 
         //links

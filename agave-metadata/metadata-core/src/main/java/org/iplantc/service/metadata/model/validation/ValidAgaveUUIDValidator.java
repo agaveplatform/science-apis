@@ -8,6 +8,8 @@ import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.model.validation.constraints.ValidAgaveUUID;
 
+import java.util.Locale;
+
 public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUUID, Object> {
 
     private UUIDType uuidType;
@@ -54,8 +56,8 @@ public class ValidAgaveUUIDValidator implements ConstraintValidator<ValidAgaveUU
         } else {
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate( 
-                        "The given uuid " + uuid.toString() + 
-                        " does not match the expected type " + uuidType.name() )
+                         uuid.toString() +
+                        " is not a valid " + this.uuidType.name().toLowerCase() + " id" )
                     .addConstraintViolation();
         }
         

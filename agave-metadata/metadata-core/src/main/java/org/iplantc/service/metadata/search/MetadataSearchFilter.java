@@ -2,7 +2,6 @@ package org.iplantc.service.metadata.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
 import com.mongodb.util.JSON;
 import com.mongodb.util.JSONParseException;
@@ -28,6 +27,8 @@ import java.util.Map;
  */
 public class MetadataSearchFilter extends AgaveResourceSearchFilter
 {
+    private static final ObjectMapper mapper = new ObjectMapper();
+
     /* (non-Javadoc)
      * @see org.iplantc.service.common.search.AgaveResourceSearchFilter#filterCriteria(java.util.Map)
      */
@@ -179,7 +180,6 @@ public class MetadataSearchFilter extends AgaveResourceSearchFilter
             }
         } else if (searchTermType == JsonNode.class) {
             try {
-                ObjectMapper mapper = new ObjectMapper();
                 return mapper.readTree(searchValue);
             } catch (IOException e) {
                 throw new IllegalArgumentException("Unknown search value " + searchValue, e);

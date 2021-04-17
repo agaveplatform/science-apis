@@ -34,15 +34,14 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include;
 @JsonIgnoreProperties(ignoreUnknown = true)
 @MetadataSchemaComplianceConstraint(valueField = "value",
         schemaIdField = "schemaId",
-        message = "The value does not comply with the provided metadata schema")
+        message = "The value field does not adhere to the metadata schema referenced by the schemaId")
 public class MetadataItem {
 
     @Id
     private String _id;
 
-    @NotNull(message = "No name attribute specified. Please provide a valid name for this metadata item.")
-    @NotEmpty(message = "Empty name attribute specified. Please provide a valid name for this metadata item.")
-    @Length(min = 1, max = 256)
+    @NotNull(message = "Null name attribute specified. Please provide a valid name for this metadata item.")
+    @Length(min = 1, max = 256, message = "Metadata name must be non-empty and less than 256 characters.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String name;
 
@@ -55,29 +54,30 @@ public class MetadataItem {
     @ValidAgaveUUID(type = UUIDType.SCHEMA, value = "")
     private String schemaId;
 
-    @NotNull
+    @NotNull(message = "Null tenantId attribute specified. Please provide a valid tenantId for this metadata item.")
+    @Length(min = 1, max = 64, message = "Metadata tenant must be non-empty and less than 64 characters.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String tenantId;
 
-    @NotNull
+    @NotNull(message = "Null internalUsername attribute specified. Please provide a valid internalUsername for this metadata item.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String internalUsername;
 
-    @NotNull
-    @Length(min = 1, max = 32, message = "Metadata owner must be less than 33 characters.")
+    @NotNull(message = "Null owner attribute specified. Please provide a valid owner for this metadata item.")
+    @Length(min = 1, max = 32, message = "Metadata owner must be non-empty and less than 33 characters.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String owner;
 
     @Length(max = 64, message = "Metadata uuid must be a valid uuid.")
-    @NotNull
+    @NotNull(message = "No uuid attribute specified. Please provide a valid uuid for this metadata item.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private String uuid;
 
-    @NotNull
+    @NotNull(message = "Null created attribute specified. Please provide a valid created for this metadata item.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private Date created;
 
-    @NotNull
+    @NotNull(message = "Null lastUpdated attribute specified. Please provide a valid lastUpdated for this metadata item.")
     @JsonView({MetadataViews.Resource.Summary.class, MetadataViews.Request.class})
     private Date lastUpdated;
 

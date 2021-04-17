@@ -116,8 +116,7 @@ public class MetadataSchemaPermissionManager {
 			return;
 		}
 
-		PermissionType permissionType = PermissionType
-				.valueOf(sPermission.toUpperCase());
+		PermissionType permissionType = PermissionType.valueOf(sPermission.toUpperCase());
 
 		for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getBySchemaId(schemaId))
 		{

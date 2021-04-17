@@ -73,7 +73,7 @@ public class MetadataSchemaCollection extends AgaveResource
 
 
 	/**
-	 * Entrypoint for {@link MetadataSchemeItem} Collections
+	 * Entrypoint for {@link org.iplantc.service.metadata.model.MetadataSchemaItem} Collections
 	 * @param context
 	 * @param request
 	 * @param response
@@ -88,7 +88,7 @@ public class MetadataSchemaCollection extends AgaveResource
 
 		Form form = request.getOriginalRef().getQueryAsForm();
 		if (form != null) {
-			userQuery = (String)form.getFirstValue("q");
+			userQuery = form.getFirstValue("q");
 
 			if (!StringUtils.isEmpty(userQuery)) {
 				try {
@@ -107,7 +107,7 @@ public class MetadataSchemaCollection extends AgaveResource
 				// check whether they explicitly ask for unprivileged results..basically query
 				// as a normal user
 				if (form.getNames().contains("privileged") &&
-						!BooleanUtils.toBoolean((String)form.getFirstValue("privileged"))) {
+						!BooleanUtils.toBoolean(form.getFirstValue("privileged"))) {
 					this.includeRecordsWithImplicitPermissions = false;
 				}
 				// either they did not provide a "privileged" query parameter or it was true
@@ -181,42 +181,31 @@ public class MetadataSchemaCollection extends AgaveResource
 			else {
 				AgaveLogServiceClient.log(METADATA02.name(), SchemaSearch.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 
-				try
-				{
-					query = ((BasicDBObject)JSON.parse(userQuery));
-					for (String key: query.keySet()) {
-						if (query.get(key) instanceof String) {
-//                        	if (!StringUtils.equalsIgnoreCase("owner", key) && !AuthorizationHelper.isTenantAdmin(username)) {
-//                    			throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
-//                    					"User does not have permission to perform ownership queries");
-//                    		}
-//                        	else
-							if (((String) query.get(key)).contains("*")) {
-								try {
-									Pattern regexPattern = Pattern.compile((String)query.getString(key), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
-									query.put(key, regexPattern);
-								} catch (Exception e) {
-									throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid regular expression for " + key + " query");
-								}
+				query = BasicDBObject.parse(userQuery);
+				for (String key: query.keySet()) {
+					if (query.get(key) instanceof String) {
+						if (((String) query.get(key)).contains("*")) {
+							try {
+								Pattern regexPattern = Pattern.compile((String)query.getString(key), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+								query.put(key, regexPattern);
+							} catch (Exception e) {
+								throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid regular expression for " + key + " query");
 							}
 						}
 					}
-					// append tenancy info
-					query.append("tenantId", TenancyHelper.getCurrentTenantId());
-
-					// filter results if querying without implicity permissions
-					if (!includeRecordsWithImplicitPermissions) {
-						// permissions are separated from the metadata, so we need to look up available uuid for user.
-						List<String> accessibleUuids = MetadataSchemaPermissionDao.getUuidOfAllSharedMetataSchemaItemReadableByUser(this.username, getOffset(), getLimit());
-						List<String> accessibleOwners = Arrays.asList(this.username, Settings.PUBLIC_USER_USERNAME, Settings.WORLD_USER_USERNAME);
-						BasicDBList or = new BasicDBList();
-						or.add(new BasicDBObject("uuid", new BasicDBObject("$in", accessibleUuids)));
-						or.add(new BasicDBObject("owner", new BasicDBObject("$in", accessibleOwners)));
-						query.append("$or", or);
-					}
 				}
-				catch(JSONParseException e) {
-					throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Malformed JSON Query");
+				// append tenancy info
+				query.append("tenantId", TenancyHelper.getCurrentTenantId());
+
+				// filter results if querying without implicity permissions
+				if (!includeRecordsWithImplicitPermissions) {
+					// permissions are separated from the metadata, so we need to look up available uuid for user.
+					List<String> accessibleUuids = MetadataSchemaPermissionDao.getUuidOfAllSharedMetataSchemaItemReadableByUser(this.username, getOffset(), getLimit());
+					List<String> accessibleOwners = Arrays.asList(this.username, Settings.PUBLIC_USER_USERNAME, Settings.WORLD_USER_USERNAME);
+					BasicDBList or = new BasicDBList();
+					or.add(new BasicDBObject("uuid", new BasicDBObject("$in", accessibleUuids)));
+					or.add(new BasicDBObject("owner", new BasicDBObject("$in", accessibleOwners)));
+					query.append("$or", or);
 				}
 			}
 
@@ -277,8 +266,6 @@ public class MetadataSchemaCollection extends AgaveResource
 	{
 		AgaveLogServiceClient.log(METADATA02.name(), SchemaCreate.name(), username, "", getRequest().getClientInfo().getUpstreamAddress());
 
-		DBCursor cursor = null;
-
 		try
 		{
 			if (collection == null) {
@@ -336,12 +323,8 @@ public class MetadataSchemaCollection extends AgaveResource
 						.append("lastUpdated", timestamp)
 						.append("schema", JSON.parse(ServiceUtils.escapeSchemaRefFieldNames(mapper.writeValueAsString(jsonSchema))));
 			}
-			catch (JSONParseException e) {
+			catch (JSONParseException | JsonProcessingException e) {
 				// If schema is not valid JSON, throw exception
-				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-						"Unable to parse jsonSchema object.", e);
-			}
-			catch (JsonProcessingException e) {
 				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 						"Unable to parse jsonSchema object.", e);
 			}
@@ -378,10 +361,6 @@ public class MetadataSchemaCollection extends AgaveResource
 			getResponse().setEntity(new IplantErrorRepresentation("Unable to add the metadata schema object. " +
 					"If this problem persists, please contact the system administrators."));
 		}
-		finally {
-			try { cursor.close(); } catch (Exception e) {}
-		}
-
 	}
 
 	/**

@@ -4,8 +4,6 @@
 package org.iplantc.service.metadata.resources;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBObject;
@@ -14,7 +12,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.bson.Document;
-import org.bson.conversions.Bson;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.SortSyntaxException;
@@ -24,11 +21,9 @@ import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.common.resource.AgaveResource;
 import org.iplantc.service.common.search.AgaveResourceResultOrdering;
-import org.iplantc.service.common.util.SimpleTimer;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.metadata.Settings;
-import org.iplantc.service.metadata.dao.MetadataDao;
 import org.iplantc.service.metadata.events.MetadataEventProcessor;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataQueryException;
@@ -82,9 +77,6 @@ public class MetadataCollection extends AgaveResource {
     public MetadataCollection(Context context, Request request, Response response) {
 
         super(context, request, response);
-        SimpleTimer st = null;
-        if (log.isDebugEnabled()) st = SimpleTimer.start("META instrument : call MetadataCollection constructor");
-
         this.username = getAuthenticatedUsername();
 
         this.eventProcessor = new MetadataEventProcessor();
@@ -127,7 +119,6 @@ public class MetadataCollection extends AgaveResource {
         internalUsername = (String) context.getAttributes().get("internalUsername");
 
         getVariants().add(new Variant(MediaType.APPLICATION_JSON));
-        log.debug(st.getShortStopMsg());
     }
 
     /**
@@ -137,7 +128,6 @@ public class MetadataCollection extends AgaveResource {
      */
     @Override
     public Representation represent(Variant variant) throws ResourceException {
-        SimpleTimer st = null;
         List<String> str_permittedResults = new ArrayList<>();
         log.log(Level.DEBUG, "Starting GET request");
         System.setProperty("DEBUG.MONGO", "true");
@@ -239,7 +229,7 @@ public class MetadataCollection extends AgaveResource {
     /**
      * HTTP POST for Creating and Updating Metadata
      *
-     * @param entity
+     * @param entity the posted request entity
      */
     @Override
     public void acceptRepresentation(Representation entity) {

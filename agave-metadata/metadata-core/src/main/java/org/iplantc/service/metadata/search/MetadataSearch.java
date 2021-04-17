@@ -229,8 +229,11 @@ public class MetadataSearch {
         //find item to delete
         MetadataItem metadataItem = getMetadataDao().findSingleMetadataItem(
                 and(eq("uuid", uuid), eq("tenantId", tenantId)));
-
-        return getMetadataDao().deleteMetadata(metadataItem);
+        if (metadataItem != null) {
+            return getMetadataDao().deleteMetadata(metadataItem);
+        } else {
+            return null;
+        }
     }
 
     /**

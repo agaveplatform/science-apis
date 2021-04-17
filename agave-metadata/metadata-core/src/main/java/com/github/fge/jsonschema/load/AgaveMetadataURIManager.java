@@ -26,6 +26,12 @@ import com.github.fge.jsonschema.exceptions.ProcessingException;
 import com.github.fge.jsonschema.report.ProcessingMessage;
 import com.github.fge.jsonschema.util.JacksonUtils;
 import com.google.common.base.Preconditions;
+import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.Settings;
+import org.iplantc.service.common.auth.JWTClient;
+import org.iplantc.service.common.clients.HTTPSClient;
+import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.common.uri.AgaveUriRegex;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,20 +41,10 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.auth.JWTClient;
-import org.iplantc.service.common.clients.HTTPSClient;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.uri.AgaveUriRegex;
-import org.iplantc.service.common.uri.AgaveUriUtil;
-import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
-
 import static com.github.fge.jsonschema.messages.RefProcessingMessages.*;
 
 /**
- * Class to fetch JSON documents with custom lookups for Agave 
- * {@link MetadataSchemaItem} references. 
+ * Class to fetch JSON documents with custom lookups for Agave metadata references.
  *
  * <p>This uses a map of {@link URIDownloader} instances to fetch the contents
  * of a URI as an {@link InputStream}, then tries and turns this content into
@@ -62,10 +58,8 @@ import static com.github.fge.jsonschema.messages.RefProcessingMessages.*;
 public final class AgaveMetadataURIManager
 {
     private static final ObjectReader READER = JacksonUtils.getReader();
-
-    private final Map<String, URIDownloader> downloaders;
-
-    private final Map<URI, URI> schemaRedirects;
+	private final Map<String, URIDownloader> downloaders;
+	private final Map<URI, URI> schemaRedirects;
 
     public AgaveMetadataURIManager()
     {

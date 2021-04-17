@@ -200,8 +200,7 @@ public class MetadataDao {
         List<Document> resultList = new ArrayList<>();
 
         //Don't use custom codecs for faster processing with filters/projections
-        MongoCollection mongoCollection;
-        mongoCollection = getDefaultCollection();
+        MongoCollection mongoCollection = getDefaultCollection();
 
         if (query == null) {
             query = new Document();
@@ -220,8 +219,8 @@ public class MetadataDao {
                 resultList.add(foundDocuments);
             }
 
-        } catch (Exception e) {
-        }
+        } catch (Exception ignored) {}
+
         return resultList;
     }
 

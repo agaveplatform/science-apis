@@ -37,6 +37,8 @@ import static com.mongodb.client.model.Filters.eq;
 public class MetadataSchemaComplianceValidator implements ConstraintValidator<MetadataSchemaComplianceConstraint, Object> {
 
     private static final Logger log = Logger.getLogger(MetadataSchemaComplianceValidator.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
+
     private String valueFieldName;
     private String schemaFieldName;
 
@@ -74,7 +76,6 @@ public class MetadataSchemaComplianceValidator implements ConstraintValidator<Me
                     // now validate the json against the schema
                     Document schema = (Document) schemaDoc.get("schema");
 
-                    ObjectMapper mapper = new ObjectMapper();
                     JsonFactory factory = mapper.getFactory();
 //                    ObjectReader reader = mapper.reader(JsonNode.class);
 
@@ -107,20 +108,20 @@ public class MetadataSchemaComplianceValidator implements ConstraintValidator<Me
                 }
             }
         } catch (MetadataValidationException e) {
-            log.error("Failed to validate metadata against schema", e);
+//            log.error("Failed to validate metadata against schema", e);
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate(
                     e.getMessage())
                     .addConstraintViolation();
 
         } catch (MetadataException e) {
-            log.error("Failed to fetch metadata schema permissions", e);
+//            log.error("Failed to fetch metadata schema permissions", e);
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate(
                     "Unable to fetch metadata schema permissions")
                     .addConstraintViolation();
         } catch (Exception e) {
-            log.error("Unexpected error while validating metadata value against schema.", e);
+//            log.error("Unexpected error while validating metadata value against schema.", e);
             constraintContext.disableDefaultConstraintViolation();
             constraintContext.buildConstraintViolationWithTemplate(
                     "Unexpected error while validating metadata value against schema.")

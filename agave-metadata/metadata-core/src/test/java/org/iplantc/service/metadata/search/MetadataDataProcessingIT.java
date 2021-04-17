@@ -2,6 +2,7 @@ package org.iplantc.service.metadata.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
@@ -54,7 +55,7 @@ public class MetadataDataProcessingIT {
     MongoCollection schemaCollection;
     ObjectMapper mapper = new ObjectMapper();
 
-    public MetadataItem setupMetadataItem() throws MetadataException {
+    protected MetadataItem setupMetadataItem() throws MetadataException {
         MetadataItem toAdd = new MetadataItem();
         toAdd.setOwner(username);
         toAdd.setInternalUsername(username);
@@ -103,7 +104,7 @@ public class MetadataDataProcessingIT {
         collection.deleteMany(new Document());
     }
 
-    public String setupSchema() {
+    protected String setupSchema() {
         String schemaUuid = new AgaveUUID(UUIDType.SCHEMA).toString();
 
         String strItemToAdd = "{" +
@@ -190,7 +191,7 @@ public class MetadataDataProcessingIT {
                 {"{\"value\": {\"title\": \"sample title\", \"description\": { \"species\" : \"sample\" \"species\" }}}",
                         true, "Json request missing the required name field should throw exception."},
                 {"{\"name\": \"sample name\", \"schemaId\": null, \"associationIds\":[]}",
-                        true, "Json request missing the required name field should throw exception."}
+                        false, "Json request missing the optional value field should not throw exception."}
         };
     }
 
@@ -211,11 +212,11 @@ public class MetadataDataProcessingIT {
             search.insertMetadataItem(toAdd);
 
             MetadataItem foundItem = search.findById(toAdd.getUuid(), toAdd.getTenantId());
-            assertEquals(toAdd, foundItem, "Found item should match the added item.");
+            assertEquals(foundItem.toObjectNode().toString(), toAdd.toObjectNode().toString(), "Found item should match the added item.");
 
         } catch (Exception e) {
             if (!bolThrowException)
-                fail(message);
+                fail(message, e);
 
         }
     }
@@ -437,6 +438,172 @@ public class MetadataDataProcessingIT {
         }
 
 
+    }
+
+    @DataProvider(name = "metadataItemRetainsOriginalIntegerTypeProvider")
+    public Object[][] metadataItemRetainsOriginalIntegerTypeProvider() {
+        return new Object[][] {
+                { 312 }, { 1 }, { 0 }, { -1 }, { -911 }
+        };
+    }
+
+    @Test(dataProvider = "metadataItemRetainsOriginalIntegerTypeProvider")
+    public void metadataItemRetainsOriginalIntegerType(int testIntegerValue) {
+        JsonHandler handler = new JsonHandler();
+        String testJsonString = "{\"name\":\"metadataItemRetainsOriginalValueType\",\"value\": " + testIntegerValue + " }";
+        try {
+            JsonNode jsonNode = mapper.readTree(testJsonString);
+
+            MetadataItem orignalMetadataItem = handler.parseJsonMetadata(jsonNode);
+            orignalMetadataItem.setInternalUsername(this.username);
+            orignalMetadataItem.setOwner(this.username);
+
+            MetadataSearch search = new MetadataSearch(this.username);
+            search.insertMetadataItem(orignalMetadataItem);
+
+            MetadataItem foundItem = search.findById(orignalMetadataItem.getUuid(), orignalMetadataItem.getTenantId());
+
+            assertTrue(foundItem.getValue().isIntegralNumber(), "Value retrieved should be an integer");
+
+            assertEquals(foundItem.getValue(), orignalMetadataItem.getValue(), "Value saved and retrieved should be the same");
+
+        } catch (Exception e) {
+            fail("Failed to setup test case: " + testJsonString, e);
+        }
+    }
+
+    @DataProvider(name = "metadataItemRetainsOriginalDecimalTypeProvider")
+    public Object[][] metadataItemRetainsOriginalDecimalTypeProvider() {
+        return new Object[][] {
+                { 314159.0d }, { 3.1d }, { 0.0d }, { 0.1234567d }, { .9876d }, { -0.0d }, { -.911d }, { -5.11d }, { -253.994d }
+        };
+    }
+
+    @Test(dataProvider = "metadataItemRetainsOriginalDecimalTypeProvider")
+    public void metadataItemRetainsOriginalDecimalType(double testDecimalValue) {
+        JsonHandler handler = new JsonHandler();
+        String testJsonString = "{\"name\":\"metadataItemRetainsOriginalValueType\",\"value\": " + testDecimalValue + " }";
+        try {
+            JsonNode jsonNode = mapper.readTree(testJsonString);
+
+            MetadataItem orignalMetadataItem = handler.parseJsonMetadata(jsonNode);
+            orignalMetadataItem.setInternalUsername(this.username);
+            orignalMetadataItem.setOwner(this.username);
+
+            MetadataSearch search = new MetadataSearch(this.username);
+            search.insertMetadataItem(orignalMetadataItem);
+
+            MetadataItem foundItem = search.findById(orignalMetadataItem.getUuid(), orignalMetadataItem.getTenantId());
+
+            assertTrue(foundItem.getValue().isFloatingPointNumber(), "Value retrieved should be an decimal number");
+
+            assertEquals(foundItem.getValue(), orignalMetadataItem.getValue(), "Value saved and retrieved should be the same");
+
+        } catch (Exception e) {
+            fail("Failed to setup test case: " + testJsonString, e);
+        }
+    }
+
+    @DataProvider(name = "metadataItemRetainsOriginalStringTypeProvider")
+    public Object[][] metadataItemRetainsOriginalStringTypeProvider() {
+        return new Object[][] {
+                {""}, { " " }, {"    "},{ "This is a string test value" }
+        };
+    }
+
+    @Test(dataProvider = "metadataItemRetainsOriginalStringTypeProvider")
+    public void metadataItemRetainsOriginalStringType(String testStringValue) {
+        JsonHandler handler = new JsonHandler();
+        String testJsonString = "{\"name\":\"metadataItemRetainsOriginalValueType\",\"value\": \"" + testStringValue + "\" }";
+        try {
+            JsonNode jsonNode = mapper.readTree(testJsonString);
+
+            MetadataItem orignalMetadataItem = handler.parseJsonMetadata(jsonNode);
+            orignalMetadataItem.setInternalUsername(this.username);
+            orignalMetadataItem.setOwner(this.username);
+
+            MetadataSearch search = new MetadataSearch(this.username);
+            search.insertMetadataItem(orignalMetadataItem);
+
+            MetadataItem foundItem = search.findById(orignalMetadataItem.getUuid(), orignalMetadataItem.getTenantId());
+
+            assertTrue(foundItem.getValue().isTextual(), "Value retrieved should be textual");
+
+            assertEquals(foundItem.getValue(), orignalMetadataItem.getValue(), "Value saved and retrieved should be the same");
+
+        } catch (Exception e) {
+            fail("Failed to setup test case: " + testJsonString, e);
+        }
+    }
+
+    @DataProvider(name = "metadataItemRetainsOriginalBooleanTypeProvider")
+    public Object[][] metadataItemRetainsOriginalBooleanTypeProvider() {
+        return new Object[][] {
+                { "true" }, {"false"}
+        };
+    }
+
+    @Test(dataProvider = "metadataItemRetainsOriginalBooleanTypeProvider")
+    public void metadataItemRetainsOriginalBooleanType(String booleanStringValue) {
+        JsonHandler handler = new JsonHandler();
+        String testJsonString = "{\"name\":\"metadataItemRetainsOriginalValueType\",\"value\": " + booleanStringValue + " }";
+        try {
+            JsonNode jsonNode = mapper.readTree(testJsonString);
+
+            MetadataItem orignalMetadataItem = handler.parseJsonMetadata(jsonNode);
+            orignalMetadataItem.setInternalUsername(this.username);
+            orignalMetadataItem.setOwner(this.username);
+
+            MetadataSearch search = new MetadataSearch(this.username);
+            search.insertMetadataItem(orignalMetadataItem);
+
+            MetadataItem foundItem = search.findById(orignalMetadataItem.getUuid(), orignalMetadataItem.getTenantId());
+
+            assertTrue(foundItem.getValue().isBoolean(), "Value retrieved should be boolean");
+
+            assertEquals(foundItem.getValue(), orignalMetadataItem.getValue(), "Value saved and retrieved should be the same");
+
+        } catch (Exception e) {
+            fail("Failed to setup test case: " + testJsonString, e);
+        }
+    }
+
+    @DataProvider(name = "metadataItemRetainsOriginalListTypeProvider")
+    public Object[][] metadataItemRetainsOriginalListTypeProvider() {
+        return new Object[][] {
+                { List.of(2, 3, 4, 5) },
+                { List.of("fee", "fi", "fo", "fum") },
+                { List.of(2.1, 0.33,.21, -.131, -0.5, -1.1, -5.022) },
+                { List.of(true, false, false, true) }
+        };
+    }
+
+    @Test(dataProvider = "metadataItemRetainsOriginalListTypeProvider")
+    public void metadataItemRetainsOriginalListType(List listValue) {
+        JsonHandler handler = new JsonHandler();
+        String testJsonStringTemplate = "{\"name\":\"metadataItemRetainsOriginalValueType\",\"value\": %s }";
+        String testJsonString = "";
+        try {
+            testJsonString = String.format(testJsonStringTemplate, mapper.writeValueAsString(listValue.toArray()));
+
+            JsonNode jsonNode = mapper.readTree(testJsonString);
+
+            MetadataItem orignalMetadataItem = handler.parseJsonMetadata(jsonNode);
+            orignalMetadataItem.setInternalUsername(this.username);
+            orignalMetadataItem.setOwner(this.username);
+
+            MetadataSearch search = new MetadataSearch(this.username);
+            search.insertMetadataItem(orignalMetadataItem);
+
+            MetadataItem foundItem = search.findById(orignalMetadataItem.getUuid(), orignalMetadataItem.getTenantId());
+
+            assertTrue(foundItem.getValue().isArray(), "Value retrieved should be array");
+
+            assertEquals(foundItem.getValue(), orignalMetadataItem.getValue(), "Value saved and retrieved should be the same");
+
+        } catch (Exception e) {
+            fail("Failed to setup test case: " + testJsonString, e);
+        }
     }
 
 }

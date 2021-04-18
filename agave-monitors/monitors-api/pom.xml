@@ -54,11 +54,34 @@
 			<!-- ************************************ -->
 			<!-- *** WAR BUILDER ** -->
 			<!-- ************************************ -->
+<!--			<plugin>-->
+<!--				<groupId>org.apache.maven.plugins</groupId>-->
+<!--				<artifactId>maven-assembly-plugin</artifactId>-->
+<!--				<version>3.1.1</version>-->
 
+<!--				<configuration>-->
+<!--					<descriptorRefs>-->
+<!--						<descriptorRef>jar-with-dependencies</descriptorRef>-->
+<!--					</descriptorRefs>-->
+<!--					<finalName>fat-${project.artifactId}</finalName>-->
+<!--				</configuration>-->
+
+<!--				<executions>-->
+<!--					<execution>-->
+<!--						<id>make-assembly</id>-->
+<!--						<phase>package</phase>-->
+<!--						<goals>-->
+<!--							<goal>single</goal>-->
+<!--						</goals>-->
+<!--					</execution>-->
+<!--				</executions>-->
+
+<!--			</plugin>-->
 			<!-- Build war here and replace all the properties in the config file. 
 				pick the desired profile above or specify it at the command line to select 
 				the appropriate set of values -->
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-war-plugin</artifactId>
 				<executions>
 					<execution>
@@ -148,6 +171,12 @@
 			<groupId>${project.groupId}</groupId>
 			<artifactId>common-api</artifactId>
 			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.squareup.okhttp</groupId>
+			<artifactId>okhttp</artifactId>
+			<version>2.7.5</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 </project>

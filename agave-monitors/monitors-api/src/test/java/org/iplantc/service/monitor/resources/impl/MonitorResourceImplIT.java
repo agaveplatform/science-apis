@@ -1,47 +1,36 @@
 package org.iplantc.service.monitor.resources.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.apache.commons.codec.binary.Base64;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
+import com.squareup.okhttp.Response;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.auth.JWTClient;
 import org.iplantc.service.common.exceptions.TenantException;
-import org.iplantc.service.common.persistence.JndiSetup;
 import org.iplantc.service.monitor.AbstractMonitorIT;
-import org.iplantc.service.monitor.MonitorApplication;
 import org.iplantc.service.monitor.ServletJaxRsApplication;
 import org.iplantc.service.monitor.TestDataHelper;
 import org.iplantc.service.monitor.dao.MonitorDao;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.model.Monitor;
-import org.joda.time.DateTime;
 import org.json.JSONException;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
-import org.restlet.Client;
 import org.restlet.Component;
-import org.restlet.Context;
 import org.restlet.Server;
 import org.restlet.data.Form;
-import org.restlet.data.Header;
 import org.restlet.data.MediaType;
 import org.restlet.data.Protocol;
-import org.restlet.ext.jaxrs.JaxRsApplication;
 import org.restlet.ext.json.JsonRepresentation;
 import org.restlet.representation.Representation;
-import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.ClientResource;
 import org.restlet.resource.ResourceException;
-import org.restlet.util.Series;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
-
-import static org.restlet.data.Status.SUCCESS_OK;
 
 @Test(groups = {"integration"})
 public class MonitorResourceImplIT extends AbstractMonitorIT {
@@ -111,7 +100,6 @@ public class MonitorResourceImplIT extends AbstractMonitorIT {
 
         Assert.assertNotNull(responseBody, "Null body returned");
 
-        ObjectMapper mapper = new ObjectMapper();
         JsonNode json = mapper.readTree(responseBody);
         if (shouldSucceed) {
             Assert.assertEquals(json.get("status").asText().toLowerCase(), "success", "Error when success should have occurred");
@@ -306,26 +294,61 @@ public class MonitorResourceImplIT extends AbstractMonitorIT {
 
     @Test(dataProvider = "deleteMonitorProvider")
     public void deleteMonitor(String uuid, String errorMessage, boolean shouldThrowException) {
-        JsonNode json = null;
-        try {
-            ClientResource resource = getService("http://localhost:8182/" + uuid);
+//        JsonNode json = null;
+//        try {
+            OkHttpClient client = new OkHttpClient();
+            Response response = null;
+            try {
+                String jwt = JWTClient.createJwtForTenantUser(TEST_USER, "agave.dev", false);
+                Request request = new Request.Builder()
+                        .url("http://localhost:8182/" + uuid)
+                        .addHeader("X-JWT-ASSERTION-AGAVE_DEV", jwt)
+                        .delete()
+                        .build();
 
-            Representation response = resource.delete();
-            Assert.assertFalse(shouldThrowException, "Response failed when it should not have");
-            Assert.assertNotNull(response, "Expected json monitor object, instead received null");
-            Assert.assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON,
-                    "Expected json media type returned, instead received " + response.getMediaType());
+                response = client.newCall(request).execute();
 
-            json = verifyResponse(response, true);
+                String responseBody = response.body().string();
+                Assert.assertNotNull(response, "Expected json monitor object, instead received null");
 
-            Assert.assertNull(json, "Message results attribute was not null");
-        } catch (ResourceException e) {
-            if (!shouldThrowException) {
-                Assert.fail(errorMessage, e);
+                String contentType = response.header("Content-Type");
+                Assert.assertTrue(contentType.contains(MediaType.APPLICATION_JSON.getName()),
+                        "Expected json media type returned, instead received " + contentType);
+                JsonNode jsonResponse = mapper.readTree(responseBody);
+
+                if (response.isSuccessful()) {
+                    Assert.assertFalse(shouldThrowException, "Response failed when it should not have");
+                    Assert.assertEquals(jsonResponse.get("status").asText().toLowerCase(), "success", "Error when success should have occurred");
+                    Assert.assertNull(jsonResponse.get("result").isNull(), "Message results attribute was not null");
+                } else {
+                    Assert.assertTrue(shouldThrowException, "Response failed when it should not have");
+                    Assert.assertEquals(jsonResponse.get("status").asText().toLowerCase(), "error", "Success when error should have occurred");
+                }
+
+
+
+            } catch (Exception e) {
+                Assert.fail("Unexpected exception thrown", e);
             }
-        } catch (Exception e) {
-            Assert.fail("Unexpected exception thrown", e);
-        }
+
+//            ClientResource resource = getService("http://localhost:8182/" + uuid);
+//
+//            Representation response = resource.delete();
+//            Assert.assertFalse(shouldThrowException, "Response failed when it should not have");
+//            Assert.assertNotNull(response, "Expected json monitor object, instead received null");
+//            Assert.assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON,
+//                    "Expected json media type returned, instead received " + response.getMediaType());
+//
+//            json = verifyResponse(response, true);
+//
+//            Assert.assertNull(json, "Message results attribute was not null");
+//        } catch (ResourceException e) {
+//            if (!shouldThrowException) {
+//                Assert.fail(errorMessage, e);
+//            }
+//        } catch (Exception e) {
+//            Assert.fail("Unexpected exception thrown", e);
+//        }
     }
 
     //	@Test(dataProvider="deleteMonitorProvider")

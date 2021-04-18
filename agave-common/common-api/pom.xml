@@ -23,20 +23,6 @@
 				<directory>src/test/resources</directory>
 			</testResource>
 		</testResources>
-
-		<plugins>
-<!--			&lt;!&ndash; Starts and stops integration test containers with Docker Compose &ndash;&gt;-->
-<!--			<plugin>-->
-<!--				<groupId>com.dkanejs.maven.plugins</groupId>-->
-<!--				<artifactId>docker-compose-maven-plugin</artifactId>-->
-<!--			</plugin>-->
-
-<!--			&lt;!&ndash; Performs a wait and rediness check for integration test container startup &ndash;&gt;-->
-<!--			<plugin>-->
-<!--				<groupId>org.agaveplatform.ops</groupId>-->
-<!--				<artifactId>await-maven-plugin</artifactId>-->
-<!--			</plugin>-->
-		</plugins>
 	</build>
 
 	<dependencies>
@@ -103,11 +89,11 @@
 			<version>${javax.ws.rs-api.version}</version>
 		</dependency>
 
-		<dependency>
-			<groupId>javax.servlet</groupId>
-			<artifactId>servlet-api</artifactId>
-			<version>${servlet-api.version}</version>
-		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>javax.servlet</groupId>-->
+<!--			<artifactId>servlet-api</artifactId>-->
+<!--			<version>${servlet-api.version}</version>-->
+<!--		</dependency>-->
 	</dependencies>
 
 </project>

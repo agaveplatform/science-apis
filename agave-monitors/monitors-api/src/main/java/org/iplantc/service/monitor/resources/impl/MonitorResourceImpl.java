@@ -443,13 +443,14 @@ public class MonitorResourceImpl extends AbstractAgaveResource implements Monito
 				{
 					eventProcessor.processContentEvent(monitor, MonitorEventType.DELETED, getAuthenticatedUsername());
 					
-					// remove event
-					dao.delete(monitor);
-					
 					// clean up history
+
 					DomainEntityEventDao historyDao = new DomainEntityEventDao();
 					historyDao.deleteByEntityId(monitorUuid);
-					
+
+					// remove event
+					dao.delete(monitor);
+
 					// NotificationManager.process(monitor.getUuid(), MonitorEventType.DELETED.name(), monitor.getOwner());
 					
 					return Response.ok(new AgaveSuccessRepresentation()).build();

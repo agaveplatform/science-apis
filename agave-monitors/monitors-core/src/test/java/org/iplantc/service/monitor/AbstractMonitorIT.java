@@ -1,17 +1,9 @@
 package org.iplantc.service.monitor;
 
-import static org.iplantc.service.monitor.TestDataHelper.SYSTEM_SHARE_USER;
-import static org.iplantc.service.monitor.TestDataHelper.TEST_EXECUTION_MONITOR;
-import static org.iplantc.service.monitor.TestDataHelper.TEST_EXECUTION_SYSTEM_FILE;
-import static org.iplantc.service.monitor.TestDataHelper.TEST_STORAGE_MONITOR;
-import static org.iplantc.service.monitor.TestDataHelper.TEST_STORAGE_SYSTEM_FILE;
-
-import java.io.IOException;
-import java.util.Map;
-import java.util.UUID;
-
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -35,10 +27,12 @@ import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.surftools.BeanstalkClientImpl.ClientImpl;
+import java.io.IOException;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.iplantc.service.monitor.TestDataHelper.*;
 
 public class AbstractMonitorIT {
 
@@ -193,7 +187,7 @@ public class AbstractMonitorIT {
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -346,11 +340,11 @@ public class AbstractMonitorIT {
 				e.printStackTrace();
 			}
 			finally {
-				try { client.ignore(tube); } catch (Throwable e) {}
+				try { client.ignore(tube); } catch (Throwable ignored) {}
 				
 			}
 		}
-		try { client.close(); } catch (Throwable e) {}
+		try { client.close(); } catch (Throwable ignored) {}
 		client = null;
 	}
 
@@ -377,8 +371,8 @@ public class AbstractMonitorIT {
 			Assert.fail("Failed to retrieve message queue size", e);
 		}
 		finally {
-			try { client.ignore(queue); } catch (Throwable e) {}
-			try { client.close(); } catch (Throwable e) {}
+			try { client.ignore(queue); } catch (Throwable ignored) {}
+			try { client.close(); } catch (Throwable ignored) {}
 			client = null;
 		}
 		

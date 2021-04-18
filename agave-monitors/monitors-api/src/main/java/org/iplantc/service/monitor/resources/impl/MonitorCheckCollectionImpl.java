@@ -3,25 +3,9 @@
  */
 package org.iplantc.service.monitor.resources.impl;
 
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorChecksList;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorTrigger;
-import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.MONITORS02;
-
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
 import org.codehaus.plexus.util.StringUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
 import org.iplantc.service.common.util.StringToTime;
@@ -43,6 +27,17 @@ import org.restlet.Request;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 
+import javax.ws.rs.*;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorChecksList;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ActivityKeys.MonitorTrigger;
+import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys.MONITORS02;
+
 /**
  * @author dooley
  *
@@ -51,6 +46,7 @@ import org.restlet.resource.ResourceException;
 @Produces(MediaType.APPLICATION_JSON)
 public class MonitorCheckCollectionImpl extends AbstractAgaveResource implements MonitorCheckCollection
 {
+
 	protected MonitorDao monitorDao = new MonitorDao();
 	protected MonitorCheckDao checkDao = new MonitorCheckDao();
 	protected MonitorPermissionManager pm = null;
@@ -115,6 +111,9 @@ public class MonitorCheckCollectionImpl extends AbstractAgaveResource implements
 		{
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to invoke monitor: " + e.getMessage(), e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 
@@ -204,11 +203,12 @@ public class MonitorCheckCollectionImpl extends AbstractAgaveResource implements
 		catch (ResourceException e) {
 			throw e;
 		} 
-		catch (Exception e )
-		{
-			e.printStackTrace();
+		catch (Throwable e ) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to retrieve monitor checks: " + e.getMessage(), e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 }

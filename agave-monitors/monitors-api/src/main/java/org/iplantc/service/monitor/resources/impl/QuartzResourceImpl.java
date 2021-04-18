@@ -3,6 +3,7 @@ package org.iplantc.service.monitor.resources.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.log4j.Logger;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
 import org.iplantc.service.monitor.resources.QuartzResource;
@@ -13,7 +14,6 @@ import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
-import org.apache.log4j.Logger;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -37,7 +37,7 @@ import static org.quartz.impl.matchers.GroupMatcher.groupEquals;
 public class QuartzResourceImpl extends AbstractAgaveResource implements QuartzResource
 {
 	private static final Logger log = Logger.getLogger(QuartzResourceImpl.class);
-	
+	private static final ObjectMapper mapper = new ObjectMapper();
 	/* (non-Javadoc)
 	 * @see org.iplantc.service.notification.resources.NotificationResource#getNotifications()
 	 */
@@ -50,8 +50,7 @@ public class QuartzResourceImpl extends AbstractAgaveResource implements QuartzR
 			try
 			{
 				Scheduler sched = StdSchedulerFactory.getDefaultScheduler();
-				
-				ObjectMapper mapper = new ObjectMapper();
+
 				ObjectNode json = mapper.createObjectNode()
 						.put("id", sched.getSchedulerInstanceId())
 						.put("name", sched.getSchedulerName());

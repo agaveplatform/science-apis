@@ -13,6 +13,7 @@ import org.iplantc.service.apps.model.SoftwarePermission;
 import org.iplantc.service.apps.resources.SoftwarePermissionCollection;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.restlet.data.Status;
@@ -90,6 +91,9 @@ public class SoftwarePermissionCollectionImpl extends AbstractSoftwareCollection
         {
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                     "Failed to retrieve app permissions: " + e.getMessage(), e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
 	
@@ -208,6 +212,9 @@ public class SoftwarePermissionCollectionImpl extends AbstractSoftwareCollection
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
                     "Failed to update app permissions: " + e.getMessage(), e);
         }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+        }
 	}
 	
 	@DELETE
@@ -245,6 +252,9 @@ public class SoftwarePermissionCollectionImpl extends AbstractSoftwareCollection
         {
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
                     "Failed to remove app permissions: " + e.getMessage(), e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
 	}
 	

@@ -13,6 +13,7 @@ import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.SoftwareEvent;
 import org.iplantc.service.apps.resources.SoftwareHistoryCollection;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
@@ -74,6 +75,9 @@ public class SoftwareHistoryCollectionImpl extends AbstractSoftwareCollection im
         {
             log.error(e);
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, "Failed to retrieve app history", e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
 }

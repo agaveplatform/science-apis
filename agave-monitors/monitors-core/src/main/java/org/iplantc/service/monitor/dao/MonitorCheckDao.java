@@ -3,23 +3,19 @@
  */
 package org.iplantc.service.monitor.dao;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-
-import org.hibernate.CacheMode;
-import org.hibernate.HibernateException;
-import org.hibernate.ObjectNotFoundException;
-import org.hibernate.Query;
-import org.hibernate.Session;
+import org.hibernate.*;
 import org.iplantc.service.common.dao.AbstractDao;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.monitor.exceptions.MonitorException;
+import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.MonitorCheck;
 import org.iplantc.service.monitor.model.enumeration.MonitorCheckType;
 import org.iplantc.service.monitor.model.enumeration.MonitorStatusType;
 import org.joda.time.DateTime;
+
+import java.util.Date;
+import java.util.List;
 
 /**
  * Data access class for internal users.
@@ -315,7 +311,7 @@ public class MonitorCheckDao extends AbstractDao
 	/**
 	 * Deletes a monitor
 	 * 
-	 * @param profile
+	 * @param monitor
 	 * @throws MonitorException
 	 */
 	public void delete(MonitorCheck monitor) throws MonitorException
@@ -382,5 +378,47 @@ public class MonitorCheckDao extends AbstractDao
 		finally {
 			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
-	}	
+	}
+
+	/**
+	 * Deletes all {@link MonitorCheck}s from the db for a given monitor.
+	 *
+	 * @param monitor the monitor whose checks will be deleted
+	 * @throws MonitorException if unable to process the delete
+	 */
+	public void deleteAllForMonitor(Monitor monitor) throws MonitorException {
+
+		if (monitor == null)
+			throw new MonitorException("MonitorCheck cannot be null");
+
+		try {
+			HibernateUtil.beginTransaction();
+			Session session = HibernateUtil.getSession();
+			String hql = "DELETE from MonitorCheck mc " +
+					"where mc.monitor.id = :monitorId";
+
+			session.createQuery(hql)
+					.setLong("monitorId", monitor.getId())
+					.setCacheable(false)
+					.setCacheMode(CacheMode.IGNORE)
+					.executeUpdate();
+
+			session.flush();
+		}
+		catch (HibernateException ex)
+		{
+			try
+			{
+				if (HibernateUtil.getSession().isOpen()) {
+					HibernateUtil.rollbackTransaction();
+				}
+			}
+			catch (Exception ignored) {}
+
+			throw new MonitorException("Failed to delete monitor check", ex);
+		}
+		finally {
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
+		}
+	}
 }

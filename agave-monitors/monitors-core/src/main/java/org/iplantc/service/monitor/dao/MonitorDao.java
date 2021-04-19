@@ -3,18 +3,9 @@
  */
 package org.iplantc.service.monitor.dao;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.HibernateException;
-import org.hibernate.ObjectNotFoundException;
-import org.hibernate.Query;
-import org.hibernate.Session;
+import org.hibernate.*;
 import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.transform.Transformers;
 import org.iplantc.service.common.Settings;
@@ -26,13 +17,11 @@ import org.iplantc.service.common.search.SearchTerm;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.search.MonitorSearchFilter;
-import org.iplantc.service.systems.exceptions.SystemException;
-import org.iplantc.service.systems.manager.SystemManager;
 import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.enumerations.RemoteSystemType;
-import org.iplantc.service.systems.search.SystemSearchFilter;
-import org.iplantc.service.systems.search.SystemSearchResult;
-import org.iplantc.service.transfer.model.enumerations.PermissionType;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Data access class for internal users.
@@ -232,6 +221,8 @@ public class MonitorDao extends AbstractDao
 			
 			Monitor monitor = (Monitor)session.createQuery(hql)
 					.setString("uuid",uuid)
+					.setCacheMode(CacheMode.IGNORE)
+					.setCacheable(false)
 					.uniqueResult();
 			
 			session.flush();
@@ -319,7 +310,6 @@ public class MonitorDao extends AbstractDao
 			Session session = HibernateUtil.getSession();
 			session.clear();
 			session.delete(monitor);
-			session.getTransaction().commit();
 			session.flush();
 		}
 		catch (HibernateException ex)

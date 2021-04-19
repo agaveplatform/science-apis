@@ -1,6 +1,7 @@
 package org.iplantc.service.common.dao;
 
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.CacheMode;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.common.Settings;
@@ -299,6 +300,8 @@ public abstract class AbstractEntityEventDao<T extends AgaveEntityEvent, V exten
 					" WHERE entity = :uuid";
 			session.createQuery(hql)
 					.setString("uuid", entityUuid)
+					.setCacheMode(CacheMode.IGNORE)
+					.setCacheable(false)
 					.executeUpdate();
 			
 			session.flush();

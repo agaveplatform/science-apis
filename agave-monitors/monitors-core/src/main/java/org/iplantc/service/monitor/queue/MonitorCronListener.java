@@ -1,7 +1,7 @@
 package org.iplantc.service.monitor.queue;
 
-import java.util.Date;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
@@ -21,8 +21,7 @@ import org.iplantc.service.notification.util.EmailMessage;
 import org.joda.time.DateTime;
 import org.quartz.JobExecutionContext;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Date;
 
 /**
  * Class to check for monitors who are past their next run time and need to run.
@@ -35,7 +34,7 @@ public class MonitorCronListener implements org.quartz.Job
 {
 	private static final Logger	log	= Logger.getLogger(MonitorCronListener.class);
 
-	private MonitorDao dao = new MonitorDao();
+	private final MonitorDao dao = new MonitorDao();
 	private MessageQueueClient messageClient;
 
 	/* (non-Javadoc)
@@ -140,7 +139,7 @@ public class MonitorCronListener implements org.quartz.Job
 			}
 		}
 		finally {
-			try { messageClient.stop(); } catch (Exception e) {}
+			try { messageClient.stop(); } catch (Exception ignored) {}
 		}
 
 	}

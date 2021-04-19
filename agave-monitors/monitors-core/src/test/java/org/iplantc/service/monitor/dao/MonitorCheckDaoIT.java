@@ -1,8 +1,5 @@
 package org.iplantc.service.monitor.dao;
 
-import com.jcabi.immutable.Array;
-import org.apache.commons.lang.ArrayUtils;
-import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.monitor.AbstractMonitorIT;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.model.Monitor;
@@ -167,6 +164,42 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 	}
 
 	@Test(dependsOnMethods = { "getAllChecksByMonitorId" })
+	public void deleteAllChecksByMonitor() {
+		MonitorCheckDao checkDao = new MonitorCheckDao();
+		Monitor monitor1 = null;
+		Monitor monitor2 = null;
+		try {
+			monitor1 = createAndSavePendingStorageMonitor();
+			monitor2 = createAndSavePendingExecutionMonitor();
+			int checkCount = 10;
+			for (int i=0; i<checkCount; i++) {
+				MonitorCheck check1 = new MonitorCheck(monitor1, i % 2 == 0 ? MonitorStatusType.FAILED : MonitorStatusType.PASSED, UUID.randomUUID().toString(), MonitorCheckType.STORAGE);
+				checkDao.persist(check1);
+				Assert.assertNotNull(check1.getId(), "Failed to save monitor check");
+
+				MonitorCheck check2 = new MonitorCheck(monitor2, i % 2 == 0 ? MonitorStatusType.PASSED : MonitorStatusType.FAILED, UUID.randomUUID().toString(), MonitorCheckType.STORAGE);
+				checkDao.persist(check2);
+				Assert.assertNotNull(check2.getId(), "Failed to save monitor check");
+			}
+
+			checkDao.deleteAllForMonitor(monitor1);
+
+			List<MonitorCheck> check1s = checkDao.getAllChecksByMonitorId(monitor1.getId());
+			Assert.assertTrue(check1s.isEmpty(), "No checks should exist for a monitor after calling deleteAllForMonitor");
+
+			List<MonitorCheck> check2s = checkDao.getAllChecksByMonitorId(monitor2.getId());
+			Assert.assertEquals(check2s.size(), checkCount, "Invalid number of checks for second monitor returned by getAll.");
+
+			for (MonitorCheck check: check2s) {
+				Assert.assertEquals(check.getMonitor().getUuid(), monitor2.getUuid(), "Check from incorrect monitor returned from getAllChecksByMonitorId");
+			}
+		}
+		catch (Exception e) {
+			Assert.fail("No exception should be thrown from a valid check persistence.", e);
+		}
+	}
+
+	@Test(dependsOnMethods = { "deleteAllChecksByMonitor" })
 	public void getLastMonitorCheck() {
 		MonitorCheckDao checkDao = new MonitorCheckDao();
 		Monitor monitor1 = null;
@@ -218,11 +251,16 @@ public class MonitorCheckDaoIT extends AbstractMonitorIT {
 			List<MonitorCheck> paginatedChecks = checkDao.getPaginatedByIdAndRange(monitor1.getId(), null, null, null, null, checkCount, 0);
 			Assert.assertEquals(paginatedChecks.size(), expectedCheckUUIDs.size(), "Invalid number of checks for first monitor returned by getAll.");
 
+			boolean allResponsesExpected =
+					paginatedChecks.stream().allMatch(check -> expectedCheckUUIDs.contains(check.getUuid()));
 
-			for (MonitorCheck check: paginatedChecks) {
-				Assert.assertTrue(expectedCheckUUIDs.contains(check.getUuid()),
-						"Check returned from getPaginatedByIdAndRange was not in the correct set of checks for the given range.");
-			}
+			Assert.assertTrue(allResponsesExpected,
+					"Check returned from getPaginatedByIdAndRange was not in the correct set of checks for the given range.");
+//
+//			for (MonitorCheck check: paginatedChecks) {
+//				Assert.assertTrue(expectedCheckUUIDs.contains(check.getUuid()),
+//						"Check returned from getPaginatedByIdAndRange was not in the correct set of checks for the given range.");
+//			}
 			
 		}
 		catch (Exception e) {

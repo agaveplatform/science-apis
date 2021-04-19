@@ -15,9 +15,9 @@ import org.iplantc.service.common.representation.AgaveErrorRepresentation;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
 import org.iplantc.service.monitor.dao.MonitorDao;
-import org.iplantc.service.monitor.events.DomainEntityEventDao;
 import org.iplantc.service.monitor.events.MonitorEventProcessor;
 import org.iplantc.service.monitor.exceptions.MonitorException;
+import org.iplantc.service.monitor.managers.MonitorManager;
 import org.iplantc.service.monitor.managers.MonitorPermissionManager;
 import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.enumeration.MonitorEventType;
@@ -45,6 +45,7 @@ public class MonitorResourceImpl extends AbstractAgaveResource implements Monito
 {
 	private static final ObjectMapper mapper = new ObjectMapper();
 	protected MonitorDao dao = new MonitorDao();
+	protected MonitorManager monitorManager = new MonitorManager();
 	protected MonitorPermissionManager pm = null;
 	protected MonitorEventProcessor eventProcessor = new MonitorEventProcessor();
 	
@@ -361,7 +362,7 @@ public class MonitorResourceImpl extends AbstractAgaveResource implements Monito
 		} 
 		catch (Exception e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
-					"Failed to save monitor: " + e.getMessage(), e);
+					"Failed to save monitor", e);
 		}
 		finally {
 			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
@@ -408,7 +409,7 @@ public class MonitorResourceImpl extends AbstractAgaveResource implements Monito
 		}
 		catch (Exception e) {
 			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-					"Failed to retrieve monitor: " + e.getMessage(), e);
+					"Failed to retrieve monitor", e);
 		}
 		finally {
 			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
@@ -441,18 +442,8 @@ public class MonitorResourceImpl extends AbstractAgaveResource implements Monito
 				pm = new MonitorPermissionManager(monitor);
 				if (pm.canWrite(getAuthenticatedUsername())) 
 				{
-					eventProcessor.processContentEvent(monitor, MonitorEventType.DELETED, getAuthenticatedUsername());
-					
-					// clean up history
+					monitorManager.delete(monitor, getAuthenticatedUsername());
 
-					DomainEntityEventDao historyDao = new DomainEntityEventDao();
-					historyDao.deleteByEntityId(monitorUuid);
-
-					// remove event
-					dao.delete(monitor);
-
-					// NotificationManager.process(monitor.getUuid(), MonitorEventType.DELETED.name(), monitor.getOwner());
-					
 					return Response.ok(new AgaveSuccessRepresentation()).build();
 				} 
 				else 
@@ -464,10 +455,9 @@ public class MonitorResourceImpl extends AbstractAgaveResource implements Monito
 		}
 		catch (ResourceException e) {
 			throw e;
-		} 
+		}
 		catch (Exception e) {
-			throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
-					"Failed to delete monitor: " + e.getMessage());
+			throw new ResourceException(Status.SERVER_ERROR_INTERNAL, "Failed to delete monitor", e);
 		}
 		finally {
 			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}

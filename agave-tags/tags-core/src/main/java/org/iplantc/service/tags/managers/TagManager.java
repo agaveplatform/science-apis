@@ -280,10 +280,10 @@ public class TagManager {
 	 * Deletes a tag and sends the appropriate notifications. Permissions
 	 * are verified prior to deletion.
 	 * 
-	 * @param tag
-	 * @param username
-	 * @throws TagException
-	 * @throws TagPermissionException
+	 * @param tag the tag to delete
+	 * @param username the user requesting the detetion
+	 * @throws TagException if deletion fails
+	 * @throws TagPermissionException if the user does not have permission to delete
 	 */
 	public void deleteUserTag(Tag tag, String username) 
 	throws TagException, TagPermissionException 

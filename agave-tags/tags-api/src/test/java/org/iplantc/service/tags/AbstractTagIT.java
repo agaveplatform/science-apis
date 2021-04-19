@@ -1,8 +1,6 @@
 package org.iplantc.service.tags;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.hibernate.HibernateException;
@@ -17,18 +15,17 @@ import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.tags.dao.TagDao;
 import org.iplantc.service.tags.exceptions.TagException;
 import org.iplantc.service.tags.model.Tag;
-import org.json.JSONException;
 import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
 
-import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
 
-@Test(groups={"integration"})
-public abstract class AbstractTagTest {
+import static org.iplantc.service.tags.TestDataHelper.TEST_USER;
+
+public abstract class AbstractTagIT {
 
 	protected ObjectMapper mapper = new ObjectMapper();
 	protected NotificationDao notificationDao = new NotificationDao();
@@ -37,13 +34,8 @@ public abstract class AbstractTagTest {
 	protected Tenant defaultTenant;
 	protected TenantDao tenantDao;
 	
-	protected Tag createTag() throws TagException, JSONException, IOException
-	{
-		JsonNode json = dataHelper.getTestDataObject(TestDataHelper.TEST_TAG);
-		
-		((ArrayNode)json.get("associatedIds")).removeAll().add(defaultTenant.getUuid());
-		
-		return Tag.fromJSON(json);
+	protected Tag createTag() {
+		return new Tag(UUID.randomUUID().toString(), TEST_USER, new String[]{ defaultTenant.getUuid() });
 	}
 	
 	
@@ -133,7 +125,7 @@ public abstract class AbstractTagTest {
 		tenantDao = new TenantDao();
 		tenantDao.persist(defaultTenant);
 		TenancyHelper.setCurrentTenantId(defaultTenant.getTenantCode());
-		TenancyHelper.setCurrentEndUser(TestDataHelper.TEST_USER);
+		TenancyHelper.setCurrentEndUser(TEST_USER);
 	}	
 
 	@AfterClass
@@ -147,7 +139,6 @@ public abstract class AbstractTagTest {
 	
 	/**
 	 * Flushes the messaging tube of any and all existing jobs.
-	 * @param queueName
 	 */
 	@AfterMethod
 	protected void clearQueues() 

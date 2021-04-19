@@ -25,9 +25,9 @@ public class AbstractTagResource extends AbstractAgaveResource {
     /**
      * Fetches the {@link Tag} object for the uuid in the URL or throws 
      * an exception that can be re-thrown from the route method.
-     * @param tagId
+     * @param uuid the tag uuid
      * @return Tag object referenced in the path
-     * @throws ResourceException
+     * @throws ResourceException if unable to fetch the resource
      */
     protected Tag getResourceFromPathValue(String uuid)
     throws TagException
@@ -56,7 +56,7 @@ public class AbstractTagResource extends AbstractAgaveResource {
 
     /**
      * Convenience class to log usage info per request
-     * @param action
+     * @param activityKey the activity key to log
      */
     protected void logUsage(AgaveLogServiceClient.ActivityKeys activityKey) {
         AgaveLogServiceClient.log(getServiceKey().name(), activityKey.name(),

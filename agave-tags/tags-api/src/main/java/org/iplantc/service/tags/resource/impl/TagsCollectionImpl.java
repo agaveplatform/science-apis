@@ -83,7 +83,7 @@ public class TagsCollectionImpl extends AbstractTagCollection implements TagsCol
           	JsonNode contentJson = getPostedContentAsJsonNode(input);  	
           	TagManager manager = new TagManager();
           	Tag tag = manager.addTagForUser(contentJson, getAuthenticatedUsername());
-          	return Response.ok().entity(new AgaveSuccessRepresentation(tag.toJSON().toString())).build();
+          	return Response.ok().entity(new AgaveSuccessRepresentation(tag.toJSON().toString())).status(201).build();
         }
         catch (TagException e) {
         	log.error(e);

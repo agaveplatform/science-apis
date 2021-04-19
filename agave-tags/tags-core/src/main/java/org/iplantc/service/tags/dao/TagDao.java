@@ -172,8 +172,12 @@ public class TagDao extends AbstractDao
 
 				// return the first value the user owns if it exists
 				// otherwise return the first result
-				Optional<Tag> tag = tags.stream().filter(t -> t.getOwner().equals(username)).findFirst();
-				return tag.orElseGet(() -> tags.get(0));
+				if (tags.isEmpty()) {
+					return null;
+				} else {
+					Optional<Tag> tag = tags.stream().filter(t -> t.getOwner().equals(username)).findFirst();
+					return tag.orElseGet(() -> tags.get(0));
+				}
 			}
 			catch (HibernateException ex)
 			{
@@ -331,7 +335,7 @@ public class TagDao extends AbstractDao
 			throw new TagException("Failed to save tag", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {e.printStackTrace();}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -650,8 +654,6 @@ public class TagDao extends AbstractDao
                 }
                 
             }
-            
-            log.debug(q);
             
             List<Tag> tags = query
                     .setFirstResult(offset)

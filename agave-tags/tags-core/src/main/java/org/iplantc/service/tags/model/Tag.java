@@ -56,7 +56,7 @@ public class Tag  {
 	 */
 	@Id
 	@GeneratedValue
-	@Column(name = "`id`", unique = true, nullable = false)
+	@Column(name = "id", unique = true, nullable = false)
 	@JsonIgnore
 	private Long id;
 	
@@ -67,20 +67,22 @@ public class Tag  {
 	@JsonProperty("id")
 	@Size(min=3,
 		  max=64,
-		  message = "Invalid uuid value. uuid must be between {min} and {max} characters long.")
+		  message = "Tag uuid must be between {min} and {max} characters long.")
+    @NotNull(message="Tag uuid cannot be null.")
 	private String uuid;
 	
 	/**
 	 * Creator of this notification
 	 */
 	@Column(name = "owner", nullable = false, length = 32)
-	@Size(min=3,max=32, message="Invalid notification owner. Usernames must be between {min} and {max} characters.")
+	@Size(min=3,max=32, message="Tag owner must be between {min} and {max} characters.")
 	private String owner;
 	
 	/**
 	 * The tenant in which this notification was created.
 	 */
 	@Column(name = "tenant_id", nullable=false, length = 64)
+    @NotNull(message="Tag tenantId cannot be null.")
 	@JsonIgnore
 	private String tenantId;
 	
@@ -89,7 +91,7 @@ public class Tag  {
 	 */
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "last_updated", nullable = false)
-	@NotNull(message="Invalid notification lastUpdated. Notification lastUpdated cannot be null.")
+	@NotNull(message="Tag lastUpdated cannot be null.")
 	private Date lastUpdated;	
 	
 	/**
@@ -97,15 +99,15 @@ public class Tag  {
 	 */
 	@Temporal(TemporalType.TIMESTAMP)
 	@Column(name = "created", nullable = false)
-	@NotNull(message="Invalid notification created. Notification created cannot be null.")
+	@NotNull(message="Tag created cannot be null.")
 	private Date created;
 	
 	/**
 	 * Creator of this notification
 	 */
-	@Column(name = "name", nullable = false, length = 32)
-	@NotNull
-	@Size(min=3,max=32, message="Invalid notification owner. Usernames must be between {min} and {max} characters.")
+	@Column(name = "name", nullable = false, length = 128)
+    @NotNull(message="Tag name cannot be null.")
+	@Size(min=3,max=128, message="Tag name must be between {min} and {max} characters.")
 	@Pattern(regexp="[0-9a-zA-Z\\.\\-_]+", flags={Pattern.Flag.CASE_INSENSITIVE})
 	private String name;
 	

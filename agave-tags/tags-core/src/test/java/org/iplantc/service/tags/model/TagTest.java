@@ -9,9 +9,13 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+
+import static org.iplantc.service.tags.TestDataHelper.TEST_USER;
+
 @Test(groups={"unit"})
 public class TagTest {
-
+    private static final ObjectMapper mapper = new ObjectMapper();
     private TestDataHelper dataHelper;
 
     @BeforeClass
@@ -30,20 +34,22 @@ public class TagTest {
     }
 
     @DataProvider
-    private Object[][] setNameProvider() {
+    private Object[][] setNameProvider() throws IOException {
+        ObjectNode json = ((ObjectNode) dataHelper.getTestDataObject(TestDataHelper.TEST_TAG));
+        json.put("owner", TEST_USER);
+
         return new Object[][]{
-                {"foo", false, "minimum alpha characters should not throw exception"},
-                {"", true, "empty name should throw exception"},
-                {null, true, "null name should throw exception"},
-                {"f", true, "less than 3 alpha characters should throw exception"},
-                {"ff", true, "less than 3 alpha characters should throw exception"},
+                {json, "foo", false, "minimum alpha characters should not throw exception"},
+                {json, "", true, "empty name should throw exception"},
+                {json, null, true, "null name should throw exception"},
+                {json, "f", true, "less than 3 alpha characters should throw exception"},
+                {json, "ff", true, "less than 3 alpha characters should throw exception"},
         };
     }
 
     @Test(dataProvider = "setNameProvider")
-    public void setName(String name, boolean shouldThrowException, String message) {
+    public void setName(ObjectNode json, String name, boolean shouldThrowException, String message) {
         try {
-            ObjectNode json = ((ObjectNode) dataHelper.getTestDataObject(TestDataHelper.TEST_TAG));
             if (name == null) {
                 json.putNull("name");
             } else {
@@ -62,23 +68,23 @@ public class TagTest {
     }
 
     @DataProvider
-    private Object[][] setTaggedResourcesFailsInvalidAssociatedIdsProvider() {
-        ObjectMapper mapper = new ObjectMapper();
+    private Object[][] setTaggedResourcesFailsInvalidAssociatedIdsProvider() throws IOException {
+        ObjectNode json = ((ObjectNode) dataHelper.getTestDataObject(TestDataHelper.TEST_TAG));
+        json.put("owner", TEST_USER);
 
         return new Object[][]{
-                {mapper.createArrayNode(), true, "empty associatedIds array should throw exception"},
-                {mapper.createArrayNode().addNull(), true, "null associatedIds array should throw exception"},
-                {mapper.createArrayNode().add(""), true, "empty uuid in associatedIds array should throw exception"},
-                {mapper.createArrayNode().add("foo"), true, "invalid uuid in associatedIds array should throw exception"},
+                {json, mapper.createArrayNode(), true, "empty associatedIds array should throw exception"},
+                {json, mapper.createArrayNode().addNull(), true, "null associatedIds array should throw exception"},
+                {json, mapper.createArrayNode().add(""), true, "empty uuid in associatedIds array should throw exception"},
+                {json, mapper.createArrayNode().add("foo"), true, "invalid uuid in associatedIds array should throw exception"},
 
         };
     }
 
 
     @Test(dataProvider = "setTaggedResourcesFailsInvalidAssociatedIdsProvider")
-    public void setTaggedResourcesFailsInvalidAssociatedIds(ArrayNode uuids, boolean shouldThrowException, String message) {
+    public void setTaggedResourcesFailsInvalidAssociatedIds(ObjectNode json, ArrayNode uuids, boolean shouldThrowException, String message) {
         try {
-            ObjectNode json = ((ObjectNode) dataHelper.getTestDataObject(TestDataHelper.TEST_TAG));
             if (uuids == null) {
                 json.putNull("associatedUuids");
             } else {

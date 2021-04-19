@@ -14,12 +14,16 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.iplantc.service.tags.TestDataHelper.TEST_USER;
+
 @Test(groups = {"integration"})
 public class TagIT extends AbstractTagTest {
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     @BeforeClass
     protected void beforeClass() throws Exception {
@@ -33,20 +37,20 @@ public class TagIT extends AbstractTagTest {
 
 
     @DataProvider
-    private Object[][] setTaggedResourcesProvider() {
-        ObjectMapper mapper = new ObjectMapper();
+    private Object[][] setTaggedResourcesProvider() throws IOException {
+        ObjectNode json = ((ObjectNode) dataHelper.getTestDataObject(TestDataHelper.TEST_TAG));
+        json.put("owner", TEST_USER);
 
         return new Object[][]{
-                {mapper.createArrayNode().add(defaultTenant.getUuid()), new String[]{defaultTenant.getUuid()}, "valid associatedIds array should succeed"},
-                {mapper.createArrayNode().add(defaultTenant.getUuid()).add(defaultTenant.getUuid()), new String[]{defaultTenant.getUuid()}, "valid associatedIds should be stripped to unique"},
+                {json, mapper.createArrayNode().add(defaultTenant.getUuid()), new String[]{defaultTenant.getUuid()}, "valid associatedIds array should succeed"},
+                {json, mapper.createArrayNode().add(defaultTenant.getUuid()).add(defaultTenant.getUuid()), new String[]{defaultTenant.getUuid()}, "valid associatedIds should be stripped to unique"},
         };
     }
 
 
     @Test(dataProvider = "setTaggedResourcesProvider")
-    public void setTaggedResources(ArrayNode provided, String[] expected, String message) {
+    public void setTaggedResources(ObjectNode json, ArrayNode provided, String[] expected, String message) {
         try {
-            ObjectNode json = ((ObjectNode) dataHelper.getTestDataObject(TestDataHelper.TEST_TAG));
             json.set("associationIds", provided);
 
             Tag tag = Tag.fromJSON(json);
@@ -60,7 +64,6 @@ public class TagIT extends AbstractTagTest {
 
     @DataProvider
     private Object[][] toJSONProvider() {
-        ObjectMapper mapper = new ObjectMapper();
         List<Object[]> testCases = new ArrayList<Object[]>();
         for (UUIDType resourceType : UUIDType.values()) {
             Tag tag = new Tag(resourceType.name() + "_TAG", TestDataHelper.TEST_USER, new String[]{new AgaveUUID(resourceType).toString()});

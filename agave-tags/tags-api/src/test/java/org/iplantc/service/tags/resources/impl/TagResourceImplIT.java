@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.codec.binary.Base64;
-import org.iplantc.service.tags.AbstractTagTest;
+import org.iplantc.service.common.auth.JWTClient;
+import org.iplantc.service.common.exceptions.TenantException;
+import org.iplantc.service.tags.AbstractTagIT;
 import org.iplantc.service.tags.ServletJaxRsApplication;
 import org.iplantc.service.tags.TestDataHelper;
 import org.iplantc.service.tags.dao.TagDao;
@@ -16,22 +18,26 @@ import org.restlet.Client;
 import org.restlet.Component;
 import org.restlet.Context;
 import org.restlet.Server;
-import org.restlet.data.Form;
-import org.restlet.data.Header;
 import org.restlet.data.MediaType;
 import org.restlet.data.Protocol;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.ClientResource;
-import org.restlet.util.Series;
+import org.restlet.resource.ResourceException;
 import org.testng.Assert;
 import org.testng.annotations.*;
 
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import static org.iplantc.service.tags.TestDataHelper.TEST_USER;
+import static org.testng.Assert.*;
 
 @Test(groups={"integration"})
-public class TagResourceImplIT extends AbstractTagTest
+public class TagResourceImplIT extends AbstractTagIT
 {	
 	private final Component comp = new Component();
 	private final TagDao dao = new TagDao();
@@ -120,55 +126,49 @@ public class TagResourceImplIT extends AbstractTagTest
 	{
 		String responseBody = representation.getText();
 		
-		Assert.assertNotNull(responseBody, "Null body returned");
+		assertNotNull(responseBody, "Null body returned");
 		
-		ObjectMapper mapper = new ObjectMapper();
-		JsonNode json = mapper.getFactory().createJsonParser(responseBody).readValueAsTree();
+		JsonNode json = mapper.readTree(responseBody);
 		if (shouldSucceed) {
-			Assert.assertEquals(json.get("result").asText().toLowerCase(), "success", "Error when success should have occurred");
+			assertEquals(json.get("result").asText().toLowerCase(), "success", "Error when success should have occurred");
 		} else {
-			Assert.assertEquals(json.get("result").asText().toLowerCase(), "error", "Success when error should have occurred");
+			assertEquals(json.get("result").asText().toLowerCase(), "error", "Success when error should have occurred");
 		}
 		
 		return json.get("response");
 	}
-	
+
 	/**
 	 * Creates a client to call the api given by the url. This will reuse the connection
 	 * multiple times rather than starting up a new client every time.
-	 * 
-	 * @param url
-	 * @return
+	 *
+	 * @param url the url to point the client towards
+	 * @return an initialized API client
 	 */
-	private ClientResource getService(String url)
-	{
-		ClientResource service = new ClientResource(url);
-    	Series<Header> headers = (Series<Header>) service.getRequest().getAttributes().get("org.restlet.http.headers");
-		if (headers == null) {
-    		headers = new Series<Header>(Header.class); 
-    	} 
-    	headers.add("x-jwt-assertion", testJWT);
-    	service.setNext(client);
-    	service.getRequest().getAttributes().put("org.restlet.http.headers", headers);
-    	service.setReferrerRef("http://test.example.com");
-    	return service;
+	private ClientResource getService(String url) throws TenantException {
+		String jwt = JWTClient.createJwtForTenantUser(TEST_USER, "agave.dev", false);
+		ClientResource resource = new ClientResource(url);
+		resource.setReferrerRef("http://test.example.com");
+		resource.getRequest().getHeaders().add("X-JWT-ASSERTION-AGAVE_DEV", jwt);
+
+		return resource;
 	}
 
 	@DataProvider(name="addTagProvider")
-	public Object[][] addMonitorProvider() throws Exception
+	public Object[][] addTagProvider() throws Exception
 	{
-//		ObjectNode jsonExecutionMonitorNoSystem = createTag();
-//		ObjectNode jsonExecutionMonitorNoFrequency = (ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR);
-//		ObjectNode jsonExecutionMonitorNoUpdateSystemStatus = (ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR);
-//		ObjectNode jsonExecutionMonitorNoInternalUsername = (ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR);
-//		jsonExecutionMonitorNoSystem.remove("target");
-//		jsonExecutionMonitorNoFrequency.remove("system");
-//		jsonExecutionMonitorNoUpdateSystemStatus.remove("updateSystemStatus");
-//		jsonExecutionMonitorNoInternalUsername.remove("internalUsername");
+//		ObjectNode jsonExecutionTagNoSystem = createTag();
+//		ObjectNode jsonExecutionTagNoFrequency = (ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR);
+//		ObjectNode jsonExecutionTagNoUpdateSystemStatus = (ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR);
+//		ObjectNode jsonExecutionTagNoInternalUsername = (ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR);
+//		jsonExecutionTagNoSystem.remove("target");
+//		jsonExecutionTagNoFrequency.remove("system");
+//		jsonExecutionTagNoUpdateSystemStatus.remove("updateSystemStatus");
+//		jsonExecutionTagNoInternalUsername.remove("internalUsername");
 //		
 		return new Object[][] {
 			{ dataHelper.getTestDataObject(TestDataHelper.TEST_TAG), "Valid tag json should parse", false },
-//			{ jsonExecutionMonitorNoSystem, "Missing system should throw exception", true },
+//			{ jsonExecutionTagNoSystem, "Missing system should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("target", ""), "Empty target should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("target", mapper.createObjectNode()), "Object for target should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("target", mapper.createArrayNode()), "Array for target should throw exception", true },
@@ -181,21 +181,21 @@ public class TagResourceImplIT extends AbstractTagTest
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("target", sharedExecutionSystem.getSystemId()), "Shared execution system should not throw an exception", false },
 //
 //
-//			{ jsonExecutionMonitorNoFrequency, "Missing frequency should throw exception", true },
+//			{ jsonExecutionTagNoFrequency, "Missing frequency should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("frequency", ""), "Empty frequency should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("frequency", mapper.createObjectNode()), "Object for frequency should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("frequency", mapper.createArrayNode()), "Array for frequency should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("frequency", 5), "Integer for frequency should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("frequency", 5.5), "Decimal for frequency should throw exception", true },
 //
-//			{ jsonExecutionMonitorNoUpdateSystemStatus, "Missing updateSystemStatus should throw exception", true },
+//			{ jsonExecutionTagNoUpdateSystemStatus, "Missing updateSystemStatus should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("updateSystemStatus", ""), "Empty updateSystemStatus should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("updateSystemStatus", mapper.createObjectNode()), "Object for updateSystemStatus should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("updateSystemStatus", mapper.createArrayNode()), "Array for updateSystemStatus should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("updateSystemStatus", 5), "Integer for updateSystemStatus should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("updateSystemStatus", 5.5), "Decimal for updateSystemStatus should throw exception", true },
 //
-//			{ jsonExecutionMonitorNoInternalUsername, "Missing internalUsername should throw exception", true },
+//			{ jsonExecutionTagNoInternalUsername, "Missing internalUsername should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("internalUsername", ""), "Empty internalUsername should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("internalUsername", mapper.createObjectNode()), "Object for internalUsername should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("internalUsername", mapper.createArrayNode()), "Array for internalUsername should throw exception", true },
@@ -208,180 +208,122 @@ public class TagResourceImplIT extends AbstractTagTest
 	@Test(dataProvider="addTagProvider")
 	public void addSingleTag(JsonNode body, String errorMessage, boolean shouldThrowException)
 	{
-		ClientResource resource = getService("http://localhost:8182/");  
-		
 		JsonNode json = null;
 		try 
 		{
-			Representation response = resource.post(new StringRepresentation(body.toString()));
-			Assert.assertEquals(resource.getStatus().equals(Status.OK), !shouldThrowException, "Response failed when it should not have");
-			Assert.assertNotNull(response, "Expected json monitor object, instead received null");
-			Assert.assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON, 
+			ClientResource resource = getService("http://localhost:8182/");
+
+			Representation response = resource.post(new StringRepresentation(mapper.writeValueAsString(body)));
+			assertEquals(resource.getStatus().equals(Status.OK), !shouldThrowException, "Response failed when it should not have");
+			assertNotNull(response, "Expected json tag object, instead received null");
+			assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON,
 					"Expected json media type returned, instead received " + response.getMediaType());
 			
 			json = verifyResponse(response, true);
 			
-			Assert.assertNotNull(json.get("id").asText().toLowerCase(), "No tag uuid given");
+			assertNotNull(json.get("id").asText().toLowerCase(), "No tag uuid given");
 		}
 		catch (Exception e) {
 			Assert.fail("Unexpected exception thrown", e);
 		}
 	}
 	
-	@Test(dataProvider="addTagProvider", dependsOnMethods={"addSingleTag"})
-	public void addMonitorFromForm(JsonNode body, String errorMessage, boolean shouldThrowException)
-	{
-		ClientResource resource = getService("http://localhost:8182/monitors");  
-		
-		JsonNode json = null;
-		try 
-		{
-			Form form = new Form();
-			if (body != null) 
-			{
-				if (body.has("target")) 
-				{
-					form.add("target", body.get("target").asText());
-				}
-				
-				if (body.has("frequency")) 
-				{
-					form.add("frequency", body.get("frequency").asText());
-				}
-				
-				if (body.has("updateSystemStatus")) 
-				{
-					form.add("updateSystemStatus", body.get("updateSystemStatus").asText());
-				}
-				
-				if (body.has("internalUsername")) 
-				{
-					form.add("internalUsername", body.get("internalUsername").asText());
-				}
-			}
-			
-			Representation response = resource.post(form.getWebRepresentation());
-			Assert.assertEquals(resource.getStatus().equals(Status.OK), !shouldThrowException, "Response failed when it should not have");
-			Assert.assertNotNull(response, "Expected json monitor object, instead received null");
-			Assert.assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON, 
-					"Expected json media type returned, instead received " + response.getMediaType());
-			
-			json = verifyResponse(response, true);
-			
-			Assert.assertNotNull(json.get("id").asText().toLowerCase(), "No monitor uuid given");
-		}
-		catch (Exception e) {
-			Assert.fail("Unexpected exception thrown", e);
-		}
-	}
-
 	@DataProvider(name="deleteTagProvider")
 	public Object[][] deleteTagProvider() throws Exception
 	{
-		Tag validMonitor = createTag();
-		dao.persist(validMonitor);
+		Tag validTag = createTag();
+		dao.persist(validTag);
 		
-//		Monitor invalidSystemMonitor = createStorageMonitor();
-//		invalidSystemMonitor.setOwner(TestDataHelper.SYSTEM_SHARE_USER);
-//		invalidSystemMonitor.setSystem(privateStorageSystem);
-//		dao.persist(invalidSystemMonitor);
+//		Tag invalidSystemTag = createStorageTag();
+//		invalidSystemTag.setOwner(TestDataHelper.SYSTEM_SHARE_USER);
+//		invalidSystemTag.setSystem(privateStorageSystem);
+//		dao.persist(invalidSystemTag);
 		
-		Tag otherUserMonitor = createTag();
-		otherUserMonitor.setOwner(TestDataHelper.TEST_SHAREUSER);
-		dao.persist(otherUserMonitor);
+		Tag otherUserTag = createTag();
+		otherUserTag.setOwner(TestDataHelper.TEST_SHAREUSER);
+		dao.persist(otherUserTag);
 		
 		return new Object[][] {
-			{ validMonitor.getUuid(), "Deleting valid tag should succeed", false },
+			{ validTag.getUuid(), "Deleting valid tag should succeed", false },
 			{ "", "Empty uuid should fail", true },
 			{ "abcd", "Invalid uuid should fail", true },
-			{ otherUserMonitor.getUuid(), "Deleting unowned tag should fail", true },
+			{ otherUserTag.getUuid(), "Deleting unowned tag should fail", true },
 		};
 	}
 	
-	@Test(dataProvider="deleteTagProvider", dependsOnMethods={"addMonitorFromForm"})
+	@Test(dataProvider="deleteTagProvider")
 	public void deleteTag(String uuid, String errorMessage, boolean shouldThrowException)
 	{
-		ClientResource resource = getService("http://localhost:8182/" + uuid);  
-		
 		JsonNode json = null;
 		try 
 		{
+			ClientResource resource = getService("http://localhost:8182/" + uuid);
+
 			Representation response = resource.delete();
-			Assert.assertEquals(resource.getStatus().equals(Status.OK), !shouldThrowException, "Response failed when it should not have");
-			Assert.assertNotNull(response, "Expected json monitor object, instead received null");
-			Assert.assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON, 
+			assertEquals(resource.getStatus().equals(Status.OK), !shouldThrowException, "Response failed when it should not have");
+			assertNotNull(response, "Expected json tag object, instead received null");
+			assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON,
 					"Expected json media type returned, instead received " + response.getMediaType());
 			
 			json = verifyResponse(response, shouldThrowException);
 			
-			Assert.assertTrue(json.isNull(), "Message results attribute was not null");
+			assertTrue(json.isNull(), "Message results attribute was not null");
 		}
 		catch (Exception e) {
 			Assert.fail("Unexpected exception thrown", e);
 		}
 	}
 
-//	@Test(dataProvider="deleteMonitorProvider", dependsOnMethods={"deleteMonitor"})
-//	public void fireMonitor(String uuid, String errorMessage, boolean shouldThrowException)
-//	{
-//		ClientResource resource = getService("http://localhost:8182/monitors/" + uuid);  
-//		
-//		JsonNode json = null;
-//		try 
-//		{
-//			Representation response = resource.delete();
-//			
-//			Assert.assertNotNull(response, "Expected json monitor object, instead received null");
-//			Assert.assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON, 
-//					"Expected json media type returned, instead received " + response.getMediaType());
-//			
-//			json = verifyResponse(response, shouldThrowException);
-//			Assert.assertEquals(resource.getStatus().equals(Status.OK), !shouldThrowException, "Response failed when it should not have"); 
-//			
-//		}
-//		catch (Exception e) {
-//			Assert.fail("Unexpected exception thrown", e);
-//		}
-//	}
-	
+	@Test
+	public void getMissingTag()
+	{
+		JsonNode json = null;
+		try
+		{
+			ClientResource resource = getService("http://localhost:8182/" + UUID.randomUUID());
+
+			Representation response = resource.get();
+		}
+		catch (ResourceException e) {
+			assertEquals(e.getStatus().getCode(), 404, "Unknown uuid response should be a 404");
+		}
+		catch (Exception e) {
+			Assert.fail("Unexpected exception thrown", e);
+		}
+	}
+
 	@DataProvider(name="getTagProvider")
 	public Object[][] getTagProvider() throws Exception
 	{
-		Tag validMonitor = createTag();
-		validMonitor.setOwner(TestDataHelper.TEST_USER);
-		dao.persist(validMonitor);
+		Tag validTag = createTag();
+		dao.persist(validTag);
 		
-		Tag inactiveMonitor = createTag();
-		
-		Tag otherUserMonitor = createTag();
-		otherUserMonitor.setOwner(TestDataHelper.TEST_SHAREUSER);
-		dao.persist(otherUserMonitor);
+		Tag otherUserTag = createTag();
+		otherUserTag.setOwner(TestDataHelper.TEST_SHAREUSER);
+		dao.persist(otherUserTag);
 		
 		return new Object[][] {
-			{ validMonitor.getUuid(), "Requesting valid tag should succeed", false },
-			{ inactiveMonitor.getUuid(), "Requesting invalid tag should fail", true },
-			{ "", "Empty uuid should fail", true },
-			{ "abcd", "Invalid uuid should fail", true },
-			{ otherUserMonitor.getUuid(), "Requesting unowned tag should fail", true },
+			{ validTag.getUuid(), "Requesting valid tag should succeed", false },
+			{ otherUserTag.getUuid(), "Requesting unowned tag should fail", true },
 		};
 	}
 
-	@Test(dataProvider="getTagProvider", dependsOnMethods={"deleteTag"})
+	@Test(dataProvider="getTagProvider")
 	public void getTag(String uuid, String errorMessage, boolean shouldThrowException)
 	{
-		ClientResource resource = getService("http://localhost:8182/" + uuid);  
-		
 		JsonNode json = null;
 		try
 		{
+			ClientResource resource = getService("http://localhost:8182/" + uuid);
+
 			Representation response = resource.get();
 			
-			Assert.assertNotNull(response, "Expected json monitor object, instead received null");
-			Assert.assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON, 
+			assertNotNull(response, "Expected json tag object, instead received null");
+			assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON,
 					"Expected json media type returned, instead received " + response.getMediaType());
 			
 			json = verifyResponse(response, shouldThrowException);
-			Assert.assertEquals(resource.getStatus().equals(Status.OK), !shouldThrowException, "Response failed when it should not have"); 
+			assertEquals(resource.getStatus().equals(Status.OK), !shouldThrowException, "Response failed when it should not have");
 			
 		}
 		catch (Exception e) {
@@ -389,31 +331,34 @@ public class TagResourceImplIT extends AbstractTagTest
 		}
 	}
 
-	@Test(dependsOnMethods={"getTag"})
-	public void getTags(String errorMessage, boolean shouldThrowException)
+	@Test
+	public void listTags()
 	{
-		ClientResource resource = getService("http://localhost:8182/");  
-		
 		JsonNode json = null;
 		try
 		{
-			Tag m1 = createTag();
-			dao.persist(m1);
-			
-			Tag m2 = createTag();
-			dao.persist(m2);
-			
+			ClientResource resource = getService("http://localhost:8182/");
+
+			List<String> tagUuids = new ArrayList<>();
+			for (int i=0;i<5; i++) {
+				Tag tag = createTag();
+				dao.persist(tag);
+				tagUuids.add(tag.getUuid());
+			}
+
 			Representation response = resource.get();
 			
-			Assert.assertNotNull(response, "Expected json tag object, instead received null");
-			Assert.assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON, 
+			assertNotNull(response, "Expected json tag object, instead received null");
+			assertEquals(response.getMediaType(), MediaType.APPLICATION_JSON,
 					"Expected json media type returned, instead received " + response.getMediaType());
 			
-			json = verifyResponse(response, shouldThrowException);
-			Assert.assertEquals(resource.getStatus().equals(Status.OK), !shouldThrowException, "Response failed when it should not have");
-			Assert.assertTrue(json instanceof ArrayNode, "Service returned object rather than array");
-			Assert.assertEquals(json.size(), 2, "Invalid number of monitors returned.");
-			
+			json = verifyResponse(response, true);
+			assertEquals(resource.getStatus().getCode(), 200, "Response failed when it should not have");
+			assertTrue(json instanceof ArrayNode, "Service returned object rather than array");
+			assertEquals(json.size(), tagUuids.size(), "Invalid number of monitors returned.");
+
+			List<String> responseUuids = json.findValuesAsText("uuid");
+			assertTrue(tagUuids.containsAll(responseUuids), "All persisted tags should be returned in a list command");
 		}
 		catch (Exception e) {
 			Assert.fail("Unexpected exception thrown", e);

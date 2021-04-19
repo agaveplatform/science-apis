@@ -3,24 +3,21 @@
  */
 package org.iplantc.service.tags.resource.impl;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.tags.dao.TagEventDao;
-import org.iplantc.service.tags.exceptions.TagException;
 import org.iplantc.service.tags.model.Tag;
 import org.iplantc.service.tags.model.TagEvent;
 import org.iplantc.service.tags.resource.TagHistoryResource;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
 
 /**
  * Returns a collection of history records for a {@link TagEvent}. Search
@@ -59,6 +56,9 @@ public class TagHistoryResourceImpl extends AbstractTagCollection implements Tag
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
             		"An unexpected error occurred while fetching history event " + uuid + " for tag  " 
     				+ entityId + ". " + "If this continues, please contact your tenant administrator.", e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
 }

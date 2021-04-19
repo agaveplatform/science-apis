@@ -1,8 +1,9 @@
 package org.iplantc.service.tags;
 
-import java.io.IOException;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.surftools.BeanstalkClientImpl.ClientImpl;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
@@ -23,10 +24,8 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.surftools.BeanstalkClientImpl.ClientImpl;
+import java.io.IOException;
+import java.util.Map;
 
 @Test(groups={"integration"})
 public abstract class AbstractTagTest {
@@ -65,7 +64,7 @@ public abstract class AbstractTagTest {
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -81,6 +80,7 @@ public abstract class AbstractTagTest {
 			session.createQuery("delete TagPermission").executeUpdate();
 			session.createQuery("delete Tag").executeUpdate();
 			session.createQuery("delete TaggedResource").executeUpdate();
+			session.createQuery("delete TagEvent").executeUpdate();
 			session.flush();
 		}
 		catch (HibernateException ex)
@@ -89,7 +89,7 @@ public abstract class AbstractTagTest {
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -110,7 +110,7 @@ public abstract class AbstractTagTest {
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -199,11 +199,11 @@ public abstract class AbstractTagTest {
 				e.printStackTrace();
 			}
 			finally {
-				try { client.ignore(tube); } catch (Throwable e) {}
+				try { client.ignore(tube); } catch (Throwable ignored) {}
 				
 			}
 		}
-		try { client.close(); } catch (Throwable e) {}
+		try { client.close(); } catch (Throwable ignored) {}
 		client = null;
 	}
 	
@@ -230,8 +230,8 @@ public abstract class AbstractTagTest {
 			Assert.fail("Failed to retrieve message queue size", e);
 		}
 		finally {
-			try { client.ignore(queue); } catch (Throwable e) {}
-			try { client.close(); } catch (Throwable e) {}
+			try { client.ignore(queue); } catch (Throwable ignored) {}
+			try { client.close(); } catch (Throwable ignored) {}
 			client = null;
 		}
 		

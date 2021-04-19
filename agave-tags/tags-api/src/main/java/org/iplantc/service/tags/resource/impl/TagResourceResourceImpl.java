@@ -3,50 +3,37 @@
  */
 package org.iplantc.service.tags.resource.impl;
 
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-
-import org.apache.commons.lang.StringUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.tags.exceptions.PermissionValidationException;
-import org.iplantc.service.tags.exceptions.TagException;
-import org.iplantc.service.tags.exceptions.TagPermissionException;
 import org.iplantc.service.tags.exceptions.UnknownTaggedResourceException;
-import org.iplantc.service.tags.managers.TagManager;
 import org.iplantc.service.tags.managers.TagPermissionManager;
 import org.iplantc.service.tags.managers.TaggedResourceManager;
 import org.iplantc.service.tags.model.Tag;
 import org.iplantc.service.tags.model.TagPermission;
 import org.iplantc.service.tags.model.TaggedResource;
 import org.iplantc.service.tags.model.enumerations.PermissionType;
-import org.iplantc.service.tags.resource.TagPermissionResource;
 import org.iplantc.service.tags.resource.TagResourceResource;
 import org.restlet.data.Status;
-import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
 
 /**
- * Handles {@link SoftwarePermission} for a single user on a single
- * {@link Software} object.
+ * Handles {@link TagPermission} for a single user on a single {@link Tag} object.
  * 
  * @author dooley
  *
  */
 @Path("{entityId}/associations/{uuid}")
-public class TagResourceResourceImpl extends AbstractTagResource implements
-		TagResourceResource {
-
+public class TagResourceResourceImpl extends AbstractTagResource implements TagResourceResource {
 	private static final Logger log = Logger.getLogger(TagResourceResourceImpl.class);
+	private static final ObjectMapper mapper = new ObjectMapper();
 
 	public TagResourceResourceImpl() {
 	}
@@ -70,8 +57,6 @@ public class TagResourceResourceImpl extends AbstractTagResource implements
 						"No resource found for the given tag with uuid "
 								+ associatedUuid);
 			} else {
-				ObjectMapper mapper = new ObjectMapper();
-
 				return Response.ok(
 						new AgaveSuccessRepresentation(mapper
 								.writeValueAsString(tr))).build();
@@ -82,6 +67,9 @@ public class TagResourceResourceImpl extends AbstractTagResource implements
 			log.error("Failed to retrieve user permissions", e);
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to retrieve user permissions.", e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 
@@ -106,7 +94,6 @@ public class TagResourceResourceImpl extends AbstractTagResource implements
 			} else {
 				try {
 					TaggedResourceManager manager = new TaggedResourceManager(tag);
-					ObjectMapper mapper = new ObjectMapper();
 
 					TaggedResource taggedResource = manager.addToTag(associatedUuid, getAuthenticatedUsername());
 
@@ -135,6 +122,9 @@ public class TagResourceResourceImpl extends AbstractTagResource implements
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to tag resource. "
 					+ "If this problem persists, please contact your administrator.", e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 
@@ -175,6 +165,9 @@ public class TagResourceResourceImpl extends AbstractTagResource implements
 							+ entityId
 							+ ". If this problem persists, please contact your administrator.",
 					e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 }

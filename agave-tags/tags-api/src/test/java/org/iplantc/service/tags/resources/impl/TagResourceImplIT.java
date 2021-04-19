@@ -1,13 +1,11 @@
 package org.iplantc.service.tags.resources.impl;
 
-import java.io.IOException;
-
-import javax.ws.rs.core.Response.Status;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.commons.codec.binary.Base64;
-import org.iplantc.service.common.persistence.JndiSetup;
 import org.iplantc.service.tags.AbstractTagTest;
-import org.iplantc.service.tags.TagsApplication;
+import org.iplantc.service.tags.ServletJaxRsApplication;
 import org.iplantc.service.tags.TestDataHelper;
 import org.iplantc.service.tags.dao.TagDao;
 import org.iplantc.service.tags.exceptions.TagException;
@@ -22,41 +20,33 @@ import org.restlet.data.Form;
 import org.restlet.data.Header;
 import org.restlet.data.MediaType;
 import org.restlet.data.Protocol;
-import org.restlet.ext.jaxrs.JaxRsApplication;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.ClientResource;
 import org.restlet.util.Series;
 import org.testng.Assert;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.DataProvider;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import javax.ws.rs.core.Response.Status;
+import java.io.IOException;
 
-@Test(groups={"broken", "integration"})
-public class TagResourceImplTest extends AbstractTagTest 
+@Test(groups={"integration"})
+public class TagResourceImplIT extends AbstractTagTest
 {	
-	private Component comp = new Component();
-	private TagDao dao = new TagDao();
-	private Client client = new Client(new Context(), Protocol.HTTP);
+	private final Component comp = new Component();
+	private final TagDao dao = new TagDao();
+	private final Client client = new Client(new Context(), Protocol.HTTP);
+	private ServletJaxRsApplication application;
 	private String testJWT;
 	
 	private void initRestletServer() throws Exception
 	{
-		JndiSetup.init();
-		
 		// create Component (as ever for Restlet)
         Server server = comp.getServers().add(Protocol.HTTP, 8182);
+		server.getContext().getParameters().add("maxTotalConnections", "512");
 
-        // create JAX-RS runtime environment
-        JaxRsApplication application = new JaxRsApplication(comp.getContext());
-
-        application.add(new TagsApplication());
+		// create JAX-RS runtime environment
+        application = new ServletJaxRsApplication(comp.getContext());
 
         // Attach the application to the component and start it
         comp.getDefaultHost().attach(application);
@@ -97,9 +87,8 @@ public class TagResourceImplTest extends AbstractTagTest
 	@BeforeClass
 	public void beforeClass() throws Exception
 	{
-		super.beforeClass();
-		
 		initRestletServer();
+		super.beforeClass();
 		initJWT();
 	}
 	
@@ -114,7 +103,7 @@ public class TagResourceImplTest extends AbstractTagTest
 	public void afterClass() throws TagException
 	{
 		super.afterClass();
-		try { comp.stop(); } catch (Exception e) {}
+		try { comp.stop(); } catch (Exception ignored) {}
 	}
 
 	/**
@@ -154,8 +143,8 @@ public class TagResourceImplTest extends AbstractTagTest
 	private ClientResource getService(String url)
 	{
 		ClientResource service = new ClientResource(url);
-    	Series<Header> headers = (Series<Header>) service.getRequest().getAttributes().get("org.restlet.http.headers");;
-    	if (headers == null) { 
+    	Series<Header> headers = (Series<Header>) service.getRequest().getAttributes().get("org.restlet.http.headers");
+		if (headers == null) {
     		headers = new Series<Header>(Header.class); 
     	} 
     	headers.add("x-jwt-assertion", testJWT);
@@ -190,7 +179,7 @@ public class TagResourceImplTest extends AbstractTagTest
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("target", privateExecutionSystem.getSystemId()), "Private execution system should not throw an exception", false },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("target", privateStorageSystem.getSystemId()), "Private storage system should not throw an exception", false },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("target", sharedExecutionSystem.getSystemId()), "Shared execution system should not throw an exception", false },
-//			
+//
 //
 //			{ jsonExecutionMonitorNoFrequency, "Missing frequency should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("frequency", ""), "Empty frequency should throw exception", true },
@@ -198,14 +187,14 @@ public class TagResourceImplTest extends AbstractTagTest
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("frequency", mapper.createArrayNode()), "Array for frequency should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("frequency", 5), "Integer for frequency should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("frequency", 5.5), "Decimal for frequency should throw exception", true },
-//			
+//
 //			{ jsonExecutionMonitorNoUpdateSystemStatus, "Missing updateSystemStatus should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("updateSystemStatus", ""), "Empty updateSystemStatus should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("updateSystemStatus", mapper.createObjectNode()), "Object for updateSystemStatus should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("updateSystemStatus", mapper.createArrayNode()), "Array for updateSystemStatus should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("updateSystemStatus", 5), "Integer for updateSystemStatus should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("updateSystemStatus", 5.5), "Decimal for updateSystemStatus should throw exception", true },
-//			
+//
 //			{ jsonExecutionMonitorNoInternalUsername, "Missing internalUsername should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("internalUsername", ""), "Empty internalUsername should throw exception", true },
 //			{ ((ObjectNode)dataHelper.getTestDataObject(TestDataHelper.TEST_EXECUTION_MONITOR)).put("internalUsername", mapper.createObjectNode()), "Object for internalUsername should throw exception", true },

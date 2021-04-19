@@ -3,21 +3,15 @@
  */
 package org.iplantc.service.tags.resource.impl;
 
-import java.util.List;
-
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.tags.exceptions.TagException;
 import org.iplantc.service.tags.exceptions.TagValidationException;
-import org.iplantc.service.tags.managers.TagManager;
 import org.iplantc.service.tags.managers.TaggedResourceManager;
 import org.iplantc.service.tags.model.Tag;
 import org.iplantc.service.tags.model.TaggedResource;
@@ -26,9 +20,10 @@ import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
+import java.util.List;
 
 /**
  * @author dooley
@@ -38,6 +33,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class TagResourcesCollectionImpl extends AbstractTagCollection implements TagResourcesCollection {
     
 	private static final Logger log = Logger.getLogger(TagResourcesCollectionImpl.class);
+	private static final ObjectMapper mapper = new ObjectMapper();
 	
     public TagResourcesCollectionImpl() {}
     
@@ -52,8 +48,7 @@ public class TagResourcesCollectionImpl extends AbstractTagCollection implements
 		try
         {
         	Tag tag = getResourceFromPathValue(entityId);
-			
-        	ObjectMapper mapper = new ObjectMapper();
+
     		String json = mapper.writerWithType(new TypeReference<List<TaggedResource>>() {})
 					.writeValueAsString(tag.getTaggedResources());
         	
@@ -69,6 +64,9 @@ public class TagResourcesCollectionImpl extends AbstractTagCollection implements
             		"An unexpected error occurred while fetching associatinoIds for tag  " + entityId + ". "
             				+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 		
 	}
 
@@ -103,6 +101,9 @@ public class TagResourcesCollectionImpl extends AbstractTagCollection implements
         			"An unexpected error occurred while removing associationIds for tag  " + entityId + ". "
             				+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 
 	/* (non-Javadoc)
@@ -120,11 +121,7 @@ public class TagResourcesCollectionImpl extends AbstractTagCollection implements
         	
         	TaggedResourceManager manager = new TaggedResourceManager(tag);
         	List<TaggedResource> updatedTags = manager.addAllToTag(json, getAuthenticatedUsername());
-        	
-        	ObjectMapper mapper = new ObjectMapper();
-//    		String jsonTaggedResources = mapper.writerWithType(new TypeReference<List<TaggedResource>>() {})
-//					.writeValueAsString(updatedTag.getTaggedResources());
-        	
+
         	return Response.ok(new AgaveSuccessRepresentation(mapper.writeValueAsString(updatedTags))).build();
             
         }
@@ -137,5 +134,8 @@ public class TagResourcesCollectionImpl extends AbstractTagCollection implements
             		"An unexpected error occurred while adding associatinoIds for tag  " + entityId + ". "
             				+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 }

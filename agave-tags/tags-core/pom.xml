@@ -19,6 +19,8 @@
 	</properties>
 
 	<build>
+		<sourceDirectory>src/main/java</sourceDirectory>
+
 		<resources>
 			<resource>
 				<filtering>true</filtering>
@@ -31,6 +33,20 @@
 				<directory>src/test/resources</directory>
 			</testResource>
 		</testResources>
+
+		<plugins>
+			<!-- Starts and stops integration test containers with Docker Compose -->
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+			</plugin>
+
+			<!-- Performs a wait and rediness check for integration test container startup -->
+			<plugin>
+				<groupId>org.agaveplatform.ops</groupId>
+				<artifactId>await-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
 	</build>
 
 	<dependencies>
@@ -39,6 +55,10 @@
 			<artifactId>notifications-core</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		
+		<dependency>
+			<groupId>javax.xml.bind</groupId>
+			<artifactId>jaxb-api</artifactId>
+			<version>${jaxb.version}</version>
+		</dependency>
 	</dependencies>
 </project>

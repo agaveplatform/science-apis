@@ -3,12 +3,10 @@
  */
 package org.iplantc.service.tags.resource.impl;
 
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.tags.exceptions.TagException;
 import org.iplantc.service.tags.exceptions.TagValidationException;
@@ -19,9 +17,9 @@ import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
 
 /**
  * @author dooley
@@ -58,6 +56,9 @@ public class TagResourceImpl extends AbstractTagResource implements TagResource 
             		"An unexpected error occurred while fetching tag  " + entityId + ". "
                 			+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 		
 	}
 
@@ -91,6 +92,9 @@ public class TagResourceImpl extends AbstractTagResource implements TagResource 
         			"An unexpected error occurred while deleting tag  " + entityId + ". "
                 			+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 
 	/* (non-Javadoc)
@@ -120,5 +124,8 @@ public class TagResourceImpl extends AbstractTagResource implements TagResource 
             		"An unexpected error occurred while updating tag  " + entityId + ". "
                 			+ "If this continues, please contact your tenant administrator.", e);
         }
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 }

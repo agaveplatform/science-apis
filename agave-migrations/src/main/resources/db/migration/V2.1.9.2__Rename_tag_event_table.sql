@@ -21,8 +21,7 @@
 SELECT Count(*)
 INTO @exists
 FROM information_schema.tables 
-WHERE table_schema = 'agave-api'
-    AND table_type = 'BASE TABLE'
+WHERE table_type = 'BASE TABLE'
     AND table_name = 'tag_event';
 
 SET @query = If(@exists>0,

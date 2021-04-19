@@ -39,6 +39,18 @@
 		</testResources>
 
 		<plugins>
+			<!-- Starts and stops integration test containers with Docker Compose -->
+			<plugin>
+				<groupId>com.dkanejs.maven.plugins</groupId>
+				<artifactId>docker-compose-maven-plugin</artifactId>
+			</plugin>
+
+			<!-- Performs a wait and rediness check for integration test container startup -->
+			<plugin>
+				<groupId>org.agaveplatform.ops</groupId>
+				<artifactId>await-maven-plugin</artifactId>
+			</plugin>
+
             <!-- ************************************ -->
             <!-- ***           WAR BUILDER         ** -->
             <!-- ************************************ -->
@@ -47,6 +59,7 @@
                  pick the desired profile above or specify it at the command line to select
                  the appropriate set of values -->
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-war-plugin</artifactId>
 				<executions>
 					<execution>

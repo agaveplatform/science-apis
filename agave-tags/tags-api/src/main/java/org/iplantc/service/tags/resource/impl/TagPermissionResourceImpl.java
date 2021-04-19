@@ -3,17 +3,11 @@
  */
 package org.iplantc.service.tags.resource.impl;
 
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.tags.exceptions.PermissionValidationException;
 import org.iplantc.service.tags.exceptions.TagPermissionException;
@@ -26,11 +20,13 @@ import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
 
 /**
- * Handles {@link SoftwarePermission} for a single user on a single
- * {@link Software} object.
+ * Handles {@link TagPermission} for a single user on a single {@link Tag} object.
  * @author dooley
  *
  */
@@ -71,6 +67,9 @@ public class TagPermissionResourceImpl extends AbstractTagResource implements Ta
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
             		"An unexpected error occurred while fetching user permissions for tag  " + entityId + ". "
             				+ "If this continues, please contact your tenant administrator.", e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
 	
@@ -147,6 +146,9 @@ public class TagPermissionResourceImpl extends AbstractTagResource implements Ta
         			"An unexpected error occurred while updating user permissions for tag  " + entityId + ". "
             				+ "If this continues, please contact your tenant administrator.", e);
         }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+        }
     }
     
 	/* (non-Javadoc)
@@ -194,6 +196,9 @@ public class TagPermissionResourceImpl extends AbstractTagResource implements Ta
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
             		"An unexpected error occurred while removing permissions for tag  " + entityId + ". "
             				+ "If this continues, please contact your tenant administrator.", e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
 	}
 }

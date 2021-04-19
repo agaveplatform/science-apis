@@ -3,28 +3,14 @@
  */
 package org.iplantc.service.tags.model;
 
-import java.util.Date;
-import java.util.Set;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.persistence.UniqueConstraint;
-import javax.persistence.Version;
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
@@ -36,7 +22,6 @@ import org.iplantc.service.common.model.CaseInsensitiveEnumDeserializer;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.tags.exceptions.PermissionValidationException;
 import org.iplantc.service.tags.model.constraints.ValidAgaveUuid;
 import org.iplantc.service.tags.model.enumerations.PermissionType;
@@ -45,16 +30,15 @@ import org.json.JSONException;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonSetter;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-import com.fasterxml.jackson.databind.module.SimpleModule;
+import javax.persistence.*;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+import java.util.Date;
+import java.util.Set;
 
 /**
  * Class to represent individual shared permissions for persistable entities
@@ -68,6 +52,8 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 @FilterDef(name="tagPermissionTenantFilter", parameters=@ParamDef(name="tenantId", type="string"))
 @Filters(@Filter(name="tagPermissionTenantFilter", condition="tenant_id=:tenantId"))
 public class TagPermission { //extends AbstractPermissionEntity<Tag> {
+
+	private static final ObjectMapper mapper = new ObjectMapper();
 
     /**
      * The database identifier of this object
@@ -117,7 +103,7 @@ public class TagPermission { //extends AbstractPermissionEntity<Tag> {
 	 */
 	@Column(name = "tenant_id", nullable=false, length = 64)
 	@JsonIgnore
-	private String tenantId;
+	private final String tenantId;
 	
 	/**
 	 * Field used for optimistic locking
@@ -318,7 +304,6 @@ public class TagPermission { //extends AbstractPermissionEntity<Tag> {
 		SimpleModule enumModule = new SimpleModule();
         enumModule.setDeserializers(new CaseInsensitiveEnumDeserializer());
 
-        ObjectMapper mapper = new ObjectMapper();
         mapper.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
         mapper.registerModule(enumModule);
 		

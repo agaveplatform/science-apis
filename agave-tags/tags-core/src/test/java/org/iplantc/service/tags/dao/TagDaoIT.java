@@ -1,12 +1,5 @@
 package org.iplantc.service.tags.dao;
 
-import static org.iplantc.service.tags.TestDataHelper.TEST_OTHERUSER;
-import static org.iplantc.service.tags.TestDataHelper.TEST_SHAREUSER;
-import static org.iplantc.service.tags.TestDataHelper.TEST_USER;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 import org.apache.commons.lang3.StringUtils;
@@ -20,8 +13,13 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.iplantc.service.tags.TestDataHelper.*;
+
 @Test(groups={"integration"})
-public class TagDaoTest extends AbstractTagTest 
+public class TagDaoIT extends AbstractTagTest
 {
 	@BeforeMethod
 	public void beforeMethod() throws Exception {
@@ -218,7 +216,7 @@ public class TagDaoTest extends AbstractTagTest
 			
 			Assert.assertNotNull(tag.getId(), "testuserTag was not saved in db.");
 			
-			Assert.assertEquals(dao.doesTagNameExistForUser(searchUsername, tag.getName()), 
+			Assert.assertEquals(dao.doesTagNameExistForUser(tag.getName(), searchUsername),
 								shouldTagNameExist,
 								"Test for tag name existence should return true when the tag exists.");
 		} 

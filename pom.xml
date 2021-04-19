@@ -633,6 +633,7 @@
         <module>agave-logging</module>
         <module>agave-notifications</module>
         <module>agave-profiles</module>
+        <module>agave-tags</module>
         <module>agave-metadata</module>
         <module>agave-systems</module>
         <module>agave-monitors</module>
@@ -640,7 +641,6 @@
         <module>agave-files</module>
         <module>agave-apps</module>
         <module>agave-jobs</module>
-        <module>agave-tags</module>
         <module>agave-realtime</module>
         <module>agave-stats</module>
         <module>agave-uuids</module>

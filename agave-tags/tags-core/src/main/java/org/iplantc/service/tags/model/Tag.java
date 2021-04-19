@@ -1,46 +1,6 @@
 package org.iplantc.service.tags.model;
 
 // import org.hibernate.validator.constraints.NotEmpty;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.UniqueConstraint;
-import javax.persistence.Version;
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
-import javax.validation.constraints.Size;
-
-import org.apache.commons.lang.StringUtils;
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.Filters;
-import org.hibernate.annotations.OptimisticLock;
-import org.hibernate.annotations.ParamDef;
-import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.exceptions.UUIDException;
-import org.iplantc.service.common.model.CaseInsensitiveEnumDeserializer;
-import org.iplantc.service.common.persistence.TenancyHelper;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
-import org.iplantc.service.notification.exceptions.NotificationException;
-import org.iplantc.service.tags.exceptions.TagValidationException;
-import org.joda.time.DateTime;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -52,6 +12,32 @@ import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.apache.commons.lang.StringUtils;
+import org.hibernate.annotations.*;
+import org.iplantc.service.common.Settings;
+import org.iplantc.service.common.model.CaseInsensitiveEnumDeserializer;
+import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.common.uuid.AgaveUUID;
+import org.iplantc.service.common.uuid.UUIDType;
+import org.iplantc.service.tags.exceptions.TagValidationException;
+import org.joda.time.DateTime;
+
+import javax.persistence.CascadeType;
+import javax.persistence.Entity;
+import javax.persistence.Table;
+import javax.persistence.*;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Tag domain class
@@ -64,8 +50,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @FilterDef(name="tagTenantFilter", parameters=@ParamDef(name="tenantId", type="string"))
 @Filters(@Filter(name="tagTenantFilter", condition="tenant_id=:tenantId"))
 public class Tag  {
-    
-	/**
+    private static final ObjectMapper mapper = new ObjectMapper();
+    /**
 	 * Primary key for this entity
 	 */
 	@Id
@@ -370,7 +356,6 @@ public class Tag  {
 		SimpleModule enumModule = new SimpleModule();
         enumModule.setDeserializers(new CaseInsensitiveEnumDeserializer());
 
-        ObjectMapper mapper = new ObjectMapper();
         mapper.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
         mapper.registerModule(enumModule);
 		
@@ -407,16 +392,16 @@ public class Tag  {
     @JsonValue
     public JsonNode toJSON()
     {
-        ObjectMapper mapper = new ObjectMapper();
         ObjectNode json = mapper.createObjectNode()
             .put("id", getUuid())
             .put("name", getName());
-        
-        ArrayNode resourceArray = mapper.createArrayNode();
+
         ArrayNode halResourceArray = mapper.createArrayNode();
-        for (TaggedResource taggedResource: getTaggedResources()) {
-            resourceArray.add(taggedResource.getUuid());
-            
+
+        ArrayNode resourceArray = mapper.createArrayNode();
+        getTaggedResources().forEach(taggedResource -> resourceArray.add(taggedResource.getUuid()));
+//        for (TaggedResource taggedResource: getTaggedResources()) {
+//
 //            AgaveUUID agaveUUID = null;
 //            try {
 //            	agaveUUID = new AgaveUUID(taggedResource.getUuid());
@@ -436,27 +421,26 @@ public class Tag  {
 //                }
 //                halResourceArray.add(assocResource);
 //            }
-        }
+//        }
         
-        json.put("associationIds", resourceArray);
+        json.set("associationIds", resourceArray);
         
         
         json.put("lastUpdated", new DateTime(getLastUpdated()).toString())
             .put("created", new DateTime(getCreated()).toString());
         
         ObjectNode linksObject = mapper.createObjectNode();
-        linksObject.put("self", (ObjectNode)mapper.createObjectNode()
-            .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TAGS_SERVICE) + getUuid()));
-        linksObject.put("associationIds", (ObjectNode)mapper.createObjectNode()
-                .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TAGS_SERVICE) + getUuid() + "/associations"));
-//        linksObject.put("history", (ObjectNode)mapper.createObjectNode()
-//                .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TAGS_SERVICE) + getUuid() + "/history"));
-        linksObject.put("permissions", (ObjectNode)mapper.createObjectNode()
-                .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TAGS_SERVICE) + getUuid() + "/pems"));
-        
-        linksObject.put("owner", (ObjectNode)mapper.createObjectNode()
+        linksObject.putObject("self")
+            .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TAGS_SERVICE) + getUuid());
+        linksObject.putObject("associations")
+                .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TAGS_SERVICE) + getUuid() + "/associations");
+        linksObject.putObject("history")
+                .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TAGS_SERVICE) + getUuid() + "/history");
+        linksObject.putObject("permissions")
+                .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TAGS_SERVICE) + getUuid() + "/pems");
+        linksObject.set("owner", mapper.createObjectNode()
                 .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_PROFILE_SERVICE) + getOwner()));
-        json.put("_links", linksObject);
+        json.set("_links", linksObject);
         
         return json;
     }

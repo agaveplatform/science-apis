@@ -1,12 +1,5 @@
 package org.iplantc.service.tags.dao;
 
-import static org.iplantc.service.tags.TestDataHelper.TEST_OTHERUSER;
-import static org.iplantc.service.tags.TestDataHelper.TEST_SHAREUSER;
-import static org.iplantc.service.tags.TestDataHelper.TEST_USER;
-
-import java.io.IOException;
-import java.util.List;
-
 import org.iplantc.service.tags.AbstractTagTest;
 import org.iplantc.service.tags.exceptions.TagException;
 import org.iplantc.service.tags.exceptions.TagPermissionException;
@@ -20,8 +13,13 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+import java.util.List;
+
+import static org.iplantc.service.tags.TestDataHelper.*;
+
 @Test(groups={"integration"})
-public class TagPermissionDaoTest extends AbstractTagTest { 
+public class TagPermissionDaoIT extends AbstractTagTest {
 
 //	private PermissionDao tagPermissionDao;
 	

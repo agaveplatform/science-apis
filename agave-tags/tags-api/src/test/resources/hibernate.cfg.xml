@@ -8,7 +8,7 @@
 
     <session-factory>
         <!-- Local test connection properties -->
-        <property name="hibernate.connection.url"><![CDATA[${foundation.db.jndi.connection}]]></property>
+        <property name="hibernate.connection.url"><![CDATA[${foundation.db.test.url}]]></property>
         <property name="hibernate.connection.username">${foundation.db.test.username}</property>
         <property name="hibernate.connection.password">${foundation.db.test.password}</property>
 		<property name="hibernate.connection.driver_class">${foundation.db.test.driver}</property>
@@ -19,7 +19,7 @@
         <property name="hibernate.current_session_context_class">thread</property>
         <property name="hibernate.query.factory_class">org.hibernate.hql.ast.ASTQueryTranslatorFactory</property>
         <property name="hibernate.connection.autocommit">false</property> 
-        <property name="hbm2ddl.auto">create</property>
+<!--        <property name="hbm2ddl.auto">create</property>-->
         <property name="hibernate.show_sql">false</property>
         <property name="hibernate.query.substitutions">true 1, false 0</property>
     </session-factory>

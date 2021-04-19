@@ -3,9 +3,6 @@
  */
 package org.iplantc.service.jobs.util;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.apps.dao.SoftwareDao;
@@ -27,6 +24,9 @@ import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.Settings;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * This class resolves the location of job data at any given time by examining job 
  * history, status, and the existence of data at the expected location.
@@ -36,7 +36,7 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
  */
 public class DataLocator {
 
-	private Job					job;
+	private final Job					job;
 
 	protected JobManager jobManager = null;
 
@@ -294,7 +294,11 @@ public class DataLocator {
 						"Unable to locate job data because the job was not archived.");
 			}
 		} finally {
-			try { remoteExecutionSystemDataClient.disconnect(); } catch (Exception e) {}
+			try {
+				if (remoteExecutionSystemDataClient != null) {
+					remoteExecutionSystemDataClient.disconnect();
+				}
+			} catch (Exception ignored) {}
 		}
 
 	}

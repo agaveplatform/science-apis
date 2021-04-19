@@ -8,6 +8,7 @@ import org.apache.log4j.Logger;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.jobs.dao.JobDao;
@@ -38,8 +39,8 @@ import java.util.Map;
 public class JobManageResource extends AbstractJobResource {
 	private static final Logger	log	= Logger.getLogger(JobManageResource.class);
 
-	private String				sJobId;
-	private String				internalUsername;
+	private final String				sJobId;
+	private final String				internalUsername;
 	private Job					job;
 
 	/**
@@ -317,6 +318,9 @@ public class JobManageResource extends AbstractJobResource {
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			getResponse().setEntity(new IplantErrorRepresentation(e.getMessage()));
 		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 
 
@@ -382,6 +386,9 @@ public class JobManageResource extends AbstractJobResource {
 			// can't set a stopped job back to running. Bad request
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			return new IplantErrorRepresentation(e.getMessage());
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 
 	}
@@ -459,6 +466,9 @@ public class JobManageResource extends AbstractJobResource {
 					new IplantErrorRepresentation("Job deletion failed"));
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			log.error("Failed to hide job " + sJobId, e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 
 	}

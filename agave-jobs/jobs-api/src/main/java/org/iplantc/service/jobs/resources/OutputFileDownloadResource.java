@@ -10,6 +10,7 @@ import org.iplantc.service.apps.model.Software;
 import org.iplantc.service.apps.model.enumerations.ExecutionType;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.RemoteDataWriterRepresentation;
 import org.iplantc.service.io.dao.LogicalFileDao;
@@ -49,8 +50,8 @@ import java.util.List;
  */
 public class OutputFileDownloadResource extends AbstractJobResource
 {
-	private String				path;
-	private String				sJobId;
+	private final String				path;
+	private final String				sJobId;
 	private List<Range> ranges = null;	// ranges of the file to return, given by byte index for start and a size.
 
 	/**
@@ -69,7 +70,7 @@ public class OutputFileDownloadResource extends AbstractJobResource
 
 		path = getFilePathFromURL();
 
-		this.ranges = (List<Range>)request.getRanges();
+		this.ranges = request.getRanges();
 
 		getVariants().add(new Variant(MediaType.APPLICATION_JSON));
 
@@ -90,177 +91,156 @@ public class OutputFileDownloadResource extends AbstractJobResource
 	@Override
 	public Representation represent(Variant variant) throws ResourceException
 	{
-		if (!ServiceUtils.isValid(path))
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Invalid file name");
-		}
-
-		RemoteDataClient remoteDataClient = null;
-		try
-		{
-			Job job = JobDao.getByUuid(sJobId, true);
-
-			if (job == null || !job.isVisible())
-			{
-				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid job id");
+		try {
+			if (!ServiceUtils.isValid(path)) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Invalid file name");
 			}
 
-			JobPermissionManager pemManager = new JobPermissionManager(job, username);
-			if (!pemManager.canRead(username)) { throw new ResourceException(
-					Status.CLIENT_ERROR_UNAUTHORIZED,
-					"User does not have permission to view this resource."); }
+			RemoteDataClient remoteDataClient = null;
+			try {
+				Job job = JobDao.getByUuid(sJobId, true);
 
-			String remotePath = null;
+				if (job == null || !job.isVisible()) {
+					throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid job id");
+				}
 
-			DataLocator dataLocator = new DataLocator(job);
+				JobPermissionManager pemManager = new JobPermissionManager(job, username);
+				if (!pemManager.canRead(username)) {
+					throw new ResourceException(
+							Status.CLIENT_ERROR_UNAUTHORIZED,
+							"User does not have permission to view this resource.");
+				}
 
-			RemoteSystem jobDataSystem = dataLocator.findOutputSystemForJobData();
-			
-			if (!jobDataSystem.isAvailable()) {
-			    throw new ResourceException(Status.SERVER_ERROR_GATEWAY_TIMEOUT, "Job output system " 
-	                    + jobDataSystem.getSystemId() + " is not currently available");
-	        } 
-	        // if the system is in down time or otherwise unavailable...
-	        else if (jobDataSystem.getStatus() != SystemStatusType.UP)
-	        {
-	            throw new ResourceException(Status.SERVER_ERROR_GATEWAY_TIMEOUT, "Job output system " 
-	                    + jobDataSystem.getSystemId() + " is currently " 
-	                    + jobDataSystem.getStatus());
-	        }
-			
-			remoteDataClient = jobDataSystem.getRemoteDataClient(job.getInternalUsername());
-			remoteDataClient.authenticate();
+				String remotePath = null;
 
-			if (!JobManager.isJobDataFullyArchived(job))
-			{
-				Software software = SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName());
+				DataLocator dataLocator = new DataLocator(job);
 
-				if (software == null) { throw new JobException(
-						"Failed to find the software record for this job"); }
+				RemoteSystem jobDataSystem = dataLocator.findOutputSystemForJobData();
 
-				if (software.getExecutionType().name().equals(ExecutionType.HPC.name()) ||
-						software.getExecutionType().name().equals(ExecutionType.CLI.name()))
-				{
-					try
-					{
-						if (!ServiceUtils.isValid(job.getWorkPath()))
-						{
-							throw new RemoteDataException("No work directory specified for this job. Usually this occurs when a job failed during submission.");
-						}
-						else
-						{
-							if (remoteDataClient.doesExist(job.getWorkPath() + path))
-							{
-								remotePath = job.getWorkPath() + path;
-							} else if (!remoteDataClient.doesExist(job.getWorkPath())) {
-								throw new RemoteDataException("File/folder does not exist");
+				if (!jobDataSystem.isAvailable()) {
+					throw new ResourceException(Status.SERVER_ERROR_GATEWAY_TIMEOUT, "Job output system "
+							+ jobDataSystem.getSystemId() + " is not currently available");
+				}
+				// if the system is in down time or otherwise unavailable...
+				else if (jobDataSystem.getStatus() != SystemStatusType.UP) {
+					throw new ResourceException(Status.SERVER_ERROR_GATEWAY_TIMEOUT, "Job output system "
+							+ jobDataSystem.getSystemId() + " is currently "
+							+ jobDataSystem.getStatus());
+				}
+
+				remoteDataClient = jobDataSystem.getRemoteDataClient(job.getInternalUsername());
+				remoteDataClient.authenticate();
+
+				if (!JobManager.isJobDataFullyArchived(job)) {
+					Software software = SoftwareDao.getSoftwareByUniqueName(job.getSoftwareName());
+
+					if (software == null) {
+						throw new JobException(
+								"Failed to find the software record for this job");
+					}
+
+					if (software.getExecutionType().name().equals(ExecutionType.HPC.name()) ||
+							software.getExecutionType().name().equals(ExecutionType.CLI.name())) {
+						try {
+							if (!ServiceUtils.isValid(job.getWorkPath())) {
+								throw new RemoteDataException("No work directory specified for this job. Usually this occurs when a job failed during submission.");
 							} else {
-								throw new RemoteDataException(
-									"Unable to locate job data. Work folder no longer exists.");
+								if (remoteDataClient.doesExist(job.getWorkPath() + path)) {
+									remotePath = job.getWorkPath() + path;
+								} else if (!remoteDataClient.doesExist(job.getWorkPath())) {
+									throw new RemoteDataException("File/folder does not exist");
+								} else {
+									throw new RemoteDataException(
+											"Unable to locate job data. Work folder no longer exists.");
+								}
 							}
+						} catch (RemoteDataException e) {
+							throw e;
+						} catch (Exception e) {
+							throw new RemoteDataException(
+									"Failed to list output folder " + job.getWorkPath() + path
+											+ " for job " + job.getUuid(), e);
+						}
+					} else if (software.getExecutionType().name().equals(ExecutionType.ATMOSPHERE.name())) { // job is an atmo job
+						throw new RemoteDataException(
+								"Data cannot be retrieved from Atmosphere systems.");
+					} else if (software.getExecutionType().name().equals(ExecutionType.CONDOR.name())) {
+						if (job.isFinished() && !job.isArchiveOutput()) {
+							throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+									"Job was not archived and data cannot be retrieved from condor systems.");
+						} else {
+							throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
+									"Data cannot be retrieved from condor systems.");
+						}
+					} else {
+						throw new RemoteDataException("Unknown execution system type.");
+					}
+				} else if (job.isArchiveOutput()) {
+					remotePath = job.getArchivePath() + path;
+				}
+
+				String mimetype = new MimetypesFileTypeMap().getContentType(FilenameUtils.getName(remotePath));
+
+				if (jobDataSystem != null && jobDataSystem.isAvailable()) {
+					if (ranges.size() > 0) {
+						Range range = ranges.get(0);
+
+						if (range.getSize() < 0 && range.getSize() != -1) {
+							throw new ResourceException(
+									new Status(416, "Requested Range Not Satisfiable",
+											"Upper bound less than lower bound",
+											"http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html"),
+									"Specified Range upper bound less than lower bound");
+						}
+
+						if (range.getIndex() > remoteDataClient.length(remotePath)) {
+							throw new ResourceException(
+									new Status(416, "Requested Range Not Satisfiable",
+											"Lower bound out of range of file",
+											"http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html"),
+									"Specified Range lower bound outside bounds of file");
+						}
+
+						if ((range.getIndex() + Math.abs(range.getSize())) > remoteDataClient.length(remotePath)) {
+							getResponse().setStatus(
+									new Status(416, "Requested Range Not Satisfiable",
+											"Upper bound out of range of file",
+											"http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html"),
+									"Specified Range upper bound outside bounds of file");
 						}
 					}
-					catch (RemoteDataException e)
-					{
-						throw e;
+
+					TransferTask transferTask = new TransferTask(
+							"agave://" + jobDataSystem.getSystemId() + "/" + remotePath,
+							"http://" + getRequest().getClientInfo().getUpstreamAddress() + "/",
+							username, null, null);
+
+					TransferTaskDao.persist(transferTask);
+
+					LogicalFile lf = LogicalFileDao.findBySystemAndPath(jobDataSystem, remoteDataClient.resolvePath(remotePath));
+
+					if (lf != null) {
+						FileEventProcessor.processAndSaveContentEvent(lf, new FileEvent(FileEventType.DOWNLOAD, "File downloaded", username, transferTask));
 					}
-					catch (Exception e)
-					{
-						throw new RemoteDataException(
-								"Failed to list output folder " + job.getWorkPath() + path
-										+ " for job " + job.getUuid(), e);
-					}
+
+					return new RemoteDataWriterRepresentation(
+							jobDataSystem, null, remotePath, new MediaType(mimetype), ranges.isEmpty() ? null : ranges.get(0), transferTask);
+				} else {
+					throw new SystemException("The submission system for this job is no longer available");
 				}
-				else if (software.getExecutionType().name().equals(ExecutionType.ATMOSPHERE.name()))
-				{ // job is an atmo job
-					throw new RemoteDataException(
-							"Data cannot be retrieved from Atmosphere systems.");
-				}
-				else if (software.getExecutionType().name().equals(ExecutionType.CONDOR.name()))
-				{
-					if (job.isFinished() && !job.isArchiveOutput()) {
-						throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-							"Job was not archived and data cannot be retrieved from condor systems.");
-					} else {
-						throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-							"Data cannot be retrieved from condor systems.");
-					}
-				}
-				else
-				{
-					throw new RemoteDataException("Unknown execution system type.");
-				}
+			} catch (ResourceException e) {
+				getResponse().setStatus(e.getStatus());
+				return new IplantErrorRepresentation(e.getMessage());
+			} catch (Exception e) {
+				getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+				return new IplantErrorRepresentation(e.getMessage());
+			} finally {
+				try { if (remoteDataClient != null) remoteDataClient.disconnect(); } catch (Exception ignored) {}
 			}
-			else if (job.isArchiveOutput())
-			{
-				remotePath = job.getArchivePath() + path;
-			}
-
-			String mimetype = new MimetypesFileTypeMap().getContentType(FilenameUtils.getName(remotePath));
-
-			if (jobDataSystem != null && jobDataSystem.isAvailable())
-			{
-				if (ranges.size() > 0)
-				{
-                    Range range = ranges.get(0);
-
-                    if (range.getSize() < 0 && range.getSize() != -1) {
-                    	throw new ResourceException(
-                    			new Status(416, "Requested Range Not Satisfiable",
-                    					"Upper bound less than lower bound",
-                    					"http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html"),
-                    			"Specified Range upper bound less than lower bound");
-                    }
-
-                    if (range.getIndex() > remoteDataClient.length(remotePath)) {
-                    	throw new ResourceException(
-                        		new Status(416, "Requested Range Not Satisfiable",
-                        				"Lower bound out of range of file",
-                        				"http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html"),
-                    			"Specified Range lower bound outside bounds of file");
-                    }
-
-                    if ((range.getIndex() + Math.abs(range.getSize())) > remoteDataClient.length(remotePath)) {
-                        getResponse().setStatus(
-                        		new Status(416, "Requested Range Not Satisfiable",
-	                            		"Upper bound out of range of file",
-	                            		"http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html"),
-                        		"Specified Range upper bound outside bounds of file");
-                    }
-                }
-
-				TransferTask transferTask = new TransferTask(
-						"agave://" + jobDataSystem.getSystemId() + "/" + remotePath,
-						"http://" + getRequest().getClientInfo().getUpstreamAddress() + "/",
-						username, null, null);
-				
-				TransferTaskDao.persist(transferTask);
-				
-				LogicalFile lf = LogicalFileDao.findBySystemAndPath(jobDataSystem, remoteDataClient.resolvePath(remotePath));
-				
-				if (lf != null) {
-				    FileEventProcessor.processAndSaveContentEvent(lf, new FileEvent(FileEventType.DOWNLOAD, "File downloaded", username, transferTask));
-				}
-
-				return new RemoteDataWriterRepresentation(
-						jobDataSystem, null, remotePath, new MediaType(mimetype), ranges.isEmpty() ? null : ranges.get(0), transferTask);
-			} else {
-				throw new SystemException("The submission system for this job is no longer available");
-			}
-		}
-		catch (ResourceException e)
-		{
-			getResponse().setStatus(e.getStatus());
-			return new IplantErrorRepresentation(e.getMessage());
-		}
-		catch (Exception e)
-		{
-			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-			return new IplantErrorRepresentation(e.getMessage());
 		}
 		finally {
-			try { remoteDataClient.disconnect(); } catch (Exception e) {}
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -448,7 +428,8 @@ public class OutputFileDownloadResource extends AbstractJobResource
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 		}
 		finally {
-			try {remoteDataClient.disconnect();} catch (Exception e) {}
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+			try { if (remoteDataClient != null) remoteDataClient.disconnect(); } catch (Exception ignored) {}
 		}
 	}
 	

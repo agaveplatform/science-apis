@@ -8,6 +8,7 @@ import org.apache.log4j.Logger;
 import org.hibernate.ObjectNotFoundException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.jobs.callbacks.JobCallback;
@@ -35,10 +36,10 @@ public class JobUpdateResource extends AbstractJobResource
 {
 	private static final Logger	log	= Logger.getLogger(JobUpdateResource.class);
 
-	private String				uuid;
-	private String				updateToken;
-	private String				status;
-	private String				localSchedulerId;
+	private final String				uuid;
+	private final String				updateToken;
+	private final String				status;
+	private final String				localSchedulerId;
 
 	/**
 	 * @param context
@@ -96,6 +97,9 @@ public class JobUpdateResource extends AbstractJobResource
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			return new IplantErrorRepresentation("Failed to process job callback.");
 		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 	
 	/**
@@ -142,6 +146,9 @@ public class JobUpdateResource extends AbstractJobResource
 			// can't set a stopped job back to running. Bad request
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
 					"Failed to process job callback", e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 	

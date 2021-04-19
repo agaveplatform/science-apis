@@ -8,6 +8,7 @@ import org.apache.log4j.Logger;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.clients.AgaveProfileServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.jobs.Settings;
@@ -42,8 +43,8 @@ public class JobPermissionsResource extends AbstractJobResource
 {
     private static final Logger log = Logger.getLogger(JobPermissionsResource.class);
     
-	private String	sJobId;  // job id
-	private String sharedUsername; // user receiving permissions
+	private final String	sJobId;  // job id
+	private final String sharedUsername; // user receiving permissions
 	
 	/**
 	 * @param context
@@ -76,90 +77,77 @@ public class JobPermissionsResource extends AbstractJobResource
 	@Override
 	public Representation represent(Variant variant) throws ResourceException
 	{
-		if (!ServiceUtils.isValid(sJobId))
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Job id cannot be empty");
-		}
-		
-		try
-		{
-			Job job = JobDao.getByUuid(sJobId, true);
-			if (job == null) {
-                String msg = "No job found with job id " + sJobId + "."; 
-                log.error(msg);
-				getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-				return new IplantErrorRepresentation(msg);
+		try {
+			if (!ServiceUtils.isValid(sJobId)) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Job id cannot be empty");
 			}
-			else if (!job.isVisible()) {
-                String msg = "Job with uuid " + sJobId + " is not visible.";
-                log.error(msg);
-                getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-                return new IplantErrorRepresentation(msg);
-			}
-			
-			JobPermissionManager pm = new JobPermissionManager(job, username);
-			if (pm.canRead(username))
-			{
-				List<JobPermission> permissions = JobPermissionDao.getByJobId(job.getId());
-				
-				String jPems = "";
-				
-				if (StringUtils.isEmpty(sharedUsername)) 
-				{
-					jPems = new JobPermission(job, job.getOwner(), PermissionType.ALL).toJSON(job);
-					
-					for (int i=offset; i< Math.min((limit+offset), permissions.size()); i++)
-					{
-						jPems += "," + permissions.get(i).toJSON(job);
-					}
-					
-					jPems = "[" + jPems + "]";
-				} 
-				else 
-				{
-					boolean found = false;
-					if (StringUtils.equals(sharedUsername, job.getOwner()))
-					{
-						jPems = new JobPermission(job, job.getOwner(), PermissionType.ALL).toJSON(job);
-					}
-					else
-					{
-						for (int i=offset; i< Math.min((limit+offset), permissions.size()); i++)
-						{
-							JobPermission pem = permissions.get(i);
-							if (pem.getUsername().equalsIgnoreCase(sharedUsername)) {
-								found = true;
-								jPems = pem.toJSON(job);
-								break;
-							}
-						}
-						
-						if (!found) {
-							throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-									"No permissions found for user " + sharedUsername);
-						}
-					}
+
+			try {
+				Job job = JobDao.getByUuid(sJobId, true);
+				if (job == null) {
+					String msg = "No job found with job id " + sJobId + ".";
+					log.error(msg);
+					getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+					return new IplantErrorRepresentation(msg);
+				} else if (!job.isVisible()) {
+					String msg = "Job with uuid " + sJobId + " is not visible.";
+					log.error(msg);
+					getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+					return new IplantErrorRepresentation(msg);
 				}
 
-				return new IplantSuccessRepresentation(jPems);
-			}
-			else
-			{
-				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
-						"User does not have permission to view this resource");
+				JobPermissionManager pm = new JobPermissionManager(job, username);
+				if (pm.canRead(username)) {
+					List<JobPermission> permissions = JobPermissionDao.getByJobId(job.getId());
+
+					String jPems = "";
+
+					if (StringUtils.isEmpty(sharedUsername)) {
+						jPems = new JobPermission(job, job.getOwner(), PermissionType.ALL).toJSON(job);
+
+						for (int i = offset; i < Math.min((limit + offset), permissions.size()); i++) {
+							jPems += "," + permissions.get(i).toJSON(job);
+						}
+
+						jPems = "[" + jPems + "]";
+					} else {
+						boolean found = false;
+						if (StringUtils.equals(sharedUsername, job.getOwner())) {
+							jPems = new JobPermission(job, job.getOwner(), PermissionType.ALL).toJSON(job);
+						} else {
+							for (int i = offset; i < Math.min((limit + offset), permissions.size()); i++) {
+								JobPermission pem = permissions.get(i);
+								if (pem.getUsername().equalsIgnoreCase(sharedUsername)) {
+									found = true;
+									jPems = pem.toJSON(job);
+									break;
+								}
+							}
+
+							if (!found) {
+								throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+										"No permissions found for user " + sharedUsername);
+							}
+						}
+					}
+
+					return new IplantSuccessRepresentation(jPems);
+				} else {
+					throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
+							"User does not have permission to view this resource");
+				}
+			} catch (ResourceException e) {
+				getResponse().setStatus(e.getStatus());
+				return new IplantErrorRepresentation(e.getMessage());
+			} catch (Exception e) {
+				// can't set a stopped job back to running. Bad request
+				getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+				return new IplantErrorRepresentation(e.getMessage());
 			}
 		}
-		catch (ResourceException e)
-		{
-			getResponse().setStatus(e.getStatus());
-			return new IplantErrorRepresentation(e.getMessage());
-		}
-		catch (Exception e)
-		{
-			// can't set a stopped job back to running. Bad request
-			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-			return new IplantErrorRepresentation(e.getMessage());
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 
@@ -170,141 +158,122 @@ public class JobPermissionsResource extends AbstractJobResource
 	@Override
 	public void acceptRepresentation(Representation entity)
 	{
-		if (!ServiceUtils.isValid(sJobId))
-		{
-			getResponse().setEntity(
-					new IplantErrorRepresentation("Job id cannot be empty"));
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return;
+		try {
+			if (!ServiceUtils.isValid(sJobId)) {
+				getResponse().setEntity(
+						new IplantErrorRepresentation("Job id cannot be empty"));
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return;
 
-		}
-		
-		Job job = null;
-		try
-		{
-			job = JobDao.getByUuid(sJobId);
-			if (job == null) {
-                String msg = "No job found with job id " + sJobId + "."; 
-                log.error(msg);
-				getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-				getResponse().setEntity(new IplantErrorRepresentation(msg));
-				throw new ResourceException(
-					Status.CLIENT_ERROR_BAD_REQUEST, "Invalid job id"); 
 			}
-		}
-		catch (Exception e)
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			getResponse().setEntity(
-					new IplantErrorRepresentation(e.getMessage()));
-			return;
-		}
 
-		if (entity != null)
-		{	
-			try
-			{
-				Map<String,String> postContentData = super.getPostedEntityAsMap();
-			
-				String name = null;
-				if (StringUtils.isEmpty(sharedUsername)) 
-				{
-					 name = postContentData.get("username");
-				} 
-				else if (postContentData.containsKey("username") && 
-						!StringUtils.equalsIgnoreCase(postContentData.get("username"), sharedUsername)) 
-				{
-					throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, 
-							"The username value in the POST body, " + postContentData.get("username") + 
-                			", does not match the username in the URL, " + sharedUsername);         
-				}
-				else
-				{
-					name = sharedUsername;
-				}
-				
-				if (StringUtils.isEmpty(name) || StringUtils.equals(name, "null")) { 
+			Job job = null;
+			try {
+				job = JobDao.getByUuid(sJobId);
+				if (job == null) {
+					String msg = "No job found with job id " + sJobId + ".";
+					log.error(msg);
+					getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+					getResponse().setEntity(new IplantErrorRepresentation(msg));
 					throw new ResourceException(
-						Status.CLIENT_ERROR_BAD_REQUEST, "No user found matching " + name); 
-				} 
-				else 
-				{
-					// validate the user they are giving permissions to exists
-					AgaveProfileServiceClient authClient = new AgaveProfileServiceClient(
-							Settings.IPLANT_PROFILE_SERVICE, 
-							Settings.IRODS_USERNAME, 
-							Settings.IRODS_PASSWORD);
-					
-					if (authClient.getUser(name) == null) {
-						throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
-							"No user found matching " + name);
-					}
+							Status.CLIENT_ERROR_BAD_REQUEST, "Invalid job id");
 				}
-				
-				String sPermission = null;
-				if (postContentData.containsKey("permission")) {
-					sPermission = postContentData.get("permission");
-				} else {
-					throw new ResourceException(
-							Status.CLIENT_ERROR_BAD_REQUEST,
-							"Missing permission field.");
-				}
-				
-				JobPermissionManager pm = new JobPermissionManager(job, username);
-
-				if (pm.canWrite(username))
-				{
-					// if the permission is null or empty, the permission
-					// will be removed
-					try 
-					{
-						pm.setPermission(name, sPermission);
-						if (StringUtils.isEmpty(sPermission)) {
-							getResponse().setStatus(Status.SUCCESS_OK);
-						} else {
-							getResponse().setStatus(Status.SUCCESS_CREATED);
-						}
-						
-						JobPermission pem = JobPermissionDao.getByUsernameAndJobId(name, job.getId());
-						if (pem == null) {
-							pem = new JobPermission(job, name, PermissionType.NONE);
-						}
-						
-						getResponse().setEntity(
-							new IplantSuccessRepresentation(pem.toJSON(job)));
-					} 
-					catch (IllegalArgumentException iae) {
-						throw new ResourceException(
-								Status.CLIENT_ERROR_BAD_REQUEST,
-								"Invalid permission value. Valid values are: " + PermissionType.supportedValuesAsString());
-					}
-				}
-				else
-				{
-					throw new ResourceException(
-							Status.CLIENT_ERROR_FORBIDDEN,
-							"User does not have permission to modify this resource.");
-				}
-			}
-			catch (ResourceException e)
-			{
+			} catch (Exception e) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
 				getResponse().setEntity(
 						new IplantErrorRepresentation(e.getMessage()));
-				getResponse().setStatus(e.getStatus());
+				return;
 			}
-			catch (Exception e)
-			{
+
+			if (entity != null) {
+				try {
+					Map<String, String> postContentData = super.getPostedEntityAsMap();
+
+					String name = null;
+					if (StringUtils.isEmpty(sharedUsername)) {
+						name = postContentData.get("username");
+					} else if (postContentData.containsKey("username") &&
+							!StringUtils.equalsIgnoreCase(postContentData.get("username"), sharedUsername)) {
+						throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
+								"The username value in the POST body, " + postContentData.get("username") +
+										", does not match the username in the URL, " + sharedUsername);
+					} else {
+						name = sharedUsername;
+					}
+
+					if (StringUtils.isEmpty(name) || StringUtils.equals(name, "null")) {
+						throw new ResourceException(
+								Status.CLIENT_ERROR_BAD_REQUEST, "No user found matching " + name);
+					} else {
+						// validate the user they are giving permissions to exists
+						AgaveProfileServiceClient authClient = new AgaveProfileServiceClient(
+								Settings.IPLANT_PROFILE_SERVICE,
+								Settings.IRODS_USERNAME,
+								Settings.IRODS_PASSWORD);
+
+						if (authClient.getUser(name) == null) {
+							throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND,
+									"No user found matching " + name);
+						}
+					}
+
+					String sPermission = null;
+					if (postContentData.containsKey("permission")) {
+						sPermission = postContentData.get("permission");
+					} else {
+						throw new ResourceException(
+								Status.CLIENT_ERROR_BAD_REQUEST,
+								"Missing permission field.");
+					}
+
+					JobPermissionManager pm = new JobPermissionManager(job, username);
+
+					if (pm.canWrite(username)) {
+						// if the permission is null or empty, the permission
+						// will be removed
+						try {
+							pm.setPermission(name, sPermission);
+							if (StringUtils.isEmpty(sPermission)) {
+								getResponse().setStatus(Status.SUCCESS_OK);
+							} else {
+								getResponse().setStatus(Status.SUCCESS_CREATED);
+							}
+
+							JobPermission pem = JobPermissionDao.getByUsernameAndJobId(name, job.getId());
+							if (pem == null) {
+								pem = new JobPermission(job, name, PermissionType.NONE);
+							}
+
+							getResponse().setEntity(
+									new IplantSuccessRepresentation(pem.toJSON(job)));
+						} catch (IllegalArgumentException iae) {
+							throw new ResourceException(
+									Status.CLIENT_ERROR_BAD_REQUEST,
+									"Invalid permission value. Valid values are: " + PermissionType.supportedValuesAsString());
+						}
+					} else {
+						throw new ResourceException(
+								Status.CLIENT_ERROR_FORBIDDEN,
+								"User does not have permission to modify this resource.");
+					}
+				} catch (ResourceException e) {
+					getResponse().setEntity(
+							new IplantErrorRepresentation(e.getMessage()));
+					getResponse().setStatus(e.getStatus());
+				} catch (Exception e) {
+					getResponse().setEntity(
+							new IplantErrorRepresentation("Failed to update job permissions: " + e.getMessage()));
+					getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+				}
+			} else {
 				getResponse().setEntity(
-						new IplantErrorRepresentation("Failed to update job permissions: " + e.getMessage()));
-				getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+						new IplantErrorRepresentation(
+								"Post request with no entity"));
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
 			}
 		}
-		else
-		{
-			getResponse().setEntity(
-					new IplantErrorRepresentation(
-							"Post request with no entity"));
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -314,80 +283,71 @@ public class JobPermissionsResource extends AbstractJobResource
 	@Override
 	public void removeRepresentations() throws ResourceException
 	{
-		if (!ServiceUtils.isValid(sJobId))
-		{
-			getResponse().setEntity(
-					new IplantErrorRepresentation("Job id cannot be empty"));
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return;
+		try {
+			if (!ServiceUtils.isValid(sJobId)) {
+				getResponse().setEntity(
+						new IplantErrorRepresentation("Job id cannot be empty"));
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return;
 
-		}
-		
-		Job job = null;
-		try
-		{
-			job = JobDao.getByUuid(sJobId);
-			if (job == null) 
-			{
-                String msg = "No job found with job id " + sJobId + "."; 
-                log.error(msg);
-				getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-				getResponse().setEntity(new IplantErrorRepresentation(msg));
+			}
+
+			Job job = null;
+			try {
+				job = JobDao.getByUuid(sJobId);
+				if (job == null) {
+					String msg = "No job found with job id " + sJobId + ".";
+					log.error(msg);
+					getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+					getResponse().setEntity(new IplantErrorRepresentation(msg));
+					return;
+				} else if (!job.isVisible()) {
+					String msg = "Job with uuid " + sJobId + " is not visible.";
+					log.error(msg);
+					getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
+					getResponse().setEntity(new IplantErrorRepresentation(msg));
+					return;
+				}
+			} catch (Exception e) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				getResponse().setEntity(
+						new IplantErrorRepresentation(e.getMessage()));
 				return;
 			}
-			else if (!job.isVisible()) {
-                String msg = "Job with uuid " + sJobId + " is not visible.";
-                log.error(msg);
-                getResponse().setStatus(Status.CLIENT_ERROR_NOT_FOUND);
-                getResponse().setEntity(new IplantErrorRepresentation(msg));
-                return;
-			}
-		}
-		catch (Exception e)
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			getResponse().setEntity(
-					new IplantErrorRepresentation(e.getMessage()));
-			return;
-		}
-		
-		try
-		{
-			JobPermissionManager pm = new JobPermissionManager(job, username);
 
-			if (pm.canWrite(username))
-			{
-				if (StringUtils.isEmpty(sharedUsername)) {
-					// clear all permissions
-					pm.clearPermissions();
-				} else { // clear pems for user
-					pm.setPermission(sharedUsername, null);
+			try {
+				JobPermissionManager pm = new JobPermissionManager(job, username);
+
+				if (pm.canWrite(username)) {
+					if (StringUtils.isEmpty(sharedUsername)) {
+						// clear all permissions
+						pm.clearPermissions();
+					} else { // clear pems for user
+						pm.setPermission(sharedUsername, null);
+					}
+
+					getResponse().setEntity(new IplantSuccessRepresentation());
+				} else {
+					throw new ResourceException(
+							Status.CLIENT_ERROR_FORBIDDEN,
+							"User does not have permission to modify this resource.");
 				}
-				
-				getResponse().setEntity(new IplantSuccessRepresentation());
+			} catch (ResourceException e) {
+				getResponse().setEntity(
+						new IplantErrorRepresentation(e.getMessage()));
+				getResponse().setStatus(e.getStatus());
+			} catch (JobException e) {
+				getResponse().setEntity(
+						new IplantErrorRepresentation(e.getMessage()));
+				getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+			} catch (Exception e) {
+				getResponse().setEntity(
+						new IplantErrorRepresentation("Failed to remove job permissions: " + e.getMessage()));
+				getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			}
-			else
-			{
-				throw new ResourceException(
-						Status.CLIENT_ERROR_FORBIDDEN,
-						"User does not have permission to modify this resource.");
-			}
 		}
-		catch (ResourceException e) {
-			getResponse().setEntity(
-					new IplantErrorRepresentation(e.getMessage()));
-			getResponse().setStatus(e.getStatus());
-		}
-		catch (JobException e) {
-			getResponse().setEntity(
-					new IplantErrorRepresentation(e.getMessage()));
-			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-		}
-		catch (Exception e)
-		{
-			getResponse().setEntity(
-					new IplantErrorRepresentation("Failed to remove job permissions: " + e.getMessage()));
-			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 

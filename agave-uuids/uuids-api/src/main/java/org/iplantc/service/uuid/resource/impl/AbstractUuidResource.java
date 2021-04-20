@@ -2,7 +2,6 @@ package org.iplantc.service.uuid.resource.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpEntity;
@@ -175,7 +174,7 @@ public class AbstractUuidResource extends AbstractAgaveResource {
 	 * @param filter the url filter to use on the remote request
 	 * @param headerMap the auth and client headers used to request the resource
 	 * @return JsonNode representation of the naked response
-	 * @throws UUIDResolutionException
+	 * @throws UUIDResolutionException if unable to resolve the uuid to a valid resource
 	 */
 	protected JsonNode fetchResource(String resourceUrl, String filter, Map<String,String> headerMap) throws UUIDResolutionException {
 		ObjectMapper mapper = new ObjectMapper();
@@ -260,7 +259,7 @@ public class AbstractUuidResource extends AbstractAgaveResource {
 								// since we appended limit=1 to files api queries) object is
 								// always the one we're interested in.
 								if (attemptResponse.get("result").isArray()) {
-									return ((ArrayNode) attemptResponse.get("result")).get(0);
+									return attemptResponse.get("result").get(0);
 								} else {
 									return attemptResponse.get("result");
 								}
@@ -304,15 +303,15 @@ public class AbstractUuidResource extends AbstractAgaveResource {
 				}
 			} catch (ConnectTimeoutException e) {
 				throw new UUIDResolutionException("Failed to resolve " + resourceUrl +
-						". Remote call to " + escapedUri.toString() + " timed out after " +
+						". Remote call to " + escapedUri + " timed out after " +
 						(System.currentTimeMillis() - callstart) + " milliseconds.", e);
 			} catch (SSLException e) {
 				if (StringUtils.equalsIgnoreCase(escapedUri.getScheme(), "https")) {
 					throw new UUIDResolutionException("Failed to resolve " + resourceUrl +
-							". Remote call to " + escapedUri.toString() + " failed due to the remote side not supporting SSL.", e);
+							". Remote call to " + escapedUri + " failed due to the remote side not supporting SSL.", e);
 				} else {
 					throw new UUIDResolutionException("Failed to resolve " + resourceUrl +
-							". Remote call to " + escapedUri.toString() + " failed due a server side SSL failure.");
+							". Remote call to " + escapedUri + " failed due a server side SSL failure.");
 				}
 			}
 		}

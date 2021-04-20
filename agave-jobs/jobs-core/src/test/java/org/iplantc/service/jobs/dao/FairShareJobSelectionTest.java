@@ -40,11 +40,11 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
 
     public static final Logger log = Logger.getLogger(ProgressiveMonitoringBackoffTest.class);
 
-    private String[] queues = new String[] { "small", "medium", "large" };
-    private String[] systemsIds = new String[] { "execute1.example.com", "execute2.example.com",
+    private final String[] queues = new String[] { "small", "medium", "large" };
+    private final String[] systemsIds = new String[] { "execute1.example.com", "execute2.example.com",
             "execute3.example.com" };
-    private String[] tenantIds = new String[] { "alpha", "beta", "gamma" };
-    private String[] usernames = new String[] { "user-0", "user-1", "user-2" };
+    private final String[] tenantIds = new String[] { "alpha", "beta", "gamma" };
+    private final String[] usernames = new String[] { "user-0", "user-1", "user-2" };
 
 //    @BeforeClass
 //    public void beforeClass() throws Exception {
@@ -147,7 +147,7 @@ public class FairShareJobSelectionTest extends AbstractDaoTest {
             for (ExecutionSystem exeSystem : exeSystems) {
                 for (BatchQueue q : exeSystem.getBatchQueues()) {
                     Software software = defaultSoftware.clone();
-                    software.setExecutionSystem((ExecutionSystem) exeSystem);
+                    software.setExecutionSystem(exeSystem);
                     software.setName("test-" + exeSystem.getSystemId() + "-" + q.getName());
                     software.setDefaultQueue(q.getName());
                     software.setDefaultMaxRunTime(q.getMaxRequestedTime());

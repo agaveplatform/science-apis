@@ -13,8 +13,6 @@ import com.sshtools.ssh2.KBIAuthentication;
 import com.sshtools.ssh2.Ssh2Client;
 import com.sshtools.ssh2.Ssh2Context;
 import com.sshtools.ssh2.Ssh2PublicKeyAuthentication;
-import com.sshtools.util.IOUtil;
-import com.sshtools.util.UnsignedInteger64;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.agaveplatform.transfer.proto.sftp.*;
@@ -25,12 +23,8 @@ import org.apache.log4j.Logger;
 import org.iplantc.service.remote.ssh.MaverickSSHSubmissionClient;
 import org.iplantc.service.remote.ssh.shell.Shell;
 import org.iplantc.service.systems.model.enumerations.LoginProtocolType;
-import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.RemoteFileInfo;
-import org.iplantc.service.transfer.RemoteTransferListener;
-import org.iplantc.service.transfer.RemoteTransferListenerImpl;
-import org.iplantc.service.transfer.Settings;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
+import org.iplantc.service.transfer.*;
 import org.iplantc.service.transfer.exceptions.*;
 import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.iplantc.service.transfer.model.TransferTask;
@@ -62,19 +56,19 @@ public final class SftpRelay implements RemoteDataClient {
     private Ssh2Client ssh2 = null;
     private SshClient forwardedConnection = null;
 
-    private String host;
-    private int port;
-    private String username;
-    private String password;
+    private final String host;
+    private final int port;
+    private final String username;
+    private final String password;
     private String rootDir = "";
     private String homeDir = "";
-    private String proxyHost;
-    private int proxyPort;
-    private String publicKey;
-    private String privateKey;
+    private final String proxyHost;
+    private final int proxyPort;
+    private final String publicKey;
+    private final String privateKey;
     private SshConnector con;
     private SshAuthentication auth;
-    private Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String, RemoteFileInfo>();
+    private final Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String, RemoteFileInfo>();
 
     // String fragment contained in SshException msg when problem was a socket read timeout
     public static final String CONN_TIMEDOUT = "connection timed out";
@@ -867,7 +861,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public MaverickSFTPOutputStream getOutputStream(String path, boolean passive, boolean append)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         String resolvedPath;
         try {
             resolvedPath = resolvePath(path);
@@ -923,7 +917,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public List<RemoteFileInfo> ls(String remotedir)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         try {
             remotedir = resolvePath(remotedir);
         } catch (Exception e) {
@@ -981,7 +975,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public void get(String remotedir, String localdir)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         get(remotedir, localdir, null);
     }
 
@@ -1004,7 +998,7 @@ public final class SftpRelay implements RemoteDataClient {
     protected DirectoryOperation copyRemoteDirectory(String remotedir,
                                                   String localdir, boolean recurse, boolean commit,
                                                   RemoteTransferListener progress) throws IOException,
-            FileNotFoundException, SftpStatusException, RemoteDataException {
+            FileNotFoundException, SftpStatusException, SshException, TransferCancelledException, RemoteDataException {
 
         // Create an operation object to hold the information
         DirectoryOperation op = new DirectoryOperation();
@@ -1047,7 +1041,7 @@ public final class SftpRelay implements RemoteDataClient {
 
                 if (f.exists()
                         && (f.length() == file.getSize())
-                        && ((long)(f.lastModified() / 1000) == (long)(file.getLastModified().getTime() / 1000))) {
+                        && ((f.lastModified() / 1000) == (file.getLastModified().getTime() / 1000))) {
                     if (commit) {
                         op.getUnchangedFiles().addElement(f);
                     } else {
@@ -1089,7 +1083,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public void get(String remoteSource, String localdir, RemoteTransferListener listener)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         try {
             RemoteFileInfo remoteFileInfo = null;
             try {
@@ -1233,7 +1227,7 @@ public final class SftpRelay implements RemoteDataClient {
      */
     @Override
     public void append(String localpath, String remotepath)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         append(localpath, remotepath, null);
     }
 
@@ -1242,7 +1236,7 @@ public final class SftpRelay implements RemoteDataClient {
      */
     @Override
     public void append(String localpath, String remotepath, RemoteTransferListener listener)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         File localFile = new File(localpath);
         if (!localFile.exists()) {
             String msg = getMsgPrefix() + "Local path " + localFile.getAbsolutePath() + " does not exist.";
@@ -1297,7 +1291,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public void put(String localdir, String remotedir)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         put(localdir, remotedir, null);
     }
 
@@ -1351,7 +1345,7 @@ public final class SftpRelay implements RemoteDataClient {
 
                         // size and last modified must line up
                         unchangedFile = ((source.length() == remoteFileInfo.getSize()) &&
-                                ((long)(source.lastModified() / 1000) == (long)(remoteFileInfo.getLastModified().getTime()  / 1000)));
+                                ((source.lastModified() / 1000) == (remoteFileInfo.getLastModified().getTime()  / 1000)));
 
                     } catch (FileNotFoundException | RemoteDataException ex) {
                         newFile = true;
@@ -1391,7 +1385,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public void put(String localdir, String remotedir, RemoteTransferListener listener)
-            throws IOException, FileNotFoundException, NotImplementedException, RemoteDataException {
+            throws IOException, NotImplementedException, RemoteDataException {
 
         File localFile = new File(localdir);
         if (!localFile.exists()) {
@@ -1547,7 +1541,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public void syncToRemote(String localdir, String remotedir, RemoteTransferListener listener)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         File localFile = new File(localdir);
         if (!localFile.exists()) {
             throw new FileNotFoundException("No such file or directory");
@@ -1713,7 +1707,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public boolean isDirectory(String remotepath)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         try {
             return stat(resolvePath(remotepath)).isDirectory();
         } catch (FileNotFoundException e) {
@@ -1725,7 +1719,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public boolean isFile(String remotepath)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         try {
             return stat(resolvePath(remotepath)).isFile();
         } catch (FileNotFoundException e) {
@@ -1737,7 +1731,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public long length(String remotepath)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         try {
             return stat(resolvePath(remotepath)).getSize();
         } catch (FileNotFoundException e) {
@@ -1768,7 +1762,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public void doRename(String oldpath, String newpath)
-            throws IOException, FileNotFoundException, RemoteDataException, RemoteDataSyntaxException {
+            throws IOException, RemoteDataException, RemoteDataSyntaxException {
         String resolvedSourcePath = null;
         String resolvedDestPath = null;
         try {
@@ -1843,7 +1837,7 @@ public final class SftpRelay implements RemoteDataClient {
      */
     @Override
     public void copy(String remotesrc, String remotedest, RemoteTransferListener listener)
-            throws IOException, FileNotFoundException, RemoteDataException, RemoteDataSyntaxException {
+            throws IOException, RemoteDataException, RemoteDataSyntaxException {
 
         // ensure remote path exists before attempting the copy
         if (!doesExist(remotesrc)) {
@@ -1940,7 +1934,7 @@ public final class SftpRelay implements RemoteDataClient {
     }
 
     @Override
-    public void delete(String remotepath) throws IOException, FileNotFoundException, RemoteDataException {
+    public void delete(String remotepath) throws IOException, RemoteDataException {
         try {
             String resolvedPath = resolvePath(remotepath);
 
@@ -1990,7 +1984,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public boolean mkdirs(String remotedir)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         String resolvedPath = null;
         try {
             resolvedPath = resolvePath(remotedir);
@@ -2157,21 +2151,21 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public List<RemoteFilePermission> getAllPermissionsWithUserFirst(String path, String username)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         // Return an empty list
         return new ArrayList<RemoteFilePermission>();
     }
 
     @Override
     public List<RemoteFilePermission> getAllPermissions(String path)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         // Return an empty list
         return new ArrayList<RemoteFilePermission>();
     }
 
     @Override
     public PermissionType getPermissionForUser(String username, String path)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         int mode;
         try {
             RemoteFileInfo fileInfo = stat(resolvePath(path));
@@ -2209,7 +2203,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public boolean hasWritePermission(String path, String username)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         // If the file is located under the home direectory and exists on the server, return true
         try {
             // check file exists
@@ -2224,7 +2218,7 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public boolean hasExecutePermission(String path, String username)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         // If the file is located under the home direectory and exists on the server, return true
         try {
             // check file exists
@@ -2238,53 +2232,53 @@ public final class SftpRelay implements RemoteDataClient {
 
     @Override
     public void setPermissionForUser(String username, String path, PermissionType type, boolean recursive)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
 
     }
 
     @Override
     public void setOwnerPermission(String username, String path, boolean recursive)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
     }
 
     @Override
     public void setReadPermission(String username, String path, boolean recursive)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
     }
 
     @Override
     public void removeReadPermission(String username, String path, boolean recursive)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
     }
 
     @Override
     public void setWritePermission(String username, String path, boolean recursive)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
     }
 
     @Override
     public void removeWritePermission(String username, String path, boolean recursive)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
     }
 
     @Override
     public void setExecutePermission(String username, String path, boolean recursive)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
     }
 
     @Override
     public void removeExecutePermission(String username, String path, boolean recursive)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
     }
 
     @Override
     public void clearPermissions(String username, String path, boolean recursive)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
     }
 
     @Override
     public String getPermissions(String path)
-            throws IOException, FileNotFoundException, RemoteDataException {
+            throws IOException, RemoteDataException {
         return null;
     }
 
@@ -2390,11 +2384,8 @@ public final class SftpRelay implements RemoteDataClient {
         } else if (!rootDir.equals(other.rootDir))
             return false;
         if (username == null) {
-            if (other.username != null)
-                return false;
-        } else if (!username.equals(other.username))
-            return false;
-        return true;
+            return other.username == null;
+        } else return username.equals(other.username);
     }
 
     /**

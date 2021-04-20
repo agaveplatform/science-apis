@@ -31,11 +31,6 @@
 		</testResources>
 
 		<plugins>
-			<plugin>
-				<groupId>org.agaveplatform.ops</groupId>
-				<artifactId>await-maven-plugin</artifactId>
-			</plugin>
-
 			<!-- Starts and stops integration test containers with Docker Compose -->
 			<plugin>
 				<groupId>com.dkanejs.maven.plugins</groupId>

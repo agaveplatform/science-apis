@@ -2,6 +2,7 @@ package org.iplantc.service.jobs.resources;
 
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
 import org.iplantc.service.jobs.dao.JobDao;
@@ -29,8 +30,8 @@ import java.util.List;
  */
 public class OutputFileListingResource extends AbstractJobResource 
 {
-	private String				sJobId;
-	private String				path;
+	private final String				sJobId;
+	private final String				path;
 	
 	/**
 	 * @param context
@@ -82,19 +83,15 @@ public class OutputFileListingResource extends AbstractJobResource
 	@Override
 	public Representation represent(Variant variant) throws ResourceException
 	{
-
-		//Long jobId = null;
-
-		if (StringUtils.isEmpty(sJobId))
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Job id cannot be empty");
-		}
-		
-
 		Job job;
 		try
 		{
+			if (StringUtils.isEmpty(sJobId))
+			{
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Job id cannot be empty");
+			}
+
 			job = JobDao.getByUuid(sJobId, true);
 
 			if (job == null || !job.isVisible()) 
@@ -128,7 +125,7 @@ public class OutputFileListingResource extends AbstractJobResource
 			if (builder.length() > 0)
 				builder.deleteCharAt(0);
 
-			return new IplantSuccessRepresentation("[" + builder.toString()
+			return new IplantSuccessRepresentation("[" + builder
 					+ "]");
 
 		}
@@ -141,6 +138,9 @@ public class OutputFileListingResource extends AbstractJobResource
 		{
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			return new IplantErrorRepresentation(e.getMessage());
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 
 	}

@@ -87,8 +87,8 @@ public class RabbitMQMessagingClientIT {
 		}
 		finally {
 			//try {channel.exchangeDelete(TEST_EXCHANGE_TOPIC);} catch(Exception e) {}
-			try {channel.close();} catch(Exception ignored) {}
-		    try {connection.close();} catch(Exception ignored) {}
+			try {channel.close();} catch(Exception e) {}
+		    try {connection.close();} catch(Exception e) {}
 		}
 	}
 
@@ -141,8 +141,8 @@ public class RabbitMQMessagingClientIT {
 		}
 		finally {
 			//try {channel.exchangeDelete(TEST_EXCHANGE_TOPIC);} catch(Exception e) {}
-			try {channel.close();} catch(Exception ignored) {}
-		    try {connection.close();} catch(Exception ignored) {}
+			try {channel.close();} catch(Exception e) {}
+		    try {connection.close();} catch(Exception e) {}
 		}
 	}
 

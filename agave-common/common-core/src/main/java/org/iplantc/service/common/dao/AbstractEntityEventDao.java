@@ -1,6 +1,7 @@
 package org.iplantc.service.common.dao;
 
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.CacheMode;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.iplantc.service.common.Settings;
@@ -84,7 +85,7 @@ public abstract class AbstractEntityEventDao<T extends AgaveEntityEvent, V exten
 			throw new EntityEventPersistenceException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -132,7 +133,7 @@ public abstract class AbstractEntityEventDao<T extends AgaveEntityEvent, V exten
 			throw new EntityEventPersistenceException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -173,7 +174,7 @@ public abstract class AbstractEntityEventDao<T extends AgaveEntityEvent, V exten
             throw new EntityEventPersistenceException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
     }
 
@@ -213,7 +214,7 @@ public abstract class AbstractEntityEventDao<T extends AgaveEntityEvent, V exten
 			throw new EntityEventPersistenceException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -240,12 +241,12 @@ public abstract class AbstractEntityEventDao<T extends AgaveEntityEvent, V exten
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new EntityEventPersistenceException("Failed to save entity event.", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -272,12 +273,12 @@ public abstract class AbstractEntityEventDao<T extends AgaveEntityEvent, V exten
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new EntityEventPersistenceException("Failed to delete entity event.", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -299,6 +300,8 @@ public abstract class AbstractEntityEventDao<T extends AgaveEntityEvent, V exten
 					" WHERE entity = :uuid";
 			session.createQuery(hql)
 					.setString("uuid", entityUuid)
+					.setCacheMode(CacheMode.IGNORE)
+					.setCacheable(false)
 					.executeUpdate();
 			
 			session.flush();
@@ -311,12 +314,12 @@ public abstract class AbstractEntityEventDao<T extends AgaveEntityEvent, V exten
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new EntityEventPersistenceException("Failed to delete events for uuid " + entityUuid, ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 

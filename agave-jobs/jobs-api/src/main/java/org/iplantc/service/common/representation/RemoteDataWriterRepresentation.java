@@ -25,8 +25,8 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 	private InputStream in;
 	private RemoteSystem system;
 	private RemoteDataClient remoteDataClient;
-	private String localPath;
-	private String remotePath;
+	private final String localPath;
+	private final String remotePath;
 	private TransferTaskImpl transferTask = null;
 
 	public RemoteDataWriterRepresentation(RemoteSystem system,
@@ -181,14 +181,14 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 		}
         finally
         {
-			try { getRemoteDataClient().disconnect(); } catch (Exception e) {}
-			try { in.close(); } catch (Exception e) {}
-			try { out.close(); } catch (Exception e) {}
+			try { getRemoteDataClient().disconnect(); } catch (Exception ignored) {}
+			try { in.close(); } catch (Exception ignored) {}
+			try { out.close(); } catch (Exception ignored) {}
 			try {
 				transferTask.setEndTime(Instant.now());
 				transferTask.setBytesTransferred(bytesSoFar);
 				TransferTaskDao.persist(transferTask);
-			} catch (Exception e) {}
+			} catch (Exception ignored) {}
 		}
 	}
 
@@ -307,14 +307,14 @@ public class RemoteDataWriterRepresentation extends WriterRepresentation
 		}
         finally
         {
-			try { getRemoteDataClient().disconnect(); } catch (Exception e) {}
-			try { in.close(); } catch (Exception e) {}
+			try { getRemoteDataClient().disconnect(); } catch (Exception ignored) {}
+			try { in.close(); } catch (Exception ignored) {}
 			
 			try {
 				transferTask.setEndTime(Instant.now());
 				transferTask.setBytesTransferred(bytesSoFar);
 				TransferTaskDao.persist(transferTask);
-			} catch (Exception e) {}
+			} catch (Exception ignored) {}
 		}
 	}
 

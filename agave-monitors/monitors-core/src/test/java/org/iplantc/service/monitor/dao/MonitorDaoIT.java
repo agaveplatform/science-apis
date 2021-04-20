@@ -7,7 +7,6 @@ import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.systems.exceptions.SystemArgumentException;
 import org.joda.time.DateTime;
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.DataProvider;
@@ -15,22 +14,19 @@ import org.testng.annotations.Test;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.UUID;
-
-import static org.iplantc.service.monitor.TestDataHelper.TEST_STORAGE_SYSTEM_FILE;
 
 @Test(singleThreaded=true, groups={"integration"})
 public class MonitorDaoIT extends AbstractMonitorIT
 {
-	private int totalMonitors = 6;
+	private final int totalMonitors = 6;
 	
-	private int totalActiveMonitors = 3;
-	private int totalActiveMonitorsForUser = 2;
-	private int totalActiveMonitorsForStranger = 1;
+	private final int totalActiveMonitors = 3;
+	private final int totalActiveMonitorsForUser = 2;
+	private final int totalActiveMonitorsForStranger = 1;
 	
-	private int totalInactiveMonitors = 3;
-	private int totalInactiveMonitorsForUser = 2;
-	private int totalInactiveMonitorsForStranger = 1;
+	private final int totalInactiveMonitors = 3;
+	private final int totalInactiveMonitorsForUser = 2;
+	private final int totalInactiveMonitorsForStranger = 1;
 	
 	
 	private void loadTestData() throws Exception
@@ -39,17 +35,17 @@ public class MonitorDaoIT extends AbstractMonitorIT
 		initSystems();
 
 		addMonitor(true, false, true, false);
-		try { Thread.sleep(500); } catch (Exception e) {}
+		try { Thread.sleep(500); } catch (Exception ignored) {}
 		addMonitor(true, false, false, false);
-		try { Thread.sleep(500); } catch (Exception e) {}
+		try { Thread.sleep(500); } catch (Exception ignored) {}
 		// totalActiveMonitorsForStranger
 		addMonitor(true, true, true, false);
-		try { Thread.sleep(500); } catch (Exception e) {}
+		try { Thread.sleep(500); } catch (Exception ignored) {}
 		// totalInactiveMonitorsForUser
 		addMonitor(false, false, true, true);
-		try { Thread.sleep(500); } catch (Exception e) {}
+		try { Thread.sleep(500); } catch (Exception ignored) {}
 		addMonitor(false, false, false, true);
-		try { Thread.sleep(500); } catch (Exception e) {}
+		try { Thread.sleep(500); } catch (Exception ignored) {}
 		// totalInactiveMonitorsForStranger
 		addMonitor(false, true, true, true);
 	}

@@ -46,7 +46,7 @@ public class AbstractSoftwareResource extends AbstractAgaveResource {
 
     /**
      * Convenience class to log usage info per request
-     * @param action
+     * @param activityKey the activity key to set
      */
     protected void logUsage(AgaveLogServiceClient.ActivityKeys activityKey) {
         AgaveLogServiceClient.log(getServiceKey().name(), activityKey.name(),

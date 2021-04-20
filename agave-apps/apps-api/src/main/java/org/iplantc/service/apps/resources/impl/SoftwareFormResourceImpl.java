@@ -20,6 +20,7 @@ import org.iplantc.service.apps.model.enumerations.ParallelismType;
 import org.iplantc.service.apps.model.enumerations.SoftwareParameterType;
 import org.iplantc.service.apps.resources.SoftwareFormResource;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.systems.dao.SystemDao;
@@ -208,6 +209,9 @@ public class SoftwareFormResourceImpl extends AbstractSoftwareResource implement
         {
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
                     "There was an error generating the job submission form for " + softwareId, e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
 }

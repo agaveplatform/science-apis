@@ -89,7 +89,7 @@ public class IRODS implements RemoteDataClient
 	protected String internalUsername;
 	protected GSSCredential credential;
 	protected boolean permissionMirroringRequired = true;
-	private Map<String, IRODSFile> fileInfoCache = new ConcurrentHashMap<String, IRODSFile>();
+	private final Map<String, IRODSFile> fileInfoCache = new ConcurrentHashMap<String, IRODSFile>();
 
 	protected static final int MAX_BUFFER_SIZE = 4194304; // 4MB
 
@@ -1870,13 +1870,9 @@ public class IRODS implements RemoteDataClient
         }
 
         PermissionType worldPem = getPermissionForUser(Settings.WORLD_USER_USERNAME, path, true);
-        if (worldPem.equals(PermissionType.READ) || worldPem.equals(PermissionType.ALL)) {
-        	return true;
-        }
+		return worldPem.equals(PermissionType.READ) || worldPem.equals(PermissionType.ALL);
 
-        return false;
-
-    }
+	}
 
     @Override
     public boolean hasWritePermission(String path, String username)
@@ -1893,12 +1889,8 @@ public class IRODS implements RemoteDataClient
         }
 
         PermissionType worldPem = getPermissionForUser(Settings.WORLD_USER_USERNAME, path, true);
-        if (worldPem.equals(PermissionType.WRITE) || worldPem.equals(PermissionType.ALL)) {
-         	return true;
-        }
-
-        return false;
-    }
+		return worldPem.equals(PermissionType.WRITE) || worldPem.equals(PermissionType.ALL);
+	}
 
     @Override
     public boolean hasExecutePermission(String path, String username)
@@ -1915,12 +1907,8 @@ public class IRODS implements RemoteDataClient
         }
 
         PermissionType worldPem = getPermissionForUser(Settings.WORLD_USER_USERNAME, path, true);
-        if (worldPem.equals(PermissionType.EXECUTE) || worldPem.equals(PermissionType.ALL)) {
-        	return true;
-        }
-
-        return false;
-    }
+		return worldPem.equals(PermissionType.EXECUTE) || worldPem.equals(PermissionType.ALL);
+	}
 
 
     @Override
@@ -2338,12 +2326,9 @@ public class IRODS implements RemoteDataClient
 			return false;
 		if (zone == null)
 		{
-			if (other.zone != null)
-				return false;
+			return other.zone == null;
 		}
-		else if (!zone.equals(other.zone))
-			return false;
-		return true;
+		else return zone.equals(other.zone);
 	}
 
 	@Override

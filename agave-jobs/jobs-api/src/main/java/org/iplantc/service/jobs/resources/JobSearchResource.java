@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
@@ -52,7 +53,7 @@ public class JobSearchResource extends SearchableAgaveResource<JobSearchFilter> 
 		}
 	}
 	
-	private Map<String, String> queryParameters = new HashMap<String, String>();
+	private final Map<String, String> queryParameters = new HashMap<String, String>();
 
 	/**
 	 * @param context
@@ -82,7 +83,7 @@ public class JobSearchResource extends SearchableAgaveResource<JobSearchFilter> 
 			
 			// only add valid attributes, preserve their case for the sql query
 			for(String attr: jobAttributes) {
-				if (attr.toLowerCase().equals(attribute.toLowerCase())) {
+				if (attr.equalsIgnoreCase(attribute)) {
 					queryParameters.put(attr, value);
 					break;
 				}
@@ -147,6 +148,9 @@ public class JobSearchResource extends SearchableAgaveResource<JobSearchFilter> 
 			log.error("Failed to perform search for jobs", e);
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			return new IplantErrorRepresentation(e.getMessage());
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 

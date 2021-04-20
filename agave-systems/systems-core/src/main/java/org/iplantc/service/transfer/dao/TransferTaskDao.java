@@ -98,7 +98,7 @@ public class TransferTaskDao
             session.disableFilter("transferTaskTenantFilter");
             
             TransferTask system = (TransferTask)session
-                    .createCriteria(TransferTaskImpl.class)
+                    .createCriteria(TransferTask.class)
                     .add(Restrictions.eq("uuid", uuid))
                     .uniqueResult();
             
@@ -241,6 +241,8 @@ public class TransferTaskDao
 			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
+
+
 
 	/**
 	 * Saves a {@link TransferTaskImpl} or updates if already saved.
@@ -624,7 +626,7 @@ public class TransferTaskDao
 			transferSummary.setTotalTransfers(tasks.size());
 			transferSummary.setTotalActiveTransfers(totalActiveTransfers);
 			if (transfers > 0) {
-				transferSummary.setAverageTransferRate( Math.floor((double)(transferRate / transfers)));
+				transferSummary.setAverageTransferRate( Math.floor(transferRate / transfers));
 			} 
 			transferSummary.setTotalTransferredBytes(BigInteger.valueOf((long)totalTransferredBytes));
 			transferSummary.setTotalBytes(BigInteger.valueOf((long)totalBytes));
@@ -868,7 +870,7 @@ public class TransferTaskDao
                 {
                     query.setParameter(searchTerm.getSearchField(), 
                             searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)));
-                    q = q.replaceAll(":" + searchTerm.getSearchField(), "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+                    q = q.replaceAll(":" + searchTerm.getSearchField(), "'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'");
                 }
                 
             }

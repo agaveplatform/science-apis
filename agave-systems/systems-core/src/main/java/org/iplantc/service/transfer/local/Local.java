@@ -34,7 +34,7 @@ public class Local implements RemoteDataClient
 {
     private static final Logger log = Logger.getLogger(Local.class);
     
-	private RemoteSystem system;
+	private final RemoteSystem system;
 
 	protected String homeDir;
 	protected String rootDir;
@@ -674,11 +674,17 @@ public class Local implements RemoteDataClient
                 }
             }
         }
-        catch (IOException | RemoteDataException e) {
+        catch (RemoteDataException e) {
+            throw e;
+        }
+        catch (IOException e) {
             throw e;
         }
         catch (Exception e) {
             throw new RemoteDataException("Failed to put data to " + remotedir, e);
+        }
+        finally {
+            //
         }
 	}
 
@@ -1053,13 +1059,10 @@ public class Local implements RemoteDataClient
 			return false;
 		if (system == null)
 		{
-			if (other.system != null)
-				return false;
+            return other.system == null;
 		}
-		else if (!system.equals(other.system))
-			return false;
-		return true;
-	}
+		else return system.equals(other.system);
+    }
 
 	
 }

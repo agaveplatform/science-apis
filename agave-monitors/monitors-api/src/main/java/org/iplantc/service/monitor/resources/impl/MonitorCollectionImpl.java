@@ -11,6 +11,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.hibernate.HibernateException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
@@ -19,7 +20,6 @@ import org.iplantc.service.monitor.Settings;
 import org.iplantc.service.monitor.dao.MonitorDao;
 import org.iplantc.service.monitor.events.MonitorEventProcessor;
 import org.iplantc.service.monitor.exceptions.MonitorException;
-import org.iplantc.service.monitor.managers.MonitorPermissionManager;
 import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.enumeration.MonitorEventType;
 import org.iplantc.service.monitor.resources.MonitorCollection;
@@ -30,7 +30,6 @@ import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.search.SystemSearchFilter;
 import org.joda.time.DateTime;
 import org.restlet.Request;
 import org.restlet.data.Form;
@@ -59,6 +58,7 @@ import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKe
 @Produces(MediaType.APPLICATION_JSON)
 public class MonitorCollectionImpl extends AbstractAgaveResource implements MonitorCollection
 {
+	private static final ObjectMapper mapper = new ObjectMapper();
 	protected MonitorDao dao = new MonitorDao();
 //	protected MonitorPermissionManager pm = null;
 	protected MonitorEventProcessor eventProcessor = new MonitorEventProcessor();
@@ -90,9 +90,7 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			Map<SearchTerm, Object> searchCriteria = getQueryParameters();
 
 			monitors = dao.findMatching(getAuthenticatedUsername(), searchCriteria, getLimit(), getOffset(), hasJsonPathFilters());
-//			monitors = dao.getUserMonitors(getAuthenticatedUsername(), includeActive, includeInactive, systemId);
-			
-			ObjectMapper mapper = new ObjectMapper();
+
 			ArrayNode arrayNode = mapper.createArrayNode();
 			
 			for (int i=getOffset(); i< Math.min((getLimit()+getOffset()), monitors.size()); i++)
@@ -124,12 +122,16 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			}
 			
 			return Response.ok(new AgaveSuccessRepresentation(arrayNode.toString())).build();
-		} catch (ResourceException e) {
+		}
+		catch (ResourceException e) {
 			throw e;
-		} catch (Throwable e)
-		{
+		}
+		catch (Throwable e) {
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to retrieve monitors.", e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 
 
@@ -164,7 +166,6 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 		}
 
 		try {
-			ObjectMapper mapper = new ObjectMapper();
 			ObjectNode jsonMonitor = mapper.createObjectNode()
 					.put("target", systemId)
 					.put("internalUsername", "null".equalsIgnoreCase(internalUsername) ? null : internalUsername);
@@ -218,6 +219,9 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to save monitor: " + e.getMessage());
 		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 	
 	/* (non-Javadoc)
@@ -245,7 +249,7 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 
 		        // this list is always empty !!
 		        List<FileItem> fileItems = fileUpload.parseRepresentation(input);
-		        ObjectMapper mapper = new ObjectMapper();
+
 		        JsonNode jsonMonitor = null;
 		        for (FileItem fileItem : fileItems) {
 		            if (!fileItem.isFormField()) {
@@ -296,9 +300,11 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			throw e;
 		} 
 		catch (Throwable e) {
-			e.printStackTrace();
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to save monitor: " + e.getMessage(), e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -325,7 +331,7 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			else 
 			{
 				
-				JsonNode jsonMonitor = new ObjectMapper().readTree(bytes);
+				JsonNode jsonMonitor = mapper.readTree(bytes);
 		        
 				Monitor monitor = Monitor.fromJSON(jsonMonitor, null, getAuthenticatedUsername());
 	    		
@@ -365,9 +371,11 @@ public class MonitorCollectionImpl extends AbstractAgaveResource implements Moni
 			throw e;
 		} 
 		catch (Throwable e) {
-			e.printStackTrace();
 			throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
 					"Failed to save monitor: " + e.getMessage(), e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 	

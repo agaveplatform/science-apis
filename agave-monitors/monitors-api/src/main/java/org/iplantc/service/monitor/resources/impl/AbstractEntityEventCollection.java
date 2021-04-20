@@ -3,23 +3,18 @@
  */
 package org.iplantc.service.monitor.resources.impl;
 
-import java.util.List;
-
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
-import org.iplantc.service.common.exceptions.EntityEventPersistenceException;
 import org.iplantc.service.common.model.AgaveEntityEvent;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import javax.ws.rs.core.Response;
+import java.util.List;
 
 
 /**
@@ -29,10 +24,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 public abstract class AbstractEntityEventCollection<T extends AgaveEntityEvent,V extends Enum<?>> extends AbstractEntityEventResource<T,V> {
 
 	private static final Logger log = Logger.getLogger(AbstractEntityEventCollection.class);
-    
-    /**
-     * 
-     */
+    static final ObjectMapper mapper = new ObjectMapper();
+
     public AbstractEntityEventCollection() {}
     
     public Response getEntityEvents(String entityId) {
@@ -44,8 +37,7 @@ public abstract class AbstractEntityEventCollection<T extends AgaveEntityEvent,V
             getEntityFromPathValue(entityId);
             
             List<T> events = getEntityEventDao().getEntityEventByEntityUuid(entityId, getLimit(), getOffset());
-            
-            ObjectMapper mapper = new ObjectMapper();
+
             ArrayNode history = mapper.createArrayNode();
             for(T event: events) {
                 history.add(mapper.valueToTree(event));
@@ -55,18 +47,13 @@ public abstract class AbstractEntityEventCollection<T extends AgaveEntityEvent,V
         }
         catch (ResourceException e) {
             throw e;
-        }
-        catch (EntityEventPersistenceException e) {
+        } catch (Exception e) {
         	log.error("Failed to query history for resource " + entityId, e);
-            throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
+            throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
             		"Failed to retrieve resource history. If this persists, "
             				+ "please contact your system administrator", e);
-        }
-        catch (Exception e) {
-        	log.error("Failed to query history for resource " + entityId, e);
-            throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
-            		"Failed to retrieve resource history. If this persists, "
-                    		+ "please contact your system administrator", e);
+        } finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
     

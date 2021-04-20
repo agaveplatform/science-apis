@@ -41,7 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class FTP extends FTPClient implements RemoteDataClient 
 {
-	private static Logger log = Logger.getLogger(FTPClient.class);
+	private static final Logger log = Logger.getLogger(FTPClient.class);
 
 	public static final String ANONYMOUS_USER = "anonymous";
 	public static final String ANONYMOUS_PASSWORD = "guest";
@@ -54,7 +54,7 @@ public class FTP extends FTPClient implements RemoteDataClient
 	protected String rootDir;
     protected static final int MAX_BUFFER_SIZE = 1048576;
     protected boolean bPassive = true;
-    private Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String, RemoteFileInfo>();
+    private final Map<String, RemoteFileInfo> fileInfoCache = new ConcurrentHashMap<String, RemoteFileInfo>();
 
     private boolean disconnected = true;
     
@@ -1232,7 +1232,7 @@ public class FTP extends FTPClient implements RemoteDataClient
 	
 	private class ByteArrayDataSink implements DataSink {
 
-        private ByteArrayOutputStream received;
+        private final ByteArrayOutputStream received;
 
         public ByteArrayDataSink() {
             this.received = new ByteArrayOutputStream(1000);
@@ -1293,11 +1293,7 @@ public class FTP extends FTPClient implements RemoteDataClient
             // check file exists
             if (!doesExist(path)) return false;
 
-            if (path.startsWith(rootDir)) {
-                return true;
-            } else {
-                return false;
-            }
+			return path.startsWith(rootDir);
         } catch (Exception e) {
             return false;
         }
@@ -1309,11 +1305,7 @@ public class FTP extends FTPClient implements RemoteDataClient
         try {
             path = resolvePath(path);
 
-            if (path.startsWith(rootDir)) {
-                return true;
-            } else {
-                return false;
-            }
+			return path.startsWith(rootDir);
         } catch (Exception e) {
             return false;
         }
@@ -1838,10 +1830,9 @@ public class FTP extends FTPClient implements RemoteDataClient
 		else if (!rootDir.equals(other.rootDir)) return false;
 		if (username == null)
 		{
-			if (other.username != null) return false;
+			return other.username == null;
 		}
-		else if (!username.equals(other.username)) return false;
-		return true;
+		else return username.equals(other.username);
 	}
 	
 }

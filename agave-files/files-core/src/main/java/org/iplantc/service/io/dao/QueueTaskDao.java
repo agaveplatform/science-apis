@@ -14,7 +14,6 @@ import org.iplantc.service.io.model.QueueTask;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
 import org.iplantc.service.transfer.exceptions.TransferException;
-import org.iplantc.service.transfer.model.TransferTask;
 import org.quartz.SchedulerException;
 
 import java.math.BigInteger;

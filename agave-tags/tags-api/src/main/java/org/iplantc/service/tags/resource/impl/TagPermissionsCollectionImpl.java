@@ -3,18 +3,12 @@
  */
 package org.iplantc.service.tags.resource.impl;
 
-import java.util.List;
-
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.ResponseBuilder;
-
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.log4j.Logger;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.tags.exceptions.PermissionValidationException;
 import org.iplantc.service.tags.exceptions.TagPermissionException;
@@ -27,9 +21,11 @@ import org.restlet.data.Status;
 import org.restlet.representation.Representation;
 import org.restlet.resource.ResourceException;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
+import java.util.List;
 
 /**
  * @author dooley
@@ -39,7 +35,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class TagPermissionsCollectionImpl extends AbstractTagCollection implements TagPermissionsCollection {
     
 	private static final Logger log = Logger.getLogger(TagPermissionsCollectionImpl.class);
-	
+    private static final ObjectMapper mapper = new ObjectMapper();
+
     public TagPermissionsCollectionImpl() {}
     
     @Override
@@ -62,8 +59,7 @@ public class TagPermissionsCollectionImpl extends AbstractTagCollection implemen
                 int limit = Math.min(pems.size()-1-offset, getLimit());
                 
                 // serialize to json array
-                ObjectMapper mapper = new ObjectMapper();
-                String json = mapper.writerWithType(new TypeReference<List<TagPermission>>() {})
+                String json = mapper.writerFor(new TypeReference<List<TagPermission>>() {})
                 					.writeValueAsString(pems.subList(offset, limit));
                 
                 return Response.ok(new AgaveSuccessRepresentation(json)).build();
@@ -83,6 +79,9 @@ public class TagPermissionsCollectionImpl extends AbstractTagCollection implemen
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
             		"An unexpected error occurred while fetching permissions for tag  " + entityId + ". "
             				+ "If this continues, please contact your tenant administrator.", e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
 	
@@ -149,6 +148,9 @@ public class TagPermissionsCollectionImpl extends AbstractTagCollection implemen
         			"An unexpected error occurred while updating permissions for tag  " + entityId + ". "
             				+ "If this continues, please contact your tenant administrator.", e);
         }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+        }
 	}
 	
 	@Override
@@ -182,6 +184,9 @@ public class TagPermissionsCollectionImpl extends AbstractTagCollection implemen
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL, 
             		"An unexpected error occurred while clearing permissions for tag  " + entityId + ". "
             				+ "If this continues, please contact your tenant administrator.", e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
 	}
 	

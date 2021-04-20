@@ -15,6 +15,7 @@ import org.iplantc.service.apps.resources.SoftwarePermissionResource;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.clients.AgaveProfileServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.representation.AgaveSuccessRepresentation;
 import org.iplantc.service.transfer.model.enumerations.PermissionType;
 import org.restlet.data.Status;
@@ -108,6 +109,9 @@ public class SoftwarePermissionResourceImpl extends AbstractSoftwareResource imp
         {
             throw new ResourceException(Status.SERVER_ERROR_INTERNAL,
                     "Failed to retrieve app permissions: " + e.getMessage(), e);
+        }
+        finally {
+            try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
         }
     }
 	

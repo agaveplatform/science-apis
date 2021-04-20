@@ -19,7 +19,10 @@ import org.iplantc.service.io.model.FileEvent;
 import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.jobs.dao.JobDao;
-import org.iplantc.service.jobs.exceptions.*;
+import org.iplantc.service.jobs.exceptions.JobException;
+import org.iplantc.service.jobs.exceptions.JobMacroResolutionException;
+import org.iplantc.service.jobs.exceptions.SchedulerException;
+import org.iplantc.service.jobs.exceptions.SoftwareUnavailableException;
 import org.iplantc.service.jobs.managers.JobManager;
 import org.iplantc.service.jobs.model.Job;
 import org.iplantc.service.jobs.model.JobEvent;
@@ -47,7 +50,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
-import java.util.Date;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -59,7 +61,7 @@ public abstract class AbstractJobLauncher implements JobLauncher {
     private static final Logger log = Logger.getLogger(AbstractJobLauncher.class);
     public static final String ARCHIVE_FILENAME = ".agave.archive";
 
-    private AtomicBoolean stopped = new AtomicBoolean(false);
+    private final AtomicBoolean stopped = new AtomicBoolean(false);
 
     protected File tempAppDir = null;
     protected String step;
@@ -620,7 +622,7 @@ public abstract class AbstractJobLauncher implements JobLauncher {
      * Saves or updates a {@link TransferTask} object, updating timestamps based on status.
      *
      * @param transferTask the object to save
-     * @erturns the updated {@link TransferTask}
+     * @return the updated {@link TransferTask}
      * @throws TransferException if the sql operation failed.
      */
     protected TransferTask updateTransferTask(TransferTaskImpl transferTask) throws TransferException {
@@ -657,7 +659,7 @@ public abstract class AbstractJobLauncher implements JobLauncher {
         if (!remoteTargetPath.getParent().equals(remoteJobWorkPath)) {
             String remoteParentDirectory = remoteTargetPath.getParent().toString();
             log.debug("Creating remote directory " + remoteParentDirectory + " prior to staging file " +
-                    remoteTargetPath.toString() + " for job " + getJob().getUuid());
+                    remoteTargetPath + " for job " + getJob().getUuid());
 
             try {
                 if (!getRemoteExecutionDataClient().doesExist(remoteParentDirectory)) {
@@ -665,14 +667,14 @@ public abstract class AbstractJobLauncher implements JobLauncher {
                 }
             } catch (IOException|RemoteDataException e) {
                 throw new JobException("Failed to create parent directories prior to staging file " +
-                        remoteTargetPath.toString() + " to remote job work directory.", e);
+                        remoteTargetPath + " to remote job work directory.", e);
             }
         }
         log.debug("Staging file " + filePathRelativeToRemoteJobDir + " for job " + getJob().getUuid());
 
         try (RemoteOutputStream<?> remoteOutputStream =
                      getRemoteExecutionDataClient().getOutputStream(remoteTargetPath.toString(), false, false);
-             OutputStreamWriter batchWriter = new OutputStreamWriter(remoteOutputStream);) {
+             OutputStreamWriter batchWriter = new OutputStreamWriter(remoteOutputStream)) {
 
             batchWriter.write(content);
 

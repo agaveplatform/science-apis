@@ -157,7 +157,8 @@ public class BaseTestCase {
 			session.createQuery("DELETE StagingTask").executeUpdate();
 			session.createQuery("DELETE RemoteFilePermission").executeUpdate();
 			session.createQuery("DELETE TransferTaskPermission").executeUpdate();
-			session.createQuery("DELETE TransferTask").executeUpdate();
+			session.createQuery("DELETE org.agaveplatform.service.transfers.model.TransferTask").executeUpdate();
+            session.createQuery("DELETE TransferTaskImpl").executeUpdate();
 			session.createQuery("DELETE Notification").executeUpdate();
 		}
 		catch (HibernateException ex)

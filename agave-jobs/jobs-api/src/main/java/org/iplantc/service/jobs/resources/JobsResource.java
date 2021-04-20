@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
@@ -48,7 +49,7 @@ import java.util.Map;
 public class JobsResource extends SearchableAgaveResource<JobSearchFilter> {
 	private static final Logger	log	= Logger.getLogger(JobsResource.class);
 
-	private String internalUsername;
+	private final String internalUsername;
 
 //	private List<String> jobAttributes = new ArrayList<String>();
 //
@@ -186,6 +187,9 @@ public class JobsResource extends SearchableAgaveResource<JobSearchFilter> {
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			return new IplantErrorRepresentation(e.getMessage());
 		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
 	}
 
 	/**
@@ -237,6 +241,9 @@ public class JobsResource extends SearchableAgaveResource<JobSearchFilter> {
 					new IplantErrorRepresentation("Failed to submit job: " + e.getMessage()));
 			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
 			log.error("Job submission failed for user " + getAuthenticatedUsername(), e);
+		}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 

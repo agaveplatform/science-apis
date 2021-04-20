@@ -5,6 +5,7 @@ package org.iplantc.service.jobs.resources;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
@@ -33,9 +34,9 @@ public class JobMacroCallbackResource extends AbstractJobResource
 {
 	private static final Logger	log	= Logger.getLogger(JobMacroCallbackResource.class);
 
-	private String				jobUuid;
-	private String				token;
-	private String				sMacro;
+	private final String				jobUuid;
+	private final String				token;
+	private final String				sMacro;
 
 	/**
 	 * @param context
@@ -65,57 +66,47 @@ public class JobMacroCallbackResource extends AbstractJobResource
 	@Override
 	public Representation represent(Variant variant) throws ResourceException
 	{
-
+		try {
 //		Long jobId = null;
-		if (!StringUtils.isEmpty(jobUuid))
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Invalid job id.");
-		} 
+			if (!StringUtils.isEmpty(jobUuid)) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Invalid job id.");
+			}
 
-		if (!StringUtils.isEmpty(token))
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Invalid token.");
-		}
-		
-		JobMacroType macro;
-		try
-		{
-			macro = JobMacroType.valueOf(sMacro.toUpperCase());
-			if (macro == null)
-			{
+			if (!StringUtils.isEmpty(token)) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Invalid token.");
+			}
+
+			JobMacroType macro;
+			try {
+				macro = JobMacroType.valueOf(sMacro.toUpperCase());
+				if (macro == null) {
+					getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+					return new IplantErrorRepresentation("Invalid callback macro value " + sMacro);
+				}
+			} catch (Exception e) {
 				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
 				return new IplantErrorRepresentation("Invalid callback macro value " + sMacro);
 			}
-		}
-		catch (Exception e)
-		{
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Invalid callback macro value " + sMacro);
-		}
 
-		// update the job status if the tokens match
-		try
-		{
-			Job job = JobDao.getByUuid(jobUuid);
+			// update the job status if the tokens match
+			try {
+				Job job = JobDao.getByUuid(jobUuid);
 
-			if (job == null) {
-	            String msg = "No job found with job id " + jobUuid + "."; 
-	            log.error(msg);
-				throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, msg);
-			}
-			else if (job.getUpdateToken().equals(token))
-			{
-				TenancyHelper.setCurrentEndUser(job.getOwner());
-				TenancyHelper.setCurrentTenantId(job.getTenantId());
+				if (job == null) {
+					String msg = "No job found with job id " + jobUuid + ".";
+					log.error(msg);
+					throw new ResourceException(Status.CLIENT_ERROR_NOT_FOUND, msg);
+				} else if (job.getUpdateToken().equals(token)) {
+					TenancyHelper.setCurrentEndUser(job.getOwner());
+					TenancyHelper.setCurrentTenantId(job.getTenantId());
 
-				if (!job.isRunning())
-				{
-					// can't set a stopped job back to running. Bad request
-					throw new ResourceException(
-							Status.CLIENT_ERROR_BAD_REQUEST, "Job " + jobUuid + " is not running.");
-				}
+					if (!job.isRunning()) {
+						// can't set a stopped job back to running. Bad request
+						throw new ResourceException(
+								Status.CLIENT_ERROR_BAD_REQUEST, "Job " + jobUuid + " is not running.");
+					}
 
 //				// the HEARTBEAT status is used to update the job timestamp and is used
 //				// by app developers just to keep aware of a job being alive.
@@ -128,31 +119,29 @@ public class JobMacroCallbackResource extends AbstractJobResource
 					// notification will be sent on status update
 //					NotificationManager.process(job.getUuid(), job.getStatus().name(), job.getOwner());
 //				} 
-				
-				job.setLastUpdated(new Date());
-				job.addEvent(new JobEvent(macro.name(), macro.getDescription(), job.getOwner()));
-				JobDao.persist(job);
-				
-				getResponse().setStatus(Status.SUCCESS_ACCEPTED);
-				return new IplantSuccessRepresentation();
-			}
-			else
-			{
-				// can't set a stopped job back to running. Bad request
-				throw new ResourceException(Status.CLIENT_ERROR_UNAUTHORIZED,
-						"Invalid job id or key");
+
+					job.setLastUpdated(new Date());
+					job.addEvent(new JobEvent(macro.name(), macro.getDescription(), job.getOwner()));
+					JobDao.persist(job);
+
+					getResponse().setStatus(Status.SUCCESS_ACCEPTED);
+					return new IplantSuccessRepresentation();
+				} else {
+					// can't set a stopped job back to running. Bad request
+					throw new ResourceException(Status.CLIENT_ERROR_UNAUTHORIZED,
+							"Invalid job id or key");
+				}
+			} catch (ResourceException e) {
+				log.debug("Callback failed: " + e.getMessage());
+				getResponse().setStatus(e.getStatus());
+				return new IplantErrorRepresentation(e.getMessage());
+			} catch (Exception e) {
+				log.error("Failed to process callback macro " + sMacro + " for job " + jobUuid, e);
+				return new IplantErrorRepresentation("Failed to process callback macro " + sMacro + " for job " + jobUuid);
 			}
 		}
-		catch (ResourceException e)
-		{
-			log.debug("Callback failed: " + e.getMessage());
-			getResponse().setStatus(e.getStatus());
-			return new IplantErrorRepresentation(e.getMessage());
-		}
-		catch (Exception e)
-		{
-			log.error("Failed to process callback macro " + sMacro + " for job " + jobUuid, e);
-			return new IplantErrorRepresentation("Failed to process callback macro " + sMacro + " for job " + jobUuid);
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 

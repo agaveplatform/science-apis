@@ -34,27 +34,6 @@
 		</testResources>
 
 		<plugins>
-
-			<!-- ************************************ -->
-			<!-- ***           DEPLOYMENT          ** -->
-			<!-- ************************************ -->
-
-<!--			&lt;!&ndash; Install a jar with the source code into maven when installing the-->
-<!--				primary artifact &ndash;&gt;-->
-<!--			<plugin>-->
-<!--				<groupId>org.apache.maven.plugins</groupId>-->
-<!--				<artifactId>maven-dependency-plugin</artifactId>-->
-<!--				<executions>-->
-<!--					<execution>-->
-<!--						<id>install</id>-->
-<!--						<phase>install</phase>-->
-<!--						<goals>-->
-<!--							<goal>sources</goal>-->
-<!--						</goals>-->
-<!--					</execution>-->
-<!--				</executions>-->
-<!--			</plugin>-->
-
 			<!-- ************************************ -->
 			<!-- ***           TESTING             ** -->
 			<!-- ************************************ -->
@@ -80,6 +59,23 @@
 		</plugins>
 		<pluginManagement>
 			<plugins>
+				<!--  Basic unit test execution -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>${maven-surefire-plugin.version}</version>
+					<configuration>
+						<argLine>--illegal-access=permit </argLine>
+						<skipTests>${skip.unit.tests}</skipTests>
+						<groups>unit</groups>
+						<excludedGroups>broken,notReady</excludedGroups>
+						<systemPropertyVariables>
+							<log4j.configuration>file:${basedir}/src/test/resources/log4j.properties
+							</log4j.configuration>
+						</systemPropertyVariables>
+					</configuration>
+				</plugin>
+
 				<!-- iRODS containers take a while to startup, so we use a custom await config here
                      to wait for them to start up completely. -->
 				<plugin>

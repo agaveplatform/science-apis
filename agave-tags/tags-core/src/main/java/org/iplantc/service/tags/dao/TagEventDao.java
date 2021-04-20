@@ -1,19 +1,18 @@
-/**
- * 
- */
 package org.iplantc.service.tags.dao;
 
-import java.util.List;
-
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.CacheMode;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
-import org.iplantc.service.tags.exceptions.TagEventPersistenceException;
-import org.iplantc.service.tags.model.TagEvent;
-import org.iplantc.service.tags.model.enumerations.TagEventType;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.tags.exceptions.TagEventPersistenceException;
+import org.iplantc.service.tags.model.Tag;
+import org.iplantc.service.tags.model.TagEvent;
+import org.iplantc.service.tags.model.enumerations.TagEventType;
+
+import java.util.List;
 
 /**
  * Model class for interacting with a {@link Tag}'s history. {@link TagEvent}s are
@@ -36,14 +35,13 @@ public class TagEventDao {
 	/**
 	 * Returns the tag event with the given id.
 	 * 
-	 * @param eventId
-	 * @return
-	 * @throws TagEventPersistenceException
+	 * @param eventId the database id of the {@link TagEvent}
+	 * @return the {@link TagEvent} with id {@code eventId}
+	 * @throws TagEventPersistenceException if unable to run the query
 	 */
 	public TagEvent getById(Long eventId)
 	throws TagEventPersistenceException
 	{
-
 		if (eventId == null)
 			throw new TagEventPersistenceException("Event id cannot be null");
 
@@ -62,16 +60,18 @@ public class TagEventDao {
 			throw new TagEventPersistenceException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
-	 * Returns all tag tag events for the tag with the given id.
-	 * 
-	 * @param tagUuid
-	 * @return
-	 * @throws TagEventPersistenceException
+	 * Returns all tag tag events for the tag with the given id. At most, {@link Settings#DEFAULT_PAGE_SIZE} results
+	 * will be returned.
+	 *
+	 * @param tagUuid the uuid of the tag whose events we will query
+	 * @return list of {@link TagEvent} for the {@link Tag} with uuid {@code tagUuid}
+	 * @throws TagEventPersistenceException if unable to run the query
+	 * @see #getByTagUuid(String, int, int)
 	 */
 	public List<TagEvent> getByTagUuid(String tagUuid)
 	throws TagEventPersistenceException
@@ -80,14 +80,14 @@ public class TagEventDao {
 	}
 	
 	/**
-	 * Returns all tag tag events for the tag with the given id. Pagination
-	 * is supported.
-	 * 
-	 * @param tagUuid
-	 * @param limit
-	 * @param offset
-	 * @return
-	 * @throws TagEventPersistenceException
+	 * Returns all tag tag events for the tag with the given id. At most, {@code limit} results will be returned after
+	 * skipping the first {@code offset} results.
+	 *
+	 * @param tagUuid the uuid of the tag whose events we will query
+	 * @param limit the max results
+	 * @param offset the number of events to skip
+	 * @return list of {@link TagEvent} for the {@link Tag} with uuid {@code tagUuid}
+	 * @throws TagEventPersistenceException if unable to run the query
 	 */
 	@SuppressWarnings("unchecked")
 	public List<TagEvent> getByTagUuid(String tagUuid, int limit, int offset)
@@ -101,10 +101,11 @@ public class TagEventDao {
 		{
 			Session session = getSession();
 			
-			String sql = "select * from tagevents where entity_uuid = :uuid order by id asc";
-			List<TagEvent> events = session.createSQLQuery(sql)
-			        .addEntity(TagEvent.class)
-                    .setString("uuid", tagUuid)
+			String hql = "FROM TagEvent t where t.entity = :uuid order by t.id asc";
+			List<TagEvent> events = session.createQuery(hql)
+			        .setString("uuid", tagUuid)
+					.setCacheMode(CacheMode.IGNORE)
+					.setCacheable(false)
 					.setFirstResult(offset)
 					.setMaxResults(limit)
 					.list();
@@ -118,36 +119,38 @@ public class TagEventDao {
 			throw new TagEventPersistenceException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
-     * @param tagUuid
-     * @param limit
-     * @param offset
-     * @return
-     * @throws TagEventPersistenceException
+     * Fetches {@link TagEvent} by {@code tagUuid} and {@code uuid}.
+	 *
+	 * @param tagUuid the uuid of the tag whose events we will query
+	 * @param eventUuid the uuid of the tag whose events we will query
+     * @return the {@link TagEvent} for the given {@code tagUuid} with uuid {@code uuid}
+     * @throws TagEventPersistenceException if unable to query
      */
-    public TagEvent getByTagUuidAndUuid(String tagUuid, String uuid)
+    public TagEvent getByTagUuidAndUuid(String tagUuid, String eventUuid)
     throws TagEventPersistenceException
     {
 
         if (tagUuid == null)
             throw new TagEventPersistenceException("Tag id cannot be null");
         
-        if (StringUtils.isEmpty(uuid)) 
+        if (StringUtils.isEmpty(eventUuid))
             throw new TagEventPersistenceException("Tag event uuid cannot be null");
 
         try
         {
             Session session = getSession();
             
-            String sql = "select * from tagevents where entity_uuid = :tagUuid and uuid = :uuid";
-            TagEvent event = (TagEvent)session.createSQLQuery(sql)
-                    .addEntity(TagEvent.class)
+            String hql = "FROM TagEvent t where t.entity = :tagUuid and t.uuid = :uuid";
+            TagEvent event = (TagEvent)session.createQuery(hql)
                     .setString("tagUuid", tagUuid)
-                    .setString("uuid", uuid)
+                    .setString("uuid", eventUuid)
+					.setCacheMode(CacheMode.IGNORE)
+					.setCacheable(false)
                     .uniqueResult();
             
             session.flush();
@@ -159,17 +162,17 @@ public class TagEventDao {
             throw new TagEventPersistenceException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+            try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
         }
     }
 
 	/**
 	 * Gets the tag events for the specified tag id and tag status
 	 * 
-	 * @param tagId
-	 * @param status
-	 * @return
-	 * @throws TagEventPersistenceException
+	 * @param tagUuid the uuid of the tag whose events we will query
+	 * @param eventType the tag event type for which to query
+	 * @return list of {@link TagEvent}  for the given tag id and event type
+	 * @throws TagEventPersistenceException if unable to query
 	 */
 	@SuppressWarnings("unchecked")
 	public List<TagEvent> getByTagUuidAndStatus(String tagUuid, TagEventType eventType) 
@@ -185,11 +188,12 @@ public class TagEventDao {
 		{
 			Session session = getSession();
 			
-			String hql = "select * from tagevents where entity_uuid = :tagUuid and status = :status order by id asc";
-			List<TagEvent> events = session.createSQLQuery(hql)
-					.addEntity(TagEvent.class)
+			String hql = "FROM TagEvent t where t.entity = :tagUuid and t.status = :status order by t.id asc";
+			List<TagEvent> events = session.createQuery(hql)
 					.setString("status", eventType.name())
-					.setString("entity_uuid", tagUuid)
+					.setString("tagUuid", tagUuid)
+					.setCacheMode(CacheMode.IGNORE)
+					.setCacheable(false)
 					.list();
 			
 			session.flush();
@@ -201,14 +205,14 @@ public class TagEventDao {
 			throw new TagEventPersistenceException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
 	/**
-	 * Saves a new tag permission. Upates existing ones.
-	 * @param pem
-	 * @throws TagEventPersistenceException
+	 * Saves a new {@link TagEvent}. Updates existing ones.
+	 * @param event the tag event to save
+	 * @throws TagEventPersistenceException if unable to save the event
 	 */
 	public void persist(TagEvent event) throws TagEventPersistenceException
 	{
@@ -229,20 +233,20 @@ public class TagEventDao {
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagEventPersistenceException("Failed to save tag event.", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
 	/**
 	 * Deletes the give tag permission.
 	 * 
-	 * @param event
-	 * @throws TagEventPersistenceException
+	 * @param event the event to delete
+	 * @throws TagEventPersistenceException if unable to delete the event
 	 */
 	public void delete(TagEvent event) throws TagEventPersistenceException
 	{
@@ -263,20 +267,20 @@ public class TagEventDao {
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagEventPersistenceException("Failed to delete tag event.", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
 	/**
-	 * Deletes all tag events for the tag with given id
-	 * 
-	 * @param tagId
-	 * @throws TagEventPersistenceException
+	 * Deletes all {@link TagEvent} for the tag with given {@code tagUuid}.
+	 *
+	 * @param tagUuid the uuid of the tag whose events we will query
+	 * @throws TagEventPersistenceException if unable to delete events for the given tag
 	 */
 	public void deleteByTagId(String tagUuid) throws TagEventPersistenceException
 	{
@@ -288,9 +292,11 @@ public class TagEventDao {
 		{
 			Session session = getSession();
 
-			String hql = "delete from tagevents where entity_uuid = :uuid";
+			String hql = "DELETE from TagEvent t where t.entity = :uuid";
 			session.createQuery(hql)
 					.setString("uuid", tagUuid)
+					.setCacheMode(CacheMode.IGNORE)
+					.setCacheable(false)
 					.executeUpdate();
 			
 			session.flush();
@@ -303,12 +309,12 @@ public class TagEventDao {
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagEventPersistenceException("Failed to delete events for tag " + tagUuid, ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 

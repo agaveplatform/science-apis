@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE hibernate-configuration PUBLIC
 "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
-"http://hibernate.sourceforge.net/hibernate-configuration-3.0.dtd">
+"http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 <hibernate-configuration>
 	<session-factory>
 		<!-- Connection properties -->
@@ -16,7 +16,7 @@
         <property name="hibernate.current_session_context_class">thread</property>
         <property name="hibernate.query.factory_class">org.hibernate.hql.ast.ASTQueryTranslatorFactory</property>
         <property name="hibernate.connection.autocommit">false</property> 
-        <property name="hbm2ddl.auto">update</property>
+<!--        <property name="hbm2ddl.auto">update</property>-->
         <property name="hibernate.show_sql">false</property>
         <property name="hibernate.query.substitutions">true 1, false 0</property>
         <property name="javax.persistence.validation.group.pre-persist"></property>

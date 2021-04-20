@@ -62,8 +62,8 @@ public class MetadataSchemaCollection extends AgaveResource
 {
 	private static final Logger log = Logger.getLogger(MetadataSchemaCollection.class);
 
-	private String username;
-	private String internalUsername;
+	private final String username;
+	private final String internalUsername;
 	private String userQuery;
 	private boolean includeRecordsWithImplicitPermissions = true;
 
@@ -106,15 +106,10 @@ public class MetadataSchemaCollection extends AgaveResource
 			if (AuthorizationHelper.isTenantAdmin(this.username)) {
 				// check whether they explicitly ask for unprivileged results..basically query
 				// as a normal user
-				if (form.getNames().contains("privileged") &&
-						!BooleanUtils.toBoolean(form.getFirstValue("privileged"))) {
-					this.includeRecordsWithImplicitPermissions = false;
-				}
 				// either they did not provide a "privileged" query parameter or it was true
 				// either way, they get back all results regardless of ownership
-				else {
-					this.includeRecordsWithImplicitPermissions = true;
-				}
+				this.includeRecordsWithImplicitPermissions = !form.getNames().contains("privileged") ||
+						BooleanUtils.toBoolean(form.getFirstValue("privileged"));
 			}
 			// non-admins do not inherit any implicit permissions
 			else {
@@ -186,7 +181,7 @@ public class MetadataSchemaCollection extends AgaveResource
 					if (query.get(key) instanceof String) {
 						if (((String) query.get(key)).contains("*")) {
 							try {
-								Pattern regexPattern = Pattern.compile((String)query.getString(key), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+								Pattern regexPattern = Pattern.compile(query.getString(key), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
 								query.put(key, regexPattern);
 							} catch (Exception e) {
 								throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid regular expression for " + key + " query");
@@ -252,8 +247,11 @@ public class MetadataSchemaCollection extends AgaveResource
 							"please contact the system administrators.", e);
 		}
 		finally {
-			try { cursor.close(); } catch (Exception e1) {}
-//            try { mongoClient.close(); } catch (Exception e) {}
+			try {
+				if (cursor != null) {
+					cursor.close();
+				}
+			} catch (Exception ignored) {}
 		}
 	}
 
@@ -301,7 +299,7 @@ public class MetadataSchemaCollection extends AgaveResource
 					}
 					throw new MetadataSchemaValidationException("The supplied JSON Schema definition is invalid. " +
 							"For more information on JSON Schema, please visit http://json-schema.org/.\n" +
-							errorMessages.toString());
+							errorMessages);
 				}
 			}
 			catch (MetadataSchemaValidationException e) {

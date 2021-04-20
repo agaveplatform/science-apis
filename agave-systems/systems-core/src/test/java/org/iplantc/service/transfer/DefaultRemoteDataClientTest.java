@@ -65,7 +65,7 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     	JSONObject json = getSystemJson();
     	json.remove("id");
     	json.put("id", this.getClass().getSimpleName());
-		system = (StorageSystem)StorageSystem.fromJSON(json);
+		system = StorageSystem.fromJSON(json);
     	system.setOwner(SYSTEM_USER);
     	String homeDir = system.getStorageConfig().getHomeDir();
     	homeDir = StringUtils.isEmpty(homeDir) ? "" : homeDir;
@@ -160,7 +160,7 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
      * shouldExist allows you to separate permission exceptions from
      * file not found exceptions.
      * 
-     * @param shouldExist. Whether the path should exist. 
+     * @param shouldExist Whether the path should exist.
      * @return 
      * @throws RemoteDataException 
      */
@@ -278,7 +278,7 @@ public abstract class DefaultRemoteDataClientTest extends BaseTransferTestCase
     	try 
     	{
     		JSONObject json = getSystemJson();
-        	RemoteSystem system = (StorageSystem)StorageSystem.fromJSON(json);
+        	RemoteSystem system = StorageSystem.fromJSON(json);
         	system.setOwner(SYSTEM_USER);
         	system.setSystemId("qwerty12345");
         	

@@ -57,14 +57,14 @@ import java.nio.channels.ClosedByInterruptException;
  */
 public class CloneAction extends AbstractWorkerAction<Software> {
     
-    private static Logger log = Logger.getLogger(CloneAction.class);
+    private static final Logger log = Logger.getLogger(CloneAction.class);
     private Software clonedSoftware;
     private String clonedSoftwareOwner;
-    private String clonedSoftwareName;
-    private String clonedSoftwareVersion;
+    private final String clonedSoftwareName;
+    private final String clonedSoftwareVersion;
     private String clonedSoftwareDeploymentPath;
-    private String clonedSoftwareStorageSystemId;
-    private String clonedSoftwareExecutionSystemId;
+    private final String clonedSoftwareStorageSystemId;
+    private final String clonedSoftwareExecutionSystemId;
     private StorageSystem clonedSoftwareStorageSystem;
     private ExecutionSystem clonedSoftwareExecutionSystem;
     protected SystemDao systemDao = new SystemDao();

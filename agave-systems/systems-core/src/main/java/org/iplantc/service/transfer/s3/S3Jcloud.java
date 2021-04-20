@@ -69,7 +69,7 @@ public class S3Jcloud implements RemoteDataClient
 	private String accountSecret = null;
 	private String host = null;
 	private int port = 443;
-	private Map<String, BlobMetadata> fileInfoCache = new ConcurrentHashMap<String, BlobMetadata>();
+	private final Map<String, BlobMetadata> fileInfoCache = new ConcurrentHashMap<String, BlobMetadata>();
     
     protected static final int MAX_BUFFER_SIZE = 1*1024*1024;
     
@@ -196,7 +196,7 @@ public class S3Jcloud implements RemoteDataClient
 		        overrides.setProperty(PROPERTY_TRUST_ALL_CERTS, "true"); 
 		        overrides.setProperty(PROPERTY_RELAX_HOSTNAME, "true");
 
-		        Iterable<Module> modules = ImmutableSet.<Module> of(new SLF4JLoggingModule());
+		        Iterable<Module> modules = ImmutableSet.of(new SLF4JLoggingModule());
 		        
 		        
 				if (StringUtils.isNotEmpty(endpoint.getPath()) && !StringUtils.equals(endpoint.getPath(), "/")) {
@@ -680,6 +680,7 @@ public class S3Jcloud implements RemoteDataClient
 							if (listener != null) {
 								listener.progressed(localFile.length());
 							}
+
 						}
 					}
 					else

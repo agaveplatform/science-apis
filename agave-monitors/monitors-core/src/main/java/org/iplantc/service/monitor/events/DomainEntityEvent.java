@@ -1,10 +1,5 @@
 package org.iplantc.service.monitor.events;
 
-import java.sql.Timestamp;
-
-import javax.persistence.Entity;
-import javax.persistence.Table;
-
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Filters;
@@ -17,7 +12,10 @@ import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.monitor.model.Monitor;
 import org.iplantc.service.monitor.model.enumeration.MonitorEventType;
-import org.iplantc.service.systems.model.enumerations.SystemEventType;
+
+import javax.persistence.Entity;
+import javax.persistence.Table;
+import java.sql.Timestamp;
 
 /**
  * Concrete {@link AgaveEntityEvent} class for {@link Monitor}
@@ -97,8 +95,7 @@ public class DomainEntityEvent extends AbstractEntityEvent<MonitorEventType> {
 	}
 
 
-	public DomainEntityEvent(String entityUuid, MonitorEventType eventType,
-			String description, String createdBy) {
+	public DomainEntityEvent(String entityUuid, MonitorEventType eventType, String description, String createdBy) {
 		this(eventType, description, createdBy);
 		setEntity(entityUuid);
 	}

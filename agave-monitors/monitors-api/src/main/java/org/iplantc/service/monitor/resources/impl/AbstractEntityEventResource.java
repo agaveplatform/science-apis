@@ -3,13 +3,12 @@
  */
 package org.iplantc.service.monitor.resources.impl;
 
-import java.io.FileNotFoundException;
-
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
 import org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKeys;
 import org.iplantc.service.common.dao.EntityEventDao;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.model.AgaveEntityEvent;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.restlet.resource.AbstractAgaveResource;
 import org.iplantc.service.monitor.dao.MonitorDao;
 import org.iplantc.service.monitor.exceptions.MonitorException;
@@ -17,6 +16,8 @@ import org.iplantc.service.monitor.managers.MonitorPermissionManager;
 import org.iplantc.service.monitor.model.Monitor;
 import org.restlet.data.Status;
 import org.restlet.resource.ResourceException;
+
+import java.io.FileNotFoundException;
 
 /**
  * @author dooley
@@ -33,7 +34,7 @@ public abstract class AbstractEntityEventResource<T extends AgaveEntityEvent, V 
      * Returns concrete instance of a {@link EntityEventDao} appropriate
      * for the implementing class.
      * 
-     * @return
+     * @return the dao for the {@link AgaveEntityEvent}
      */
     public abstract EntityEventDao<T,V> getEntityEventDao();
     
@@ -49,9 +50,9 @@ public abstract class AbstractEntityEventResource<T extends AgaveEntityEvent, V 
 //    public abstract EntityPermissionManager<T> getEntityPermissionManager();
 //    
     /**
-     * Fetches the {@link AgaveEntity} object for the id in the URL or throws 
+     * Fetches the {@link Monitor} object for the id in the URL or throws
      * an exception that can be re-thrown from the route method.
-     * @param entityId
+     * @param entityId the id of the entity in the path
      * @return entity with the given uuid
      * @throws ResourceException if permission is invalid or not found
      */
@@ -87,11 +88,14 @@ public abstract class AbstractEntityEventResource<T extends AgaveEntityEvent, V 
                     "Failed to fetch monitor record " + entityId + 
                     ". If this persists, please contact your tenant admin.");
     	}
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
+		}
     }
 
     /**
      * Convenience class to log usage info per request
-     * @param action
+     * @param activityKey the activity key to log
      */
     protected void logUsage(AgaveLogServiceClient.ActivityKeys activityKey) {
         AgaveLogServiceClient.log(getServiceKey().name(), activityKey.name(),

@@ -8,22 +8,22 @@ import org.iplantc.service.common.exceptions.EntityEventProcessingException;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.transfer.dao.TransferTaskEventDao;
+import org.iplantc.service.transfer.model.TransferTask;
 import org.iplantc.service.transfer.model.TransferTaskEvent;
 import org.iplantc.service.transfer.model.TransferTaskImpl;
 
 /**
- * Handles sending and propagation of events on {@link TransferTaskImpl} objects.
+ * Handles sending and propagation of events on {@link TransferTask} objects.
  * 
  * TODO: Make this class the default mechanism for adding events
  * TODO: Refactor this as an async factory using vert.x
  *
  * @author dooley
- * @param <ScheduledTransfer>
  *
  */
 public class TransferTaskEventProcessor {
 	private static final Logger log = Logger.getLogger(TransferTaskEventProcessor.class);
-	private ObjectMapper mapper = new ObjectMapper();
+	private final ObjectMapper mapper = new ObjectMapper();
 	
 	public TransferTaskEventProcessor(){}
 	
@@ -31,7 +31,7 @@ public class TransferTaskEventProcessor {
 	 * Generates notification events for {@link TransferTaskImpl}.
 	 * 
 	 * @param transferTask the {@link TransferTaskImpl} on which the even is triggered
-	 * @param createdBy the user who caused this event
+	 * @param event the transfer event to process
 	 * @return the {@link TransferTaskEvent} with the association to the {@link TransferTaskImpl}
 	 */
 	public void processTransferTaskEvent(TransferTaskImpl transferTask, TransferTaskEvent event) {
@@ -81,11 +81,13 @@ public class TransferTaskEventProcessor {
 	}
 	
 	/**
-	 * Publishes a {@link TransferEvent} event to the  
+	 * Publishes a {@link TransferEvent} event to the
 	 * {@link RemoteSystem} on which the {@link ScheduledTransfer} resides.
 	 * 
-	 * @param associatedUuid
-	 * @param json
+	 * @param associatedUuid the uuid of the subject of the event
+	 * @param event the event to process
+	 * @param createdBy the user who created the event
+	 * @param sJson the serialized json representation of the event body
 	 * @return the number of messages published
 	 */
 	private int processNotification(String associatedUuid, String event, String createdBy, String sJson) {

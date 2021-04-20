@@ -21,7 +21,6 @@ import org.iplantc.service.notification.model.Notification;
 
 import javax.persistence.Id;
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Past;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -377,7 +376,7 @@ public class MetadataItem {
                 .put("uuid", getUuid())
                 .put("created", getCreated().toInstant().toString())
                 .put("lastUpdated", getLastUpdated().toInstant().toString())
-                .putPOJO("associatedUuids", getAssociations());
+                .putPOJO("associationIds", getAssociations());
         json.set("value", getValue());
 
 

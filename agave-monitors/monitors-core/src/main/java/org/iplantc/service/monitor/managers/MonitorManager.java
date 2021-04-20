@@ -1,13 +1,13 @@
 package org.iplantc.service.monitor.managers;
 
-import java.io.IOException;
-import java.util.Date;
-
 import org.apache.log4j.Logger;
 import org.hibernate.StaleStateException;
+import org.iplantc.service.common.exceptions.EntityEventPersistenceException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.monitor.dao.MonitorCheckDao;
 import org.iplantc.service.monitor.dao.MonitorDao;
+import org.iplantc.service.monitor.events.DomainEntityEvent;
+import org.iplantc.service.monitor.events.DomainEntityEventDao;
 import org.iplantc.service.monitor.events.MonitorEventProcessor;
 import org.iplantc.service.monitor.exceptions.MonitorException;
 import org.iplantc.service.monitor.model.Monitor;
@@ -27,8 +27,10 @@ import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.transfer.RemoteDataClient;
 import org.iplantc.service.transfer.exceptions.AuthenticationException;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.jclouds.blobstore.domain.PageSet;
 import org.joda.time.DateTime;
+
+import java.io.IOException;
+import java.util.Date;
 
 /**
  * Management class to handle processing of monitoring tasks
@@ -40,7 +42,11 @@ public class MonitorManager
 {
 	private static final Logger log = Logger.getLogger(MonitorManager.class);
 	
-	private MonitorEventProcessor eventProcessor;
+	private final MonitorEventProcessor eventProcessor;
+
+	private final MonitorDao monitorDao = new MonitorDao();
+
+	private final MonitorCheckDao monitorCheckDao = new MonitorCheckDao();
 	
 	public MonitorManager() {
 		this.eventProcessor = new MonitorEventProcessor();
@@ -112,7 +118,6 @@ public class MonitorManager
 	 */
 	public MonitorCheck check(Monitor monitor, String createdBy)
 	{
-		MonitorDao dao = new MonitorDao();
 		RemoteSystem system = null;
 		MonitorCheck check = null;
 		try {
@@ -129,7 +134,7 @@ public class MonitorManager
 			if (check.getResult().equals(MonitorStatusType.PASSED)) {
 				monitor.setLastSuccess(new Date(check.getCreated().getTime()));
 				try {
-					dao.persist(monitor);
+					getMonitorDao().persist(monitor);
 				} catch (Throwable e) {
 					log.error("Check for monitor " + monitor.getUuid() +
 							" succeeded, but failed to updated the monitor's last success date.");
@@ -154,7 +159,6 @@ public class MonitorManager
 	@SuppressWarnings("unused")
     private MonitorCheck doStorageCheck(Monitor monitor, String createdBy)
 	{
-		MonitorCheckDao checkDao = getMonitorCheckDao();
 		MonitorCheck currentCheck = new MonitorCheck(monitor, MonitorStatusType.UNKNOWN, null, MonitorCheckType.STORAGE);
 
 		RemoteDataClient monitoredSystemRemoteDataClient = null;
@@ -171,7 +175,7 @@ public class MonitorManager
 			// period of time.
 			verifyUserHasSystemDataPermissions(system, monitor.getOwner());
 
-			lastCheck = checkDao.getLastMonitorCheck(monitor.getId());
+			lastCheck = getMonitorCheckDao().getLastMonitorCheck(monitor.getId());
 
 
 			monitoredSystemRemoteDataClient = system.getRemoteDataClient(monitor.getInternalUsername());
@@ -268,7 +272,7 @@ public class MonitorManager
 		
 		try {
 			currentCheck.setMonitor(monitor);
-			checkDao.persist(currentCheck);
+			getMonitorCheckDao().persist(currentCheck);
 			eventProcessor.processCheckEvent(monitor, lastCheck, currentCheck, createdBy);
 		} 
 		catch (Exception e)  {
@@ -276,7 +280,7 @@ public class MonitorManager
 		} finally {
 			try {
 				monitor.setLastUpdated(new Date());
-				new MonitorDao().persist(monitor);
+				getMonitorDao().persist(monitor);
 			} catch (StaleStateException e) {
 				log.error("Failed to update stale reference to monitor " + monitor.getUuid() +
 						" after check " + currentCheck.getUuid());
@@ -300,14 +304,13 @@ public class MonitorManager
 	@SuppressWarnings("unused")
 	private MonitorCheck doLoginCheck(Monitor monitor, String createdBy)
 	{
-		MonitorCheckDao checkDao = getMonitorCheckDao();
 		MonitorCheck currentCheck = new MonitorCheck(monitor, MonitorStatusType.FAILED, null, MonitorCheckType.LOGIN);
 		
 		MonitorCheck lastCheck = null;
 		ExecutionSystem system = null;
 		try 
 		{	
-			lastCheck = checkDao.getLastMonitorCheck(monitor.getId());
+			lastCheck = getMonitorCheckDao().getLastMonitorCheck(monitor.getId());
 			
 			system = (ExecutionSystem)monitor.getSystem();
 
@@ -373,7 +376,7 @@ public class MonitorManager
 		try {
 			currentCheck.setMonitor(monitor);
 			currentCheck.setCreated(new Date());
-			checkDao.persist(currentCheck);
+			getMonitorCheckDao().persist(currentCheck);
 
 			eventProcessor.processCheckEvent(monitor, lastCheck, currentCheck, createdBy);
 		} catch (Exception e) {
@@ -381,7 +384,7 @@ public class MonitorManager
 		} finally {
 			try {
 				monitor.setLastUpdated(new Date());
-				new MonitorDao().persist(monitor);
+				getMonitorDao().persist(monitor);
 			} catch (Exception ignored){}
 			
 		}
@@ -416,11 +419,10 @@ public class MonitorManager
 	 */
 	public void resetNextUpdateTime(Monitor monitor) throws MonitorException
 	{
-		MonitorDao dao = new MonitorDao();
-		dao.refresh(monitor);
+		getMonitorDao().refresh(monitor);
 		monitor.setLastUpdated(new Date());
 		monitor.setNextUpdateTime(new DateTime().plusMinutes(monitor.getFrequency()).toDate());
-		dao.persist(monitor);
+		getMonitorDao().persist(monitor);
 	}
 
 	/**
@@ -428,7 +430,7 @@ public class MonitorManager
 	 * @return the {@link MonitorCheckDao} to get
 	 */
 	protected MonitorCheckDao getMonitorCheckDao() {
-		return new MonitorCheckDao();
+		return monitorCheckDao;
 	}
 
 	/**
@@ -436,6 +438,37 @@ public class MonitorManager
 	 * @return the {@link MonitorDao} to get
 	 */
 	protected MonitorDao getMonitorDao() {
-		return new MonitorDao();
+		return monitorDao;
 	}
+
+	/**
+	 * Deletes the given {@link Monitor}, its {@link MonitorCheck}s, and {@link DomainEntityEvent} records from the db.
+	 * @param monitor the monitor to delete
+	 * @throws MonitorException if unable to clean up all monitor assets
+	 */
+    public void delete(Monitor monitor, String user) throws MonitorException {
+		try {
+			// clean up checks
+			getMonitorCheckDao().deleteAllForMonitor(monitor);
+
+			eventProcessor.processContentEvent(monitor, MonitorEventType.DELETED, user);
+
+			// clean up history
+			DomainEntityEventDao eventDao = new DomainEntityEventDao();
+			eventDao.deleteByEntityId(monitor.getUuid());
+
+			// delete monitor
+			try {
+				// remove event
+				getMonitorDao().delete(monitor);
+			} catch (MonitorException e) {
+				// if a check is firing, a delete could occur, so we force the update here
+				getMonitorDao().refresh(monitor);
+				getMonitorDao().delete(monitor);
+			}
+		}
+		catch (EntityEventPersistenceException e) {
+			throw new MonitorException("Failed to delete monitor history.", e);
+		}
+    }
 }

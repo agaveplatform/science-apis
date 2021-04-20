@@ -35,7 +35,7 @@ public class WrapperTemplateMacroResolver {
     private static final String CUSTOM_CALLBACK_MACRO_REGEX = "(?s)(?:.*)?(?:(\\$\\{AGAVE_JOB_CALLBACK_NOTIFICATION\\|(?:(\\s*[a-zA-Z0-9_]*\\s*))\\|(?:([a-zA-Z0-9_,\\s]*))\\}))(?:.*)?";
 
     private final Job job;
-    private ExecutionSystem executionSystem;
+    private final ExecutionSystem executionSystem;
 
     public WrapperTemplateMacroResolver(@NotNull Job job, ExecutionSystem executionSystem) {
         this.job = job;
@@ -246,7 +246,7 @@ public class WrapperTemplateMacroResolver {
         if (jobStatusMacro == WrapperTemplateStatusVariableType.AGAVE_JOB_CALLBACK_NOTIFICATION) {
             return resolveNotificationEventMacro(null, null);
         } else {
-            return String.format("agave_log_response $(curl -sSk \"%strigger/job/%s/token/%s/status/%s?filter=id,status\" 2>&1) \n\n\n",
+            return String.format("agave_log_response $(curl --connect-timeout 10 -sSk \"%strigger/job/%s/token/%s/status/%s?filter=id,status\" 2>&1) \n\n\n",
                     resolveTenantJobUrl(getJob().getTenantId()),
                     getJob().getUuid(),
                     getJob().getUpdateToken(),
@@ -356,7 +356,7 @@ public class WrapperTemplateMacroResolver {
 
         sb.append("echo -e \"}\" >> \"$AGAVE_CALLBACK_FILE\"\n\n");
         String callbackUrl = resolveTenantJobUrl(getJob().getTenantId());
-        sb.append(String.format("agave_log_response $(cat \"$AGAVE_CALLBACK_FILE\" | sed  -e \"s#: \\\"''\\\"#: \\\"\\\"#g\" | curl -sS%s -H \"Content-Type: application/json\" -X POST --data-binary @- \"%strigger/job/%s/token/%s/status/HEARTBEAT?pretty=true\" 2>&1) \n\n\n",
+        sb.append(String.format("agave_log_response $(cat \"$AGAVE_CALLBACK_FILE\" | sed  -e \"s#: \\\"''\\\"#: \\\"\\\"#g\" | curl --connect-timeout 10 -sS%s -H \"Content-Type: application/json\" -X POST --data-binary @- \"%strigger/job/%s/token/%s/status/HEARTBEAT?pretty=true\" 2>&1) \n\n\n",
                 callbackUrl.startsWith("https") ? "k" : "",
                 callbackUrl,
                 getJob().getUuid(),

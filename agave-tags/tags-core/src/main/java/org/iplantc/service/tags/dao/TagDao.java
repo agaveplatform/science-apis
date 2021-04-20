@@ -3,26 +3,21 @@
  */
 package org.iplantc.service.tags.dao;
 
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.hibernate.HibernateException;
-import org.hibernate.ObjectNotFoundException;
-import org.hibernate.Query;
-import org.hibernate.Session;
-import org.hibernate.transform.Transformers;
+import org.hibernate.*;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.dao.AbstractDao;
 import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.search.SearchTerm;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.tags.exceptions.TagException;
 import org.iplantc.service.tags.model.Tag;
 import org.iplantc.service.tags.model.enumerations.PermissionType;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Data access class for internal users.
@@ -49,13 +44,12 @@ public class TagDao extends AbstractDao
 	
 	/**
 	 *  Gets all tags for a given user filtering by active status and system
-	 *  
-	 * @param username
-	 * @param includeActive
-	 * @param includeInactive
-	 * @param tagId
-	 * @return
-	 * @throws TagException
+	 *
+	 * @param username the user for which the search runs
+	 * @param limit the max results
+	 * @param offset the results to skip
+	 * @return a list of {@link Tag} matching the search
+	 * @throws TagException if unable to query
 	 */
 	@SuppressWarnings("unchecked")
 	public List<Tag> getUserTags(String username, int limit, int offset)
@@ -83,21 +77,21 @@ public class TagDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Find {@link Tag}s with the given uuid regardless of tenant.
 	 * 
-	 * @param uuid
-	 * @return
-	 * @throws TagException
+	 * @param uuid the uuid of the tag to search
+	 * @return a {@link Tag} with the given uuid
+	 * @throws TagException if unable to query
 	 */
 	public Tag findByUuid(String uuid) throws TagException
 	{
@@ -125,12 +119,12 @@ public class TagDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
@@ -140,10 +134,10 @@ public class TagDao extends AbstractDao
 	 * namespace conflict where the owner created a tag with the name of a tag
 	 * that was also shared with them, their personal tag is always returned.
 	 * 
-	 * @param uuidOrName
-	 * @param username
-	 * @return
-	 * @throws TagException
+	 * @param uuidOrName the name or uuid of the tag for which to search
+	 * @param username the user whose permission must match the tag with uuid or name
+	 * @return a {@link Tag} with the given uuid or name
+	 * @throws TagException if unable to query
 	 */
 	public Tag findByNameOrUuid(String uuidOrName, String username) throws TagException
 	{
@@ -151,18 +145,54 @@ public class TagDao extends AbstractDao
 			return null;
 		}
 		else {
-			try {
-				AgaveUUID uuid = new AgaveUUID(uuidOrName);
-				if (UUIDType.TAG == uuid.getResourceType()) {
-					return findByUuid(uuidOrName);
-				}
-				// it's still a valid name, go for it
-				else {
-					return findByNameAndOwner(uuidOrName, username);
+			try
+			{
+				HibernateUtil.beginTransaction();
+				Session session = HibernateUtil.getSession();
+				session.clear();
+
+				String hql = "from Tag t where (t.name = :uuidORName OR t.uuid = :uuidORName) and " +
+						"		( " +
+						"			t.owner = :owner OR \n" +
+						"	        t.id in ( \n" +
+						"               SELECT tp.entityId FROM TagPermission tp \n" +
+						"               WHERE tp.username = :owner AND tp.permission <> :none \n" +
+						"           ) \n" +
+						"       )";
+
+				List<Tag> tags = (List<Tag>)session.createQuery(hql)
+						.setString("uuidORName",uuidOrName)
+						.setString("owner", username)
+						.setString("none", PermissionType.NONE.name())
+						.setCacheMode(CacheMode.IGNORE)
+						.setCacheable(false)
+						.list();
+
+				session.flush();
+
+				// return the first value the user owns if it exists
+				// otherwise return the first result
+				if (tags.isEmpty()) {
+					return null;
+				} else {
+					Optional<Tag> tag = tags.stream().filter(t -> t.getOwner().equals(username)).findFirst();
+					return tag.orElseGet(() -> tags.get(0));
 				}
 			}
-			catch (Exception e) {
-				return findByNameAndOwner(uuidOrName, username);
+			catch (HibernateException ex)
+			{
+				try
+				{
+					if (HibernateUtil.getSession().isOpen()) {
+						HibernateUtil.rollbackTransaction();
+					}
+				}
+				catch (Exception ignored) {}
+
+				throw new TagException(ex);
+			}
+			finally {
+				try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 			}
 		}
 	}
@@ -172,10 +202,10 @@ public class TagDao extends AbstractDao
 	 * conflict where the owner created a tag with the name of a tag that was
 	 * also shared with them, their personal tag is always returned.
 	 *  
-	 * @param name
-	 * @param owner
-	 * @return
-	 * @throws TagException
+	 * @param name the name of the tag to search
+	 * @param owner the owner of the tag
+	 * @return a {@link Tag} matching the given {@code name} with the given {@code owner} or null if no match
+	 * @throws TagException if unable to query
 	 */
 	@SuppressWarnings("unchecked")
 	public Tag findByNameAndOwner(String name, String owner) 
@@ -194,8 +224,7 @@ public class TagDao extends AbstractDao
                     "               SELECT tp.entityId FROM TagPermission tp \n" +
                     "               WHERE tp.username = :owner AND tp.permission <> :none \n" +
                     "           ) \n" +
-                    "       ) \n" +
-                    "      )";
+                    "       )";
 			
 			List<Tag> tags = (List<Tag>)session.createQuery(hql)
 					.setString("name",name)
@@ -223,21 +252,21 @@ public class TagDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Returns the {@link Tag} matching the given uuid within the current tenant id
 	 * 
-	 * @param uuid
+	 * @param uuid the tag uuid
 	 * @return {@link Tag} with the matching uuid
-	 * @throws TagException
+	 * @throws TagException if unable to query
 	 */
 	public Tag findByUuidWithinSessionTenant(String uuid) throws TagException
 	{
@@ -249,6 +278,8 @@ public class TagDao extends AbstractDao
 			
 			Tag tag = (Tag)session.createQuery(hql)
 					.setString("uuid",uuid)
+					.setCacheMode(CacheMode.IGNORE)
+					.setCacheable(false)
 					.uniqueResult();
 			
 			session.flush();
@@ -263,19 +294,19 @@ public class TagDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 	
 	/**
 	 * Saves or updates the {@link Tag}
-	 * @param tag
-	 * @throws TagException
+	 * @param tag the tag to save or update
+	 * @throws TagException if unable to persist the tag
 	 */
 	public void persist(Tag tag) throws TagException
 	{
@@ -299,20 +330,20 @@ public class TagDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagException("Failed to save tag", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {e.printStackTrace();}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
 	/**
 	 * Deletes a {@link Tag}
 	 * 
-	 * @param tag
-	 * @throws TagException
+	 * @param tag the tag to delete
+	 * @throws TagException if unable to delete the tag
 	 */
 	public void delete(Tag tag) throws TagException
 	{
@@ -337,21 +368,23 @@ public class TagDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagException("Failed to delete tag", ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
 	/**
 	 * Merges the active {@link Tag} back with the saved instance. Associations are
 	 * not updated.
-	 * @param tag
-	 * @return
-	 * @throws TagException
+	 * TODO: this should not be needed. We can refresh instead.
+	 *
+	 * @param tag the tag to merge
+	 * @return the updated tag.
+	 * @throws TagException if unable to merge the tag object
 	 */
 	public Tag merge(Tag tag) throws TagException
 	{
@@ -375,12 +408,12 @@ public class TagDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			throw new TagException("Failed to merge tag", ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Throwable e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Throwable ignored) {}
 		}
 	}
 	
@@ -388,8 +421,8 @@ public class TagDao extends AbstractDao
 	 * Resyncs the {@link Tag} with the stored version replacing
 	 * any local changes.
 	 * 
-	 * @param tag
-	 * @throws TagException
+	 * @param tag the tag to refresh
+	 * @throws TagException if unable to refresh the tag
 	 */
 	public void refresh(Tag tag) throws TagException
 	{
@@ -409,20 +442,20 @@ public class TagDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			throw new TagException("Failed to merge tag", ex);
 		}
 		finally
 		{
-			try { HibernateUtil.commitTransaction(); } catch (Throwable e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Throwable ignored) {}
 		}
 	}
 	
 	/**
 	 * Fetch all {@link Tag}s.
 	 * 
-	 * @return
-	 * @throws TagException
+	 * @return a list of all {@link Tag}s
+	 * @throws TagException if unable to fet tags
 	 */
 	@SuppressWarnings("unchecked")
 	public List<Tag> getAll() throws TagException
@@ -449,12 +482,12 @@ public class TagDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}
 
@@ -463,7 +496,7 @@ public class TagDao extends AbstractDao
 	 * @param name name of tag
 	 * @param username owner of tag
 	 * @return true of a match exists within the current tenant. false otherwise
-	 * @throws TagException
+	 * @throws TagException if unable to query tags
 	 */
 	public boolean doesTagNameExistForUser(String name, String username) throws TagException 
 	{
@@ -471,12 +504,13 @@ public class TagDao extends AbstractDao
 		{
 			Session session = getSession();
 			
-			String sql = "select uuid from tags where name = :name and owner = :owner and tenant_id = :tenantId";
+			String sql = "SELECT t.uuid FROM Tag t where t.name = :name and t.owner = :username";
 			
-			String match = (String)session.createSQLQuery(sql)
+			String match = (String)session.createQuery(sql)
 					.setString("name", name)
-					.setString("owner", username)
-					.setString("tenantId", TenancyHelper.getCurrentTenantId())
+					.setString("username", username)
+					.setCacheMode(CacheMode.IGNORE)
+					.setCacheable(false)
 					.setMaxResults(1)
 					.uniqueResult();
 			
@@ -492,12 +526,12 @@ public class TagDao extends AbstractDao
 					HibernateUtil.rollbackTransaction();
 				}
 			}
-			catch (Exception e) {}
+			catch (Exception ignored) {}
 			
 			throw new TagException(ex);
 		}
 		finally {
-			try { HibernateUtil.commitTransaction(); } catch (Exception e) {}
+			try { HibernateUtil.commitTransaction(); } catch (Exception ignored) {}
 		}
 	}	
 
@@ -505,12 +539,12 @@ public class TagDao extends AbstractDao
      * Searches for software by the given user who matches the given set of 
      * parameters. Permissions are honored in this query as in pagination
      *
-     * @param username
-     * @param searchCriteria
-     * @param offset
-     * @param limit
-     * @return
-     * @throws SoftwareException
+     * @param username the user for which the search runs
+     * @param searchCriteria the criteria of the search
+     * @param offset the results to skip
+     * @param limit the max results
+     * @return a list of {@link Tag} matching the search
+     * @throws TagException if unable to query
      */
     @SuppressWarnings("unchecked")
     public List<Tag> findMatching(String username, Map<SearchTerm, Object> searchCriteria, int offset, int limit) 
@@ -530,6 +564,7 @@ public class TagDao extends AbstractDao
             }
             if (!AuthorizationHelper.isTenantAdmin(username)) {
                 // no public search term specified. return public and private
+				// otherwise, all public apps will be included in the general where clause
                 if (publicSearchTerm == null) {
                     hql +=  " WHERE ( \n" +
                             "       t.owner = :owner OR \n" +
@@ -551,12 +586,9 @@ public class TagDao extends AbstractDao
                             "               WHERE tp.username = :owner AND tp.permission <> :none \n" +
                             "              ) \n" +
                             "      ) AND \n";
-                } 
-                // else return public apps. they will be included in the general where clause
-                else {
-                    
                 }
-            } else {
+            }
+            else {
                 hql += " WHERE ";
             }
             
@@ -618,13 +650,11 @@ public class TagDao extends AbstractDao
                 {
                     query.setParameter(searchTerm.getSafeSearchField(), 
                             searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)));
-                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "'" + String.valueOf(searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm))) + "'");
+                    q = q.replaceAll(":" + searchTerm.getSafeSearchField(), "'" + searchTerm.getOperator().applyWildcards(searchCriteria.get(searchTerm)) + "'");
                 }
                 
             }
-            
-            log.debug(q);
-            
+
             List<Tag> tags = query
                     .setFirstResult(offset)
                     .setMaxResults(limit)
@@ -640,13 +670,7 @@ public class TagDao extends AbstractDao
             throw new TagException(ex);
         }
         finally {
-            try { HibernateUtil.commitTransaction();} catch (Exception e) {}
+            try { HibernateUtil.commitTransaction();} catch (Exception ignored) {}
         }
     }
-
-
-	public boolean doesUserTagExistWithName(String name) {
-		// TODO Auto-generated method stub
-		return false;
-	}
 }

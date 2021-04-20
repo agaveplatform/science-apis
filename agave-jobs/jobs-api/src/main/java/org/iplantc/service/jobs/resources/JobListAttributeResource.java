@@ -6,6 +6,7 @@ package org.iplantc.service.jobs.resources;
 import org.apache.log4j.Logger;
 import org.iplantc.service.apps.util.ServiceUtils;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
+import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.representation.IplantErrorRepresentation;
 import org.iplantc.service.common.representation.IplantSuccessRepresentation;
@@ -64,7 +65,7 @@ public class JobListAttributeResource extends SearchableAgaveResource<JobSearchF
 		if (ServiceUtils.isValid(userAttr)) {
 			// only add valid attributes, preserve their case for the sql query
 			for(String attr: jobAttributes) {
-				if (attr.toLowerCase().equals(userAttr.toLowerCase())) {
+				if (attr.equalsIgnoreCase(userAttr)) {
 					attribute = attr;
 					break;
 				}
@@ -84,35 +85,36 @@ public class JobListAttributeResource extends SearchableAgaveResource<JobSearchF
 	@Override
 	public Representation represent(Variant variant) throws ResourceException
 	{
-		if (attribute == null) {
-			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
-			return new IplantErrorRepresentation("Unknown job attribute");
-		}
-		
-		try
-		{
-			//String json = "";
-			
-			JSONArray json = new JSONArray();
-			List<Job> jobs = JobDao.getByUsername(getAuthenticatedUsername(), offset, limit, getSortOrder(AgaveResourceResultOrdering.ASC), getSortOrderSearchTerm());
-			for (Job job: jobs) 
-			{
-				JSONObject jsonJob = new JSONObject();
-				jsonJob.put("id", job.getUuid());
-				jsonJob.put(attribute, job.getValueForAttributeName(attribute));
-				jsonJob.put("_links",
-						new JSONObject().put("self", 
-								new JSONObject().put("href",
-										TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_JOB_SERVICE) + job.getUuid())));
-				json.put(jsonJob);
+		try {
+			if (attribute == null) {
+				getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+				return new IplantErrorRepresentation("Unknown job attribute");
 			}
-			return new IplantSuccessRepresentation(json.toString());
+
+			try {
+				//String json = "";
+
+				JSONArray json = new JSONArray();
+				List<Job> jobs = JobDao.getByUsername(getAuthenticatedUsername(), offset, limit, getSortOrder(AgaveResourceResultOrdering.ASC), getSortOrderSearchTerm());
+				for (Job job : jobs) {
+					JSONObject jsonJob = new JSONObject();
+					jsonJob.put("id", job.getUuid());
+					jsonJob.put(attribute, job.getValueForAttributeName(attribute));
+					jsonJob.put("_links",
+							new JSONObject().put("self",
+									new JSONObject().put("href",
+											TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_JOB_SERVICE) + job.getUuid())));
+					json.put(jsonJob);
+				}
+				return new IplantSuccessRepresentation(json.toString());
+			} catch (Exception e) {
+				log.error("Failed to search jobs by attribute " + attribute + " for user " + getAuthenticatedUsername(), e);
+				getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
+				return new IplantErrorRepresentation(e.getMessage());
+			}
 		}
-		catch (Exception e)
-		{
-			log.error("Failed to search jobs by attribute " + attribute + " for user " + getAuthenticatedUsername(), e);
-			getResponse().setStatus(Status.SERVER_ERROR_INTERNAL);
-			return new IplantErrorRepresentation(e.getMessage());
+		finally {
+			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
 		}
 	}
 

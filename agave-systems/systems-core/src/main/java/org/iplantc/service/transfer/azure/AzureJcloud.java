@@ -44,8 +44,8 @@ public class AzureJcloud implements RemoteDataClient
 	
 	private String accountKey = null;
 	private String accountSecret = null;
-	private String host = null;
-	private int port = 443;
+	private final String host = null;
+	private final int port = 443;
     protected static final int MAX_BUFFER_SIZE = 65537;
     
 	public AzureJcloud(String accountKey, String accountSecret, String rootDir, String homeDir, String containerName, String cloudProvider) 
@@ -133,9 +133,7 @@ public class AzureJcloud implements RemoteDataClient
 	throws IOException, RemoteDataException
 	{
 		if (doesExist(remotepath)) {
-			if (isFile(remotepath)) {
-				return false;
-			}
+			return !isFile(remotepath);
 		} else if (!doesExist(FilenameUtils.getPath(remotepath))) {
 			throw new FileNotFoundException("No such file or directory");
 		} else {

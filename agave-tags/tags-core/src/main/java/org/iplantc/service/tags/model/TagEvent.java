@@ -1,24 +1,12 @@
 package org.iplantc.service.tags.model;
 
-import java.sql.Timestamp;
-import java.util.Date;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.Filters;
-import org.hibernate.annotations.Index;
-import org.hibernate.annotations.ParamDef;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.hibernate.annotations.*;
 import org.iplantc.service.common.Settings;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uuid.AgaveUUID;
@@ -26,12 +14,13 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.tags.model.enumerations.TagEventType;
 import org.joda.time.DateTime;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.Entity;
+import javax.persistence.Table;
+import javax.persistence.*;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
+import java.sql.Timestamp;
+import java.util.Date;
 
 /**
  * Entity class for persisting events which occur on {@link AgaveDomainEntity}. 
@@ -132,6 +121,10 @@ public class TagEvent {
         this.description = description;
         this.ipAddress = org.iplantc.service.common.Settings.getIpLocalAddress();
         this.createdBy = createdBy;
+    }
+
+    public TagEvent(String entityUuid, TagEventType eventType, String createdBy) {
+        this(entityUuid, eventType, eventType.getDescription(), createdBy);
     }
 
     public TagEvent(String entityUuid, TagEventType eventType, String description, String createdBy) {
@@ -281,15 +274,15 @@ public class TagEvent {
     	ObjectNode linksObject = mapper.createObjectNode();
         try {
         	AgaveUUID uuid = new AgaveUUID(getUuid());
-	        linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+	        linksObject.put("self", mapper.createObjectNode()
 	            .put("href", TenancyHelper.resolveURLToCurrentTenant(
 	            		Settings.IPLANT_TAGS_SERVICE + getEntity()+ "/history/" + getUuid())));
         } catch (Throwable e) {
-        	linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+        	linksObject.put("self", mapper.createObjectNode()
 		            .putNull("href"));
     	}
         
-        linksObject.put("tag", (ObjectNode)mapper.createObjectNode()
+        linksObject.put("tag", mapper.createObjectNode()
                 .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TAGS_SERVICE) + getEntity()));
         
         return linksObject;  	
@@ -339,6 +332,6 @@ public class TagEvent {
 //    }
 
     public String toString() {
-        return getEntity() + " " + getStatus() + " " + new DateTime(getCreated()).toString();
+        return getEntity() + " " + getStatus() + " " + new DateTime(getCreated());
     }
 }

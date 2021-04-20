@@ -6,7 +6,7 @@ import javax.persistence.Entity;
 import javax.persistence.Table;
 
 /**
- * POJO for an Worker {@link DiscoverableService}s. WorkerDiscoveryService
+ * POJO for an Worker {@link DiscoveryService}s. WorkerDiscoveryService
  * can be any elastically scalable process used across the platform. 
  * Workers are self-reporting and report their existence with a regular heartbeat.
  * 

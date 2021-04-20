@@ -49,9 +49,9 @@ import static org.iplantc.service.common.clients.AgaveLogServiceClient.ServiceKe
 public class MetadataResource extends AgaveResource {
 	private static final Logger log = Logger.getLogger(MetadataResource.class);
 
-	private String username;
-	private String internalUsername;
-	private String uuid;
+	private final String username;
+	private final String internalUsername;
+	private final String uuid;
 	private String userQuery;
 
 	private MongoClient mongoClient;
@@ -71,7 +71,7 @@ public class MetadataResource extends AgaveResource {
 
 		Form form = request.getOriginalRef().getQueryAsForm();
 		if (form != null) {
-			userQuery = (String) form.getFirstValue("q");
+			userQuery = form.getFirstValue("q");
 
 			if (!StringUtils.isEmpty(userQuery)) {
 				try {
@@ -173,16 +173,15 @@ public class MetadataResource extends AgaveResource {
 				metadataDocument = jsonHandler.parseJsonMetadataToDocument(jsonMetadata);
 
 				String formUuid = metadataDocument.getString("uuid");
-				if (uuid.equals(formUuid)) {
-					throw new MetadataValidationException("Document uuid, if provided, must match url.");
+				if (StringUtils.isNotBlank(formUuid) && !uuid.equals(formUuid)) {
+					throw new MetadataValidationException("Metadata uuid in the request body does not match the url");
 				}
 			} catch (ResourceException e) {
 				log.error("Failed to parse request body. " + e.getMessage());
 				throw e;
 			} catch (Exception e) {
-				log.error("Failed to parse request body. " + e.getMessage());
 				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
-						"Unable to parse request body. " + e.getMessage());
+						e.getMessage());
 			}
 
 			try {
@@ -217,7 +216,8 @@ public class MetadataResource extends AgaveResource {
 				throw new ResourceException(Status.CLIENT_ERROR_FORBIDDEN,
 						"User does not have permission to update metadata");
 			}
-		} catch (ResourceException e) {
+		}
+		catch(ResourceException e) {
 			log.error("Failed to update metadata item " + uuid + ". " + e.getMessage());
 
 			getResponse().setStatus(e.getStatus());
@@ -265,7 +265,7 @@ public class MetadataResource extends AgaveResource {
 
 				if (deletedMetadataItem != null) {
 					for (String aid : deletedMetadataItem.getAssociations().getAssociatedIds().keySet()) {
-						NotificationManager.process((String) aid, "METADATA_DELETED", username);
+						NotificationManager.process(aid, "METADATA_DELETED", username);
 					}
 
 					NotificationManager.process(uuid, "DELETED", username);
@@ -312,13 +312,13 @@ public class MetadataResource extends AgaveResource {
 				try {
 					String resourceUrl = agaveUUID.getObjectReference();
 					BasicDBObject assocResource = new BasicDBObject();
-					assocResource.put("rel", (String) associatedId);
+					assocResource.put("rel", associatedId);
 					assocResource.put("href", TenancyHelper.resolveURLToCurrentTenant(resourceUrl));
 					assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
 					halAssociationIds.add(assocResource);
 				} catch (UUIDException e) {
 					BasicDBObject assocResource = new BasicDBObject();
-					assocResource.put("rel", (String) associatedId);
+					assocResource.put("rel", associatedId);
 					assocResource.put("href", null);
 					assocResource.put("title", agaveUUID.getResourceType().name().toLowerCase());
 					halAssociationIds.add(assocResource);

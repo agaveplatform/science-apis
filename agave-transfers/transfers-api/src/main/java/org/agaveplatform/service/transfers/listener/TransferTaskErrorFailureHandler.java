@@ -119,7 +119,7 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 
 			this.processBody(body, processBodyResult ->{
                 log.debug(body.encode());
-                TransferTask failedTask = new TransferTask(body);
+                TransferTask failedTask = new TransferTask(processBodyResult.result());
                 failedTask.setStatus(TransferStatusType.FAILED);
 
                 if (processBodyResult.succeeded()){

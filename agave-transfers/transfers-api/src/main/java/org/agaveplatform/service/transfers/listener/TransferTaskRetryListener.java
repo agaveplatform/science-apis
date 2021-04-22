@@ -39,7 +39,7 @@ import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
-import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.RETRYING;
+import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
 
 public class TransferTaskRetryListener extends AbstractNatsListener {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskRetryListener.class);
@@ -90,7 +90,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 		//Connection nc = _connect();
 		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(MessageType.TRANSFER_RETRY, msg -> {
+		Subscription s = d.subscribe(getDefaultEventChannel(), msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -138,7 +138,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 				}
 			}
 		});
-		d.subscribe(MessageType.TRANSFER_RETRY);
+		d.subscribe(getDefaultEventChannel());
 		getConnection().flush(Duration.ofMillis(500));
 
 
@@ -230,12 +230,12 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 				if (reply.succeeded()) {
 
 					TransferTask transferTaskToRetry = new TransferTask(reply.result());
-					if (transferTaskToRetry.getStatus().isActive()) {
+					if (transferTaskToRetry.getStatus().isActive() || transferTaskToRetry.getStatus().equals(ERROR)) {
 						// we're good to to go forward.
 
 						// the status is not in the states above.  Now check to see if the # of attempts exceeds the max
-						int configMaxTries = config().getInteger("transfertask.max.tries");
-						if (configMaxTries <= transferTaskToRetry.getAttempts()) {
+						int configMaxTries = config().getInteger("TRANSFERTASK_MAX_ATTEMPTS");
+						if (configMaxTries >= transferTaskToRetry.getAttempts()) {
 							// # of retries is less.
 
 							// increment the attempts
@@ -300,7 +300,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 				}
 
 			});
-			handler.handle(Future.succeededFuture(true));
+//			handler.handle(Future.succeededFuture(true));
 		} catch (Throwable t) {
 
 			// fail the processing if there is any kind of issue

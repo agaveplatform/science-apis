@@ -23,7 +23,7 @@
     <modules>
         <module>sftp-relay</module>
         <module>transfers-api</module>
-        <module>nats_setup</module>
+        <module>nats-setup</module>
     </modules>
 
 </project>

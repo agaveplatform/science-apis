@@ -4,6 +4,9 @@
 package org.iplantc.service.metadata.model;
 
 import org.apache.commons.lang.StringUtils;
+import org.bson.codecs.pojo.annotations.BsonId;
+import org.bson.codecs.pojo.annotations.BsonProperty;
+import org.bson.types.ObjectId;
 import org.hibernate.annotations.Filter;
 import org.hibernate.annotations.FilterDef;
 import org.hibernate.annotations.Filters;
@@ -17,7 +20,6 @@ import org.json.JSONStringer;
 import org.json.JSONWriter;
 
 import javax.persistence.*;
-
 import java.util.Date;
 
 /**
@@ -33,17 +35,24 @@ import java.util.Date;
 @Filters(@Filter(name="schemaPemTenantFilter", condition="tenant_id=:tenantId"))
 public class MetadataSchemaPermission {
 
-	private Long				id;
+	@BsonProperty ("_id")
+	@BsonId
+	private ObjectId id;
+	@BsonProperty ("schemaId")
 	private String				schemaId;
+	@BsonProperty ("username")
 	private String				username;
+	@BsonProperty ("permission")
 	private PermissionType		permission;
+	@BsonProperty ("lastUpdated")
 	private Date				lastUpdated = new Date();
-	private String 				tenantId;		
-	
+	@BsonProperty ("tenantId")
+	private String 				tenantId;
+
 	public MetadataSchemaPermission() {
 		this.setTenantId(TenancyHelper.getCurrentTenantId());
 	}
-	
+
 	public MetadataSchemaPermission(String schemaId, String username, PermissionType permissionType) throws MetadataException
 	{
 		this();
@@ -52,13 +61,17 @@ public class MetadataSchemaPermission {
 		setPermission(permissionType);
 	}
 
+//	public ObjectId getId(){return id;}
+//
+//	public void setId(ObjectId id){this.id = id;};
+
 	/**
 	 * @return the id
 	 */
 	@Id
 	@GeneratedValue
 	@Column(name = "id", unique = true, nullable = false)
-	public Long getId()
+	public ObjectId getId()
 	{
 		return id;
 	}
@@ -67,7 +80,7 @@ public class MetadataSchemaPermission {
 	 * @param id
 	 *            the id to set
 	 */
-	public void setId(Long id)
+	public void setId(ObjectId id)
 	{
 		this.id = id;
 	}

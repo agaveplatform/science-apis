@@ -24,8 +24,8 @@ public class MetadataSchemaPermissionDaoIT extends AbstractMetadataPermissionDao
 	{
 			String schemaId = getResourceUuid();
 			MetadataSchemaPermission pem = new MetadataSchemaPermission(schemaId, TEST_OWNER, PermissionType.READ);
-			MetadataSchemaPermissionDao.persist(pem);
-			assertNotNull(pem.getId(), "Schema permission did not persist.");
+			MetadataSchemaPermission addedPem = MetadataSchemaPermissionDao.insert(pem);
+			assertNotNull(addedPem.getId(), "Schema permission did not persist.");
 	}
 
 	@Test(dependsOnMethods={"persistTest"})
@@ -34,7 +34,7 @@ public class MetadataSchemaPermissionDaoIT extends AbstractMetadataPermissionDao
 		String schemaId = getResourceUuid();
 
 		MetadataSchemaPermission pem = new MetadataSchemaPermission(schemaId, TEST_OWNER, PermissionType.READ);
-		MetadataSchemaPermissionDao.persist(pem);
+		MetadataSchemaPermissionDao.insert(pem);
 		assertNotNull(pem.getId(), "Schema permission did not persist.");
 
 		List<MetadataSchemaPermission> pems = MetadataSchemaPermissionDao.getBySchemaId(schemaId);
@@ -51,11 +51,11 @@ public class MetadataSchemaPermissionDaoIT extends AbstractMetadataPermissionDao
 		String schemaId = getResourceUuid();
 
 		MetadataSchemaPermission pem1 = new MetadataSchemaPermission(schemaId, TEST_OWNER, PermissionType.READ);
-		MetadataSchemaPermissionDao.persist(pem1);
+		MetadataSchemaPermissionDao.insert(pem1);
 		assertNotNull(pem1.getId(), "Metadata Schema permission 1 did not persist.");
 
 		MetadataSchemaPermission pem2 = new MetadataSchemaPermission(schemaId, TEST_SHARED_OWNER, PermissionType.READ);
-		MetadataSchemaPermissionDao.persist(pem2);
+		MetadataSchemaPermissionDao.insert(pem2);
 		assertNotNull(pem2.getId(), "Job permission 2 did not persist.");
 
 		MetadataSchemaPermission userPem = MetadataSchemaPermissionDao.getByUsernameAndSchemaId(TEST_OWNER, schemaId);
@@ -69,7 +69,7 @@ public class MetadataSchemaPermissionDaoIT extends AbstractMetadataPermissionDao
 		String schemaId = getResourceUuid();
 
 		MetadataSchemaPermission pem = new MetadataSchemaPermission(schemaId, TEST_OWNER, PermissionType.READ);
-		MetadataSchemaPermissionDao.persist(pem);
+		MetadataSchemaPermissionDao.insert(pem);
 		assertNotNull(pem.getId(), "Schema permission did not persist.");
 
 		MetadataSchemaPermissionDao.delete(pem);
@@ -84,7 +84,7 @@ public class MetadataSchemaPermissionDaoIT extends AbstractMetadataPermissionDao
 		String schemaId = getResourceUuid();
 
 		MetadataSchemaPermission pem = new MetadataSchemaPermission(schemaId, TEST_OWNER, PermissionType.READ);
-		MetadataSchemaPermissionDao.persist(pem);
+		MetadataSchemaPermissionDao.insert(pem);
 		assertNotNull(pem.getId(), "Schema permission did not persist.");
 
 		List<String> uuids = MetadataSchemaPermissionDao.getUuidOfAllSharedMetataSchemaItemReadableByUser(TEST_OWNER, 0, 100);

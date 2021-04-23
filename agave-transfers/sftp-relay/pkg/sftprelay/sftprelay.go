@@ -10,6 +10,7 @@ import (
 	"io"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -19,6 +20,8 @@ import (
 	"os"
 	"time"
 )
+
+const MAX_CONNECTION_RETRIES = 1
 
 var log = logrus.New()
 
@@ -83,6 +86,11 @@ var (
 		Name: "sftprelay_list_method_handle_count",
 		Help: "Total number of List RPCs handled on the server.",
 	}, []string{"name"})
+	// DisconnectCheck request counter.
+	disconnectCounterMetric = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "sftprelay_disconnect_method_handle_count",
+		Help: "Total number of Disconnect RPCs handled on the server.",
+	}, []string{"name"})
 )
 
 func NewRemoteFileInfo(path string, fileInfo os.FileInfo) agaveproto.RemoteFileInfo {
@@ -119,18 +127,35 @@ func (s *Server) InitMetrics() {
 	sshKeyHash = RandBytes(32)
 }
 
-// Uses the agaveproto.RemoteSystemConfig sent in each request to obtain a sftp client from the pool
-func (s *Server) getSftpClientFromPool(ctx context.Context, systemConfig *agaveproto.RemoteSystemConfig) (*sftp.Client, func() error, error) {
-	//id, err := ProtobufToJSON(systemConfig)
-	//if err != nil {
-	//	return nil, nil, err
-	//}
+func (s *Server) logDeferClose(session *clientpool.Session, sshConfig *SSHConfig) {
+	err := session.Close()
+	if err != nil {
+		log.Errorf("Failed closing broken session for %s@%s:%d %v", sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
+	}
+}
+// Fetches a sftp client from the connection pool, providing retries upon connection failure
+func (s *Server) getSftpClientFromPool(ctx context.Context, systemConfig *agaveproto.RemoteSystemConfig) (*sftp.Client, func(), error) {
 	sshConfig, err := NewSSHConfig(systemConfig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	addr := fmt.Sprintf("%s:%d", sshConfig.Host, sshConfig.Port)
+	return s.retryGetSftpClientFromPool(ctx, sshConfig, 0)
+}
+
+// Uses the agaveproto.RemoteSystemConfig sent in each request to obtain a sftp client from the pool
+// This method will attempt to obtain a session from the session pool for the provided connection.
+// If unable to obtain a session due to a server-side connection failure, the session and connection
+// will be invalidated and removed from the pool. The connection will then be retried up to
+// MAX_CONNECTION_RETRIES times, after which it will fail.
+func (s *Server) retryGetSftpClientFromPool(ctx context.Context, sshConfig *SSHConfig, retryCount int) (*sftp.Client, func(), error) {
+	attemptPrefix := ""
+	if retryCount > 0 {
+		attemptPrefix = fmt.Sprintf("[%d] ", retryCount)
+	}
+
+	defer log.Tracef("Exiting getSftpClientFromPool after attempt %d to %s@%s:%d", retryCount, sshConfig.User, sshConfig.Host, sshConfig.Port)
+
 	cfg := &ssh.ClientConfig{
 		User:            sshConfig.User,
 		Auth:            sshConfig.Auth,
@@ -138,20 +163,69 @@ func (s *Server) getSftpClientFromPool(ctx context.Context, systemConfig *agavep
 		HostKeyCallback: sshConfig.HostKeyCallback,
 	}
 
-	sftpClient, closeSFTP, err := sesspool.AsSFTPClient(s.Pool.TryClaimSession(ctx, clientpool.WithDialArgs("tcp", addr, cfg), clientpool.WithID(sshConfig.String())))
+	addr := fmt.Sprintf("%s:%d", sshConfig.Host, sshConfig.Port)
+
+	// get or create a session from the pool. This establishes a connection with associated session pool.
+	session, err := s.Pool.ClaimSession(ctx, clientpool.WithDialArgs("tcp", addr, cfg), clientpool.WithID(sshConfig.String()))
+
 	if err != nil {
+		log.Errorf("%sUnable to obtain a valid session to %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
+		return nil, nil, errors.Wrap(err, "No session available in pool")
+	}
+
+	// use the session to create a new sftp client we can use in the rest of our app
+	sftpClient, err := session.SFTPClient()
+	if err != nil {
+		// pool exhaustion is valid. We just fail fast here to indicate to the calling service a retry is in order
 		if errors.Cause(err) == sesspool.PoolExhausted {
-			log.Errorf("Connection pool exhausted for %s@%s:%d", systemConfig.Username, systemConfig.Host, systemConfig.Port)
+			defer s.logDeferClose(session, sshConfig)
+			log.Errorf("%sConnection pool exhausted for %s@%s:%d", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port)
 			return nil, nil, errors.Wrap(err, "No connections available in pool")
+		} else if strings.Contains(err.Error(), "connection reset by peer") {
+			log.Debugf("%sBroken connection detected to %s@%s:%d", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port)
+			// This indicates that the connection has gone bad. We need to close the session and invalidate the
+			// connection because all subsequent operations on this connection will now fail.
+			cerr := session.InvalidateClient()
+			if cerr != nil {
+				// if this fails, there's not much we can do. All calls to this remote host will fail until the
+				// remote side releases any stuck connections, or we restart this server. Our only option is to
+				// ensure we cleanup the session we created and return an error.
+				defer s.logDeferClose(session, sshConfig)
+				log.Errorf("%sUnable to invalidate connection to %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
+				return nil, nil, errors.Wrap(cerr, "Broken connection detection. Unable to restore the connection to the pool.")
+			}
+
+			// The connection reset succeeded. We can retry the connection provided this wasn't our last attempt,
+			// and, if successful, just carry on with the work.
+			if retryCount < MAX_CONNECTION_RETRIES {
+				return s.retryGetSftpClientFromPool(ctx, sshConfig, retryCount+1)
+			} else {
+				// Retry count exceeded. This operation will now fail, but subsequent ones should succeed.
+				log.Errorf("%sMax retries exceeded attempting to create sftp client from pool for %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
+				return nil, nil, errors.Wrap(err, "Error creating sftp client")
+			}
 		} else {
-			log.Errorf("Error creating sftp client from pool for %s@%s:%d", systemConfig.Username, systemConfig.Host, systemConfig.Port)
+			// retry session after cleanup
+			log.Errorf("%sError creating sftp client from pool for %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
 			return nil, nil, errors.Wrap(err, "Error creating sftp client")
 		}
 	}
 
-	log.Debugf(fmt.Sprintf("Obtained sftp client to sftp://%s@%s:%d", systemConfig.Username, systemConfig.Host, systemConfig.Port))
+	log.Debugf(fmt.Sprintf("Obtained sftp client to sftp://%s@%s:%d", sshConfig.User, sshConfig.Host, sshConfig.Port))
 
-	return sftpClient, closeSFTP, nil
+	return sftpClient, func() {
+			cerr := sftpClient.Close()
+			serr := session.Close()
+			// Just return the deepest close error.
+			if serr != nil {
+				if errors.Cause(serr) != sesspool.SessionNotFound {
+					log.Errorf("Failed closing session for %s@%s:%d %v", sshConfig.User, sshConfig.Host, sshConfig.Port, serr.Error())
+				}
+			}
+			if cerr != nil {
+				log.Errorf("Failed closing client session for %s@%s:%d %v", sshConfig.User, sshConfig.Host, sshConfig.Port, cerr.Error())
+			}
+		}, nil
 }
 
 // Performs a basic authentication handshake to the remote system
@@ -171,6 +245,46 @@ func (s *Server) AuthCheck(ctx context.Context, req *agaveproto.AuthenticationCh
 
 	// increment the request metric
 	authCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
+
+	// success returns an empty response
+	return &agaveproto.EmptyResponse{}, nil
+}
+
+// Performs a basic authentication handshake to the remote system
+func (s *Server) Disconnect(ctx context.Context, req *agaveproto.AuthenticationCheckRequest) (*agaveproto.EmptyResponse, error) {
+	log.Trace("Invoking Disconnect service")
+
+	log.Printf("DISCONNECT sftp://%s@%s:%d", req.SystemConfig.Username, req.SystemConfig.Host, req.SystemConfig.Port)
+
+	sshConfig, err := NewSSHConfig(req.SystemConfig)
+	if err != nil {
+		return &agaveproto.EmptyResponse{Error: err.Error()}, nil
+	}
+
+	cfg := &ssh.ClientConfig{
+		User:            sshConfig.User,
+		Auth:            sshConfig.Auth,
+		Timeout:         sshConfig.Timeout,
+		HostKeyCallback: sshConfig.HostKeyCallback,
+	}
+
+	addr := fmt.Sprintf("%s:%d", sshConfig.Host, sshConfig.Port)
+
+	// get or create a session from the pool. This establishes a connection with associated session pool.
+	session, err := s.Pool.ClaimSession(ctx, clientpool.WithDialArgs("tcp", addr, cfg), clientpool.WithID(sshConfig.String()))
+	if err != nil {
+		log.Errorf("Unable to establish a valid session to %s@%s:%d %v", sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
+		return &agaveproto.EmptyResponse{Error: fmt.Sprintf("No session available in pool. %v", err.Error())}, nil
+	}
+
+
+	err = session.InvalidateClient()
+	if err != nil {
+		return &agaveproto.EmptyResponse{Error: fmt.Sprintf("Unable to invalidate connection to %s@%s:%d %v", sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())}, nil
+	}
+
+	// increment the disconnect request metric
+	disconnectCounterMetric.WithLabelValues(req.SystemConfig.Host).Inc()
 
 	// success returns an empty response
 	return &agaveproto.EmptyResponse{}, nil

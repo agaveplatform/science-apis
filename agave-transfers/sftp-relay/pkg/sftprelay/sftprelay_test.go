@@ -114,7 +114,7 @@ func _resolveTestPathToRemotePath(localTestPath string) string {
 }
 
 func beforeTest(t *testing.T) {
-	consolelog.Debugf("***************************************************************************************\n");
+	consolelog.Debugf("***************************************************************************************\n")
 	// create a new unique test directory for the test
 	CurrentBaseTestDirPath = filepath.Join("sftprelay_test", t.Name(), uuid.New().String())
 
@@ -145,7 +145,7 @@ func afterTest(t *testing.T) {
 		sharedRandomTestDirPath := filepath.Dir(_resolveTestPath(CurrentBaseTestDirPath, LocalSharedTestDir))
 
 		consolelog.Debugf("Removing test directory for test %s, %s", t.Name(), sharedRandomTestDirPath)
-		consolelog.Debugf("***************************************************************************************");
+		consolelog.Debugf("***************************************************************************************")
 		consolelog.Debugf(" ")
 		consolelog.Debugf(" ")
 
@@ -163,7 +163,7 @@ func _createTempDirectory(prefix string) (string, error) {
 
 // grants user 1000 recursive permissions on the local share test dir. This is
 // the same uid of the testuser in the sftp container used in these tests.
-func _updateLocalSharedTestDirOwnership() (error){
+func _updateLocalSharedTestDirOwnership() error {
 	cmd := exec.Command("chown", "-R", "1000:1000", LocalSharedTestDir)
 	return cmd.Run()
 }
@@ -305,7 +305,7 @@ func TestAuthenticateWithInvalidPasswordReturnsError(t *testing.T) {
 	if err != nil {
 		assert.Nilf(t, err, "Error while calling RPC Auth: %v", err)
 	} else {
-		assert.Contains(t, grpcResponse.Error, "handshake failed", "AuthCheck with invalid password should return error message stating handshake failed")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "handshake failed", "AuthCheck with invalid password should return error message stating handshake failed")
 	}
 
 	afterTest(t)
@@ -330,7 +330,7 @@ func TestAuthenticateWithWithInvalidRSAKeyReturnsError(t *testing.T) {
 	if err != nil {
 		assert.Nilf(t, err, "Error while calling RPC Auth: %v", err)
 	} else {
-		assert.Contains(t, grpcResponse.Error, "no key found", "AuthCheck with invalid ssh key should return error stating no key found")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "no key found", "AuthCheck with invalid ssh key should return error stating no key found")
 	}
 
 	afterTest(t)
@@ -460,7 +460,7 @@ func TestStatReturnsErrIfPathDoesNotExist(t *testing.T) {
 	if err != nil {
 		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
 	} else {
-		assert.Contains(t, grpcResponse.Error, "does not exist", err)
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "does not exist", err)
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
 	}
 
@@ -537,7 +537,7 @@ func TestMkdirReturnsErrorWhenPathIsForbidden(t *testing.T) {
 		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
 	} else {
 		// get the test directory stat in the local shared directory
-		assert.Contains(t, grpcResponse.Error, "Permission denied", "Non-recursive Mkdirs on forbidden path should return response saying Permission denied")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "permission denied", "Non-recursive Mkdirs on forbidden path should return response saying permission denied")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
 	}
 
@@ -576,7 +576,7 @@ func TestMkdirReturnsErrorWhenPathIsExistingFile(t *testing.T) {
 			assert.FailNowf(t, err.Error(), "Unable to open temp test file after calling mkdir: %s", err.Error())
 		}
 		assert.False(t, tmpTestFileInfo.IsDir(), "Remote path should still be a file after calling mkdir on it.")
-		assert.Contains(t, grpcResponse.Error, "file already exists", "Mkdirs on existing file should return response saying file already exists")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "file already exists", "Mkdirs on existing file should return response saying file already exists")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
 	}
 
@@ -722,7 +722,7 @@ func TestMkdirsReturnsErrorWhenPathIsForbidden(t *testing.T) {
 		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
 	} else {
 		// get the test directory stat in the local shared directory
-		assert.Contains(t, grpcResponse.Error, "Permission denied", "Non-recursive Mkdirs on forbidden path should return response saying Permission denied")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "permission denied", "Non-recursive Mkdirs on forbidden path should return response saying permission denied")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
 	}
 
@@ -761,7 +761,7 @@ func TestMkdirsReturnsErrorWhenPathIsFile(t *testing.T) {
 			assert.FailNowf(t, err.Error(), "Unable to open temp test file after calling mkdir: %s", err.Error())
 		}
 		assert.False(t, tmpTestFileInfo.IsDir(), "Remote path should still be a file after calling mkdir on it.")
-		assert.Contains(t, grpcResponse.Error, "not a directory", "Mkdirs on existing file should return response saying file already exists")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "not a directory", "Mkdirs on existing file should return response saying file already exists")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
 	}
 
@@ -1038,7 +1038,7 @@ func TestPutFileToDirectoryReturnsError(t *testing.T) {
 			assert.FailNowf(t, err.Error(), "Unable to open temp directory, %s, on remote host after put: %s", resolvedLocalTestDirPath, err.Error())
 		}
 		assert.True(t, targetTestDirInfo.IsDir(), "Putting a file to a directory should fail and preserve the target directory")
-		assert.Contains(t, grpcResponse.Error, "destination path is a directory", "Error message in response should indicate the destination path is a directory")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "destination path is a directory", "Error message in response should indicate the destination path is a directory")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
 	}
 
@@ -1078,7 +1078,7 @@ func TestPutMissingLocalFileReturnsError(t *testing.T) {
 		if err == nil {
 			assert.FailNowf(t, "Missing target file should not be created", "Missing target file, %s, should not be present after attempting to put a missing file", resolvedLocalTestDirPath)
 		}
-		assert.Contains(t, grpcResponse.Error, "no such file or directory", "Error message in response should state no such file or directory")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "no such file or directory", "Error message in response should state no such file or directory")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
 	}
 
@@ -1122,7 +1122,7 @@ func TestPutFileToMissingDirectoryReturnsErr(t *testing.T) {
 		}
 
 		// get the test directory stat in the local shared directory
-		assert.Contains(t, grpcResponse.Error, "file does not exist", "Error message in response should state file does not exist")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "file does not exist", "Error message in response should state file does not exist")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
 	}
 
@@ -1163,7 +1163,7 @@ func TestPutFileToExistingFileWithoutForceReturnsErr(t *testing.T) {
 		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
 	} else {
 		// get the test directory stat in the local shared directory
-		assert.Contains(t, grpcResponse.Error, "file already exists", "Error message in response should state file already exists")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "file already exists", "Error message in response should state file already exists")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
 	}
 
@@ -1326,7 +1326,7 @@ func TestGetReturnsErrIfRemoteFilePathDoesNotExist(t *testing.T) {
 		}
 
 		// get the test directory stat in the local shared directory
-		assert.Contains(t, grpcResponse.Error, "file does not exist", "Error message in response should state file does not exist")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "file does not exist", "Error message in response should state file does not exist")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
 	}
 
@@ -1366,7 +1366,7 @@ func TestGetReturnsErrIfRemotePathIsADirectory(t *testing.T) {
 		if err == nil {
 			assert.FailNowf(t, "Missing target path should not be created", "Missing target path, %s, should not be created on the local host after failed directory get", resolvedLocalFileDownloadPath)
 		}
-		assert.Contains(t, grpcResponse.Error, "source path is a directory", "Error message in response should indicate the source path is a directory")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "source path is a directory", "Error message in response should indicate the source path is a directory")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
 	}
 
@@ -1409,7 +1409,7 @@ func TestGetReturnsErrIfLocalFilePathDoesNotExist(t *testing.T) {
 		}
 
 		// get the test directory stat in the local shared directory
-		assert.Contains(t, grpcResponse.Error, "no such file or directory", "Error message in response should state no such file or directory")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "no such file or directory", "Error message in response should state no such file or directory")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
 	}
 
@@ -1454,7 +1454,7 @@ func TestGetReturnsErrIfLocalFilePathIsADirectory(t *testing.T) {
 			assert.FailNowf(t, err.Error(), "Unable to open temp directory, %s, on remote host after put: %v", tmpDownloadTestDirPath, err)
 		}
 		assert.True(t, tmpDownloadTestDirInfo.IsDir(), "Getting a file to a directory should fail and preserve the target directory")
-		assert.Contains(t, grpcResponse.Error, "destination path is a directory", "Error message in response should indicate the destination path is a directory")
+		assert.Contains(t, strings.ToLower(grpcResponse.Error), "destination path is a directory", "Error message in response should indicate the destination path is a directory")
 		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
 	}
 
@@ -1558,7 +1558,7 @@ func TestRenameFile(t *testing.T) {
 		assert.Nilf(t, err, "Error while calling RPC Stat: %v", err)
 	} else {
 		_, err := os.Stat(_resolveTestPath(tmpTestFilePath, LocalSharedTestDir))
-		if (! os.IsNotExist(err)) {
+		if ! os.IsNotExist(err) {
 			assert.FailNowf(t, err.Error(), "Original temp file should not be present after rename operation: %s", err.Error())
 		} else if grpcResponse.RemoteFileInfo == nil {
 			assert.FailNow(t, "Returned file info should not be nil on successful rename")
@@ -1615,7 +1615,7 @@ func TestRenameEmptyDirectory(t *testing.T) {
 		assert.Nilf(t, err, "Error while calling RPC Stat: %v", err)
 	} else {
 		_, err := os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
-		if (! os.IsNotExist(err)) {
+		if ! os.IsNotExist(err) {
 			assert.FailNowf(t, err.Error(), "Original temp dir should not be present after rename operation: %s", err.Error())
 		} else if grpcResponse.RemoteFileInfo == nil {
 			assert.FailNow(t, "Returned file info should not be nil on successful rename")
@@ -1683,7 +1683,7 @@ func TestRenameDirectoryTree(t *testing.T) {
 		assert.Nilf(t, err, "Error while calling RPC Stat: %v", err)
 	} else {
 		_, err := os.Stat(_resolveTestPath(tmpTestDirPath, LocalSharedTestDir))
-		if (! os.IsNotExist(err)) {
+		if ! os.IsNotExist(err) {
 			assert.FailNowf(t, err.Error(), "Original temp dir should not be present after rename operation: %s", err.Error())
 		} else if grpcResponse.RemoteFileInfo == nil {
 			assert.FailNow(t, "Returned file info should not be nil on successful rename")
@@ -1715,7 +1715,7 @@ func TestRenameDirToExistingPthReturnsError(t *testing.T) {
 	}
 
 	forbiddenPath := "/root/" + uuid.New().String()
-	_doTestRenamePathReturnsErr(t, client, tmpTestDirPath, forbiddenPath, "Permission denied")
+	_doTestRenamePathReturnsErr(t, client, tmpTestDirPath, forbiddenPath, "permission denied")
 
 	dirExistsOutsideOriginalParentDir := "/tmp"
 	_doTestRenamePathReturnsErr(t, client, tmpTestDirPath, dirExistsOutsideOriginalParentDir, "file or dir exists")
@@ -1753,7 +1753,7 @@ func TestRenameFileToExistingPathReturnsError(t *testing.T) {
 	}
 
 	forbiddenPath := "/root/" + uuid.New().String()
-	_doTestRenamePathReturnsErr(t, client, tmpTestFilePath, forbiddenPath, "Permission denied")
+	_doTestRenamePathReturnsErr(t, client, tmpTestFilePath, forbiddenPath, "permission denied")
 
 	dirExistsOutsideOriginalParentDir := "/tmp"
 	_doTestRenamePathReturnsErr(t, client, tmpTestFilePath, dirExistsOutsideOriginalParentDir, "file or dir exists")
@@ -1794,7 +1794,7 @@ func _doTestRenamePathReturnsErr(t *testing.T, client agaveproto.SftpRelayClient
 			assert.FailNowf(t, err.Error(), "Original temp path should be present after failed rename operation: %s", err.Error())
 		} else {
 			assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil on error")
-			assert.Contains(t, grpcResponse.Error, expectedError, "Rename to a forbidden path should return error " + expectedError)
+			assert.Contains(t, strings.ToLower(grpcResponse.Error), expectedError, "Rename to a forbidden path should return error " + expectedError)
 		}
 	}
 }

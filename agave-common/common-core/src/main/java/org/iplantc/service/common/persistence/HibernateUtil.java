@@ -30,11 +30,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  */
 public class HibernateUtil {
 
-	private static Logger log = Logger.getLogger(HibernateUtil.class);
+	private static final Logger log = Logger.getLogger(HibernateUtil.class);
 
 	private static Configuration configuration;
 	private static SessionFactory sessionFactory;
-	private static Queue<String> filters = new ConcurrentLinkedQueue<String>();
+	private static final Queue<String> filters = new ConcurrentLinkedQueue<String>();
 	private static final ThreadLocal<Session> threadSession = new ThreadLocal<Session>();
 	private static final ThreadLocal<Transaction> threadTransaction = new ThreadLocal<Transaction>();
 	private static final ThreadLocal<Interceptor> threadInterceptor = new ThreadLocal<Interceptor>();
@@ -59,7 +59,7 @@ public class HibernateUtil {
 			configuration.setNamingStrategy(new ImprovedNamingStrategy());
 			
 			// adding to properly handle conversion of dates to/from the db in CDT
-//			configuration.registerTypeOverride(new CdtTimestampType());
+//			configuration.registerTypeOverride(new InstantType());
 			
 			// uncomment to see hql of all schema export statments.
 //			new SchemaExport(configuration).create(true, false);
@@ -149,7 +149,7 @@ public class HibernateUtil {
 	 */
 	public static Session getSession()
 		throws PersistenceException {
-		Session s = (Session) threadSession.get();
+		Session s = threadSession.get();
         try {
 			if (s == null || !s.isOpen()) {
 				//log.debug("Opening new Session for this thread.");
@@ -180,7 +180,7 @@ public class HibernateUtil {
 	public static void closeSession()
 		throws PersistenceException {
         try {
-			Session s = (Session) threadSession.get();
+			Session s = threadSession.get();
 			threadSession.set(null);
 			if (s != null && s.isOpen()) {
 				//log.debug("Closing Session of this thread.");
@@ -196,7 +196,7 @@ public class HibernateUtil {
 	 */
 	public static void beginTransaction()
 		throws PersistenceException {
-		Transaction tx = (Transaction) threadTransaction.get();
+		Transaction tx = threadTransaction.get();
 		try {
 			if (tx == null) {
 //				log.debug("Starting new database transaction in this thread.");
@@ -214,7 +214,7 @@ public class HibernateUtil {
 	 */
 	public static void commitTransaction()
 		throws PersistenceException {
-		Transaction tx = (Transaction) threadTransaction.get();
+		Transaction tx = threadTransaction.get();
 		try {
 			if ( tx != null && !tx.wasCommitted()
 							&& !tx.wasRolledBack() ) {
@@ -233,7 +233,7 @@ public class HibernateUtil {
 	 */
 	public static void rollbackTransaction()
 		throws PersistenceException {
-		Transaction tx = (Transaction) threadTransaction.get();
+		Transaction tx = threadTransaction.get();
 		try {
 			threadTransaction.set(null);
 			if ( tx != null && !tx.wasCommitted() && !tx.wasRolledBack() ) {
@@ -295,7 +295,7 @@ public class HibernateUtil {
 
 	private static Interceptor getInterceptor() {
 		Interceptor interceptor =
-			(Interceptor) threadInterceptor.get();
+				threadInterceptor.get();
 		return interceptor;
 	}
 

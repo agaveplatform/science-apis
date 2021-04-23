@@ -294,7 +294,7 @@ public class TransferTaskImpl implements TransferTask {
 	/**
 	 * @return the startTime
 	 */
-	@Column(name = "start_time", length = 16)
+	@Column(name = "start_time")
 	public Instant getStartTime()
 	{
 		return startTime;
@@ -311,7 +311,7 @@ public class TransferTaskImpl implements TransferTask {
 	/**
 	 * @return the endTime
 	 */
-	@Column(name = "end_time", length = 16)
+	@Column(name = "end_time")
 	public Instant getEndTime()
 	{
 		return endTime;
@@ -357,7 +357,7 @@ public class TransferTaskImpl implements TransferTask {
 		if (milliseconds > 0) {
 			return getBytesTransferred() / (milliseconds/1000.0);
 		} else {
-			return (double)0.0;
+			return 0.0;
 		}
 	}
 
@@ -396,7 +396,7 @@ public class TransferTaskImpl implements TransferTask {
 	/**
 	 * @return the created
 	 */
-	@Column(name = "created", nullable = false, length = 19)
+	@Column(name = "created", nullable = false)
 	public Instant getCreated()
 	{
 		return created;
@@ -413,7 +413,7 @@ public class TransferTaskImpl implements TransferTask {
 	/**
 	 * @return the lastUpdated
 	 */
-	@Column(name = "last_updated", nullable = false, length = 19)
+	@Column(name = "last_updated", nullable = false)
 	public Instant getLastUpdated()
 	{
 		return lastUpdated;
@@ -563,13 +563,13 @@ public class TransferTaskImpl implements TransferTask {
                 
                 ObjectNode linksObject = mapper.createObjectNode();
                 
-                linksObject.put("self", (ObjectNode)mapper.createObjectNode()
+                linksObject.put("self", mapper.createObjectNode()
                     .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid()));
                 
-                linksObject.put("source", (ObjectNode)mapper.createObjectNode()
+                linksObject.put("source", mapper.createObjectNode()
                         .put("href", resolveEndpointToUrl(getSource())));
                 
-                linksObject.put("dest", (ObjectNode)mapper.createObjectNode()
+                linksObject.put("dest", mapper.createObjectNode()
                         .put("href", resolveEndpointToUrl(getDest())));
                 
                 if (getParentTask() != null) {
@@ -583,7 +583,7 @@ public class TransferTaskImpl implements TransferTask {
                 }
                 
 //                if (isParent()) {
-                    linksObject.put("childTasks", (ObjectNode)mapper.createObjectNode()
+                    linksObject.put("childTasks", mapper.createObjectNode()
                         .put("href", TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) + getUuid() + "/subtasks"));
 //                }
                 

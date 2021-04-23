@@ -12,8 +12,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.Calendar;
-import java.util.TimeZone;
 
 /**
  * Handles conversion of {@link java.util.Date} to CDT (America/Chicago) when 
@@ -22,19 +20,19 @@ import java.util.TimeZone;
  * @author dooley
  *
  */
-public class CdtTimestampTypeDescriptor extends TimestampTypeDescriptor {
+public class InstantTypeDescriptor extends TimestampTypeDescriptor {
     
 	private static final long serialVersionUID = -828569458015830360L;
 
-	public static final CdtTimestampTypeDescriptor INSTANCE = new CdtTimestampTypeDescriptor();
+	public static final InstantTypeDescriptor INSTANCE = new InstantTypeDescriptor();
 
-    private static final TimeZone CDT = TimeZone.getTimeZone("America/Chicago");
+//    private static final TimeZone CDT = TimeZone.getTimeZone("America/Chicago");
 
     public <X> ValueBinder<X> getBinder(final JavaTypeDescriptor<X> javaTypeDescriptor) {
         return new BasicBinder<X>( javaTypeDescriptor, this ) {
             @Override
             protected void doBind(PreparedStatement st, X value, int index, WrapperOptions options) throws SQLException {
-                st.setTimestamp( index, javaTypeDescriptor.unwrap( value, Timestamp.class, options ), Calendar.getInstance(CDT) );
+                st.setTimestamp( index, javaTypeDescriptor.unwrap( value, Timestamp.class, options ));
             }
         };
     }
@@ -43,7 +41,7 @@ public class CdtTimestampTypeDescriptor extends TimestampTypeDescriptor {
         return new BasicExtractor<X>( javaTypeDescriptor, this ) {
             @Override
             protected X doExtract(ResultSet rs, String name, WrapperOptions options) throws SQLException {
-                return javaTypeDescriptor.wrap( rs.getTimestamp( name, Calendar.getInstance(CDT) ), options );
+                return javaTypeDescriptor.wrap( rs.getTimestamp( name ), options );
             }
         };
     }

@@ -161,7 +161,7 @@ public class TransferTaskDao
 		{
 			Session session = getSession();
 			
-			String hql =  "FROM TransferTask t left join TransferTaskPermission p on t.id = p.transferTaskId "
+			String hql =  "FROM TransferTaskImpl t left join TransferTaskPermission p on t.id = p.transferTaskId "
     			        + "WHERE t.owner = :owner "
     			        + "          or (p.username = :owner and p.permission like 'READ%') "
     			        + "      and status in ('" + StringUtils.join(TransferStatusType.getActiveStatusValues(), "','") + "')";
@@ -207,7 +207,7 @@ public class TransferTaskDao
 			Session session = getSession();
 			
 			String hql = "SELECT count(t.id) "
-			        + "FROM TransferTask t left join TransferTaskPermission p on t.id = p.transferTaskId "
+			        + "FROM TransferTaskImpl t left join TransferTaskPermission p on t.id = p.transferTaskId "
                     + "WHERE t.owner = :owner "
                     + "          or (p.username = :owner and p.permission like 'READ%') "
                     + "      and status in ('" + StringUtils.join(TransferStatusType.getActiveStatusValues(), "','") + "')";
@@ -583,7 +583,7 @@ public class TransferTaskDao
 			Session session = getSession();
 			session.disableFilter("transferTaskTenantFilter");
 			
-			String hql = "from TransferTask as task where task.id = :rootid or task.rootTask.id = :rootid";
+			String hql = "from TransferTaskImpl as task where task.id = :rootid or task.rootTask.id = :rootid";
 
 			List<TransferTaskImpl> tasks = (List<TransferTaskImpl>) session.createQuery(hql)
 					.setLong("rootid", task.getId())
@@ -656,7 +656,7 @@ public class TransferTaskDao
 	}
 
 	/**
-	 * Sets a TransferTask and all its sub tasks to a status of TransferStatusType.CANCELLED
+	 * Sets a TransferTaskImpl and all its sub tasks to a status of TransferStatusType.CANCELLED
 	 * 
 	 * @param transferTask
 	 * @throws TransferException
@@ -667,7 +667,7 @@ public class TransferTaskDao
 		{
 			Session session = getSession();
 			
-			String hql = "update TransferTask t "
+			String hql = "update TransferTaskImpl t "
 					+ "set t.status = :status, t.lastUpdated = :instant "
 					+ "where t.status in :statuses " 
 					+ "		and ( "
@@ -708,7 +708,7 @@ public class TransferTaskDao
 		{
 			Session session = getSession();
 			
-			String hql = "from TransferTask t where "
+			String hql = "from TransferTaskImpl t where "
 					+ "t.parentTask.id = :parentid and "
 					+ "t.source = :srcuri and "
 					+ "t.dest = :desturi and "
@@ -743,27 +743,28 @@ public class TransferTaskDao
 	}
 
 	@SuppressWarnings("unchecked")
-	public static TransferTask findRootTransferTaskBySourceDestAndOwner(String srcUri, String destUri, String owner) 
+	public static TransferTask findRootTransferTaskBySourceDestAndOwner(String srcUri, String destUri, String owner)
 	throws TransferException
 	{
 		try
 		{
 			Session session = getSession();
 			
-			String hql = "from TransferTask t where "
+			String hql = "from TransferTaskImpl t where "
 					+ "t.endTime is null and "
 					+ "t.parentTask is null and "
 					+ "t.status = :status and "
 					+ "t.source = :srcuri and "
 					+ "t.dest = :desturi and "
 					+ "t.owner = :owner "
-					+ "order by t.id desc limit 1";
+					+ "order by t.id desc";
 
 			List<TransferTask> tasks = (List<TransferTask>)session.createQuery(hql)
 					.setString("srcuri", srcUri)
 					.setString("desturi", destUri)
 					.setString("owner", owner)
 					.setString("status", TransferStatusType.TRANSFERRING.name())
+					.setMaxResults(1)
 					.list();
 			
 			session.flush();
@@ -810,7 +811,7 @@ public class TransferTaskDao
         {
             Session session = getSession();
             session.clear();
-            StringBuilder sql = new StringBuilder(" SELECT j FROM TransferTask as t \n");
+            StringBuilder sql = new StringBuilder(" SELECT j FROM TransferTaskImpl as t \n");
                     
             if (!ServiceUtils.isAdmin(username)) {
                 

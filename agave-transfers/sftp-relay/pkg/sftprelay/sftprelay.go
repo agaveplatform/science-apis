@@ -167,10 +167,33 @@ func (s *Server) retryGetSftpClientFromPool(ctx context.Context, sshConfig *SSHC
 
 	// get or create a session from the pool. This establishes a connection with associated session pool.
 	session, err := s.Pool.ClaimSession(ctx, clientpool.WithDialArgs("tcp", addr, cfg), clientpool.WithID(sshConfig.String()))
-
+	clientpool.WithDialArgs("tcp", addr, cfg)
 	if err != nil {
-		log.Errorf("%sUnable to obtain a valid session to %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
-		return nil, nil, errors.Wrap(err, "No session available in pool")
+		// beware this is the nuclear option. all pool connections will break when the pool closes.
+		if strings.Contains(err.Error(), "connection reset by peer") {
+			log.Infof("%sBroken connection detected to %s@%s:%d. Closing pool and recreating", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port)
+			// This indicates that the connection has gone bad. We cannot get a handle to the session with the broken connection
+			// in the pool, so we have to reset the entire pool.
+			defer func() {
+				perr := s.Pool.Close()
+				if perr != nil {
+					log.Errorf("%sUnable to invalidate session pool after bad connection detected to %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
+				}
+			}()
+
+			// The connection reset succeeded. We can retry the connection provided this wasn't our last attempt,
+			// and, if successful, just carry on with the work.
+			if retryCount < MAX_CONNECTION_RETRIES {
+				return s.retryGetSftpClientFromPool(ctx, sshConfig, retryCount+1)
+			} else {
+				// Retry count exceeded. This operation will now fail, but subsequent ones should succeed.
+				log.Errorf("%sMax retries exceeded attempting to create sftp client from pool for %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
+				return nil, nil, errors.Wrap(err, "Error creating sftp client")
+			}
+		} else {
+			log.Errorf("%sUnable to obtain a valid session to %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
+			return nil, nil, errors.Wrap(err, "No session available in pool")
+		}
 	}
 
 	// use the session to create a new sftp client we can use in the rest of our app
@@ -180,8 +203,12 @@ func (s *Server) retryGetSftpClientFromPool(ctx context.Context, sshConfig *SSHC
 		if errors.Cause(err) == sesspool.PoolExhausted {
 			defer s.logDeferClose(session, sshConfig)
 			log.Errorf("%sConnection pool exhausted for %s@%s:%d", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port)
-			return nil, nil, errors.Wrap(err, "No connections available in pool")
-		} else if strings.Contains(err.Error(), "connection reset by peer") {
+			return nil, nil, errors.Wrap(err, "No sessions available in pool")
+		} else if strings.Contains(strings.ToLower(err.Error()), "permission denied") {
+			// retry session after cleanup
+			log.Errorf("%sError creating sftp client from pool for %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
+			return nil, nil, errors.Wrap(err, "Error creating sftp client")
+		} else {
 			log.Debugf("%sBroken connection detected to %s@%s:%d", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port)
 			// This indicates that the connection has gone bad. We need to close the session and invalidate the
 			// connection because all subsequent operations on this connection will now fail.
@@ -204,10 +231,6 @@ func (s *Server) retryGetSftpClientFromPool(ctx context.Context, sshConfig *SSHC
 				log.Errorf("%sMax retries exceeded attempting to create sftp client from pool for %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
 				return nil, nil, errors.Wrap(err, "Error creating sftp client")
 			}
-		} else {
-			// retry session after cleanup
-			log.Errorf("%sError creating sftp client from pool for %s@%s:%d %v", attemptPrefix, sshConfig.User, sshConfig.Host, sshConfig.Port, err.Error())
-			return nil, nil, errors.Wrap(err, "Error creating sftp client")
 		}
 	}
 

@@ -10,7 +10,7 @@ import org.quartz.UnableToInterruptJobException;
 
 public interface WorkerWatch extends InterruptableJob {
 
-    public abstract void doExecute() throws JobExecutionException;
+    void doExecute() throws JobExecutionException;
     
     /**
      * Selects the next available job for processing by a 
@@ -19,44 +19,44 @@ public interface WorkerWatch extends InterruptableJob {
      * 
      * @return uuid of the selected job
      */
-    public abstract String selectNextAvailableJob() throws JobException, SchedulerException ;
+    String selectNextAvailableJob() throws JobException, SchedulerException ;
 
-    public abstract Job getJob() throws JobException;
+    Job getJob() throws JobException;
 
-    public abstract void setJob(Job job);
+    void setJob(Job job);
     
-    public abstract void setJobUuid(String uuid) throws JobException;
+    void setJobUuid(String uuid) throws JobException;
 
     /**
      * @return the stopped
      */
-    public abstract boolean isStopped();
+    boolean isStopped();
 
     /**
-     * @param stopped the stopped to set
+     * @param killed the killed to set
      * @throws UnableToInterruptJobException 
      */
-    public abstract void setStopped(boolean killed) throws UnableToInterruptJobException;
+    void setStopped(boolean killed) throws UnableToInterruptJobException;
 
     /**
      * @return true of the task has completed, false otherwise
      */
-    public abstract boolean isTaskComplete();
+    boolean isTaskComplete();
 
     /**
-     * @param taskComplete the taskComplete to set
+     * @param complete the complete to set
      */
-    public abstract void setTaskComplete(boolean complete);
+    void setTaskComplete(boolean complete);
 
     /**
      * @return the workerAction
      */
-    public WorkerAction getWorkerAction();
+    WorkerAction getWorkerAction();
 
     /**
      * @param workerAction the workerAction to set
      */
-    public void setWorkerAction(WorkerAction workerAction);
+    void setWorkerAction(WorkerAction workerAction);
     
 //    public void setJobProducerFactory(JobProducerFactory jobProducerFactory);
 

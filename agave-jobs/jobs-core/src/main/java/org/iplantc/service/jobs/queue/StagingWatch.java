@@ -53,7 +53,6 @@ public class StagingWatch extends AbstractJobWatch {
      */
     @Override
     public String selectNextAvailableJob() throws JobException, SchedulerException {
-
         return JobDao.getNextQueuedJobUuid(JobStatusType.PENDING,
                 TenancyHelper.getDedicatedTenantIdForThisService(),
                 org.iplantc.service.common.Settings.getDedicatedUsernamesFromServiceProperties(),
@@ -291,7 +290,6 @@ public class StagingWatch extends AbstractJobWatch {
             HibernateUtil.closeSession();
         } catch (Exception ignored) {
         }
-        ;
         try {
             if (getJob().getStatus() != JobStatusType.STAGED) {
                 job = JobDao.getById(getJob().getId());

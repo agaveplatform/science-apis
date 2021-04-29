@@ -83,11 +83,7 @@ public abstract class AbstractJobProducerFactory implements JobFactory {
             	return worker;
     		}
     		finally {
-    			try {
-    				HibernateUtil.flush();
-    				HibernateUtil.disconnectSession();
-    			}
-    			catch (Throwable e) {}
+    			try { HibernateUtil.closeSession(); } catch (Throwable ignored) {}
     		}
     	} // synchronization
     }
@@ -112,7 +108,7 @@ public abstract class AbstractJobProducerFactory implements JobFactory {
             .storeDurably(false)
             .build();
 
-         SimpleTrigger trigger = (SimpleTrigger)newTrigger()
+        SimpleTrigger trigger = (SimpleTrigger)newTrigger()
                             .withIdentity(jobUuid, groupName + "Workers")
                             .startNow()
                             .build();
@@ -127,21 +123,13 @@ public abstract class AbstractJobProducerFactory implements JobFactory {
      * @param uuid
      */
     public static synchronized void releaseJob(String uuid) {
-        if (archivingJobTaskQueue.contains(uuid)) {
-            archivingJobTaskQueue.remove(uuid);
-        }
-        
-        if (monitoringJobTaskQueue.contains(uuid)) {
-            monitoringJobTaskQueue.remove(uuid);
-        }
-        
-        if (stagingJobTaskQueue.contains(uuid)) {
-            stagingJobTaskQueue.remove(uuid);
-        }
-        
-        if (submissionJobTaskQueue.contains(uuid)) {
-            submissionJobTaskQueue.remove(uuid);
-        }
+		archivingJobTaskQueue.remove(uuid);
+
+		monitoringJobTaskQueue.remove(uuid);
+
+		stagingJobTaskQueue.remove(uuid);
+
+		submissionJobTaskQueue.remove(uuid);
     }
     
     /**

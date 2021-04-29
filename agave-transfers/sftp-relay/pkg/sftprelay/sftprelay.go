@@ -497,7 +497,7 @@ func (s *Server) Get(ctx context.Context, req *agaveproto.SrvGetRequest) (*agave
 	response, sec := get(sftpClient, req.LocalPath, req.RemotePath, req.Force, req.Range)
 
 	// successful download increments counter
-	if response.Error != "" {
+	if response.Error == "" {
 		DownloadCounterMetric.WithLabelValues(req.SystemConfig.Host, strconv.Itoa(int(req.SystemConfig.Port)), req.SystemConfig.Username, fileMagnitude(response.BytesTransferred)).Inc()
 		DownloadBytesSummary.WithLabelValues(req.SystemConfig.Host, strconv.Itoa(int(req.SystemConfig.Port)), req.SystemConfig.Username).Observe(float64(response.BytesTransferred))
 		DownloadDurationSummary.WithLabelValues(req.SystemConfig.Host, strconv.Itoa(int(req.SystemConfig.Port)), req.SystemConfig.Username, fileMagnitude(response.BytesTransferred)).Observe(sec)
@@ -523,7 +523,7 @@ func (s *Server) Put(ctx context.Context, req *agaveproto.SrvPutRequest) (*agave
 	response, sec := put(sftpClient, req.LocalPath, req.RemotePath, req.Force, req.Append)
 
 	// successful download increments counter
-	if response.Error != "" {
+	if response.Error == "" {
 		UploadCounterMetric.WithLabelValues(req.SystemConfig.Host, strconv.Itoa(int(req.SystemConfig.Port)), req.SystemConfig.Username, fileMagnitude(response.BytesTransferred)).Inc()
 		UploadBytesSummary.WithLabelValues(req.SystemConfig.Host, strconv.Itoa(int(req.SystemConfig.Port)), req.SystemConfig.Username).Observe(float64(response.BytesTransferred))
 		UploadDurationSummary.WithLabelValues(req.SystemConfig.Host, strconv.Itoa(int(req.SystemConfig.Port)), req.SystemConfig.Username, fileMagnitude(response.BytesTransferred)).Observe(sec)
@@ -866,7 +866,9 @@ func stat(sftpClient *sftp.Client, remotePath string) (*agaveproto.FileInfoRespo
 	log.Debugf("Fetching file info for %s", remotePath)
 	remoteFileInfo, err := sftpClient.Stat(remotePath)
 	if err != nil {
-		log.Errorf("Unable to stat file %v", remotePath)
+		if errors.Cause(err) != os.ErrNotExist && errors.Cause(err) != os.ErrPermission {
+			log.Errorf("Unable to stat file %v", remotePath)
+		}
 		return &agaveproto.FileInfoResponse{Error: err.Error()}, 0
 	}
 

@@ -45,6 +45,6 @@ fabfile.pyc
 test-output
 
 # Golang build assets
-#/vendor/
+/vendor/
 /release/
 /pkg/sftpproto/*.go

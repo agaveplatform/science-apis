@@ -45,6 +45,10 @@ var consolelog = &logrus.Logger{
 	Level:     logrus.DebugLevel,
 }
 
+var testPool = clientpool.New(
+	clientpool.WithPoolSize(10),
+	clientpool.WithExpireAfter(time.Duration(30) * time.Second))
+
 func init() {
 
 	LocalSharedTestDir = resolveLocalSharedTestDir()
@@ -55,14 +59,12 @@ func init() {
 	//set up for the servers
 	lis = bufconn.Listen(bufSize)
 	s := grpc.NewServer()
-	cp := clientpool.New()
-	cp.Exhausted()
-	defer cp.Close()
+
 	// Init a new api server to register with the grpc server
 	relaysvr := Server{
 		Registry:    *prometheus.NewRegistry(),
 		GrpcMetrics: *grpc_prometheus.NewServerMetrics(),
-		Pool:        cp,
+		Pool:        testPool,
 	}
 	// set up prometheus metrics
 	relaysvr.InitMetrics()
@@ -113,6 +115,15 @@ func _resolveTestPathToRemotePath(localTestPath string) string {
 	return strings.Replace(localTestPath, LocalSharedTestDir, SFTP_SHARED_TEST_DIR, 1)
 }
 
+// dumps the current pool stats to stdout
+func printPoolStats() {
+	poolStats := testPool.PoolStats()
+	for id,val := range poolStats {
+		consolelog.Debugf("  - [%s]: %d", id, val)
+		//consolelog.Debugf("  - [%s]: %d", id[0:strings.LastIndex(id, ":")], val)
+	}
+}
+
 func beforeTest(t *testing.T) {
 	consolelog.Debugf("***************************************************************************************\n")
 	// create a new unique test directory for the test
@@ -121,6 +132,9 @@ func beforeTest(t *testing.T) {
 	// create the directory on the local file system within the shared folder
 	sharedRandomTestDirPath := _resolveTestPath(CurrentBaseTestDirPath, LocalSharedTestDir)
 	consolelog.Debugf("Creating test directory for test %s, %s", t.Name(), CurrentBaseTestDirPath)
+
+	consolelog.Debugf("Connection pool stats before test: ")
+	printPoolStats()
 
 	err := os.MkdirAll(sharedRandomTestDirPath, os.ModePerm)
 	if err != nil {
@@ -143,6 +157,9 @@ func afterTest(t *testing.T) {
 	// create a new unique test directory for the test
 	if CurrentBaseTestDirPath != "" {
 		sharedRandomTestDirPath := filepath.Dir(_resolveTestPath(CurrentBaseTestDirPath, LocalSharedTestDir))
+
+		consolelog.Debugf("Connection pool stats after test: ")
+		printPoolStats()
 
 		consolelog.Debugf("Removing test directory for test %s, %s", t.Name(), sharedRandomTestDirPath)
 		consolelog.Debugf("***************************************************************************************")
@@ -375,7 +392,7 @@ func TestStatReturnsFileInfo(t *testing.T) {
 	if err != nil {
 		assert.FailNowf(t, err.Error(), "Unable to open temp test file: %s", err.Error())
 	}
-	tmpTestFileInfo.Mode().String()
+
 	remoteTestFilePath := _resolveTestPath(tmpTestFilePath, SFTP_SHARED_TEST_DIR)
 
 	req := &agaveproto.SrvStatRequest{
@@ -386,8 +403,9 @@ func TestStatReturnsFileInfo(t *testing.T) {
 	grpcResponse, err := client.Stat(context.Background(), req)
 	if err != nil {
 		assert.Nilf(t, err, "Error while calling RPC Stat: %v", err)
-	} else {
-		assert.Equal(t, "", grpcResponse.Error, "Stat on existing file should return empty error")
+	}
+	assert.Equal(t, "", grpcResponse.Error, "Stat on existing file should return empty error")
+	if grpcResponse.Error == "" {
 		assert.Equal(t, tmpTestFileInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test file size")
 		assert.Equal(t, tmpTestFileInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test file")
 		assert.Equal(t, remoteTestFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test file")
@@ -427,8 +445,9 @@ func TestStatReturnsDirectoryInfo(t *testing.T) {
 	grpcResponse, err := client.Stat(context.Background(), req)
 	if err != nil {
 		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
-	} else {
-		assert.Equal(t, "", grpcResponse.Error, "Stat on existing file should return empty Error")
+	}
+	assert.Equal(t, "", grpcResponse.Error, "Stat on existing file should return empty error")
+	if grpcResponse.Error == "" {
 		assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test file size")
 		assert.Equal(t, tmpTestDirInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test file")
 		assert.Equal(t, remoteTestDirPath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test file")
@@ -474,7 +493,7 @@ func TestMkdir(t *testing.T) {
 	conn := _getConnection(t)
 	defer conn.Close()
 
-	client := agaveproto.NewSftpRelayClient(conn)
+		client := agaveproto.NewSftpRelayClient(conn)
 
 	// create a random directory name in our test dir
 	testDirectoryPath := fmt.Sprintf("%s/%s", CurrentBaseTestDirPath, uuid.New().String())
@@ -502,14 +521,16 @@ func TestMkdir(t *testing.T) {
 			assert.FailNowf(t, err.Error(), "Test directory was not created on remote host: %s", err.Error())
 		}
 		assert.Equal(t, "", grpcResponse.Error, "Mkdirs on valid remote should return empty Error")
-		assert.True(t, tmpTestDirInfo.IsDir(), "Remote path should be a directory. File found instead.")
-		assert.Equal(t, remoteTestDirectoryPath, grpcResponse.RemoteFileInfo.Path, "Returned file name should match the name of the new directory")
-		assert.Equal(t, tmpTestDirInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the new directory")
-		assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the new directory")
-		assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the new directory")
-		assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the new directory")
-		assert.True(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info should report as a directory")
-		assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		if grpcResponse.Error == "" {
+			assert.True(t, tmpTestDirInfo.IsDir(), "Remote path should be a directory. File found instead.")
+			assert.Equal(t, remoteTestDirectoryPath, grpcResponse.RemoteFileInfo.Path, "Returned file name should match the name of the new directory")
+			assert.Equal(t, tmpTestDirInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the new directory")
+			assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the new directory")
+			assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the new directory")
+			assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the new directory")
+			assert.True(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info should report as a directory")
+			assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		}
 	}
 
 	afterTest(t)
@@ -687,14 +708,16 @@ func TestMkdirs(t *testing.T) {
 			assert.FailNowf(t, err.Error(), "Recursive Mkdir should created nested test directory on remote host: %s", err.Error())
 		}
 		assert.Equal(t, "", grpcResponse.Error, "Recursive Mkdirs on valid remote path should return empty Error")
-		assert.True(t, tmpTestDirInfo.IsDir(), "Remote path should be a directory. File found instead.")
-		assert.Equal(t, remoteTestDirectoryPath, grpcResponse.RemoteFileInfo.Path, "Returned file name should match the name of the new directory")
-		assert.Equal(t, tmpTestDirInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the new directory")
-		assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the new directory")
-		assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the new directory")
-		assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the new directory")
-		assert.True(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info should report as a directory")
-		assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		if grpcResponse.Error == "" {
+			assert.True(t, tmpTestDirInfo.IsDir(), "Remote path should be a directory. File found instead.")
+			assert.Equal(t, remoteTestDirectoryPath, grpcResponse.RemoteFileInfo.Path, "Returned file name should match the name of the new directory")
+			assert.Equal(t, tmpTestDirInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the new directory")
+			assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the new directory")
+			assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the new directory")
+			assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the new directory")
+			assert.True(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info should report as a directory")
+			assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		}
 	}
 
 	afterTest(t)
@@ -759,10 +782,11 @@ func TestMkdirsReturnsErrorWhenPathIsFile(t *testing.T) {
 		tmpTestFileInfo, err := os.Stat(_resolveTestPath(tmpTestFilePath, LocalSharedTestDir))
 		if err != nil {
 			assert.FailNowf(t, err.Error(), "Unable to open temp test file after calling mkdir: %s", err.Error())
+		} else {
+			assert.False(t, tmpTestFileInfo.IsDir(), "Remote path should still be a file after calling mkdir on it.")
+			assert.Contains(t, strings.ToLower(grpcResponse.Error), "not a directory", "Mkdirs on existing file should return response saying file already exists")
+			assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
 		}
-		assert.False(t, tmpTestFileInfo.IsDir(), "Remote path should still be a file after calling mkdir on it.")
-		assert.Contains(t, strings.ToLower(grpcResponse.Error), "not a directory", "Mkdirs on existing file should return response saying file already exists")
-		assert.Nil(t, grpcResponse.RemoteFileInfo, "Returned file info should be nil when an error occurs")
 	}
 
 	afterTest(t)
@@ -801,13 +825,15 @@ func TestMkdirsReturnsNoErrorWhenDirectoryExists(t *testing.T) {
 		}
 		assert.True(t, tmpTestDirInfo.IsDir(), "Remote path should still be a file after calling mkdir on it.")
 		assert.Equal(t, "", grpcResponse.Error, "Mkdirs on valid remote should return empty Error")
-		assert.Equal(t, resolvedRemoteTestFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file info path should match the path of the Put file")
-		assert.Equal(t, tmpTestDirInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the Put file")
-		assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the Put file")
-		assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the Put file")
-		assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the Put file")
-		assert.True(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info should report as a directory")
-		assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		if grpcResponse.Error == "" {
+			assert.Equal(t, resolvedRemoteTestFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file info path should match the path of the Put file")
+			assert.Equal(t, tmpTestDirInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the Put file")
+			assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the Put file")
+			assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the Put file")
+			assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the Put file")
+			assert.True(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info should report as a directory")
+			assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		}
 
 	}
 
@@ -982,17 +1008,19 @@ func TestPut(t *testing.T) {
 		}
 
 		assert.Equal(t, "", grpcResponse.Error, "Error message in response should be empty after successfully request")
-		assert.Equal(t, tmpTestFileInfo.Size(), targetTestFileInfo.Size(), "Put should preserve the original file size ")
-		assert.Equal(t, tmpTestFileInfo.IsDir(), targetTestFileInfo.IsDir(), "Putting a file should result in a file")
-		assert.Equal(t, tmpTestFileInfo.Mode().String(), targetTestFileInfo.Mode().String(), "Put should preserve file permissions")
-		assert.Equal(t, tmpTestFileInfo.ModTime().Unix(), targetTestFileInfo.ModTime().Unix(), "Put should preserve last updated timestamp")
-		assert.Equal(t, resolvedRemoteTestFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file info path should match the path of the Put file")
-		assert.Equal(t, targetTestFileInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the Put file")
-		assert.Equal(t, targetTestFileInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the Put file")
-		assert.Equal(t, targetTestFileInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the Put file")
-		assert.Equal(t, targetTestFileInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the Put file")
-		assert.False(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info name should not report as a directory")
-		assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		if grpcResponse.Error == "" {
+			assert.Equal(t, tmpTestFileInfo.Size(), targetTestFileInfo.Size(), "Put should preserve the original file size ")
+			assert.Equal(t, tmpTestFileInfo.IsDir(), targetTestFileInfo.IsDir(), "Putting a file should result in a file")
+			assert.Equal(t, tmpTestFileInfo.Mode().String(), targetTestFileInfo.Mode().String(), "Put should preserve file permissions")
+			assert.Equal(t, tmpTestFileInfo.ModTime().Unix(), targetTestFileInfo.ModTime().Unix(), "Put should preserve last updated timestamp")
+			assert.Equal(t, resolvedRemoteTestFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file info path should match the path of the Put file")
+			assert.Equal(t, targetTestFileInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the Put file")
+			assert.Equal(t, targetTestFileInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the Put file")
+			assert.Equal(t, targetTestFileInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the Put file")
+			assert.Equal(t, targetTestFileInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the Put file")
+			assert.False(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info name should not report as a directory")
+			assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		}
 	}
 
 	afterTest(t)
@@ -1216,17 +1244,19 @@ func TestPutFileExistingFileWithForce(t *testing.T) {
 		}
 
 		assert.Equal(t, "", grpcResponse.Error, "Error message in response should be empty after successfully request")
-		assert.Equal(t, tmpTestFileInfo.Size(), targetTestFileInfo.Size(), "Put should preserve the original file size ")
-		assert.Equal(t, tmpTestFileInfo.IsDir(), targetTestFileInfo.IsDir(), "Putting a file should result in a file")
-		assert.Equal(t, tmpTestFileInfo.Mode().String(), targetTestFileInfo.Mode().String(), "Put should preserve file permissions")
-		assert.Equal(t, tmpTestFileInfo.ModTime().Unix(), targetTestFileInfo.ModTime().Unix(), "Put should preserve last updated timestamp")
-		assert.Equal(t, resolvedRemoteTestFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file info path should match the path of the Put file")
-		assert.Equal(t, targetTestFileInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the Put file")
-		assert.Equal(t, targetTestFileInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the Put file")
-		assert.Equal(t, targetTestFileInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the Put file")
-		assert.Equal(t, targetTestFileInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the Put file")
-		assert.False(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info name should not report as a directory")
-		assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		if grpcResponse.Error == "" {
+			assert.Equal(t, tmpTestFileInfo.Size(), targetTestFileInfo.Size(), "Put should preserve the original file size ")
+			assert.Equal(t, tmpTestFileInfo.IsDir(), targetTestFileInfo.IsDir(), "Putting a file should result in a file")
+			assert.Equal(t, tmpTestFileInfo.Mode().String(), targetTestFileInfo.Mode().String(), "Put should preserve file permissions")
+			assert.Equal(t, tmpTestFileInfo.ModTime().Unix(), targetTestFileInfo.ModTime().Unix(), "Put should preserve last updated timestamp")
+			assert.Equal(t, resolvedRemoteTestFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file info path should match the path of the Put file")
+			assert.Equal(t, targetTestFileInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the Put file")
+			assert.Equal(t, targetTestFileInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the Put file")
+			assert.Equal(t, targetTestFileInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the Put file")
+			assert.Equal(t, targetTestFileInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the Put file")
+			assert.False(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info name should not report as a directory")
+			assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		}
 
 	}
 
@@ -1277,17 +1307,19 @@ func TestGet(t *testing.T) {
 		}
 
 		assert.Equal(t, "", grpcResponse.Error, "Error message in response should be empty after successfully request")
-		assert.Equal(t, tmpTestFileInfo.Size(), targetTestFileInfo.Size(), "Put should preserve the original file size ")
-		assert.Equal(t, tmpTestFileInfo.IsDir(), targetTestFileInfo.IsDir(), "Putting a file should result in a file")
-		assert.Equal(t, tmpTestFileInfo.Mode().String(), targetTestFileInfo.Mode().String(), "Put should preserve file permissions")
-		assert.Equal(t, tmpTestFileInfo.ModTime().Unix(), targetTestFileInfo.ModTime().Unix(), "Put should preserve last updated timestamp")
-		assert.Equal(t, resolvedTargetTestFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file info path should match the path of the Get file")
-		assert.Equal(t, targetTestFileInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the Get file")
-		assert.Equal(t, targetTestFileInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the Get file")
-		assert.Equal(t, targetTestFileInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the Get file")
-		assert.Equal(t, targetTestFileInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the Get file")
-		assert.False(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info name should not report as a directory")
-		assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		if grpcResponse.Error == "" {
+			assert.Equal(t, tmpTestFileInfo.Size(), targetTestFileInfo.Size(), "Put should preserve the original file size ")
+			assert.Equal(t, tmpTestFileInfo.IsDir(), targetTestFileInfo.IsDir(), "Putting a file should result in a file")
+			assert.Equal(t, tmpTestFileInfo.Mode().String(), targetTestFileInfo.Mode().String(), "Put should preserve file permissions")
+			assert.Equal(t, tmpTestFileInfo.ModTime().Unix(), targetTestFileInfo.ModTime().Unix(), "Put should preserve last updated timestamp")
+			assert.Equal(t, resolvedTargetTestFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file info path should match the path of the Get file")
+			assert.Equal(t, targetTestFileInfo.Name(), grpcResponse.RemoteFileInfo.Name, "Returned file info name should match the name of the Get file")
+			assert.Equal(t, targetTestFileInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file info size should match the size of the Get file")
+			assert.Equal(t, targetTestFileInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned file info last modified date should match the last modified date of the Get file")
+			assert.Equal(t, targetTestFileInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned file info mode should match the mode of the Get file")
+			assert.False(t, grpcResponse.RemoteFileInfo.IsDirectory, "Returned file info name should not report as a directory")
+			assert.False(t, grpcResponse.RemoteFileInfo.IsLink, "Returned file info should not report as a link")
+		}
 
 	}
 
@@ -1495,24 +1527,25 @@ func TestListDirectory(t *testing.T) {
 		assert.Nilf(t, err, "Error while invoking remote service: %v", err)
 	} else {
 		assert.Equal(t, "", grpcResponse.Error, "Error message in response should be empty after successful request")
-
-		// get the test directory stat in the local shared directory
-		resolvedtmpTestDirPath := _resolveTestPath(tmpTestDirPath, LocalSharedTestDir)
-		localTmpFileList, err := ioutil.ReadDir(resolvedtmpTestDirPath)
-		if err != nil {
-			assert.Failf(t, "Unable to list local directory %s", resolvedtmpTestDirPath)
-		}
-		assert.Equal(t, len(localTmpFileList), len(grpcResponse.Listing), "Number of entries returned from List should be the same as number of test file items.")
-		var found = false
-		for _, fileInfo := range localTmpFileList {
-			for _, remoteFileInfo := range grpcResponse.Listing {
-				if remoteFileInfo.Name == fileInfo.Name() {
-					 found = true
-					 break
-				}
+		if grpcResponse.Error == "" {
+			// get the test directory stat in the local shared directory
+			resolvedtmpTestDirPath := _resolveTestPath(tmpTestDirPath, LocalSharedTestDir)
+			localTmpFileList, err := ioutil.ReadDir(resolvedtmpTestDirPath)
+			if err != nil {
+				assert.Failf(t, "Unable to list local directory %s", resolvedtmpTestDirPath)
 			}
+			assert.Equal(t, len(localTmpFileList), len(grpcResponse.Listing), "Number of entries returned from List should be the same as number of test file items.")
+			var found = false
+			for _, fileInfo := range localTmpFileList {
+				for _, remoteFileInfo := range grpcResponse.Listing {
+					if remoteFileInfo.Name == fileInfo.Name() {
+						found = true
+						break
+					}
+				}
 
-			assert.True(t, found, "Response from List should include all top level files and folders. %s was missing.", filepath.Join(resolvedtmpTestDirPath, fileInfo.Name()))
+				assert.True(t, found, "Response from List should include all top level files and folders. %s was missing.", filepath.Join(resolvedtmpTestDirPath, fileInfo.Name()))
+			}
 		}
 	}
 
@@ -1564,12 +1597,14 @@ func TestRenameFile(t *testing.T) {
 			assert.FailNow(t, "Returned file info should not be nil on successful rename")
 		} else {
 			assert.Equal(t, "", grpcResponse.Error, "Rename on existing file should return empty error")
-			assert.Equal(t, tmpTestFileInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test file size")
-			assert.Equal(t, tmpTestFileInfo.Name() + "-renamed", grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test file")
-			assert.Equal(t, renamedRemoteFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test file")
-			assert.Equal(t, tmpTestFileInfo.IsDir(), grpcResponse.RemoteFileInfo.IsDirectory, "Returned directory flag should match the flag of the test file")
-			assert.Equal(t, tmpTestFileInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned mode should match the mode of the test file")
-			assert.Equal(t, tmpTestFileInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned last updated timestamp should match the test file")
+			if grpcResponse.Error == "" {
+				assert.Equal(t, tmpTestFileInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test file size")
+				assert.Equal(t, tmpTestFileInfo.Name()+"-renamed", grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test file")
+				assert.Equal(t, renamedRemoteFilePath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test file")
+				assert.Equal(t, tmpTestFileInfo.IsDir(), grpcResponse.RemoteFileInfo.IsDirectory, "Returned directory flag should match the flag of the test file")
+				assert.Equal(t, tmpTestFileInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned mode should match the mode of the test file")
+				assert.Equal(t, tmpTestFileInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned last updated timestamp should match the test file")
+			}
 		}
 	}
 
@@ -1621,12 +1656,14 @@ func TestRenameEmptyDirectory(t *testing.T) {
 			assert.FailNow(t, "Returned file info should not be nil on successful rename")
 		} else {
 			assert.Equal(t, "", grpcResponse.Error, "Rename on existing dir should return empty error")
-			assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test dir size")
-			assert.Equal(t, tmpTestDirInfo.Name() + "-renamed", grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test dir")
-			assert.Equal(t, renamedRemoteDirPath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test dir")
-			assert.Equal(t, tmpTestDirInfo.IsDir(), grpcResponse.RemoteFileInfo.IsDirectory, "Returned directory flag should match the flag of the test dir")
-			assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned mode should match the mode of the test dir")
-			assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned last updated timestamp should match the test dir")
+			if grpcResponse.Error == "" {
+				assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test dir size")
+				assert.Equal(t, tmpTestDirInfo.Name()+"-renamed", grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test dir")
+				assert.Equal(t, renamedRemoteDirPath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test dir")
+				assert.Equal(t, tmpTestDirInfo.IsDir(), grpcResponse.RemoteFileInfo.IsDirectory, "Returned directory flag should match the flag of the test dir")
+				assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned mode should match the mode of the test dir")
+				assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned last updated timestamp should match the test dir")
+			}
 		}
 	}
 
@@ -1689,12 +1726,14 @@ func TestRenameDirectoryTree(t *testing.T) {
 			assert.FailNow(t, "Returned file info should not be nil on successful rename")
 		} else {
 			assert.Equal(t, "", grpcResponse.Error, "Rename on existing dir should return empty error")
-			assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test dir size")
-			assert.Equal(t, tmpTestDirInfo.Name() + "-renamed", grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test dir")
-			assert.Equal(t, renamedRemoteDirPath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test dir")
-			assert.Equal(t, tmpTestDirInfo.IsDir(), grpcResponse.RemoteFileInfo.IsDirectory, "Returned directory flag should match the flag of the test dir")
-			assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned mode should match the mode of the test dir")
-			assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned last updated timestamp should match the test dir")
+			if grpcResponse.Error == "" {
+				assert.Equal(t, tmpTestDirInfo.Size(), grpcResponse.RemoteFileInfo.Size, "Returned file size should match the test dir size")
+				assert.Equal(t, tmpTestDirInfo.Name()+"-renamed", grpcResponse.RemoteFileInfo.Name, "Returned file name should match the name of the test dir")
+				assert.Equal(t, renamedRemoteDirPath, grpcResponse.RemoteFileInfo.Path, "Returned file path should match the path of the test dir")
+				assert.Equal(t, tmpTestDirInfo.IsDir(), grpcResponse.RemoteFileInfo.IsDirectory, "Returned directory flag should match the flag of the test dir")
+				assert.Equal(t, tmpTestDirInfo.Mode().String(), grpcResponse.RemoteFileInfo.Mode, "Returned mode should match the mode of the test dir")
+				assert.Equal(t, tmpTestDirInfo.ModTime().Unix(), grpcResponse.RemoteFileInfo.LastUpdated, "Returned last updated timestamp should match the test dir")
+			}
 		}
 	}
 

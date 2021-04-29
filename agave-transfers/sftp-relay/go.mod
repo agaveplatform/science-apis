@@ -3,7 +3,7 @@ module github.com/agaveplatform/science-apis/agave-transfers/sftp-relay
 go 1.15
 
 require (
-	entrogo.com/sshpool v0.0.0-20210424200520-212002978865
+	entrogo.com/sshpool v0.0.0-20210429055154-e3d817e23a13
 	github.com/golang/protobuf v1.4.2
 	github.com/google/uuid v1.1.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0

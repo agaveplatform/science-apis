@@ -325,7 +325,7 @@ func (s *Server) retryGetSftpClientFromPool(ctx context.Context, sshConfig *SSHC
 
 	return sftpClient, func() {
 			cerr := cleanup()
-			if cerr != nil && errors.Cause(err) != io.EOF {
+			if cerr != nil && errors.Cause(cerr) != io.EOF {
 				log.Errorf("Failed cleaning up sftp client for %s@%s:%d %v", sshConfig.User, sshConfig.Host, sshConfig.Port, cerr.Error())
 			}
 		}, nil

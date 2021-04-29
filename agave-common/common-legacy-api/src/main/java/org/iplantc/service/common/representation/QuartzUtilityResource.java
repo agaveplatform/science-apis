@@ -186,7 +186,6 @@ public class QuartzUtilityResource extends AgaveResource
 
     /**
      * lists scheduler jobs.
-     * @param session {@code HttpSession} used for authorization.
      * @return JSON containing list of {@link org.iplantc.service.common.quartz.util.ui.JobDescription}s and general scheduler
      * data.
      */
@@ -224,8 +223,7 @@ public class QuartzUtilityResource extends AgaveResource
     /**
      * revert to the original trigger cron expression.
      *
-     * @param trigger job name
-     * @param session session
+     * @param trigger job id
      * @return
      */
 //    @RequestMapping(value = QUARTZ_UTILITY_REVERT_TRIGGER_CHANGES, method = RequestMethod.POST)

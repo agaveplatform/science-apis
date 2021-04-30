@@ -37,7 +37,7 @@ public abstract class AbstractMetadataPermissionDaoIT implements IMetadataPermis
         clearMongoPermissions();
     }
 
-    private void clearMongoPermissions(){
+    public void clearMongoPermissions(){
         CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
                 fromProviders(PojoCodecProvider.builder().automatic(true).build()));
         MongoClients mongoClients = null;
@@ -54,7 +54,7 @@ public abstract class AbstractMetadataPermissionDaoIT implements IMetadataPermis
                 .build());
 
         MongoDatabase db = mongov4Client.getDatabase(Settings.METADATA_DB_SCHEME);
-        MongoCollection collection = db.getCollection("testMetadataSchemaPermission");
+        MongoCollection collection = db.getCollection("metadata_schema_permissions");
         collection.deleteMany(new Document());
     }
 

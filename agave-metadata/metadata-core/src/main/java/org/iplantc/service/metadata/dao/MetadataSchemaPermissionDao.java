@@ -13,12 +13,11 @@ import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
-import org.hibernate.Session;
 import org.iplantc.service.common.Settings;
-import org.iplantc.service.common.persistence.HibernateUtil;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.metadata.exceptions.MetadataException;
 import org.iplantc.service.metadata.exceptions.MetadataStoreException;
@@ -28,12 +27,10 @@ import org.iplantc.service.metadata.model.MetadataSchemaPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.util.ServiceUtils;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.regex.Pattern;
 
 import static com.mongodb.client.model.Filters.*;
-import static com.mongodb.client.model.Updates.set;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
@@ -97,7 +94,7 @@ public class MetadataSchemaPermissionDao {
      * @return collection from the db
      */
     public static MongoCollection getDefaultCollection() {
-        return getCollection(Settings.METADATA_DB_SCHEME, "MetadataSchemaPermission");
+        return getCollection(Settings.METADATA_DB_SCHEME, "metadata_schema_permissions");
     }
 
     /**
@@ -121,7 +118,7 @@ public class MetadataSchemaPermissionDao {
      * @return collection from the db
      */
     public static MongoCollection<MetadataSchemaPermission> getDefaultMetadataSchemaPermissionCollection() {
-        return getMetadataSchemaPermissionCollection(Settings.METADATA_DB_SCHEME, "MetadataSchemaPermission");
+        return getMetadataSchemaPermissionCollection(Settings.METADATA_DB_SCHEME, "metadata_schema_permissions");
     }
 
     /**
@@ -139,14 +136,6 @@ public class MetadataSchemaPermissionDao {
 
     /************************************************************************************************************************/
 
-
-    protected static Session getSession() {
-        HibernateUtil.beginTransaction();
-        Session session = HibernateUtil.getSession();
-        //session.clear();
-        session.enableFilter("schemaPemTenantFilter").setParameter("tenantId", TenancyHelper.getCurrentTenantId());
-        return session;
-    }
 
     /**
      * Returns all metadata schema permissions for the given schemaId.
@@ -226,14 +215,17 @@ public class MetadataSchemaPermissionDao {
 
             Bson getQuery = and(eq("tenantId", TenancyHelper.getCurrentTenantId()),
                     and(
-                            in("permission", PermissionType.ALL.name(), PermissionType.READ.name()),
                             in("username", Settings.WORLD_USER_USERNAME, Settings.PUBLIC_USER_USERNAME, username)));
+
+            Pattern regex = Pattern.compile("READ");
+            Bson filter = or(eq("permission", regex), eq("permission", PermissionType.ALL.name()));
 
             MongoCursor cursor = metadataItemMongoCollection.find(getQuery)
                     .sort(Sorts.descending("lastUpdated"))
                     .skip(offset)
                     .batchSize(-Settings.MAX_PAGE_SIZE)
-                    .limit(limit).cursor();
+                    .limit(limit)
+                    .filter(filter).cursor();
 
             while (cursor.hasNext()) {
                 MetadataSchemaPermission metadataSchemaPermission = (MetadataSchemaPermission) cursor.next();
@@ -288,7 +280,15 @@ public class MetadataSchemaPermissionDao {
         MongoCollection<MetadataSchemaPermission> metadataItemCollection;
         try {
             //using POJO Codec
-            metadataItemCollection = getDefaultMetadataSchemaPermissionCollection();
+            metadataItemCollection = getDefaultCollection();
+            Document doc = new Document();
+            doc.putAll(Map.of(
+                    "schemaId", pem.getSchemaId(),
+                    "username", pem.getUsername(),
+                    "permission", pem.getPermission().name(),
+                    "tenantId", pem.getTenantId(),
+                    "lastUpdated", new Date()));
+
             metadataItemCollection.insertOne(pem);
 
             MongoCursor cursor = metadataItemCollection.find(eq("schemaId", pem.getSchemaId())).cursor();
@@ -303,7 +303,16 @@ public class MetadataSchemaPermissionDao {
         return null;
     }
 
-    public static MetadataSchemaPermission update(MetadataSchemaPermission pem) throws MetadataStoreException {
+
+    /**
+     * Saves a new metadata permission. Upates existing ones.
+     * @param pem the permission to delete
+     * @throws org.iplantc.service.metadata.exceptions.MetadataException
+     */
+    public static MetadataSchemaPermission persist(MetadataSchemaPermission pem) throws MetadataException, MetadataStoreException {
+        if (pem == null)
+            throw new MetadataException("Permission cannot be null");
+
         MongoCollection<MetadataSchemaPermission> metadataItemMongoCollection;
         UpdateResult update;
 
@@ -312,47 +321,29 @@ public class MetadataSchemaPermissionDao {
             metadataItemMongoCollection = getDefaultMetadataSchemaPermissionCollection();
 
             Bson uuidAndTenantQuery = and(eq("username", pem.getUsername()), eq("schemaId", pem.getSchemaId()));
-            update = metadataItemMongoCollection.updateOne(uuidAndTenantQuery, set("permissions", pem.getPermission()));
-            if (update.getMatchedCount() == 1) {
-                //update success. fetch the doc
-                MetadataSchemaPermission updatedItem = getByUsernameAndSchemaId(pem.getUsername(), pem.getSchemaId());
-                if (updatedItem != null) {
-                    return updatedItem;
-                } else {
-                    throw new MetadataStoreException("Metadata item " + pem.getSchemaId() + " is no longer present.");
-                }
+
+            Document doc = new Document();
+            doc.putAll(Map.of(
+                    "permission", pem.getPermission().name(),
+                    "lastUpdated", new Date()));
+
+            update = metadataItemMongoCollection.updateOne(uuidAndTenantQuery, new Document("$set", doc));
+
+            if (update.getModifiedCount() == 0) {
+                metadataItemMongoCollection.insertOne(pem);
+            }
+            //update success. fetch the doc
+            MetadataSchemaPermission updatedItem = getByUsernameAndSchemaId(pem.getUsername(), pem.getSchemaId());
+            if (updatedItem != null) {
+                return updatedItem;
             } else {
-                throw new MetadataStoreException("Failed to update permissions of metadata item " + pem.getSchemaId());
+                throw new MetadataStoreException("Metadata item " + pem.getSchemaId() + " is no longer present.");
             }
         } catch (MetadataStoreException e) {
             throw e;
         } catch (Exception e) {
-            throw new MetadataStoreException("Failed to update permission", e);
-        }
-    }
-
-
-    /**
-     * Saves a new metadata permission. Upates existing ones.
-     * @param pem the permission to delete
-     * @throws org.iplantc.service.metadata.exceptions.MetadataException
-     */
-    public static MetadataSchemaPermission persist(MetadataSchemaPermission pem) throws MetadataException {
-        if (pem == null)
-            throw new MetadataException("Permission cannot be null");
-
-        MongoCollection<MetadataSchemaPermission> metadataItemCollection;
-        try {
-            //using POJO Codec
-            metadataItemCollection = getDefaultMetadataSchemaPermissionCollection();
-            metadataItemCollection.insertOne(pem);
-
-            List<MetadataSchemaPermission> pems = getBySchemaId(pem.getSchemaId());
-
-            return pems.isEmpty() ? null : pems.get(0);
-
-        } catch (MongoException e) {
-            throw new MetadataException("Failed to insert metadata item", e);
+            String msg = "Failed to update permission: " + e.getMessage();
+            throw new MetadataStoreException(msg, e);
         }
     }
 

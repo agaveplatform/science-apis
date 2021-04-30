@@ -7,6 +7,7 @@ import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataSchemaPermissionDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
+import org.iplantc.service.metadata.exceptions.MetadataStoreException;
 import org.iplantc.service.metadata.model.MetadataSchemaPermission;
 import org.iplantc.service.metadata.model.enumerations.PermissionType;
 import org.iplantc.service.metadata.util.ServiceUtils;
@@ -34,7 +35,7 @@ public class MetadataSchemaPermissionManager {
 		if (owner.equals(username) || ServiceUtils.isAdmin(username))
 			return true;
 
-		for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getBySchemaId(schemaId))
+		for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getInstance().getBySchemaId(schemaId))
 		{
 			if (pem.getUsername().equals(username) || 
 					pem.getUsername().equals(Settings.WORLD_USER_USERNAME) ||
@@ -54,7 +55,7 @@ public class MetadataSchemaPermissionManager {
 		if (StringUtils.equals(owner, username) || ServiceUtils.isAdmin(username))
 			return true;
 
-		for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getBySchemaId(schemaId))
+		for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getInstance().getBySchemaId(schemaId))
 		{
 			if (pem.getUsername().equals(username) || 
 					pem.getUsername().equals(Settings.WORLD_USER_USERNAME) ||
@@ -74,7 +75,7 @@ public class MetadataSchemaPermissionManager {
 		if (owner.equals(username) || ServiceUtils.isAdmin(username))
 			return true;
 
-		for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getBySchemaId(schemaId))
+		for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getInstance().getBySchemaId(schemaId))
 		{
 			if (pem.getUsername().equals(username) || 
 					pem.getUsername().equals(Settings.WORLD_USER_USERNAME) ||
@@ -87,8 +88,7 @@ public class MetadataSchemaPermissionManager {
 	}
 
 	public void setPermission(String username, String sPermission)
-			throws MetadataException, PermissionException
-	{
+			throws MetadataException, PermissionException, MetadataStoreException {
 		if (!ServiceUtils.isValid(username)) { throw new MetadataException(
 				"Invalid username"); }
 
@@ -105,11 +105,11 @@ public class MetadataSchemaPermissionManager {
 		// if the permission is empty or null, delete it
 		if (!ServiceUtils.isValid(sPermission) || sPermission.equalsIgnoreCase("none"))
 		{
-			for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getBySchemaId(schemaId))
+			for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getInstance().getBySchemaId(schemaId))
 			{
 				if (pem.getUsername().equals(username))
 				{
-					MetadataSchemaPermissionDao.delete(pem);
+					MetadataSchemaPermissionDao.getInstance().delete(pem);
 					return;
 				}
 			}
@@ -118,17 +118,17 @@ public class MetadataSchemaPermissionManager {
 
 		PermissionType permissionType = PermissionType.valueOf(sPermission.toUpperCase());
 
-		for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getBySchemaId(schemaId))
+		for (MetadataSchemaPermission pem : MetadataSchemaPermissionDao.getInstance().getBySchemaId(schemaId))
 		{
 			if (pem.getUsername().equals(username))
 			{
 				pem.setPermission(permissionType);
-				MetadataSchemaPermissionDao.persist(pem);
+				MetadataSchemaPermissionDao.getInstance().persist(pem);
 				return;
 			}
 		}
 		MetadataSchemaPermission pem = new MetadataSchemaPermission(schemaId, username, permissionType);
-		MetadataSchemaPermissionDao.persist(pem);
+		MetadataSchemaPermissionDao.getInstance().persist(pem);
 		
 		NotificationManager.process(schemaId, "PERMISSION_UPDATE", username);
 
@@ -140,7 +140,7 @@ public class MetadataSchemaPermissionManager {
 			throw new MetadataException("No object ID specified");
 		}
 		
-		MetadataSchemaPermissionDao.deleteBySchemaId(schemaId);
+		MetadataSchemaPermissionDao.getInstance().deleteBySchemaId(schemaId);
 		
 		NotificationManager.process(schemaId, "PERMISSION_UPDATE", owner);
 	}

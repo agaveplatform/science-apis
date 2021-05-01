@@ -2,7 +2,6 @@ package sftprelay
 
 import (
 	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	agaveproto "github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftpproto"
 	"github.com/golang/protobuf/jsonpb"
@@ -80,6 +79,11 @@ func NewSSHConfig(systemConfig *agaveproto.RemoteSystemConfig) (*SSHConfig, erro
 		io.WriteString(hh, systemConfig.Password)
 
 		sshConfig.Auth = []ssh.AuthMethod{ssh.Password(systemConfig.Password)}
+
+		// create a hash of the password. Without this, we can't track authentication to the same host/account/port
+		// with different auth mechanisms, which is critical for accounting.
+		sshConfig.HashSalt = systemConfig.Password
+		//sshConfig.HashSalt = hex.EncodeToString(hh.Sum([]byte(systemConfig.PrivateKey)))
 	} else {
 		var keySigner ssh.Signer
 		var err error
@@ -93,7 +97,6 @@ func NewSSHConfig(systemConfig *agaveproto.RemoteSystemConfig) (*SSHConfig, erro
 			if err != nil {
 				log.Errorf("Unable to parse ssh keys. Authentication will fail: %v", err)
 				return nil, err
-
 			}
 		} else {
 			io.WriteString(hh, "publickeypass")
@@ -107,11 +110,12 @@ func NewSSHConfig(systemConfig *agaveproto.RemoteSystemConfig) (*SSHConfig, erro
 		}
 
 		sshConfig.Auth = []ssh.AuthMethod{ssh.PublicKeys(keySigner)}
-	}
+		// create a salt to hash of the private key. Without this, we can't track authentication to the same host/account/port
+		// with different auth mechanisms, which is critical for accounting.
+		sshConfig.HashSalt = "pk"
+		//sshConfig.HashSalt = hex.EncodeToString(hh.Sum([]byte(systemConfig.PrivateKey)))
 
-	// create a salt to hash the config. Without this, we can't track authentication to the same host/account/port
-	// with different auth mechanisms, which is critical for accounting.
-	sshConfig.HashSalt = hex.EncodeToString(hh.Sum(nil))
+	}
 
 	return &sshConfig, nil
 }
@@ -154,12 +158,11 @@ func (c *SSHConfig) BaseURI() string {
 // String returns a hash string generated from the SSH config parameters.
 func (c *SSHConfig) String() string {
 	return fmt.Sprintf(
-		"%s@%s:%d?salt=%s&ForwardAgent=%s",
+		"%s:%s:%d:%s",
 		c.User,
 		c.Host,
 		c.Port,
 		c.HashSalt,
-		fmt.Sprint(c.ForwardAgent),
 	)
 }
 

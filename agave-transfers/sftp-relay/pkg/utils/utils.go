@@ -1,4 +1,4 @@
-package sftprelay
+package utils
 
 import (
 	"math/rand"

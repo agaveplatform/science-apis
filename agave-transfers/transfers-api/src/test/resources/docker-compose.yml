@@ -67,6 +67,18 @@ services:
     - /tmp/src:/tmp/src
     - /tmp/dest:/tmp/dest
 
+  sftp2:
+    image: agaveplatform/sshd:latest
+    command: "-p 10022"
+    restart: on-failure
+    networks:
+      - services
+    ports:
+      - '10023:10023'
+    volumes:
+      - /tmp/src:/tmp/src
+      - /tmp/dest:/tmp/dest
+
   sftptunnel:
    image: agaveplatform/sshd:latest
    command: "-p 10033"

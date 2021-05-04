@@ -60,6 +60,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
         doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
         doNothing().when(listener)._doPublishEvent(any(), any());
+        doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
         doCallRealMethod().when(listener).processEvent(any(JsonObject.class), any());
         RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
         doNothing().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
@@ -225,7 +226,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
                         any(Handler.class));
 
                 // no error event should have been raised
-                verify(ta, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+                verify(ta, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
 
                 ctx.completeNow();
 

@@ -93,10 +93,8 @@ public class TransferTaskUpdateListener extends AbstractNatsListener {
                 } else {
                     logger.error("Error with return from update event {}", uuid);
                     try {
-                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-                    } catch (IOException e) {
-                        logger.debug(e.getMessage());
-                    } catch (InterruptedException e) {
+                        _doPublishNatsJSEvent("TRANSFERTASK",MessageType.TRANSFERTASK_ERROR, body);
+                    } catch (Exception e) {
                         logger.debug(e.getMessage());
                     }
                 }

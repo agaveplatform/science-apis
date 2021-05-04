@@ -36,6 +36,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		when(listener.config()).thenReturn(config);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;
@@ -69,7 +70,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 					"Empty list returned from db mock should result in a true response to the callback.");
 
 			// empty list response from db mock should result in no healthcheck events being raised
-			verify(twc, never())._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), any());
+			verify(twc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_HEALTHCHECK"), eq(TRANSFERTASK_HEALTHCHECK), any());
 
 			ctx.completeNow();
 		}));
@@ -110,7 +111,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 			// verify a call was made for each active task
 			for (int i=0; i<activeTasks.size(); i++) {
-				verify(twc, times(1))._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
+				verify(twc, times(1))._doPublishNatsJSEvent(eq("TRANSFERTASK_HEALTHCHECK"), eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
 			}
 
 			ctx.completeNow();
@@ -155,7 +156,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 			// verify a call was made for each active task
 			for (int i=0; i<activeTasks.size(); i++) {
-				verify(twc, times(1))._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
+				verify(twc, times(1))._doPublishNatsJSEvent(eq("TRANSFERTASK_HEALTHCHECK"), eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
 			}
 
 			ctx.completeNow();

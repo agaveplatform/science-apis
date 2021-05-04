@@ -24,8 +24,8 @@ public class TransferApplication {
         Vertx vertx = Vertx.vertx();
 
         int poolSize = 10;
-        int instanceSize = 30;
-        int dbInstanceSize = 10;
+        int instanceSize = 2;
+        int dbInstanceSize = 2;
 
         ConfigStoreOptions fileStore = new ConfigStoreOptions()
                 .setType("file")
@@ -194,15 +194,15 @@ public class TransferApplication {
                                         }
                                     });
 
-//                            // Deploy the TransferErrorListener vertical
-//                            vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorListener"
-//                                    localOptions, res11 -> {
-//                                        if (res11.succeeded()){
-//                                            log.info("TransferErrorListener Deployment id is " + res.result());
-//                                        }else{
-//                                            log.error("TransferErrorListener Deployment failed !"+ res.result());
-//                                        }
-//                                    });
+                            // Deploy the TransferErrorListener vertical
+                            vertx.deployVerticle(TransferTaskErrorListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferErrorListener"
+                                    localOptions, res11 -> {
+                                        if (res11.succeeded()){
+                                            log.info("TransferErrorListener Deployment id is " + res.result());
+                                        }else{
+                                            log.error("TransferErrorListener Deployment failed !"+ res.result());
+                                        }
+                                    });
 
                             // Deploy the TransferHealthcheckListener vertical
                             vertx.deployVerticle(TransferTaskHealthcheckListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferHealthcheckListener",
@@ -252,13 +252,15 @@ public class TransferApplication {
                                         }
                                     });
 
-//                            // Deploy the Nats vertical
+                            // Deploy the Nats vertical
 //                            vertx.deployVerticle(NatsListener.class.getName(), //"org.agaveplatform.service.transfers.listener.TransferTaskFinishedListener",
-//                                    localOptions, res16 -> {
-//                                        if (res16.succeeded()) {
-//                                            log.info("Nats Deployment id is " + res.result());
+//                                    localOptions, res56 -> {
+//                                        if (res56.succeeded()) {
+//                                            log.info("Nats Deployment id is " + res56.result());
 //                                        } else {
 //                                            log.error("Nats Deployment failed !");
+//                                            log.debug(res56.cause().getCause().toString());
+//                                            log.debug( res56.cause().getMessage() );
 //                                        }
 //                                    });
                         } else {

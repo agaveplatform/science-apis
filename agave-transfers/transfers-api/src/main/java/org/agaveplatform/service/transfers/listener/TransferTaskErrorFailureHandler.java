@@ -96,10 +96,8 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 					body.put("event", this.getClass().getName());
 					body.put("type", getEventChannel());
 					try {
-						_doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
-					} catch (IOException e) {
-						log.debug(e.getMessage());
-					} catch (InterruptedException e) {
+						_doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_NOTIFICATION, body);
+					} catch (Exception e) {
 						log.debug(e.getMessage());
 					}
 				} else {

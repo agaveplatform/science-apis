@@ -36,6 +36,7 @@ class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(),any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 

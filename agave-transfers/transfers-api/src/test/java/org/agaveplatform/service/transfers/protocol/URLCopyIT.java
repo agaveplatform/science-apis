@@ -83,6 +83,7 @@ public class URLCopyIT extends BaseTestCase {
         doCallRealMethod().when(listener).streamingTransfer(anyString(), anyString(), any(RemoteStreamingTransferListenerImpl.class));
         doCallRealMethod().when(listener).relayTransfer(anyString(), anyString(), any(TransferTask.class));
         doCallRealMethod().when(listener)._doPublishEvent(anyString(), any(JsonObject.class));
+        doCallRealMethod().when(listener)._doPublishNatsJSEvent(anyString(), anyString(), any(JsonObject.class));
         when(listener.getVertx()).thenReturn(vertx);
         doCallRealMethod().when(listener).updateAggregateTaskFromChildTask(any(TransferTask.class), any(TransferTask.class));
 

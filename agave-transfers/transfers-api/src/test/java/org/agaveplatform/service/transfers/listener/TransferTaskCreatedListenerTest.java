@@ -47,12 +47,13 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
 		doCallRealMethod().when(listener).processEvent(any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		Connection connection = listener._connect();
 		when(listener.getConnection()).thenReturn(connection);
-		doNothing().when(listener).setConnection();
+		//doNothing().when(listener).setConnection();
 		doCallRealMethod().when(listener).addCancelledTask(anyString());
 		doCallRealMethod().when(listener).addPausedTask(anyString());
 		return listener;
@@ -93,8 +94,8 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		ttc.processEvent(json, ctx.succeeding(isAssigned -> ctx.verify(() -> {
 			assertTrue(isAssigned);
-			verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ASSIGNED, json.put("status",TransferStatusType.ASSIGNED.name()));
-			verify(ttc, never())._doPublishEvent(TRANSFERTASK_ERROR, new JsonObject());
+			verify(ttc, times(1))._doPublishNatsJSEvent("TRANSFERTASK_ASSIGNED", TRANSFERTASK_ASSIGNED, json.put("status",TransferStatusType.ASSIGNED.name()));
+			verify(ttc, never())._doPublishNatsJSEvent("TRANSFERTASK_ERROR", TRANSFERTASK_ERROR, new JsonObject());
 			verify(dbService, times(1)).updateStatus(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(TransferStatusType.ASSIGNED.name()), any());
 			//verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getSource()).getHost(), RoleType.GUEST);
 			verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getDest()).getHost(), RoleType.USER);
@@ -124,14 +125,14 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
 			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
-			verify(ttc, never())._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
+			verify(ttc, never())._doPublishNatsJSEvent("TRANSFERTASK_ASSIGNED", TRANSFERTASK_ASSIGNED, json);
 			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
 			JsonObject errorBody = new JsonObject()
 					.put("cause", cause.getClass().getName())
 					.put("message", cause.getMessage())
 					.mergeIn(json);
-			verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ERROR, errorBody);
+			verify(ttc, times(1))._doPublishNatsJSEvent("TRANSFERTASK_ERROR", TRANSFERTASK_ERROR, errorBody);
 			ctx.completeNow();
 		})));
 	}
@@ -158,14 +159,14 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
 			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
-			verify(ttc, never())._doPublishEvent(TRANSFERTASK_ASSIGNED, json);
+			verify(ttc, never())._doPublishNatsJSEvent("TRANSFERTASK_ASSIGNED", TRANSFERTASK_ASSIGNED, json);
 			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
 			JsonObject errorBody = new JsonObject()
 					.put("cause", cause.getClass().getName())
 					.put("message", cause.getMessage())
 					.mergeIn(json);
-			verify(ttc, times(1))._doPublishEvent(TRANSFERTASK_ERROR, errorBody);
+			verify(ttc, times(1))._doPublishNatsJSEvent("TRANSFERTASK_ERROR", TRANSFERTASK_ERROR, errorBody);
 			ctx.completeNow();
 		})));
 	}

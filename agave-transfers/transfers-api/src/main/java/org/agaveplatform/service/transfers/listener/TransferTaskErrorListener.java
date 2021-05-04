@@ -106,10 +106,8 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 								} else {
 									log.error("Unable to process {} event for transfer task (TTEL) message: {}", getEventChannel(), body.encode(), resp.cause());
 									try {
-										_doPublishEvent(TRANSFER_FAILED, body);
-									} catch (IOException e) {
-										log.debug(e.getMessage());
-									} catch (InterruptedException e) {
+										_doPublishNatsJSEvent("TRANSFER", TRANSFER_FAILED, body);
+									} catch (Exception e) {
 										log.debug(e.getMessage());
 									}
 								}
@@ -173,11 +171,9 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 												if (updateStatusResult.succeeded()) {
 													try {
 														log.error("Transfer task {} experienced a non-terminal error and will be retried. The error was {}", tt.getUuid(), message);
-														_doPublishEvent(TRANSFER_RETRY, updateStatusResult.result());
+														_doPublishNatsJSEvent("TRANSFER", TRANSFER_RETRY, updateStatusResult.result());
 														handler.handle(Future.succeededFuture(true));
-													} catch (IOException e) {
-														log.debug(e.getMessage());
-													} catch (InterruptedException e) {
+													} catch (Exception e) {
 														log.debug(e.getMessage());
 													}
 												} else {
@@ -250,11 +246,9 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 									if (updateStatusResult.succeeded()) {
 										try {
 											log.error("Updated status of transfer task {} to CANCELLED after interrupt received. No retires will be attempted.", uuid);
-											_doPublishEvent(TRANSFERTASK_CANCELED_ACK, updateStatusResult.result());
+											_doPublishNatsJSEvent("TRANSFERTASK", TRANSFERTASK_CANCELED_ACK, updateStatusResult.result());
 											handler.handle(Future.succeededFuture(true));
-										} catch (IOException e) {
-											log.debug(e.getMessage());
-										} catch (InterruptedException e) {
+										} catch (Exception e) {
 											log.debug(e.getMessage());
 										}
 									} else {
@@ -263,9 +257,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 										// write to error queue. we can retry
 										try {
 											doHandleError(updateStatusResult.cause(), msg, body, handler);
-										} catch (IOException e) {
-											e.printStackTrace();
-										} catch (InterruptedException e) {
+										} catch (IOException | InterruptedException e) {
 											e.printStackTrace();
 										}
 									}

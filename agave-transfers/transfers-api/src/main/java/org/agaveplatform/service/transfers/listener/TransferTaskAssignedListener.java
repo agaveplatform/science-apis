@@ -53,21 +53,17 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         super();
         setConnection();
     }
-
     public TransferTaskAssignedListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
         setConnection();
     }
-
     public TransferTaskAssignedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
         setConnection();
     }
-
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
-
     public Connection getConnection() {
         return nc;
     }
@@ -117,10 +113,8 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                         body.put("event", this.getClass().getName());
                         body.put("type", getEventChannel());
                         try {
-                            _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
-                        } catch (IOException e) {
-                            log.debug(e.getMessage());
-                        } catch (InterruptedException e) {
+                            _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_NOTIFICATION, body);
+                        } catch (Exception e) {
                             log.debug(e.getMessage());
                         }
                     } else {
@@ -264,7 +258,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
 
                     // forward copy request directly to protocol if the source/destination is the same
                     if (srcClient.equals(destClient)) {
-                        _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson());
+                        _doPublishNatsJSEvent("TRANSFER",TRANSFER_ALL, assignedTransferTask.toJson());
 
                     } else {
 
@@ -274,7 +268,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                             log.info("srcFileInfo is a file.");
                             // but first, we udpate the transfer task status to ASSIGNED
                             assignedTransferTask.setStatus(TransferStatusType.ASSIGNED);
-                            _doPublishEvent(TRANSFER_ALL, assignedTransferTask.toJson());
+                            _doPublishNatsJSEvent("TRANSFER",TRANSFER_ALL, assignedTransferTask.toJson());
 
 
                         }
@@ -298,10 +292,8 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                         assignedTransferTask.setStartTime(Instant.now());
                                         assignedTransferTask.setEndTime(Instant.now());
                                         try {
-                                            _doPublishEvent(TRANSFER_COMPLETED, assignedTransferTask.toJson());
-                                        } catch (IOException e) {
-                                            log.debug(e.getMessage());
-                                        } catch (InterruptedException e) {
+                                            _doPublishNatsJSEvent("TRANSFER",TRANSFER_COMPLETED, assignedTransferTask.toJson());
+                                        } catch (Exception e) {
                                             log.debug(e.getMessage());
                                         }
                                         handler.handle(Future.succeededFuture(true));
@@ -372,10 +364,8 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                                     childSource,
                                                                     childDest);
                                                             try {
-                                                                _doPublishEvent(childMessageType, childResult.result());
-                                                            } catch (IOException e) {
-                                                                log.debug(e.getMessage());
-                                                            } catch (InterruptedException e) {
+                                                                _doPublishNatsJSEvent(childMessageType, childMessageType, childResult.result());
+                                                            } catch (Exception e) {
                                                                 log.debug(e.getMessage());
                                                             }
                                                             promise.complete();
@@ -408,7 +398,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                     // interrupt happened while processing children. skip the rest.
                                                     // TODO: How do we know it wasn't a pause?
                                                     log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
-                                                    _doPublishEvent(TRANSFERTASK_CANCELED_ACK, body);
+                                                    _doPublishNatsJSEvent("TRANSFERTASK",TRANSFERTASK_CANCELED_ACK, body);
 
                                                     // this will break the stream processing and exit the loop without completing the
                                                     // remaining RemoteFileItem in the listing.
@@ -461,9 +451,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
                                                 // write to error queue. we can retry
                                                 try {
                                                     doHandleError(updateResult.cause(), message, body, handler);
-                                                } catch (IOException e) {
-                                                    e.printStackTrace();
-                                                } catch (InterruptedException e) {
+                                                } catch (IOException | InterruptedException e) {
                                                     e.printStackTrace();
                                                 }
                                             }
@@ -484,7 +472,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
             } else {
                 // task was interrupted, so don't attempt a retry
                 log.info("Skipping processing of child file items for transfer tasks {} due to interrupt event.", uuid);
-                _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
+                _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED_ACK, body);
                 handler.handle(Future.succeededFuture(false));
             }
             //}

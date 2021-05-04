@@ -1,9 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Nats;
-import io.nats.client.Subscription;
+import io.nats.client.*;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -52,6 +49,7 @@ public class NatsListener extends  AbstractNatsListener {
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
+    public JetStream js = _jsmConnect("nats://nats:4222","TRANSFERTASK_ASSIGNED", MessageType.TRANSFERTASK_ASSIGNED);
 
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
@@ -60,20 +58,37 @@ public class NatsListener extends  AbstractNatsListener {
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-        Dispatcher d = nc.createDispatcher((msg) -> {});
-        Subscription s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {
-            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            log.debug("response is {}", response);
-            JsonObject body = new JsonObject(response) ;
-            String uuid = body.getString("uuid");
-            log.info("Transfer task {} nats test detected.", uuid);
-            this.processEvent(body, result -> {
-                //result should be true
-            });
-        });
+        // Build our subscription options. Durable is REQUIRED for pull based subscriptions
+        PullSubscribeOptions pullOptions = PullSubscribeOptions.builder()
+                .durable("TRANSFERTASK_ASSIGNED_Consumer")
+                .stream("TRANSFERTASK_ASSIGNED")
+                .build();
 
-        d.subscribe(getEventChannel());
-        nc.flush(Duration.ofMillis(500));
+        // init our JetStreamSubscription
+
+        try {
+            JetStreamSubscription sub = js.subscribe("TRANSFERTASK_ASSIGNED", pullOptions);
+            log.info("got subscription: ", sub.getConsumerInfo().toString());
+
+            sub.pull(1);
+            Message m = sub.nextMessage(Duration.ofSeconds(1));
+            if (m != null) {
+                if (m.isJetStream()) {
+                    log.info(m.getData().toString());
+                    m.ack();
+                }
+                m.getData();
+                log.info("Subject: ",m.getSubject());
+                log.info("Data:  ", m.getData());
+            }
+
+        } catch (JetStreamApiException e) {
+            log.debug("Error with subsription {}", e.getMessage());
+        } catch (Exception e){
+            log.debug(e.getMessage());
+        }
+        nc.flush(Duration.ofSeconds(1));
+
     }
 
     public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) {
@@ -82,6 +97,7 @@ public class NatsListener extends  AbstractNatsListener {
         String uuid = body.getString("uuid");
         String source = body.getString("source");
         log.debug( "uuid is {} and source is {}", uuid, source);
+        handler.handle(Future.succeededFuture(true));
     }
 
 

@@ -25,7 +25,7 @@ import java.util.concurrent.TimeoutException;
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 
 public class TransferTaskFinishedListener extends AbstractNatsListener {
-    private final static Logger logger = LoggerFactory.getLogger(TransferTaskFinishedListener.class);
+    private final static Logger log = LoggerFactory.getLogger(TransferTaskFinishedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_FINISHED;
 
     private TransferTaskDatabaseService dbService;
@@ -80,37 +80,31 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
                 if (processBodyResult.succeeded()) {
                     String uuid = body.getString("uuid");
 
-                    logger.info("Transfer task finished: {}", body);
+                    log.info("Transfer task finished: {}", body);
 
                     try {
                         this.processEvent(body, result -> {
                             if (result.succeeded()) {
-                                logger.trace("Succeeded with the processing the transfer finished event for transfer task {}", uuid);
+                                log.trace("Succeeded with the processing the transfer finished event for transfer task {}", uuid);
                                 //msg.reply(TransferTaskFinishedListener.class.getName() + " completed.");
                             } else {
-                                logger.error("Error with return from update event {}", uuid);
+                                log.error("Error with return from update event {}", uuid);
                                 try {
-                                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-                                } catch (IOException e) {
-                                    logger.debug(e.getMessage());
-                                } catch (InterruptedException e) {
-                                    logger.debug(e.getMessage());
+                                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, body);
+                                } catch (Exception e) {
+                                    log.debug(e.getMessage());
                                 }
                             }
                         });
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                    } catch (IOException | InterruptedException e) {
+                        log.debug(e.getMessage());
                     }
                 } else {
-                    logger.debug("Error with retrieving Transfer Task {}", body.getString("id"));
+                    log.debug("Error with retrieving Transfer Task {}", body.getString("id"));
                     try {
-                        _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-                    } catch (IOException e) {
-                        logger.debug(e.getMessage());
-                    } catch (InterruptedException e) {
-                        logger.debug(e.getMessage());
+                        _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, body);
+                    } catch (Exception e) {
+                        log.debug(e.getMessage());
                     }
                 }
             });
@@ -121,14 +115,14 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
     }
 
     public void processEvent(JsonObject body, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
-        logger.debug("Processing finished task, sending notification");
+        log.debug("Processing finished task, sending notification");
 
         try {
-            logger.debug("Sending notification event");
+            log.debug("Sending notification event");
 //          _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
             handler.handle(Future.succeededFuture(true));
         } catch (Exception e) {
-            logger.debug(TransferTaskFinishedListener.class.getName() + " - exception caught");
+            log.debug(TransferTaskFinishedListener.class.getName() + " - exception caught");
             doHandleError(e, e.getMessage(), body, handler);
         }
     }

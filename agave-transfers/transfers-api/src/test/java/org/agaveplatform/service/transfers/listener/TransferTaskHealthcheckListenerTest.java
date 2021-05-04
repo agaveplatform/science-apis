@@ -44,6 +44,7 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 		when(listener.config()).thenReturn(config);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;
@@ -91,8 +92,8 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 		Future<Boolean> result = thc.processAllChildrenCanceledEvent(json);
 
 		// empty list response from db mock should result in no healthcheck events being raised
-		verify(thc, never())._doPublishEvent(eq(TRANSFERTASK_HEALTHCHECK), any());
-		verify(thc, never())._doPublishEvent(eq(TRANSFERTASK_ERROR), any());
+		verify(thc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_HEALTHCHECK"), eq(TRANSFERTASK_HEALTHCHECK), any());
+		verify(thc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
 
 		Assertions.assertTrue(result.result(),
 				"Empty list returned from db mock should result in a true response to the callback.");

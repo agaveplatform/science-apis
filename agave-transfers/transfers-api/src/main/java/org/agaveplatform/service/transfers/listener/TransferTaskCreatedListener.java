@@ -1,9 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.nats.client.Connection;
-import io.nats.client.Dispatcher;
-import io.nats.client.Options;
-import io.nats.client.Subscription;
+import io.nats.client.*;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -31,8 +28,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.TimeZone;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
@@ -45,55 +48,295 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 
     public TransferTaskCreatedListener() throws IOException, InterruptedException {
         super();
-        setConnection();
+        nc = getConnection();
+        if (!_checkStreams(nc)){
+            System. exit(1);
+        }
     }
     public TransferTaskCreatedListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
-        setConnection();
+        nc = getConnection();
+        if (!_checkStreams(nc)){
+            System. exit(1);
+        }
     }
     public TransferTaskCreatedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
-        setConnection();
+        nc = getConnection();
+        if (!_checkStreams(nc)){
+            System. exit(1);
+        }
     }
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
 
-    public Connection getConnection(){return nc;}
-
-    public void setConnection() throws IOException, InterruptedException {
+    public Connection getConnection() throws IOException, InterruptedException {
         try {
             nc = _connect(CONNECTION_URL);
         } catch (IOException e) {
             //use default URL
             nc = _connect(Options.DEFAULT_URL);
         }
+        return nc;
     }
+    public JetStream js = _jsmConnect("nats://nats:4222","TRANSFERTASK", MessageType.TRANSFERTASK_CREATED);
+
+    private List<JetStream> jsTree = new ArrayList<>();
 
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
-        //EventBus bus = vertx.eventBus();
+
         DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
         TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
-
-        EventBus bus = vertx.eventBus();
 
         // init our db connection from the pool
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-        //Connection nc = _connect();
-        Dispatcher d = getConnection().createDispatcher((msg) -> {});
-        //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(MessageType.TRANSFERTASK_CREATED, msg -> {
-            //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
-            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            JsonObject body = new JsonObject(response) ;
+
+        try {
+
+            // create our message handler.
+            CountDownLatch msgLatch = new CountDownLatch(1);
+            AtomicInteger received = new AtomicInteger();
+            AtomicInteger ignored = new AtomicInteger();
+
+
+
+            //**********************************************************************************
+            // Process TRANSFERTASK_CREATED messages
+            //**********************************************************************************
+            // Build our subscription options. Durable is REQUIRED for pull based subscriptions
+            PushSubscribeOptions.Builder builder = PushSubscribeOptions.builder()
+                    .durable("MONITOR")
+                    .deliverSubject("monitor.created")
+                    .stream("TRANSFERTASK");
+            PushSubscribeOptions subscribeOptions = builder.build();
+
+            Dispatcher dispatcher = nc.createDispatcher();
+            log.debug("got subscription: {}", js);
+            JetStreamManagement jsm = nc.jetStreamManagement();
+            if (streamExists(jsm, "TRANSFERTASK")){
+                log.info("Stream Exists");
+            }else
+            {
+                log.debug("Stream does not exist");
+            }
+
+            js.subscribe("monitor.created", dispatcher, _MessageHandler(jsm, 1), false, subscribeOptions);
+
+            // Wait for messages to arrive using the countdown latch. But don't wait forever.
+            boolean countReachedZero = msgLatch.await(3, TimeUnit.SECONDS);
+
+
+        } catch (JetStreamApiException e) {
+            log.debug("TRANSFERTASK_CREATED - Error with subsription {}", e.getMessage());
+        } catch (Exception e){
+            log.debug("TRANSFERTASK_CREATED - Exception {}", e.getMessage().toString());
+            log.debug(e.getCause().toString());
+        }
+
+
+
+
+//
+//        //**********************************************************************************
+//        // Process the TRANSFERTASK_CANCELED_SYNC messages
+//        //**********************************************************************************
+//        // Build our subscription options. Durable is REQUIRED for pull based subscriptions
+//        PullSubscribeOptions pullOptionsSync = PullSubscribeOptions.builder()
+//                .durable("TRANSFERTASK_CANCELED_SYNC_Consumer")
+//                .stream("TRANSFERTASK_CANCELED_SYNC")
+//                .build();
+//
+//        try {
+//            JetStreamSubscription sub = js.subscribe("TRANSFERTASK_CANCELED_SYNC", pullOptionsSync);
+//            log.info("got subscription: {}", sub.getConsumerInfo().toString());
+//
+//            sub.pull(1);
+//            Message m = sub.nextMessage(Duration.ofSeconds(1));
+//            if (m != null) {
+//                if (m.isJetStream()) {
+//                    log.info(m.getData().toString());
+//
+//                    String response = new String(m.getData(), StandardCharsets.UTF_8);
+//                    JsonObject body = new JsonObject(response);
+//                    String uuid = body.getString("uuid");
+//                    log.info("Transfer task {} cancel detected", uuid);
+//                    if (uuid != null) {
+//                        addCancelledTask(uuid);
+//                    }
+//                }
+//            }
+//        } catch (JetStreamApiException e) {
+//            log.debug("TRANSFERTASK_CANCELED_SYNC - Error with subsription {}", e.getMessage());
+//        }
+//        getConnection().flush(Duration.ofMillis(500));
+//
+//
+//
+//        //**********************************************************************************
+//        // Process the TRANSFERTASK_CANCELED_COMPLETED messages
+//        //**********************************************************************************
+//        // Build our subscription options. Durable is REQUIRED for pull based subscriptions
+//        PullSubscribeOptions pullOptionsCanceled = PullSubscribeOptions.builder()
+//                .durable("TRANSFERTASK_CANCELED_COMPLETED_Consumer")
+//                .stream("TRANSFERTASK_CANCELED_COMPLETED")
+//                .build();
+//
+//        try {
+//            JetStreamSubscription sub = js.subscribe("TRANSFERTASK_CANCELED_COMPLETED", pullOptionsCanceled);
+//            log.info("got subscription: {}", sub.getConsumerInfo().toString());
+//
+//            sub.pull(1);
+//            Message m = sub.nextMessage(Duration.ofSeconds(1));
+//            if (m != null) {
+//                if (m.isJetStream()) {
+//                    log.info(m.getData().toString());
+//                    String response = new String(m.getData(), StandardCharsets.UTF_8);
+//                    JsonObject body = new JsonObject(response);
+//                    String uuid = body.getString("uuid");
+//
+//                    log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
+//                    if (uuid != null) {
+//                        removeCancelledTask(uuid);
+//                    }
+//                }
+//            }
+//        } catch (JetStreamApiException e) {
+//            log.debug("TRANSFERTASK_CANCELED_COMPLETED - Error with subsription {}", e.getMessage());
+//        }
+//        getConnection().flush(Duration.ofMillis(500));
+//
+//
+//
+//
+//        //**********************************************************************************
+//        // Process the TRANSFERTASK_CANCELED_PAUSED messages
+//        //**********************************************************************************
+//        // paused tasks
+//        // Build our subscription options. Durable is REQUIRED for pull based subscriptions
+//        PullSubscribeOptions pullOptionsPAUSED = PullSubscribeOptions.builder()
+//                .durable("TRANSFERTASK_CANCELED_PAUSED_Consumer")
+//                .stream("TRANSFERTASK_CANCELED_PAUSED")
+//                .build();
+//
+//        try {
+//            JetStreamSubscription sub = js.subscribe("TRANSFERTASK_CANCELED_PAUSED", pullOptionsPAUSED);
+//            log.info("got subscription: {}", sub.getConsumerInfo().toString());
+//
+//            sub.pull(1);
+//            Message m = sub.nextMessage(Duration.ofSeconds(1));
+//            if (m != null) {
+//                if (m.isJetStream()) {
+//                    log.info(m.getData().toString());
+//                    String response = new String(m.getData(), StandardCharsets.UTF_8);
+//                    JsonObject body = new JsonObject(response);
+//
+//                    String uuid = body.getString("uuid");
+//                    log.info("Transfer task {} paused detected", uuid);
+//                    if (uuid != null) {
+//                        addPausedTask(uuid);
+//                    }
+//                }
+//            }
+//        } catch (JetStreamApiException e) {
+//            log.debug("TRANSFERTASK_CANCELED_PAUSED - Error with subsription {}", e.getMessage());
+//        }
+//        getConnection().flush(Duration.ofMillis(500));
+//
+//
+//
+//
+//
+//        // Build our subscription options. Durable is REQUIRED for pull based subscriptions
+//        PullSubscribeOptions pullOptionsPausedCompleted = PullSubscribeOptions.builder()
+//                .durable("TRANSFERTASK_PAUSED_COMPLETED_Consumer")
+//                .stream("TRANSFERTASK_PAUSED_COMPLETED")
+//                .build();
+//
+//        try {
+//            JetStreamSubscription sub = js.subscribe("TRANSFERTASK_PAUSED_COMPLETED", pullOptionsPausedCompleted);
+//            log.info("got subscription: {}", sub.getConsumerInfo().toString());
+//
+//            sub.pull(1);
+//            Message m = sub.nextMessage(Duration.ofSeconds(1));
+//            if (m != null) {
+//                if (m.isJetStream()) {
+//                    log.info(m.getData().toString());
+//                    String response = new String(m.getData(), StandardCharsets.UTF_8);
+//                    JsonObject body = new JsonObject(response);
+//
+//                    String uuid = body.getString("uuid");
+//                    log.info("Transfer task {} paused detected", uuid);
+//                    if (uuid != null) {
+//                        addPausedTask(uuid);
+//                    }
+//                }
+//            }
+//        } catch (JetStreamApiException e) {
+//            log.debug("TRANSFERTASK_PAUSED_COMPLETED - Error with subsription {}", e.getMessage());
+//        }
+//        getConnection().flush(Duration.ofMillis(500));
+//
+    }
+    public MessageHandler _MessageHandler(JetStreamManagement jsm, int count) {
+        CountDownLatch msgLatch = new CountDownLatch(count);
+        AtomicInteger received = new AtomicInteger();
+        AtomicInteger ignored = new AtomicInteger();
+
+        /** Handler method called when a message arrives from a transfertask created channel.
+         * @param msg The message that arrived
+         */
+        MessageHandler handler = msg -> {
+            if (msgLatch.getCount() == 0) {
+                ignored.incrementAndGet();
+                if (msg.isJetStream()) {
+                    log.info("Message Ignored, latch count already reached "
+                            + new String(msg.getData(), StandardCharsets.UTF_8));
+                    msg.nak();
+                }
+            }
+            else {
+                received.incrementAndGet();
+                String response = new  String(msg.getData(), StandardCharsets.UTF_8);
+                log.info("  Subject: {}  Data: {}", msg.getSubject(), response);
+
+                JsonObject body = new JsonObject(response);
+                String uuid = body.getString("uuid");
+                String source = body.getString("source");
+                String dest = body.getString("dest");
+
+                try {
+                    processEvent(body, resp -> {
+                        if (resp.succeeded()) {
+                            msg.ack();
+                        }else{
+                            msg.nak();
+                        }
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                msgLatch.countDown();
+            }
+        };
+
+        return handler;
+    }
+
+
+    public void tt_Created(Message m, Handler<AsyncResult<Boolean>> handler){
+        if (m.isJetStream()) {
+            log.info(Arrays.toString(m.getData()));
+
+            String response = new String(m.getData(), StandardCharsets.UTF_8);
+            JsonObject body = new JsonObject(response);
             String uuid = body.getString("uuid");
             String source = body.getString("source");
             String dest = body.getString("dest");
-
             log.info("Transfer task {} created: {} -> {}", uuid, source, dest);
 
             try {
@@ -103,106 +346,36 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         body.put("event", this.getClass().getName());
                         body.put("type", getEventChannel());
                         try {
-                            _doPublishEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
-                        } catch (IOException e) {
-                            log.debug(e.getMessage());
-                        } catch (InterruptedException e) {
+                            _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_NOTIFICATION, body);
+                        } catch (Exception e) {
                             log.debug(e.getMessage());
                         }
+
+                        handler.handle(Future.succeededFuture(true));
                     } else {
                         log.error("Error with return from creating the event {}", uuid);
                         try {
-                            _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-                        } catch (IOException e) {
-                            log.debug(e.getMessage());
-                        } catch (InterruptedException e) {
+                            _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, body);
+                        } catch (Exception e) {
                             log.debug(e.getMessage());
                         }
+
+                        handler.handle(Future.succeededFuture(false));
                     }
                 });
-            } catch (Exception ex){
+            } catch (Exception ex) {
                 log.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", ex.getMessage());
                 try {
-                    _doPublishEvent(MessageType.TRANSFERTASK_ERROR, body);
-                } catch (IOException e) {
-                    log.debug(e.getMessage());
-                } catch (InterruptedException e) {
+                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, body);
+                } catch (Exception e) {
                     log.debug(e.getMessage());
                 }
             }
-        });
-        d.subscribe(MessageType.TRANSFERTASK_CREATED);
-        getConnection().flush(Duration.ofMillis(500));
-        //d.unsubscribe(MessageType.TRANSFERTASK_CREATED);
-
-        // cancel tasks
-        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
-        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
-            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            JsonObject body = new JsonObject(response) ;
-            String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
-            log.info("Transfer task {} cancel detected", uuid);
-            if (uuid != null) {
-                addCancelledTask(uuid);
-            }
-        });
-        d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
-        getConnection().flush(Duration.ofMillis(500));
-        //d.unsubscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
-
-        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            JsonObject body = new JsonObject(response) ;
-            String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
-
-            log.info("Transfer task {} cancel completion detected. Updating internal cache.", uuid);
-            if (uuid != null) {
-                removeCancelledTask(uuid);
-            }
-        });
-        d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-        getConnection().flush(Duration.ofMillis(500));
-        //d.unsubscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
-
-        // paused tasks
-        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
-        s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
-            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            JsonObject body = new JsonObject(response) ;
-            String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
-
-            log.info("Transfer task {} paused detected", uuid);
-            if (uuid != null) {
-                addPausedTask(uuid);
-            }
-        });
-        d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
-        getConnection().flush(Duration.ofMillis(500));
-        //d.unsubscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
-
-        //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-        s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-            String response = new String(msg.getData(), StandardCharsets.UTF_8);
-            JsonObject body = new JsonObject(response) ;
-            String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
-
-            log.info("Transfer task {} paused completion detected. Updating internal cache.", uuid);
-            if (uuid != null) {
-                addPausedTask(uuid);
-            }
-        });
-        d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
-        getConnection().flush(Duration.ofMillis(500));
-        //d.unsubscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED);
+        } else {
+            //m.getData();
+            log.info("TRANSFERTASK_CREATED Subject: {}", m.getSubject());
+            log.info("TRANSFERTASK_CREATED Data:  {}", m.getData());
+        }
 
     }
 
@@ -291,10 +464,8 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                             // continue assigning the task and return
                             log.info("Assigning transfer task {} for processing.", uuid);
                             try {
-                                _doPublishEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
-                            } catch (IOException e) {
-                                log.debug(e.getMessage());
-                            } catch (InterruptedException e) {
+                                _doPublishNatsJSEvent("TRANSFERTASK",TRANSFERTASK_ASSIGNED, updateResult.result());
+                            } catch (Exception e) {
                                 log.debug(e.getMessage());
                             }
                             handler.handle(Future.succeededFuture(true));
@@ -305,16 +476,15 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                             log.error(msg);
                             try {
                                 doHandleError(updateResult.cause(), msg, body, handler);
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
+                            } catch (IOException | InterruptedException e) {
+                                log.debug(e.getMessage());
+                                log.debug(e.getCause().toString());
                             }
                         }
                     });
                 } else {
                     log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
-                    _doPublishEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
+                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED_ACK, body);
                     handler.handle(Future.succeededFuture(false));
                 }
 //            } else {

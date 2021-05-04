@@ -26,6 +26,7 @@ import org.iplantc.service.transfer.RemoteDataClientFactory;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CREATED;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_ALL;
@@ -38,7 +39,6 @@ import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
 import org.agaveplatform.service.transfers.enumerations.ErrorMessageTypes;
-
 
 public class RetryRequestManager extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(RetryRequestManager.class);

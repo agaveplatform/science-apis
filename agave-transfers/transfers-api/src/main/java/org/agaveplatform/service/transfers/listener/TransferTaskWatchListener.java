@@ -97,7 +97,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 						try {
 							log.debug("Scheduling health check on transfer task {}",
 									((JsonObject)jsonResult).getString("uuid"));
-							_doPublishEvent(TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonResult));
+							_doPublishNatsJSEvent("TRANSFERTASK",TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonResult));
 						} catch (Throwable t) {
 							log.error("Failed to schedule health check for transfer task {}", jsonResult);
 						}
@@ -135,7 +135,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 						try {
 							log.debug("Scheduling health check on transfer task {}",
 									((JsonObject)jsonResult).getString("uuid"));
-							_doPublishEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult));
+							_doPublishNatsJSEvent("TRANSFERTASK", TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult));
 						} catch (Throwable t) {
 								log.error("Failed to schedule health check for transfer task {}", jsonResult);
 							}

@@ -49,7 +49,7 @@ public class MetadataSchemaPermissionDao {
     private static MetadataSchemaPermissionDao dao = null;
 
     public MetadataSchemaPermissionDao(MongoClients paramMongoClients) {
-        this.mongoClients = paramMongoClients;
+        mongoClients = paramMongoClients;
     }
 
     public MetadataSchemaPermissionDao() {
@@ -67,7 +67,7 @@ public class MetadataSchemaPermissionDao {
             CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
                     fromProviders(PojoCodecProvider.builder().automatic(true).build()));
 
-            mongov4Client = mongoClients.create(MongoClientSettings.builder()
+            mongov4Client = MongoClients.create(MongoClientSettings.builder()
                     .applyToClusterSettings(builder -> builder.hosts(Arrays.asList(
                             new ServerAddress(Settings.METADATA_DB_HOST, Settings.METADATA_DB_PORT))))
                     .credential(getMongoCredential())
@@ -154,18 +154,18 @@ public class MetadataSchemaPermissionDao {
         List<MetadataSchemaPermission> pems = new ArrayList<>();
 
         try {
-            MongoCollection<MetadataSchemaPermission> metadataItemMongoCollection;
-            metadataItemMongoCollection = getDefaultMetadataSchemaPermissionCollection();
+            MongoCollection<MetadataSchemaPermission> metadataSchemaPermissionCollection;
+            metadataSchemaPermissionCollection = getDefaultMetadataSchemaPermissionCollection();
 
             Bson getQuery = eq("schemaId", schemaId);
-            MongoCursor cursor = metadataItemMongoCollection.find(getQuery)
+            MongoCursor<MetadataSchemaPermission> cursor = metadataSchemaPermissionCollection.find(getQuery)
                     .sort(Sorts.ascending("username"))
                     .skip(0)
                     .batchSize(-Settings.MAX_PAGE_SIZE)
                     .limit(Settings.DEFAULT_PAGE_SIZE).cursor();
 
             while (cursor.hasNext()) {
-                MetadataSchemaPermission metadataSchemaPermission = (MetadataSchemaPermission) cursor.next();
+                MetadataSchemaPermission metadataSchemaPermission = cursor.next();
                 pems.add(metadataSchemaPermission);
             }
 
@@ -182,7 +182,7 @@ public class MetadataSchemaPermissionDao {
      *
      * @param username the user for whom to look up permission grants
      * @return list of uuid to which the user has been granted read access.
-     * @throws MetadataException
+     * @throws MetadataException if unable to perform the query
      */
     public static List<String> getUuidOfAllSharedMetataSchemaItemReadableByUser(String username)
             throws MetadataException {
@@ -197,7 +197,7 @@ public class MetadataSchemaPermissionDao {
      * @param offset the number of results to skip before returning the response set
      * @param limit the maximum results to return
      * @return list of uuid to which the user has been granted read access.
-     * @throws MetadataException
+     * @throws MetadataException if unable to perform the query
      */
     @SuppressWarnings("unchecked")
     public static List<String> getUuidOfAllSharedMetataSchemaItemReadableByUser(String username, int offset, int limit)
@@ -210,8 +210,8 @@ public class MetadataSchemaPermissionDao {
         List<String> pems = new ArrayList<>();
 
         try {
-            MongoCollection<MetadataSchemaPermission> metadataItemMongoCollection;
-            metadataItemMongoCollection = getDefaultMetadataSchemaPermissionCollection();
+            MongoCollection<MetadataSchemaPermission> metadataSchemaPermissionCollection;
+            metadataSchemaPermissionCollection = getDefaultMetadataSchemaPermissionCollection();
 
             Bson getQuery = and(eq("tenantId", TenancyHelper.getCurrentTenantId()),
                     and(
@@ -220,7 +220,7 @@ public class MetadataSchemaPermissionDao {
             Pattern regex = Pattern.compile("READ");
             Bson filter = or(eq("permission", regex), eq("permission", PermissionType.ALL.name()));
 
-            MongoCursor cursor = metadataItemMongoCollection.find(getQuery)
+            MongoCursor<MetadataSchemaPermission> cursor = metadataSchemaPermissionCollection.find(getQuery)
                     .sort(Sorts.descending("lastUpdated"))
                     .skip(offset)
                     .batchSize(-Settings.MAX_PAGE_SIZE)
@@ -228,7 +228,7 @@ public class MetadataSchemaPermissionDao {
                     .filter(filter).cursor();
 
             while (cursor.hasNext()) {
-                MetadataSchemaPermission metadataSchemaPermission = (MetadataSchemaPermission) cursor.next();
+                MetadataSchemaPermission metadataSchemaPermission = cursor.next();
                 pems.add(metadataSchemaPermission.getSchemaId());
             }
             return pems;
@@ -243,7 +243,7 @@ public class MetadataSchemaPermissionDao {
      * @param username the users to whom the permission is assigned
      * @param schemaId the id to delete
      * @return a matching permission if present, false otherwise
-     * @throws org.iplantc.service.metadata.exceptions.MetadataException
+     * @throws MetadataException if unable to query mongo
      */
     @SuppressWarnings("unchecked")
     public static MetadataSchemaPermission getByUsernameAndSchemaId(String username, String schemaId) throws MetadataException {
@@ -253,17 +253,17 @@ public class MetadataSchemaPermissionDao {
         List<MetadataSchemaPermission> pems = new ArrayList<>();
 
         try {
-            MongoCollection metadataItemMongoCollection;
-            metadataItemMongoCollection = getDefaultMetadataSchemaPermissionCollection();
+            MongoCollection<MetadataSchemaPermission> metadataSchemaPermissionCollection =
+                    getDefaultMetadataSchemaPermissionCollection();
 
             Bson getQuery = and(eq("schemaId", schemaId), eq("username", username));
-            MongoCursor cursor = metadataItemMongoCollection.find(getQuery)
+            MongoCursor<MetadataSchemaPermission> cursor = metadataSchemaPermissionCollection.find(getQuery)
                     .skip(0)
                     .batchSize(-Settings.MAX_PAGE_SIZE)
                     .limit(Settings.DEFAULT_PAGE_SIZE).cursor();
 
             while (cursor.hasNext()) {
-                MetadataSchemaPermission metadataSchemaPermission = (MetadataSchemaPermission) cursor.next();
+                MetadataSchemaPermission metadataSchemaPermission = cursor.next();
                 pems.add(metadataSchemaPermission);
             }
 
@@ -277,30 +277,31 @@ public class MetadataSchemaPermissionDao {
         if (pem == null)
             throw new MetadataException("Permission cannot be null");
 
-        MongoCollection<MetadataSchemaPermission> metadataItemCollection;
+        MongoCollection<MetadataSchemaPermission> metadataSchemaPermissionCollection;
         try {
             //using POJO Codec
-            metadataItemCollection = getDefaultCollection();
-            Document doc = new Document();
-            doc.putAll(Map.of(
-                    "schemaId", pem.getSchemaId(),
-                    "username", pem.getUsername(),
-                    "permission", pem.getPermission().name(),
-                    "tenantId", pem.getTenantId(),
-                    "lastUpdated", new Date()));
+            metadataSchemaPermissionCollection = getDefaultCollection();
+//            Document doc = new Document();
+//            doc.putAll(Map.of(
+//                    "schemaId", pem.getSchemaId(),
+//                    "username", pem.getUsername(),
+//                    "permission", pem.getPermission().name(),
+//                    "tenantId", pem.getTenantId(),
+//                    "lastUpdated", new Date()));
 
-            metadataItemCollection.insertOne(pem);
+            metadataSchemaPermissionCollection.insertOne(pem);
 
-            MongoCursor cursor = metadataItemCollection.find(eq("schemaId", pem.getSchemaId())).cursor();
+            MongoCursor<MetadataSchemaPermission> cursor = metadataSchemaPermissionCollection.find(eq("schemaId", pem.getSchemaId())).cursor();
 
-            while (cursor.hasNext()) {
-                return (MetadataSchemaPermission) cursor.next();
-            }
+            return cursor.tryNext();
+//            while (cursor.hasNext()) {
+//                return (MetadataSchemaPermission) cursor.next();
+//            }
 
         } catch (MongoException e) {
-            throw new MetadataException("Failed to insert metadata item", e);
+            throw new MetadataException("Failed to insert metadata schema permission item", e);
         }
-        return null;
+//        return null;
     }
 
 
@@ -313,12 +314,12 @@ public class MetadataSchemaPermissionDao {
         if (pem == null)
             throw new MetadataException("Permission cannot be null");
 
-        MongoCollection<MetadataSchemaPermission> metadataItemMongoCollection;
+        MongoCollection<MetadataSchemaPermission> metadataSchemaPermissionCollection;
         UpdateResult update;
 
         try {
             //get collection
-            metadataItemMongoCollection = getDefaultMetadataSchemaPermissionCollection();
+            metadataSchemaPermissionCollection = getDefaultMetadataSchemaPermissionCollection();
 
             Bson uuidAndTenantQuery = and(eq("username", pem.getUsername()), eq("schemaId", pem.getSchemaId()));
 
@@ -327,10 +328,10 @@ public class MetadataSchemaPermissionDao {
                     "permission", pem.getPermission().name(),
                     "lastUpdated", new Date()));
 
-            update = metadataItemMongoCollection.updateOne(uuidAndTenantQuery, new Document("$set", doc));
+            update = metadataSchemaPermissionCollection.updateOne(uuidAndTenantQuery, new Document("$set", doc));
 
             if (update.getModifiedCount() == 0) {
-                metadataItemMongoCollection.insertOne(pem);
+                metadataSchemaPermissionCollection.insertOne(pem);
             }
             //update success. fetch the doc
             MetadataSchemaPermission updatedItem = getByUsernameAndSchemaId(pem.getUsername(), pem.getSchemaId());
@@ -358,13 +359,13 @@ public class MetadataSchemaPermissionDao {
             throw new MetadataException("Permission cannot be null");
 
         try {
-            MongoCollection<MetadataSchemaPermission> metadataItemMongoCollection;
-            metadataItemMongoCollection = getDefaultMetadataSchemaPermissionCollection();
+            MongoCollection<MetadataSchemaPermission> metadataSchemaPermissionCollection;
+            metadataSchemaPermissionCollection = getDefaultMetadataSchemaPermissionCollection();
 
 
             Bson deleteQuery = and(eq("schemaId", pem.getSchemaId()), eq("tenantId", pem.getTenantId()));
 
-            DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(deleteQuery);
+            DeleteResult deleteResult = metadataSchemaPermissionCollection.deleteOne(deleteQuery);
             if (deleteResult.getDeletedCount() == 0) {
                 //delete unsuccessful
 //				return null;
@@ -388,13 +389,13 @@ public class MetadataSchemaPermissionDao {
         }
 
         try {
-            MongoCollection<MetadataSchemaPermission> metadataItemMongoCollection;
-            metadataItemMongoCollection = getDefaultMetadataSchemaPermissionCollection();
+            MongoCollection<MetadataSchemaPermission> metadataSchemaPermissionCollection;
+            metadataSchemaPermissionCollection = getDefaultMetadataSchemaPermissionCollection();
 
 
             Bson deleteQuery = eq("schemaId", schemaId);
 
-            DeleteResult deleteResult = metadataItemMongoCollection.deleteOne(deleteQuery);
+            DeleteResult deleteResult = metadataSchemaPermissionCollection.deleteOne(deleteQuery);
             if (deleteResult.getDeletedCount() == 0) {
                 //delete unsuccessful
 //				return null;

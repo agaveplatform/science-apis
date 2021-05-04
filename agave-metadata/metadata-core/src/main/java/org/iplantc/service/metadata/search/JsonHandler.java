@@ -79,7 +79,7 @@ public class JsonHandler {
      */
     protected JsonNode parseStringToJson(String strJson) throws MetadataQueryException {
         try {
-            JsonFactory factory = this.mapper.getFactory();
+            JsonFactory factory = mapper.getFactory();
             return factory.createParser(strJson).readValueAsTree();
         } catch (IOException e) {
             throw new MetadataQueryException("Invalid Json format: " + e.getMessage());
@@ -287,8 +287,8 @@ public class JsonHandler {
     public MetadataItem parseJsonMetadata(JsonNode jsonMetadata) throws MetadataValidationException {
         try {
             MetadataItem metadataItem = new MetadataItem();
-            setPermissions(this.mapper.createArrayNode());
-            setNotifications(this.mapper.createArrayNode());
+            setPermissions(mapper.createArrayNode());
+            setNotifications(mapper.createArrayNode());
 
 
             if (jsonMetadata.has("uuid")) {
@@ -363,7 +363,7 @@ public class JsonHandler {
      * @throws MetadataQueryException if notifications field is not an array
      */
     public ArrayNode parseNotificationToArrayNode(JsonNode notificationNode) throws MetadataQueryException {
-        if (notificationNode.hasNonNull("notifications")) {
+        if (notificationNode != null && notificationNode.hasNonNull("notifications")) {
             if (notificationNode.get("notifications").isArray()) {
                 return (ArrayNode) notificationNode.get("notifications");
             } else {
@@ -428,7 +428,7 @@ public class JsonHandler {
     public String validateValueAgainstSchema(String value, String schema) throws
             MetadataSchemaValidationException {
         try {
-            JsonFactory factory = this.mapper.getFactory();
+            JsonFactory factory = mapper.getFactory();
             JsonNode jsonSchemaNode = factory.createParser(schema).readValueAsTree();
             JsonNode jsonMetadataNode = factory.createParser(value).readValueAsTree();
             AgaveJsonValidator validator = AgaveJsonSchemaFactory.byDefault().getValidator();

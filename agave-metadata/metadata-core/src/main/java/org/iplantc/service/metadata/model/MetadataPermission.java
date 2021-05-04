@@ -12,7 +12,6 @@ import org.json.JSONException;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import javax.persistence.*;
 import java.util.Date;
 
 /**
@@ -43,7 +42,6 @@ public class MetadataPermission {
 	/**
 	 * @return the username
 	 */
-	@Column(name = "username", nullable = false, length = 32)
 	public String getUsername()
 	{
 		return username;
@@ -52,7 +50,7 @@ public class MetadataPermission {
 	/**
 	 * @param username
 	 *            the username to set
-	 * @throws MetadataException if username is too long
+	 * @throws MetadataException when username is empty or greater than 32 characters
 	 */
 	public void setUsername(String username) throws MetadataException
 	{
@@ -66,8 +64,6 @@ public class MetadataPermission {
 	/**
 	 * @return the permission
 	 */
-	@Enumerated(EnumType.STRING)
-	@Column(name = "permission", nullable = false, length = 16)
 	public PermissionType getPermission()
 	{
 		return permission;
@@ -102,8 +98,6 @@ public class MetadataPermission {
 	/**
 	 * @return the lastUpdated
 	 */
-	@Temporal(TemporalType.TIMESTAMP)
-	@Column(name = "lastUpdated", nullable = false, length = 19)
 	public Date getLastUpdated()
 	{
 		return lastUpdated;
@@ -134,20 +128,20 @@ public class MetadataPermission {
 		writer.object()
 				.key("username").value(username)
 				.key("permission").object()
-				.key("read").value(canRead())
-				.key("write").value(canWrite())
-				.endObject()
+					.key("read").value(canRead())
+					.key("write").value(canWrite())
+					.endObject()
 				.key("_links").object()
-				.key("self").object()
-				.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + uuid + "/pems/" + username)
-				.endObject()
-				.key("parent").object()
-				.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + uuid)
-				.endObject()
-				.key("profile").object()
-				.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + username)
-				.endObject()
-				.endObject()
+					.key("self").object()
+						.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + uuid + "/pems/" + username)
+						.endObject()
+					.key("parent").object()
+						.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + uuid)
+						.endObject()
+					.key("profile").object()
+						.key("href").value(TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_METADATA_SERVICE) + username)
+						.endObject()
+					.endObject()
 				.endObject();
 
 		return writer.toString();

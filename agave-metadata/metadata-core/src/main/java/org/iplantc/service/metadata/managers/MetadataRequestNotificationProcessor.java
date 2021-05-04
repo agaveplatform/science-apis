@@ -1,15 +1,15 @@
 package org.iplantc.service.metadata.managers;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.iplantc.service.metadata.model.MetadataItem;
 import org.iplantc.service.notification.dao.NotificationDao;
 import org.iplantc.service.notification.exceptions.NotificationException;
 import org.iplantc.service.notification.model.Notification;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author dooley
@@ -30,26 +30,20 @@ public class MetadataRequestNotificationProcessor {
 	}
 	
 	/**
-	 * Processes a {@link JsonNode} passed in with a job request as a 
-	 * notification configuration. Accepts an array of {@link Notification} 
-	 * request objects or a simple string;
+	 * Processes a {@link JsonNode} passed in with a {@link MetadataItem} request as a notification configuration.
+	 * Accepts an array of {@link Notification} request objects or a simple string.
 	 *  
-	 * @param json
-	 * @throws NotificationException
+	 * @param jsonNotificationArray the array of json {@link Notification} objects to register to the new metadata item.
+	 * @throws NotificationException if any of the notification objects are invalid
 	 */
-	public void process(ArrayNode json) throws NotificationException {
+	public void process(ArrayNode jsonNotificationArray) throws NotificationException {
 		
 		getNotifications().clear();
 		
-		if (json == null || json.isNull()) {
-			// ignore the null value
-			return;
-		}
-		else
-		{
-			for (int i=0; i<json.size(); i++)
+		if (jsonNotificationArray != null && !jsonNotificationArray.isNull()) {
+			for (int i=0; i<jsonNotificationArray.size(); i++)
 			{
-				JsonNode jsonNotif = json.get(i);
+				JsonNode jsonNotif = jsonNotificationArray.get(i);
 				if (!jsonNotif.isObject())
 				{
 					throw new NotificationException("Invalid notifications["+i+"] value given. "
@@ -58,8 +52,8 @@ public class MetadataRequestNotificationProcessor {
 				}
 				else
 				{
-					// here we reuse the validation built into the {@link Notification} model
-					// itself to validate the embedded job notification subscriptions.
+					// Here we reuse the validation built into the {@link Notification} model
+					// itself to validate the embedded metadata schema notification subscriptions.
 					Notification notification = new Notification();
 					try {
 						((ObjectNode)jsonNotif).put("associatedUuid", getUuid());

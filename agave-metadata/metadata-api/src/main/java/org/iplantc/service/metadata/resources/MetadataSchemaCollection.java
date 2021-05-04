@@ -3,6 +3,7 @@ package org.iplantc.service.metadata.resources;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.github.fge.jsonschema.main.JsonSchemaFactory;
 import com.github.fge.jsonschema.processors.syntax.SyntaxValidator;
 import com.github.fge.jsonschema.report.ProcessingMessage;
@@ -28,8 +29,12 @@ import org.iplantc.service.metadata.MetadataApplication;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.dao.MetadataSchemaPermissionDao;
 import org.iplantc.service.metadata.exceptions.MetadataException;
+import org.iplantc.service.metadata.exceptions.MetadataQueryException;
 import org.iplantc.service.metadata.exceptions.MetadataSchemaValidationException;
+import org.iplantc.service.metadata.managers.MetadataRequestNotificationProcessor;
 import org.iplantc.service.metadata.managers.MetadataSchemaPermissionManager;
+import org.iplantc.service.metadata.model.MetadataSchemaItem;
+import org.iplantc.service.metadata.search.JsonHandler;
 import org.iplantc.service.metadata.util.ServiceUtils;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.joda.time.DateTime;
@@ -43,7 +48,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -62,8 +66,10 @@ public class MetadataSchemaCollection extends AgaveResource
 {
 	private static final Logger log = Logger.getLogger(MetadataSchemaCollection.class);
 
-	private String username;
-	private String internalUsername;
+	private static final ObjectMapper objectMapper = new ObjectMapper();
+
+	private final String username;
+	private final String internalUsername;
 	private String userQuery;
 	private boolean includeRecordsWithImplicitPermissions = true;
 
@@ -106,15 +112,10 @@ public class MetadataSchemaCollection extends AgaveResource
 			if (AuthorizationHelper.isTenantAdmin(this.username)) {
 				// check whether they explicitly ask for unprivileged results..basically query
 				// as a normal user
-				if (form.getNames().contains("privileged") &&
-						!BooleanUtils.toBoolean(form.getFirstValue("privileged"))) {
-					this.includeRecordsWithImplicitPermissions = false;
-				}
 				// either they did not provide a "privileged" query parameter or it was true
 				// either way, they get back all results regardless of ownership
-				else {
-					this.includeRecordsWithImplicitPermissions = true;
-				}
+				this.includeRecordsWithImplicitPermissions = !form.getNames().contains("privileged") ||
+						BooleanUtils.toBoolean(form.getFirstValue("privileged"));
 			}
 			// non-admins do not inherit any implicit permissions
 			else {
@@ -186,7 +187,7 @@ public class MetadataSchemaCollection extends AgaveResource
 					if (query.get(key) instanceof String) {
 						if (((String) query.get(key)).contains("*")) {
 							try {
-								Pattern regexPattern = Pattern.compile((String)query.getString(key), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
+								Pattern regexPattern = Pattern.compile(query.getString(key), Pattern.LITERAL | Pattern.CASE_INSENSITIVE);
 								query.put(key, regexPattern);
 							} catch (Exception e) {
 								throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, "Invalid regular expression for " + key + " query");
@@ -262,7 +263,7 @@ public class MetadataSchemaCollection extends AgaveResource
 
 	/**
 	 * HTTP POST for Creating and Updating Metadata JSON schema
-	 * @param entity
+	 * @param entity the {@link MetadataSchemaItem} POST body.
 	 */
 	@Override
 	public void acceptRepresentation(Representation entity)
@@ -277,11 +278,10 @@ public class MetadataSchemaCollection extends AgaveResource
 								"If this problem persists, please contact the system administrators.");
 			}
 
-			ObjectMapper mapper = new ObjectMapper();
-			JsonNode jsonSchema = null;
+			JsonNode jsonMetadataSchema = null;
 			try
 			{
-				jsonSchema = super.getPostedEntityAsObjectNode(false);
+				jsonMetadataSchema = super.getPostedEntityAsObjectNode(false);
 
 			} catch (ResourceException e) {
 				throw e;
@@ -295,16 +295,15 @@ public class MetadataSchemaCollection extends AgaveResource
 			{
 				SyntaxValidator validator = JsonSchemaFactory.byDefault().getSyntaxValidator();
 
-				if (!validator.schemaIsValid(jsonSchema)) {
-					ProcessingReport report = validator.validateSchema(jsonSchema);
+				if (!validator.schemaIsValid(jsonMetadataSchema)) {
+					ProcessingReport report = validator.validateSchema(jsonMetadataSchema);
 					StringBuilder errorMessages = new StringBuilder();
-					for (Iterator<ProcessingMessage> iter = report.iterator(); iter.hasNext(); ) {
-						ProcessingMessage message = iter.next();
-						errorMessages.append(message.getMessage() + "\n");
+					for (ProcessingMessage message : report) {
+						errorMessages.append(message.getMessage()).append("\n");
 					}
 					throw new MetadataSchemaValidationException("The supplied JSON Schema definition is invalid. " +
 							"For more information on JSON Schema, please visit http://json-schema.org/.\n" +
-							errorMessages.toString());
+							errorMessages);
 				}
 			}
 			catch (MetadataSchemaValidationException e) {
@@ -317,6 +316,9 @@ public class MetadataSchemaCollection extends AgaveResource
 								"For more information on JSON Schema, please visit  http://json-schema.org/", e);
 			}
 
+			JsonHandler jsonHandler = new JsonHandler();
+			ArrayNode notificationArrayNode = jsonHandler.parseNotificationToArrayNode(jsonMetadataSchema);
+
 			// persist the MetadataSchema object
 			BasicDBObject doc;
 			String timestamp = new DateTime().toString();
@@ -324,9 +326,9 @@ public class MetadataSchemaCollection extends AgaveResource
 			{
 				doc = new BasicDBObject("internalUsername", internalUsername)
 						.append("lastUpdated", timestamp)
-						.append("schema", JSON.parse(ServiceUtils.escapeSchemaRefFieldNames(mapper.writeValueAsString(jsonSchema))));
+						.append("schema", JSON.parse(ServiceUtils.escapeSchemaRefFieldNames(objectMapper.writeValueAsString(jsonMetadataSchema))));
 			}
-			catch (JSONParseException | JsonProcessingException e) {
+			catch (JsonProcessingException e) {
 				// If schema is not valid JSON, throw exception
 				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST,
 						"Unable to parse jsonSchema object.", e);
@@ -343,6 +345,11 @@ public class MetadataSchemaCollection extends AgaveResource
 
 			collection.insert(doc);
 
+			// process any embedded notifications
+			MetadataRequestNotificationProcessor notificationProcessor =
+					new MetadataRequestNotificationProcessor(username, uuid);
+			notificationProcessor.process(notificationArrayNode);
+
 			pm = new MetadataSchemaPermissionManager(uuid, username);
 			pm.setPermission(username, "ALL");
 
@@ -352,6 +359,10 @@ public class MetadataSchemaCollection extends AgaveResource
 			getResponse().setStatus(Status.SUCCESS_CREATED);
 
 			getResponse().setEntity(new IplantSuccessRepresentation(sdoc));
+		}
+		catch (MetadataQueryException e) {
+			getResponse().setStatus(Status.CLIENT_ERROR_BAD_REQUEST);
+			getResponse().setEntity(new IplantErrorRepresentation(e.getMessage()));
 		}
 		catch (ResourceException e) {
 			log.error("Failed to add metadata schema", e);

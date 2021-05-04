@@ -4,13 +4,7 @@
 package org.iplantc.service.metadata.model;
 
 import org.apache.commons.lang.StringUtils;
-import org.bson.codecs.pojo.annotations.BsonId;
-import org.bson.codecs.pojo.annotations.BsonProperty;
 import org.bson.types.ObjectId;
-import org.hibernate.annotations.Filter;
-import org.hibernate.annotations.FilterDef;
-import org.hibernate.annotations.Filters;
-import org.hibernate.annotations.ParamDef;
 import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.metadata.Settings;
 import org.iplantc.service.metadata.exceptions.MetadataException;
@@ -19,34 +13,26 @@ import org.json.JSONException;
 import org.json.JSONStringer;
 import org.json.JSONWriter;
 
-import javax.persistence.*;
 import java.util.Date;
 
 /**
- * Class to represent individual shared permissions for jobs
- * 
+ * Class to represent individual shared permissions for {@link MetadataSchemaItem}
  * @author dooley
- * 
  */
-@Entity
-@Table(name = "metadata_schema_permissions", uniqueConstraints=
-@UniqueConstraint(columnNames={"schemaId","username"}))
-@FilterDef(name="schemaPemTenantFilter", parameters=@ParamDef(name="tenantId", type="string"))
-@Filters(@Filter(name="schemaPemTenantFilter", condition="tenant_id=:tenantId"))
 public class MetadataSchemaPermission {
 
-	@BsonProperty ("_id")
-	@BsonId
+//	@BsonProperty ("_id")
+//	@BsonId
 	private ObjectId id;
-	@BsonProperty ("schemaId")
+//	@BsonProperty ("schemaId")
 	private String				schemaId;
-	@BsonProperty ("username")
+//	@BsonProperty ("username")
 	private String				username;
-	@BsonProperty ("permission")
+//	@BsonProperty ("permission")
 	private PermissionType		permission;
-	@BsonProperty ("lastUpdated")
+//	@BsonProperty ("lastUpdated")
 	private Date				lastUpdated = new Date();
-	@BsonProperty ("tenantId")
+//	@BsonProperty ("tenantId")
 	private String 				tenantId;
 
 	public MetadataSchemaPermission() {
@@ -61,16 +47,9 @@ public class MetadataSchemaPermission {
 		setPermission(permissionType);
 	}
 
-//	public ObjectId getId(){return id;}
-//
-//	public void setId(ObjectId id){this.id = id;};
-
 	/**
 	 * @return the id
 	 */
-	@Id
-	@GeneratedValue
-	@Column(name = "id", unique = true, nullable = false)
 	public ObjectId getId()
 	{
 		return id;
@@ -88,7 +67,6 @@ public class MetadataSchemaPermission {
 	/**
 	 * @return the schemaId
 	 */
-	@Column(name = "schemaId", nullable = false)
 	public String getSchemaId()
 	{
 		return schemaId;
@@ -106,7 +84,6 @@ public class MetadataSchemaPermission {
 	/**
 	 * @return the username
 	 */
-	@Column(name = "username", nullable = false, length = 32)
 	public String getUsername()
 	{
 		return username;
@@ -115,7 +92,7 @@ public class MetadataSchemaPermission {
 	/**
 	 * @param username
 	 *            the username to set
-     * @throws org.iplantc.service.metadata.exceptions.MetadataException
+     * @throws MetadataException when username is empty or greater than 32 characters
 	 */
 	public void setUsername(String username) throws MetadataException
 	{
@@ -129,8 +106,6 @@ public class MetadataSchemaPermission {
 	/**
 	 * @return the permission
 	 */
-	@Enumerated(EnumType.STRING)
-	@Column(name = "permission", nullable = false, length = 16)
 	public PermissionType getPermission()
 	{
 		return permission;
@@ -165,8 +140,6 @@ public class MetadataSchemaPermission {
 	/**
 	 * @return the lastUpdated
 	 */
-	@Temporal(TemporalType.TIMESTAMP)
-	@Column(name = "lastUpdated", nullable = false, length = 19)
 	public Date getLastUpdated()
 	{
 		return lastUpdated;
@@ -214,14 +187,13 @@ public class MetadataSchemaPermission {
 	
 	public String toString()
 	{
-		return "[" + schemaId + "] " + username + " " + permission;
+		return username + " " + permission;
 	}
 
 	public boolean equals(Object o)
 	{
 		if (o instanceof MetadataSchemaPermission) {
-			return ( 
-				( (MetadataSchemaPermission) o ).schemaId.equals(schemaId) &&
+			return (
 				( (MetadataSchemaPermission) o ).username.equals(username) &&
 				( (MetadataSchemaPermission) o ).permission.equals(permission) );
 		}

@@ -45,10 +45,10 @@ public class MetadataSchemaShareResource extends AgaveResource
 {
 	private static final Logger	log	= Logger.getLogger(MetadataSchemaShareResource.class);
 
-	private String username; // authenticated user
-	private String schemaId;  // object id
+	private final String username; // authenticated user
+	private final String schemaId;  // object id
     private String owner;
-	private String sharedUsername; // user receiving permissions
+	private final String sharedUsername; // user receiving permissions
 	private DB db;
     private DBCollection collection;
 
@@ -106,7 +106,7 @@ public class MetadataSchemaShareResource extends AgaveResource
 	}
 
 	/**
-	 * This method represents the HTTP GET action. Gets Perms on specified iod.
+	 * This method represents the HTTP GET action. Gets Perms on specified id.
 	 */
 	@Override
 	public Representation represent(Variant variant)

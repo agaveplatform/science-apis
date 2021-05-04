@@ -1,7 +1,6 @@
 package org.iplantc.service.metadata.managers;
 
 import org.apache.commons.lang.StringUtils;
-import org.bson.conversions.Bson;
 import org.iplantc.service.common.auth.AuthorizationHelper;
 import org.iplantc.service.common.auth.JWTClient;
 import org.iplantc.service.common.exceptions.PermissionException;
@@ -19,7 +18,8 @@ import org.iplantc.service.notification.managers.NotificationManager;
 
 import java.util.List;
 
-import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
 
 /**
  * Management class for handling operations on {@link MetadataItem} objects.
@@ -229,13 +229,13 @@ public class MetadataPermissionManager {
         else {
             PermissionType permissionType = PermissionType.
 //                    valueOf(sPermission.toUpperCase());
-        getIfPresent(sPermission.toUpperCase());    //handles invalid permission types
+            getIfPresent(sPermission.toUpperCase());    //handles invalid permission types
 
             if (permissionType == PermissionType.UNKNOWN) {
                 throw new PermissionException("Unable to set unknown permission, please use " +
-                        PermissionType.READ.toString() + ", " +
-                        PermissionType.READ_WRITE.toString() + ", " +
-                        PermissionType.NONE.toString());
+                        PermissionType.READ + ", " +
+                        PermissionType.READ_WRITE + ", " +
+                        PermissionType.NONE);
             }
 
             // if not present, add it
@@ -279,7 +279,7 @@ public class MetadataPermissionManager {
      *
      * @param username user to lookup permission for
      * @return the assigned permission for the user
-     * @throws MetadataException
+     * @throws MetadataException if unable to query the metadata item
      */
     public MetadataPermission getPermission(String username) throws MetadataException {
         MetadataPermission pem = new MetadataPermission(username, PermissionType.NONE);

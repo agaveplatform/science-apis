@@ -48,9 +48,9 @@ public class MetadataSchemaResource extends AgaveResource
 {
     private static final Logger log = Logger.getLogger(MetadataSchemaResource.class);
 
-    private String username;
-    private String internalUsername;
-    private String uuid;
+    private final String username;
+    private final String internalUsername;
+    private final String uuid;
     private String userQuery;
 
 
@@ -100,9 +100,8 @@ public class MetadataSchemaResource extends AgaveResource
         } 
         catch (Throwable e) 
         {
-        	log.error("Exception 5: Unable to connect to metadata store", e);
-            response.setStatus(Status.SERVER_ERROR_INTERNAL);
-            response.setEntity(new IplantErrorRepresentation("Exception 5: Unable to connect to metadata store."));
+        	response.setStatus(Status.SERVER_ERROR_INTERNAL);
+            response.setEntity(new IplantErrorRepresentation("Unable to connect to metadata store."));
 //            try { mongoClient.close(); } catch (Exception e1) {}
         }
 
@@ -238,8 +237,8 @@ public class MetadataSchemaResource extends AgaveResource
 						errorMessages.append(message.getMessage()).append("\n");
 					}
 	                throw new MetadataSchemaValidationException("The supplied JSON Schema definition is invalid. " +
-	                		"For more information on JSON Schema, please visit http://json-schema.org/.\n" + 
-	                		errorMessages.toString());
+	                		"For more information on JSON Schema, please visit http://json-schema.org/.\n" +
+							errorMessages);
 	            }
 	        } 
 	        catch (MetadataSchemaValidationException e) {
@@ -286,8 +285,9 @@ public class MetadataSchemaResource extends AgaveResource
                     doc.append("created", currentMetadata.get("created"));
                     doc.append("owner", currentMetadata.get("owner"));
                     doc.append("tenantId", currentMetadata.get("tenantId"));
+
                     collection.update(query, doc);
-                    
+
                     sdoc = ServiceUtils.unescapeSchemaRefFieldNames(formatMetadataSchemaObject(doc).toString());
                     
                     NotificationManager.process(uuid, "UPDATED", username, sdoc);

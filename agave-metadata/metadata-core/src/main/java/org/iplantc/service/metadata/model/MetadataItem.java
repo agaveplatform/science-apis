@@ -112,26 +112,6 @@ public class MetadataItem {
 //        this.permissions = new ArrayList<MetadataPermission>();
     }
 
-//    public MetadataItem(DBObject mongoObj) {
-//        this();
-//        if (mongoObj == null || mongoObj.size() == 0) {
-//            return;
-//        } else {
-//            setUuid(mongoObj.getString("uuid"));
-//            setName(mongoObj.getString("name"));
-//            setValue(mongoObj.get("value").toString());
-//            setSchemaId(mongoObj.getString("schemaId"));
-//            setTenantId(mongoObj.getString("tenantId"));
-//            setOwner(mongoObj.getString("owner"));
-//            setUuid(mongoObj.getString("uuid"));
-//            MetadataAssociationList obj = new MetadataAssociationList(mongoObj.get("associatedUuids"));
-//            this.associations
-//            setAssociatedUuids();
-//            setCreated(new DateTime(mongoObj.getString("created")).toDate());
-//            setLastUpdated(new DateTime(mongoObj.getString("lastUpdated")).toDate());
-//        }
-//    }
-
     /**
      * @return the name
      */
@@ -228,20 +208,6 @@ public class MetadataItem {
      */
     public synchronized void setUuid(String uuid) {
         this.uuid = uuid;
-    }
-
-    /**
-     * @return the error
-     */
-    public synchronized String getError() {
-        return error;
-    }
-
-    /**
-     * @param error the error to set
-     */
-    public synchronized void setError(String error) {
-        this.error = error;
     }
 
     /**

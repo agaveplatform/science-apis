@@ -1,8 +1,5 @@
 version: '2'
 
-volumes:
-  scratch:
-
 services:
 
   sftp:
@@ -11,7 +8,7 @@ services:
     ports:
       - 10022:10022
     volumes:
-      - scratch:/scratch
+      - ./scratch:/scratch
 
   # test container for the
   test:
@@ -19,6 +16,6 @@ services:
     entrypoint: "bash"
     command: "-c 'chown -R 1000:1000 scratch && make test'"
     volumes:
-      - scratch:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/scratch
-      #- ./pkg/sftprelay:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftprelay
+      - ./scratch:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/scratch
+      - ./pkg/sftprelay:/go/src/github.com/agaveplatform/science-apis/agave-transfers/sftp-relay/pkg/sftprelay
 

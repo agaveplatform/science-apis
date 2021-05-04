@@ -85,6 +85,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 
     private List<JetStream> jsTree = new ArrayList<>();
 
+
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
 
@@ -95,52 +96,62 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
+        // This handler will get called every second
+        vertx.setPeriodic(1000, id -> {
 
-        try {
+            try {
+                //**********************************************************************************
+                // Process TRANSFERTASK_CREATED messages
+                //**********************************************************************************
+                // Build our subscription options. Durable is REQUIRED for pull based subscriptions
+                PullSubscribeOptions.Builder builder = PullSubscribeOptions.builder()
+                        .durable("TRANSFERTASK_CREATED_Consumer")
+                        .stream("TRANSFERTASK");
 
-            // create our message handler.
-            CountDownLatch msgLatch = new CountDownLatch(1);
-            AtomicInteger received = new AtomicInteger();
-            AtomicInteger ignored = new AtomicInteger();
+                PullSubscribeOptions pullOptions = builder.build();
 
+                JetStreamSubscription sub = js.subscribe("transfertask.created", pullOptions);
+                log.info("got subscription: {}", sub.getConsumerInfo().toString());
+                nc.jetStreamManagement()
+                long m_count = sub.getPendingMessageCount();
+                if (m_count > 0) {
 
+                    sub.pull(1);
+                    Message m = sub.nextMessage(Duration.ofSeconds(1));
+                    if (m != null) {
+                        if (m.isJetStream()) {
+                            log.info(m.getData().toString());
 
-            //**********************************************************************************
-            // Process TRANSFERTASK_CREATED messages
-            //**********************************************************************************
-            // Build our subscription options. Durable is REQUIRED for pull based subscriptions
-            PushSubscribeOptions.Builder builder = PushSubscribeOptions.builder()
-                    .durable("MONITOR")
-                    .deliverSubject("monitor.created")
-                    .stream("TRANSFERTASK");
-            PushSubscribeOptions subscribeOptions = builder.build();
+                            String response = new String(m.getData(), StandardCharsets.UTF_8);
+                            JsonObject body = new JsonObject(response);
+                            String uuid = body.getString("uuid");
+                            log.info("Transfer task {} cancel detected", uuid);
+                            if (uuid != null) {
+                                try {
+                                    processEvent(body, resp -> {
+                                        if (resp.succeeded()) {
+                                            m.ack();
+                                        } else {
+                                            m.nak();
+                                        }
+                                    });
+                                } catch (IOException e) {
+                                    log.debug(e.getMessage());
+                                }
+                            }
+                        }
+                    }
 
-            Dispatcher dispatcher = nc.createDispatcher();
-            log.debug("got subscription: {}", js);
-            JetStreamManagement jsm = nc.jetStreamManagement();
-            if (streamExists(jsm, "TRANSFERTASK")){
-                log.info("Stream Exists");
-            }else
-            {
-                log.debug("Stream does not exist");
-            }
+                    getConnection().flush(Duration.ofMillis(500));
+                }
 
-            js.subscribe("monitor.created", dispatcher, _MessageHandler(jsm, 1), false, subscribeOptions);
-
-            // Wait for messages to arrive using the countdown latch. But don't wait forever.
-            boolean countReachedZero = msgLatch.await(3, TimeUnit.SECONDS);
-
-
-        } catch (JetStreamApiException e) {
-            log.debug("TRANSFERTASK_CREATED - Error with subsription {}", e.getMessage());
-        } catch (Exception e){
-            log.debug("TRANSFERTASK_CREATED - Exception {}", e.getMessage().toString());
-            log.debug(e.getCause().toString());
-        }
-
-
-
-
+                } catch(JetStreamApiException e){
+                    log.debug("TRANSFERTASK_CREATED - Error with subsription {}", e.getMessage());
+                } catch(Exception e){
+                    log.debug("TRANSFERTASK_CREATED - Exception {}", e.getMessage().toString());
+                    log.debug(e.getCause().toString());
+                }
+        });
 //
 //        //**********************************************************************************
 //        // Process the TRANSFERTASK_CANCELED_SYNC messages
@@ -298,17 +309,11 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                             + new String(msg.getData(), StandardCharsets.UTF_8));
                     msg.nak();
                 }
-            }
-            else {
+            } else {
                 received.incrementAndGet();
                 String response = new  String(msg.getData(), StandardCharsets.UTF_8);
                 log.info("  Subject: {}  Data: {}", msg.getSubject(), response);
-
                 JsonObject body = new JsonObject(response);
-                String uuid = body.getString("uuid");
-                String source = body.getString("source");
-                String dest = body.getString("dest");
-
                 try {
                     processEvent(body, resp -> {
                         if (resp.succeeded()) {
@@ -318,12 +323,11 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         }
                     });
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.debug(e.getMessage());
                 }
                 msgLatch.countDown();
             }
         };
-
         return handler;
     }
 

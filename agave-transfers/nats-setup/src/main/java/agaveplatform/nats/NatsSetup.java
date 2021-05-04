@@ -174,7 +174,7 @@ public class NatsSetup {
             ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
                 .ackPolicy(AckPolicy.None)
                 .durable(consumerName) // durable name is required when creating consumers
-                .filterSubject("")
+                .filterSubject("transfertask.created")
                 .deliverPolicy(DeliverPolicy.Last)
                 .replayPolicy(ReplayPolicy.Instant)
                 .build();

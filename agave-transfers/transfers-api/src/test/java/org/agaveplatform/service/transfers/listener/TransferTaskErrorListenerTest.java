@@ -51,7 +51,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		when(listener.taskIsNotInterrupted(any())).thenReturn(true);
 		when(listener.getRecoverableExceptionsClassNames()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		doNothing().when(listener)._doPublishEvent( any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		doCallRealMethod().when(listener).processError(any(), any());
@@ -121,7 +121,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertTrue(resp.result(), "processError should return false when the body has a recoverable cause and has a status of QUEUED");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			verify(txfrErrorListener)._doPublishNatsJSEvent(eq("TRANSFER_RETRY"), eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())) );
+			verify(txfrErrorListener)._doPublishNatsJSEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())) );
 			ctx.completeNow();
 		}));
 	}
@@ -176,7 +176,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertTrue(resp.result(), "processError should return false when the body has a recoverable cause and has a status of QUEUED");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			verify(txfrErrorListener)._doPublishNatsJSEvent(eq("TRANSFER_RETRY"), eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
+			verify(txfrErrorListener)._doPublishNatsJSEvent( eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
 			ctx.completeNow();
 		}));
 	}
@@ -246,7 +246,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 					"TransferErrorListener.processError is called for an IOException. It is already in the QUEUE");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			verify(txfrErrorListener)._doPublishNatsJSEvent(eq("TRANSFER_RETRY"), eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
+			verify(txfrErrorListener)._doPublishNatsJSEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
 			ctx.completeNow();
 		}));
 	}
@@ -308,7 +308,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 					"TransferErrorListener.processError is called for an IOException. It is already in the QUEUE");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			verify(txfrErrorListener)._doPublishNatsJSEvent(eq("TRANSFER_RETRY"), eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
+			verify(txfrErrorListener)._doPublishNatsJSEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
 			ctx.completeNow();
 		}));
 	}
@@ -371,7 +371,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = COMPLETED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any(), any());
+			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
 			ctx.completeNow();
 		}));
 	}
@@ -430,7 +430,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = COMPLETED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any(), any());
+			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
 			ctx.completeNow();
 		}));
 	}
@@ -494,7 +494,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = FAILED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any(), any());
+			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
 			ctx.completeNow();
 		}));
 	}
@@ -554,7 +554,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = FAILED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any(), any());
+			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
 			ctx.completeNow();
 		}));
 	}

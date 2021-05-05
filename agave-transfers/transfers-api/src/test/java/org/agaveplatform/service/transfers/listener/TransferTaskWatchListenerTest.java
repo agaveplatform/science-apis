@@ -16,6 +16,7 @@ import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -29,14 +30,14 @@ import static org.mockito.Mockito.*;
 @DisplayName("Transfers Watch Listener Test")
 class TransferTaskWatchListenerTest extends BaseTestCase {
 
-	TransferTaskWatchListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	TransferTaskWatchListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskWatchListener listener = Mockito.mock(TransferTaskWatchListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_HEALTHCHECK);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.config()).thenReturn(config);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;
@@ -44,7 +45,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with no active transfer tasks")
-	public void processEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
@@ -70,7 +71,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 					"Empty list returned from db mock should result in a true response to the callback.");
 
 			// empty list response from db mock should result in no healthcheck events being raised
-			verify(twc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_HEALTHCHECK"), eq(TRANSFERTASK_HEALTHCHECK), any());
+			verify(twc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), any());
 
 			ctx.completeNow();
 		}));
@@ -78,7 +79,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with a single active transfer tasks")
-	public void processEventHandlesASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processEventHandlesASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
@@ -111,7 +112,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 			// verify a call was made for each active task
 			for (int i=0; i<activeTasks.size(); i++) {
-				verify(twc, times(1))._doPublishNatsJSEvent(eq("TRANSFERTASK_HEALTHCHECK"), eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
+				verify(twc, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
 			}
 
 			ctx.completeNow();
@@ -120,7 +121,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with multiple active transfer tasks")
-	public void processEventHandlesMultipleActiveTasks(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processEventHandlesMultipleActiveTasks(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
@@ -156,7 +157,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 			// verify a call was made for each active task
 			for (int i=0; i<activeTasks.size(); i++) {
-				verify(twc, times(1))._doPublishNatsJSEvent(eq("TRANSFERTASK_HEALTHCHECK"), eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
+				verify(twc, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
 			}
 
 			ctx.completeNow();

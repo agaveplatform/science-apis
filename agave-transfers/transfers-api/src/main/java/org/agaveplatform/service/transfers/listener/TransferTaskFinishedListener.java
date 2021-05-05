@@ -90,7 +90,7 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
                             } else {
                                 log.error("Error with return from update event {}", uuid);
                                 try {
-                                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, body);
+                                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_ERROR, body);
                                 } catch (Exception e) {
                                     log.debug(e.getMessage());
                                 }
@@ -102,7 +102,7 @@ public class TransferTaskFinishedListener extends AbstractNatsListener {
                 } else {
                     log.debug("Error with retrieving Transfer Task {}", body.getString("id"));
                     try {
-                        _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, body);
+                        _doPublishNatsJSEvent( MessageType.TRANSFERTASK_ERROR, body);
                     } catch (Exception e) {
                         log.debug(e.getMessage());
                     }

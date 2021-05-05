@@ -25,6 +25,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_COMPLETED;
 import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.FAILED;
@@ -39,14 +40,14 @@ import static org.mockito.Mockito.*;
 class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 //	private static final Logger log = LoggerFactory.getLogger(TransferFailureHandlerTest.class);
 
-	protected TransferTaskErrorFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) throws IOException, InterruptedException {
+	protected TransferTaskErrorFailureHandler getMockTransferFailureHandlerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskErrorFailureHandler listener = mock(TransferTaskErrorFailureHandler.class );
 		when(listener.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
 		when(listener.getVertx()).thenReturn(vertx);
 		doCallRealMethod().when(listener).processFailure(any(JsonObject.class), any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(),any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		doCallRealMethod().when(listener).processBody(any(), any());
@@ -60,7 +61,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferFailureHandlerTest - testProcessFailure returns true on successful update")
-	void testProcessFailure(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	void testProcessFailure(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setId(2L);
 
@@ -108,7 +109,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferFailureHandlerTest - testProcessFailure returns true on successful update")
-	void testProcessFailureRecordsAndReturnsDBExceptions(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	void testProcessFailureRecordsAndReturnsDBExceptions(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setId(2L);
 
@@ -117,7 +118,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 
 		TransferTaskErrorFailureHandler failureHandler = getMockTransferFailureHandlerInstance(vertx);
-		doNothing().when(failureHandler)._doPublishNatsJSEvent(any(), any(), any());
+		doNothing().when(failureHandler)._doPublishNatsJSEvent( any(), any());
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -155,7 +156,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorFailureHandler.processBody partial Transfer Task should return Transfer Task")
-	protected void processBodyWithPartialTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processBodyWithPartialTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -205,7 +206,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorFailureHandler.processBody Transfer Task should return Transfer Task")
-	protected void processBodyWithTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processBodyWithTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();

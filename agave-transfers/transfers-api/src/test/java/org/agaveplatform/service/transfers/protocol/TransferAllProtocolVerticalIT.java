@@ -259,7 +259,7 @@ class TransferAllProtocolVerticalIT extends BaseTestCase {
             // this shouldn't be called because we're passing in the dest rdc
             verify(txfrAllVert, never()).getRemoteDataClient(TENANT_ID, TEST_USERNAME, destUri);
 
-            verify(txfrAllVert, times(1))._doPublishNatsJSEvent(eq("TRANSFERTASK_CANCELED_ACK"), eq(TRANSFERTASK_CANCELED_ACK), eq(tt.toJson()));
+            verify(txfrAllVert, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_CANCELED_ACK), eq(tt.toJson()));
 
             ctx.completeNow();
         });

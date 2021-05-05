@@ -27,6 +27,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -51,7 +52,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
      * @param vertx the test vertx instance
      * @return a mocked of {@link TransferTaskUpdateListener}
      */
-    protected TransferTaskUpdateListener getMockTransferUpdateListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+    protected TransferTaskUpdateListener getMockTransferUpdateListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
         TransferTaskUpdateListener listener = mock(TransferTaskUpdateListener.class);
         when(listener.getEventChannel()).thenReturn(TRANSFERTASK_UPDATED);
         when(listener.getVertx()).thenReturn(vertx);
@@ -60,7 +61,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
         doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
         doNothing().when(listener)._doPublishEvent(any(), any());
-        doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
+        doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
         doCallRealMethod().when(listener).processEvent(any(JsonObject.class), any());
         RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
         doNothing().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
@@ -177,7 +178,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
     @Test
     @DisplayName("TransferTaskUpdateListener - processTransferTask updates single file transfer task")
     @Disabled
-    public void processTransferTaskUpdatesSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+    public void processTransferTaskUpdatesSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
         // mock out the test class
         TransferTaskUpdateListener ta = getMockTransferUpdateListenerInstance(vertx);
 
@@ -226,7 +227,7 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
                         any(Handler.class));
 
                 // no error event should have been raised
-                verify(ta, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
+                verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 
                 ctx.completeNow();
 

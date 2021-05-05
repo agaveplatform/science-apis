@@ -19,6 +19,7 @@ import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
@@ -44,7 +45,7 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 		when(listener.config()).thenReturn(config);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishEvent(any(), any(), any());
+		doNothing().when(listener)._doPublishEvent(any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;
@@ -52,7 +53,7 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - processEvent")
-	public void processEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskHealthcheckListener thc = getMockListenerInstance(vertx);
@@ -92,8 +93,8 @@ class TransferTaskHealthcheckListenerTest extends BaseTestCase {
 		Future<Boolean> result = thc.processAllChildrenCanceledEvent(json);
 
 		// empty list response from db mock should result in no healthcheck events being raised
-		verify(thc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_HEALTHCHECK"), eq(TRANSFERTASK_HEALTHCHECK), any());
-		verify(thc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
+		verify(thc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), any());
+		verify(thc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 
 		Assertions.assertTrue(result.result(),
 				"Empty list returned from db mock should result in a true response to the callback.");

@@ -893,7 +893,7 @@ public class URLCopy extends AbstractNatsListener {
                     getProtocolForClass(destClient.getClass())));
 
             listener.getTransferTask().setStatusString(STREAM_COPY_STARTED.name());
-            _doPublishNatsJSEvent("TRANSFER_STREAMING", MessageType.TRANSFER_STREAMING, ((TransferTask)listener.getTransferTask()).toJson());
+            _doPublishNatsJSEvent(MessageType.TRANSFER_STREAMING, ((TransferTask)listener.getTransferTask()).toJson());
 
             if (sourceClient.isDirectory(srcPath)) {
                 throw new RemoteDataException("Cannot perform range query on directories");
@@ -1069,10 +1069,10 @@ public class URLCopy extends AbstractNatsListener {
             TransferTask streamingTransferTask = (TransferTask)listener.getTransferTask();
 
             streamingTransferTask.setStatus(WRITE_COMPLETED);
-            _doPublishNatsJSEvent("TRANSFER_COMPLETED", MessageType.TRANSFER_COMPLETED, streamingTransferTask.toJson());
+            _doPublishNatsJSEvent(MessageType.TRANSFER_COMPLETED, streamingTransferTask.toJson());
 
             streamingTransferTask.setStatus(TransferStatusType.COMPLETED);
-            _doPublishNatsJSEvent("TRANSFERTASK_FINISHED", MessageType.TRANSFERTASK_FINISHED, streamingTransferTask.toJson());
+            _doPublishNatsJSEvent(MessageType.TRANSFERTASK_FINISHED, streamingTransferTask.toJson());
 
             // and we're spent
             log.debug(String.format(

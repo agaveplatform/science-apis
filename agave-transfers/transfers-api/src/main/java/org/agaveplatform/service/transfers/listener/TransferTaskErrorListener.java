@@ -106,7 +106,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 								} else {
 									log.error("Unable to process {} event for transfer task (TTEL) message: {}", getEventChannel(), body.encode(), resp.cause());
 									try {
-										_doPublishNatsJSEvent("TRANSFER", TRANSFER_FAILED, body);
+										_doPublishNatsJSEvent(TRANSFER_FAILED, body);
 									} catch (Exception e) {
 										log.debug(e.getMessage());
 									}
@@ -171,7 +171,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 												if (updateStatusResult.succeeded()) {
 													try {
 														log.error("Transfer task {} experienced a non-terminal error and will be retried. The error was {}", tt.getUuid(), message);
-														_doPublishNatsJSEvent("TRANSFER", TRANSFER_RETRY, updateStatusResult.result());
+														_doPublishNatsJSEvent(TRANSFER_RETRY, updateStatusResult.result());
 														handler.handle(Future.succeededFuture(true));
 													} catch (Exception e) {
 														log.debug(e.getMessage());
@@ -182,10 +182,8 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 													// write to error queue. we can retry
 													try {
 														doHandleError(updateStatusResult.cause(), msg, body, handler);
-													} catch (IOException e) {
-														e.printStackTrace();
-													} catch (InterruptedException e) {
-														e.printStackTrace();
+													} catch (IOException | InterruptedException e) {
+														log.debug(e.getMessage());
 													}
 												}
 											});
@@ -246,7 +244,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 									if (updateStatusResult.succeeded()) {
 										try {
 											log.error("Updated status of transfer task {} to CANCELLED after interrupt received. No retires will be attempted.", uuid);
-											_doPublishNatsJSEvent("TRANSFERTASK", TRANSFERTASK_CANCELED_ACK, updateStatusResult.result());
+											_doPublishNatsJSEvent(TRANSFERTASK_CANCELED_ACK, updateStatusResult.result());
 											handler.handle(Future.succeededFuture(true));
 										} catch (Exception e) {
 											log.debug(e.getMessage());

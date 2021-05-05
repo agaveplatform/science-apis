@@ -138,7 +138,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                             .put("message", "Cannot cancel non-root transfer tasks.")
                             .mergeIn(body);
                     try {
-                        _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, json);
+                        _doPublishNatsJSEvent(MessageType.TRANSFERTASK_ERROR, json);
                         resultHandler.handle(Future.succeededFuture(false));
                     } catch (Exception e) {
                         logger.debug(e.getMessage());
@@ -158,7 +158,11 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                                     uuid, CANCELING_WAITING.name(), TRANSFERTASK_CANCELED_SYNC));
                             logger.debug("Sending cancel sync event for transfer task {} to signal children to cancel any active work.", uuid);
                             //getVertx().eventBus().publish(TRANSFERTASK_CANCELED_SYNC, updateReply.result());
-                            _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED_SYNC, updateReply.result());
+                            try {
+                                _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, updateReply.result());
+                            } catch (IOException | InterruptedException | TimeoutException e) {
+                                logger.debug(e.getMessage());
+                            }
                             resultHandler.handle(Future.succeededFuture(true));
                         } else {
                             String msg = String.format("Unable to update the status of transfer task %s to %s prior " +
@@ -179,7 +183,11 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                     logger.info("Transfer task {} is not in an active state and will not be updated.", uuid);
                     logger.debug("Sending cancel sync event for transfer task {} to ensure children are cleaned up.", uuid);
                     //getVertx().eventBus().publish(TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
-                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
+                    try {
+                        _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED_SYNC, getByIdReply.result());
+                    } catch (IOException | InterruptedException | TimeoutException e) {
+                        logger.debug(e.getMessage());
+                    }
                     resultHandler.handle(Future.succeededFuture(false));
                 }
             } else {
@@ -237,7 +245,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                         // this task and all its children are done, so we can send a complete event
                         // to safely clear out the uuid from all listener verticals' caches
                         try {
-                            _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED_COMPLETED, body);
+                            _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED_COMPLETED, body);
                         } catch (Exception e) {
                             logger.debug(e.getMessage());
                         }
@@ -260,7 +268,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                                             .put("message", msg)
                                             .mergeIn(body);
                                     try {
-                                        _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_PARENT_ERROR, json);
+                                        _doPublishNatsJSEvent(MessageType.TRANSFERTASK_PARENT_ERROR, json);
                                         resultHandler.handle(Future.succeededFuture(false));
                                     } catch (Exception e) {
                                         logger.debug(e.getMessage());
@@ -281,7 +289,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                                 .put("message", msg)
                                 .mergeIn(body);
                         try {
-                            _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, json);
+                            _doPublishNatsJSEvent(MessageType.TRANSFERTASK_ERROR, json);
                             resultHandler.handle(Future.succeededFuture(false));
                         } catch (Exception e) {
                             logger.debug(e.getMessage());
@@ -298,7 +306,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                         .put("message", msg)
                         .mergeIn(body);
                 try {
-                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, json);
+                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_ERROR, json);
                     resultHandler.handle(Future.succeededFuture(false));
                 } catch (Exception e) {
                     logger.debug(e.getMessage());
@@ -339,7 +347,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                             } else {
                                 // parent has children, but all are now cancelled or completed, so send the parent ack
                                 try {
-                                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJson());
+                                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJson());
                                     resultHandler.handle(Future.succeededFuture(true));
                                 } catch (Exception e) {
                                     logger.debug(e.getMessage());
@@ -353,7 +361,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                 } else {
                     // the parent is not active. forward the ack anyway, just to ensure all ancestors get the message
                     try {
-                        _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJson());
+                        _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED_ACK, parentTask.toJson());
                         resultHandler.handle(Future.succeededFuture(false));
                     } catch (Exception e) {
                         logger.debug(e.getMessage());
@@ -401,7 +409,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
                                 //		"A transfer.paused event will be created for this task.", parentTaskId);
                                 // call to our publishing helper for easier testing.
                                 try {
-                                    _doPublishNatsJSEvent("TRANSFERTASK", TRANSFERTASK_DELETED, getTaskById.result());
+                                    _doPublishNatsJSEvent(TRANSFERTASK_DELETED, getTaskById.result());
                                 } catch (Exception e) {
                                     logger.debug(e.getMessage());
                                 }

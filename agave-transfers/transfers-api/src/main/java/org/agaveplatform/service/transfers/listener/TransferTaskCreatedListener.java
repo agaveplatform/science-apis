@@ -112,7 +112,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 
                 JetStreamSubscription sub = js.subscribe("transfertask.created", pullOptions);
                 log.info("got subscription: {}", sub.getConsumerInfo().toString());
-                nc.jetStreamManagement()
+
                 long m_count = sub.getPendingMessageCount();
                 if (m_count > 0) {
 
@@ -350,7 +350,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         body.put("event", this.getClass().getName());
                         body.put("type", getEventChannel());
                         try {
-                            _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_NOTIFICATION, body);
+                            _doPublishNatsJSEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
                         } catch (Exception e) {
                             log.debug(e.getMessage());
                         }
@@ -359,7 +359,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                     } else {
                         log.error("Error with return from creating the event {}", uuid);
                         try {
-                            _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, body);
+                            _doPublishNatsJSEvent(MessageType.TRANSFERTASK_ERROR, body);
                         } catch (Exception e) {
                             log.debug(e.getMessage());
                         }
@@ -370,7 +370,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             } catch (Exception ex) {
                 log.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", ex.getMessage());
                 try {
-                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_ERROR, body);
+                    _doPublishNatsJSEvent( MessageType.TRANSFERTASK_ERROR, body);
                 } catch (Exception e) {
                     log.debug(e.getMessage());
                 }
@@ -468,7 +468,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                             // continue assigning the task and return
                             log.info("Assigning transfer task {} for processing.", uuid);
                             try {
-                                _doPublishNatsJSEvent("TRANSFERTASK",TRANSFERTASK_ASSIGNED, updateResult.result());
+                                _doPublishNatsJSEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
                             } catch (Exception e) {
                                 log.debug(e.getMessage());
                             }
@@ -488,7 +488,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                     });
                 } else {
                     log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
-                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED_ACK, body);
+                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
                     handler.handle(Future.succeededFuture(false));
                 }
 //            } else {

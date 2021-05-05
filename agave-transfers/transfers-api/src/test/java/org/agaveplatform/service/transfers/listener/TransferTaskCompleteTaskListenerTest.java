@@ -22,6 +22,7 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.mockito.Mockito.*;
@@ -39,7 +40,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         vertx.close(ctx.completing());
     }
 
-    protected TransferTaskCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+    protected TransferTaskCompleteTaskListener getMockTransferCompleteListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
         TransferTaskCompleteTaskListener listener = mock(TransferTaskCompleteTaskListener.class );
         when(listener.config()).thenReturn(config);
         when(listener.getEventChannel()).thenReturn(TRANSFER_COMPLETED);
@@ -47,7 +48,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).processEvent(any(), any());
         when(listener.getRetryRequestManager()).thenCallRealMethod();
         doNothing().when(listener)._doPublishEvent(any(), any());
-        doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
+        doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
         doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
         doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
         return listener;
@@ -56,7 +57,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessEventWithNoParent")
-    public void testProcessEventWithNoParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+    public void testProcessEventWithNoParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -116,14 +117,14 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(transferTaskCompleteTaskListener)._doPublishNatsJSEvent(eq("TRANSFERTASK_FINISHED"), eq(TRANSFERTASK_FINISHED), eq(json));
+            verify(transferTaskCompleteTaskListener)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
 
             // make sure the parent was not processed when none existed for the transfer task
             verify(transferTaskCompleteTaskListener, never()).processParentEvent(any(), any(), any());
 
             // make sure no error event is ever thrown
-            verify(transferTaskCompleteTaskListener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-            verify(transferTaskCompleteTaskListener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+            verify(transferTaskCompleteTaskListener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+            verify(transferTaskCompleteTaskListener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 
             Assertions.assertFalse(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
@@ -136,7 +137,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessEventWithInactiveParent")
-    public void testProcessEventWithInactiveParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+    public void testProcessEventWithInactiveParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -200,14 +201,14 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishNatsJSEvent(eq("TRANSFERTASK_FINISHED"), TRANSFERTASK_FINISHED, json);
+            verify(ttc)._doPublishNatsJSEvent(TRANSFERTASK_FINISHED, json);
 
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-            verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+            verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+            verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
@@ -220,7 +221,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessEventWithActiveParent")
-    public void testProcessEventWithActiveParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+    public void testProcessEventWithActiveParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -276,14 +277,14 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishNatsJSEvent(eq("TRANSFERTASK_FINISHED"), eq(TRANSFERTASK_FINISHED), eq(json));
+            verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
 
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-            verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+            verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+            verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             Assertions.assertTrue(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
@@ -296,7 +297,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcess creates parent error event when parent processing fails")
-    public void testProcessEventCreatesParentErrorEventWhenParentProcessingFails(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+    public void testProcessEventCreatesParentErrorEventWhenParentProcessingFails(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
         // Set up our transfertask for testings
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -353,15 +354,15 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishNatsJSEvent(eq("TRANSFERTASK_FINISHED"), eq(TRANSFERTASK_FINISHED), eq(json));
+            verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
 
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
-            verify(ttc)._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+            verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
+            verify(ttc, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
 
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
@@ -379,7 +380,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Test the ProcessParentEvent with a Status Completed that Reports False")
-    public void testProcessParentEventStatusCompletedReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+    public void testProcessParentEventStatusCompletedReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
             // Set up our transfertask for testing
             TransferTask parentTask = _createTestTransferTask();
             parentTask.setStatus(TransferStatusType.COMPLETED);
@@ -445,13 +446,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
+                verify(ttc, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFER_COMPLETED"), eq(TRANSFER_COMPLETED), any());
+                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has completed");
 
@@ -468,7 +469,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Test the ProcessParentEvent with a status of Cancelled that reports false")
-    public void testProcessParentEventStatusCancelledReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+    public void testProcessParentEventStatusCancelledReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.CANCELLED);
@@ -533,13 +534,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
+                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFER_COMPLETED"), eq(TRANSFER_COMPLETED), any());
+                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has been cancelled");
 
@@ -556,7 +557,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Test ProcessParentEvent with a status of Failed but reports a False")
-    public void testProcessParentEventStatusFailedReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+    public void testProcessParentEventStatusFailedReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.FAILED);
@@ -621,13 +622,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
+                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFER_COMPLETED"), eq(TRANSFER_COMPLETED), any());
+                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has failed");
 
@@ -644,7 +645,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessParentEventFoundActive")
-    public void testProcessParentEventFoundActive(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+    public void testProcessParentEventFoundActive(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -710,13 +711,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
+                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc)._doPublishNatsJSEvent(eq("TRANSFER_COMPLETED"), eq(TRANSFER_COMPLETED), any());
+                verify(ttc)._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded");
 

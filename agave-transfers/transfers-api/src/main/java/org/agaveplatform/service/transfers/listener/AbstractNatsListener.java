@@ -38,7 +38,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         return null;
     }
 
-    public void _doPublishNatsEvent(String eventName, JsonObject body) throws IOException, InterruptedException, TimeoutException {
+    public void _doPublishNatsJSEvent(String eventName, JsonObject body) throws IOException, InterruptedException, TimeoutException {
         log.info(super.getClass().getName() + ": _doPublishNatsEvent({}, {})", eventName, body);
         Connection nc;
         try{
@@ -51,30 +51,30 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         _closeConnection(nc);
     }
 
-    public void _doPublishNatsJSEvent(String stream, String subject, JsonObject body) {
-        log.info(super.getClass().getName() + ": _doPublishNatsJSEvent({}, {}, {})", stream, subject, body);
-
-        try {
-            JetStream js = _jsmConnect(CONNECTION_URL, stream, subject);
-
-            // create a typical NATS message
-            Message msg = NatsMessage.builder()
-                    .subject(subject)
-                    .data(body.toString(), StandardCharsets.UTF_8)
-                    .build();
-
-            // Publish a message and print the results of the publish acknowledgement.
-            // An exception will be thrown if there is a failure.
-            PublishAck pa = js.publish(msg);
-        }catch (IOException e){
-            log.debug(e.getMessage());
-        }catch (JetStreamApiException e){
-            log.debug(e.getMessage());
-        }
-    }
-    public void _doPublishEvent(String stream, String eventName, JsonObject body) {
-            this._doPublishNatsJSEvent(stream, eventName, body);
-    }
+//    public void _doPublishNatsJSEvent(String stream, String subject, JsonObject body) {
+//        log.info(super.getClass().getName() + ": _doPublishNatsJSEvent({}, {}, {})", stream, subject, body);
+//
+//        try {
+//            JetStream js = _jsmConnect(CONNECTION_URL, stream, subject);
+//
+//            // create a typical NATS message
+//            Message msg = NatsMessage.builder()
+//                    .subject(subject)
+//                    .data(body.toString(), StandardCharsets.UTF_8)
+//                    .build();
+//
+//            // Publish a message and print the results of the publish acknowledgement.
+//            // An exception will be thrown if there is a failure.
+//            PublishAck pa = js.publish(msg);
+//        }catch (IOException e){
+//            log.debug(e.getMessage());
+//        }catch (JetStreamApiException e){
+//            log.debug(e.getMessage());
+//        }
+//    }
+//    public void _doPublishEvent(String stream, String eventName, JsonObject body) {
+//            this._doPublishNatsJSEvent(stream, eventName, body);
+//    }
     public JetStream _jsmConnect(String url, String stream, String subject){
         JetStream js = null;
         try {

@@ -40,13 +40,13 @@ import static org.mockito.Mockito.*;
 //@Disabled
 class TransferTaskPausedListenerTest extends BaseTestCase {
 
-	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	TransferTaskPausedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskPausedListener listener = Mockito.mock(TransferTaskPausedListener.class);
 		when(listener.getEventChannel()).thenReturn(MessageType.TRANSFERTASK_PAUSED);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
 		doCallRealMethod().when(listener).processPauseRequest(any(), any());
 		doCallRealMethod().when(listener).processParentEvent(any(),any(),any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
@@ -54,7 +54,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		return listener;
 	}
 
-	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -64,7 +64,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
 		try {
 			doCallRealMethod().when(listener).start();
@@ -175,7 +175,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Paused Listener - task uuid != root/parent uuid")
 	@Disabled
-	public void processPauseRequestTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processPauseRequestTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -244,14 +244,14 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 				// verify that the completed event was created. this should always be throws
 				// if the updateStatus result succeeds.
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PAUSED"), eq(TRANSFERTASK_PAUSED), eq(transferTask.toJson()));
+				verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PAUSED), eq(transferTask.toJson()));
 
 				// make sure the parent was not processed when none existed for the transfer task
 				verify(listener, never()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener)._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener)._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				assertTrue(result.result(),
 						"TransferTask response should be true indicating the task completed successfully.");
@@ -266,7 +266,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Paused Listener with parent that is active, no parent/root uuid")
 	@Disabled
-	public void processPauseRequestWithParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processPauseRequestWithParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -342,8 +342,8 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				Assertions.assertTrue(result.result(),
 									"TransferTask response should be true indicating the task completed successfully.");
@@ -358,7 +358,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Paused Listener with no parent that is active - processPauseRequest")
 	@Disabled
-	public void processPauseRequestWithNoParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processPauseRequestWithNoParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -427,15 +427,15 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 				// verify that the completed event was created. this should always be throws
 				// if the updateStatus result succeeds.
-				verify(listener)._doPublishNatsJSEvent(eq("TRANSFERTASK_PAUSED_SYNC"), eq(TRANSFERTASK_PAUSED_SYNC), any());
+				verify(listener)._doPublishNatsJSEvent(eq(TRANSFERTASK_PAUSED_SYNC), any());
 
 				// make sure the parent was processed at least one time
 				// TODO: why is this at least once? Do we know how many times it should be called?
 				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				Assertions.assertTrue(result.result(),
 						"TransferTask response should be true indicating the task completed successfully.");
@@ -450,7 +450,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Paused Listener with parent = child that is active - processPauseRequest")
 	@Disabled
-	public void processPauseRequestWithParentSamePaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processPauseRequestWithParentSamePaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -519,7 +519,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 
 				// verify that the completed event was created. this should always be throws
 				// if the updateStatus result succeeds.
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PAUSED"), eq(TRANSFERTASK_PAUSED), eq(parentTask.toJson()));
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PAUSED), eq(parentTask.toJson()));
 
 
 				// make sure the parent was processed at least one time
@@ -543,7 +543,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTask Paused Listener with parent=child that is active - processParentEvent")
 	@Disabled
-	public void processPauseRequestProcessParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processPauseRequestProcessParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -604,8 +604,8 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -615,7 +615,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTask Paused Listener with child and parent task that is active - processParentEvent")
 	@Disabled
-	public void processPauseRequestProcessNotParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processPauseRequestProcessNotParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -680,7 +680,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTask Paused Listener with parent task that is active - processParentEvent")
 	@Disabled
-	public void processParentEventParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processParentEventParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -736,10 +736,10 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
-				verify(listener, atLeastOnce())._doPublishNatsJSEvent(eq("TRANSFERTASK_PAUSED"), eq(TRANSFERTASK_PAUSED), any());
+				verify(listener, atLeastOnce())._doPublishNatsJSEvent(eq(TRANSFERTASK_PAUSED), any());
 
 				ctx.completeNow();
 			});
@@ -749,7 +749,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTask Paused Listener with parent and check TaskAssigned - processParentEvent")
 	@Disabled
-	public void processParentEvent2ParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processParentEvent2ParentPaused(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -808,10 +808,10 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
-				verify(listener, atLeastOnce())._doPublishNatsJSEvent(eq("TRANSFERTASK_PAUSED"), eq(TRANSFERTASK_PAUSED), any());
+				verify(listener, atLeastOnce())._doPublishNatsJSEvent(eq(TRANSFERTASK_PAUSED), any());
 
 				//verify(ta);
 				ctx.completeNow();
@@ -823,7 +823,7 @@ class TransferTaskPausedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Paused Listener smoke test with Assigned Vertical and checking Paused Vertical")
 	@Disabled
-	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 		// mock of the Paused Listener

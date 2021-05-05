@@ -58,7 +58,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	 * @param vertx the test vertx instance
 	 * @return a mocked of {@link TransferTaskAssignedListener}
 	 */
-	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	protected TransferTaskAssignedListener getMockTransferAssignedListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskAssignedListener listener = mock(TransferTaskAssignedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_ASSIGNED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -68,7 +68,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 //		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(),any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(),any());
 		doCallRealMethod().when(listener).processTransferTask(any(JsonObject.class), any());
 
 		RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
@@ -189,7 +189,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns single file transfer task")
 	//@Disabled
-	public void processTransferTaskAssignsSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processTransferTaskAssignsSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 
@@ -256,9 +256,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				verify(srcRemoteDataClient, never()).ls(any());
 
 				// TRANSFER_ALL event should have been raised
-				verify(ta, times(1))._doPublishNatsJSEvent(eq("TRANSFER_ALL"), eq(TRANSFER_ALL), eq(updatedTransferTaskJson));
+				verify(ta, times(1))._doPublishNatsJSEvent( eq(TRANSFER_ALL), eq(updatedTransferTaskJson));
 				// no error event should have been raised
-				verify(ta, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"),eq(TRANSFERTASK_ERROR), any());
+				verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 
 				ctx.completeNow();
 
@@ -269,7 +269,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns empty directory transfer task")
 	@Disabled
-	public void processTransferTaskAssignsEmptyDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processTransferTaskAssignsEmptyDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 
@@ -350,9 +350,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 //				verify(dbService, times(1)).createOrUpdateChildTransferTask(eq(rootTransferTask.getTenantId()), eq(rootTransferTask), any());
 
 				// TRANSFER_ALL event should have been raised
-				verify(ta, times(1))._doPublishNatsJSEvent(eq("TRANSFER_COMPLETED"), eq(TRANSFER_COMPLETED), eq(updatedTransferTaskJson));
+				verify(ta, times(1))._doPublishNatsJSEvent( eq(TRANSFER_COMPLETED), eq(updatedTransferTaskJson));
 				// no error event should have been raised
-				verify(ta, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
+				verify(ta, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -362,7 +362,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferTaskAssignedListener - processTransferTask assigns populated directory transfer task")
 	@Disabled
-	public void processTransferTaskAssignsPopulatedDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processTransferTaskAssignsPopulatedDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
 
@@ -453,9 +453,9 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				List<TransferTask> childTransferTasks = childTransferTaskArgument.getAllValues();
 
 				// directory children should raise TRANSFERTASK_CREATED events
-				verify(ta, times((int)remoteFileInfoList.stream().filter(RemoteFileInfo::isDirectory).count()-1))._doPublishNatsJSEvent(eq("TRANSFERTASK_CREATED"), eq(TRANSFERTASK_CREATED), any(JsonObject.class));
+				verify(ta, times((int)remoteFileInfoList.stream().filter(RemoteFileInfo::isDirectory).count()-1))._doPublishNatsJSEvent( eq(TRANSFERTASK_CREATED), any(JsonObject.class));
 				// file item children should raise TRANSFER_ALL events
-				verify(ta, times((int)remoteFileInfoList.stream().filter(RemoteFileInfo::isFile).count()))._doPublishNatsJSEvent(eq("TRANSFER_ALL"), eq(TRANSFER_ALL), any(JsonObject.class));
+				verify(ta, times((int)remoteFileInfoList.stream().filter(RemoteFileInfo::isFile).count()))._doPublishNatsJSEvent( eq(TRANSFER_ALL), any(JsonObject.class));
 
 				// the method is called mlutiple times, so we capture the expected events using an or check.
 //				verify(ta, times(remoteFileInfoList.size()))._doPublishNatsJSEvent(or(eq("TRANSFERTASK_CREATED"), eq(TRANSFERTASK_CREATED)), childJsonObjectArgument.capture());
@@ -491,7 +491,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				}
 
 				// no error event should have been raised
-				verify(ta, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
+				verify(ta, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -594,13 +594,13 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				verify(dbService, never()).createOrUpdateChildTransferTask(any(), any(), any());
 
 				// directory children should raise TRANSFERTASK_CREATED events
-				verify(ta, times(1))._doPublishNatsJSEvent(eq("TRANSFERTASK_CANCELED_ACK"), eq(TRANSFERTASK_CANCELED_ACK), eq(rootTransferTaskJson));
+				verify(ta, times(1))._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_ACK), eq(rootTransferTaskJson));
 				// file item children should never be reached
-				verify(ta, never())._doPublishNatsJSEvent(eq("TRANSFER_ALL"), eq(TRANSFER_ALL), any(JsonObject.class));
-				verify(ta, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_CREATED"), eq(TRANSFERTASK_CREATED), any(JsonObject.class));
+				verify(ta, never())._doPublishNatsJSEvent( eq(TRANSFER_ALL), any(JsonObject.class));
+				verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_CREATED), any(JsonObject.class));
 
 				// no error event should have been raised
-				verify(ta, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
+				verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 
 				ctx.completeNow();
 			});

@@ -35,6 +35,7 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_DB_QUEUE;
@@ -279,7 +280,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());
                 try {
-                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CREATED, tt.toJson());
+                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
                     routingContext.response()
                         .putHeader("content-type", "application/json")
                             .setStatusCode(201)
@@ -325,7 +326,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
                         dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
                             if (deleteReply.succeeded()) {
                                 try {
-                                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+                                    _doPublishNatsJSEvent( MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
                                     routingContext.response()
                                             .putHeader("content-type", "application/json")
@@ -393,7 +394,11 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 }
                                 // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
                                 //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                _doPublishNatsJSEvent("TRANSFERTASK",MessageType.TRANSFERTASK_CANCELED, jo);
+                                try {
+                                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, jo);
+                                } catch (IOException | InterruptedException | TimeoutException e) {
+                                    log.debug(e.getMessage());
+                                }
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -419,7 +424,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
             if (reply.succeeded()) {
                 TransferTask tt = new TransferTask(reply.result());
                 try {
-                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED, tt.toJson());
+                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
                     routingContext.response()
                             .putHeader("content-type", "application/json")
                             .setStatusCode(201)
@@ -468,7 +473,11 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 }else{
                                     jo = new JsonObject(String.valueOf(deleteReply.result()));
                                 }
-                                _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_CANCELED, jo);
+                                try {
+                                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, jo);
+                                } catch (IOException | InterruptedException | TimeoutException e) {
+                                    log.debug(e.getMessage());
+                                }
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -523,7 +532,11 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 }else{
                                     jo = new JsonObject(String.valueOf(deleteReply.result()));
                                 }
-                                _doPublishNatsJSEvent("TRANSFERTASK",MessageType.TRANSFERTASK_CANCELED, jo);
+                                try {
+                                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, jo);
+                                } catch (IOException | InterruptedException | TimeoutException e) {
+                                    log.debug(e.getMessage());
+                                }
 
                                 routingContext.response()
                                         .putHeader("content-type", "application/json")
@@ -621,7 +634,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
                         dbService.update(tenantId, uuid, tt, updateReply -> {
                             if (updateReply.succeeded()) {
                                 try {
-                                    _doPublishNatsJSEvent("TRANSFERTASK", MessageType.TRANSFERTASK_UPDATED, updateReply.result());
+                                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
                                     routingContext.response().end(
                                             AgaveResponseBuilder.getInstance(routingContext)
                                                     .setResult(updateReply.result())

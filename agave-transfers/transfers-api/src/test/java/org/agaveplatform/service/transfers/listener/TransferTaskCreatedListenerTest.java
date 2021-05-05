@@ -25,6 +25,7 @@ import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,7 +39,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 //	private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListenerTest.class);
 
-	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	TransferTaskCreatedListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskCreatedListener listener = Mockito.mock(TransferTaskCreatedListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CREATED);
 		when(listener.getVertx()).thenReturn(vertx);
@@ -47,7 +48,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		when(listener.uriSchemeIsNotSupported(any())).thenReturn(false);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
 		doCallRealMethod().when(listener).processEvent(any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
@@ -61,7 +62,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment succeeds for valid transfer task")
-	public void assignTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void assignTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// get the JsonObject to pass back and forth between verticles
 		TransferTask transferTask = _createTestTransferTask();
@@ -94,8 +95,8 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		ttc.processEvent(json, ctx.succeeding(isAssigned -> ctx.verify(() -> {
 			assertTrue(isAssigned);
-			verify(ttc, times(1))._doPublishNatsJSEvent("TRANSFERTASK_ASSIGNED", TRANSFERTASK_ASSIGNED, json.put("status",TransferStatusType.ASSIGNED.name()));
-			verify(ttc, never())._doPublishNatsJSEvent("TRANSFERTASK_ERROR", TRANSFERTASK_ERROR, new JsonObject());
+			verify(ttc, times(1))._doPublishNatsJSEvent( TRANSFERTASK_ASSIGNED, json.put("status",TransferStatusType.ASSIGNED.name()));
+			verify(ttc, never())._doPublishNatsJSEvent(TRANSFERTASK_ERROR, new JsonObject());
 			verify(dbService, times(1)).updateStatus(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(TransferStatusType.ASSIGNED.name()), any());
 			//verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getSource()).getHost(), RoleType.GUEST);
 			verify(ttc,times(1)).userHasMinimumRoleOnSystem(transferTask.getTenantId(), transferTask.getOwner(), URI.create(transferTask.getDest()).getHost(), RoleType.USER);
@@ -106,7 +107,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid source")
 	@Disabled
-	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void assignTransferTaskFailSrcTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// get the JsonObject to pass back and forth between verticles
 		TransferTask transferTask = _createTestTransferTask();
@@ -125,14 +126,14 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
 			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
-			verify(ttc, never())._doPublishNatsJSEvent("TRANSFERTASK_ASSIGNED", TRANSFERTASK_ASSIGNED, json);
+			verify(ttc, never())._doPublishNatsJSEvent( TRANSFERTASK_ASSIGNED, json);
 			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
 			JsonObject errorBody = new JsonObject()
 					.put("cause", cause.getClass().getName())
 					.put("message", cause.getMessage())
 					.mergeIn(json);
-			verify(ttc, times(1))._doPublishNatsJSEvent("TRANSFERTASK_ERROR", TRANSFERTASK_ERROR, errorBody);
+			verify(ttc, times(1))._doPublishNatsJSEvent( TRANSFERTASK_ERROR, errorBody);
 			ctx.completeNow();
 		})));
 	}
@@ -140,7 +141,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment fails with invalid dest")
 	@Disabled
-	public void assignTransferTaskFailDestTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void assignTransferTaskFailDestTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// get the JsonObject to pass back and forth between verticles
 		TransferTask transferTask = _createTestTransferTask();
@@ -159,14 +160,14 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
 			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
-			verify(ttc, never())._doPublishNatsJSEvent("TRANSFERTASK_ASSIGNED", TRANSFERTASK_ASSIGNED, json);
+			verify(ttc, never())._doPublishNatsJSEvent(TRANSFERTASK_ASSIGNED, json);
 			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
 			JsonObject errorBody = new JsonObject()
 					.put("cause", cause.getClass().getName())
 					.put("message", cause.getMessage())
 					.mergeIn(json);
-			verify(ttc, times(1))._doPublishNatsJSEvent("TRANSFERTASK_ERROR", TRANSFERTASK_ERROR, errorBody);
+			verify(ttc, times(1))._doPublishNatsJSEvent(TRANSFERTASK_ERROR, errorBody);
 			ctx.completeNow();
 		})));
 	}

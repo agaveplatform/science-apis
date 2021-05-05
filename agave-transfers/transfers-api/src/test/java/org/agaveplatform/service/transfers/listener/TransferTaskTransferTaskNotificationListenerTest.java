@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_NOTIFICATION;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,13 +31,13 @@ import static org.mockito.Mockito.*;
 class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskTransferTaskNotificationListenerTest.class);
 
-	protected TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	protected TransferTaskNotificationListener getMockNotificationListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskNotificationListener listener = mock(TransferTaskNotificationListener.class );
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_NOTIFICATION);
 		when(listener.getVertx()).thenReturn(vertx);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(),any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 
@@ -45,7 +46,7 @@ class TransferTaskTransferTaskNotificationListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("notificationEventProcess Test")
-	void notificationEventProcess(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	void notificationEventProcess(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		log.info("Starting process of notificationEventProcess.");
 		TransferTask transferTask = _createTestTransferTask();
 		JsonObject body = transferTask.toJson();

@@ -35,31 +35,30 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	private Object Handler;
 
-	TransferTaskCancelListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	TransferTaskCancelListener getMockListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskCancelListener listener = Mockito.mock(TransferTaskCancelListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELED);
 		when(listener.getVertx()).thenReturn(vertx);
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;
 	}
 
-	TransferTaskCancelListener getMockCancelAckListenerInstance(Vertx vertx) throws IOException, InterruptedException {
+	TransferTaskCancelListener getMockCancelAckListenerInstance(Vertx vertx) throws IOException, InterruptedException, TimeoutException {
 		TransferTaskCancelListener listener = Mockito.mock(TransferTaskCancelListener.class);
 		when(listener.getEventChannel()).thenReturn(TRANSFERTASK_CANCELED_ACK);
 		when(listener.getVertx()).thenReturn(vertx);
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
 		return listener;
 	}
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel request fails when unable to lookup transfer task by id")
-	public void processCancelRequestFailDBTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processCancelRequestFailDBTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -103,13 +102,13 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				//verify(dbService).updateStatus(any(), any(), any(), any());
 
 				// error event should be thrown
-				verify(listener, never())._doPublishNatsJSEvent( eq("TRANSFERTASK_ERROR"),  eq(TRANSFERTASK_ERROR), any() );
+				verify(listener, never())._doPublishNatsJSEvent(  eq(TRANSFERTASK_ERROR), any() );
 
 				// sync should not happen
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_CANCELED_SYNC"), eq(TRANSFERTASK_CANCELED_SYNC), eq(transferTask.toJson()));
+				verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_SYNC), eq(transferTask.toJson()));
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -118,7 +117,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel request fails for non root tasks")
-	public void processCancelRequestFailsForNonRootTasks(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processCancelRequestFailsForNonRootTasks(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -183,13 +182,13 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(dbService, never()).updateStatus(any(), any(), any(), any());
 
 				// error event should be thrown for non-transfer task request
-				verify(listener)._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), eq(errorEventBody));
+				verify(listener)._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), eq(errorEventBody));
 
 				// no sync event should be sent
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_CANCELED_SYNC"), eq(TRANSFERTASK_CANCELED_SYNC), any());
+				verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_SYNC), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -198,7 +197,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel request for assigned root task sends syncs and updates status")
-	public void processCancelRequestUpdatesAndSendsSyncForActiveRootTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processCancelRequestUpdatesAndSendsSyncForActiveRootTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setStatus(TransferStatusType.ASSIGNED);
@@ -260,8 +259,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				//verify(listener)._doPublishEvent(eq(TRANSFERTASK_CANCELED_SYNC), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -270,7 +269,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel request for cancelled root task sends syncs and skips update")
-	public void processCancelRequestSkipsUpdateAndSendsSyncForInactiveRootTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processCancelRequestSkipsUpdateAndSendsSyncForInactiveRootTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// Set up our transfertask for testing
 		TransferTask transferTask = _createTestTransferTask();
 		transferTask.setStatus(TransferStatusType.CANCELLED);
@@ -336,8 +335,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(listener, never()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"),eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"),eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -346,7 +345,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel ack without parent should succeed")
-	public void processCancelAckTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processCancelAckTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// set up the parent task
 		TransferTask parentTask = _createTestTransferTask();
 		parentTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -436,8 +435,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				assertTrue(results.succeeded(), "The call should succeed.");
 				assertTrue(results.result(), "The async should return true indicating the task was updated");
 
-				verify(ttc)._doPublishNatsJSEvent( eq("TRANSFERTASK_CANCELED_COMPLETED"), eq(TRANSFERTASK_CANCELED_COMPLETED), eq(transferTask.toJson()) );
-				verify(ttc, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_CANCELED_ACK"), eq(TRANSFERTASK_CANCELED_ACK), any());
+				verify(ttc)._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_COMPLETED), eq(transferTask.toJson()) );
+				verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_CANCELED_ACK), any());
 				//assertEquals(transferTask.getUuid(), results, "Transfer task was not acknowledged in response uuid");
 				//assertEquals(transferTask.getUuid(), results, "result should have been uuid: " + transferTask.getUuid());
 
@@ -448,7 +447,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel ack with parent should succeed and check parent")
-	public void processCancelAckWithParentTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processCancelAckWithParentTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -544,8 +543,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processCancelAck(any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -554,7 +553,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel ack with parent who has all other children failed should create cancel event on parent")
-	public void processCancelAckWithParentAllChildrenTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processCancelAckWithParentAllChildrenTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -636,8 +635,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processCancelAck(any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -646,7 +645,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel ack with not empty parent id should check parent")
-	public void processCancelAckWithParentNotEmptyTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processCancelAckWithParentNotEmptyTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -713,8 +712,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processCancelAck(any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -723,7 +722,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC Ack Lstn with Parent - pCA w/Parent is not empty Failed")
-	public void processCancelAckWithParentIsNotEmptyTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processCancelAckWithParentIsNotEmptyTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -815,8 +814,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				verify(listener, atLeastOnce()).processCancelAck(any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -825,7 +824,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC processParentAck - pPA w/Parent")
-	public void processParentAckWithParentTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processParentAckWithParentTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -913,8 +912,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 //				verify(listener, atLeastOnce()).processCancelAck(any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -923,7 +922,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TTC processParentEvent - pPE w/Parent")
-	public void processParentEventTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processParentEventTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
@@ -991,8 +990,8 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				//verify(listener, atLeastOnce()).processParentEvent(any(), any(), any());
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -1034,7 +1033,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process parent ack with active children")
-	public void processParentAckWithActiveChildren(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processParentAckWithActiveChildren(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
 		parentTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -1052,7 +1051,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		doCallRealMethod().when(listener).processParentAck( any(), any() ,any());
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
@@ -1082,11 +1081,11 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				assertFalse(results.result(), "The async should return true");
 
 				//TransferTask Canceled Ack for parent should not be sent when children are active
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_CANCELED_ACK"), eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
+				verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});
@@ -1095,7 +1094,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process parent ack with completed or cancelled children")
-	public void processParentAckWithInactiveChildren(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	public void processParentAckWithInactiveChildren(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
 		// Set up our transfertask for testing
 		TransferTask parentTask = _createTestTransferTask();
 		parentTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -1113,7 +1112,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 		doCallRealMethod().when(listener).processParentAck( any(), any() ,any());
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any(), any());
+		doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
 
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
@@ -1143,11 +1142,11 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				assertTrue(results.result(), "The async should return true");
 
 				//TransferTask Canceled Ack for parent should be sent when all children are cancelled/completed
-				verify(listener, times(1))._doPublishNatsJSEvent(eq("TRANSFERTASK_CANCELED_ACK"), eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
+				verify(listener, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
 
 				// make sure no error event is ever thrown
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_ERROR"), eq(TRANSFERTASK_ERROR), any());
-				verify(listener, never())._doPublishNatsJSEvent(eq("TRANSFERTASK_PARENT_ERROR"), eq(TRANSFERTASK_PARENT_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+				verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
 
 				ctx.completeNow();
 			});

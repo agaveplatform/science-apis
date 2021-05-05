@@ -41,7 +41,7 @@ public interface MessageType {
     public static final String 	TRANSFER_S3 = "transfer.s3";
     public static final String 	TRANSFER_SWIFT = "transfer.swift";
     public static final String 	TRANSFER_HTTPS = "transfer.https";
-    public static final String 	FILETRANSFER_SFTP = "filetransfer.sftp";
+//    public static final String 	FILETRANSFER_SFTP = "filetransfer.sftp";
     public static final String 	TRANSFERTASK_DB_QUEUE = "transfertask.db.queue";
     public static final String 	TRANSFERTASK_DELETED = "transfertask.deleted";
     public static final String 	TRANSFERTASK_DELETED_SYNC = "transfertask.deleted.sync";
@@ -57,5 +57,5 @@ public interface MessageType {
     public static final String  TRANSFER_RETRY = "transfer.retry";
     public static final String  TRANSFER_ALL = "transfer.all";
     public static final String  TRANSFERTASK_NOTIFICATION = "transfertask.notification";
-    public static final String  UrlCopy = "transfertask.UrlCopy";
+    //public static final String  UrlCopy = "transfertask.UrlCopy";
 }

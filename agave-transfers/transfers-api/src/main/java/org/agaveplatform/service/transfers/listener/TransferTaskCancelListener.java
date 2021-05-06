@@ -71,7 +71,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
         //Connection nc = _connect();
         Dispatcher d = getConnection().createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+        Subscription s = d.subscribe(EVENT_CHANNEL, "transfer-task-cancel-queue", msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -87,7 +87,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
         getConnection().flush(Duration.ofMillis(500));
 
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        s = d.subscribe(EVENT_CHANNEL, msg -> {
+        s = d.subscribe(EVENT_CHANNEL, "transfer-task-cancel-queue", msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
             String uuid = body.getString("uuid");

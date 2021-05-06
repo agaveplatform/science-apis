@@ -81,7 +81,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 		//Connection nc = _connect();
 		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(MessageType.TRANSFERTASK_ERROR, msg -> {
+		Subscription s = d.subscribe(MessageType.TRANSFERTASK_ERROR, "transfer-task-error-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -129,7 +129,7 @@ public class TransferTaskErrorListener extends AbstractNatsListener {
 		getConnection().flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR, "transfer-task-error-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;

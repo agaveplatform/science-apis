@@ -95,7 +95,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         Dispatcher d = getConnection().createDispatcher((msg) -> {
         });
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, msg -> {
+        Subscription s = d.subscribe(MessageType.TRANSFERTASK_ASSIGNED, "transfer-task-assigned-queue", msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response);
@@ -136,7 +136,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         //d.unsubscribe(MessageType.TRANSFERTASK_ASSIGNED);
 
 
-        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, "transfer-task-assigned-queue", msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response);
@@ -155,7 +155,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         getConnection().flush(Duration.ofMillis(500));
         //d.unsubscribe(MessageType.TRANSFERTASK_CANCELED_SYNC);
 
-        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, "transfer-task-assigned-queue", msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             log.debug("response is {}", response);
             JsonObject body = new JsonObject(response);
@@ -171,7 +171,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         getConnection().flush(Duration.ofMillis(500));
         //d.unsubscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED);
 
-        s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, "transfer-task-assigned-queue", msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             log.debug("response is {}", response);
             JsonObject body = new JsonObject(response);
@@ -187,7 +187,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         getConnection().flush(Duration.ofMillis(500));
         //d.unsubscribe(MessageType.TRANSFERTASK_PAUSED_SYNC);
 
-        s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, "transfer-task-assigned-queue", msg -> {
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             log.debug("response is {}", response);
             JsonObject body = new JsonObject(response);

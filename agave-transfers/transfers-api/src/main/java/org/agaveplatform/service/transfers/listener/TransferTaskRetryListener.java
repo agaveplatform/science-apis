@@ -90,7 +90,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 		//Connection nc = _connect();
 		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(getDefaultEventChannel(), msg -> {
+		Subscription s = d.subscribe(getDefaultEventChannel(), "transfer-task-retry-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -144,7 +144,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 
 		// cancel tasks
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_SYNC, "transfer-task-retry-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -162,7 +162,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 		getConnection().flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, "transfer-task-retry-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -179,7 +179,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 
 		// paused tasks
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_SYNC, "transfer-task-retry-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -196,7 +196,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, "transfer-task-retry-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;

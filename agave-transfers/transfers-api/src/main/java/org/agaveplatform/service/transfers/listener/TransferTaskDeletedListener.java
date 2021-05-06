@@ -71,7 +71,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
         //Connection nc = _connect();
         Dispatcher d = getConnection().createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(getEventChannel(), msg -> {
+        Subscription s = d.subscribe(getEventChannel(), "transfer-task-deleted-queue", msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -89,7 +89,7 @@ public class TransferTaskDeletedListener extends AbstractNatsListener {
 
 
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
-        s = d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_DELETED_ACK, "transfer-task-deleted-queue", msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;

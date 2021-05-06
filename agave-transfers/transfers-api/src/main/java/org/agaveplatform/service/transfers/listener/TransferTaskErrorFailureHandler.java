@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
+import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -55,7 +56,7 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 			nc = _connect(CONNECTION_URL);
 		} catch (IOException e) {
 			//use default URL
-			nc = _connect();
+			nc = _connect(Options.DEFAULT_URL);
 		}
 	}
 
@@ -82,7 +83,7 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 		//Connection nc = _connect();
 		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(MessageType.TRANSFER_FAILED, msg -> {
+		Subscription s = d.subscribe(MessageType.TRANSFER_FAILED, "transfer-task-error-failure-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;

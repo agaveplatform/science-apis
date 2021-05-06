@@ -69,6 +69,7 @@ public class TransferTaskDatabaseVerticle extends AbstractVerticle {
               .put("maxLifetime", 60000)
               .put("validationTimeout", 3000)
               .put("leakDetectionThreshold", 5000)
+              .put("keepaliveTime", 30000)
               .put("driverClassName", config().getString(CONFIG_TRANSFERTASK_DB_JDBC_DRIVER_CLASS, "com.mysql.cj.jdbc.Driver"))
               .put("maximumPoolSize", config().getInteger(CONFIG_TRANSFERTASK_DB_JDBC_MAX_POOL_SIZE, 30)));
     }

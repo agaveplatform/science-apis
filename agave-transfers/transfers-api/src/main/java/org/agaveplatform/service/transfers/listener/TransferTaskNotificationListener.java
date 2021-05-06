@@ -67,7 +67,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
         //Connection nc = _connect();
         Dispatcher d = getConnection().createDispatcher((msg) -> {});
         //bus.<JsonObject>consumer(getEventChannel(), msg -> {
-        Subscription s = d.subscribe(MessageType.TRANSFERTASK_NOTIFICATION, msg -> {
+        Subscription s = d.subscribe(MessageType.TRANSFERTASK_NOTIFICATION, "transfer-task-notification-queue", msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -108,7 +108,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
         getConnection().flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
-        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_CANCELED_COMPLETED, "transfer-task-notification-queue", msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -134,7 +134,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_FINISHED, msg -> {
-        s = d.subscribe(MessageType.TRANSFERTASK_FINISHED, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_FINISHED, "transfer-task-notification-queue", msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -159,7 +159,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
-        s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_COMPLETED, "transfer-task-notification-queue", msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -177,7 +177,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 
 
         //bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
-        s = d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR, msg -> {
+        s = d.subscribe(MessageType.TRANSFERTASK_PARENT_ERROR, "transfer-task-notification-queue", msg -> {
             //msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
             String response = new String(msg.getData(), StandardCharsets.UTF_8);
             JsonObject body = new JsonObject(response) ;
@@ -225,7 +225,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
                     body.put("type", messageType);
                 }
 
-                logger.info("{} notification event raised for {} {}: {}",
+                logger.info("processing notification {} notification event raised for {} {}: {}",
                         body.getString("event"),
                         body.getString("type"),
                         body.getString("uuid"),

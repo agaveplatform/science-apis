@@ -76,7 +76,7 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 		//Connection nc = _connect();
 		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
+		Subscription s = d.subscribe(EVENT_CHANNEL, "transfer-task-healthcheck-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;

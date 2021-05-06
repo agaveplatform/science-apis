@@ -77,7 +77,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 		//Connection nc = _connect();
 		Dispatcher d = getConnection().createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
-		Subscription s = d.subscribe(MessageType.TRANSFERTASK_PAUSED, msg -> {
+		Subscription s = d.subscribe(MessageType.TRANSFERTASK_PAUSED, "transfer-task-paused-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;
@@ -104,7 +104,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 		getConnection().flush(Duration.ofMillis(500));
 
 		//bus.<JsonObject>consumer(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
-		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK, msg -> {
+		s = d.subscribe(MessageType.TRANSFERTASK_PAUSED_ACK, "transfer-task-paused-queue", msg -> {
 			//msg.reply(TransferTaskAssignedListener.class.getName() + " received.");
 			String response = new String(msg.getData(), StandardCharsets.UTF_8);
 			JsonObject body = new JsonObject(response) ;

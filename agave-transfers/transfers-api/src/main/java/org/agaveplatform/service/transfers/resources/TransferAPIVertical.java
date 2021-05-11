@@ -24,18 +24,30 @@ import org.agaveplatform.service.transfers.model.TransferUpdate;
 import org.agaveplatform.service.transfers.util.CryptoHelper;
 import org.agaveplatform.service.transfers.util.ServiceUtils;
 import org.agaveplatform.service.transfers.util.TransferRateHelper;
+import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.Settings;
+import org.iplantc.service.common.exceptions.AgaveNamespaceException;
+import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.systems.exceptions.RemoteCredentialException;
+import org.iplantc.service.systems.exceptions.SystemUnknownException;
+import org.iplantc.service.transfer.RemoteDataClient;
+import org.iplantc.service.transfer.RemoteDataClientFactory;
+import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Instant;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_DB_QUEUE;
@@ -52,6 +64,8 @@ public class TransferAPIVertical extends AbstractNatsListener {
     private TransferTaskDatabaseService dbService;
     protected String eventChannel = TRANSFERTASK_DB_QUEUE;
     protected JWTAuth jwtAuth;
+    private RemoteDataClient sourceClient;
+    private RemoteDataClient destClient;
 
     public TransferAPIVertical() throws IOException, InterruptedException {super();}
 
@@ -263,38 +277,52 @@ public class TransferAPIVertical extends AbstractNatsListener {
         JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
+
         log.debug("username = {}", username);
         JsonObject body = routingContext.getBodyAsJson();
+        String source = body.getString("source");
+        String dest = body.getString("dest");
+
         // request body was validated prior to this method being called
 //        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
         TransferTask transferTask = new TransferTask();
         transferTask.setCreated(Instant.now());
         transferTask.setTenantId(tenantId);
         transferTask.setOwner(username);
+        try {
+            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
+            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
 
-        //URLEncode paths
-        transferTask.setSource(URI.create(body.getString("source")).toString());
-        transferTask.setDest(URI.create(body.getString("dest")).toString());
+            //URLEncode paths
+            transferTask.setSource(URI.create(body.getString("source")).toString());
+            transferTask.setDest(URI.create(body.getString("dest")).toString());
 
-        dbService.create(tenantId, transferTask, reply -> {
-            if (reply.succeeded()) {
-                TransferTask tt = new TransferTask(reply.result());
-                try {
-                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CREATED, tt.toJson());
-                    routingContext.response()
-                        .putHeader("content-type", "application/json")
-                            .setStatusCode(201)
-                            .end(AgaveResponseBuilder.getInstance(routingContext)
-                                    .setResult(tt.toJson())
-                                    .build()
-                                    .toString());
-                } catch(Exception e) {
-                    log.debug(e.getMessage());
+            RemoteDataClient finalSrcClient = sourceClient;
+            dbService.create(tenantId, transferTask, reply -> {
+                if (reply.succeeded()) {
+                    TransferTask tt = new TransferTask(reply.result());
+                    try {
+                        //transfers.$tenantid.$uid.$systemid.transfer.$protocol
+                        srcUri.set(URI.create(source));
+                        String messageName = _createMessageName("transfers", tt.getTenantId(), tt.getOwner(), srcUri.get().getHost(),"TRANSFERTASK", (String) getProtocolForClass(finalSrcClient.getClass()));
+                        _doPublishNatsJSEvent(messageName, tt.toJson());
+                        routingContext.response()
+                            .putHeader("content-type", "application/json")
+                                .setStatusCode(201)
+                                .end(AgaveResponseBuilder.getInstance(routingContext)
+                                        .setResult(tt.toJson())
+                                        .build()
+                                        .toString());
+                    } catch(Exception e) {
+                        log.debug(e.getMessage());
+                    }
+                } else {
+                    routingContext.fail(reply.cause());
                 }
-            } else {
-                routingContext.fail(reply.cause());
-            }
-        });
+            });
+        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
+            log.debug(e.getMessage());
+        }
     }
 
     /**
@@ -312,44 +340,64 @@ public class TransferAPIVertical extends AbstractNatsListener {
         String uuid = routingContext.pathParam("uuid");
 
         log.debug("username = {}", username);
+        JsonObject body = routingContext.getBodyAsJson();
+        String source = body.getString("source");
+        String dest = body.getString("dest");
+        // request body was validated prior to this method being called
+//        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
+        TransferTask transferTask = new TransferTask();
+        transferTask.setCreated(Instant.now());
+        transferTask.setTenantId(tenantId);
+        transferTask.setOwner(username);
+        try {
+            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
+            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
 
-        // lookup task to get the id
-        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
-            if (getByIdReply.succeeded()) {
-                if (getByIdReply.result() == null) {
-                    // not found
-                    routingContext.fail(404);
-                } else {
-                    // if the current user is the owner or has admin privileges, allow the action
-                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            user.isAdminRoleExists()) {
-                        dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
-                            if (deleteReply.succeeded()) {
-                                try {
-                                    _doPublishNatsJSEvent( MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
+            //URLEncode paths
+            transferTask.setSource(URI.create(body.getString("source")).toString());
+            transferTask.setDest(URI.create(body.getString("dest")).toString());
 
-                                    routingContext.response()
-                                            .putHeader("content-type", "application/json")
-                                            .setStatusCode(203).end();
-                                } catch (Exception e) {
-                                    log.debug(e.getMessage());
-                                }
-                            } else {
-                                // delete failed
-                                routingContext.fail(deleteReply.cause());
-                            }
-                        });
+
+
+            // lookup task to get the id
+            dbService.getByUuid(tenantId, uuid, getByIdReply -> {
+                if (getByIdReply.succeeded()) {
+                    if (getByIdReply.result() == null) {
+                        // not found
+                        routingContext.fail(404);
                     } else {
-                        // permission denied if they don't have access
-                        routingContext.fail(403);
-                    }
-                }
-            } else {
-                // task lookup failed
-                routingContext.fail(getByIdReply.cause());
-            }
-        });
+                        // if the current user is the owner or has admin privileges, allow the action
+                        if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
+                                user.isAdminRoleExists()) {
+                            dbService.updateStatus(tenantId, uuid, TransferStatusType.CANCELLED.name(),deleteReply -> {
+                                if (deleteReply.succeeded()) {
+                                    try {
+                                        _doPublishNatsJSEvent( MessageType.TRANSFERTASK_CANCELED, deleteReply.result());
 
+                                        routingContext.response()
+                                                .putHeader("content-type", "application/json")
+                                                .setStatusCode(203).end();
+                                    } catch (Exception e) {
+                                        log.debug(e.getMessage());
+                                    }
+                                } else {
+                                    // delete failed
+                                    routingContext.fail(deleteReply.cause());
+                                }
+                            });
+                        } else {
+                            // permission denied if they don't have access
+                            routingContext.fail(403);
+                        }
+                    }
+                } else {
+                    // task lookup failed
+                    routingContext.fail(getByIdReply.cause());
+                }
+            });
+        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
+            log.debug(e.getMessage());
+        }
     }
 
     /**
@@ -358,87 +406,103 @@ public class TransferAPIVertical extends AbstractNatsListener {
      *
      * @param routingContext the current rounting context for the request
      */
-    private void cancelAll(RoutingContext routingContext) {
+    private void cancelAll(RoutingContext routingContext)   {
         log.debug("cancelAll method");
         Wso2JwtUser user = (Wso2JwtUser)routingContext.user();
         JsonObject principal = user.principal();
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
         log.debug("username = {}", username);
+
         JsonObject body = routingContext.getBodyAsJson();
+        String source = body.getString("source");
+        String dest = body.getString("dest");
         // request body was validated prior to this method being called
 //        TransferTaskRequest transferTaskRequest = new TransferTaskRequest(body);
         TransferTask transferTask = new TransferTask();
+        transferTask.setCreated(Instant.now());
         transferTask.setTenantId(tenantId);
         transferTask.setOwner(username);
-        transferTask.setSource(body.getString("source"));
-        transferTask.setDest(body.getString("dest"));
+        try {
+            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
+            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
 
-        // lookup task to get the id
-        dbService.getByUuid(tenantId, transferTask.getUuid(), getByIdReply -> {
-            if (getByIdReply.succeeded()) {
-                if (getByIdReply.result() == null) {
-                    // not found
-                    routingContext.fail(404);
-                } else {
-                    // if the current user is the owner or has admin privileges, allow the action
-                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            user.isAdminRoleExists()) {
-                        dbService.cancelAll(tenantId, deleteReply -> {
-                            if (deleteReply.succeeded()) {
-                                JsonObject jo = null;
-                                if (deleteReply.result() == null){
-                                    jo = new JsonObject();
-                                }else{
-                                    jo = new JsonObject(String.valueOf(deleteReply.result()));
-                                }
-                                // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
-                                //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                try {
-                                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, jo);
-                                } catch (IOException | InterruptedException | TimeoutException e) {
-                                    log.debug(e.getMessage());
-                                }
+            //URLEncode paths
+            transferTask.setSource(URI.create(body.getString("source")).toString());
+            transferTask.setDest(URI.create(body.getString("dest")).toString());
 
-                                routingContext.response()
-                                        .putHeader("content-type", "application/json")
-                                        .setStatusCode(203).end();
-                            } else {
-                                // delete failed
-                                routingContext.fail(deleteReply.cause());
-                            }
-                        });
+            transferTask.setSource(body.getString("source"));
+            transferTask.setDest(body.getString("dest"));
+
+            // lookup task to get the id
+            dbService.getByUuid(tenantId, transferTask.getUuid(), getByIdReply -> {
+                if (getByIdReply.succeeded()) {
+                    if (getByIdReply.result() == null) {
+                        // not found
+                        routingContext.fail(404);
                     } else {
-                        // permission denied if they don't have access
-                        routingContext.fail(403);
+                        // if the current user is the owner or has admin privileges, allow the action
+                        if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
+                                user.isAdminRoleExists()) {
+                            dbService.cancelAll(tenantId, deleteReply -> {
+                                if (deleteReply.succeeded()) {
+                                    JsonObject jo = null;
+                                    if (deleteReply.result() == null){
+                                        jo = new JsonObject();
+                                    }else{
+                                        jo = new JsonObject(String.valueOf(deleteReply.result()));
+                                    }
+                                    // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                                    //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
+                                    try {
+                                        _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, jo);
+                                    } catch (IOException | InterruptedException | TimeoutException e) {
+                                        log.debug(e.getMessage());
+                                    }
+
+                                    routingContext.response()
+                                            .putHeader("content-type", "application/json")
+                                            .setStatusCode(203).end();
+                                } else {
+                                    // delete failed
+                                    routingContext.fail(deleteReply.cause());
+                                }
+                            });
+                        } else {
+                            // permission denied if they don't have access
+                            routingContext.fail(403);
+                        }
                     }
+                } else {
+                    // task lookup failed
+                    routingContext.fail(getByIdReply.cause());
                 }
-            } else {
-                // task lookup failed
-                routingContext.fail(getByIdReply.cause());
-            }
-        });
+            });
 
 
-        dbService.getByUuid(tenantId, transferTask.getUuid(), reply -> {
-            if (reply.succeeded()) {
-                TransferTask tt = new TransferTask(reply.result());
-                try {
-                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
-                    routingContext.response()
-                            .putHeader("content-type", "application/json")
-                            .setStatusCode(201)
-                            .end(AgaveResponseBuilder.getInstance(routingContext)
-                                    .setResult(tt.toJson())
-                                    .build()
-                                    .toString());
-                } catch (Exception e) {
-                    log.debug(e.getMessage());
+            dbService.getByUuid(tenantId, transferTask.getUuid(), reply -> {
+                if (reply.succeeded()) {
+                    TransferTask tt = new TransferTask(reply.result());
+                    try {
+                        _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, tt.toJson());
+                        routingContext.response()
+                                .putHeader("content-type", "application/json")
+                                .setStatusCode(201)
+                                .end(AgaveResponseBuilder.getInstance(routingContext)
+                                        .setResult(tt.toJson())
+                                        .build()
+                                        .toString());
+                    } catch (Exception e) {
+                        log.debug(e.getMessage());
+                    }
+                } else {
+                    routingContext.fail(reply.cause());
                 }
-            } else {
-                routingContext.fail(reply.cause());
-            }
-        });
+            });
+
+        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
+            log.debug(e.getMessage());
+        }
     }
 
 
@@ -454,49 +518,67 @@ public class TransferAPIVertical extends AbstractNatsListener {
         String tenantId = principal.getString("tenantId");
         String username = principal.getString("username");
         String uuid = routingContext.pathParam("uuid");
+        JsonObject body = routingContext.getBodyAsJson();
+        String source = body.getString("source");
+        String dest = body.getString("dest");
 
-        // lookup task to get the id
-        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
-            if (getByIdReply.succeeded()) {
-                if (getByIdReply.result() == null) {
-                    // not found
-                    routingContext.fail(404);
-                } else {
-                    // if the current user is the owner or has admin privileges, allow the action
-                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            user.isAdminRoleExists()) {
-                        dbService.delete(tenantId, uuid, deleteReply -> {
-                            if (deleteReply.succeeded()) {
-                                JsonObject jo = null;
-                                if (deleteReply.result() == null){
-                                    jo = new JsonObject();
-                                }else{
-                                    jo = new JsonObject(String.valueOf(deleteReply.result()));
-                                }
-                                try {
-                                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, jo);
-                                } catch (IOException | InterruptedException | TimeoutException e) {
-                                    log.debug(e.getMessage());
-                                }
+        TransferTask transferTask = new TransferTask();
+        transferTask.setCreated(Instant.now());
+        transferTask.setTenantId(tenantId);
+        transferTask.setOwner(username);
+        try {
+            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
+            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
 
-                                routingContext.response()
-                                        .putHeader("content-type", "application/json")
-                                        .setStatusCode(203).end();
-                            } else {
-                                // delete failed
-                                routingContext.fail(deleteReply.cause());
-                            }
-                        });
+            //URLEncode paths
+            transferTask.setSource(URI.create(body.getString("source")).toString());
+            transferTask.setDest(URI.create(body.getString("dest")).toString());
+
+            // lookup task to get the id
+            dbService.getByUuid(tenantId, uuid, getByIdReply -> {
+                if (getByIdReply.succeeded()) {
+                    if (getByIdReply.result() == null) {
+                        // not found
+                        routingContext.fail(404);
                     } else {
-                        // permission denied if they don't have access
-                        routingContext.fail(403);
+                        // if the current user is the owner or has admin privileges, allow the action
+                        if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
+                                user.isAdminRoleExists()) {
+                            dbService.delete(tenantId, uuid, deleteReply -> {
+                                if (deleteReply.succeeded()) {
+                                    JsonObject jo = null;
+                                    if (deleteReply.result() == null){
+                                        jo = new JsonObject();
+                                    }else{
+                                        jo = new JsonObject(String.valueOf(deleteReply.result()));
+                                    }
+                                    try {
+                                        _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, jo);
+                                    } catch (IOException | InterruptedException | TimeoutException e) {
+                                        log.debug(e.getMessage());
+                                    }
+
+                                    routingContext.response()
+                                            .putHeader("content-type", "application/json")
+                                            .setStatusCode(203).end();
+                                } else {
+                                    // delete failed
+                                    routingContext.fail(deleteReply.cause());
+                                }
+                            });
+                        } else {
+                            // permission denied if they don't have access
+                            routingContext.fail(403);
+                        }
                     }
+                } else {
+                    // task lookup failed
+                    routingContext.fail(getByIdReply.cause());
                 }
-            } else {
-                // task lookup failed
-                routingContext.fail(getByIdReply.cause());
-            }
-        });
+            });
+        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
+            log.debug(e.getMessage());
+        }
     }
 
     /**
@@ -512,50 +594,71 @@ public class TransferAPIVertical extends AbstractNatsListener {
         String username = principal.getString("username");
         String uuid = routingContext.pathParam("uuid");
 
-        // lookup task to get the id
-        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
-            if (getByIdReply.succeeded()) {
-                if (getByIdReply.result() == null) {
-                    // not found
-                    routingContext.fail(404);
-                } else {
-                    // if the current user is the owner or has admin privileges, allow the action
-                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            user.isAdminRoleExists()) {
-                        dbService.deleteAll(tenantId, deleteReply -> {
-                            if (deleteReply.succeeded()) {
-                               // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
-                                //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
-                                JsonObject jo = null;
-                                if (deleteReply.result() == null){
-                                    jo = new JsonObject();
-                                }else{
-                                    jo = new JsonObject(String.valueOf(deleteReply.result()));
-                                }
-                                try {
-                                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, jo);
-                                } catch (IOException | InterruptedException | TimeoutException e) {
-                                    log.debug(e.getMessage());
-                                }
+        JsonObject body = routingContext.getBodyAsJson();
+        String source = body.getString("source");
+        String dest = body.getString("dest");
 
-                                routingContext.response()
-                                        .putHeader("content-type", "application/json")
-                                        .setStatusCode(203).end();
-                            } else {
-                                // delete failed
-                                routingContext.fail(deleteReply.cause());
-                            }
-                        });
+        TransferTask transferTask = new TransferTask();
+        transferTask.setCreated(Instant.now());
+        transferTask.setTenantId(tenantId);
+        transferTask.setOwner(username);
+        try {
+            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
+            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
+
+            //URLEncode paths
+            transferTask.setSource(URI.create(body.getString("source")).toString());
+            transferTask.setDest(URI.create(body.getString("dest")).toString());
+
+
+            // lookup task to get the id
+            dbService.getByUuid(tenantId, uuid, getByIdReply -> {
+                if (getByIdReply.succeeded()) {
+                    if (getByIdReply.result() == null) {
+                        // not found
+                        routingContext.fail(404);
                     } else {
-                        // permission denied if they don't have access
-                        routingContext.fail(403);
+                        // if the current user is the owner or has admin privileges, allow the action
+                        if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
+                                user.isAdminRoleExists()) {
+                            dbService.deleteAll(tenantId, deleteReply -> {
+                                if (deleteReply.succeeded()) {
+                                   // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
+                                    //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
+                                    JsonObject jo = null;
+                                    if (deleteReply.result() == null){
+                                        jo = new JsonObject();
+                                    }else{
+                                        jo = new JsonObject(String.valueOf(deleteReply.result()));
+                                    }
+                                    try {
+                                        _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED, jo);
+                                    } catch (IOException | InterruptedException | TimeoutException e) {
+                                        log.debug(e.getMessage());
+                                    }
+
+                                    routingContext.response()
+                                            .putHeader("content-type", "application/json")
+                                            .setStatusCode(203).end();
+                                } else {
+                                    // delete failed
+                                    routingContext.fail(deleteReply.cause());
+                                }
+                            });
+                        } else {
+                            // permission denied if they don't have access
+                            routingContext.fail(403);
+                        }
                     }
+                } else {
+                    // task lookup failed
+                    routingContext.fail(getByIdReply.cause());
                 }
-            } else {
-                // task lookup failed
-                routingContext.fail(getByIdReply.cause());
-            }
-        });
+            });
+
+        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
+            log.debug(e.getMessage());
+        }
     }
 
 
@@ -572,36 +675,58 @@ public class TransferAPIVertical extends AbstractNatsListener {
         String uuid = routingContext.pathParam("uuid");
         AgaveResponseBuilder responseBuilder = AgaveResponseBuilder.getInstance(routingContext);
 
-        // lookup the transfer task regardless
-        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
-            if (getByIdReply.succeeded()) {
-                if (getByIdReply.result() == null) {
-                    // not found
-                    routingContext.fail(404);
-                } else {
-                    // if the current user is the owner or has admin privileges, allow the action
-                    if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
-                            user.isAdminRoleExists()) {
+        JsonObject body = routingContext.getBodyAsJson();
+        String source = body.getString("source");
+        String dest = body.getString("dest");
 
-                        TransferTask transferTask = new TransferTask(getByIdReply.result());
+        TransferTask transferTask = new TransferTask();
+        transferTask.setCreated(Instant.now());
+        transferTask.setTenantId(tenantId);
+        transferTask.setOwner(username);
 
-                        // format and return the result
-                        routingContext.response()
-                                .putHeader("content-type", "application/json")
-                                .end(
-                                responseBuilder
-                                    .setResult(transferTask.toJson())
-                                    .build()
-                                    .toString());
+        try {
+            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
+            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
+
+            //URLEncode paths
+            transferTask.setSource(URI.create(body.getString("source")).toString());
+            transferTask.setDest(URI.create(body.getString("dest")).toString());
+
+
+            // lookup the transfer task regardless
+            dbService.getByUuid(tenantId, uuid, getByIdReply -> {
+                if (getByIdReply.succeeded()) {
+                    if (getByIdReply.result() == null) {
+                        // not found
+                        routingContext.fail(404);
                     } else {
-                        routingContext.fail(403);
+                        // if the current user is the owner or has admin privileges, allow the action
+                        if (StringUtils.equals(username, getByIdReply.result().getString("owner")) ||
+                                user.isAdminRoleExists()) {
+
+                            TransferTask transferTaskReturn = new TransferTask(getByIdReply.result());
+
+                            // format and return the result
+                            routingContext.response()
+                                    .putHeader("content-type", "application/json")
+                                    .end(
+                                    responseBuilder
+                                        .setResult(transferTaskReturn.toJson())
+                                        .build()
+                                        .toString());
+                        } else {
+                            routingContext.fail(403);
+                        }
                     }
+                } else {
+                    // task lookup failed
+                    routingContext.fail(getByIdReply.cause());
                 }
-            } else {
-                // task lookup failed
-                routingContext.fail(getByIdReply.cause());
-            }
-        });
+            });
+        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
+            log.debug(e.getMessage());
+        }
+
     }
 
     /**
@@ -618,7 +743,24 @@ public class TransferAPIVertical extends AbstractNatsListener {
         String uuid = routingContext.request().getParam("uuid");
         TransferUpdate transferUpdate = routingContext.getBodyAsJson().mapTo(TransferUpdate.class);
 
-        dbService.getByUuid(tenantId, uuid, getByIdReply -> {
+
+        JsonObject body = routingContext.getBodyAsJson();
+        String source = body.getString("source");
+        String dest = body.getString("dest");
+
+        TransferTask transferTask = new TransferTask();
+        transferTask.setCreated(Instant.now());
+
+        try {
+            AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(source));
+            sourceClient = getRemoteDataClient(transferTask.getTenantId(), transferTask.getOwner(), srcUri.get());
+
+            //URLEncode paths
+            transferTask.setSource(URI.create(body.getString("source")).toString());
+            transferTask.setDest(URI.create(body.getString("dest")).toString());
+
+
+            dbService.getByUuid(tenantId, uuid, getByIdReply -> {
             if (getByIdReply.succeeded()) {
                 if (getByIdReply.result() == null) {
                     /// not found
@@ -658,6 +800,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                 routingContext.fail(getByIdReply.cause());
             }
         });
+        } catch (SystemUnknownException | AgaveNamespaceException | RemoteCredentialException | PermissionException | FileNotFoundException | RemoteDataException  e) {
+            log.debug(e.getMessage());
+        }
     }
 
 
@@ -827,6 +972,43 @@ public class TransferAPIVertical extends AbstractNatsListener {
     protected String makeTestJwt(String username) {
         System.out.println("username = "+username);
         return makeTestJwt(username, "");
+    }
+
+    /**
+     * Returns shortname for package containing a {@link RemoteDataClient}. This
+     * allows us to determine the protocol used by that client quickly for logging
+     * purposes. For example S3JCloud => s3, MaverickSFTP => sftp.
+     *
+     * @param clientClass class for which to get the protocol
+     * @return data protocol shortname used by a client.
+     */
+    private Object getProtocolForClass(Class<? extends RemoteDataClient> clientClass) {
+        String fullName = clientClass.getName();
+        String[] tokens = fullName.split("\\.");
+        return tokens[tokens.length - 2];
+    }
+
+    /**
+     * Parses the hostname out of a URI. This is used to extract systemId info from
+     * the TransferTask.rootTask.source and TransferTask.rootTask.dest fields and
+     * create the child source and dest values.
+     *
+     * @param serializedUri
+     * @return
+     */
+    private String getSystemId(String serializedUri) {
+        URI uri = null;
+        try {
+            uri = URI.create(serializedUri);
+            return uri.getHost();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    protected RemoteDataClient getRemoteDataClient(String tenantId, String username, URI target) throws NotImplementedException, SystemUnknownException, AgaveNamespaceException, RemoteCredentialException, PermissionException, FileNotFoundException, RemoteDataException {
+        TenancyHelper.setCurrentTenantId(tenantId);
+        return new RemoteDataClientFactory().getInstance(username, null, target);
     }
 
 }

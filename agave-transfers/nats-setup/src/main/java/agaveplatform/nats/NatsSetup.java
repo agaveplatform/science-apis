@@ -1,6 +1,7 @@
 package agaveplatform.nats;
 
 
+import com.github.slugify.Slugify;
 import io.nats.client.*;
 import io.nats.client.api.*;
 //import io.nats.client.impl.NatsMessage;
@@ -8,8 +9,12 @@ import io.nats.client.api.*;
 import java.io.IOException;
 //import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.Timer;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,16 +89,27 @@ public class NatsSetup {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        _createStream(jsm, "TRANSFERTASK", "transfers.agave__dev.>");
-        _createStream(jsm, "NOTIFICATION", "notification.agave__dev.>");
+        Map<String, String> bashEnv = System.getenv();
+        String streamEnvironment = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","DEV");
+        String subjectPrefix = streamEnvironment + "." + bashEnv.getOrDefault("AGAVE_MESSAGE_PREFIX","default.");
+        subjectPrefix = subjectPrefix.replaceAll("\\.{2,}",".");
+        subjectPrefix = StringUtils.stripEnd(subjectPrefix, ".");
+        // slugify each component
+//        Slugify slg = new Slugify();
+//        subjectPrefix = Arrays.stream(subjectPrefix.split(".")).map(t -> slg.slugify(t)).collect(Collectors.joining("."));
+
+
+        _createStream(jsm, streamEnvironment, streamEnvironment + "." + subjectPrefix + ".>");
+       // _createStream(jsm, "AGAVE_PROD", "branch_def.>");
         //_createStream(jsm, "TRANSFER", "transfer.>");
         //_createStream(jsm, "FILETRANSFER", "filetransfer.*");
         //_createStream(jsm, "UrlCopy", "filetransfer.*");
         log.info("done creating streams");
-//transfers.agave__dev.testuser.$systemid.transfer.protocol.sftp
+//$branch.$type.$owner.$systemid.transfer.protocol.sftp
+//branch_abc.notificatin.*
         log.info("Now creating consumers");
-        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_CREATED_Consumer", "transfers.agave__dev.a.a.a.a.a");
-        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_ASSIGNED_Consumer","transfertask.assigned");
+//        _createConsumer(jsm, "AGAVE_DEV", subjectPrefix +"_TRANSFERTASK_CREATED_ConsumerD", subjectPrefix + ".transfers.*.*.transfer.protocol.*");
+//        _createConsumer(jsm, "AGAVE_PROD", subjectPrefix + "TRANSFERTASK_ASSIGNED_Consumer",subjectPrefix + "transfers.>");
 //        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_CANCELED_SYNC_Consumer", "transfertask.canceled.sync");
 //        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_CANCELED_COMPLETED_Consumer","transfertask.canceled.completed");
 //        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_CANCELED_ACK_Consumer","transfertask.canceled.ack");
@@ -109,10 +125,10 @@ public class NatsSetup {
 //        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_PARENT_ERROR_Consumer","transfertask.parent.error");
 //        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_FAILED_Consumer","transfertask.failed");
 //        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_INTERUPTED_Consumer","transfertask.interupted");
-        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_Consumer","notification.send");
-        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_TRANSFERTASK_Consumer","notification.transfertask");
-        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_CANCELED_Consumer","notification.cancelled");
-        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_COMPLETED_Consumer","notification.completed");
+//        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_Consumer","notification.send");
+//        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_TRANSFERTASK_Consumer","notification.transfertask");
+//        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_CANCELED_Consumer","notification.cancelled");
+//        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_COMPLETED_Consumer","notification.completed");
 //        _createConsumer(jsm, "TRANSFER", "TRANSFER_SFTP_Consumer","transfer.sftp");
 //        _createConsumer(jsm, "TRANSFER", "TRANSFER_HTTP_Consumer","transfer.http");
 //        _createConsumer(jsm, "TRANSFER", "TRANSFER_GRIDFTP_Consumer","transfer.gridftp");

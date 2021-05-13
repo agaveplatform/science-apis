@@ -9,27 +9,28 @@ import org.iplantc.service.transfer.AbstractRemoteTransferListener;
  * correspond 1-1 with {@link TransferStatusType} or {@link TransferTaskEventType}, as they cover all
  * possible internal messages that may need to be created for the internal workings of the service.
  */
-public interface MessageType {
-    public static final String 	TRANSFERTASK_CREATED = "transfertask.created";
-    public static final String 	TRANSFERTASK_ASSIGNED = "transfertask.assigned";
-    public static final String  TRANSFERTASK_CANCELED_SYNC = "transfertask.canceled.sync";
-    public static final String  TRANSFERTASK_CANCELED_COMPLETED = "transfertask.canceled.completed";
-    public static final String  TRANSFERTASK_CANCELED_ACK = "transfertask.canceled.ack";
-    public static final String 	TRANSFERTASK_CANCELED = "transfertask.canceled";
-    public static final String 	TRANSFERTASK_PAUSED = "transfertask.paused";
-    public static final String 	TRANSFERTASK_PAUSED_SYNC = "transfertask.paused.sync";
-    public static final String 	TRANSFERTASK_PAUSED_COMPLETED = "transfertask.paused.completed";
-    public static final String 	TRANSFERTASK_PAUSED_ACK = "transfertask.paused.ack";
-    public static final String 	TRANSFER_COMPLETED = "transfer.completed";
-    public static final String  TRANSFERTASK_FINISHED = "transfertask.finished";
-    public static final String 	TRANSFERTASK_ERROR = "transfertask.error";
-    public static final String 	TRANSFERTASK_PARENT_ERROR = "transfertask.parent.error";
-    public static final String 	TRANSFERTASK_FAILED = "transfertask.failed";
-    public static final String  TRANSFERTASK_INTERUPTED = "transfertask.interupted";
-    public static final String 	NOTIFICATION = "notification";
-    public static final String 	NOTIFICATION_TRANSFERTASK = "notification.transfertask";
-    public static final String 	NOTIFICATION_CANCELED = "notification.cancelled";
-    public static final String 	NOTIFICATION_COMPLETED = "notification.completed";
+
+public interface MessageType {                                                                      // type         Ack
+    public static final String 	TRANSFERTASK_CREATED = "transfertask.created";                      // subscribe, Explicit,
+    public static final String 	TRANSFERTASK_ASSIGNED = "transfertask.assigned";                    // subscribe, Explicit
+    public static final String  TRANSFERTASK_CANCELED_SYNC = "transfertask.canceled-sync";          // subscribe, Explicit
+    public static final String  TRANSFERTASK_CANCELED_COMPLETED = "transfertask.canceled-completed";// subscribe, Explicit
+    public static final String  TRANSFERTASK_CANCELED_ACK = "transfertask.canceled-ack";            // subscribe, Explicit
+    public static final String 	TRANSFERTASK_CANCELED = "transfertask.canceled";                    // push, None
+    public static final String 	TRANSFERTASK_PAUSED = "transfertask.paused";                        // push, None
+    public static final String 	TRANSFERTASK_PAUSED_SYNC = "transfertask.paused-sync";              // subscribe, None
+    public static final String 	TRANSFERTASK_PAUSED_COMPLETED = "transfertask.paused-completed";    // subscribe, None
+    public static final String 	TRANSFERTASK_PAUSED_ACK = "transfertask.paused-ack";                // subscribe, None
+    public static final String 	TRANSFER_COMPLETED = "transfer.completed";                          // subscribe, Explicit
+    public static final String  TRANSFERTASK_FINISHED = "transfertask.finished";                    // subscribe, Explicit
+    public static final String 	TRANSFERTASK_ERROR = "transfertask.error";                          // subscribe, Explicit
+    public static final String 	TRANSFERTASK_PARENT_ERROR = "transfertask.parent-error";            // subscribe, Explicit
+    public static final String 	TRANSFERTASK_FAILED = "transfertask.failed";                        // subscribe, Explicit
+    public static final String  TRANSFERTASK_INTERUPTED = "transfertask.interupted";                // subscribe, Explicit
+    public static final String 	NOTIFICATION = "notification.send";                                      // subscribe, Explicit
+    public static final String 	NOTIFICATION_TRANSFERTASK = "notification.transfertask";            // subscribe, Explicit
+    public static final String 	NOTIFICATION_CANCELED = "notification.cancelled";                   // subscribe, Explicit
+    public static final String 	NOTIFICATION_COMPLETED = "notification.completed";                  // subscribe, Explicit
     public static final String 	TRANSFER_SFTP = "transfer.sftp";
     public static final String 	TRANSFER_HTTP = "transfer.http";
     public static final String 	TRANSFER_GRIDFTP = "transfer.gridftp";
@@ -42,20 +43,20 @@ public interface MessageType {
     public static final String 	TRANSFER_SWIFT = "transfer.swift";
     public static final String 	TRANSFER_HTTPS = "transfer.https";
 //    public static final String 	FILETRANSFER_SFTP = "filetransfer.sftp";
-    public static final String 	TRANSFERTASK_DB_QUEUE = "transfertask.db.queue";
-    public static final String 	TRANSFERTASK_DELETED = "transfertask.deleted";
-    public static final String 	TRANSFERTASK_DELETED_SYNC = "transfertask.deleted.sync";
-    public static final String 	TRANSFERTASK_DELETED_COMPLETED = "transfertask.deleted.completed";
-    public static final String 	TRANSFERTASK_DELETED_ACK = "transfertask.deleted.ack";
-    public static final String 	TRANSFERTASK_UPDATED = "transfertask.updated";
-    public static final String 	TRANSFERTASK_PROCESS_UNARY = "transfertask.process.unary";
-    public static final String 	TRANSFER_STREAMING = "transfer.streaming";
-    public static final String 	TRANSFER_UNARY = "transfer.unary";
-    public static final String  TRANSFERTASK_HEALTHCHECK = "transfertask.healthcheck";
-    public static final String  TRANSFERTASK_HEALTHCHECK_PARENT = "transfertask.healthcheck_parent";
-    public static final String  TRANSFER_FAILED = "transfer.failed";
-    public static final String  TRANSFER_RETRY = "transfer.retry";
-    public static final String  TRANSFER_ALL = "transfer.all";
-    public static final String  TRANSFERTASK_NOTIFICATION = "transfertask.notification";
+    public static final String 	TRANSFERTASK_DB_QUEUE = "transfertask.db-queue";                    // subscribe, Explicit
+    public static final String 	TRANSFERTASK_DELETED = "transfertask.deleted";                      // push, Explicit
+    public static final String 	TRANSFERTASK_DELETED_SYNC = "transfertask.deleted-sync";            // subscribe, Explicit
+    public static final String 	TRANSFERTASK_DELETED_COMPLETED = "transfertask.deleted-completed";  // subscribe, Explicit
+    public static final String 	TRANSFERTASK_DELETED_ACK = "transfertask.deleted-ack";              // subscribe, Explicit
+    public static final String 	TRANSFERTASK_UPDATED = "transfertask.updated";                      // subscribe, Explicit
+    public static final String 	TRANSFERTASK_PROCESS_UNARY = "transfertask.process-unary";          // subscribe, Explicit
+    public static final String 	TRANSFER_STREAMING = "transfer.streaming";                          // subscribe, Explicit
+    public static final String 	TRANSFER_UNARY = "transfer.unary";                                  // subscribe, Explicit
+    public static final String  TRANSFERTASK_HEALTHCHECK = "transfertask.healthcheck";              // subscribe, Explicit
+    public static final String  TRANSFERTASK_HEALTHCHECK_PARENT = "transfertask.healthcheck-parent";// subscribe, Explicit
+    public static final String  TRANSFER_FAILED = "transfer.failed";                                // subscribe, Explicit
+    public static final String  TRANSFER_RETRY = "transfer.retry";                                  // subscribe, Explicit
+    public static final String  TRANSFER_ALL = "transfer.all";                                      // subscribe, Explicit
+    public static final String  TRANSFERTASK_NOTIFICATION = "transfertask.notification";            // subscribe, Explicit
     //public static final String  UrlCopy = "transfertask.UrlCopy";
 }

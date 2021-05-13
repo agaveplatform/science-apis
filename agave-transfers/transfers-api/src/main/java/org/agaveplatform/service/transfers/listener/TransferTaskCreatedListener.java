@@ -97,7 +97,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         // This handler will get called every second
-        vertx.setPeriodic(1000, id -> {
+        //vertx.setPeriodic(1000, id -> {
 
             try {
                 //**********************************************************************************
@@ -110,7 +110,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 
                 PullSubscribeOptions pullOptions = builder.build();
 
-                JetStreamSubscription sub = js.subscribe("transfertask.created", pullOptions);
+                JetStreamSubscription sub = js.subscribe(EVENT_CHANNEL, pullOptions);
                 log.info("got subscription: {}", sub.getConsumerInfo().toString());
 
                 long m_count = sub.getPendingMessageCount();
@@ -145,13 +145,13 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                     getConnection().flush(Duration.ofMillis(500));
                 }
 
-                } catch(JetStreamApiException e){
-                    log.debug("TRANSFERTASK_CREATED - Error with subsription {}", e.getMessage());
-                } catch(Exception e){
-                    log.debug("TRANSFERTASK_CREATED - Exception {}", e.getMessage().toString());
-                    log.debug(e.getCause().toString());
-                }
-        });
+            } catch (JetStreamApiException e) {
+                log.debug("TRANSFERTASK_CREATED - Error with subsription {}", e.getMessage());
+            } catch (Exception e) {
+                log.debug("TRANSFERTASK_CREATED - Exception {}", e.getMessage().toString());
+                log.debug(e.getCause().toString());
+            }
+            //});
 //
 //        //**********************************************************************************
 //        // Process the TRANSFERTASK_CANCELED_SYNC messages
@@ -292,6 +292,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 //        }
 //        getConnection().flush(Duration.ofMillis(500));
 //
+       // });
     }
     public MessageHandler _MessageHandler(JetStreamManagement jsm, int count) {
         CountDownLatch msgLatch = new CountDownLatch(count);
@@ -350,6 +351,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         body.put("event", this.getClass().getName());
                         body.put("type", getEventChannel());
                         try {
+                            //transfers.$tenantid.$uid.$systemid.transfer.$protocol
                             _doPublishNatsJSEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
                         } catch (Exception e) {
                             log.debug(e.getMessage());

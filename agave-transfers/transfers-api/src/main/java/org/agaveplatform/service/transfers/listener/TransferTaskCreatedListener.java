@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
+import com.github.slugify.Slugify;
 import io.nats.client.*;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -12,6 +13,7 @@ import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.RemoteSystemAO;
+import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemRoleException;
@@ -36,6 +38,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
@@ -85,7 +88,6 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 
     private List<JetStream> jsTree = new ArrayList<>();
 
-
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
 
@@ -99,7 +101,20 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         // This handler will get called every second
         //vertx.setPeriodic(1000, id -> {
 
-            try {
+        //transfers.$tenantid.$uid.$systemid.transfer.$protocol
+        String prefix = _getStreamPrefix();
+
+        try {
+                // check if the consumer exists.  If it doesn't then create it.
+                Connection nc = getConnection();
+                JetStreamManagement jsm = nc.jetStreamManagement();
+                String streamName = _getStreamName(EVENT_CHANNEL, tenantId );
+                String consumer = _getConsumer(type, tenantid,  eventName);
+                context.deploymentID();
+                String podName = "";
+                if (_checkConsumer(jsm, stream, consumer )){
+
+                }
                 //**********************************************************************************
                 // Process TRANSFERTASK_CREATED messages
                 //**********************************************************************************
@@ -331,7 +346,6 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         };
         return handler;
     }
-
 
     public void tt_Created(Message m, Handler<AsyncResult<Boolean>> handler){
         if (m.isJetStream()) {

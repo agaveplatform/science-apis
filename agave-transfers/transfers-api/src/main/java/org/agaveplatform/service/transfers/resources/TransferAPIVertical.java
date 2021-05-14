@@ -304,7 +304,7 @@ public class TransferAPIVertical extends AbstractNatsListener {
                     try {
                         //transfers.$tenantid.$uid.$systemid.transfer.$protocol
                         srcUri.set(URI.create(source));
-                        String messageName = _createMessageName("transfers", tt.getTenantId(), tt.getOwner(), srcUri.get().getHost(), MessageType.TRANSFERTASK_CREATED);
+                        String messageName = _createMessageName("transfers", tt.getTenantId(), MessageType.TRANSFERTASK_CREATED);
                         _doPublishNatsJSEvent(messageName, tt.toJson());
                         routingContext.response()
                             .putHeader("content-type", "application/json")

@@ -7,6 +7,8 @@ import io.nats.client.impl.NatsMessage;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.uuid.AgaveUUID;
+import org.iplantc.service.common.uuid.UUIDType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,11 +47,25 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         return null;
     }
 
-    public String _createMessageName(String type, String tenantid, String uid, String systemid, String eventName){
-        //transfers.$tenantid.$uid.$systemid.transfer.$protocol
+    /*
+        This will create a message name. It takes the following paramaters
+        @param streamName
+        @param tenantId - ID of the tenant
+        @param eventName - this is the MessageType
+        @return name
+        The format for the messages is as follows:
+            agaveType - the inital setting is "transfers" but other systems can use it, i.e. "files", "jobs"
+            tenantId - the ID of the tenant
+            uId - this it the owner of the request.  It can be found in the owner field of the TransferTask
+            systemId - this is the system id for the source
+            eventName - this is the MessgeType enumeration
+            protocol - defined by UUIDType.name()
+     */
+    public String _createMessageName(String streamName, String tenantid, String eventName){
+        //transfers.$tenantid.transfer.$protocol
         String prefix = _getStreamPrefix();
         eventName = StringUtils.replaceChars(eventName,"_",".");
-        String name = prefix + "." + type + "." + tenantid + "." + uid + "." + systemid + "." + eventName;
+        String name = prefix + "." + streamName + "." + tenantid + "." + eventName;
         name = name.replaceAll("\\.{2,}",".");
         name = StringUtils.stripEnd(name, ".");
         Slugify slg = new Slugify();
@@ -57,14 +73,17 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
         return name;
     }
-    public String _createConsumerName(String type, String tenantid, String uid, String systemid, String eventName){
+    public String _createConsumerName(String streamName, String tenantid, String eventName){
         //Slugify slg = new Slugify();
         String consumerName = "";
         String prefix = _getStreamPrefix();
 
-        consumerName = prefix + "." + type + "." + tenantid + "." + uid + "." + systemid + "." + eventName;
+        consumerName = prefix + "." + streamName + "."+ tenantid + eventName;
         consumerName = consumerName.replaceAll("\\.{2,}",".");
         consumerName = StringUtils.stripEnd(consumerName, ".");
+
+        String uuid = new AgaveUUID(UUIDType.TRANSFER).toString();
+        consumerName = consumerName + uuid;
 
         return consumerName;
     }
@@ -85,7 +104,19 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         log.info("Created Consumer Name: {} Desc: {}", consumerInfo.getStreamName(), consumerInfo.getDescription());
         return consumerInfo;
     }
-    public boolean _getConsumer(JetStreamManagement jsm, String stream, String consumer) throws JetStreamApiException, IOException {
+
+    public String _getStreamName(String eventName, String tenantId){
+        String stream = "DEV";
+        //stream = _getStreamPrefix() +"." + tenantId + ".>";
+
+        return stream;
+    }
+    public String _getConsumer(JetStreamManagement jsm, String streamName, String eventName){
+        String consumer = "";
+
+        return consumer;
+    }
+    public boolean _checkConsumer(JetStreamManagement jsm, String stream, String consumer) throws JetStreamApiException, IOException {
         ConsumerInfo cI = jsm.getConsumerInfo(stream, consumer);
 
         if (cI.getName() != null){
@@ -117,14 +148,16 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
             String consumerName="";
             // check to be sure the stream and the consumer exits.  If the consumer does not exist then first create it
-            if (!_getConsumer(jsm, stream, eventName)){
+            if (!_checkConsumer(jsm, stream, eventName)){
                 String tenantid = body.getString("tenantId");
                 String uid = body.getString("owner");
                 AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(body.getString("source")));
 
                 String systemid = srcUri.get().getHost();
-//$branch.$type.$owner.$systemid.transfer.protocol.sftp
-                consumerName = _createConsumerName( stream, tenantid, uid, systemid, eventName);
+
+                //transfers.$tenantid.$uid.$systemid.$eventName
+                consumerName = _createConsumerName( stream, eventName);
+
                 _createConsumer(jsm, stream, consumerName, eventName);
             }
 

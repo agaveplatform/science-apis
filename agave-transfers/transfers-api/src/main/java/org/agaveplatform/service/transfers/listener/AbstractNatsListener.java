@@ -6,6 +6,7 @@ import io.nats.client.impl.NatsMessage;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.util.Slug;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
@@ -21,6 +22,9 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import org.agaveplatform.service.transfers.nats.NatsArgs;
+import org.agaveplatform.service.transfers.nats.NatsArgs.Builder;
 
 public class AbstractNatsListener extends AbstractTransferTaskListener {
     private static final Logger log = LoggerFactory.getLogger(AbstractNatsListener.class);
@@ -45,20 +49,19 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     }
 
     /*
-        This will create a message name. It takes the following paramaters
-        @param streamName
-        @param tenantId - ID of the tenant
-        @param eventName - this is the MessageType
-        @return name
-        The format for the messages is as follows:
-            agaveType - the inital setting is "transfers" but other systems can use it, i.e. "files", "jobs"
-            tenantId - the ID of the tenant
-            uId - this it the owner of the request.  It can be found in the owner field of the TransferTask
-            systemId - this is the system id for the source
-            eventName - this is the MessgeType enumeration
-            protocol - defined by UUIDType.name()
-     */
-    public String _createMessageName(String streamName, String tenantid, String eventName){
+    *    This will create a message name. It takes the following paramaters
+    *    @param streamName
+    *    @param tenantId - ID of the tenant
+    *    @param eventName - this is the MessageType
+    *    @return name
+    *    The format for the messages is as follows:
+    *        agaveType - the inital setting is "transfers" but other systems can use it, i.e. "files", "jobs"
+    *        tenantId - the ID of the tenant
+    *        uId - this it the owner of the request.  It can be found in the owner field of the TransferTask
+    *        systemId - this is the system id for the source
+    *        eventName - this is the MessgeType enumeration  NOTE this is two fields in the message string.
+    */
+    public String _createMessageName(String streamName, String tenantid, String uid, String systemId, String eventName){
         //transfers.$tenantid.transfer.$protocol
         String prefix = _getStreamPrefix();
         eventName = StringUtils.replaceChars(eventName,"_",".");
@@ -68,23 +71,43 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
         name = Arrays.stream(name.split(".")).map(t -> Slug.toSlug(t)).collect(Collectors.joining("."));
 
-        return name;
+        return name + "." + tenantid + "." + uid + "." + systemId + "." + eventName;
     }
-    public String _createConsumerName(String streamName, String tenantid, String eventName){
+
+    /*
+    * This method will create the consumer name from a streamName and eventName
+    * @param streamName
+    * @param eventName - this is the MessageType
+    * @return String consumerName
+     */
+    public String _createConsumerName(String streamName, String eventName){
         //Slugify slg = new Slugify();
         String consumerName = "";
         String prefix = _getStreamPrefix();
 
-        consumerName = prefix + "." + streamName + "."+ tenantid + eventName;
+        consumerName = prefix + "." + streamName + "."+ eventName;
         consumerName = consumerName.replaceAll("\\.{2,}",".");
         consumerName = StringUtils.stripEnd(consumerName, ".");
 
-        String uuid = new AgaveUUID(UUIDType.TRANSFER).toString();
-        consumerName = consumerName + uuid;
+        AgaveUUID uuid = null;
+        try {
+            uuid = new AgaveUUID(UUIDType.SYSTEM.toString());
+        } catch (UUIDException e) {
+            log.debug(e.getMessage());
+        }
+        consumerName = consumerName + uuid.toString();
 
         return consumerName;
     }
 
+    /*
+     *    This will create a NATS consumer. It takes the following paramaters
+     *      @param jsm (JetStreamManagement
+     *    @param stream - name of the stream
+     *    @param consumerName name of the Nats Consumer
+     *    @param subject - this is the fully qualified message address.  Can have wildcards.
+     *    @return ConsumerInfo
+     */
     private ConsumerInfo _createConsumer(JetStreamManagement jsm, String stream, String consumerName, String subject) throws JetStreamApiException, IOException {
         log.info("Configure And Add A Consumer {}: {}", consumerName, subject);
         ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
@@ -103,25 +126,27 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         return consumerInfo;
     }
 
-    public String _getStreamName(String eventName, String tenantId){
-        String stream = "DEV";
-        //stream = _getStreamPrefix() +"." + tenantId + ".>";
-
-        return stream;
-    }
-    public String _getConsumer(JetStreamManagement jsm, String streamName, String eventName){
-        String consumer = "";
-
-        return consumer;
-    }
+    /*
+     *    This will check if a consumer exists
+     *    @param jsm (JetStreamManagement)
+     *    @param stream - Name of the stream
+     *    @param consumer - Nname of the Nats Consumer
+     *    @return boolean
+     */
     public boolean _checkConsumer(JetStreamManagement jsm, String stream, String consumer) throws JetStreamApiException, IOException {
         ConsumerInfo cI = jsm.getConsumerInfo(stream, consumer);
 
         return cI.getName() != null;
     }
 
-    public void _doPublishNatsJSEvent(String eventName, JsonObject body) throws IOException, InterruptedException, TimeoutException {
-        log.info(super.getClass().getName() + ": _doPublishNatsEvent({}, {})", eventName, body);
+    /*
+     *    This will publish a message @body on the messageAddress
+     *    @param messageAddress - Address of the Nats message
+     *    @param body - body of the message
+     *    @return void
+     */
+    public void _doPublishNatsJSEvent(String messageAddress, JsonObject body) throws IOException, InterruptedException, TimeoutException {
+        log.info(super.getClass().getName() + ": _doPublishNatsEvent({}, {})", messageAddress, body);
         Connection nc;
         try{
             Options options = new Options.Builder().
@@ -134,7 +159,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
             JetStream js = nc.jetStream();
             JetStreamManagement jsm = nc.jetStreamManagement();
             String stream;
-            if ( eventName.startsWith("notification")  ){
+            if ( messageAddress.startsWith("notification")  ){
                 stream = "NOTIFICATION";
             }else {
                 stream = "TRANSFERTASK";
@@ -142,22 +167,22 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
             String consumerName="";
             // check to be sure the stream and the consumer exits.  If the consumer does not exist then first create it
-            if (!_checkConsumer(jsm, stream, eventName)){
+            if (!_checkConsumer(jsm, stream, messageAddress)){
                 String tenantid = body.getString("tenantId");
                 String uid = body.getString("owner");
                 AtomicReference<URI> srcUri = new AtomicReference<URI>(URI.create(body.getString("source")));
 
                 String systemid = srcUri.get().getHost();
 
-                //transfers.$tenantid.$uid.$systemid.$eventName
-                consumerName = _createConsumerName( stream, body.getString("tenant_id"), eventName);
+                //transfers.$tenantid.$uid.$systemid.$messageAddress
+                consumerName = _createConsumerName( stream, messageAddress);
 
-                _createConsumer(jsm, stream, consumerName, eventName);
+                _createConsumer(jsm, stream, consumerName, messageAddress);
             }
 
             // create a typical NATS message
             Message msg = NatsMessage.builder()
-                    .subject(eventName)
+                    .subject(messageAddress)
                     .data(body.toString(), StandardCharsets.UTF_8)
                     .build();
 
@@ -165,13 +190,13 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
                     .expectedStream(stream)
                     .messageId("latest");
 
-//            nc.publish(eventName, body.toString().getBytes(StandardCharsets.UTF_8));
-//            log.debug("Published using nc.publish to {}", eventName);
+//            nc.publish(messageAddress, body.toString().getBytes(StandardCharsets.UTF_8));
+//            log.debug("Published using nc.publish to {}", messageAddress);
             // Publish a message and print the results of the publish acknowledgement.
             // An exception will be thrown if there is a failure.
-            PublishAck pa = js.publish(eventName, body.toString().getBytes(StandardCharsets.UTF_8), pubOptsBuilder.build());
+            PublishAck pa = js.publish(messageAddress, body.toString().getBytes(StandardCharsets.UTF_8), pubOptsBuilder.build());
             log.debug("Published message to {} with a sequence no of {} and consumer name {}",pa.getStream(), pa.getSeqno(), consumerName);
-            //nc.publish(eventName, body.toString().getBytes(StandardCharsets.UTF_8));
+            //nc.publish(messageAddress, body.toString().getBytes(StandardCharsets.UTF_8));
 //            nc.flush(Duration.ofMillis(1000));
 //            _closeConnection(nc);
 
@@ -181,63 +206,39 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         }
     }
 
-//    public void _doPublishNatsJSEvent(String stream, String subject, JsonObject body) {
-//        log.info(super.getClass().getName() + ": _doPublishNatsJSEvent({}, {}, {})", stream, subject, body);
-//
-//        try {
-//            JetStream js = _jsmConnect(CONNECTION_URL, stream, subject);
-//
-//            // create a typical NATS message
-//            Message msg = NatsMessage.builder()
-//                    .subject(subject)
-//                    .data(body.toString(), StandardCharsets.UTF_8)
-//                    .build();
-//
-//            // Publish a message and print the results of the publish acknowledgement.
-//            // An exception will be thrown if there is a failure.
-//            PublishAck pa = js.publish(msg);
-//        }catch (IOException e){
-//            log.debug(e.getMessage());
-//        }catch (JetStreamApiException e){
-//            log.debug(e.getMessage());
-//        }
-//    }
-//    public void _doPublishEvent(String stream, String eventName, JsonObject body) {
-//            this._doPublishNatsJSEvent(stream, eventName, body);
-//    }
-    public JetStream _jsmConnect(String url, String stream, String subject){
+    /*
+    *       This will connect to Nats Jetstream
+    *       @param url - url of the server
+    *       @param stream
+    */
+    public JetStream _jsmConnect(String url){
         JetStream js = null;
         try {
             Connection nc = _connect(url);
-
-            // check to see if the stream is there.
-            if (!streamExists(nc, stream)) {
-                log.info("Stopping program, stream does not exist: " + stream);
-                return null;
-            }else{
-                // create a dispatcher without a default handler.
-                Dispatcher dispatcher = nc.createDispatcher();
-
                 // Create our JetStream context to receive JetStream messages.
                 js = nc.jetStream();
-            }
-        } catch (IOException e) {
-            log.info(e.getMessage());
-            log.info(e.getCause().toString());
-        } catch (InterruptedException e) {
-            log.info(e.getMessage());
-            log.info(e.getCause().toString());
-        }catch (JetStreamApiException e){
+
+        } catch (IOException | InterruptedException e) {
             log.info(e.getMessage());
             log.info(e.getCause().toString());
         }
         return js;
     }
 
+    /*
+     *       This will connect to Nats
+     *       It uses the CONNECTION_URL
+     *       @returns Connection
+     */
     public Connection _connect() throws IOException, InterruptedException {
         return _connect(CONNECTION_URL);
     }
 
+    /*
+     *      This will connect to Nats
+     *      @param url - the url of the Nats server
+     *      @returns Connection
+     */
     public Connection _connect(String url) throws IOException, InterruptedException {
         Options.Builder builder = new Options.Builder()
                 .server("nats://nats:4222")
@@ -269,6 +270,10 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         return nc;
     }
 
+    /*
+     *       This will disconnect from Nats
+     *       @param nc - Connection to disconect from
+     */
     public void _closeConnection(Connection nc){
         try {
             nc.close();
@@ -277,6 +282,25 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
             log.debug(e.getMessage());
         }
     }
+
+    /*
+     * This method will get the stream name from the enviorment
+    *
+     * @return String stream
+     */
+    public String _getStreamName(){
+
+        Map<String, String> bashEnv = System.getenv();
+        String stream = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","DEV");
+
+        return stream;
+    }
+
+    /*
+     *       This will check to be sure the stream(s) are correct from Nats
+     *       @param nc - Connection to disconect from
+     *       @return boolean
+     */
     public boolean _checkStreams(Connection nc) {
         //**********************************************************************************
         // Check to be sure all the streams are present
@@ -284,29 +308,30 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         try {
             Map<String, String> bashEnv = System.getenv();
             String streamEnvironment = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","DEV");
-            String subjectPrefix = streamEnvironment + "." + bashEnv.getOrDefault("AGAVE_MESSAGE_PREFIX","default.");
-            subjectPrefix = subjectPrefix.replaceAll("\\.{2,}",".");
-            subjectPrefix = StringUtils.stripEnd(subjectPrefix, ".");
+
             if (!streamExists(nc, streamEnvironment)) {
                 log.info("Stopping program, stream does not exist: {}", streamEnvironment);
                 return false;
             }else {
+                String subjectPrefix = bashEnv.getOrDefault("AGAVE_MESSAGE_PREFIX","default.");
+                subjectPrefix = subjectPrefix.replaceAll("\\.{2,}",".");
+                subjectPrefix = StringUtils.stripEnd(subjectPrefix, ".");
                 JetStreamManagement jsm = nc.jetStreamManagement();
-                _createStream(jsm, streamEnvironment, streamEnvironment + "." + subjectPrefix + ".>");
+                _createStream(jsm, streamEnvironment,  subjectPrefix + ".>");
             }
         } catch (JetStreamApiException | IOException e) {
             log.debug("TransferTaskCreatedListener - Error with subsription {}", e.getMessage());
         }
         return true;
     }
-    public static boolean streamExists(Connection nc, String streamName) throws IOException, JetStreamApiException {
-        return getStreamInfo(nc.jetStreamManagement(), streamName) != null;
-    }
-    public static boolean streamExists(JetStreamManagement jsm, String streamName) throws IOException, JetStreamApiException {
-        return getStreamInfo(jsm, streamName) != null;
-    }
 
-    public static StreamInfo getStreamInfo(JetStreamManagement jsm, String streamName) throws IOException, JetStreamApiException {
+    /*
+    *   This method returns the StreamInfo back from Nats
+    *   @param jsm
+    *   @param streamName
+    *   @returns StreamInfo
+     */
+    public StreamInfo _getStreamInfo(JetStreamManagement jsm, String streamName) throws IOException, JetStreamApiException {
         try {
             return jsm.getStreamInfo(streamName);
         }
@@ -318,12 +343,18 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         }
     }
 
+    /*
+     *   This method returns the prefix for the address
+     *   @returns String prefix
+     *   This method pulls back the:
+     *      envorment
+     *      version
+     *    and puts them into a string to be used by a Nats Jetstream stream.
+     *  //$branch.$type.$owner.$systemid.transfer.protocol.sftp
+     */
     public String _getStreamPrefix(){
-        // This methon pull back the:
-        //  envorment
-        //  version
-        // and puts them into a string to be used by a Nats Jetstream stream.
-        ////$branch.$type.$owner.$systemid.transfer.protocol.sftp
+
+        Slugify slg = new Slugify();
         String subjectPrefix ="";
         Map<String, String> bashEnv = System.getenv();
         String streamEnvironment = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","DEV");
@@ -337,7 +368,13 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         return subjectPrefix;
     }
 
-    private static void _createStream(JetStreamManagement jsm, String name, String subject) {
+    /*
+    *   Method that will create the stream in Nats
+    *   @param jsm
+    *   @param name - name of the stream
+    *   @param subject - subject for that stream
+     */
+    private void _createStream(JetStreamManagement jsm, String name, String subject) {
         log.info("Configure And Add Streams.");
         try {
             StreamConfiguration streamConfig = StreamConfiguration.builder()
@@ -362,4 +399,25 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
             log.debug(e.getMessage());
         }
     }
+
+    /*
+    *   Method to return the streamInfo
+    *   @param nc - Connection
+    *   @param streamName
+    *   @return boolean
+     */
+    public boolean streamExists(Connection nc, String streamName) throws IOException, JetStreamApiException {
+        return _getStreamInfo(nc.jetStreamManagement(), streamName) != null;
+    }
+
+    /*
+     *   Method to return the streamInfo
+     *   @param jsm - JetStreamManagement
+     *   @param streamName
+     *   @return boolean
+     */
+    public boolean streamExists(JetStreamManagement jsm, String streamName) throws IOException, JetStreamApiException {
+        return _getStreamInfo(jsm, streamName) != null;
+    }
+
 }

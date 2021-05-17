@@ -1,12 +1,12 @@
 package org.agaveplatform.service.transfers.listener;
 
-import com.github.slugify.Slugify;
 import io.nats.client.*;
 import io.nats.client.api.*;
 import io.nats.client.impl.NatsMessage;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.util.Slug;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.slf4j.Logger;
@@ -21,9 +21,6 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
-import org.agaveplatform.service.transfers.nats.NatsArgs;
-import org.agaveplatform.service.transfers.nats.NatsArgs.Builder;
 
 public class AbstractNatsListener extends AbstractTransferTaskListener {
     private static final Logger log = LoggerFactory.getLogger(AbstractNatsListener.class);
@@ -68,8 +65,8 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         String name = prefix + "." + streamName + "." + tenantid + "." + eventName;
         name = name.replaceAll("\\.{2,}",".");
         name = StringUtils.stripEnd(name, ".");
-        Slugify slg = new Slugify();
-        name = Arrays.stream(name.split(".")).map(t -> slg.slugify(t)).collect(Collectors.joining("."));
+
+        name = Arrays.stream(name.split(".")).map(t -> Slug.toSlug(t)).collect(Collectors.joining("."));
 
         return name;
     }
@@ -87,6 +84,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
 
         return consumerName;
     }
+
     private ConsumerInfo _createConsumer(JetStreamManagement jsm, String stream, String consumerName, String subject) throws JetStreamApiException, IOException {
         log.info("Configure And Add A Consumer {}: {}", consumerName, subject);
         ConsumerConfiguration consumerConfiguration = ConsumerConfiguration.builder()
@@ -119,11 +117,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     public boolean _checkConsumer(JetStreamManagement jsm, String stream, String consumer) throws JetStreamApiException, IOException {
         ConsumerInfo cI = jsm.getConsumerInfo(stream, consumer);
 
-        if (cI.getName() != null){
-            return true;
-        } else {
-            return false;
-        }
+        return cI.getName() != null;
     }
 
     public void _doPublishNatsJSEvent(String eventName, JsonObject body) throws IOException, InterruptedException, TimeoutException {
@@ -156,7 +150,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
                 String systemid = srcUri.get().getHost();
 
                 //transfers.$tenantid.$uid.$systemid.$eventName
-                consumerName = _createConsumerName( stream, eventName);
+                consumerName = _createConsumerName( stream, body.getString("tenant_id"), eventName);
 
                 _createConsumer(jsm, stream, consumerName, eventName);
             }
@@ -278,7 +272,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     public void _closeConnection(Connection nc){
         try {
             nc.close();
-            log.debug("Nats closed connection {}", nc.toString());
+            log.debug("Nats closed connection {}", nc);
         } catch (InterruptedException e) {
             log.debug(e.getMessage());
         }
@@ -330,7 +324,6 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         //  version
         // and puts them into a string to be used by a Nats Jetstream stream.
         ////$branch.$type.$owner.$systemid.transfer.protocol.sftp
-        Slugify slg = new Slugify();
         String subjectPrefix ="";
         Map<String, String> bashEnv = System.getenv();
         String streamEnvironment = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","DEV");
@@ -338,7 +331,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         subjectPrefix = subjectPrefix.replaceAll("\\.{2,}",".");
         subjectPrefix = StringUtils.stripEnd(subjectPrefix, ".");
         // slugify each component
-        subjectPrefix = Arrays.stream(subjectPrefix.split(".")).map(t -> slg.slugify(t)).collect(Collectors.joining("."));
+        subjectPrefix = Arrays.stream(subjectPrefix.split(".")).map(t -> Slug.toSlug(t)).collect(Collectors.joining("."));
 
         subjectPrefix = streamEnvironment + "." + subjectPrefix;
         return subjectPrefix;

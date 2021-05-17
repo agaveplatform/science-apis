@@ -9,21 +9,14 @@ import org.iplantc.service.common.uuid.UUIDType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.persistence.*;
 import java.time.Instant;
 import java.util.Objects;
 
-import static javax.persistence.GenerationType.IDENTITY;
-
 
 /**
- * Container class to hold records of current and scheduled transfers.
- * Transfers are fine-grained entities and can be reused throughout
- * the api by different services needing to move data. Ideally they will
- * be executed by a pool of transfer worker processes, but it is conceivable
- * that a syncronous transfer may occur, in which case the parent process
- * should upInstant the task themself.
- * 
+ * Container class to hold records of current and scheduled data transfers. TransferTasks may represent a file item representing single or multiple operations. If a directory/collection is represented by the {@link #source} field, then all subsequently created {@link TransferTask} created will reference its {@link #uuid} field in their {@link #parentTaskId}. The original parent {@link TransferTask} from which all child tasks are spawned will have a null {@link #rootTaskId}. All children will reference the original parent {@link #uuid} in their {@link #rootTaskId}.
+ *
+ *
  * @author dooley
  *
  */
@@ -122,9 +115,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 		if (json.containsKey("tenant_id")) {
 			this.setTenantId(json.getString("tenant_id"));
 		}
-//		else {
-//			this.setTenantId(json.getString("tenantId"));
-//		}
 
 		if (json.containsKey("total_size")) {
 			this.setTotalSize(json.getLong("total_size", 0L));
@@ -163,8 +153,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 		} else {
 			this.setTotalSkippedFiles(json.getLong("totalSkippedFiles", 0L));
 		}
-
-
 	}
 
 	public TransferTask(String source, String dest, String tenantId)
@@ -200,9 +188,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the id
 	 */
-	@Id
-	@GeneratedValue(strategy = IDENTITY)
-	@Column(name = "id", unique = true, nullable = false)
 	public Long getId()
 	{
 		return id;
@@ -219,7 +204,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the attempts
 	 */
-	@Column(name = "attempts")
 	public int getAttempts()
 	{
 		return attempts;
@@ -236,7 +220,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the totalSize
 	 */
-	@Column(name = "total_size")
 	public long getTotalSize()
 	{
 		return totalSize;
@@ -253,7 +236,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the bytesTransferred
 	 */
-	@Column(name = "bytes_transferred")
 	public long getBytesTransferred()
 	{
 		return bytesTransferred;
@@ -270,7 +252,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the parentTaskId
 	 */
-	@Column(name = "parent_task", nullable=false, length=64)
 	public String getParentTaskId()
 	{
 		return parentTaskId;
@@ -287,7 +268,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the rootTask
 	 */
-	@Column(name = "root_task", nullable=false, length=64)
 	public String getRootTaskId()
 	{
 		return rootTaskId;
@@ -304,7 +284,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the source
 	 */
-	@Column(name = "source", nullable=false, length=2048)
 	public String getSource()
 	{
 		return source;
@@ -321,7 +300,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the dest
 	 */
-	@Column(name = "dest", nullable=false, length=2048)
 	public String getDest()
 	{
 		return dest;
@@ -338,7 +316,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the owner
 	 */
-	@Column(name = "owner", nullable = false, length = 32)
 	public String getOwner()
 	{
 		return owner;
@@ -355,7 +332,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the eventId
 	 */
-	@Column(name = "event_id", nullable=true, length=255)
 	public String getEventId()
 	{
 		return eventId;
@@ -372,8 +348,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the status
 	 */
-	@Enumerated(EnumType.STRING)
-	@Column(name = "status", length = 16)
 	public TransferStatusType getStatus()
 	{
 		return status;
@@ -387,7 +361,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 		this.status = status;
 	}
 
-	@Override
 	public void setStatusString(String status) {
 		this.setStatus(TransferStatusType.valueOf(status));
 	}
@@ -395,9 +368,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the startTime
 	 */
-//	@Temporal(TemporalType.TIMESTAMP)
-	@Basic
-	@Column(name = "start_time", length = 19)
 	public Instant getStartTime()
 	{
 		return startTime;
@@ -414,9 +384,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the endTime
 	 */
-//	@Temporal(TemporalType.TIMESTAMP)
-	@Basic
-	@Column(name = "end_time", length = 19)
 	public Instant getEndTime()
 	{
 		return endTime;
@@ -433,7 +400,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the transferRate
 	 */
-	@Column(name = "transfer_rate")
 	public double getTransferRate()
 	{
 		return transferRate;
@@ -450,7 +416,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the tenantId
 	 */
-	@Column(name = "tenant_id", nullable=false, length = 128)
 	public String getTenantId()
 	{
 		return tenantId;
@@ -467,7 +432,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return uuid for this transfer task
 	 */
-	@Column(name = "uuid", nullable = false, length = 255, unique=true)
 	public String getUuid() {
 		return uuid;
 	}
@@ -482,9 +446,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the created
 	 */
-//	@Temporal(TemporalType.TIMESTAMP)
-	@Basic
-	@Column(name = "created", nullable = false, length = 19)
 	public Instant getCreated()
 	{
 		return created;
@@ -501,9 +462,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the lastUpdated
 	 */
-//	@Temporal(TemporalType.TIMESTAMP)
-	@Basic
-	@Column(name = "last_Updated", nullable = false, length = 19)
 	public Instant getLastUpdated()
 	{
 		return lastUpdated;
@@ -520,7 +478,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the totalFiles
 	 */
-	@Column(name = "total_files", nullable=false)
 	public long getTotalFiles()
 	{
 		return totalFiles;
@@ -537,7 +494,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	/**
 	 * @return the totalSkippedFiles
 	 */
-	@Column(name = "total_skipped_files", nullable=false)
 	public long getTotalSkippedFiles()
 	{
 		return totalSkippedFiles;
@@ -554,7 +510,6 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 	public String toJSON() {
 		return toJson().toString();
 	}
-
 
 	public JsonObject toJson() {
         JsonObject json = new JsonObject();
@@ -662,7 +617,7 @@ public class TransferTask implements org.iplantc.service.transfer.model.Transfer
 		if (milliseconds > 0) {
 			return getBytesTransferred() / (milliseconds/1000.0);
 		} else {
-			return (double)0.0;
+			return 0.0;
 		}
 	}
 }

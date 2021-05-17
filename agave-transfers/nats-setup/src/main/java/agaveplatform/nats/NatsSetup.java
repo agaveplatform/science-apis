@@ -1,22 +1,15 @@
 package agaveplatform.nats;
 
 
-import com.github.slugify.Slugify;
 import io.nats.client.*;
 import io.nats.client.api.*;
-//import io.nats.client.impl.NatsMessage;
-
-import java.io.IOException;
-//import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Timer;
-import java.util.stream.Collectors;
-
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Map;
 
 public class NatsSetup {
     private static final Logger log = LoggerFactory.getLogger(NatsSetup.class);
@@ -199,7 +192,6 @@ public class NatsSetup {
                 .rateLimit(-1)
                 .replayPolicy(ReplayPolicy.Instant)
                 .build();
-
 
             ConsumerInfo consumerInfo = jsm.addOrUpdateConsumer(stream, consumerConfiguration);
             log.info("Consumer Name: "+ consumerInfo.getStreamName() + "    Desc:" + consumerInfo.getDescription());

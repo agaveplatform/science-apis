@@ -1,16 +1,21 @@
 package org.agaveplatform.service.transfers.listener;
 
+import com.github.slugify.Slugify;
+import org.agaveplatform.service.transfers.messaging.*;
 import io.nats.client.*;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.RemoteSystemAO;
+import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemRoleException;
@@ -19,6 +24,7 @@ import org.iplantc.service.systems.exceptions.SystemUnknownException;
 import org.iplantc.service.systems.model.RemoteSystem;
 import org.iplantc.service.systems.model.enumerations.RoleType;
 import org.iplantc.service.transfer.exceptions.RemoteDataSyntaxException;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,8 +37,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
@@ -42,49 +50,33 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
     private TransferTaskDatabaseService dbService;
     public Connection nc;
+    private NatsJetstreamMessageClient natsCleint;
 
     public TransferTaskCreatedListener() throws IOException, InterruptedException {
         super();
-        nc = getConnection();
-        if (!_checkStreams(nc)){
-            System. exit(1);
-        }
+        natsCleint =  new NatsJetstreamMessageClient(config().getString("NATS_URI"));
     }
     public TransferTaskCreatedListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx);
-        nc = getConnection();
-        if (!_checkStreams(nc)){
-            System. exit(1);
-        }
+        natsCleint =  new NatsJetstreamMessageClient(config().getString("NATS_URI"));
     }
     public TransferTaskCreatedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
-        nc = getConnection();
-        if (!_checkStreams(nc)){
-            System. exit(1);
-        }
+        natsCleint =  new NatsJetstreamMessageClient(config().getString("NATS_URI"));
     }
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
 
-    public Connection getConnection() throws IOException, InterruptedException {
-        try {
-            nc = _connect(CONNECTION_URL);
-        } catch (IOException e) {
-            //use default URL
-            nc = _connect(Options.DEFAULT_URL);
-        }
-        return nc;
-    }
-    public JetStream js = _jsmConnect("nats://nats:4222","TRANSFERTASK", MessageType.TRANSFERTASK_CREATED);
+    //public JetStream js = _jsmConnect("nats://nats:4222","TRANSFERTASK", MessageType.TRANSFERTASK_CREATED);
 
     private final List<JetStream> jsTree = new ArrayList<>();
 
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
 
+        DateTimeZone.setDefault(DateTimeZone.forID("America/Chicago"));
         TimeZone.setDefault(TimeZone.getTimeZone("America/Chicago"));
 
         // init our db connection from the pool
@@ -98,63 +90,10 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         String prefix = _getStreamPrefix();
 
         try {
-                // check if the consumer exists.  If it doesn't then create it.
-                Connection nc = getConnection();
-                JetStreamManagement jsm = nc.jetStreamManagement();
-//                String streamName = _getStreamName();
-//                String consumer = _getConsumer(type, tenantid,  eventName);
-//                context.deploymentID();
-//                String podName = "";
-//                if (_checkConsumer(jsm, stream, consumer )){
-//
-//                }
-//                //**********************************************************************************
-                // Process TRANSFERTASK_CREATED messages
-                //**********************************************************************************
-                // Build our subscription options. Durable is REQUIRED for pull based subscriptions
-                PullSubscribeOptions.Builder builder = PullSubscribeOptions.builder()
-                        .durable("TRANSFERTASK_CREATED_Consumer")
-                        .stream("TRANSFERTASK");
+                JetStreamManagement jsm = natsCleint.getJetStreamManagement();
+                natsCleint.fetch("DEV", _createMessageName("DEV", "*", "*", "*", EVENT_CHANNEL),1, 2);
 
-                PullSubscribeOptions pullOptions = builder.build();
 
-                JetStreamSubscription sub = js.subscribe(EVENT_CHANNEL, pullOptions);
-                log.info("got subscription: {}", sub.getConsumerInfo().toString());
-
-                long m_count = sub.getPendingMessageCount();
-                if (m_count > 0) {
-
-                    sub.pull(1);
-                    Message m = sub.nextMessage(Duration.ofSeconds(1));
-                    if (m != null) {
-                        if (m.isJetStream()) {
-                            log.info(m.getData().toString());
-
-                            String response = new String(m.getData(), StandardCharsets.UTF_8);
-                            JsonObject body = new JsonObject(response);
-                            String uuid = body.getString("uuid");
-                            log.info("Transfer task {} cancel detected", uuid);
-                            if (uuid != null) {
-                                try {
-                                    processEvent(body, resp -> {
-                                        if (resp.succeeded()) {
-                                            m.ack();
-                                        } else {
-                                            m.nak();
-                                        }
-                                    });
-                                } catch (IOException e) {
-                                    log.debug(e.getMessage());
-                                }
-                            }
-                        }
-                    }
-
-                    getConnection().flush(Duration.ofMillis(500));
-                }
-
-            } catch (JetStreamApiException e) {
-                log.debug("TRANSFERTASK_CREATED - Error with subsription {}", e.getMessage());
             } catch (Exception e) {
                 log.debug("TRANSFERTASK_CREATED - Exception {}", e.getMessage());
                 log.debug(e.getCause().toString());

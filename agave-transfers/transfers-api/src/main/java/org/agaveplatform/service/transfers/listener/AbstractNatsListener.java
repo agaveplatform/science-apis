@@ -1,5 +1,6 @@
 package org.agaveplatform.service.transfers.listener;
 
+import com.github.slugify.Slugify;
 import io.nats.client.*;
 import io.nats.client.api.*;
 import io.nats.client.impl.NatsMessage;

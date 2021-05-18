@@ -26,6 +26,9 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
     protected static int DEFAULT_TIMEOUT_SECONDS;
 
     private static final Object lock = new Object();
+
+
+
     /**
      * Static connection shared across all instances.
      */
@@ -41,6 +44,13 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
         setConsumerName(consumerName);
         connect(connectionUri);
     }
+    public NatsJetstreamMessageClient(String connectionUri) throws IOException, InterruptedException {
+        connect(connectionUri);
+    }
+
+    public static Connection getConn() {
+        return conn;
+    }
 
     /**
      * Establishes a connection to the NATS server at the given {@code connectionUrl}. A single NATS Connection object
@@ -51,7 +61,7 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
      * @throws IOException if a networking issue occurs
      * @throws InterruptedException if the current thread is interrupted
      */
-    protected void connect(String connectionUrl) throws IOException, InterruptedException {
+    public void connect(String connectionUrl) throws IOException, InterruptedException {
         synchronized(lock) {
             if (conn == null) {
                 Options.Builder builder = new Options.Builder()
@@ -68,6 +78,36 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
             }
         }
     }
+
+    /**
+     * Establishes a connection to the NATS server at the given {@code connectionUrl}. A single NATS Connection object
+     * can handle multiple consumers subscribing and publishing to a single stream. We use a sychronized singleton
+     * pattern here to have thread safety on the connection when creating multiple instances.
+     *
+     * @param connectionUrl the url of the NATS server
+     * @throws IOException if a networking issue occurs
+     * @throws InterruptedException if the current thread is interrupted
+     */
+    public Connection connectNats(String connectionUrl) throws IOException, InterruptedException {
+        synchronized(lock) {
+            if (conn == null) {
+                Options.Builder builder = new Options.Builder()
+                        .server(connectionUrl)
+                        .connectionTimeout(Duration.ofSeconds(5))
+                        .pingInterval(Duration.ofSeconds(10))
+                        .reconnectWait(Duration.ofSeconds(1))
+                        .maxReconnects(-1)
+                        .connectionListener(new NatsConnectionListener())
+                        .errorListener(new NatsErrorListener());
+
+                conn = Nats.connect(builder.build());
+                dispatcher = conn.createDispatcher();
+                return conn;
+            }
+        }
+        return conn;
+    }
+
 
     /**
      * Creates a JetStream subscription to {@code streamName} for subject {@code subject} and saves for future use.
@@ -247,7 +287,7 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
      * @return list of at most {@code numberOfMessages} messages
      * @throws MessagingException if communication with the NATS server fails or syntax is invalid
      */
-    protected List<Message> fetch(String stream, String subject, int numberOfMessages, int timeoutSeconds) throws MessagingException {
+    public List<Message> fetch(String stream, String subject, int numberOfMessages, int timeoutSeconds) throws MessagingException {
         try {
             JetStreamSubscription subscription = getOrCeateSubscription(stream, subject);
             return subscription.fetch(numberOfMessages, Duration.ofSeconds(timeoutSeconds)).stream()
@@ -492,7 +532,7 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
      * @return an admin client to manage jetstream streams for the current connection
      * @throws IOException if a networking issue occurs
      */
-    protected JetStreamManagement getJetStreamManagement() throws IOException {
+    public JetStreamManagement getJetStreamManagement() throws IOException {
         if (jsm == null) {
             setJetStreamManagement(conn.jetStreamManagement());
         }

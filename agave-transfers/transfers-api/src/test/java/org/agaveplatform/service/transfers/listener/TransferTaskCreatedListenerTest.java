@@ -53,7 +53,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		Connection connection = listener._connect();
-		when(listener.getConnection()).thenReturn(connection);
+		//when(listener.getConnection()).thenReturn(connection);
 		//doNothing().when(listener).setConnection();
 		doCallRealMethod().when(listener).addCancelledTask(anyString());
 		doCallRealMethod().when(listener).addPausedTask(anyString());

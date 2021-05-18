@@ -8,6 +8,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.listener.*;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.protocol.TransferAllProtocolVertical;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -272,8 +273,10 @@ public class TransferApplication {
                     return httpVerticleDeployment.future();
 
                 }).setHandler(ar -> {
+                    NatsJetstreamMessageClient.disconnect();
                     if (ar.succeeded()) {
                         log.info("TransferApiVertical ({}) started on port {}", ar.result(), config.getInteger("HTTP_PORT"));
+
                     } else {
                         log.error("TransferApiVertical deployment failed !\n" + ar.cause());
                         ar.cause().printStackTrace();

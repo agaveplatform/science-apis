@@ -2,10 +2,18 @@ package org.iplantc.service.io.queue;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.common.persistence.TenancyHelper;
+import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.dao.LogicalFileDao;
 import org.iplantc.service.io.manager.FileEventProcessor;
 import org.iplantc.service.io.model.FileEvent;
@@ -22,6 +30,8 @@ import org.quartz.*;
 
 import java.io.File;
 import java.nio.channels.ClosedByInterruptException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Class to encapsulate staging of files directly uploaded to the api to the remote system.
@@ -115,7 +125,33 @@ public class UploadJob implements InterruptableJob
 				if (isRangeCopyOperation) {
 				    transferTask = urlCopy.copyRange(cachedFile, 0, new File(cachedFile).length(), agavePath, rangeIndex, transferTask);
 				} else {
-				    transferTask = urlCopy.copy(cachedFile, agavePath, transferTask);
+//				    transferTask = urlCopy.copy(cachedFile, agavePath, transferTask);
+
+					try {
+						String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
+								"api/transfers/";
+//                      String strUrl = buildUuidValidationURL(uuid);
+						HttpClient httpClient = HttpClientBuilder.create().build();
+						HttpPost getRequest = new HttpPost(strUrl);
+						List<NameValuePair> params = new ArrayList<>();
+						params.add(new BasicNameValuePair("src", cachedFile));
+						params.add(new BasicNameValuePair("dest", agavePath));
+
+
+						HttpResponse httpResponse = httpClient.execute(getRequest);
+
+						if (httpResponse.getStatusLine().getStatusCode() == 200) {
+							HttpEntity httpEntity = httpResponse.getEntity();
+//                          return EntityUtils.toString(httpEntity);
+						}
+						//              } catch (URISyntaxException e) {
+						//                throw new MetadataException("Invalid URI syntax ", e);
+						//              } catch (TenantException e) {
+						//                throw new MetadataException("Unable to retrieve valid tenant information ", e);
+					} catch (Exception e) {
+						throw new JobExecutionException("Unable to send transfer request for job.");
+					}
+
 				}
 	    		
 	    		if (logicalFile.getOwner() != null && remoteDataClient.isPermissionMirroringRequired()) {

@@ -1,11 +1,17 @@
 package org.iplantc.service.io.queue;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 import org.hibernate.StaleObjectStateException;
 import org.hibernate.UnresolvableObjectException;
-import org.iplantc.service.common.exceptions.AgaveNamespaceException;
-import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.persistence.TenancyHelper;
 import org.iplantc.service.common.uri.UrlPathEscaper;
 import org.iplantc.service.io.Settings;
 import org.iplantc.service.io.dao.LogicalFileDao;
@@ -19,29 +25,23 @@ import org.iplantc.service.io.model.LogicalFile;
 import org.iplantc.service.io.model.StagingTask;
 import org.iplantc.service.io.model.enumerations.FileEventType;
 import org.iplantc.service.io.model.enumerations.StagingTaskStatus;
-import org.iplantc.service.io.util.ServiceUtils;
-import org.iplantc.service.systems.exceptions.RemoteCredentialException;
-import org.iplantc.service.systems.exceptions.SystemUnavailableException;
-import org.iplantc.service.systems.exceptions.SystemUnknownException;
-import org.iplantc.service.systems.model.RemoteSystem;
-import org.iplantc.service.systems.model.enumerations.SystemStatusType;
 import org.iplantc.service.systems.util.ApiUriUtil;
-import org.iplantc.service.transfer.RemoteDataClient;
-import org.iplantc.service.transfer.RemoteDataClientFactory;
-import org.iplantc.service.transfer.URLCopy;
-import org.iplantc.service.transfer.dao.TransferTaskDao;
-import org.iplantc.service.transfer.exceptions.AuthenticationException;
-import org.iplantc.service.transfer.exceptions.InvalidTransferException;
-import org.iplantc.service.transfer.exceptions.RemoteDataException;
-import org.iplantc.service.transfer.exceptions.RemotePermissionException;
-import org.iplantc.service.transfer.model.TransferTaskImpl;
 import org.quartz.JobExecutionException;
 import org.quartz.UnableToInterruptJobException;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.net.URI;
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.List;
+
+//import org.iplantc.service.transfer.RemoteDataClient;
+//import org.iplantc.service.transfer.RemoteDataClientFactory;
+//import org.iplantc.service.transfer.URLCopy;
+//import org.iplantc.service.transfer.dao.TransferTaskDao;
+//import org.iplantc.service.transfer.exceptions.AuthenticationException;
+//import org.iplantc.service.transfer.exceptions.InvalidTransferException;
+//import org.iplantc.service.transfer.exceptions.RemoteDataException;
+//import org.iplantc.service.transfer.exceptions.RemotePermissionException;
+//import org.iplantc.service.transfer.model.TransferTaskImpl;
 
 /**
  * Handles the staging of data into the user's StorageSystem. This differs
@@ -54,8 +54,8 @@ import java.util.Date;
 public class StagingJob extends AbstractJobWatch<StagingTask> {
     private static final Logger log = Logger.getLogger(StagingJob.class);
 
-    private TransferTaskImpl rootTask = null;
-    private URLCopy urlCopy;
+//    private TransferTaskImpl rootTask = null;
+//    private URLCopy urlCopy;
     private LogicalFile file = null;
 
     public StagingJob() {
@@ -66,8 +66,8 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
      */
     @Override
     public void doExecute() throws JobExecutionException {
-        RemoteDataClient destClient = null;
-        RemoteDataClient sourceClient = null;
+//        RemoteDataClient destClient = null;
+//        RemoteDataClient sourceClient = null;
 
         try {
             this.queueTask.setStatus(StagingTaskStatus.STAGING);
@@ -86,33 +86,32 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
             URI sourceUri = new URI(file.getSourceUri());
 
             // instantiate a client appropriate for the source uri
-            destClient = ServiceUtils.getDestinationRemoteDataClient(file);
+//            destClient = ServiceUtils.getDestinationRemoteDataClient(file);
 
             // fetch a client for the source
-            sourceClient = getSourceRemoteDataClient(this.queueTask.getOwner(), sourceUri);
+//            sourceClient = getSourceRemoteDataClient(this.queueTask.getOwner(), sourceUri);
 
             String destUri = "agave://" + file.getSystem().getSystemId() + "/" + file.getAgaveRelativePathFromAbsolutePath();
 
-			rootTask = new TransferTaskImpl(
-                    file.getSourceUri(),
-                    destUri,
-                    file.getOwner(),
-                    null,
-                    null);
-            TransferTaskDao.persist(rootTask);
+//			rootTask = new TransferTaskImpl(
+//                    file.getSourceUri(),
+//                    destUri,
+//                    file.getOwner(),
+//                    null,
+//                    null);
+//            TransferTaskDao.persist(rootTask);
 
             // Tracing.
             if (log.isDebugEnabled()) {
                 String msg = "Associated new transfer task with queue task " + queueTask.getId() +
-                        ": " + rootTask.toString();
+                        ": " + file.toString();
                 log.debug(msg);
             }
 
             file.addContentEvent(new FileEvent(
                     FileEventType.STAGING,
                     "Transfer in progress",
-                    queueTask.getOwner(),
-                    rootTask));
+                    queueTask.getOwner()));
             file.setStatus(StagingTaskStatus.STAGING);
 
             if (log.isDebugEnabled())
@@ -123,7 +122,7 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
 
             LogicalFileDao.persist(file);
 
-            urlCopy = new URLCopy(sourceClient, destClient);
+//            urlCopy = new URLCopy(sourceClient, destClient);
             // will close connections on its own
 
             try {
@@ -150,23 +149,51 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                 // This linkage is a hidden dependency between the two classes.
                 try {
                     String resolvedDestPath = file.getAgaveRelativePathFromAbsolutePath();
-                    rootTask = urlCopy.copy(src, resolvedDestPath, rootTask);
+
+
+                    try {
+                        String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
+                                "api/transfers/";
+//                      String strUrl = buildUuidValidationURL(uuid);
+                        HttpClient httpClient = HttpClientBuilder.create().build();
+                        HttpPost getRequest = new HttpPost(strUrl);
+                        List<NameValuePair> params = new ArrayList<>();
+                        params.add(new BasicNameValuePair("src", src));
+                        params.add(new BasicNameValuePair("dest", resolvedDestPath));
+
+
+                        HttpResponse httpResponse = httpClient.execute(getRequest);
+
+                        if (httpResponse.getStatusLine().getStatusCode() == 200) {
+                            HttpEntity httpEntity = httpResponse.getEntity();
+//                          return EntityUtils.toString(httpEntity);
+                        }
+    //              } catch (URISyntaxException e) {
+    //                throw new MetadataException("Invalid URI syntax ", e);
+    //              } catch (TenantException e) {
+    //                throw new MetadataException("Unable to retrieve valid tenant information ", e);
+                    } catch (Exception e) {
+                        throw new JobExecutionException("Unable to send transfer request for job " + file.getUuid());
+                    }
+
+
+//                    rootTask = urlCopy.copy(src, resolvedDestPath, rootTask);
 
                     // check to see if the destination path was adjusted due to a streaming transfer receiving an
                     // existing directory as the destPath. if so, the new root TransferTask#dest value will be longer,
                     // so we need to update the logical file accordingly.
-                    if (!StringUtils.equals(destUri, rootTask.getDest())) {
-                        String appendedPath = StringUtils.replace(rootTask.getDest(), destUri, "");
-                        file.setPath(file.getPath() + appendedPath);
-                    }
-                } catch (RemotePermissionException|InvalidTransferException e) {
-                    // hard fail the transfer task if it cannot be retried
-                    this.queueTask.setRetryCount(Settings.MAX_STAGING_RETRIES);
-                    throw e;
+//                    if (!StringUtils.equals(destUri, rootTask.getDest())) {
+//                        String appendedPath = StringUtils.replace(rootTask.getDest(), destUri, "");
+//                        file.setPath(file.getPath() + appendedPath);
+//                    }
+//                } catch (RemotePermissionException|InvalidTransferException e) {
+//                    // hard fail the transfer task if it cannot be retried
+//                    this.queueTask.setRetryCount(Settings.MAX_STAGING_RETRIES);
+//                    throw e;
                 } catch (Exception e) {
                     String msg = "Copy from \"" + src + "\" to \"" +
                             file.getAgaveRelativePathFromAbsolutePath() +
-                            "\" FAILED for transfer task: " + rootTask.toString();
+                            "\" FAILED for transfer task: " + file.toString();
                     log.error(msg, e);
                     throw e;
                 }
@@ -205,42 +232,42 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                     log.error(msg, e);
                     throw e;
                 }
-            } catch (RemotePermissionException|InvalidTransferException e ) {
-                String message = "Unable to complete transfer of " + this.queueTask.getLogicalFile().getSourceUri() +
-                        " to agave://" + this.queueTask.getLogicalFile().getSystem().getSystemId() + "//" +
-                        this.queueTask.getLogicalFile().getPath() + ". " + e.getMessage();
-
-                log.error(message, e);
-
-                file.setStatus(StagingTaskStatus.STAGING_FAILED);
-                file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED,
-                        "Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() +
-                                " failed with the following error message: " + e.getMessage() +
-                                ". Please check the source url, " + sourceUri + " and make sure it is a " +
-                                " valid URI or path on your default system to which you have permissions. " +
-                                "If you feel there was an error and this problem persists, please " +
-                                "contact your platform administrator for assistance.",
-                        queueTask.getOwner()));
-
-                try {
-                    LogicalFileDao.persist(file);
-                } catch (Exception e1) {
-                    String msg = "Unable to persist status and changes for logical file " +
-                            file.getAgaveRelativePathFromAbsolutePath() +
-                            " (" + file.getUuid() + ").";
-                    log.error(msg, e1);
-                    throw e1;
-                }
-
-                this.queueTask.setStatus(StagingTaskStatus.STAGING_FAILED);
-
-                try {
-                    QueueTaskDao.persist(this.queueTask);
-                } catch (Exception e1) {
-                    String msg = "During retry processing, unable to persist queue task " + this.queueTask.getId() + ".";
-                    log.error(msg, e);
-                    throw e1;
-                }
+//            } catch (RemotePermissionException|InvalidTransferException e ) {
+//                String message = "Unable to complete transfer of " + this.queueTask.getLogicalFile().getSourceUri() +
+//                        " to agave://" + this.queueTask.getLogicalFile().getSystem().getSystemId() + "//" +
+//                        this.queueTask.getLogicalFile().getPath() + ". " + e.getMessage();
+//
+//                log.error(message, e);
+//
+//                file.setStatus(StagingTaskStatus.STAGING_FAILED);
+//                file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED,
+//                        "Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() +
+//                                " failed with the following error message: " + e.getMessage() +
+//                                ". Please check the source url, " + sourceUri + " and make sure it is a " +
+//                                " valid URI or path on your default system to which you have permissions. " +
+//                                "If you feel there was an error and this problem persists, please " +
+//                                "contact your platform administrator for assistance.",
+//                        queueTask.getOwner()));
+//
+//                try {
+//                    LogicalFileDao.persist(file);
+//                } catch (Exception e1) {
+//                    String msg = "Unable to persist status and changes for logical file " +
+//                            file.getAgaveRelativePathFromAbsolutePath() +
+//                            " (" + file.getUuid() + ").";
+//                    log.error(msg, e1);
+//                    throw e1;
+//                }
+//
+//                this.queueTask.setStatus(StagingTaskStatus.STAGING_FAILED);
+//
+//                try {
+//                    QueueTaskDao.persist(this.queueTask);
+//                } catch (Exception e1) {
+//                    String msg = "During retry processing, unable to persist queue task " + this.queueTask.getId() + ".";
+//                    log.error(msg, e);
+//                    throw e1;
+//                }
             } catch (Throwable e) {
 
                 // if the transfer failed, retry as many times as defined in
@@ -287,60 +314,60 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                     throw e1;
                 }
             }
-        } catch (SystemUnknownException e) {
-            String message = "Unsupported protocol for queued file " + this.queueTask.getLogicalFile().getPath();
+//        } catch (SystemUnknownException e) {
+//            String message = "Unsupported protocol for queued file " + this.queueTask.getLogicalFile().getPath();
+//
+//            log.error(message, e);
+//            file.setStatus(StagingTaskStatus.STAGING_FAILED);
+//            file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED,
+//                    "Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() +
+//                            " failed to because an unrecognized protocol " +
+//                            " was provided. Please check the source url, " + this.queueTask.getLogicalFile().getPath() +
+//                            " and make sure it is a valid URI or path on your default system" +
+//                            " to which you have permissions. If you feel there was an error and this " +
+//                            "problem persists, please contact your platform administrator for assistance.",
+//                    queueTask.getOwner()));
+//            try {
+//                LogicalFileDao.persist(file);
+//            } catch (Exception e1) {
+//                String msg = "While processing SystemUnknownException, unable to persist status and changes for logical file " +
+//                        file.getAgaveRelativePathFromAbsolutePath() +
+//                        " (" + file.getUuid() + ").";
+//                log.error(msg, e1);
+//                throw e1;
+//            }
+//
+//            this.queueTask.setStatus(StagingTaskStatus.STAGING_FAILED);
+//            try {
+//                QueueTaskDao.persist(this.queueTask);
+//            } catch (Exception e1) {
+//                String msg = "While processing SystemUnknownException, unable to persist queue task " + this.queueTask.getId() + ".";
+//                log.error(msg, e);
+//                throw e1;
+//            }
 
-            log.error(message, e);
-            file.setStatus(StagingTaskStatus.STAGING_FAILED);
-            file.addContentEvent(new FileEvent(FileEventType.STAGING_FAILED,
-                    "Your scheduled transfer of " + this.queueTask.getLogicalFile().getSourceUri() +
-                            " failed to because an unrecognized protocol " +
-                            " was provided. Please check the source url, " + this.queueTask.getLogicalFile().getPath() +
-                            " and make sure it is a valid URI or path on your default system" +
-                            " to which you have permissions. If you feel there was an error and this " +
-                            "problem persists, please contact your platform administrator for assistance.",
-                    queueTask.getOwner()));
-            try {
-                LogicalFileDao.persist(file);
-            } catch (Exception e1) {
-                String msg = "While processing SystemUnknownException, unable to persist status and changes for logical file " +
-                        file.getAgaveRelativePathFromAbsolutePath() +
-                        " (" + file.getUuid() + ").";
-                log.error(msg, e1);
-                throw e1;
-            }
-
-            this.queueTask.setStatus(StagingTaskStatus.STAGING_FAILED);
-            try {
-                QueueTaskDao.persist(this.queueTask);
-            } catch (Exception e1) {
-                String msg = "While processing SystemUnknownException, unable to persist queue task " + this.queueTask.getId() + ".";
-                log.error(msg, e);
-                throw e1;
-            }
-
-        } catch (SystemUnavailableException e) {
-            log.info("Staging task paused while waiting for system availability. " + e.getMessage(), e);
-            file.setStatus(StagingTaskStatus.STAGING_QUEUED.name());
-            try {
-                LogicalFileDao.persist(file);
-            } catch (Exception e1) {
-                String msg = "While processing SystemUnavailableException, unable to persist status and changes for logical file " +
-                        file.getAgaveRelativePathFromAbsolutePath() +
-                        " (" + file.getUuid() + ").";
-                log.error(msg, e1);
-                throw e1;
-            }
-
-            this.queueTask.setStatus(StagingTaskStatus.STAGING_QUEUED);
-            this.queueTask.setLastUpdated(new Date());
-            try {
-                QueueTaskDao.persist(this.queueTask);
-            } catch (Exception e1) {
-                String msg = "While processing SystemUnavailableException, unable to persist queue task " + this.queueTask.getId() + ".";
-                log.error(msg, e);
-                throw e1;
-            }
+//        } catch (SystemUnavailableException e) {
+//            log.info("Staging task paused while waiting for system availability. " + e.getMessage(), e);
+//            file.setStatus(StagingTaskStatus.STAGING_QUEUED.name());
+//            try {
+//                LogicalFileDao.persist(file);
+//            } catch (Exception e1) {
+//                String msg = "While processing SystemUnavailableException, unable to persist status and changes for logical file " +
+//                        file.getAgaveRelativePathFromAbsolutePath() +
+//                        " (" + file.getUuid() + ").";
+//                log.error(msg, e1);
+//                throw e1;
+//            }
+//
+//            this.queueTask.setStatus(StagingTaskStatus.STAGING_QUEUED);
+//            this.queueTask.setLastUpdated(new Date());
+//            try {
+//                QueueTaskDao.persist(this.queueTask);
+//            } catch (Exception e1) {
+//                String msg = "While processing SystemUnavailableException, unable to persist queue task " + this.queueTask.getId() + ".";
+//                log.error(msg, e);
+//                throw e1;
+//            }
 
         } catch (StaleObjectStateException | UnresolvableObjectException e) {
             // What nonsense.
@@ -426,143 +453,141 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                 log.error("Failed to roll back failed staging task", e);
             }
 
-            try {
-                if (rootTask != null) {
-                    if (rootTask.getRootTask() != null) {
-                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getRootTask().getId());
-                    } else if (rootTask.getParentTask() != null) {
-                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getParentTask().getId());
-                    } else {
-                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getId());
-                    }
-                }
-            } catch (Throwable t) {
-                log.error("Task cancellation failed.", t);
-            }
+//            try {
+//                if (rootTask != null) {
+//                    if (rootTask.getRootTask() != null) {
+//                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getRootTask().getId());
+//                    } else if (rootTask.getParentTask() != null) {
+//                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getParentTask().getId());
+//                    } else {
+//                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getId());
+//                    }
+//                }
+//            } catch (Throwable t) {
+//                log.error("Task cancellation failed.", t);
+//            }
         } finally {
-            try {
-                sourceClient.disconnect();
-            } catch (Throwable ignored) {
-            }
-            try {
-                destClient.disconnect();
-            } catch (Throwable ignored) {
-            }
+//            try {
+//                sourceClient.disconnect();
+//            } catch (Throwable ignored) {
+//            }
+//            try {
+//                destClient.disconnect();
+//            } catch (Throwable ignored) {
+//            }
             setTaskComplete(true);
             releaseJob();
         }
     }
 
-    /**
-     * Validates a URI and returns an authenticated {@link RemoteDataClient}. Exceptions
-     * will be thrown rather than null returned if a system was not available.
-     *
-     * @param requestingUser user requesting the data transfer
-     * @param singleRawInputUri the URI of a file item for which a remote data client will be returned
-     * @return
-     * @throws AgaveNamespaceException
-     * @throws AuthenticationException
-     * @throws SystemUnavailableException
-     * @throws SystemUnknownException
-     * @throws RemoteDataException
-     */
-    private RemoteDataClient getSourceRemoteDataClient(String requestingUser, URI singleRawInputUri)
-            throws AgaveNamespaceException, AuthenticationException, SystemUnavailableException, SystemUnknownException,
-            RemoteDataException {
-        RemoteSystem system = null;
-        RemoteDataClient remoteDataClient = null;
-
-        if (ApiUriUtil.isInternalURI(singleRawInputUri)) {
-            try {
-                system = ApiUriUtil.getRemoteSystem(requestingUser, singleRawInputUri);
-            } catch (PermissionException e) {
-                String msg = "Unable to get remote system for user \"" + requestingUser + "\": " + singleRawInputUri.toString();
-                log.error(msg, e);
-                throw new AuthenticationException(msg, e);
-            }
-
-            if (system == null) {
-                String msg = "No system was found for user " + requestingUser + " satisfying the source URI.";
-                log.error(msg);
-                throw new SystemUnknownException(msg);
-            } else if (!system.isAvailable()) {
-                String msg = "The source system is currently unavailable.";
-                log.error(msg);
-                throw new SystemUnavailableException(msg);
-            } else if (system.getStatus() != SystemStatusType.UP) {
-                String msg = system.getStatus().getExpression();
-                log.error(msg);
-                throw new SystemUnavailableException(msg);
-            } else {
-                try {
-                    remoteDataClient = system.getRemoteDataClient(null);
-                    remoteDataClient.authenticate();
-                } catch (IOException e) {
-                    String msg = "Failed to connect to the remote source system";
-                    log.error(msg, e);
-                    throw new RemoteDataException(msg, e);
-                } catch (RemoteCredentialException e) {
-                    String msg = "Failed to authenticate to remote source system ";
-                    log.error(msg, e);
-                    throw new AuthenticationException("Failed to authenticate to remote source system ", e);
-                } catch (Exception e) {
-                    String msg = "System-acquired remote client authentication error: " + e.getMessage();
-                    log.error(msg, e);
-                    throw e;
-                }
-            }
-        } else {
-            try {
-                remoteDataClient = new RemoteDataClientFactory().getInstance(
-                        requestingUser, null, singleRawInputUri);
-
-                if (remoteDataClient == null) {
-                    String msg = "No system was found for user " + requestingUser + " satisfying the source URI: " + singleRawInputUri.toString();
-                    log.error(msg);
-                    throw new SystemUnknownException(msg);
-                } else {
-                    remoteDataClient.authenticate();
-                }
-            } catch (SystemUnknownException e) {
-                String msg = "Authentication failed for user " + remoteDataClient.getUsername() +
-                        " on host " + remoteDataClient.getHost() + " because of unknown system.";
-                log.error(msg, e);
-                throw e;
-            } catch (FileNotFoundException e) {
-                String msg = "No source system was found for user " + requestingUser + " satisfying the URI.";
-                log.error(msg, e);
-                throw new SystemUnknownException(msg);
-            } catch (IOException e) {
-                String msg = "Failed to connect to the remote source system";
-                log.error(msg, e);
-                throw new RemoteDataException(msg, e);
-            } catch (PermissionException | RemoteCredentialException e) {
-                String msg = "Failed to authenticate to remote source system. ";
-                log.error(msg, e);
-                throw new AuthenticationException(msg, e);
-            } catch (Exception e) {
-                String msg = "Remote client authentication error: " + singleRawInputUri.toString();
-                log.error(msg, e);
-                throw e;
-            }
-        }
-
-        return remoteDataClient;
-    }
+//    /**
+//     * Validates a URI and returns an authenticated RemoteDataClient. Exceptions
+//     * will be thrown rather than null returned if a system was not available.
+//     *
+//     * @param requestingUser user requesting the data transfer
+//     * @param singleRawInputUri the URI of a file item for which a remote data client will be returned
+//     * @return
+//     * @throws AgaveNamespaceException
+//     * @throws SystemUnavailableException
+//     * @throws SystemUnknownException
+//     */
+//    private RemoteDataClient getSourceRemoteDataClient(String requestingUser, URI singleRawInputUri)
+//            throws AgaveNamespaceException, AuthenticationException, SystemUnavailableException, SystemUnknownException,
+//            RemoteDataException {
+//        RemoteSystem system = null;
+//        RemoteDataClient remoteDataClient = null;
+//
+//        if (ApiUriUtil.isInternalURI(singleRawInputUri)) {
+//            try {
+//                system = ApiUriUtil.getRemoteSystem(requestingUser, singleRawInputUri);
+//            } catch (PermissionException e) {
+//                String msg = "Unable to get remote system for user \"" + requestingUser + "\": " + singleRawInputUri.toString();
+//                log.error(msg, e);
+//                throw new AuthenticationException(msg, e);
+//            }
+//
+//            if (system == null) {
+//                String msg = "No system was found for user " + requestingUser + " satisfying the source URI.";
+//                log.error(msg);
+//                throw new SystemUnknownException(msg);
+//            } else if (!system.isAvailable()) {
+//                String msg = "The source system is currently unavailable.";
+//                log.error(msg);
+//                throw new SystemUnavailableException(msg);
+//            } else if (system.getStatus() != SystemStatusType.UP) {
+//                String msg = system.getStatus().getExpression();
+//                log.error(msg);
+//                throw new SystemUnavailableException(msg);
+//            } else {
+//                try {
+//                    remoteDataClient = system.getRemoteDataClient(null);
+//                    remoteDataClient.authenticate();
+//                } catch (IOException e) {
+//                    String msg = "Failed to connect to the remote source system";
+//                    log.error(msg, e);
+//                    throw new RemoteDataException(msg, e);
+//                } catch (RemoteCredentialException e) {
+//                    String msg = "Failed to authenticate to remote source system ";
+//                    log.error(msg, e);
+//                    throw new AuthenticationException("Failed to authenticate to remote source system ", e);
+//                } catch (Exception e) {
+//                    String msg = "System-acquired remote client authentication error: " + e.getMessage();
+//                    log.error(msg, e);
+//                    throw e;
+//                }
+//            }
+//        } else {
+//            try {
+//                remoteDataClient = new RemoteDataClientFactory().getInstance(
+//                        requestingUser, null, singleRawInputUri);
+//
+//                if (remoteDataClient == null) {
+//                    String msg = "No system was found for user " + requestingUser + " satisfying the source URI: " + singleRawInputUri.toString();
+//                    log.error(msg);
+//                    throw new SystemUnknownException(msg);
+//                } else {
+//                    remoteDataClient.authenticate();
+//                }
+//            } catch (SystemUnknownException e) {
+//                String msg = "Authentication failed for user " + remoteDataClient.getUsername() +
+//                        " on host " + remoteDataClient.getHost() + " because of unknown system.";
+//                log.error(msg, e);
+//                throw e;
+//            } catch (FileNotFoundException e) {
+//                String msg = "No source system was found for user " + requestingUser + " satisfying the URI.";
+//                log.error(msg, e);
+//                throw new SystemUnknownException(msg);
+//            } catch (IOException e) {
+//                String msg = "Failed to connect to the remote source system";
+//                log.error(msg, e);
+//                throw new RemoteDataException(msg, e);
+//            } catch (PermissionException | RemoteCredentialException e) {
+//                String msg = "Failed to authenticate to remote source system. ";
+//                log.error(msg, e);
+//                throw new AuthenticationException(msg, e);
+//            } catch (Exception e) {
+//                String msg = "Remote client authentication error: " + singleRawInputUri.toString();
+//                log.error(msg, e);
+//                throw e;
+//            }
+//        }
+//
+//        return remoteDataClient;
+//    }
 
     /**
      * @return the rootTask
      */
-    public synchronized TransferTaskImpl getRootTask() {
-        return rootTask;
-    }
+//    public synchronized TransferTaskImpl getRootTask() {
+//        return rootTask;
+//    }
 
     /**
      * @param rootTask the rootTask to set
      */
-    public synchronized void setRootTask(TransferTaskImpl rootTask) {
-        this.rootTask = rootTask;
-    }
+//    public synchronized void setRootTask(TransferTaskImpl rootTask) {
+//        this.rootTask = rootTask;
+//    }
 
     /**
      * @param stopped the stopped to set
@@ -571,9 +596,9 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
     @Override
     public synchronized void setStopped(boolean stopped)
             throws UnableToInterruptJobException {
-        if (getUrlCopy() != null) {
-            getUrlCopy().setKilled(true);
-        }
+//        if (getUrlCopy() != null) {
+//            getUrlCopy().setKilled(true);
+//        }
 
         super.setStopped(true);
     }
@@ -581,16 +606,16 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
     /**
      * @return the urlCopy
      */
-    public synchronized URLCopy getUrlCopy() {
-        return urlCopy;
-    }
+//    public synchronized URLCopy getUrlCopy() {
+//        return urlCopy;
+//    }
 
-    /**
-     * @param urlCopy the urlCopy to set
-     */
-    public synchronized void setUrlCopy(URLCopy urlCopy) {
-        this.urlCopy = urlCopy;
-    }
+//    /**
+//     * @param urlCopy the urlCopy to set
+//     */
+//    public synchronized void setUrlCopy(URLCopy urlCopy) {
+//        this.urlCopy = urlCopy;
+//    }
 
 
     @Override
@@ -615,21 +640,25 @@ public class StagingJob extends AbstractJobWatch<StagingTask> {
                 log.error("Failed to roll back transfer task during interrupt.");
             }
 
-            if (getRootTask() != null) {
-                try {
-                    rootTask = TransferTaskDao.merge(getRootTask());
+            //TODO: send interrupt/cancel event to transfer task
 
-                    if (rootTask.getRootTask() != null) {
-                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getRootTask().getId());
-                    } else if (rootTask.getParentTask() != null) {
-                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getParentTask().getId());
-                    } else {
-                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getId());
-                    }
-                } catch (Exception e1) {
-                    log.error("Task cancellation failed.", e1);
-                }
-            }
+
+//
+//            if (getRootTask() != null) {
+//                try {
+//                    rootTask = TransferTaskDao.merge(getRootTask());
+//
+//                    if (rootTask.getRootTask() != null) {
+//                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getRootTask().getId());
+//                    } else if (rootTask.getParentTask() != null) {
+//                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getParentTask().getId());
+//                    } else {
+//                        TransferTaskDao.cancelAllRelatedTransfers(rootTask.getId());
+//                    }
+//                } catch (Exception e1) {
+//                    log.error("Task cancellation failed.", e1);
+//                }
+//            }
         }
 
         releaseJob();

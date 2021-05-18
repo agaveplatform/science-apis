@@ -79,6 +79,7 @@ public class Settings {
 	public static String 						MAILSMTPSPROTOCOL;
 	public static String 						MAILLOGIN;    
     public static String 						MAILPASSWORD;
+    public static String 						IPLANT_TRANSFER_SERVICE;
 	
 	/* General policy settings */
 	public static int 							MAX_STAGING_TASKS;
@@ -215,6 +216,9 @@ public class Settings {
 			
 			IPLANT_SYSTEM_SERVICE = (String) props.get("iplant.system.service");
 			if (!IPLANT_SYSTEM_SERVICE.endsWith("/")) IPLANT_SYSTEM_SERVICE += "/";
+
+			IPLANT_TRANSFER_SERVICE = (String) props.get("iplant.transfer.service");
+			if (!IPLANT_TRANSFER_SERVICE.endsWith("/")) IPLANT_TRANSFER_SERVICE += "/";
 			
 			IPLANT_DOCS = (String) props.get("iplant.service.documentation");
 			if (!IPLANT_DOCS.endsWith("/")) IPLANT_DOCS += "/";

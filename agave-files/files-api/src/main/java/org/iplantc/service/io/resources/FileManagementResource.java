@@ -1,29 +1,19 @@
 package org.iplantc.service.io.resources;
 
-import static org.iplantc.service.io.model.enumerations.FileOperationType.COPY;
-import static org.iplantc.service.io.model.enumerations.FileOperationType.MKDIR;
-import static org.iplantc.service.io.model.enumerations.FileOperationType.MOVE;
-import static org.iplantc.service.io.model.enumerations.FileOperationType.RENAME;
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.TriggerBuilder.newTrigger;
-
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Writer;
-import java.net.URI;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Properties;
-
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.io.Files;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
@@ -70,24 +60,24 @@ import org.quartz.SchedulerException;
 import org.quartz.SimpleTrigger;
 import org.quartz.impl.StdSchedulerFactory;
 import org.restlet.Request;
-import org.restlet.data.CharacterSet;
-import org.restlet.data.ClientInfo;
-import org.restlet.data.Disposition;
-import org.restlet.data.MediaType;
-import org.restlet.data.Range;
 import org.restlet.data.Status;
+import org.restlet.data.*;
 import org.restlet.ext.fileupload.RestletFileUpload;
 import org.restlet.representation.EmptyRepresentation;
 import org.restlet.representation.Representation;
 import org.restlet.representation.WriterRepresentation;
-import org.restlet.resource.Delete;
-import org.restlet.resource.Get;
-import org.restlet.resource.Post;
-import org.restlet.resource.Put;
-import org.restlet.resource.ResourceException;
+import org.restlet.resource.*;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.google.common.io.Files;
+import java.io.*;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Properties;
+
+import static org.iplantc.service.io.model.enumerations.FileOperationType.*;
+import static org.quartz.JobBuilder.newJob;
+import static org.quartz.TriggerBuilder.newTrigger;
 
 /**
  * Class to handle get and post requests for jobs
@@ -1115,7 +1105,9 @@ public class FileManagementResource extends AbstractFileResource
 		    						cachedFile.createNewFile();
 		    						fi.write(cachedFile);
 		    						log.debug("File upload of " + cachedFile.length() + " bytes received from " + getAuthenticatedUsername());
-		    						
+
+		    						//TODO: pass over to the transfers-api so the connection can be returned
+
 		    						// kick off a background task to stage the file so we can return the connection immediately
 		    						JobDetail jobDetail = newJob(UploadJob.class)
                     					.withIdentity("cache-upload-" + logicalFile.getId() + "-" + System.currentTimeMillis(), "Staging upload")
@@ -1838,15 +1830,36 @@ public class FileManagementResource extends AbstractFileResource
 			}
 		}
 
-		// move is essentially just a rename on the same system
+
 		try {
-			remoteDataClient.doRename(path, destPath);
-		} catch (RemoteDataException e) {
-			if (e.getMessage().contains("Destination already exists")) {
-				log.error(e.getMessage(), e);
-				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, e.getMessage(), e);
+			String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
+					"api/transfers/";
+			HttpClient httpClient = HttpClientBuilder.create().build();
+			HttpPost getRequest = new HttpPost(strUrl);
+			List<NameValuePair> params = new ArrayList<>();
+			params.add(new BasicNameValuePair("src", path));
+			params.add(new BasicNameValuePair("dest", destPath));
+
+
+			HttpResponse httpResponse = httpClient.execute(getRequest);
+
+			if (httpResponse.getStatusLine().getStatusCode() == 200) {
+				HttpEntity httpEntity = httpResponse.getEntity();
 			}
+		} catch (Exception e) {
+			//TODO: handle each of the exceptions based on what is returned from agave-transfers
+			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST);
 		}
+
+		// move is essentially just a rename on the same system
+//		try {
+//			remoteDataClient.doRename(path, destPath);
+//		} catch (RemoteDataException e) {
+//			if (e.getMessage().contains("Destination already exists")) {
+//				log.error(e.getMessage(), e);
+//				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, e.getMessage(), e);
+//			}
+//		}
 		
 		message = "Move success";
 		if (remoteDataClient.isPermissionMirroringRequired())
@@ -2184,11 +2197,31 @@ public class FileManagementResource extends AbstractFileResource
 			append = jsonInput.get("append").asBoolean();
 		}
 
-		if (append) {
-		    remoteDataClient.append(path, destPath);
-		} else {
-		    remoteDataClient.copy(path, destPath);
+		try {
+			String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
+					"api/transfers/";
+			HttpClient httpClient = HttpClientBuilder.create().build();
+			HttpPost getRequest = new HttpPost(strUrl);
+			List<NameValuePair> params = new ArrayList<>();
+			params.add(new BasicNameValuePair("src", path));
+			params.add(new BasicNameValuePair("dest", destPath));
+
+
+			HttpResponse httpResponse = httpClient.execute(getRequest);
+
+			if (httpResponse.getStatusLine().getStatusCode() == 200) {
+				HttpEntity httpEntity = httpResponse.getEntity();
+			}
+		} catch (Exception e) {
+			//TODO: handle each of the exceptions based on what is returned from agave-transfers
+			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST);
 		}
+
+//		if (append) {
+//		    remoteDataClient.append(path, destPath);
+//		} else {
+//		    remoteDataClient.copy(path, destPath);
+//		}
 
 		message = "Copy success";
 		if (remoteDataClient.isPermissionMirroringRequired())
@@ -2204,6 +2237,10 @@ public class FileManagementResource extends AbstractFileResource
 				log.error(message + ": " + e.getMessage(), e);
 			}
 		}
+
+
+		//TODO: we need a way to translate response from agave-transfers since a transfer task is different than a file item
+
 
 		LogicalFile copiedLogicalFile = null;
 
@@ -2297,6 +2334,9 @@ public class FileManagementResource extends AbstractFileResource
 	    // task.  This shift allows us to accurately generate link URLs in the synchronous response.  
 	    // Previously, StagingJob would change the logical file's path after the synchronous response 
 	    // was already sent, which resulted in the generation of invalid links.
+
+		//TODO: we should be able to extract out the resolved path from agave-transfers
+
         RemoteDataClient destClient = null;
         try {
             destClient = ServiceUtils.getDestinationRemoteDataClient(logicalFile);

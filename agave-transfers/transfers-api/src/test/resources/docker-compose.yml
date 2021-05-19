@@ -20,7 +20,7 @@ services:
 
   nats:
     hostname: nats
-    image: synadia/jsm:latest
+    image: agaveplatform/nats-server:2.2.4
     entrypoint: /nats-server
     command: '--js --sd /data -m 8222'
     networks:

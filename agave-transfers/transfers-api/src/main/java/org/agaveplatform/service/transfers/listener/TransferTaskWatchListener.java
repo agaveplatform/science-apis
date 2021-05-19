@@ -60,8 +60,8 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 		String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
 		dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-		int healthTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK, 600000);
-		int healthParentTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK_PARENT, 600000);
+		int healthTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK_MILLIS, 600000);
+		int healthParentTimer = config().getInteger(MAX_TIME_FOR_HEALTHCHECK_PARENT_MILLIS, 600000);
 
 		getVertx().setPeriodic( healthTimer, resp -> {
 			processEvent(batchResp -> {

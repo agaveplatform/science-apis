@@ -17,9 +17,11 @@ public class TransferTaskConfigProperties {
     public static final String CONFIG_TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE = "TRANSFERTASK_DB_SQL_QUERIES_RESOURCE_FILE";
     public static final String CONFIG_TRANSFERTASK_DB_QUEUE = "TRANSFERTASK_DB_QUEUE";
     public static final String TRANSFERTASK_MAX_ATTEMPTS = "TRANSFERTASK_MAX_ATTEMPTS";
-    public static final String MAX_TIME_FOR_TASK = "MAX_TIME_FOR_TASK";
+    public static final String MAX_TIME_FOR_TASK_MILLIS = "MAX_TIME_FOR_TASK_MILLIS";
+    public static final String NATS_URL = "NATS_URL";
 
-    public static final String MAX_TIME_FOR_HEALTHCHECK = "MAX_TIME_FOR_HEALTHCHECK";
-    public static final String MAX_TIME_FOR_HEALTHCHECK_PARENT = "MAX_TIME_FOR_HEALTHCHECK_PARENT";
-    public static final int FLUSH_DELAY_NATS = 500;
+    public static final String MAX_TIME_FOR_HEALTHCHECK_MILLIS = "MAX_TIME_FOR_HEALTHCHECK_MILLIS";
+    public static final String MAX_TIME_FOR_HEALTHCHECK_PARENT_MILLIS = "MAX_TIME_FOR_HEALTHCHECK_PARENT_MILLIS";
+    public static final String FLUSH_DELAY_NATS_MILLIS = "FLUSH_DELAY_NATS_MILLIS";
+    public static final String AGAVE_ENVIRONMENT = "AGAVE_ENVIRONMENT";
 }

@@ -46,29 +46,58 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
 
     private static final Object lock = new Object();
 
-
-
     /**
      * Static connection shared across all instances.
      */
     private static Connection conn;
     private static Dispatcher dispatcher;
+    private final Map<String, JetStreamSubscription> subscriptionMap = new HashMap<String, JetStreamSubscription>();
 
     private JetStreamManagement jsm;
     private JetStream js;
     private String consumerName;
-    private final Map<String, JetStreamSubscription> subscriptionMap = new HashMap<String, JetStreamSubscription>();
 
-    public NatsJetstreamMessageClient(String connectionUri, String consumerName) throws IOException, InterruptedException {
+    private String streamName;
+
+    /**
+     * Instantiates a new Nats Jetstream client. If no connection has been established, it will be here using a
+     * threadsafe static {@link #connect(String)} method.
+     * @param connectionUri the nats url
+     * @param streamName the name of the stream to which to connect
+     * @param consumerName the name of the consumer to create.
+     * @throws IOException if a networking issue occurs
+     * @throws InterruptedException if the current thread is interrupted
+     */
+    public NatsJetstreamMessageClient(String connectionUri, String streamName, String consumerName) throws IOException, InterruptedException {
+        connect(connectionUri);
         setConsumerName(consumerName);
-        connect(connectionUri);
-    }
-    public NatsJetstreamMessageClient(String connectionUri) throws IOException, InterruptedException {
-        connect(connectionUri);
+        setStreamName(streamName);
     }
 
-    public static Connection getConn() {
+    /**
+     * The current connnection. This is a singleton instantiate by the first instance of this class at runtime. The
+     * underlying NATS library will handle reconnections, pauses, and eventing through notifications to the dispatcher
+     * we register with our subscription, and with the connection, so no further work is needed on our behalf.
+     * @return an active NATS connection
+     */
+    protected static Connection getConn() {
         return conn;
+    }
+
+    /**
+     * Gets the name of the stream to which the client will interact
+     * @return name of the JetStream stream with which this client interacts
+     */
+    public String getStreamName() {
+        return this.streamName;
+    }
+
+    /**
+     * Sets the name of the stream to which the client will interact
+     * @param streamName name of the JetStream stream name to interact with
+     */
+    protected void setStreamName(String streamName) {
+        this.streamName = streamName;
     }
 
     /**
@@ -99,34 +128,57 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
     }
 
     /**
-     * Establishes a connection to the NATS server at the given {@code connectionUrl}. A single NATS Connection object
-     * can handle multiple consumers subscribing and publishing to a single stream. We use a sychronized singleton
-     * pattern here to have thread safety on the connection when creating multiple instances.
+     * Creates a JetStream subscription to {@code streamName} for subject {@code subject} and saves for future use.
+     * Subscriptions are left open until explicitly unsubscribed. Calling {@link #stop()} will unsubscribe all
+     * {@link Subscription} for this instance before closing the {@link #conn}.
      *
-     * @param connectionUrl the url of the NATS server
-     * @throws IOException if a networking issue occurs
-     * @throws InterruptedException if the current thread is interrupted
+     * @param stream the name of the stream
+     * @param subject the subject
+     * @return a subscription to the stream filtered by subject
+     * @throws IOException IOException if a networking issue occurs
+     * @throws JetStreamApiException the request had an error related to the data
      */
-    public Connection connectNats(String connectionUrl) throws IOException, InterruptedException {
-        synchronized(lock) {
-            if (conn == null) {
-                Options.Builder builder = new Options.Builder()
-                        .server(connectionUrl)
-                        .connectionTimeout(Duration.ofSeconds(5))
-                        .pingInterval(Duration.ofSeconds(10))
-                        .reconnectWait(Duration.ofSeconds(1))
-                        .maxReconnects(-1)
-                        .connectionListener(new NatsConnectionListener())
-                        .errorListener(new NatsErrorListener());
+    protected JetStreamSubscription getOrCreatePullSubscription(String stream, String subject) throws IOException, JetStreamApiException {
+        String subscriptionKey = stream + "-" + subject;
+        if (!subscriptionMap.containsKey(subscriptionKey)) {
+            PullSubscribeOptions pullSubscribeOptions = PullSubscribeOptions.builder()
+                    .stream(stream)
+                    .durable(subject)
+                    .build();
 
-                conn = Nats.connect(builder.build());
-                dispatcher = conn.createDispatcher();
-                return conn;
-            }
+            JetStreamSubscription subscription = getJetStream().subscribe(subject, pullSubscribeOptions);
+            subscriptionMap.put(subscriptionKey, subscription);
         }
-        return conn;
+
+        return subscriptionMap.get(subscriptionKey);
     }
 
+    /**
+     * Creates a JetStream subscription to {@code streamName} for subject {@code subject} and saves for future use.
+     * Subscriptions are left open until explicitly unsubscribed. Calling {@link #stop()} will unsubscribe all
+     * {@link Subscription} for this instance before closing the {@link #conn}.
+     *
+     * @param stream the name of the stream
+     * @param group the name of the consumer group to join. The client name and  effective creates
+     * @param subject the subject
+     * @return a subscription to the stream filtered by subject
+     * @throws IOException IOException if a networking issue occurs
+     * @throws JetStreamApiException the request had an error related to the data
+     */
+    protected JetStreamSubscription getOrCreatePushGroupSubscription(String stream, String group,  String subject) throws IOException, JetStreamApiException {
+        String subscriptionKey = stream + "-" + subject;
+        if (!subscriptionMap.containsKey(subscriptionKey)) {
+            PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
+                    .stream(stream)
+                    .durable(subject)
+                    .build();
+
+            JetStreamSubscription subscription = getJetStream().subscribe(subject, group, pushSubscribeOptions);
+            subscriptionMap.put(subscriptionKey, subscription);
+        }
+
+        return subscriptionMap.get(subscriptionKey);
+    }
 
     /**
      * Creates a JetStream subscription to {@code streamName} for subject {@code subject} and saves for future use.
@@ -139,37 +191,20 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
      * @throws IOException IOException if a networking issue occurs
      * @throws JetStreamApiException the request had an error related to the data
      */
-    protected JetStreamSubscription getOrCeateSubscription(String stream, String subject) throws IOException, JetStreamApiException {
+    protected JetStreamSubscription getOrCreatePushSubscription(String stream, String subject) throws IOException, JetStreamApiException {
         String subscriptionKey = stream + "-" + subject;
         if (!subscriptionMap.containsKey(subscriptionKey)) {
             PullSubscribeOptions pullSubscribeOptions = PullSubscribeOptions.builder()
                     .stream(stream)
                     .durable(subject)
                     .build();
-            // TODO: add queue name to ensure grouping.
-            // TODO: Client name must be unique to subject. find a way to ensure it is.
+
             JetStreamSubscription subscription = getJetStream().subscribe(subject, pullSubscribeOptions);
             subscriptionMap.put(subscriptionKey, subscription);
         }
 
         return subscriptionMap.get(subscriptionKey);
     }
-
-//    /**
-//
-//     *
-//     * @param connectionUri the custom URL to conect to
-//     * @return a MessageQueueClient capable of interacting with nats.
-//     * @throws IOException if a networking issue occurs
-//     * @throws InterruptedException if the current thread is interrupted
-//     */
-//    public static NatsJetstreamMessageClient getInstance(String connectionUri) throws IOException, InterruptedException {
-//        if (natsJetstreamMessageClient == null) {
-//            natsJetstreamMessageClient = new NatsJetstreamMessageClient(connectionUri);
-//        }
-//
-//        return natsJetstreamMessageClient;
-//    }
 
     /**
      * Publishes a message onto the given subject
@@ -308,7 +343,7 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
      */
     public List<Message> fetch(String stream, String subject, int numberOfMessages, int timeoutSeconds) throws MessagingException {
         try {
-            JetStreamSubscription subscription = getOrCeateSubscription(stream, subject);
+            JetStreamSubscription subscription = getOrCreatePullSubscription(stream, subject);
             return subscription.fetch(numberOfMessages, Duration.ofSeconds(timeoutSeconds)).stream()
                     .map(message -> {
                         // have to explicitly ack when fetching from a stream
@@ -351,7 +386,9 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
      * @throws MessagingException if communication with the NATS server fails
      */
     @Override
-    public Subscription listen(String stream, String subject, String queueName, MessageQueueListener listener) throws MessagingException, MessageProcessingException {
+    public Subscription listen(String stream, String subject, String queueName, MessageQueueListener listener)
+            throws MessagingException, MessageProcessingException
+    {
         MessageHandler handler = msg -> {
             try {
                 // Q: should we handle the ack after processing the message so we can retry?
@@ -366,21 +403,25 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
             }
         };
 
-        try {
-            PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
-                    .stream(stream)
-                    .build();
-            if (queueName != null) {
-                subscriptionMap.put(subject, getJetStream().subscribe(subject, queueName, getDispatcher(), handler, true, pushSubscribeOptions));
-            } else {
-                subscriptionMap.put(subject, getJetStream().subscribe(subject, getDispatcher(), handler, true, pushSubscribeOptions));
-            }
+        if (!subscriptionMap.containsKey(subject)) {
+            try {
+                PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
+                        .stream(stream)
+                        .build();
+                if (queueName != null) {
+                    subscriptionMap.put(subject, getJetStream().subscribe(subject, queueName, getDispatcher(), handler, true, pushSubscribeOptions));
+                } else {
+                    subscriptionMap.put(subject, getJetStream().subscribe(subject, getDispatcher(), handler, true, pushSubscribeOptions));
+                }
 
-        } catch (IOException e) {
-            throw new MessagingException("Unexpected error while subscribing to NATS server.", e);
-        } catch (JetStreamApiException e) {
-            throw new MessagingException("Invalid request made to NATS Jetstream to subscribe for push messages", e);
+            } catch (IOException e) {
+                throw new MessagingException("Unexpected error while subscribing to NATS server.", e);
+            } catch (JetStreamApiException e) {
+                throw new MessagingException("Invalid request made to NATS Jetstream to subscribe for push messages", e);
+            }
         }
+
+        return subscriptionMap.get(subject);
     }
 
 
@@ -408,10 +449,6 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
         } catch (InterruptedException e) {
             log.error("Thread interrupted while closing the connection to NATS", e);
         }
-    }
-
-    private String getStreamName() {
-        return "AGAVE";
     }
 
     /**

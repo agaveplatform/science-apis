@@ -5,25 +5,19 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.*;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_HEALTHCHECK_PARENT;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.MAX_TIME_FOR_HEALTHCHECK;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.MAX_TIME_FOR_HEALTHCHECK_PARENT;
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 
 
@@ -49,7 +43,11 @@ public class NatsListener extends  AbstractNatsListener {
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
-    public JetStream js = _jsmConnect("nats://nats:4222","TRANSFERTASK_ASSIGNED", MessageType.TRANSFERTASK_ASSIGNED);
+    public JetStream js = _jsmConnect(
+            config().getString(TransferTaskConfigProperties.NATS_URL));
+//    ,
+//            "TRANSFERTASK_ASSIGNED",
+//            MessageType.TRANSFERTASK_ASSIGNED);
 
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {

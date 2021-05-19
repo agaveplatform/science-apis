@@ -1,21 +1,18 @@
 package org.agaveplatform.service.transfers.listener;
 
-import com.github.slugify.Slugify;
-import org.agaveplatform.service.transfers.messaging.*;
 import io.nats.client.*;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.RemoteSystemAO;
-import org.apache.commons.lang.StringUtils;
 import org.iplantc.service.common.exceptions.PermissionException;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemRoleException;
@@ -31,16 +28,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
@@ -50,19 +44,22 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
     private TransferTaskDatabaseService dbService;
     public Connection nc;
-    private NatsJetstreamMessageClient natsCleint;
+    private NatsJetstreamMessageClient natsClient;
 
     public TransferTaskCreatedListener() throws IOException, InterruptedException {
-        super();
-        natsCleint =  new NatsJetstreamMessageClient(config().getString("NATS_URI"));
+        super(null, null);
+
     }
     public TransferTaskCreatedListener(Vertx vertx) throws IOException, InterruptedException {
-        super(vertx);
-        natsCleint =  new NatsJetstreamMessageClient(config().getString("NATS_URI"));
+        super(vertx, null);
     }
+
     public TransferTaskCreatedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
-        natsCleint =  new NatsJetstreamMessageClient(config().getString("NATS_URI"));
+        natsClient =  new NatsJetstreamMessageClient(
+                config().getString(TransferTaskConfigProperties.NATS_URL),
+                getStreamName(),
+                createConsumerNameForEvent(MessageType.TRANSFERTASK_CREATED));
     }
 
     public String getDefaultEventChannel() {
@@ -72,6 +69,20 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     //public JetStream js = _jsmConnect("nats://nats:4222","TRANSFERTASK", MessageType.TRANSFERTASK_CREATED);
 
     private final List<JetStream> jsTree = new ArrayList<>();
+
+    /**
+     * If your verticle has simple synchronous clean-up tasks to complete then override this method and put your clean-up
+     * code in here.
+     *
+     * @throws Exception
+     */
+    @Override
+    public void stop() throws Exception {
+
+        natsClient.stop();
+
+        super.stop();
+    }
 
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
@@ -83,15 +94,9 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         String dbServiceQueue = config().getString(CONFIG_TRANSFERTASK_DB_QUEUE);
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
-        // This handler will get called every second
-        //vertx.setPeriodic(1000, id -> {
-
-        //transfers.$tenantid.$uid.$systemid.transfer.$protocol
-        String prefix = _getStreamPrefix();
-
         try {
-                JetStreamManagement jsm = natsCleint.getJetStreamManagement();
-                natsCleint.fetch("DEV", _createMessageName("DEV", "*", "*", "*", EVENT_CHANNEL),1, 2);
+                JetStreamManagement jsm = natsClient.getJetStreamManagement();
+                natsClient.fetch("DEV", _createMessageName("DEV", "*", "*", "*", EVENT_CHANNEL),1, 2);
 
 
             } catch (Exception e) {

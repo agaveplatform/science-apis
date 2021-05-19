@@ -16,7 +16,7 @@ import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.FLUSH_DELAY_NATS_MILLIS;
 
 @Deprecated
 public class InteruptEventListener extends AbstractNatsListener {
@@ -53,7 +53,7 @@ public class InteruptEventListener extends AbstractNatsListener {
 			log.info("Transfer task paused {} created: {} -> {}",tenantId, uuid, source);
 		});
 		d.subscribe(EVENT_CHANNEL);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(config().getInteger(FLUSH_DELAY_NATS_MILLIS)));
 	}
 
 
@@ -73,7 +73,7 @@ public class InteruptEventListener extends AbstractNatsListener {
 
 		});
 		d.subscribe(EVENT_CHANNEL);
-		nc.flush(Duration.ofMillis(config().getInteger(String.valueOf(FLUSH_DELAY_NATS))));
+		nc.flush(Duration.ofMillis(config().getInteger(FLUSH_DELAY_NATS_MILLIS)));
 		return interupt.get();
 	}
 

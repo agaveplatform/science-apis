@@ -7,10 +7,7 @@ import io.nats.client.impl.NatsMessage;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang.StringUtils;
-import org.iplantc.service.common.exceptions.UUIDException;
 import org.iplantc.service.common.util.Slug;
-import org.iplantc.service.common.uuid.AgaveUUID;
-import org.iplantc.service.common.uuid.UUIDType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,9 +20,6 @@ import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
-import org.agaveplatform.service.transfers.nats.NatsArgs;
-import org.agaveplatform.service.transfers.nats.NatsArgs.Builder;
 
 public class AbstractNatsListener extends AbstractTransferTaskListener {
     private static final Logger log = LoggerFactory.getLogger(AbstractNatsListener.class);
@@ -75,30 +69,32 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         return name + "." + tenantid + "." + uid + "." + systemId + "." + eventName;
     }
 
-    /*
-    * This method will create the consumer name from a streamName and eventName
-    * @param streamName
-    * @param eventName - this is the MessageType
-    * @return String consumerName
+    /**
+     * This method will create the consumer name from the implementing class simple name, and provided {@code eventName}.
+     *
+     * @param eventName - this is the MessageType, which is enough for uniqueness. The subject is not needed
+     * @return a unique consumerName for the event and implementing class
      */
-    public String _createConsumerName(String streamName, String eventName){
+    public String createConsumerNameForEvent(String eventName){
+        return Slug.toSlug(String.format("%s-%s", this.getClass().getSimpleName(), eventName), true);
+
         //Slugify slg = new Slugify();
-        String consumerName = "";
-        String prefix = _getStreamPrefix();
-
-        consumerName = prefix + "." + streamName + "."+ eventName;
-        consumerName = consumerName.replaceAll("\\.{2,}",".");
-        consumerName = StringUtils.stripEnd(consumerName, ".");
-
-        AgaveUUID uuid = null;
-        try {
-            uuid = new AgaveUUID(UUIDType.SYSTEM.toString());
-        } catch (UUIDException e) {
-            log.debug(e.getMessage());
-        }
-        consumerName = consumerName + uuid.toString();
-
-        return consumerName;
+//        String consumerName = "";
+//        String prefix = _getStreamPrefix();
+//
+//        consumerName = prefix + "." + streamName + "."+ eventName;
+//        consumerName = consumerName.replaceAll("\\.{2,}",".");
+//        consumerName = StringUtils.stripEnd(consumerName, ".");
+//
+//        AgaveUUID uuid = null;
+//        try {
+//            uuid = new AgaveUUID(UUIDType.SYSTEM.toString());
+//        } catch (UUIDException e) {
+//            log.debug(e.getMessage());
+//        }
+//        consumerName = consumerName + uuid.toString();
+//
+//        return consumerName;
     }
 
     /*
@@ -176,7 +172,7 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
                 String systemid = srcUri.get().getHost();
 
                 //transfers.$tenantid.$uid.$systemid.$messageAddress
-                consumerName = _createConsumerName( stream, messageAddress);
+                consumerName = createConsumerNameForEvent(messageAddress);
 
                 _createConsumer(jsm, stream, consumerName, messageAddress);
             }
@@ -284,17 +280,15 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
         }
     }
 
-    /*
-     * This method will get the stream name from the enviorment
-    *
-     * @return String stream
+    /**
+     * This method will get the stream name from the {@code AGAVE_ENVIRONMENT} config value, or environment
+     * variable. This will be a reflection of whether the service is running in dev or prod, but generally does not
+     * matter too much since we will have a dedicated nats server per tenant/namespace.
+     *
+     * @return the name of the stream to which we will subscribe
      */
-    public String _getStreamName(){
-
-        Map<String, String> bashEnv = System.getenv();
-        String stream = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","DEV");
-
-        return stream;
+    public String getStreamName() {
+        return "AGAVE_" + config().getString("AGAVE_ENVIRONMENT", "DEV").toUpperCase();
     }
 
     /*

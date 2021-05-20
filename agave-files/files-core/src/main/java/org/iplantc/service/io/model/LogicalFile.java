@@ -3,29 +3,11 @@
  */
 package org.iplantc.service.io.model;
 
-import java.io.File;
-import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
-import javax.persistence.JoinColumn;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.Transient;
-import javax.xml.bind.annotation.XmlElement;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
@@ -50,11 +32,15 @@ import org.iplantc.service.transfer.model.RemoteFilePermission;
 import org.joda.time.DateTime;
 import org.json.JSONException;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import javax.persistence.*;
+import javax.xml.bind.annotation.XmlElement;
+import java.io.File;
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -87,6 +73,7 @@ public class LogicalFile {
 	private String nativeFormat = RAW;
 	private String tenantId;		// current api tenant
 	private Date created = new Date();
+	private String transferUuid;
 	
 	private List<FileEvent> events = new ArrayList<FileEvent>();
 	
@@ -195,7 +182,7 @@ public class LogicalFile {
 	}
 
 	/**
-	 * @param owner
+	 * @param username
 	 *            the owner to set
 	 */
 	public void setOwner(String username) {
@@ -255,7 +242,7 @@ public class LogicalFile {
 	}
 
 	/**
-	 * @param source the source to set
+	 * @param sourceUri the source to set
 	 */
 	public void setSourceUri(String sourceUri) {
 		this.sourceUri = sourceUri;
@@ -446,7 +433,7 @@ public class LogicalFile {
 	}
 
 	/**
-	 * @param transferTask the transferTask to set
+	 * @param events the transferTask to set
 	 */
 	public void setEvents(List<FileEvent> events)
 	{
@@ -472,7 +459,8 @@ public class LogicalFile {
 	 * Adds an event to the history of this job. This will automatically
 	 * be saved with the logicalFile when the logicalFile is persisted.
 	 * 
-	 * @param event
+	 * @param eventType
+	 * @param createdBy
 	 */
 	public void addContentEvent(FileEventType eventType, String createdBy) {
 		FileEvent event = new FileEvent(
@@ -544,6 +532,23 @@ public class LogicalFile {
 				.put("href", getEventLink()));
 		return links;
 	}
+
+	/**
+	 * @return the uuid linked to transfer service
+	 */
+	@Column(name = "transferUuid", nullable = false, length = 64, unique=true)
+	public String getTransferUuid() {
+		return transferUuid;
+	}
+
+	/**
+	 * @param transferUuid
+	 *            the transfer uuid to set
+	 */
+	public void setTransferUuid(String transferUuid) {
+		this.transferUuid = transferUuid;
+	}
+
 	
 	
 	@JsonValue

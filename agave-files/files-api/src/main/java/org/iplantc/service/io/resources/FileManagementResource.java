@@ -7,13 +7,6 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.StringUtils;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
 import org.hibernate.HibernateException;
 import org.iplantc.service.common.clients.AgaveLogServiceClient;
@@ -70,7 +63,6 @@ import org.restlet.resource.*;
 
 import java.io.*;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
@@ -1831,35 +1823,35 @@ public class FileManagementResource extends AbstractFileResource
 		}
 
 
-		try {
-			String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
-					"api/transfers/";
-			HttpClient httpClient = HttpClientBuilder.create().build();
-			HttpPost getRequest = new HttpPost(strUrl);
-			List<NameValuePair> params = new ArrayList<>();
-			params.add(new BasicNameValuePair("src", path));
-			params.add(new BasicNameValuePair("dest", destPath));
-
-
-			HttpResponse httpResponse = httpClient.execute(getRequest);
-
-			if (httpResponse.getStatusLine().getStatusCode() == 200) {
-				HttpEntity httpEntity = httpResponse.getEntity();
-			}
-		} catch (Exception e) {
-			//TODO: handle each of the exceptions based on what is returned from agave-transfers
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST);
-		}
+//		try {
+//			String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
+//					"api/transfers/";
+//			HttpClient httpClient = HttpClientBuilder.create().build();
+//			HttpPost getRequest = new HttpPost(strUrl);
+//			List<NameValuePair> params = new ArrayList<>();
+//			params.add(new BasicNameValuePair("src", path));
+//			params.add(new BasicNameValuePair("dest", destPath));
+//
+//
+//			HttpResponse httpResponse = httpClient.execute(getRequest);
+//
+//			if (httpResponse.getStatusLine().getStatusCode() == 200) {
+//				HttpEntity httpEntity = httpResponse.getEntity();
+//			}
+//		} catch (Exception e) {
+//			//TODO: handle each of the exceptions based on what is returned from agave-transfers
+//			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST);
+//		}
 
 		// move is essentially just a rename on the same system
-//		try {
-//			remoteDataClient.doRename(path, destPath);
-//		} catch (RemoteDataException e) {
-//			if (e.getMessage().contains("Destination already exists")) {
-//				log.error(e.getMessage(), e);
-//				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, e.getMessage(), e);
-//			}
-//		}
+		try {
+			remoteDataClient.doRename(path, destPath);
+		} catch (RemoteDataException e) {
+			if (e.getMessage().contains("Destination already exists")) {
+				log.error(e.getMessage(), e);
+				throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, e.getMessage(), e);
+			}
+		}
 		
 		message = "Move success";
 		if (remoteDataClient.isPermissionMirroringRequired())
@@ -2197,31 +2189,31 @@ public class FileManagementResource extends AbstractFileResource
 			append = jsonInput.get("append").asBoolean();
 		}
 
-		try {
-			String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
-					"api/transfers/";
-			HttpClient httpClient = HttpClientBuilder.create().build();
-			HttpPost getRequest = new HttpPost(strUrl);
-			List<NameValuePair> params = new ArrayList<>();
-			params.add(new BasicNameValuePair("src", path));
-			params.add(new BasicNameValuePair("dest", destPath));
-
-
-			HttpResponse httpResponse = httpClient.execute(getRequest);
-
-			if (httpResponse.getStatusLine().getStatusCode() == 200) {
-				HttpEntity httpEntity = httpResponse.getEntity();
-			}
-		} catch (Exception e) {
-			//TODO: handle each of the exceptions based on what is returned from agave-transfers
-			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST);
-		}
-
-//		if (append) {
-//		    remoteDataClient.append(path, destPath);
-//		} else {
-//		    remoteDataClient.copy(path, destPath);
+//		try {
+//			String strUrl = TenancyHelper.resolveURLToCurrentTenant(Settings.IPLANT_TRANSFER_SERVICE) +
+//					"api/transfers/";
+//			HttpClient httpClient = HttpClientBuilder.create().build();
+//			HttpPost getRequest = new HttpPost(strUrl);
+//			List<NameValuePair> params = new ArrayList<>();
+//			params.add(new BasicNameValuePair("src", path));
+//			params.add(new BasicNameValuePair("dest", destPath));
+//
+//
+//			HttpResponse httpResponse = httpClient.execute(getRequest);
+//
+//			if (httpResponse.getStatusLine().getStatusCode() == 200) {
+//				HttpEntity httpEntity = httpResponse.getEntity();
+//			}
+//		} catch (Exception e) {
+//			//TODO: handle each of the exceptions based on what is returned from agave-transfers
+//			throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST);
 //		}
+
+		if (append) {
+		    remoteDataClient.append(path, destPath);
+		} else {
+		    remoteDataClient.copy(path, destPath);
+		}
 
 		message = "Copy success";
 		if (remoteDataClient.isPermissionMirroringRequired())

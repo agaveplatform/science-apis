@@ -11,7 +11,9 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.exception.ObjectNotFoundException;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 
@@ -47,11 +50,16 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).processFailure(any(JsonObject.class), any());
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
+		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		doCallRealMethod().when(listener).processBody(any(), any());
 		return listener;
+	}
+	NatsJetstreamMessageClient getMockNats() throws MessagingException {
+		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+		doNothing().when(natsClient).push(any(), any(), any());
+		return getMockNats();
 	}
 
 	@AfterAll
@@ -118,7 +126,7 @@ class TransferTaskErrorFailureHandlerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 
 		TransferTaskErrorFailureHandler failureHandler = getMockTransferFailureHandlerInstance(vertx);
-		doNothing().when(failureHandler)._doPublishNatsJSEvent( any(), any());
+		//doNothing().when(failureHandler)._doPublishNatsJSEvent( any(), any());
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);

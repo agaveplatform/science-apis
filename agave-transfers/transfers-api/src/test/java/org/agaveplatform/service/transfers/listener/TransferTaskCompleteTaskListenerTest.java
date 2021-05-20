@@ -12,11 +12,14 @@ import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 
@@ -48,16 +51,21 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).processEvent(any(), any());
         when(listener.getRetryRequestManager()).thenCallRealMethod();
         doNothing().when(listener)._doPublishEvent(any(), any());
-        doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
+        //doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
         doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
         doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
         return listener;
+    }
+    NatsJetstreamMessageClient getMockNats() throws MessagingException {
+        NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+        doNothing().when(natsClient).push(any(), any(), any());
+        return getMockNats();
     }
 
 
     @Test
     @DisplayName("testProcessEventWithNoParent")
-    public void testProcessEventWithNoParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+    public void testProcessEventWithNoParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -68,6 +76,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener transferTaskCompleteTaskListener = getMockTransferCompleteListenerInstance(vertx);
+        NatsJetstreamMessageClient nats = getMockNats();
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -117,14 +126,16 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(transferTaskCompleteTaskListener)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
-
+            //verify(transferTaskCompleteTaskListener)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
+            verify(nats,times(1)).push(any(), any(), any());
             // make sure the parent was not processed when none existed for the transfer task
             verify(transferTaskCompleteTaskListener, never()).processParentEvent(any(), any(), any());
 
             // make sure no error event is ever thrown
-            verify(transferTaskCompleteTaskListener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-            verify(transferTaskCompleteTaskListener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
+            //verify(transferTaskCompleteTaskListener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+            verify(nats,times(1)).push(any(), any(), any());
+            //verify(transferTaskCompleteTaskListener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
+            verify(nats,times(1)).push(any(), any(), any());
 
             Assertions.assertFalse(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
@@ -137,7 +148,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessEventWithInactiveParent")
-    public void testProcessEventWithInactiveParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+    public void testProcessEventWithInactiveParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -157,6 +168,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        NatsJetstreamMessageClient nats = getMockNats();
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -201,15 +213,16 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishNatsJSEvent(TRANSFERTASK_FINISHED, json);
-
+            //verify(ttc)._doPublishNatsJSEvent(TRANSFERTASK_FINISHED, json);
+            verify(nats,times(1)).push(any(), any(), any());
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-            verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-
+            //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+            //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+            verify(nats,never()).push(any(), eq(TRANSFERTASK_ERROR), any());
+            verify(nats,never()).push(any(), eq(TRANSFERTASK_PARENT_ERROR), any());
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
             Assertions.assertTrue(result.result(),
@@ -221,7 +234,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessEventWithActiveParent")
-    public void testProcessEventWithActiveParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+    public void testProcessEventWithActiveParent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         // Set up our transfertask for testing
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -234,6 +247,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        NatsJetstreamMessageClient nats = getMockNats();
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -277,14 +291,14 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
-
+            //verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
+            verify(nats,times(1)).push(any(),any(), any());
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-            verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+            //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+            //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             Assertions.assertTrue(result.result(),
                     "TransferTask response should be true indicating the task completed successfully.");
@@ -297,7 +311,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcess creates parent error event when parent processing fails")
-    public void testProcessEventCreatesParentErrorEventWhenParentProcessingFails(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+    public void testProcessEventCreatesParentErrorEventWhenParentProcessingFails(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         // Set up our transfertask for testings
         TransferTask transferTask = _createTestTransferTask();
         transferTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -310,6 +324,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        NatsJetstreamMessageClient nats = getMockNats();
 
         // mock out the db service so we can can isolate method logic rather than db
         TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -354,15 +369,15 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // verify that the completed event was created. this should always be throws
             // if the updateStatus result succeeds.
-            verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
-
+            //verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_FINISHED), eq(json));
+            verify(nats,times(1)).push(any(), any(), any());
             // make sure the parent was processed
             verify(ttc).processParentEvent(eq(transferTask.getTenantId()), eq(transferTask.getParentTaskId()), any());
 
-            verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+            //verify(ttc)._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
 
             // make sure no error event is ever thrown
-            verify(ttc, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
+            //verify(ttc, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
 
             Assertions.assertTrue(result.succeeded(), "TransferTask update should have succeeded");
 
@@ -380,7 +395,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Test the ProcessParentEvent with a Status Completed that Reports False")
-    public void testProcessParentEventStatusCompletedReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+    public void testProcessParentEventStatusCompletedReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
             // Set up our transfertask for testing
             TransferTask parentTask = _createTestTransferTask();
             parentTask.setStatus(TransferStatusType.COMPLETED);
@@ -398,6 +413,8 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
             // mock out the verticle we're testing so we can observe that its methods were called as expected
             TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+            NatsJetstreamMessageClient nats = getMockNats();
+
             // we switch the call chain when we want to pass through a method invocation to a method returning void
             doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -446,13 +463,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-
+                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+                verify(nats,never()).push(any(), eq(TRANSFERTASK_PARENT_ERROR), any());
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
+                //verify(ttc, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
+                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has completed");
 
@@ -469,7 +486,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Test the ProcessParentEvent with a status of Cancelled that reports false")
-    public void testProcessParentEventStatusCancelledReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+    public void testProcessParentEventStatusCancelledReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.CANCELLED);
@@ -486,6 +503,8 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        NatsJetstreamMessageClient nats = getMockNats();
+
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -534,13 +553,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-
+                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+                verify(nats,never()).push(any(), eq(TRANSFERTASK_PARENT_ERROR), any());
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
+                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has been cancelled");
 
@@ -557,7 +576,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("Test ProcessParentEvent with a status of Failed but reports a False")
-    public void testProcessParentEventStatusFailedReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+    public void testProcessParentEventStatusFailedReportsFalse(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.FAILED);
@@ -574,6 +593,8 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        NatsJetstreamMessageClient nats = getMockNats();
+
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -622,13 +643,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService, never()).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-
+                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+                verify(nats,never()).push(any(), eq(TRANSFERTASK_PARENT_ERROR), any());
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
+                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded when parent has failed");
 
@@ -645,7 +666,7 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
     @Test
     @DisplayName("testProcessParentEventFoundActive")
-    public void testProcessParentEventFoundActive(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+    public void testProcessParentEventFoundActive(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         // Set up our transfertask for testing
         TransferTask parentTask = _createTestTransferTask();
         parentTask.setStatus(TransferStatusType.TRANSFERRING);
@@ -663,6 +684,8 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
 
         // mock out the verticle we're testing so we can observe that its methods were called as expected
         TransferTaskCompleteTaskListener ttc = getMockTransferCompleteListenerInstance(vertx);
+        NatsJetstreamMessageClient nats = getMockNats();
+
         // we switch the call chain when we want to pass through a method invocation to a method returning void
         doCallRealMethod().when(ttc).processParentEvent(any(), any(), any());
 
@@ -711,13 +734,13 @@ class TransferTaskCompleteTaskListenerTest extends BaseTestCase {
                 verify(dbService).allChildrenCancelledOrCompleted(eq(transferTask.getTenantId()),
                         eq(transferTask.getParentTaskId()), any());
 
-                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-
+                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
+                verify(nats,never()).push(any(), eq(TRANSFERTASK_PARENT_ERROR), any());
                 // make sure no error event is ever thrown
-                verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+                //verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 
                 // new transfer complete event should be created for active parent with no active children
-                verify(ttc)._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
+               // verify(ttc)._doPublishNatsJSEvent(eq(TRANSFER_COMPLETED), any());
 
                 Assertions.assertTrue(result.succeeded(), "TransferTask processParentEvent should have succeeded");
 

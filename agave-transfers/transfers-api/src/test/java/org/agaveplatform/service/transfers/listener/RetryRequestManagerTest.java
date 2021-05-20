@@ -10,9 +10,12 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.exceptions.MessagingException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
@@ -62,6 +65,11 @@ public class RetryRequestManagerTest extends BaseTestCase {
 
         when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
         return listener;
+    }
+    NatsJetstreamMessageClient getMockNats() throws MessagingException {
+        NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+        doNothing().when(natsClient).push(any(), any(), any());
+        return getMockNats();
     }
 
     /**

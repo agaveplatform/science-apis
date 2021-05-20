@@ -9,7 +9,10 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.exceptions.MessagingException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
@@ -37,18 +40,26 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		when(listener.config()).thenReturn(config);
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
-		doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
+		//doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
+		doNothing().when(listener)._createConsumerName(any(), any(), any(), any(), any(), any());
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;
 	}
+	NatsJetstreamMessageClient getMockNats() throws MessagingException {
+		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+		doNothing().when(natsClient).push(any(), any(), any());
+		return getMockNats();
+	}
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with no active transfer tasks")
-	public void processEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+	public void processEvent(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
+		NatsJetstreamMessageClient nats = getMockNats();
+
 		doCallRealMethod().when(twc).processEvent(any());
 
 		// mock out the db service so we can can isolate method logic rather than db
@@ -69,9 +80,12 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		twc.processEvent(resp -> ctx.verify(() -> {
 			assertTrue(resp.result(),
 					"Empty list returned from db mock should result in a true response to the callback.");
-
+			//String messageName = _createConsumerName("DEV", "transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost().toString(), MessageType.TRANSFERTASK_CANCELED);
+			//natsCleint = new NatsJetstreamMessageClient(config().getString("NATS_URI"), streamName, messageName);
+			//_doPublishNatsJSEvent( messageName, deleteReply.result());
+			//natsCleint.push("DEV", messageName, deleteReply.result().toString());
 			// empty list response from db mock should result in no healthcheck events being raised
-			verify(twc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), any());
+			verify(nats, never()).push(any(),any(),any());
 
 			ctx.completeNow();
 		}));
@@ -79,10 +93,11 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with a single active transfer tasks")
-	public void processEventHandlesASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+	public void processEventHandlesASingleActiveTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
+		NatsJetstreamMessageClient nats = getMockNats();
 		doCallRealMethod().when(twc).processEvent(any());
 
 		JsonArray activeTasks = new JsonArray();
@@ -112,7 +127,8 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 			// verify a call was made for each active task
 			for (int i=0; i<activeTasks.size(); i++) {
-				verify(twc, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
+				//verify(twc, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
+				verify(nats,times(1)).push(any(), any(), any());
 			}
 
 			ctx.completeNow();
@@ -121,10 +137,12 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("Transfers Watch Listener Test - succeeds with multiple active transfer tasks")
-	public void processEventHandlesMultipleActiveTasks(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+	public void processEventHandlesMultipleActiveTasks(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskWatchListener twc = getMockListenerInstance(vertx);
+		NatsJetstreamMessageClient nats = getMockNats();
+
 		doCallRealMethod().when(twc).processEvent(any());
 
 		JsonArray activeTasks = new JsonArray();
@@ -157,7 +175,8 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 
 			// verify a call was made for each active task
 			for (int i=0; i<activeTasks.size(); i++) {
-				verify(twc, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
+				//verify(twc, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_HEALTHCHECK), eq(activeTasks.getJsonObject(i)));
+				verify(nats, times(1)).push(any(), any(), any());
 			}
 
 			ctx.completeNow();

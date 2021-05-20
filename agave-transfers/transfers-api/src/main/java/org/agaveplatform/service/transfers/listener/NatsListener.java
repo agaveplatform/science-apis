@@ -9,6 +9,7 @@ import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.NATS_URL;
 
 
 public class NatsListener extends  AbstractNatsListener {
@@ -26,7 +28,8 @@ public class NatsListener extends  AbstractNatsListener {
 
     private TransferTaskDatabaseService dbService;
     protected List<String> parentList = new ArrayList<>();
-    public final Connection nc = _connect();
+    protected NatsJetstreamMessageClient natsClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", "");
+
 
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_ASSIGNED;
 
@@ -43,11 +46,6 @@ public class NatsListener extends  AbstractNatsListener {
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
-    public JetStream js = _jsmConnect(
-            config().getString(TransferTaskConfigProperties.NATS_URL));
-//    ,
-//            "TRANSFERTASK_ASSIGNED",
-//            MessageType.TRANSFERTASK_ASSIGNED);
 
     @Override
     public void start() throws IOException, InterruptedException, TimeoutException {
@@ -65,27 +63,13 @@ public class NatsListener extends  AbstractNatsListener {
         // init our JetStreamSubscription
 
         try {
-            JetStreamSubscription sub = js.subscribe("TRANSFERTASK_ASSIGNED", pullOptions);
-            log.info("got subscription: ", sub.getConsumerInfo().toString());
 
-            sub.pull(1);
-            Message m = sub.nextMessage(Duration.ofSeconds(1));
-            if (m != null) {
-                if (m.isJetStream()) {
-                    log.info(m.getData().toString());
-                    m.ack();
-                }
-                m.getData();
-                log.info("Subject: ",m.getSubject());
-                log.info("Data:  ", m.getData());
-            }
+            log.info("got subscription: ");
 
-        } catch (JetStreamApiException e) {
-            log.debug("Error with subsription {}", e.getMessage());
         } catch (Exception e){
             log.debug(e.getMessage());
         }
-        nc.flush(Duration.ofSeconds(1));
+
 
     }
 

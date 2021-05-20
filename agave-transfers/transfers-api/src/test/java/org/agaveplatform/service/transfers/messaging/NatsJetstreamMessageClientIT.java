@@ -123,7 +123,7 @@ public class NatsJetstreamMessageClientIT {
         io.nats.client.Message msg = null;
 
         try {
-            messageClient = new NatsJetstreamMessageClient(NATS_URL, "push-test-consumer");
+            messageClient = new NatsJetstreamMessageClient(NATS_URL,"DEV", "push-test-consumer");
 
             // test pushing of message for each message type
             for (String messageType : MessageType.values()) {
@@ -162,7 +162,7 @@ public class NatsJetstreamMessageClientIT {
         NatsJetstreamMessageClient agaveMessageClient;
 
         try {
-            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, "fetch-test-consumer");
+            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", "fetch-test-consumer");
 
             // test pushing of message for each message type
             for (String messageType : MessageType.values()) {

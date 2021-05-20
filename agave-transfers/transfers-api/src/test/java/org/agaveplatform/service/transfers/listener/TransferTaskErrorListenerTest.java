@@ -8,12 +8,15 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,10 +62,15 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		return listener;
 	}
+	NatsJetstreamMessageClient getMockNats() throws MessagingException {
+		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+		doNothing().when(natsClient).push(any(), any(), any());
+		return getMockNats();
+	}
 
 	@Test
 	@DisplayName("TransferErrorListener.processError RemoteDataException and Status= QUEUED test")
-	protected void processErrorRDE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processErrorRDE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(4L);
 		tt.setStatus(QUEUED);
@@ -72,6 +80,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -121,16 +130,17 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertTrue(resp.result(), "processError should return false when the body has a recoverable cause and has a status of QUEUED");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			verify(txfrErrorListener)._doPublishNatsJSEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())) );
+			//verify(txfrErrorListener)._doPublishNatsJSEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())) );
+			verify(nats, times(1)).push(any(), any(), any());
 			ctx.completeNow();
 		}));
 	}
 
 	@Test
 	@DisplayName("TransferErrorListener.processError Child Task RemoteDataException and Status= QUEUED test")
-	protected void processErrorChildRDE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processErrorChildRDE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
-
+		NatsJetstreamMessageClient nats = getMockNats();
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(4L);
 		tt.setStatus(QUEUED);
@@ -176,7 +186,8 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertTrue(resp.result(), "processError should return false when the body has a recoverable cause and has a status of QUEUED");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			verify(txfrErrorListener)._doPublishNatsJSEvent( eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
+			//verify(txfrErrorListener)._doPublishNatsJSEvent( eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
+			verify(nats, times(1)).push(any(), any(), any());
 			ctx.completeNow();
 		}));
 	}
@@ -184,7 +195,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferErrorListener.processError Parent/Root Task IOException and Status= QUEUED test")
 //	@Disabled
-	protected void processErrorIOE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processErrorIOE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(3L);
 		tt.setStatus(QUEUED);
@@ -195,6 +206,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		NatsJetstreamMessageClient nats = getMockNats();
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
@@ -246,14 +258,15 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 					"TransferErrorListener.processError is called for an IOException. It is already in the QUEUE");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			verify(txfrErrorListener)._doPublishNatsJSEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
+			//verify(txfrErrorListener)._doPublishNatsJSEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
+			verify(nats, times(1)).push(any(), any(), any());
 			ctx.completeNow();
 		}));
 	}
 
 	@Test
 	@DisplayName("TransferErrorListener.processError Child Task IOException and Status= QUEUED test")
-	protected void processErrorChildIOE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processErrorChildIOE_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -268,6 +281,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		NatsJetstreamMessageClient nats = getMockNats();
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
@@ -308,7 +322,8 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 					"TransferErrorListener.processError is called for an IOException. It is already in the QUEUE");
 			// active statuses should be moved to error state
 			verify(dbService).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), eq(ERROR.name()), any());
-			verify(txfrErrorListener)._doPublishNatsJSEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
+			//verify(txfrErrorListener)._doPublishNatsJSEvent(eq(TRANSFER_RETRY), eq(tt.toJson().put("status", ERROR.name())));
+			verify(nats, times(1)).push(any(), any(), any());
 			ctx.completeNow();
 		}));
 	}
@@ -316,7 +331,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferErrorListener.processError IOException and Status= COMPLETED test")
 //	@Disabled
-	protected void processErrorCOMPLETED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processErrorCOMPLETED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(1L);
@@ -331,6 +346,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+		NatsJetstreamMessageClient nats = getMockNats();
 
 //		// mock a successful outcome with updated json transfer task result from updateStatus
 //		JsonObject expectedUdpatedJsonObject = tt.toJson()
@@ -371,7 +387,8 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = COMPLETED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
+			//verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
+			verify(nats, never()).push(any(), any(), any());
 			ctx.completeNow();
 		}));
 	}
@@ -379,7 +396,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferErrorListener.processError Child Task IOException and Status= COMPLETED test")
 //	@Disabled
-	protected void processErrorChildCOMPLETED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processErrorChildCOMPLETED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -393,6 +410,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		body.put("message", "Error Message");
 
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		NatsJetstreamMessageClient nats = getMockNats();
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
@@ -430,7 +448,8 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = COMPLETED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
+			//verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
+			verify(nats, never()).push(any(), any(), any());
 			ctx.completeNow();
 		}));
 	}
@@ -438,7 +457,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 	@Test
 	@DisplayName("TransferErrorListener.processError Parent/Root task InterruptedException and Status= FAILED test")
 //	@Disabled
-	protected void processErrorInterruptedException_FAILED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processErrorInterruptedException_FAILED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		TransferTask tt = _createTestTransferTask();
 		tt.setId(2L);
 		tt.setStatus(FAILED);
@@ -453,6 +472,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
+		NatsJetstreamMessageClient nats = getMockNats();
 
 //		// mock a successful outcome with updated json transfer task result from updateStatus
 //		JsonObject expectedUdpatedJsonObject = tt.toJson()
@@ -494,14 +514,15 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = FAILED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
+			//verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
+			verify(nats, never()).push(any(), any(), any());
 			ctx.completeNow();
 		}));
 	}
 
 	@Test
 	@DisplayName("TransferErrorListener.processError Child Task InterruptedException and Status= FAILED test")
-	protected void processErrorChildInterruptedException_FAILED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processErrorChildInterruptedException_FAILED_test(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -516,6 +537,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		NatsJetstreamMessageClient nats = getMockNats();
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
@@ -554,14 +576,15 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 			assertFalse(resp.result(), "processError should return FALSE when the TransferErrorListener.processError is called for an IOException and Status = FAILED");
 			// no status update for tasks in done state
 			verify(dbService, never()).updateStatus(eq(tt.getTenantId()), eq(tt.getUuid()), any(), any());
-			verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
+			//verify(txfrErrorListener, never())._doPublishNatsJSEvent(any(), any());
+			verify(nats, never()).push(any(), any(), any());
 			ctx.completeNow();
 		}));
 	}
 
 	@Test
 	@DisplayName("TransferErrorListener.processBody partial Transfer Task should return Transfer Task")
-	protected void processBodyWithPartialTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processBodyWithPartialTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -577,6 +600,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		NatsJetstreamMessageClient nats = getMockNats();
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
@@ -612,7 +636,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 	@Test
 	@DisplayName("TransferErrorListener.processBody Transfer Task should return Transfer Task")
-	protected void processBodyWithTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException {
+	protected void processBodyWithTransferTaskTest(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, MessagingException {
 		String parentId = new AgaveUUID(UUIDType.TRANSFER).toString();
 
 		TransferTask tt = _createTestTransferTask();
@@ -627,6 +651,7 @@ class TransferTaskErrorListenerTest extends BaseTestCase {
 
 		log.info("Cause: = {}", body.getString("cause"));
 		TransferTaskErrorListener txfrErrorListener = getMockTransferErrorListenerInstance(vertx);
+		NatsJetstreamMessageClient nats = getMockNats();
 
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db

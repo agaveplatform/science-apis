@@ -37,7 +37,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.NATS_URL;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
 
 public class TransferTaskCreatedListener extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
@@ -45,6 +47,8 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     private TransferTaskDatabaseService dbService;
     public Connection nc;
     private NatsJetstreamMessageClient natsClient;
+    protected static String jsBranch = "";
+    private static String streamName = "";
 
     public TransferTaskCreatedListener() throws IOException, InterruptedException {
         super(null, null);
@@ -52,21 +56,11 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     }
     public TransferTaskCreatedListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx, null);
+        natsClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));
     }
-
-    public TransferTaskCreatedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
-        super(vertx, eventChannel);
-        natsClient =  new NatsJetstreamMessageClient(
-                config().getString(TransferTaskConfigProperties.NATS_URL),
-                getStreamName(),
-                createConsumerNameForEvent(MessageType.TRANSFERTASK_CREATED));
-    }
-
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
-
-    //public JetStream js = _jsmConnect("nats://nats:4222","TRANSFERTASK", MessageType.TRANSFERTASK_CREATED);
 
     private final List<JetStream> jsTree = new ArrayList<>();
 
@@ -96,7 +90,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 
         try {
                 JetStreamManagement jsm = natsClient.getJetStreamManagement();
-                natsClient.fetch("DEV", _createMessageName("DEV", "*", "*", "*", EVENT_CHANNEL),1, 2);
+                natsClient.fetch("DEV", _createConsumerName("DEV", "transfers", "*", "*", "*", EVENT_CHANNEL),1, 2);
 
 
             } catch (Exception e) {
@@ -293,6 +287,9 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             String uuid = body.getString("uuid");
             String source = body.getString("source");
             String dest = body.getString("dest");
+            String tenantId = body.getString("tenantId");
+            String owner = body.getString("owner");
+            URI srcUri = URI.create(body.getString("source"));
             log.info("Transfer task {} created: {} -> {}", uuid, source, dest);
 
             try {
@@ -302,8 +299,10 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         body.put("event", this.getClass().getName());
                         body.put("type", getEventChannel());
                         try {
-                            //transfers.$tenantid.$uid.$systemid.transfer.$protocol
-                            _doPublishNatsJSEvent(MessageType.TRANSFERTASK_NOTIFICATION, body);
+                            String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_NOTIFICATION);
+                            natsClient.setConsumerName(messageName);
+                            natsClient.push("DEV", messageName, resp.result().toString());
+
                         } catch (Exception e) {
                             log.debug(e.getMessage());
                         }
@@ -312,7 +311,9 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                     } else {
                         log.error("Error with return from creating the event {}", uuid);
                         try {
-                            _doPublishNatsJSEvent(MessageType.TRANSFERTASK_ERROR, body);
+                            String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_ERROR);
+                            natsClient.setConsumerName(messageName);
+                            natsClient.push("DEV", messageName, resp.result().toString());
                         } catch (Exception e) {
                             log.debug(e.getMessage());
                         }
@@ -323,7 +324,10 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
             } catch (Exception ex) {
                 log.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", ex.getMessage());
                 try {
-                    _doPublishNatsJSEvent( MessageType.TRANSFERTASK_ERROR, body);
+                    //_doPublishNatsJSEvent( MessageType.TRANSFERTASK_ERROR, body);
+                    String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_ERROR);
+                    natsClient.setConsumerName(messageName);
+                    natsClient.push("DEV", messageName, body.toString());
                 } catch (Exception e) {
                     log.debug(e.getMessage());
                 }
@@ -347,7 +351,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         String dest = body.getString("dest");
         String username = body.getString("owner");
         String tenantId = (body.getString("tenant_id"));
-        String protocol = "";
+
         TransferTask createdTransferTask = new TransferTask(body);
 
         try {
@@ -411,42 +415,46 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 
             // check to be sure that the root task or parent task are not null first
             //if (createdTransferTask.getRootTaskId() != null && createdTransferTask.getParentTaskId() != null) {
-                log.trace("Got past the rootTaskID and parentTaskID");
-                // if there are values for root task and parent task then do the following
-                if (taskIsNotInterrupted(createdTransferTask)) {
-                    // update dt DB status here
-                    log.info("set status to ASSIGNED");
-                    getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateResult -> {
-                        if (updateResult.succeeded()) {
-                            // continue assigning the task and return
-                            log.info("Assigning transfer task {} for processing.", uuid);
-                            try {
-                                _doPublishNatsJSEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
-                            } catch (Exception e) {
-                                log.debug(e.getMessage());
-                            }
-                            handler.handle(Future.succeededFuture(true));
-                        } else {
-                            // update failed
-                            String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
-                                    uuid, updateResult.cause().getMessage());
-                            log.error(msg);
-                            try {
-                                doHandleError(updateResult.cause(), msg, body, handler);
-                            } catch (IOException | InterruptedException e) {
-                                log.debug(e.getMessage());
-                                log.debug(e.getCause().toString());
-                            }
+            log.trace("Got past the rootTaskID and parentTaskID");
+            // if there are values for root task and parent task then do the following
+            if (taskIsNotInterrupted(createdTransferTask)) {
+                // update dt DB status here
+                log.info("set status to ASSIGNED");
+                getDbService().updateStatus(tenantId, uuid, TransferStatusType.ASSIGNED.toString(), updateResult -> {
+                    if (updateResult.succeeded()) {
+                        // continue assigning the task and return
+                        log.info("Assigning transfer task {} for processing.", uuid);
+                        try {
+                            String owner = updateResult.result().getString("owner");
+                            String host = srcUri.getHost().toString();
+                            //_doPublishNatsJSEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
+                            String consumerName = _createConsumerName("DEV", "transfers", tenantId, owner, host, TRANSFERTASK_ASSIGNED);
+                            natsClient.setConsumerName(consumerName);
+                            natsClient.push(streamName, consumerName, updateResult.result().toString());
+                        } catch (Exception e) {
+                            log.debug(e.getMessage());
                         }
-                    });
-                } else {
-                    log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
-                    _doPublishNatsJSEvent(MessageType.TRANSFERTASK_CANCELED_ACK, body);
-                    handler.handle(Future.succeededFuture(false));
-                }
-//            } else {
-//                log.info("Error. Root and parent tasks are null.");
-//            }
+                        handler.handle(Future.succeededFuture(true));
+                    } else {
+                        // update failed
+                        String msg = String.format("Error updating status of transfer task %s to ASSIGNED. %s",
+                                uuid, updateResult.cause().getMessage());
+                        log.error(msg);
+                        try {
+                            doHandleError(updateResult.cause(), msg, body, handler);
+                        } catch (IOException | InterruptedException e) {
+                            log.debug(e.getMessage());
+                            log.debug(e.getCause().toString());
+                        }
+                    }
+                });
+            } else {
+                log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
+                String consumerName = _createConsumerName("DEV","transfers", tenantId, username, srcUri.getHost().toString(), TRANSFERTASK_CANCELED_ACK);
+                natsClient.setConsumerName(consumerName);
+                natsClient.push(streamName, consumerName, createdTransferTask.toString());
+                handler.handle(Future.succeededFuture(false));
+            }
         } catch (Exception e) {
             log.error("Error with TransferTaskCreatedListener {}", e.toString());
             doHandleError(e, e.getMessage(), body, handler);

@@ -44,15 +44,6 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 	}
 	public Connection getConnection(){return nc;}
 
-	public void setConnection() throws IOException, InterruptedException {
-		try {
-			nc = _connect(CONNECTION_URL);
-		} catch (IOException e) {
-			//use default URL
-			nc = _connect(Options.DEFAULT_URL);
-		}
-	}
-
 	@Override
 	public void start() {
 
@@ -97,7 +88,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 						try {
 							log.debug("Scheduling health check on transfer task {}",
 									((JsonObject)jsonResult).getString("uuid"));
-							_doPublishNatsJSEvent(TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonResult));
+							//_doPublishNatsJSEvent(TRANSFERTASK_HEALTHCHECK_PARENT, ((JsonObject)jsonResult));
 						} catch (Throwable t) {
 							log.error("Failed to schedule health check for transfer task {}", jsonResult);
 						}
@@ -135,7 +126,7 @@ public class TransferTaskWatchListener extends AbstractNatsListener {
 						try {
 							log.debug("Scheduling health check on transfer task {}",
 									((JsonObject)jsonResult).getString("uuid"));
-							_doPublishNatsJSEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult));
+							//_doPublishNatsJSEvent(TRANSFERTASK_HEALTHCHECK, ((JsonObject)jsonResult));
 						} catch (Throwable t) {
 								log.error("Failed to schedule health check for transfer task {}", jsonResult);
 							}

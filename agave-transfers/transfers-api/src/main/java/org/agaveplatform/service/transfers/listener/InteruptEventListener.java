@@ -39,7 +39,7 @@ public class InteruptEventListener extends AbstractNatsListener {
 	public void start() throws TimeoutException, InterruptedException, IOException {
 		//EventBus bus = vertx.eventBus();
 		Connection nc = null;
-		nc = _connect();
+		//nc = _connect();
 		Dispatcher d = nc.createDispatcher((msg) -> {});
 		//bus.<JsonObject>consumer(getEventChannel(), msg -> {
 		Subscription s = d.subscribe(EVENT_CHANNEL, msg -> {
@@ -61,7 +61,7 @@ public class InteruptEventListener extends AbstractNatsListener {
 		EventBus bus = vertx.eventBus();
 
 		Connection nc = null;
-		nc = _connect();
+		//nc = _connect();
 
 		Dispatcher d = nc.createDispatcher((msg) -> {});
 		AtomicBoolean interupt = new AtomicBoolean(false);

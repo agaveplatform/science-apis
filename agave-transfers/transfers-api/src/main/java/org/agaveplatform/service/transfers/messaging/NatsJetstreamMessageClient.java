@@ -56,7 +56,6 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
     private JetStreamManagement jsm;
     private JetStream js;
     private String consumerName;
-
     private String streamName;
 
     /**
@@ -377,6 +376,20 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
     }
 
     /**
+     * Starts a watch loop that will listen to the event queue and process anything that comes
+     * until {@link MessageQueueListener#stop()} is called.
+     *
+     * @param exchange name of the exchange
+     * @param queue    name of queue
+     * @param listener the listener with which to listen
+     * @throws MessagingException if communication with the queue fails
+     */
+    @Override
+    public void listen(String exchange, String queue, MessageQueueListener listener) throws MessagingException, MessageProcessingException {
+
+    }
+
+    /**
      * Starts an async listener to process messages with the given subject on the named stream. Listener will continue
      * to run until {@link MessageQueueListener#stop()} is called.
      *
@@ -385,7 +398,7 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
      * @param listener the listener with which to listen
      * @throws MessagingException if communication with the NATS server fails
      */
-    @Override
+
     public Subscription listen(String stream, String subject, String queueName, MessageQueueListener listener)
             throws MessagingException, MessageProcessingException
     {
@@ -606,16 +619,12 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
     private void setJetStreamManagement(JetStreamManagement jetStreamManagement) {
         this.jsm = jetStreamManagement;
     }
-
     protected Dispatcher getDispatcher() {
         return dispatcher;
     }
-
-
     public String getConsumerName() {
         return consumerName;
     }
-
     public void setConsumerName(String consumerName) {
         this.consumerName = consumerName;
     }

@@ -11,7 +11,9 @@ import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
 import org.agaveplatform.service.transfers.handler.RetryRequestManager;
+import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
+import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.uuid.AgaveUUID;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.iplantc.service.transfer.RemoteDataClient;
@@ -19,6 +21,7 @@ import org.iplantc.service.transfer.RemoteFileInfo;
 import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
@@ -61,15 +64,20 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
         doCallRealMethod().when(listener).doHandleError(any(), any(), any(), any());
         doCallRealMethod().when(listener).doHandleFailure(any(), any(), any(), any());
         doNothing().when(listener)._doPublishEvent(any(), any());
-        doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
+        //doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
         doCallRealMethod().when(listener).processEvent(any(JsonObject.class), any());
         RetryRequestManager mockRetryRequestManager = mock(RetryRequestManager.class);
         doNothing().when(mockRetryRequestManager).request(anyString(), any(JsonObject.class), anyInt());
         when(listener.getRetryRequestManager()).thenReturn(mockRetryRequestManager);
-        Connection connection = listener._connect();
-        when(listener.getConnection()).thenReturn(connection);
+        //Connection connection = listener._connect();
+        //when(listener.getConnection()).thenReturn(connection);
         doNothing().when(listener).setConnection();
         return listener;
+    }
+    NatsJetstreamMessageClient getMockNats() throws MessagingException {
+        NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+        doNothing().when(natsClient).push(any(), any(), any());
+        return getMockNats();
     }
 
     /**
@@ -178,9 +186,10 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
     @Test
     @DisplayName("TransferTaskUpdateListener - processTransferTask updates single file transfer task")
     @Disabled
-    public void processTransferTaskUpdatesSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException {
+    public void processTransferTaskUpdatesSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
         // mock out the test class
         TransferTaskUpdateListener ta = getMockTransferUpdateListenerInstance(vertx);
+        NatsJetstreamMessageClient nats = getMockNats();
 
         // generate a fake transfer task
         TransferTask rootTransferTask = _createTestTransferTask();
@@ -227,8 +236,8 @@ class TransferTaskUpdateListenerTest extends BaseTestCase {
                         any(Handler.class));
 
                 // no error event should have been raised
-                verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-
+                //verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
+                verify(nats, never()).push(any(), any(), any());
                 ctx.completeNow();
 
             });

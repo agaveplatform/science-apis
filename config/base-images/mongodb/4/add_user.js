@@ -1,32 +1,1 @@
-db = db.getSiblingDB("DATABASE");
-db.metadata.find();
-db.schemata.find();
-db.createUser(
-  {
-    user: "USERNAME",
-    pwd: "USERPASS",
-    roles: [
-      {
-        role: "dbOwner",
-        db: "api"
-      },
-      {
-        role: "dbOwner",
-        db: "notifications"
-      }
-    ]
-  }
-);
-db = db.getSiblingDB('notifications');
-db.createUser(
-    {
-        user: "USERNAME",
-        pwd: "USERPASS",
-        roles: [
-            {
-                role: "dbOwner",
-                db: "notifications"
-            }
-        ]
-    }
-);
+db.getSiblingDatabase("DATABASE").createUser(    {        user: "USERNAME",        pwd: "USERPASS",        roles: [            {                role: "readWrite",                db: "notifications"            }        ]    });// Now grant the default user in the DATABASE db access to the notifications db as welldb.getSiblingDatabase("notifications").createUser(    {        user: "USERNAME",        pwd: "USERPASS",        roles: [            {                role: "readWrite",                db: "notifications"            }        ]    });

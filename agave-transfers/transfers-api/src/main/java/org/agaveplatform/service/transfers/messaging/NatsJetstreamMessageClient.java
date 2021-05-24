@@ -420,6 +420,7 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
             try {
                 PushSubscribeOptions pushSubscribeOptions = PushSubscribeOptions.builder()
                         .stream(stream)
+                        .durable(getConsumerName())
                         .build();
                 if (queueName != null) {
                     subscriptionMap.put(subject, getJetStream().subscribe(subject, queueName, getDispatcher(), handler, true, pushSubscribeOptions));

@@ -6,6 +6,7 @@ import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
@@ -32,7 +33,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CANCELED;
     public Connection nc;
     private TransferTaskDatabaseService dbService;
-    private List<TransferTask> ttTree = new ArrayList<TransferTask>();
+    private final List<TransferTask> ttTree = new ArrayList<TransferTask>();
 
     public TransferTaskCancelListener() throws IOException, InterruptedException {
         super();
@@ -55,7 +56,7 @@ public class TransferTaskCancelListener extends AbstractNatsListener {
 
     public void setConnection() throws IOException, InterruptedException {
         try {
-            nc = _connect(CONNECTION_URL);
+            nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
         } catch (IOException e) {
             //use default URL
             nc = _connect(Options.DEFAULT_URL);

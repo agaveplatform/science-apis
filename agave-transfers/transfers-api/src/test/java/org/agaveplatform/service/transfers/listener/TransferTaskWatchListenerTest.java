@@ -9,8 +9,6 @@ import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import org.agaveplatform.service.transfers.BaseTestCase;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
-import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.iplantc.service.common.exceptions.MessagingException;
 import org.junit.jupiter.api.*;
@@ -41,7 +39,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
 //		doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
-		when(listener._createConsumerName(any(), any(), any(), any(), any(), any())).thenCallRealMethod ();
+		when(listener.createPushMessageSubject(any(), any(), any(), any(), any(), any())).thenCallRealMethod ();
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;

@@ -1,20 +1,17 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.nats.client.*;
-import io.nats.client.api.ConsumerInfo;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
-import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.agaveplatform.service.transfers.util.RemoteSystemAO;
 import org.iplantc.service.common.exceptions.PermissionException;
+import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.systems.dao.SystemDao;
 import org.iplantc.service.systems.exceptions.SystemRoleException;
 import org.iplantc.service.systems.exceptions.SystemUnavailableException;
@@ -28,17 +25,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.TimeZone;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.NATS_URL;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ASSIGNED;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CANCELED_ACK;
 
@@ -46,51 +36,23 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
     private TransferTaskDatabaseService dbService;
-    public Connection conn;
-    public JetStreamManagement jetStreamManagement;
-    private NatsJetstreamMessageClient natsClient; // = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));;
-    private static String streamName = "DEV";
-    private static String NATS_URL = "nats://nats:4222";
+//    private NatsJetstreamMessageClient natsClient; // = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));;
+//    private static String streamName = "DEV";
+//    private static String NATS_URL = "nats://nats:4222";
 
 
     public TransferTaskCreatedListener() throws IOException, InterruptedException {
         super(null, null);
-//        natsClient.connect(NATS_URL);
-//        natsClient.getJetStreamManagement();
-//        natsClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));
     }
     public TransferTaskCreatedListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx, null);
-        natsClient = new NatsJetstreamMessageClient();
-        natsClient.connect(NATS_URL);
-        natsClient.getJetStreamManagement();
-        natsClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));
     }
     public TransferTaskCreatedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
         super(vertx, eventChannel);
-        natsClient.connect(NATS_URL);
-        natsClient.getJetStreamManagement();
-        natsClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));
     }
 
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
-    }
-
-    private final List<JetStream> jsTree = new ArrayList<>();
-
-    /**
-     * If your verticle has simple synchronous clean-up tasks to complete then override this method and put your clean-up
-     * code in here.
-     *
-     * @throws Exception
-     */
-    @Override
-    public void stop() throws Exception {
-
-        natsClient.stop();
-
-        super.stop();
     }
 
     @Override
@@ -104,33 +66,14 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         try {
-            natsClient = new NatsJetstreamMessageClient();
-            natsClient.connect(NATS_URL);
-            natsClient.setConsumerName("DEV_transfers_tenantId_owner_host_" + EVENT_CHANNEL);
-            String consumerName = natsClient.getConsumerName();
-            log.debug("Consumer Name: {}", consumerName);
+            String subject = createPushMessageSubject(streamName, "transfers", "tenantId", "owner", "host",  EVENT_CHANNEL);
 
-            jetStreamManagement =  natsClient.getJetStreamManagement();
-            String stream = _getStreamName();
-            String durableName = _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL);
-            String channel = _getStreamName(streamName, "transfers", "tenantId", "owner", "host",  EVENT_CHANNEL);
-            try{
-                ConsumerInfo consumerInfo = _createConsumer(jetStreamManagement, streamName, natsClient.getConsumerName(), channel);
-                log.info("StreamName {}", consumerInfo.getStreamName());
-                log.info(" {}", consumerInfo.getConsumerConfiguration());
-            }catch (JetStreamApiException e){
-                log.info(e.getMessage());
-            }
+            getMessageClient().push("DEV", subject, "Hello");
 
+            Message message = getMessageClient().pop("DEV", subject);
 
-            natsClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", durableName);
-            JetStreamManagement jsm = natsClient.getJetStreamManagement();
+            log.info(message.toString());
 
-            natsClient.push("DEV", channel, "Hello");
-
-            List<org.iplantc.service.common.messaging.Message> listMessages = natsClient.fetch("DEV", durableName,1, 2);
-            log.info(listMessages.toString());
-            //natsClient.fetch("DEV", channel,1,2);
         } catch (Exception e) {
             log.debug("TRANSFERTASK_CREATED - Exception {}", e.getMessage());
             log.debug(e.getCause().toString());
@@ -279,105 +222,105 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 //
        // });
     }
-    public MessageHandler _MessageHandler(JetStreamManagement jsm, int count) {
-        CountDownLatch msgLatch = new CountDownLatch(count);
-        AtomicInteger received = new AtomicInteger();
-        AtomicInteger ignored = new AtomicInteger();
-
-        /** Handler method called when a message arrives from a transfertask created channel.
-         * @param msg The message that arrived
-         */
-        MessageHandler handler = msg -> {
-            if (msgLatch.getCount() == 0) {
-                ignored.incrementAndGet();
-                if (msg.isJetStream()) {
-                    log.info("Message Ignored, latch count already reached "
-                            + new String(msg.getData(), StandardCharsets.UTF_8));
-                    msg.nak();
-                }
-            } else {
-                received.incrementAndGet();
-                String response = new  String(msg.getData(), StandardCharsets.UTF_8);
-                log.info("  Subject: {}  Data: {}", msg.getSubject(), response);
-                JsonObject body = new JsonObject(response);
-                try {
-                    processEvent(body, resp -> {
-                        if (resp.succeeded()) {
-                            msg.ack();
-                        }else{
-                            msg.nak();
-                        }
-                    });
-                } catch (IOException e) {
-                    log.debug(e.getMessage());
-                }
-                msgLatch.countDown();
-            }
-        };
-        return handler;
-    }
-
-    public void tt_Created(Message m, Handler<AsyncResult<Boolean>> handler){
-        if (m.isJetStream()) {
-            log.info(Arrays.toString(m.getData()));
-
-            String response = new String(m.getData(), StandardCharsets.UTF_8);
-            JsonObject body = new JsonObject(response);
-            String uuid = body.getString("uuid");
-            String source = body.getString("source");
-            String dest = body.getString("dest");
-            String tenantId = body.getString("tenantId");
-            String owner = body.getString("owner");
-            URI srcUri = URI.create(body.getString("source"));
-            log.info("Transfer task {} created: {} -> {}", uuid, source, dest);
-
-            try {
-                processEvent(body, resp -> {
-                    if (resp.succeeded()) {
-                        log.info("Succeeded with the processing transfer created event for transfer task {}", uuid);
-                        body.put("event", this.getClass().getName());
-                        body.put("type", getEventChannel());
-                        try {
-                            String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_NOTIFICATION);
-                            natsClient.setConsumerName(messageName);
-                            natsClient.push("DEV", messageName, resp.result().toString());
-
-                        } catch (Exception e) {
-                            log.debug(e.getMessage());
-                        }
-
-                        handler.handle(Future.succeededFuture(true));
-                    } else {
-                        log.error("Error with return from creating the event {}", uuid);
-                        try {
-                            String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_ERROR);
-                            natsClient.setConsumerName(messageName);
-                            natsClient.push("DEV", messageName, resp.result().toString());
-                        } catch (Exception e) {
-                            log.debug(e.getMessage());
-                        }
-
-                        handler.handle(Future.succeededFuture(false));
-                    }
-                });
-            } catch (Exception ex) {
-                log.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", ex.getMessage());
-                try {
-                    //_doPublishNatsJSEvent( MessageType.TRANSFERTASK_ERROR, body);
-                    String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_ERROR);
-                    natsClient.setConsumerName(messageName);
-                    natsClient.push("DEV", messageName, body.toString());
-                } catch (Exception e) {
-                    log.debug(e.getMessage());
-                }
-            }
-        } else {
-            //m.getData();
-            log.info("TRANSFERTASK_CREATED Subject: {}", m.getSubject());
-            log.info("TRANSFERTASK_CREATED Data:  {}", m.getData());
-        }
-
-    }
+//    public MessageHandler _MessageHandler(JetStreamManagement jsm, int count) {
+//        CountDownLatch msgLatch = new CountDownLatch(count);
+//        AtomicInteger received = new AtomicInteger();
+//        AtomicInteger ignored = new AtomicInteger();
+//
+//        /** Handler method called when a message arrives from a transfertask created channel.
+//         * @param msg The message that arrived
+//         */
+//        MessageHandler handler = msg -> {
+//            if (msgLatch.getCount() == 0) {
+//                ignored.incrementAndGet();
+//                if (msg.isJetStream()) {
+//                    log.info("Message Ignored, latch count already reached "
+//                            + new String(msg.getData(), StandardCharsets.UTF_8));
+//                    msg.nak();
+//                }
+//            } else {
+//                received.incrementAndGet();
+//                String response = new  String(msg.getData(), StandardCharsets.UTF_8);
+//                log.info("  Subject: {}  Data: {}", msg.getSubject(), response);
+//                JsonObject body = new JsonObject(response);
+//                try {
+//                    processEvent(body, resp -> {
+//                        if (resp.succeeded()) {
+//                            msg.ack();
+//                        }else{
+//                            msg.nak();
+//                        }
+//                    });
+//                } catch (IOException e) {
+//                    log.debug(e.getMessage());
+//                }
+//                msgLatch.countDown();
+//            }
+//        };
+//        return handler;
+//    }
+//
+//    public void tt_Created(Message m, Handler<AsyncResult<Boolean>> handler){
+//        if (m.isJetStream()) {
+//            log.info(Arrays.toString(m.getData()));
+//
+//            String response = new String(m.getData(), StandardCharsets.UTF_8);
+//            JsonObject body = new JsonObject(response);
+//            String uuid = body.getString("uuid");
+//            String source = body.getString("source");
+//            String dest = body.getString("dest");
+//            String tenantId = body.getString("tenantId");
+//            String owner = body.getString("owner");
+//            URI srcUri = URI.create(body.getString("source"));
+//            log.info("Transfer task {} created: {} -> {}", uuid, source, dest);
+//
+//            try {
+//                processEvent(body, resp -> {
+//                    if (resp.succeeded()) {
+//                        log.info("Succeeded with the processing transfer created event for transfer task {}", uuid);
+//                        body.put("event", this.getClass().getName());
+//                        body.put("type", getEventChannel());
+//                        try {
+//                            String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_NOTIFICATION);
+//                            natsClient.setConsumerName(messageName);
+//                            natsClient.push("DEV", messageName, resp.result().toString());
+//
+//                        } catch (Exception e) {
+//                            log.debug(e.getMessage());
+//                        }
+//
+//                        handler.handle(Future.succeededFuture(true));
+//                    } else {
+//                        log.error("Error with return from creating the event {}", uuid);
+//                        try {
+//                            String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_ERROR);
+//                            natsClient.setConsumerName(messageName);
+//                            natsClient.push("DEV", messageName, resp.result().toString());
+//                        } catch (Exception e) {
+//                            log.debug(e.getMessage());
+//                        }
+//
+//                        handler.handle(Future.succeededFuture(false));
+//                    }
+//                });
+//            } catch (Exception ex) {
+//                log.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", ex.getMessage());
+//                try {
+//                    //_doPublishNatsJSEvent( MessageType.TRANSFERTASK_ERROR, body);
+//                    String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_ERROR);
+//                    natsClient.setConsumerName(messageName);
+//                    natsClient.push("DEV", messageName, body.toString());
+//                } catch (Exception e) {
+//                    log.debug(e.getMessage());
+//                }
+//            }
+//        } else {
+//            //m.getData();
+//            log.info("TRANSFERTASK_CREATED Subject: {}", m.getSubject());
+//            log.info("TRANSFERTASK_CREATED Data:  {}", m.getData());
+//        }
+//
+//    }
 
     /**
      * Validateas the source and dest in the transfer task and forwards the task to teh assigned event queue.
@@ -465,11 +408,10 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                         log.info("Assigning transfer task {} for processing.", uuid);
                         try {
                             String owner = updateResult.result().getString("owner");
-                            String host = srcUri.getHost().toString();
+                            String host = srcUri.getHost();
                             //_doPublishNatsJSEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
-                            String consumerName = _createConsumerName("DEV", "transfers", tenantId, owner, host, TRANSFERTASK_ASSIGNED);
-                            natsClient.setConsumerName(consumerName);
-                            natsClient.push(streamName, consumerName, updateResult.result().toString());
+                            String subject = createPushMessageSubject("DEV", "transfers", tenantId, owner, host, TRANSFERTASK_ASSIGNED);
+                            getMessageClient().push(streamName, subject, updateResult.result().toString());
                         } catch (Exception e) {
                             log.debug(e.getMessage());
                         }
@@ -489,9 +431,8 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                 });
             } else {
                 log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
-                String consumerName = _createConsumerName("DEV","transfers", tenantId, username, srcUri.getHost().toString(), TRANSFERTASK_CANCELED_ACK);
-                natsClient.setConsumerName(consumerName);
-                natsClient.push(streamName, consumerName, createdTransferTask.toString());
+                String subject = createPushMessageSubject("DEV","transfers", tenantId, username, srcUri.getHost(), TRANSFERTASK_CANCELED_ACK);
+                getMessageClient().push(streamName, subject, createdTransferTask.toString());
                 handler.handle(Future.succeededFuture(false));
             }
         } catch (Exception e) {

@@ -9,6 +9,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.exception.MaxTransferTaskAttemptsExceededException;
@@ -39,7 +40,8 @@ import java.util.concurrent.TimeoutException;
 
 import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.CONFIG_TRANSFERTASK_DB_QUEUE;
 import static org.agaveplatform.service.transfers.enumerations.MessageType.*;
-import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.*;
+import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.ERROR;
+import static org.agaveplatform.service.transfers.enumerations.TransferStatusType.RETRYING;
 
 public class TransferTaskRetryListener extends AbstractNatsListener {
 	private static final Logger log = LoggerFactory.getLogger(TransferTaskRetryListener.class);
@@ -71,7 +73,7 @@ public class TransferTaskRetryListener extends AbstractNatsListener {
 
 	public void setConnection() throws IOException, InterruptedException {
 		try {
-			nc = _connect(CONNECTION_URL);
+			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
 		} catch (IOException e) {
 			//use default URL
 			nc = _connect(Options.DEFAULT_URL);

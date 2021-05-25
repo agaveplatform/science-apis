@@ -10,6 +10,7 @@ import org.iplantc.service.common.exceptions.MessagingException;
 import org.iplantc.service.common.messaging.Message;
 import org.iplantc.service.common.messaging.MessageQueueClient;
 import org.iplantc.service.common.messaging.MessageQueueListener;
+import org.iplantc.service.common.util.Slug;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -140,11 +141,12 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
      * @throws JetStreamApiException the request had an error related to the data
      */
     protected JetStreamSubscription getOrCreatePullSubscription(String stream, String subject) throws IOException, JetStreamApiException {
-        String subscriptionKey = stream + "-" + subject;
+        String durable = Slug.toSlug("pull-" + subject);
+        String subscriptionKey = stream + "-" + durable;
         if (!subscriptionMap.containsKey(subscriptionKey)) {
             PullSubscribeOptions pullSubscribeOptions = PullSubscribeOptions.builder()
                     .stream(stream)
-                    .durable(subject)
+                    .durable(durable)
                     .build();
 
             JetStreamSubscription subscription = getJetStream().subscribe(subject, pullSubscribeOptions);
@@ -628,7 +630,7 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
     public String getConsumerName() {
         return consumerName;
     }
-    public void setConsumerName(String consumerName) {
+    protected void setConsumerName(String consumerName) {
         this.consumerName = consumerName;
     }
 }

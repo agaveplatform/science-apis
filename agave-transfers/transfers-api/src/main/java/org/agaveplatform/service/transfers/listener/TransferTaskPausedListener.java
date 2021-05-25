@@ -9,6 +9,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.exception.TransferException;
@@ -33,7 +34,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 	protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_PAUSED;
 
 	private TransferTaskDatabaseService dbService;
-	private List<TransferTask> ttTree = new ArrayList<TransferTask>();
+	private final List<TransferTask> ttTree = new ArrayList<TransferTask>();
 	public Connection nc;
 
 	public TransferTaskPausedListener() throws IOException, InterruptedException {
@@ -59,7 +60,7 @@ public class TransferTaskPausedListener extends AbstractNatsListener {
 
 	public void setConnection() throws IOException, InterruptedException {
 		try {
-			nc = _connect(CONNECTION_URL);
+			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
 		} catch (IOException e) {
 			//use default URL
 			nc = _connect(Options.DEFAULT_URL);

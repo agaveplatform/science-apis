@@ -8,6 +8,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.slf4j.Logger;
@@ -49,14 +50,14 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 	}
 
     public String getDefaultEventChannel() {
-        return this.EVENT_CHANNEL;
+        return EVENT_CHANNEL;
     }
 
 	public Connection getConnection(){return nc;}
 
 	public void setConnection() throws IOException, InterruptedException {
 		try {
-			nc = _connect(CONNECTION_URL);
+			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
 		} catch (IOException e) {
 			//use default URL
 			nc = _connect(Options.DEFAULT_URL);
@@ -106,7 +107,7 @@ public class TransferTaskHealthcheckListener extends AbstractNatsListener {
 		getDbService().allChildrenCancelledOrCompleted(tenantId, uuid, reply -> {
 			logger.trace("got into getDbService().allChildrenCancelledOrCompleted");
 			if (reply.succeeded()) {
-				logger.info("reply from getDBSerivce.allChildrenCancelledOrCompleted " + reply.toString());
+				logger.info("reply from getDBSerivce.allChildrenCancelledOrCompleted " + reply);
 				if (reply.result()) {
 					getDbService().updateStatus(tenantId, uuid, COMPLETED.name(), updateStatus -> {
 						logger.trace("Got into getDBService.updateStatus(complete) ");

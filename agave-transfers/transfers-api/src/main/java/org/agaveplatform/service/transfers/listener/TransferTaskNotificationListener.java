@@ -8,6 +8,7 @@ import io.nats.client.Subscription;
 import io.vertx.core.Vertx;
 import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.iplantc.service.notification.managers.NotificationManager;
 import org.iplantc.service.notification.queue.messaging.NotificationMessageBody;
@@ -51,7 +52,7 @@ public class TransferTaskNotificationListener extends AbstractNatsListener {
 
     public void setConnection() throws IOException, InterruptedException {
         try {
-            nc = _connect(CONNECTION_URL);
+            nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
         } catch (IOException e) {
             //use default URL
             nc = _connect(Options.DEFAULT_URL);

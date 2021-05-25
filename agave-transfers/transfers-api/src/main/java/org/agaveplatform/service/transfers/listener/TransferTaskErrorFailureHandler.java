@@ -2,6 +2,7 @@ package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.Connection;
 import io.nats.client.Dispatcher;
+import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -9,6 +10,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.RoutingContext;
+import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
@@ -52,10 +54,10 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
 
 	public void setConnection() throws IOException, InterruptedException {
 		try {
-			nc = _connect(CONNECTION_URL);
+			nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
 		} catch (IOException e) {
 			//use default URL
-			nc = _connect();
+			nc = _connect(Options.DEFAULT_URL);
 		}
 	}
 
@@ -149,7 +151,7 @@ public class TransferTaskErrorFailureHandler extends AbstractNatsListener implem
                 }
         });
     } catch (NullPointerException e) {
-			log.error("Null Pointer Exception {}: {}", e.toString(), body.getValue("id"));
+			log.error("Null Pointer Exception {}: {}", e, body.getValue("id"));
 			handler.handle(Future.failedFuture(e));
 		}
 		catch (Throwable t) {

@@ -1,7 +1,9 @@
 package org.agaveplatform.service.transfers.messaging;
 
-import io.nats.client.*;
-import io.nats.client.api.*;
+import io.nats.client.Connection;
+import io.nats.client.Message;
+import io.nats.client.Nats;
+import io.nats.client.Options;
 import io.vertx.junit5.VertxExtension;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.junit.jupiter.api.*;
@@ -194,6 +196,44 @@ public class NatsJetstreamMessageClientIT {
                     }
                 });
 //                break;
+            }
+        } catch (Exception e) {
+            fail("Failed to push a message to the message queue", e);
+        }
+    }
+
+    @Test
+    @DisplayName("Pop single message from queue...")
+    public void pop() {
+        NatsJetstreamMessageClient agaveMessageClient;
+
+        try {
+            agaveMessageClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", "fetch-test-consumer");
+
+            // test pushing of message for each message type
+            for (String messageType : MessageType.values()) {
+                String testBody = UUID.randomUUID().toString();
+                String subject = TEST_MESSAGE_SUBJECT_PREFIX + messageType;
+
+                // push a message with a unique body to ensure we can get it back.
+                agaveMessageClient.push(TEST_STREAM, subject, testBody);
+
+                org.iplantc.service.common.messaging.Message popMessage =
+                        agaveMessageClient.pop(TEST_STREAM, subject);
+
+                assertNotNull(popMessage, "Popped message should not be null.");
+
+                assertEquals(testBody, popMessage.getMessage(),
+                        "Body of fetched message should match body of message sent. " +
+                                "Something else is likely writing test data");
+
+                try {
+                    if (!jsm.deleteMessage(TEST_STREAM, (long)popMessage.getId())) {
+                        log.debug("Failed to delete test message after test");
+                    }
+                } catch (Exception e1) {
+                    log.debug("Failed to delete test message after test", e1);
+                }
             }
         } catch (Exception e) {
             fail("Failed to push a message to the message queue", e);

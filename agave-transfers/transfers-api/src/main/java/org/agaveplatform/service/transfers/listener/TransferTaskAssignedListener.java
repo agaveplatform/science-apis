@@ -6,6 +6,7 @@ import io.nats.client.Options;
 import io.nats.client.Subscription;
 import io.vertx.core.*;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.agaveplatform.service.transfers.enumerations.TransferStatusType;
@@ -70,7 +71,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
 
     public void setConnection() throws IOException, InterruptedException {
         try {
-            nc = _connect(CONNECTION_URL);
+            nc = _connect(config().getString(TransferTaskConfigProperties.NATS_URL));
         } catch (IOException e) {
             //use default URL
             nc = _connect(Options.DEFAULT_URL);
@@ -208,7 +209,7 @@ public class TransferTaskAssignedListener extends AbstractNatsListener {
         String tenantId = (body.getString("tenant_id"));
         String protocol = null;
         TransferTask assignedTransferTask = new TransferTask(body);
-        log.debug("Body of JsonObject: {}", body.toString());
+        log.debug("Body of JsonObject: {}", body);
         RemoteDataClient srcClient = null;
         RemoteDataClient destClient = null;
 

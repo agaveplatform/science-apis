@@ -64,7 +64,7 @@ public class NatsSetup {
         return nc;
     }
 
-    public static void _createStreamAndConsumer()  {
+    public static void _createStreamAndConsumer() throws JetStreamApiException, IOException {
         // Create a JetStreamManagement context.
 
         Connection nc = null;
@@ -84,7 +84,7 @@ public class NatsSetup {
         }
         Map<String, String> bashEnv = System.getenv();
         String streamEnvironment = bashEnv.getOrDefault("AGAVE_ENVIRONMENT","DEV");
-        String subjectPrefix = streamEnvironment + "." + bashEnv.getOrDefault("AGAVE_MESSAGE_PREFIX","default.");
+        String subjectPrefix = streamEnvironment + "." + bashEnv.getOrDefault("AGAVE_MESSAGE_PREFIX","transfers.");
         subjectPrefix = subjectPrefix.replaceAll("\\.{2,}",".");
         subjectPrefix = StringUtils.stripEnd(subjectPrefix, ".");
         // slugify each component
@@ -92,65 +92,19 @@ public class NatsSetup {
 //        subjectPrefix = Arrays.stream(subjectPrefix.split(".")).map(t -> slg.slugify(t)).collect(Collectors.joining("."));
 
 
-        _createStream(jsm, streamEnvironment, streamEnvironment + "." + subjectPrefix + ".>");
-       // _createStream(jsm, "AGAVE_PROD", "branch_def.>");
-        //_createStream(jsm, "TRANSFER", "transfer.>");
-        //_createStream(jsm, "FILETRANSFER", "filetransfer.*");
-        //_createStream(jsm, "UrlCopy", "filetransfer.*");
+        _createStream(jsm, streamEnvironment,  subjectPrefix + ".>");
+
         log.info("done creating streams");
-//$branch.$type.$owner.$systemid.transfer.protocol.sftp
-//branch_abc.notificatin.*
+        //$branch.$type.$owner.$systemid.transfer.protocol.sftp
+        //branch_abc.notificatin.*
         log.info("Now creating consumers");
 //        _createConsumer(jsm, "AGAVE_DEV", subjectPrefix +"_TRANSFERTASK_CREATED_ConsumerD", subjectPrefix + ".transfers.*.*.transfer.protocol.*");
-//        _createConsumer(jsm, "AGAVE_PROD", subjectPrefix + "TRANSFERTASK_ASSIGNED_Consumer",subjectPrefix + "transfers.>");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_CANCELED_SYNC_Consumer", "transfertask.canceled.sync");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_CANCELED_COMPLETED_Consumer","transfertask.canceled.completed");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_CANCELED_ACK_Consumer","transfertask.canceled.ack");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_CANCELED_Consumer","transfertask.canceled");
-////        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_CANCELED_PAUSED_Consumer","transfertask.canceled.paused");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_PAUSED_Consumer","transfertask.paused");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_PAUSED_SYNC_Consumer","transfertask.paused.sync");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_PAUSED_COMPLETED_Consumer","transfertask.paused.completed");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_PAUSED_ACK_Consumer","transfertask.paused.ack");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_COMPLETED_Consumer","transfer.completed");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_FINISHED_Consumer","transfertask.finished");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_ERROR_Consumer","transfertask.error");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_PARENT_ERROR_Consumer","transfertask.parent.error");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_FAILED_Consumer","transfertask.failed");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_INTERUPTED_Consumer","transfertask.interupted");
-//        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_Consumer","notification.send");
-//        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_TRANSFERTASK_Consumer","notification.transfertask");
-//        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_CANCELED_Consumer","notification.cancelled");
-//        _createConsumer(jsm, "NOTIFICATION", "NOTIFICATION_COMPLETED_Consumer","notification.completed");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_SFTP_Consumer","transfer.sftp");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_HTTP_Consumer","transfer.http");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_GRIDFTP_Consumer","transfer.gridftp");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_FTP_Consumer","transfer.ftp");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_IRODS_Consumer","transfer.irods");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_IRODS4_Consumer","transfer.irods4");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_LOCAL_Consumer","transfer.local");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_AZURE_Consumer","transfer.azure");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_S3_Consumer","transfer.s3");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_SWIFT_Consumer","transfer.swift");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_HTTPS_Consumer","transfer.https");
-////        _createConsumer(jsm, "TRANSFERTASK", "FILETRANSFER_SFTP_Consumer","transfer.filetransfer.sftp");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_DB_QUEUE_Consumer","transfertask.db.queue");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_DELETED_Consumer","transfertask.deleted");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_DELETED_SYNC_Consumer","transfertask.deleted.sync");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_DELETED_COMPLETED_Consumer","transfertask.deleted.completed");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_DELETED_ACK_Consumer","transfertask.deleted.ack");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_UPDATED_Consumer","transfertask.updated");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_PROCESS_UNARY_Consumer","transfertask.process.unary");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_STREAMING_Consumer","transfer.streaming");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_UNARY_Consumer","transfer.unary");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_HEALTHCHECK_Consumer","transfertask.healthcheck");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_HEALTHCHECK_PARENT_Consumer","transfertask.healthcheck_parent");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_FAILED_Consumer","transfer.failed");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_RETRY_Consumer","transfer.retry");
-//        _createConsumer(jsm, "TRANSFER", "TRANSFER_ALL_Consumer","transfer.all");
-//        _createConsumer(jsm, "TRANSFERTASK", "TRANSFERTASK_NOTIFICATION_Consumer","transfertask.notification");
-        //_createConsumer(jsm, "TRANSFERTASK", "UrlCopy_Consumer","transfertask.UrlCopy");
-        log.info("All consumers have been created.");
+        //_createConsumer(jsm, "DEV", "DEV_transfers_tenantId_owner_host_transfertask_created","DEV.transfers.a.b.c.transfertask_created");
+
+        //ConsumerInfo cI = jsm.getConsumerInfo("DEV", "DEV_transfers_tenantId_owner_host_transfertask_created");
+       // log.info(cI.getDescription());
+
+        //log.info("All consumers have been created.");
     }
 
     private static void _createStream(JetStreamManagement jsm, String name, String subject) {

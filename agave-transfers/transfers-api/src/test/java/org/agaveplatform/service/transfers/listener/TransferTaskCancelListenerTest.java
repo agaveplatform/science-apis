@@ -57,11 +57,11 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
 		return listener;
 	}
-	NatsJetstreamMessageClient getMockNats() throws MessagingException {
-		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
-		doNothing().when(natsClient).push(any(), any(), any());
-		return getMockNats();
-	}
+//	NatsJetstreamMessageClient getMockNats() throws MessagingException {
+//		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+//		doNothing().when(natsClient).push(any(), any(), any());
+//		return getMockNats();
+//	}
 
 	@Test
 	@DisplayName("TransferTaskCancelListenerTest - process cancel request fails when unable to lookup transfer task by id")
@@ -73,7 +73,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		transferTask.setEndTime(Instant.now());
 
 		TransferTaskCancelListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -111,7 +111,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 				// error event should be thrown
 				//verify(listener, never())._doPublishNatsJSEvent(  eq(TRANSFERTASK_ERROR), any() );
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 
 				// sync should not happen
 				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_SYNC), eq(transferTask.toJson()));
@@ -141,7 +141,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				.mergeIn(transferTask.toJson());
 
 		TransferTaskCancelListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -193,7 +193,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 				// error event should be thrown for non-transfer task request
 				//verify(listener)._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), eq(errorEventBody));
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				// no sync event should be sent
 				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_SYNC), any());
 
@@ -215,7 +215,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		transferTask.setEndTime(Instant.now());
 
 		TransferTaskCancelListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -272,7 +272,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
 		});
@@ -288,7 +288,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		transferTask.setEndTime(Instant.now());
 
 		TransferTaskCancelListener listener = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		//doAnswer((Answer )).when(listener.getTransferTask(anyString(), anyString(), any()));
 //		doCallRealMethod().when(listener).getTransferTask(anyString(), anyString(), any());
@@ -350,7 +350,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
 		});
@@ -375,7 +375,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		transferTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		TransferTaskCancelListener ttc = getMockCancelAckListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -453,7 +453,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				//verify(ttc, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_CANCELED_ACK), any());
 				//assertEquals(transferTask.getUuid(), results, "Transfer task was not acknowledged in response uuid");
 				//assertEquals(transferTask.getUuid(), results, "result should have been uuid: " + transferTask.getUuid());
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
 		});
@@ -473,7 +473,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -560,7 +560,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
 		});
@@ -580,7 +580,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -653,7 +653,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
 		});
@@ -674,7 +674,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -731,7 +731,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
 		});
@@ -756,7 +756,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		transferTask.setEndTime(Instant.now());
 
 		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -834,7 +834,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
 		});
@@ -854,7 +854,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -933,7 +933,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
 				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
 		});
@@ -953,7 +953,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -1012,7 +1012,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_PARENT_ERROR), any());
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				ctx.completeNow();
 			});
 		});
@@ -1027,7 +1027,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		JsonObject transferTask = tt.toJson();
 
 		TransferTaskCancelListener tc = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		AsyncResult<Boolean> answerPca = getMockAsyncResult(Boolean.TRUE);
 
@@ -1063,7 +1063,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -1074,7 +1074,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).processParentAck( any(), any() ,any());
 		doNothing().when(listener)._doPublishEvent(any(), any());
 		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
-		doNothing().when(getMockNats()).push(any(), any(), any());
+//		doNothing().when(getMockNats()).push(any(), any(), any());
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
 		JsonObject expectedgetByIdAck = parentTask.toJson();
@@ -1104,7 +1104,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 				//TransferTask Canceled Ack for parent should not be sent when children are active
 				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
-				verify(nats, never()).push(any(),any(),any());
+//				verify(nats, never()).push(any(),any(),any());
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());
@@ -1125,7 +1125,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		parentTask.setSource(TRANSFER_SRC.substring(0, TRANSFER_SRC.lastIndexOf("/") - 1));
 
 		TransferTaskCancelListener listener = getMockCancelAckListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -1136,7 +1136,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).processParentAck( any(), any() ,any());
 		doNothing().when(listener)._doPublishEvent(any(), any());
 		//doNothing().when(listener)._doPublishNatsJSEvent(any(), any());
-		doNothing().when(getMockNats()).push(any(), any(), any());
+//		doNothing().when(getMockNats()).push(any(), any(), any());
 		// mock a successful outcome with updated json transfer task result from setTransferTaskCanceledIfNotCompleted
 		//AsyncResult<Boolean> setTransferTaskCanceledGetByIdHandler = getMockAsyncResult(Boolean.TRUE);
 		JsonObject expectedgetByIdAck = parentTask.toJson();
@@ -1166,7 +1166,7 @@ class TransferTaskCancelListenerTest extends BaseTestCase {
 
 				//TransferTask Canceled Ack for parent should be sent when all children are cancelled/completed
 				//verify(listener, times(1))._doPublishNatsJSEvent(eq(TRANSFERTASK_CANCELED_ACK), eq(parentTask.toJson()));
-				verify(nats, times(1)).push(any(),any(),any());
+//				verify(nats, times(1)).push(any(),any(),any());
 				// make sure no error event is ever thrown
 				//verify(listener, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
 				//verify(listener, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_PARENT_ERROR), any());

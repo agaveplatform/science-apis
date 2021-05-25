@@ -1,6 +1,7 @@
 package org.agaveplatform.service.transfers.listener;
 
 import io.nats.client.*;
+import io.nats.client.api.ConsumerInfo;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -45,19 +46,33 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
     private TransferTaskDatabaseService dbService;
-    public Connection nc;
-    private NatsJetstreamMessageClient natsClient;
-    protected static String jsBranch = "";
-    private static String streamName = "";
+    public Connection conn;
+    public JetStreamManagement jetStreamManagement;
+    private NatsJetstreamMessageClient natsClient; // = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));;
+    private static String streamName = "DEV";
+    private static String NATS_URL = "nats://nats:4222";
+
 
     public TransferTaskCreatedListener() throws IOException, InterruptedException {
         super(null, null);
-
+//        natsClient.connect(NATS_URL);
+//        natsClient.getJetStreamManagement();
+//        natsClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));
     }
     public TransferTaskCreatedListener(Vertx vertx) throws IOException, InterruptedException {
         super(vertx, null);
+        natsClient = new NatsJetstreamMessageClient();
+        natsClient.connect(NATS_URL);
+        natsClient.getJetStreamManagement();
         natsClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));
     }
+    public TransferTaskCreatedListener(Vertx vertx, String eventChannel) throws IOException, InterruptedException {
+        super(vertx, eventChannel);
+        natsClient.connect(NATS_URL);
+        natsClient.getJetStreamManagement();
+        natsClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));
+    }
+
     public String getDefaultEventChannel() {
         return EVENT_CHANNEL;
     }
@@ -89,15 +104,39 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         try {
-                JetStreamManagement jsm = natsClient.getJetStreamManagement();
-                natsClient.fetch("DEV", _createConsumerName("DEV", "transfers", "*", "*", "*", EVENT_CHANNEL),1, 2);
+            natsClient = new NatsJetstreamMessageClient();
+            natsClient.connect(NATS_URL);
+            natsClient.setConsumerName("DEV_transfers_tenantId_owner_host_" + EVENT_CHANNEL);
+            String consumerName = natsClient.getConsumerName();
+            log.debug("Consumer Name: {}", consumerName);
 
-
-            } catch (Exception e) {
-                log.debug("TRANSFERTASK_CREATED - Exception {}", e.getMessage());
-                log.debug(e.getCause().toString());
+            jetStreamManagement =  natsClient.getJetStreamManagement();
+            String stream = _getStreamName();
+            String durableName = _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL);
+            String channel = _getStreamName(streamName, "transfers", "tenantId", "owner", "host",  EVENT_CHANNEL);
+            try{
+                ConsumerInfo consumerInfo = _createConsumer(jetStreamManagement, streamName, natsClient.getConsumerName(), channel);
+                log.info("StreamName {}", consumerInfo.getStreamName());
+                log.info(" {}", consumerInfo.getConsumerConfiguration());
+            }catch (JetStreamApiException e){
+                log.info(e.getMessage());
             }
-            //});
+
+
+            natsClient = new NatsJetstreamMessageClient(NATS_URL, "DEV", durableName);
+            JetStreamManagement jsm = natsClient.getJetStreamManagement();
+
+            natsClient.push("DEV", channel, "Hello");
+
+            List<org.iplantc.service.common.messaging.Message> listMessages = natsClient.fetch("DEV", durableName,1, 2);
+            log.info(listMessages.toString());
+            //natsClient.fetch("DEV", channel,1,2);
+        } catch (Exception e) {
+            log.debug("TRANSFERTASK_CREATED - Exception {}", e.getMessage());
+            log.debug(e.getCause().toString());
+        }
+
+        //});
 //
 //        //**********************************************************************************
 //        // Process the TRANSFERTASK_CANCELED_SYNC messages

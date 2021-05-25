@@ -61,11 +61,11 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		doCallRealMethod().when(listener).addPausedTask(anyString());
 		return listener;
 	}
-	NatsJetstreamMessageClient getMockNats() throws MessagingException {
-		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
-		doNothing().when(natsClient).push(any(), any(), any());
-		return getMockNats();
-	}
+//	NatsJetstreamMessageClient getMockNats() throws MessagingException {
+//		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+//		doNothing().when(natsClient).push(any(), any(), any());
+//		return getMockNats();
+//	}
 
 	@Test
 	@DisplayName("Transfer Task Created Listener - assignment succeeds for valid transfer task")
@@ -77,7 +77,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 		// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 		// mock out the db service so we can can isolate method logic rather than db
 		TransferTaskDatabaseService dbService = mock(TransferTaskDatabaseService.class);
@@ -104,8 +104,8 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 			assertTrue(isAssigned);
 			//verify(ttc, times(1))._doPublishNatsJSEvent( TRANSFERTASK_ASSIGNED, json.put("status",TransferStatusType.ASSIGNED.name()));
 			//verify(ttc, never())._doPublishNatsJSEvent(TRANSFERTASK_ERROR, new JsonObject());
-			verify(nats, never()).push(any(), any(), any());
-			verify(nats, times(1)).push(any(), any(), json.put("status",TransferStatusType.ASSIGNED.name()).toString());
+//			verify(nats, never()).push(any(), any(), any());
+//			verify(nats, times(1)).push(any(), any(), json.put("status",TransferStatusType.ASSIGNED.name()).toString());
 
 
 			verify(dbService, times(1)).updateStatus(eq(transferTask.getTenantId()), eq(transferTask.getUuid()), eq(TransferStatusType.ASSIGNED.name()), any());
@@ -127,7 +127,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		when(ttc.uriSchemeIsNotSupported(any())).thenReturn(false);
 		try {
@@ -140,7 +140,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
 			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
 			//verify(ttc, never())._doPublishNatsJSEvent( TRANSFERTASK_ASSIGNED, json);
-			verify(nats, never()).push(any(), any(), json.toString());
+//			verify(nats, never()).push(any(), any(), json.toString());
 			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
 			JsonObject errorBody = new JsonObject()
@@ -148,7 +148,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 					.put("message", cause.getMessage())
 					.mergeIn(json);
 			//verify(ttc, times(1))._doPublishNatsJSEvent( TRANSFERTASK_ERROR, errorBody);
-			verify(nats, times(1)).push(any(), any(), errorBody.toString());
+//			verify(nats, times(1)).push(any(), any(), errorBody.toString());
 
 			ctx.completeNow();
 		})));
@@ -166,7 +166,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 
 		// mock out the verticle we're testing so we can observe that its methods were called as expected
 		TransferTaskCreatedListener ttc = getMockListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		when(ttc.uriSchemeIsNotSupported(any())).thenReturn(true, false);
 		try {
@@ -179,7 +179,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 		ttc.processEvent(json, ctx.failing(cause -> ctx.verify(() -> {
 			assertEquals(cause.getClass(), RemoteDataSyntaxException.class, "Result should have been RemoteDataSyntaxException");
 			//verify(ttc, never())._doPublishNatsJSEvent(TRANSFERTASK_ASSIGNED, json);
-			verify(nats, never()).push(any(), any(), json.toString());
+//			verify(nats, never()).push(any(), any(), json.toString());
 			verify(ttc, never()).userHasMinimumRoleOnSystem(any(),any(),any(),any());
 
 			JsonObject errorBody = new JsonObject()
@@ -187,7 +187,7 @@ class TransferTaskCreatedListenerTest extends BaseTestCase {
 					.put("message", cause.getMessage())
 					.mergeIn(json);
 			//verify(ttc, times(1))._doPublishNatsJSEvent(TRANSFERTASK_ERROR, errorBody);
-			verify(nats, times(1)).push(any(), any(), errorBody.toString());
+//			verify(nats, times(1)).push(any(), any(), errorBody.toString());
 			ctx.completeNow();
 		})));
 	}

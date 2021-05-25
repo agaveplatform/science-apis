@@ -85,11 +85,11 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 		return listener;
 	}
-	NatsJetstreamMessageClient getMockNats() throws MessagingException {
-		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
-		doNothing().when(natsClient).push(any(), any(), any());
-		return getMockNats();
-	}
+//	NatsJetstreamMessageClient getMockNats() throws MessagingException {
+//		NatsJetstreamMessageClient natsClient = Mockito.mock(NatsJetstreamMessageClient.class);
+//		doNothing().when(natsClient).push(any(), any(), any());
+//		return getMockNats();
+//	}
 
 	/**
 	 * Generates a mock of the vertical under test with the inherited methods stubbed out.
@@ -200,7 +200,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	public void processTransferTaskAssignsSingleFileTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// generate a fake transfer task
 		TransferTask rootTransferTask = _createTestTransferTask();
@@ -269,7 +269,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 				// no error event should have been raised
 				//verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
+//				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 
 				ctx.completeNow();
 
@@ -283,7 +283,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	public void processTransferTaskAssignsEmptyDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// generate a fake transfer task
 		TransferTask rootTransferTask = _createTestTransferTask();
@@ -365,7 +365,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 				//verify(ta, times(1))._doPublishNatsJSEvent( eq(TRANSFER_COMPLETED), eq(updatedTransferTaskJson));
 				// no error event should have been raised
 				//verify(ta, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
-				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
+//				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 				ctx.completeNow();
 			});
 		});
@@ -377,7 +377,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	public void processTransferTaskAssignsPopulatedDirectoryTransferTask(Vertx vertx, VertxTestContext ctx) throws IOException, InterruptedException, TimeoutException, MessagingException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		// generate a fake transfer task
 		TransferTask rootTransferTask = _createTestTransferTask();
@@ -505,7 +505,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 				// no error event should have been raised
 				//verify(ta, never())._doPublishNatsJSEvent( eq(TRANSFERTASK_ERROR), any());
-				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
+//				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 				ctx.completeNow();
 			});
 		});
@@ -516,7 +516,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 	public void processTransferTaskAbortsChildProcessingOnInterrupt(Vertx vertx, VertxTestContext ctx) throws InterruptedException, TimeoutException, IOException, MessagingException {
 		// mock out the test class
 		TransferTaskAssignedListener ta = getMockTransferAssignedListenerInstance(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		TransferTaskErrorListener te = getMockTransferErrorListenerInstance(vertx);
 		doNothing().when(te).start();
@@ -615,7 +615,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 
 				// no error event should have been raised
 				//verify(ta, never())._doPublishNatsJSEvent(eq(TRANSFERTASK_ERROR), any());
-				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
+//				verify(nats, never()).push(any(),eq(TRANSFERTASK_ERROR),any());
 				ctx.completeNow();
 			});
 		});
@@ -630,7 +630,7 @@ class TransferTaskAssignedListenerTest extends BaseTestCase {
 		tt.setRootTaskId(new AgaveUUID(UUIDType.TRANSFER).toString());
 
 		TransferTaskAssignedListener ta = new TransferTaskAssignedListener(vertx);
-		NatsJetstreamMessageClient nats = getMockNats();
+//		NatsJetstreamMessageClient nats = getMockNats();
 
 		ctx.verify(() -> {
 			ta.addCancelledTask(tt.getUuid());

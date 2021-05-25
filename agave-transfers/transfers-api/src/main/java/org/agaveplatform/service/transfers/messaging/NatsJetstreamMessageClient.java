@@ -46,6 +46,8 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
 
     private static final Object lock = new Object();
 
+    public NatsJetstreamMessageClient (){}
+
     /**
      * Static connection shared across all instances.
      */
@@ -79,7 +81,7 @@ public class NatsJetstreamMessageClient implements MessageQueueClient {
      * we register with our subscription, and with the connection, so no further work is needed on our behalf.
      * @return an active NATS connection
      */
-    protected static Connection getConn() {
+    public static Connection getConn() {
         return conn;
     }
 

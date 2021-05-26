@@ -39,7 +39,7 @@ class TransferTaskWatchListenerTest extends BaseTestCase {
 		when(listener.getRetryRequestManager()).thenCallRealMethod();
 		doNothing().when(listener)._doPublishEvent(any(), any());
 //		doNothing().when(listener)._doPublishNatsJSEvent( any(), any());
-		when(listener.createPushMessageSubject(any(), any(), any(), any(), any(), any())).thenCallRealMethod ();
+		when(listener.createPushMessageSubject(any(), any(), any(), any(), any())).thenCallRealMethod ();
 		doCallRealMethod().when(listener).doHandleError(any(),any(),any(),any());
 		doCallRealMethod().when(listener).doHandleFailure(any(),any(),any(),any());
 		return listener;

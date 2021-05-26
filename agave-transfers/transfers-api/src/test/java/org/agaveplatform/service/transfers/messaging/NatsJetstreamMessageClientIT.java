@@ -1,9 +1,7 @@
 package org.agaveplatform.service.transfers.messaging;
 
-import io.nats.client.Connection;
-import io.nats.client.Message;
-import io.nats.client.Nats;
-import io.nats.client.Options;
+import io.nats.client.*;
+import io.nats.client.api.*;
 import io.vertx.junit5.VertxExtension;
 import org.agaveplatform.service.transfers.enumerations.MessageType;
 import org.junit.jupiter.api.*;
@@ -130,7 +128,7 @@ public class NatsJetstreamMessageClientIT {
             // test pushing of message for each message type
             for (String messageType : MessageType.values()) {
                 String subject = TEST_MESSAGE_SUBJECT_PREFIX + messageType;
-                messageClient.push(TEST_STREAM, subject, testBody);
+                messageClient.push(subject, testBody);
 
                 nc.flush(Duration.ofSeconds(1));
                 msg = getSingleNatsMessage();
@@ -172,10 +170,10 @@ public class NatsJetstreamMessageClientIT {
                 String subject = TEST_MESSAGE_SUBJECT_PREFIX + messageType;
 
                 // push a message with a unique body to ensure we can get it back.
-                agaveMessageClient.push(TEST_STREAM, subject, testBody);
+                agaveMessageClient.push(subject, testBody);
 
                 List<org.iplantc.service.common.messaging.Message> messages =
-                        agaveMessageClient.fetch(TEST_STREAM, subject, 1, 2);
+                        agaveMessageClient.fetch(subject, 1, 2);
 
                 assertFalse(messages.isEmpty(), "Test message pushed to stream should be fetched ");
 
@@ -216,10 +214,10 @@ public class NatsJetstreamMessageClientIT {
                 String subject = TEST_MESSAGE_SUBJECT_PREFIX + messageType;
 
                 // push a message with a unique body to ensure we can get it back.
-                agaveMessageClient.push(TEST_STREAM, subject, testBody);
+                agaveMessageClient.push(subject, testBody);
 
                 org.iplantc.service.common.messaging.Message popMessage =
-                        agaveMessageClient.pop(TEST_STREAM, subject);
+                        agaveMessageClient.pop(subject);
 
                 assertNotNull(popMessage, "Popped message should not be null.");
 

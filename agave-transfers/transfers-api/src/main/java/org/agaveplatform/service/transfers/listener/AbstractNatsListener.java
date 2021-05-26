@@ -1,19 +1,33 @@
 package org.agaveplatform.service.transfers.listener;
 
-import io.nats.client.*;
+import io.nats.client.Connection;
+import io.nats.client.Nats;
+import io.nats.client.Options;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
+import org.agaveplatform.service.transfers.handler.RetryRequestManager;
+import org.agaveplatform.service.transfers.messaging.NatsConnectionListener;
+import org.agaveplatform.service.transfers.messaging.NatsErrorListener;
 import org.agaveplatform.service.transfers.messaging.NatsJetstreamMessageClient;
 import org.apache.commons.lang.StringUtils;
+import org.iplantc.service.common.exceptions.MessageProcessingException;
 import org.iplantc.service.common.exceptions.MessagingException;
+import org.iplantc.service.common.messaging.Message;
+import org.iplantc.service.common.util.Slug;
 import org.iplantc.service.common.uuid.UUIDType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.concurrent.TimeoutException;
+
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_ERROR;
+import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_FAILED;
 
 public class AbstractNatsListener extends AbstractTransferTaskListener {
     private static final Logger log = LoggerFactory.getLogger(AbstractNatsListener.class);
@@ -82,7 +96,6 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * Creates a subject using the context of the event being sent. All values in this subject should be concrete
      * when pushing a message. When subscribing, they should leverage wildcards to the extent that a verticle serves
      * more than one tenant, owner, etc.
-     * @param streamName nam of stream. redundant. TODO: remove stream name from subject
      * @param agaveResourceType the type of agave resource for which this message is being created. ie. {@link UUIDType}
      * @param tenantId the id of the tenant
      * @param owner the subject to whom this message is attributed
@@ -90,10 +103,10 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
      * @param eventName the event being thrown.
      * @return the derived subject with built in routing for downstream consumers.
      */
-    public String createPushMessageSubject(String streamName, String agaveResourceType, String tenantId, String owner, String sourceSystemId, String eventName){
+    public String createPushMessageSubject(String agaveResourceType, String tenantId, String owner, String sourceSystemId, String eventName){
         String consumerName = "";
         try {
-            consumerName = streamName + "_" + agaveResourceType + "_" + tenantId + "_" + owner + "_" + sourceSystemId + "_" + eventName;
+            consumerName = getStreamName() + "_" + agaveResourceType + "_" + tenantId + "_" + owner + "_" + sourceSystemId + "_" + eventName;
             consumerName = consumerName.replaceAll("\\.{2,}", ".");
             consumerName = StringUtils.stripEnd(consumerName, ".");
 
@@ -104,17 +117,165 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     }
 
     /**
+     * Convenience method to creates a subscription subject using the context of the event being sent. The 
+     * resource type will be {@link UUIDType#TRANSFER}, tenant, owner, and system will all be wildcards, "*". 
+     * 
+     * @param eventName the event being thrown.
+     * @return the derived subject with built in routing for downstream consumers.
+     * @see #createSubscriptionSubject(String, String, String, String, String)
+     */
+    public String createSubscriptionSubject(String eventName) {
+        return createSubscriptionSubject(UUIDType.TRANSFER.name().toLowerCase(), null, null, null, eventName);
+    }
+
+    /**
+     * Creates a subject using the context of the event being sent. All values in this subject should be concrete
+     * when pushing a message. When subscribing, they should leverage wildcards to the extent that a verticle serves
+     * more than one tenant, owner, etc.
+     * @param agaveResourceType the type of agave resource for which this message is being created. ie. {@link UUIDType}
+     * @param tenantId the id of the tenant
+     * @param owner the subject to whom this message is attributed
+     * @param sourceSystemId the id of the source system of the transfer event. TODO: remove this and disambiguate the system id in message subjects
+     * @param eventName the event being thrown.
+     * @return the derived subject with built in routing for downstream consumers.
+     */
+    public String createSubscriptionSubject(String agaveResourceType, String tenantId, String owner, String sourceSystemId, String eventName) {
+        String consumerName = String.format("%s.%s.%s.%s.%s.%s",
+                                        getStreamName(),
+                                        agaveResourceType,
+                                        StringUtils.isBlank(tenantId) ? "*" : tenantId,
+                                        StringUtils.isBlank(owner) ? "*" : owner,
+                                        StringUtils.isBlank(sourceSystemId) ? "*" : sourceSystemId,
+                                        StringUtils.isBlank(eventName) ? "*" : eventName);
+
+        consumerName = consumerName.replaceAll("\\.{2,}", ".");
+        consumerName = StringUtils.strip(consumerName, ". ");
+
+        return consumerName;
+    }
+
+    /**
+     * Listen to the stream for push messages, knowing ony one member of the group will get the message.
+     * @param messageType
+     * @param callback
+     * @throws IOException
+     * @throws InterruptedException
+     * @throws MessagingException
+     * @throws MessageProcessingException
+     */
+    protected void subscribeToSubjectGroup(String messageType, Handler<Message> callback)
+            throws IOException, InterruptedException, MessagingException, MessageProcessingException {
+        String subject = createSubscriptionSubject(messageType);
+        String groupName = Slug.toSlug(this.getClass().getSimpleName() + "-" + messageType);
+
+        getMessageClient().listen(subject, groupName, msg -> {
+
+            // Q: should we handle the ack after processing the message so we can retry?
+            // Current thinking is no since any failure should result in an error message being written instead
+            // of automatically retrying the message.
+            msg.ack();
+
+            String body = new String(msg.getData(), StandardCharsets.UTF_8);
+            callback.handle(new Message(msg.getSID(), body));
+        });
+
+    }
+
+    /**
+     * Listen to the stream for push messages, knowing it won't be the only one to get them.
+     * @param messageType
+     * @param callback
+     * @throws IOException
+     * @throws InterruptedException
+     * @throws MessagingException
+     * @throws MessageProcessingException
+     */
+    protected void subscribeToBroadcastSubject(String messageType, Handler<Message> callback)
+            throws IOException, InterruptedException, MessagingException, MessageProcessingException {
+        String subject = createSubscriptionSubject(messageType);
+
+        getMessageClient().listen(subject, msg -> {
+
+            // Q: should we handle the ack after processing the message so we can retry?
+            // Current thinking is no since any failure should result in an error message being written instead
+            // of automatically retrying the message.
+            msg.ack();
+
+            String body = new String(msg.getData(), StandardCharsets.UTF_8);
+            callback.handle(new Message(msg.getSID(), body));
+        });
+
+    }
+
+
+    /**
+     * Handles event creation and delivery across the existing event bus. Retry is handled by the
+     * {@link RetryRequestManager} up to 3 times. The call will be made asynchronously, so this method
+     * will return immediately.
+     *
+     * @param eventName the name of the event. This doubles as the address in the request invocation.
+     * @param body the message of the body. Currently only {@link JsonObject} are supported.
+     */
+    public void _doPublishEvent(String eventName, JsonObject body) throws IOException, InterruptedException {
+        _doPublishNatsJSEvent(eventName, body);
+    }
+
+    /**
+     * Convenience method to handles generation of failed transfer messages, raising of failed event, and calling of handler with the
+     * passed exception.
+     * @param throwable the exception that was thrown
+     * @param failureMessage the human readable message to send back
+     * @param originalMessageBody the body of the original message that caused that failed
+     * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
+     */
+    protected void doHandleFailure(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
+        JsonObject json = new JsonObject()
+                .put("cause", throwable.getClass().getName())
+                .put("message", failureMessage)
+                .mergeIn(originalMessageBody);
+
+        _doPublishNatsJSEvent(TRANSFER_FAILED, json);
+
+        // propagate the exception back to the calling method
+        if (handler != null) {
+            handler.handle(Future.failedFuture(throwable));
+        }
+    }
+
+    /**
+     * Convenience method to handles generation of errored out transfer messages, raising of error event, and calling of handler with the
+     * passed exception.
+     * @param throwable the exception that was thrown
+     * @param failureMessage the human readable message to send back
+     * @param originalMessageBody the body of the original message that caused that failed
+     * @param handler the callback to pass a {@link Future#failedFuture(Throwable)} with the {@code throwable}
+     */
+    protected void doHandleError(Throwable throwable, String failureMessage, JsonObject originalMessageBody, Handler<AsyncResult<Boolean>> handler) throws IOException, InterruptedException {
+        JsonObject json = new JsonObject()
+                .put("cause", throwable.getClass().getName())
+                .put("message", failureMessage)
+                .mergeIn(originalMessageBody);
+
+        _doPublishNatsJSEvent(TRANSFERTASK_ERROR, json);
+
+        // propagate the exception back to the calling method
+        if (handler != null) {
+            handler.handle(Future.failedFuture(throwable));
+        }
+    }
+
+    /**
      *    This will publish a message @body on the messageAddress
      *    @param messageAddress - Address of the Nats message
      *    @param body - body of the message
      *    @return void
      */
-    public void _doPublishNatsJSEvent(String messageAddress, JsonObject body) throws IOException, InterruptedException, TimeoutException {
+    public void _doPublishNatsJSEvent(String messageAddress, JsonObject body) {
         log.info(super.getClass().getName() + ": _doPublishNatsEvent({}, {})", messageAddress, body);
         try {
-            getMessageClient().push(getStreamName(), messageAddress, body.toString());
+            getMessageClient().push(messageAddress, body.toString());
 
-        } catch (IOException | MessagingException e) {
+        } catch (IOException | MessagingException | InterruptedException e) {
             log.debug("Error with _doPublishNatsJSEvent:  {}", e.getMessage());
         }
     }
@@ -129,29 +290,13 @@ public class AbstractNatsListener extends AbstractTransferTaskListener {
     public Connection _connect(String url) throws IOException, InterruptedException {
         Options.Builder builder = new Options.Builder()
                 .server("nats://nats:4222")
-//                .server(Options.DEFAULT_URL)
                 .connectionTimeout(Duration.ofSeconds(5))
                 .pingInterval(Duration.ofSeconds(10))
                 .reconnectWait(Duration.ofSeconds(1))
-                .maxReconnects(-1);
-        builder = builder.connectionListener((conn, type) -> log.info("Status change {}", type));
-        builder = builder.errorListener(new ErrorListener() {
-            @Override
-            public void slowConsumerDetected(Connection conn, Consumer consumer) {
-                log.info("NATS connection slow consumer detected");
-            }
-            @Override
-            public void exceptionOccurred(Connection conn, Exception exp) {
-                log.info("NATS connection exception occurred");
-                log.debug(exp.getMessage());
-            }
-            @Override
-            public void errorOccurred(Connection conn, String error) {
-                log.info("NATS connection error occurred " + error);
-            }
-        });
+                .maxReconnects(-1)
+                .connectionListener(new NatsConnectionListener())
+                .errorListener(new NatsErrorListener());
 
-        log.debug("_connect");
         return Nats.connect(builder.build());
     }
 

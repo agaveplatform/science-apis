@@ -310,9 +310,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                     try {
                         //transfers.$tenantid.$uid.$systemid.transfer.$protocol
                         srcUri.set(URI.create(source));
-                        String messageName = createPushMessageSubject(streamName,"transfers", tt.getTenantId(), tt.getOwner(), sourceClient.getHost(), MessageType.TRANSFERTASK_CREATED);
+                        String messageName = createPushMessageSubject("transfers", tt.getTenantId(), tt.getOwner(), sourceClient.getHost(), MessageType.TRANSFERTASK_CREATED);
                         //_doPublishNatsJSEvent(messageName, tt.toJson());
-                        natsCleint.push("DEV",messageName, tt.toJson().toString());
+                        natsCleint.push(messageName, tt.toJson().toString());
                         routingContext.response()
                             .putHeader("content-type", "application/json")
                                 .setStatusCode(201)
@@ -378,10 +378,10 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 if (deleteReply.succeeded()) {
                                     try {
 
-                                        String messageName = createPushMessageSubject("DEV", "transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_CANCELED);
+                                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_CANCELED);
                                         natsCleint = new NatsJetstreamMessageClient(config().getString(NATS_URL), streamName, messageName);
                                         //_doPublishNatsJSEvent( messageName, deleteReply.result());
-                                        natsCleint.push("DEV", messageName, deleteReply.result().toString());
+                                        natsCleint.push( messageName, deleteReply.result().toString());
 
                                         routingContext.response()
                                                 .putHeader("content-type", "application/json")
@@ -464,9 +464,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                     // _doPublishEvent(MessageType.TRANSFERTASK_DELETED, deleteReply.result());
                                     //Todo need to write the TransferTaskDeletedListener.  Then the TRANSFERTASK_DELETED message will be actied on;
                                     try {
-                                        String messageName = createPushMessageSubject("DEV", "transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(), MessageType.TRANSFERTASK_CANCELED);
+                                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(), MessageType.TRANSFERTASK_CANCELED);
                                         //_doPublishNatsJSEvent(messageName, jo);
-                                        natsCleint.push("DEV", messageName, jo.toString());
+                                        natsCleint.push( messageName, jo.toString());
                                     } catch (MessagingException e) {
                                         log.debug(e.getMessage());
                                     }
@@ -495,9 +495,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                 if (reply.succeeded()) {
                     TransferTask tt = new TransferTask(reply.result());
                     try {
-                        String messageName = createPushMessageSubject("DEV", "transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_CANCELED);
+                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_CANCELED);
                        //_doPublishNatsJSEvent(messageName, jo);
-                        natsCleint.push("DEV", messageName, tt.toString());
+                        natsCleint.push( messageName, tt.toString());
                         //_doPublishNatsJSEvent(messageName, tt.toJson());
                         routingContext.response()
                                 .putHeader("content-type", "application/json")
@@ -570,10 +570,10 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                         //String messageName = _createMessageName("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost().toString(),MessageType.TRANSFERTASK_CANCELED);
                                         //_doPublishNatsJSEvent(messageName, jo);
 
-                                        String messageName = createPushMessageSubject("DEV", "transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_DELETED);
-                                        natsCleint.push("DEV", messageName, jo.toString());
+                                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_DELETED);
+                                        natsCleint.push( messageName, jo.toString());
 
-                                        natsCleint.push("DEV", messageName, jo.toString());
+                                        natsCleint.push( messageName, jo.toString());
                                     } catch (MessagingException e) {
                                         log.debug(e.getMessage());
                                     }
@@ -652,9 +652,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                         jo = new JsonObject(String.valueOf(deleteReply.result()));
                                     }
                                     try {
-                                        String messageName = createPushMessageSubject("DEV", "transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_DELETED);
+                                        String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_DELETED);
                                         //_doPublishNatsJSEvent(messageName, jo);
-                                        natsCleint.push("DEV", messageName, jo.toString());
+                                        natsCleint.push( messageName, jo.toString());
                                     } catch (MessagingException e) {
                                         log.debug(e.getMessage());
                                     }
@@ -800,9 +800,9 @@ public class TransferAPIVertical extends AbstractNatsListener {
                                 try {
                                     //_doPublishNatsJSEvent(MessageType.TRANSFERTASK_UPDATED, updateReply.result());
 
-                                    String messageName = createPushMessageSubject("DEV", "transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_UPDATED);
+                                    String messageName = createPushMessageSubject("transfers", transferTask.getTenantId(), transferTask.getOwner(), sourceClient.getHost(),MessageType.TRANSFERTASK_UPDATED);
                                     //_doPublishNatsJSEvent(messageName, jo);
-                                    natsCleint.push("DEV", messageName, updateReply.result().toString());
+                                    natsCleint.push( messageName, updateReply.result().toString());
 
                                     routingContext.response().end(
                                             AgaveResponseBuilder.getInstance(routingContext)

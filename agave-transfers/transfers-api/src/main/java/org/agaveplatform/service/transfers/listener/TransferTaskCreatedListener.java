@@ -36,7 +36,7 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(TransferTaskCreatedListener.class);
     protected static final String EVENT_CHANNEL = MessageType.TRANSFERTASK_CREATED;
     private TransferTaskDatabaseService dbService;
-//    private NatsJetstreamMessageClient natsClient; // = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("DEV", "transfers", "tenantId","owner", "host", EVENT_CHANNEL));;
+//    private NatsJetstreamMessageClient natsClient; // = new NatsJetstreamMessageClient(NATS_URL, "DEV", _createConsumerName("transfers", "tenantId","owner", "host", EVENT_CHANNEL));;
 //    private static String streamName = "DEV";
 //    private static String NATS_URL = "nats://nats:4222";
 
@@ -66,11 +66,11 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
         dbService = TransferTaskDatabaseService.createProxy(vertx, dbServiceQueue);
 
         try {
-            String subject = createPushMessageSubject(streamName, "transfers", "tenantId", "owner", "host",  EVENT_CHANNEL);
+            String subject = createPushMessageSubject("transfers", "tenantId", "owner", "host",  EVENT_CHANNEL);
 
-            getMessageClient().push("DEV", subject, "Hello");
+            getMessageClient().push(subject, "Hello");
 
-            Message message = getMessageClient().pop("DEV", subject);
+            Message message = getMessageClient().pop(subject);
 
             log.info(message.toString());
 
@@ -281,9 +281,9 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 //                        body.put("event", this.getClass().getName());
 //                        body.put("type", getEventChannel());
 //                        try {
-//                            String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_NOTIFICATION);
+//                            String messageName = _createConsumerName("transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_NOTIFICATION);
 //                            natsClient.setConsumerName(messageName);
-//                            natsClient.push("DEV", messageName, resp.result().toString());
+//                            natsClient.push(messageName, resp.result().toString());
 //
 //                        } catch (Exception e) {
 //                            log.debug(e.getMessage());
@@ -293,9 +293,9 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 //                    } else {
 //                        log.error("Error with return from creating the event {}", uuid);
 //                        try {
-//                            String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_ERROR);
+//                            String messageName = _createConsumerName("transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_ERROR);
 //                            natsClient.setConsumerName(messageName);
-//                            natsClient.push("DEV", messageName, resp.result().toString());
+//                            natsClient.push(messageName, resp.result().toString());
 //                        } catch (Exception e) {
 //                            log.debug(e.getMessage());
 //                        }
@@ -307,9 +307,9 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
 //                log.error("Error with the TRANSFERTASK_CREATED message.  The error is {}", ex.getMessage());
 //                try {
 //                    //_doPublishNatsJSEvent( MessageType.TRANSFERTASK_ERROR, body);
-//                    String messageName = _createConsumerName("DEV", "transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_ERROR);
+//                    String messageName = _createConsumerName("transfers", tenantId, owner, srcUri.getHost().toString(),MessageType.TRANSFERTASK_ERROR);
 //                    natsClient.setConsumerName(messageName);
-//                    natsClient.push("DEV", messageName, body.toString());
+//                    natsClient.push(messageName, body.toString());
 //                } catch (Exception e) {
 //                    log.debug(e.getMessage());
 //                }
@@ -410,8 +410,8 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                             String owner = updateResult.result().getString("owner");
                             String host = srcUri.getHost();
                             //_doPublishNatsJSEvent(TRANSFERTASK_ASSIGNED, updateResult.result());
-                            String subject = createPushMessageSubject("DEV", "transfers", tenantId, owner, host, TRANSFERTASK_ASSIGNED);
-                            getMessageClient().push(streamName, subject, updateResult.result().toString());
+                            String subject = createPushMessageSubject("transfers", tenantId, owner, host, TRANSFERTASK_ASSIGNED);
+                            getMessageClient().push(subject, updateResult.result().toString());
                         } catch (Exception e) {
                             log.debug(e.getMessage());
                         }
@@ -431,8 +431,8 @@ public class TransferTaskCreatedListener extends AbstractNatsListener {
                 });
             } else {
                 log.info("Skipping processing of child file items for transfer tasks in TransferTaskCreatedListener {} due to interrupt event.", uuid);
-                String subject = createPushMessageSubject("DEV","transfers", tenantId, username, srcUri.getHost(), TRANSFERTASK_CANCELED_ACK);
-                getMessageClient().push(streamName, subject, createdTransferTask.toString());
+                String subject = createPushMessageSubject("transfers", tenantId, username, srcUri.getHost(), TRANSFERTASK_CANCELED_ACK);
+                getMessageClient().push(subject, createdTransferTask.toString());
                 handler.handle(Future.succeededFuture(false));
             }
         } catch (Exception e) {

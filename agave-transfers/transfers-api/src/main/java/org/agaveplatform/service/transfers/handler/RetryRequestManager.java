@@ -7,11 +7,10 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.DeliveryOptions;
-import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
+import org.agaveplatform.service.transfers.TransferTaskConfigProperties;
 import org.agaveplatform.service.transfers.database.TransferTaskDatabaseService;
-import org.agaveplatform.service.transfers.enumerations.MessageType;
+import org.agaveplatform.service.transfers.enumerations.ErrorMessageTypes;
 import org.agaveplatform.service.transfers.listener.AbstractNatsListener;
 import org.agaveplatform.service.transfers.model.TransferTask;
 import org.apache.commons.lang.NotImplementedException;
@@ -27,10 +26,6 @@ import org.iplantc.service.transfer.exceptions.RemoteDataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFERTASK_CREATED;
-import static org.agaveplatform.service.transfers.enumerations.MessageType.TRANSFER_ALL;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
@@ -38,13 +33,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
-import org.agaveplatform.service.transfers.enumerations.ErrorMessageTypes;
+import static org.agaveplatform.service.transfers.TransferTaskConfigProperties.TRANSFERTASK_MAX_ATTEMPTS;
 
 public class RetryRequestManager extends AbstractNatsListener {
     private static final Logger log = LoggerFactory.getLogger(RetryRequestManager.class);
     private Vertx vertx;
     private TransferTaskDatabaseService dbService;
-    public Connection nc = _connect();
+    public Connection nc = _connect(TransferTaskConfigProperties.NATS_URL);
     public RetryRequestManager() throws IOException, InterruptedException {
         super();
     }
